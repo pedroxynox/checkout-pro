@@ -57,7 +57,7 @@ graph TD
 
 ## Tarefas
 
-- [ ] 1. Estabelecer fundação do monorepo e do backend NestJS
+- [x] 1. Estabelecer fundação do monorepo e do backend NestJS
   - Criar a estrutura de pastas do monorepo (`backend/` NestJS + `mobile/` Expo) com workspaces
   - Configurar TypeScript, ESLint, Prettier e o runner de testes (Jest ou Vitest) no backend
   - Adicionar e configurar **fast-check** como dependência de desenvolvimento para os testes de propriedade

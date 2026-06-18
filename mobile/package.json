@@ -1,0 +1,10 @@
+{
+  "name": "@stok-center/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aplicativo móvel React Native + Expo do Gestão de Frente de Caixa - Stok Center (placeholder; será construído na Task 17).",
+  "license": "UNLICENSED",
+  "scripts": {
+    "placeholder": "echo \"O app móvel Expo será implementado na Task 17.\""
+  }
+}
