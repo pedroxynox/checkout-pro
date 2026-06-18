@@ -6,6 +6,15 @@ import { AppModule } from './app.module';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
+  // Habilita CORS para que a versão WEB (rodando em outro domínio, ex.:
+  // stok-center-web.onrender.com) possa chamar a API do navegador. A
+  // autenticação é via token Bearer (sem cookies), então refletir a origem
+  // da requisição é suficiente. No app nativo (APK) o CORS não se aplica.
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
+
   // Validação global de DTOs com class-validator / class-transformer.
   app.useGlobalPipes(
     new ValidationPipe({
