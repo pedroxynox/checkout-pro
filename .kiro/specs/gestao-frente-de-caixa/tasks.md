@@ -291,7 +291,7 @@ graph TD
     - Validar disparo nos horários-limite e seleção de destinatários
     - _Requisitos: 1.4.1, 5.3.1, 5.3.2_
 
-- [ ] 16. Checkpoint - Garantir backend integrado (API + tempo real + cron)
+- [x] 16. Checkpoint - Garantir backend integrado (API + tempo real + cron)
   - Garantir que todos os testes passem, perguntar ao usuário em caso de dúvidas.
 
 - [ ] 17. Implementar fundação do app móvel (Expo) com auth e navegação por perfil
