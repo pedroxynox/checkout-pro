@@ -18,7 +18,9 @@ async function bootstrap(): Promise<void> {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
 
-  await app.listen(port);
+  // Escuta em 0.0.0.0 para funcionar em provedores de hospedagem (ex.: Render),
+  // que encaminham o tráfego para a porta definida na variável de ambiente PORT.
+  await app.listen(port, '0.0.0.0');
   // eslint-disable-next-line no-console
   console.log(`Backend Stok Center ouvindo na porta ${port}`);
 }

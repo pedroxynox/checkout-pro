@@ -12,13 +12,20 @@
  * Executar: `npm run seed` (ou `npm run db:seed`) no diretório `backend/`.
  * Requer um DATABASE_URL apontando para um PostgreSQL acessível.
  */
+import * as bcrypt from 'bcrypt';
 import { Perfil, PrismaClient, TurnoFiscal } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Hash de senha placeholder. Em produção, cada usuário deve redefinir a senha
-// no primeiro acesso; o hash real é gerado pelo Modulo_Acessos (Tarefa 3).
-const SENHA_PLACEHOLDER_HASH = 'PLACEHOLDER_TROCAR_NO_PRIMEIRO_ACESSO';
+// Senha inicial aplicada apenas aos usuários recém-criados (gerentes e
+// fiscais). Pode ser definida via variável de ambiente SENHA_INICIAL; caso
+// contrário, usa um valor padrão que deve ser trocado após o primeiro acesso.
+//
+// Importante: o hash é definido somente na CRIAÇÃO do usuário (upsert.create).
+// Re-execuções do seed NÃO sobrescrevem a senha de usuários já existentes,
+// preservando a idempotência e qualquer senha alterada posteriormente.
+const SENHA_INICIAL = process.env.SENHA_INICIAL || 'StokCenter@2025';
+let senhaHashInicial = '';
 
 /**
  * Gera um login (slug) individual e determinístico a partir do nome completo:
@@ -115,7 +122,7 @@ async function seedFiscais(): Promise<void> {
       update: { perfil: Perfil.FISCAL },
       create: {
         login,
-        senhaHash: SENHA_PLACEHOLDER_HASH,
+        senhaHash: senhaHashInicial,
         perfil: Perfil.FISCAL,
       },
     });
@@ -146,7 +153,7 @@ async function seedGerentes(): Promise<void> {
       update: { perfil: Perfil.GERENTE },
       create: {
         login,
-        senhaHash: SENHA_PLACEHOLDER_HASH,
+        senhaHash: senhaHashInicial,
         perfil: Perfil.GERENTE,
       },
     });
@@ -164,6 +171,9 @@ async function seedOperadores(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  // Gera o hash da senha inicial uma única vez antes de criar os usuários.
+  senhaHashInicial = await bcrypt.hash(SENHA_INICIAL, 10);
+
   await seedFiscais();
   await seedGerentes();
   await seedOperadores();
