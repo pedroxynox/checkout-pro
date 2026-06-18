@@ -83,6 +83,18 @@
     "7.4 Escrever teste de propriedade para reinício de lote": {
       "status": "passed",
       "lastRunTimestamp": 1781788188660
+    },
+    "8.2 Escrever teste de propriedade para saldo igual à soma dos movimentos": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788566484
+    },
+    "8.3 Escrever teste de propriedade para fardo não reconhecido": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788566622
+    },
+    "8.5 Escrever teste de propriedade para alerta de estoque baixo": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788567110
     }
   },
   "executionHistory": {}

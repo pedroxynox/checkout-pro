@@ -191,21 +191,21 @@ graph TD
     - **Property 13: Reinício de lote zera vendida e preserva histórico**
     - **Validates: Requirements 2.6.5, 2.6.6**
 
-- [ ] 8. Implementar domínio do Módulo Insumos
-  - [ ] 8.1 Implementar `InsumosService` (saldo por soma de movimentos, retirada de fardo, consumos)
+- [x] 8. Implementar domínio do Módulo Insumos
+  - [x] 8.1 Implementar `InsumosService` (saldo por soma de movimentos, retirada de fardo, consumos)
     - Modelar saldo como soma de `MovimentoEstoque` (deltas); registrar retirada de fardo por código de barras reduzindo o saldo pela quantidade de sacolas; registrar consumo de bobina por PDV e de insumos; cadastrar novos insumos com limite mínimo
     - Lançar `FardoNaoReconhecidoError` para código de barras sem fardo cadastrado
     - _Requisitos: 3.1.1, 3.1.2, 3.1.3, 3.1.4, 3.1.6, 3.2.1, 3.2.2, 3.2.4, 3.3.1, 3.3.2, 3.3.4_
-  - [ ]* 8.2 Escrever teste de propriedade para saldo igual à soma dos movimentos
+  - [x]* 8.2 Escrever teste de propriedade para saldo igual à soma dos movimentos
     - **Property 14: Saldo de estoque igual à soma dos movimentos**
     - **Validates: Requirements 3.1.2, 3.1.4, 3.2.1, 3.2.2, 3.3.1, 3.3.2**
-  - [ ]* 8.3 Escrever teste de propriedade para fardo não reconhecido
+  - [x]* 8.3 Escrever teste de propriedade para fardo não reconhecido
     - **Property 15: Fardo não reconhecido não altera estoque**
     - **Validates: Requirements 3.1.3**
-  - [ ] 8.4 Implementar verificação de estoque baixo na fronteira do limite
+  - [x] 8.4 Implementar verificação de estoque baixo na fronteira do limite
     - Implementar `verificarEstoqueBaixo` (saldo ≤ limite mínimo) que dispara alerta via serviço de notificações
     - _Requisitos: 3.1.5, 3.2.3, 3.3.3_
-  - [ ]* 8.5 Escrever teste de propriedade para alerta de estoque baixo
+  - [x]* 8.5 Escrever teste de propriedade para alerta de estoque baixo
     - **Property 16: Alerta de estoque baixo na fronteira do limite**
     - **Validates: Requirements 3.1.5, 3.2.3, 3.3.3**
 

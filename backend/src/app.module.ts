@@ -9,6 +9,7 @@ import { OperadoresModule } from './operadores/operadores.module';
 import { ImportacoesModule } from './importacoes/importacoes.module';
 import { IndicadoresModule } from './indicadores/indicadores.module';
 import { LoteApaeModule } from './lote-apae/lote-apae.module';
+import { InsumosModule } from './insumos/insumos.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { LoteApaeModule } from './lote-apae/lote-apae.module';
     ImportacoesModule,
     IndicadoresModule,
     LoteApaeModule,
+    InsumosModule,
   ],
   controllers: [AppController],
   providers: [AppService],
