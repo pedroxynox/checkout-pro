@@ -342,7 +342,7 @@ graph TD
     - Com mocks de câmera, validar leitura de fardo; validar que gerente vê tudo e fiscal vê apenas o operacional
     - _Requisitos: 3.1.1, 7.2.2, 7.2.3, 7.2.4_
 
-- [ ] 22. Checkpoint final - Garantir que todos os testes passem
+- [x] 22. Checkpoint final - Garantir que todos os testes passem
   - Garantir que todos os testes passem, perguntar ao usuário em caso de dúvidas.
 
 ## Notas
