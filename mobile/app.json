@@ -48,7 +48,7 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "http://localhost:3000"
+      "apiBaseUrl": "https://stok-center-api.onrender.com"
     }
   }
 }
