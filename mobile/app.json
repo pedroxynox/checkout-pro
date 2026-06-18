@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "Stok Center",
+    "owner": "pedroxynox",
     "slug": "stok-center-frente-de-caixa",
     "scheme": "stokcenter",
     "version": "0.1.0",
@@ -13,7 +14,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#0B5FFF"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "center.stok.frentedecaixa",
@@ -27,7 +30,11 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B5FFF"
       },
-      "permissions": ["CAMERA"]
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -45,10 +52,15 @@
         {
           "photosPermission": "O Stok Center acessa suas fotos para enviar as imagens dos checklists de abertura e fechamento."
         }
-      ]
+      ],
+      "expo-sqlite",
+      "expo-font"
     ],
     "extra": {
-      "apiBaseUrl": "http://localhost:3000"
+      "apiBaseUrl": "https://stok-center-api.onrender.com",
+      "eas": {
+        "projectId": "40ea3b1a-6c63-4f2e-8202-ba1a6f88fb05"
+      }
     }
   }
 }
