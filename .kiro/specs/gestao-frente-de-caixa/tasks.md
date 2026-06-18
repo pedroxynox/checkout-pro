@@ -121,30 +121,30 @@ graph TD
     - **Property 33: Contagem por turno consistente com o total**
     - **Validates: Requirements 6.6.5, 6.6.6, 6.6.7**
 
-- [ ] 5. Implementar domínio do Módulo Importações
-  - [ ] 5.1 Implementar validação de colunas e parsing de CSV/XLSX
+- [x] 5. Implementar domínio do Módulo Importações
+  - [x] 5.1 Implementar validação de colunas e parsing de CSV/XLSX
     - Implementar `validarColunas` para os quatro tipos de arquivo, reportando a coluna ausente; integrar biblioteca de parsing (`papaparse`/`xlsx`) lendo linha a linha
     - Lançar `ColunaAusenteError` quando faltar coluna obrigatória
     - _Requisitos: 1.1.1, 1.1.2, 1.1.3, 1.1.4, 1.1.5, 1.1.6_
-  - [ ]* 5.2 Escrever teste de propriedade para validação de colunas
+  - [x]* 5.2 Escrever teste de propriedade para validação de colunas
     - **Property 1: Validação de colunas rejeita arquivo incompleto**
     - **Validates: Requirements 1.1.6**
-  - [ ] 5.3 Implementar vinculação por nome e fila de não reconhecidos
+  - [x] 5.3 Implementar vinculação por nome e fila de não reconhecidos
     - Implementar `vincularPorNome` e `importar`, particionando cada linha entre vinculada a operador/fiscal cadastrado ou listada em "não reconhecidos"
     - _Requisitos: 1.1.7, 1.1.8_
-  - [ ]* 5.4 Escrever teste de propriedade para particionamento por nome
+  - [x]* 5.4 Escrever teste de propriedade para particionamento por nome
     - **Property 2: Particionamento por nome (vinculado ou não reconhecido)**
     - **Validates: Requirements 1.1.7, 1.1.8**
-  - [ ] 5.5 Implementar status diário por arquivo, pendentes e histórico
+  - [x] 5.5 Implementar status diário por arquivo, pendentes e histórico
     - Implementar `statusDoDia`, `verificarPendentesFimDoDia` (complemento dos importados) e `historico` ordenado do mais recente ao mais antigo com filtro por intervalo de data de referência; persistir `RegistroImportacao` (tipo, data referência, importado em, importado por, nomes não reconhecidos)
     - _Requisitos: 1.2.1, 1.2.2, 1.2.3, 1.3.1, 1.3.2, 1.3.3, 1.4.1_
-  - [ ]* 5.6 Escrever teste de propriedade para status do dia e pendentes
+  - [x]* 5.6 Escrever teste de propriedade para status do dia e pendentes
     - **Property 3: Status do dia e pendentes refletem as importações**
     - **Validates: Requirements 1.2.1, 1.2.2, 1.2.3, 1.4.1**
-  - [ ]* 5.7 Escrever teste de propriedade para histórico ordenado e filtrado
+  - [x]* 5.7 Escrever teste de propriedade para histórico ordenado e filtrado
     - **Property 4: Histórico ordenado e filtrado por intervalo**
     - **Validates: Requirements 1.3.2, 1.3.3**
-  - [ ]* 5.8 Escrever testes de exemplo de registro de campos por tipo de arquivo
+  - [x]* 5.8 Escrever testes de exemplo de registro de campos por tipo de arquivo
     - Verificar o registro de data/nome/valor por tipo e a configuração do horário de fim do dia
     - _Requisitos: 1.1.2, 1.1.3, 1.1.4, 1.1.5, 1.4.2_
 

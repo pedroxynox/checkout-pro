@@ -31,6 +31,22 @@
     "4.9 Escrever teste de propriedade para contagem por turno": {
       "status": "passed",
       "lastRunTimestamp": 1781787220661
+    },
+    "5.2 Escrever teste de propriedade para validação de colunas": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787735534
+    },
+    "5.4 Escrever teste de propriedade para particionamento por nome": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787736568
+    },
+    "5.6 Escrever teste de propriedade para status do dia e pendentes": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787737585
+    },
+    "5.7 Escrever teste de propriedade para histórico ordenado e filtrado": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787738559
     }
   },
   "executionHistory": {}
