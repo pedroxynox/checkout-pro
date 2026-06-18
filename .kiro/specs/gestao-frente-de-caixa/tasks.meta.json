@@ -71,6 +71,18 @@
     "6.9 Escrever teste de propriedade para ranking ordenado e completo": {
       "status": "passed",
       "lastRunTimestamp": 1781788004611
+    },
+    "7.2 Escrever teste de propriedade para quantidade vendida e percentual do lote": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788186548
+    },
+    "7.3 Escrever teste de propriedade para rejeição de atualização inválida de lote": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788187539
+    },
+    "7.4 Escrever teste de propriedade para reinício de lote": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788188660
     }
   },
   "executionHistory": {}

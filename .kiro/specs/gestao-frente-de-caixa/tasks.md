@@ -177,17 +177,17 @@ graph TD
     - **Property 10: Ranking ordenado e completo**
     - **Validates: Requirements 2.2.6, 2.3.6, 2.4.6, 2.5.6**
 
-- [ ] 7. Implementar domínio do Lote de Sacolas APAE
-  - [ ] 7.1 Implementar `LoteApaeService` (registrar lote, atualizar saldo, reiniciar, histórico)
+- [x] 7. Implementar domínio do Lote de Sacolas APAE
+  - [x] 7.1 Implementar `LoteApaeService` (registrar lote, atualizar saldo, reiniciar, histórico)
     - Calcular quantidade vendida (`inicial - saldoAtual`) e percentual vendido em [0,1]; rejeitar saldo atual maior que o anterior (`SaldoInvalidoError`); ao reiniciar, encerrar o lote preservando histórico e iniciar novo com vendida zerada
     - _Requisitos: 2.6.1, 2.6.2, 2.6.3, 2.6.4, 2.6.5, 2.6.6, 2.6.7_
-  - [ ]* 7.2 Escrever teste de propriedade para quantidade vendida e percentual do lote
+  - [x]* 7.2 Escrever teste de propriedade para quantidade vendida e percentual do lote
     - **Property 11: Quantidade vendida e percentual do lote APAE**
     - **Validates: Requirements 2.6.2, 2.6.3**
-  - [ ]* 7.3 Escrever teste de propriedade para rejeição de atualização inválida de lote
+  - [x]* 7.3 Escrever teste de propriedade para rejeição de atualização inválida de lote
     - **Property 12: Atualização inválida de lote é rejeitada**
     - **Validates: Requirements 2.6.4**
-  - [ ]* 7.4 Escrever teste de propriedade para reinício de lote
+  - [x]* 7.4 Escrever teste de propriedade para reinício de lote
     - **Property 13: Reinício de lote zera vendida e preserva histórico**
     - **Validates: Requirements 2.6.5, 2.6.6**
 

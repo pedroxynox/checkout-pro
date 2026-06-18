@@ -8,6 +8,7 @@ import { AcessosModule } from './acessos/acessos.module';
 import { OperadoresModule } from './operadores/operadores.module';
 import { ImportacoesModule } from './importacoes/importacoes.module';
 import { IndicadoresModule } from './indicadores/indicadores.module';
+import { LoteApaeModule } from './lote-apae/lote-apae.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { IndicadoresModule } from './indicadores/indicadores.module';
     OperadoresModule,
     ImportacoesModule,
     IndicadoresModule,
+    LoteApaeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
