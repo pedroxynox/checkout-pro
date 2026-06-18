@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { SessaoFiscal } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StatusFiscal, validarStatus } from './fiscais.domain';
+import { FiscalStatusEventos } from './fiscais.eventos';
 import { CheckInAtivoError } from './fiscais.errors';
 
 /**
@@ -15,7 +16,10 @@ import { CheckInAtivoError } from './fiscais.errors';
  */
 @Injectable()
 export class FiscaisService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly eventos?: FiscalStatusEventos,
+  ) {}
 
   /** Localiza a sessão ativa (checkOut nulo) mais recente de um fiscal. */
   private async sessaoAtiva(fiscalId: string): Promise<SessaoFiscal | null> {
@@ -40,10 +44,17 @@ export class FiscaisService {
     if (!sessao) {
       throw new NotFoundException('Nenhuma sessão ativa para o fiscal.');
     }
-    return this.prisma.sessaoFiscal.update({
+    const atualizada = await this.prisma.sessaoFiscal.update({
       where: { id: sessao.id },
       data: { statusAtual: statusValidado, statusDefinidoEm: em },
     });
+    // Propaga a mudança em tempo real ao painel de fiscais (Req 4.1.1–4.1.3).
+    this.eventos?.publicar({
+      fiscalId,
+      status: statusValidado,
+      statusDefinidoEm: atualizada.statusDefinidoEm,
+    });
+    return atualizada;
   }
 
   /**
@@ -56,7 +67,7 @@ export class FiscaisService {
     if (ativa) {
       throw new CheckInAtivoError(fiscalId);
     }
-    return this.prisma.sessaoFiscal.create({
+    const sessao = await this.prisma.sessaoFiscal.create({
       data: {
         fiscalId,
         checkIn: em,
@@ -64,6 +75,13 @@ export class FiscaisService {
         statusDefinidoEm: em,
       },
     });
+    // O check-in define o status inicial "DISPONIVEL"; propaga ao painel.
+    this.eventos?.publicar({
+      fiscalId,
+      status: 'DISPONIVEL',
+      statusDefinidoEm: sessao.statusDefinidoEm,
+    });
+    return sessao;
   }
 
   /**

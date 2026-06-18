@@ -3,6 +3,8 @@ import { FiscaisController } from './fiscais.controller';
 import { FiscaisService } from './fiscais.service';
 import { EscalaController } from './escala.controller';
 import { EscalaService } from './escala.service';
+import { FiscaisGateway } from './fiscais.gateway';
+import { FiscalStatusEventos } from './fiscais.eventos';
 
 /**
  * Módulo do Modulo_Fiscais (Req 4.1–4.3): monitoramento de status em tempo
@@ -13,8 +15,13 @@ import { EscalaService } from './escala.service';
  * serviços para uso pela camada de API e pelo WebSocket Gateway (Tarefas 13/14).
  */
 @Module({
-  providers: [FiscaisService, EscalaService],
+  providers: [
+    FiscaisService,
+    EscalaService,
+    FiscalStatusEventos,
+    FiscaisGateway,
+  ],
   controllers: [FiscaisController, EscalaController],
-  exports: [FiscaisService, EscalaService],
+  exports: [FiscaisService, EscalaService, FiscalStatusEventos],
 })
 export class FiscaisModule {}

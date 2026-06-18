@@ -275,11 +275,11 @@ graph TD
     - Cobrir respostas de sucesso e mensagens de erro por módulo
     - _Requisitos: 1.1.6, 2.1.4, 2.6.4, 3.1.3, 4.2.3, 5.1.4, 6.1.3, 6.2.3, 7.1.3, 7.2.4_
 
-- [ ] 14. Implementar o WebSocket Gateway do painel de fiscais
-  - [ ] 14.1 Criar o Gateway (Socket.IO) e emitir atualizações de status em tempo real
+- [x] 14. Implementar o WebSocket Gateway do painel de fiscais
+  - [x] 14.1 Criar o Gateway (Socket.IO) e emitir atualizações de status em tempo real
     - Conectar `alterarStatus` à emissão de eventos e propagar o status atual e o horário de definição aos clientes conectados
     - _Requisitos: 4.1.1, 4.1.2, 4.1.3_
-  - [ ]* 14.2 Escrever teste de integração do WebSocket
+  - [x]* 14.2 Escrever teste de integração do WebSocket
     - Validar propagação em tempo real a clientes conectados
     - _Requisitos: 4.1.2_
 
