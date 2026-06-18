@@ -294,8 +294,8 @@ graph TD
 - [x] 16. Checkpoint - Garantir backend integrado (API + tempo real + cron)
   - Garantir que todos os testes passem, perguntar ao usuário em caso de dúvidas.
 
-- [ ] 17. Implementar fundação do app móvel (Expo) com auth e navegação por perfil
-  - [ ] 17.1 Criar o app Expo, cliente de API, login e navegação condicionada por perfil
+- [x] 17. Implementar fundação do app móvel (Expo) com auth e navegação por perfil
+  - [x] 17.1 Criar o app Expo, cliente de API, login e navegação condicionada por perfil
     - Configurar projeto Expo (TypeScript), cliente HTTP, tela de login, armazenamento de token e navegação que mostra todas as áreas ao gerente e apenas as operacionais ao fiscal
     - Definir a identidade/branding do aplicativo como "Stok Center" (nome do app, título e tela de login) na configuração do Expo (`app.json`)
     - _Requisitos: 7.1.1, 7.1.2, 7.1.3, 7.2.2, 7.2.3, 7.2.4_
