@@ -1,0 +1,17 @@
+{
+  "pbtResults": {
+    "3.2 Escrever teste de propriedade para autenticação": {
+      "status": "passed",
+      "lastRunTimestamp": 1781786841374
+    },
+    "3.3 Escrever teste de propriedade para autorização por perfil": {
+      "status": "passed",
+      "lastRunTimestamp": 1781786841983
+    },
+    "3.4 Escrever teste de propriedade para unicidade e exclusividade de login": {
+      "status": "passed",
+      "lastRunTimestamp": 1781786842968
+    }
+  },
+  "executionHistory": {}
+}

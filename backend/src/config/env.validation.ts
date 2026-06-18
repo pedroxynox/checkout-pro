@@ -40,6 +40,17 @@ export class EnvironmentVariables {
   })
   @IsOptional()
   HORARIO_FIM_DO_DIA = '18:00';
+
+  // Segredo de assinatura dos tokens JWT (Modulo_Acessos). Opcional em
+  // desenvolvimento; obrigatório definir em produção.
+  @IsString()
+  @IsOptional()
+  JWT_SECRET?: string;
+
+  // Tempo de expiração do token JWT (ex.: "8h", "30m").
+  @IsString()
+  @IsOptional()
+  JWT_EXPIRES_IN?: string;
 }
 
 /**

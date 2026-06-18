@@ -75,19 +75,19 @@ graph TD
     - No seed, criar para **cada fiscal e cada gerente um `Usuario` com login individual e único** (login não compartilhado), vinculado ao respectivo registro de pessoa (`Fiscal`/gerente)
     - _Requisitos: base de persistência para todos os módulos; 6.4.11, 7.1.4, 7.1.5, 7.1.6_
 
-- [ ] 3. Implementar domínio do Módulo Acessos (autenticação e perfis)
-  - [ ] 3.1 Implementar `AcessosService` com `autenticar` e `autorizar`
+- [x] 3. Implementar domínio do Módulo Acessos (autenticação e perfis)
+  - [x] 3.1 Implementar `AcessosService` com `autenticar` e `autorizar`
     - Implementar hash/verificação de senha e emissão de token; definir o conjunto de funcionalidades permitidas ao perfil fiscal e acesso total ao gerente
     - Garantir **login individual e exclusivo** por usuário: implementar `loginDisponivel` e aplicar restrição de unicidade de `login` (nenhum login compartilhado entre usuários), e fazer a autenticação ocorrer sempre pelo login individual do próprio usuário
     - Lançar `CredenciaisInvalidasError` e `PermissaoInsuficienteError`
     - _Requisitos: 7.1.1, 7.1.2, 7.1.3, 7.1.4, 7.1.5, 7.1.6, 7.2.1, 7.2.2, 7.2.3, 7.2.4_
-  - [ ]* 3.2 Escrever teste de propriedade para autenticação
+  - [x]* 3.2 Escrever teste de propriedade para autenticação
     - **Property 28: Autenticação concede ou nega conforme credenciais**
     - **Validates: Requirements 7.1.2, 7.1.3**
-  - [ ]* 3.3 Escrever teste de propriedade para autorização por perfil
+  - [x]* 3.3 Escrever teste de propriedade para autorização por perfil
     - **Property 29: Autorização por perfil**
     - **Validates: Requirements 7.2.2, 7.2.3, 7.2.4**
-  - [ ]* 3.4 Escrever teste de propriedade para unicidade e exclusividade de login
+  - [x]* 3.4 Escrever teste de propriedade para unicidade e exclusividade de login
     - **Property 31: Unicidade e exclusividade de login**
     - **Validates: Requirements 7.1.4, 7.1.6**
 
