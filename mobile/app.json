@@ -14,7 +14,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#0B5FFF"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "center.stok.frentedecaixa",
@@ -28,7 +30,9 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B5FFF"
       },
-      "permissions": ["CAMERA"]
+      "permissions": [
+        "CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -46,7 +50,8 @@
         {
           "photosPermission": "O Stok Center acessa suas fotos para enviar as imagens dos checklists de abertura e fechamento."
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "extra": {
       "apiBaseUrl": "https://stok-center-api.onrender.com"
