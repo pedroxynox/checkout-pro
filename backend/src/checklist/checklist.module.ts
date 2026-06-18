@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ChecklistController } from './checklist.controller';
 import { ChecklistService } from './checklist.service';
 
 /**
@@ -12,6 +13,7 @@ import { ChecklistService } from './checklist.service';
  */
 @Module({
   providers: [ChecklistService],
+  controllers: [ChecklistController],
   exports: [ChecklistService],
 })
 export class ChecklistModule {}

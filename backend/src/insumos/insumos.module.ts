@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { InsumosController } from './insumos.controller';
 import { InsumosService } from './insumos.service';
 
 /**
@@ -11,6 +12,7 @@ import { InsumosService } from './insumos.service';
  */
 @Module({
   providers: [InsumosService],
+  controllers: [InsumosController],
   exports: [InsumosService],
 })
 export class InsumosModule {}

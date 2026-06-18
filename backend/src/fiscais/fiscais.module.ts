@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { FiscaisController } from './fiscais.controller';
 import { FiscaisService } from './fiscais.service';
+import { EscalaController } from './escala.controller';
 import { EscalaService } from './escala.service';
 
 /**
@@ -12,6 +14,7 @@ import { EscalaService } from './escala.service';
  */
 @Module({
   providers: [FiscaisService, EscalaService],
+  controllers: [FiscaisController, EscalaController],
   exports: [FiscaisService, EscalaService],
 })
 export class FiscaisModule {}

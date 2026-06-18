@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { IndicadoresController } from './indicadores.controller';
 import { IndicadoresService } from './indicadores.service';
 
 /**
@@ -11,6 +12,7 @@ import { IndicadoresService } from './indicadores.service';
  */
 @Module({
   providers: [IndicadoresService],
+  controllers: [IndicadoresController],
   exports: [IndicadoresService],
 })
 export class IndicadoresModule {}

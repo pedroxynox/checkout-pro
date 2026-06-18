@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { AcessosController } from './acessos.controller';
 import { AcessosService } from './acessos.service';
 
 /**
@@ -28,6 +29,7 @@ import { AcessosService } from './acessos.service';
     }),
   ],
   providers: [AcessosService],
+  controllers: [AcessosController],
   exports: [AcessosService],
 })
 export class AcessosModule {}

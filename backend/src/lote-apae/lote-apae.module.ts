@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { LoteApaeController } from './lote-apae.controller';
 import { LoteApaeService } from './lote-apae.service';
 
 /**
@@ -11,6 +12,7 @@ import { LoteApaeService } from './lote-apae.service';
  */
 @Module({
   providers: [LoteApaeService],
+  controllers: [LoteApaeController],
   exports: [LoteApaeService],
 })
 export class LoteApaeModule {}

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { OperadoresController } from './operadores.controller';
 import { OperadoresService } from './operadores.service';
 
 /**
@@ -11,6 +12,7 @@ import { OperadoresService } from './operadores.service';
  */
 @Module({
   providers: [OperadoresService],
+  controllers: [OperadoresController],
   exports: [OperadoresService],
 })
 export class OperadoresModule {}

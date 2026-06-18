@@ -266,12 +266,12 @@ graph TD
 - [x] 12. Checkpoint - Garantir que todos os testes de domínio passem
   - Garantir que todos os testes passem, perguntar ao usuário em caso de dúvidas.
 
-- [ ] 13. Implementar a camada de API REST e autorização por módulo
-  - [ ] 13.1 Criar controllers, DTOs e guards por módulo
+- [x] 13. Implementar a camada de API REST e autorização por módulo
+  - [x] 13.1 Criar controllers, DTOs e guards por módulo
     - Implementar controllers REST para Importações, Indicadores (inclui Painel de Vendas e Lote APAE), Insumos, Fiscais/Escala, Checklist, Operadores/Ausências e Acessos; aplicar guard de autenticação e autorização por perfil; mapear erros de domínio para respostas HTTP em Português
     - Implementar endpoint de upload de arquivos de importação e de upload de imagem de checklist para object storage (S3-compatível)
     - _Requisitos: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 5.1, 6.1, 6.2, 6.3, 7.1, 7.2_
-  - [ ]* 13.2 Escrever testes de exemplo dos endpoints e mapeamento de erros
+  - [x]* 13.2 Escrever testes de exemplo dos endpoints e mapeamento de erros
     - Cobrir respostas de sucesso e mensagens de erro por módulo
     - _Requisitos: 1.1.6, 2.1.4, 2.6.4, 3.1.3, 4.2.3, 5.1.4, 6.1.3, 6.2.3, 7.1.3, 7.2.4_
 

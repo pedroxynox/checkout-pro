@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { DominioExceptionFilter } from './common/filters/dominio-exception.filter';
+import { SegurancaModule } from './common/seguranca.module';
+import { StorageModule } from './storage/storage.module';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
 import { AcessosModule } from './acessos/acessos.module';
@@ -21,6 +25,8 @@ import { NotificacoesModule } from './notificacoes/notificacoes.module';
       validate: validateEnv,
     }),
     PrismaModule,
+    SegurancaModule,
+    StorageModule,
     AcessosModule,
     OperadoresModule,
     ImportacoesModule,
@@ -32,6 +38,9 @@ import { NotificacoesModule } from './notificacoes/notificacoes.module';
     NotificacoesModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_FILTER, useClass: DominioExceptionFilter },
+  ],
 })
 export class AppModule {}
