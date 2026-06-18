@@ -314,7 +314,7 @@ graph TD
     - CRUD de operadores, registro/remoção de ausências, relatório de ausências; centro de notificações in-app com histórico
     - Exibir, na seção de Operadores, as contagens por turno (abertura, intermediário, fechamento) e o total de operadores trabalhando no dia selecionado
     - _Requisitos: 6.1.5, 6.2, 6.3, 6.6.5, 6.6.6, 6.6.7, 7.3.1, 7.3.3_
-  - [ ]* 18.5 Escrever testes de componente/snapshot das telas de exibição
+  - [x]* 18.5 Escrever testes de componente/snapshot das telas de exibição
     - Cobrir painel de vendas, saldos, escala consolidada e históricos
     - _Requisitos: 2.1.3, 3.1.4, 4.1.3, 4.3.6_
 
