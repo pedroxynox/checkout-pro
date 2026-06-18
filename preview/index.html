@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Stok Center — Gestão de Frente de Caixa (Protótipo)</title>
+<style>
+  :root{
+    --primary:#0B5FFF;
+    --primary-dark:#0846c0;
+    --bg:#eef1f6;
+    --card:#ffffff;
+    --text:#1c2330;
+    --muted:#697186;
+    --line:#e4e8f0;
+    --green:#1aa251;
+    --yellow:#e8a800;
+    --red:#e23b3b;
+    --orange:#f08c00;
+    --radius:16px;
+    --shadow:0 2px 10px rgba(20,30,60,.08);
+    --shadow-lg:0 8px 28px rgba(20,30,60,.16);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:#c9d2e3;
+    color:var(--text);
+    display:flex;
+    justify-content:center;
+    min-height:100vh;
+  }
+  /* Phone frame */
+  #phone{
+    width:100%;
+    max-width:430px;
+    background:var(--bg);
+    min-height:100vh;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 0 40px rgba(0,0,0,.25);
+    overflow:hidden;
+  }
+  /* Top app bar */
+  header#appbar{
+    background:var(--primary);
+    color:#fff;
+    padding:14px 16px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    position:sticky;
+    top:0;
+    z-index:20;
+    box-shadow:0 2px 8px rgba(11,95,255,.3);
+  }
+  #appbar .brand{font-weight:700;font-size:17px;letter-spacing:.2px;display:flex;align-items:center;gap:8px;}
+  #appbar .logo{
+    width:28px;height:28px;border-radius:8px;background:#fff;color:var(--primary);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;
+  }
+  #backBtn{
+    background:rgba(255,255,255,.18);border:none;color:#fff;width:34px;height:34px;border-radius:10px;
+    font-size:18px;cursor:pointer;display:none;align-items:center;justify-content:center;
+  }
+  #appbar .spacer{flex:1;}
+  #appbar .screenTitle{font-size:14px;opacity:.92;font-weight:600;}
+
+  /* Offline toggle */
+  .toggle-wrap{display:flex;align-items:center;gap:6px;font-size:11px;}
+  .switch{position:relative;width:42px;height:24px;}
+  .switch input{display:none;}
+  .slider{position:absolute;inset:0;background:rgba(255,255,255,.35);border-radius:20px;transition:.2s;cursor:pointer;}
+  .slider:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+  .switch input:checked + .slider{background:var(--orange);}
+  .switch input:checked + .slider:before{transform:translateX(18px);}
+
+  /* Offline banner */
+  #offlineBanner{
+    display:none;background:var(--orange);color:#fff;font-size:12.5px;font-weight:600;
+    padding:8px 16px;align-items:center;gap:8px;
+  }
+  #offlineBanner.show{display:flex;}
+  #offlineBanner .badge{
+    margin-left:auto;background:rgba(0,0,0,.18);padding:2px 8px;border-radius:20px;font-size:11px;
+  }
+
+  main{flex:1;overflow-y:auto;padding:16px 16px 90px;}
+  .view{display:none;animation:fade .22s ease;}
+  .view.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+  h2.page-title{font-size:20px;margin:2px 0 14px;}
+  .subtitle{color:var(--muted);font-size:13px;margin:-8px 0 16px;}
+
+  .card{
+    background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);
+    margin-bottom:12px;border:1px solid var(--line);
+  }
+  .card h3{margin:0 0 4px;font-size:15px;}
+  .card .label{color:var(--muted);font-size:12.5px;}
+
+  /* Login */
+  #login{display:none;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100vh;padding:32px 26px;text-align:center;background:linear-gradient(160deg,#0B5FFF,#0846c0);position:absolute;inset:0;z-index:50;}
+  #login.active{display:flex;}
+  #login .logo-big{width:84px;height:84px;border-radius:22px;background:#fff;color:var(--primary);
+    font-size:34px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:18px;box-shadow:var(--shadow-lg);}
+  #login h1{color:#fff;font-size:24px;margin:0 0 4px;}
+  #login p.tag{color:rgba(255,255,255,.85);font-size:13px;margin:0 0 30px;}
+  #login .form{width:100%;background:#fff;border-radius:20px;padding:22px;box-shadow:var(--shadow-lg);}
+  .field{text-align:left;margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px;font-weight:600;}
+  .field input,.field select{
+    width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;outline:none;
+    transition:border .15s;background:#fbfcfe;
+  }
+  .field input:focus,.field select:focus{border-color:var(--primary);}
+  button.btn{
+    width:100%;background:var(--primary);color:#fff;border:none;padding:13px;border-radius:11px;
+    font-size:15px;font-weight:700;cursor:pointer;transition:background .15s;
+  }
+  button.btn:active{background:var(--primary-dark);}
+  button.btn.secondary{background:#eef2fb;color:var(--primary);}
+  button.btn.ghost{background:transparent;color:var(--primary);border:1.5px solid var(--primary);}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:10px;}
+
+  /* Home grid */
+  .profile-switch{
+    display:flex;background:#fff;border-radius:12px;padding:4px;margin-bottom:16px;box-shadow:var(--shadow);border:1px solid var(--line);
+  }
+  .profile-switch button{
+    flex:1;border:none;background:transparent;padding:9px;border-radius:9px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;
+  }
+  .profile-switch button.active{background:var(--primary);color:#fff;}
+  .greeting{font-size:13px;color:var(--muted);margin-bottom:14px;}
+  .greeting b{color:var(--text);}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .tile{
+    background:var(--card);border-radius:var(--radius);padding:16px 14px;box-shadow:var(--shadow);border:1px solid var(--line);
+    cursor:pointer;transition:transform .12s,box-shadow .12s;text-align:left;position:relative;
+  }
+  .tile:active{transform:scale(.97);}
+  .tile .ico{font-size:26px;display:block;margin-bottom:8px;}
+  .tile .t-title{font-weight:700;font-size:14px;}
+  .tile .t-sub{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .tile .notif-dot{position:absolute;top:12px;right:12px;background:var(--red);color:#fff;font-size:10px;
+    min-width:18px;height:18px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 4px;font-weight:700;}
+
+  /* semaforo cards */
+  .kpi{display:flex;align-items:center;gap:12px;}
+  .kpi .dot{font-size:22px;}
+  .kpi .kpi-main{flex:1;}
+  .kpi .kpi-name{font-weight:700;font-size:14px;}
+  .kpi .kpi-val{font-size:20px;font-weight:800;margin-top:2px;}
+  .kpi .kpi-meta{font-size:12px;color:var(--muted);}
+  .pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;color:#fff;}
+  .pill.green{background:var(--green);}
+  .pill.yellow{background:var(--yellow);}
+  .pill.red{background:var(--red);}
+  .progress{height:8px;background:#eef1f6;border-radius:8px;overflow:hidden;margin-top:10px;}
+  .progress > div{height:100%;border-radius:8px;}
+
+  .list-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .list-row:last-child{border-bottom:none;}
+  .avatar{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;display:flex;
+    align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+  .list-row .info{flex:1;}
+  .list-row .info .nm{font-weight:600;font-size:14px;}
+  .list-row .info .sub{font-size:12px;color:var(--muted);}
+  .rank-num{width:24px;text-align:center;font-weight:800;color:var(--muted);}
+
+  .chip{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;}
+  .chip.disp{background:#e3f6ec;color:var(--green);}
+  .chip.interv{background:#fdf2d8;color:#9a7400;}
+  .chip.atend{background:#fde3e3;color:var(--red);}
+
+  .seg{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;}
+  .seg button{white-space:nowrap;border:1px solid var(--line);background:#fff;color:var(--muted);
+    padding:8px 14px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;}
+  .seg button.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line);}
+  th{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;}
+
+  .stat-row{display:flex;gap:10px;margin-bottom:12px;}
+  .stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center;box-shadow:var(--shadow);}
+  .stat .v{font-size:22px;font-weight:800;color:var(--primary);}
+  .stat .l{font-size:11.5px;color:var(--muted);margin-top:3px;}
+
+  .alert-box{background:#fdeeee;border:1px solid #f7caca;color:#b62c2c;border-radius:12px;padding:10px 12px;font-size:12.5px;display:flex;gap:8px;align-items:center;margin-bottom:12px;}
+  .info-box{background:#e9f1ff;border:1px solid #c5dbff;color:#1c4fb0;border-radius:12px;padding:10px 12px;font-size:12.5px;display:flex;gap:8px;align-items:center;margin-bottom:12px;}
+  .ok-box{background:#e6f6ec;border:1px solid #b9e6c9;color:#157a3c;border-radius:12px;padding:10px 12px;font-size:12.5px;display:flex;gap:8px;align-items:center;margin-bottom:12px;}
+
+  .queued{display:none;background:#fff4e5;border:1px solid #ffd8a8;color:#a05a00;border-radius:10px;padding:8px 11px;font-size:12px;margin-top:10px;}
+  .queued.show{display:flex;gap:6px;align-items:center;}
+
+  .footer-note{text-align:center;font-size:10.5px;color:var(--muted);padding:18px 8px 6px;line-height:1.5;}
+
+  /* toast */
+  #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+    background:#1c2330;color:#fff;padding:11px 18px;border-radius:24px;font-size:13px;font-weight:600;
+    box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:.25s;z-index:100;max-width:90%;text-align:center;}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .section-label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 8px;}
+  .badge-soft{display:inline-block;background:#eef2fb;color:var(--primary);font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;}
+  .row-between{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+</style>
+</head>
+<body>
+<div id="phone">
+
+  <!-- LOGIN -->
+  <section id="login" class="active">
+    <div class="logo-big">SC</div>
+    <h1>Stok Center</h1>
+    <p class="tag">Gestão de Frente de Caixa</p>
+    <div class="form">
+      <div class="field">
+        <label>Login</label>
+        <input id="loginUser" type="text" placeholder="seu.login" value="ana.souza" />
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input id="loginPass" type="password" placeholder="••••••••" value="123456" />
+      </div>
+      <button class="btn" onclick="doLogin()">Entrar</button>
+      <p class="hint">Protótipo: qualquer login/senha funciona.</p>
+    </div>
+  </section>
+
+  <!-- APP CHROME -->
+  <header id="appbar" style="display:none">
+    <button id="backBtn" onclick="goHome()">‹</button>
+    <div class="brand"><span class="logo">SC</span><span class="screenTitle" id="screenTitle">Stok Center</span></div>
+    <div class="spacer"></div>
+    <div class="toggle-wrap">
+      <span>Offline</span>
+      <label class="switch"><input type="checkbox" id="offlineToggle" onchange="toggleOffline()"><span class="slider"></span></label>
+    </div>
+  </header>
+
+  <div id="offlineBanner">
+    <span>📴</span><span>Sem conexão — exibindo dados salvos</span>
+    <span class="badge" id="pendCount">2 ações pendentes</span>
+  </div>
+
+  <main id="main" style="display:none">
+
+    <!-- HOME -->
+    <section id="home" class="view active">
+      <div class="greeting">Olá, <b id="userName">Ana Souza</b> 👋 <span id="profileTag" class="badge-soft">Gerente</span></div>
+      <div class="profile-switch">
+        <button id="pGerente" class="active" onclick="setProfile('GERENTE')">Gerente</button>
+        <button id="pFiscal" onclick="setProfile('FISCAL')">Fiscal</button>
+      </div>
+      <div class="grid" id="homeGrid"></div>
+      <p class="footer-note">Protótipo visual — dados de exemplo. App real: Gestão de Frente de Caixa — Stok Center.</p>
+    </section>
+
+    <!-- INDICADORES -->
+    <section id="indicadores" class="view">
+      <h2 class="page-title">Indicadores e Metas</h2>
+      <p class="subtitle">Período: Mês atual • dados de exemplo</p>
+
+      <div class="card">
+        <div class="kpi">
+          <span class="dot">🔴</span>
+          <div class="kpi-main">
+            <div class="kpi-name">Cancelamento de Itens</div>
+            <div class="kpi-val">1,45%</div>
+            <div class="kpi-meta">Meta: 0,75%</div>
+          </div>
+          <span class="pill red">Acima</span>
+        </div>
+        <div class="progress"><div style="width:100%;background:var(--red)"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="kpi">
+          <span class="dot">🔴</span>
+          <div class="kpi-main">
+            <div class="kpi-name">Devoluções</div>
+            <div class="kpi-val">0,08%</div>
+            <div class="kpi-meta">Meta: 0,05%</div>
+          </div>
+          <span class="pill red">Acima</span>
+        </div>
+        <div class="progress"><div style="width:100%;background:var(--red)"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="kpi">
+          <span class="dot">🔴</span>
+          <div class="kpi-main">
+            <div class="kpi-name">Troco Solidário</div>
+            <div class="kpi-val">R$ 1.200</div>
+            <div class="kpi-meta">Meta: R$ 2.000 / mês</div>
+          </div>
+          <span class="pill red">60%</span>
+        </div>
+        <div class="progress"><div style="width:60%;background:var(--red)"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="kpi">
+          <span class="dot">🔴</span>
+          <div class="kpi-main">
+            <div class="kpi-name">Recargas de Celular</div>
+            <div class="kpi-val">R$ 800</div>
+            <div class="kpi-meta">Meta: R$ 2.000</div>
+          </div>
+          <span class="pill red">40%</span>
+        </div>
+        <div class="progress"><div style="width:40%;background:var(--red)"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="kpi">
+          <span class="dot">🟡</span>
+          <div class="kpi-main">
+            <div class="kpi-name">Sacolas APAE</div>
+            <div class="kpi-val">30% vendido</div>
+            <div class="kpi-meta">Lote atual</div>
+          </div>
+          <span class="pill yellow">Em curso</span>
+        </div>
+        <div class="progress"><div style="width:30%;background:var(--yellow)"></div></div>
+      </div>
+
+      <div class="section-label">Ranking — Cancelamentos (operadores)</div>
+      <div class="card" id="rankCancel"></div>
+    </section>
+
+    <!-- PAINEL DE VENDAS -->
+    <section id="vendas" class="view">
+      <h2 class="page-title">Painel de Vendas</h2>
+      <p class="subtitle">Base para os indicadores percentuais</p>
+      <div class="stat-row">
+        <div class="stat"><div class="v">R$ 82k</div><div class="l">Dia</div></div>
+        <div class="stat"><div class="v">R$ 491k</div><div class="l">Semana</div></div>
+        <div class="stat"><div class="v">R$ 2,1M</div><div class="l">Mês</div></div>
+      </div>
+      <div class="card">
+        <h3>Informar venda do dia</h3>
+        <div class="field" style="margin-top:10px;">
+          <label>Data</label>
+          <input type="date" id="vendaData" />
+        </div>
+        <div class="field">
+          <label>Valor das vendas (R$)</label>
+          <input type="number" id="vendaValor" placeholder="Ex: 82000" />
+        </div>
+        <button class="btn" onclick="informarVenda()">Salvar venda</button>
+      </div>
+    </section>
+
+    <!-- LOTE APAE -->
+    <section id="apae" class="view">
+      <h2 class="page-title">Lote APAE</h2>
+      <p class="subtitle">Sacolas em benefício da APAE</p>
+      <div class="stat-row">
+        <div class="stat"><div class="v">500</div><div class="l">Qtd. inicial</div></div>
+        <div class="stat"><div class="v">350</div><div class="l">Saldo</div></div>
+        <div class="stat"><div class="v">30%</div><div class="l">Vendido</div></div>
+      </div>
+      <div class="card">
+        <div class="row-between"><h3>Progresso do lote</h3><span class="badge-soft">150 vendidas</span></div>
+        <div class="progress" style="margin-top:12px;"><div style="width:30%;background:var(--primary)"></div></div>
+        <p class="label" style="margin-top:10px;">Início: 01/06 • Status: Aberto</p>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label>Atualizar saldo restante</label>
+          <input type="number" placeholder="Ex: 320" id="apaeSaldo" />
+        </div>
+        <button class="btn secondary" onclick="toast('Saldo atualizado (exemplo)')">Atualizar saldo</button>
+        <div style="height:10px"></div>
+        <button class="btn ghost" onclick="toast('Lote reiniciado — novo lote iniciado (exemplo)')">↻ Reiniciar lote</button>
+      </div>
+    </section>
+
+    <!-- INSUMOS -->
+    <section id="insumos" class="view">
+      <h2 class="page-title">Insumos</h2>
+      <p class="subtitle">Saldo de estoque em tempo real</p>
+      <div class="alert-box"><span>⚠️</span><span>Bobinas abaixo do limite mínimo (8 / mín. 15)</span></div>
+      <div class="card" id="insumoList"></div>
+      <button class="btn" onclick="biparFardo()">📷 Bipar fardo</button>
+      <div class="queued" id="insumoQueued"><span>📴</span><span>Bipagem guardada — sincroniza ao reconectar.</span></div>
+    </section>
+
+    <!-- FISCAIS -->
+    <section id="fiscais" class="view">
+      <h2 class="page-title">Fiscais (tempo real)</h2>
+      <p class="subtitle">Status atualizado ao vivo</p>
+      <div class="card">
+        <div class="row-between">
+          <h3>Alterar meu status</h3>
+        </div>
+        <div class="seg" style="margin-top:10px;margin-bottom:0;">
+          <button class="active" onclick="setMyStatus(this,'Disponível')">🟢 Disponível</button>
+          <button onclick="setMyStatus(this,'Em intervalo')">🟡 Em intervalo</button>
+          <button onclick="setMyStatus(this,'Em atendimento')">🔴 Em atendimento</button>
+        </div>
+        <div class="queued" id="fiscalQueued"><span>📴</span><span>Alteração enfileirada — sincroniza ao reconectar.</span></div>
+      </div>
+      <div class="section-label">Equipe em serviço</div>
+      <div class="card" id="fiscaisList"></div>
+    </section>
+
+    <!-- ESCALA -->
+    <section id="escala" class="view">
+      <h2 class="page-title">Escala</h2>
+      <p class="subtitle">Horários por dia da semana</p>
+      <div class="seg" id="weekSeg"></div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Funcionário</th><th>Entrada</th><th>Saída</th></tr></thead>
+          <tbody id="escalaBody"></tbody>
+        </table>
+      </div>
+      <div class="section-label">Folga do dia</div>
+      <div class="card" id="folgaList"></div>
+    </section>
+
+    <!-- CHECKLIST -->
+    <section id="checklist" class="view">
+      <h2 class="page-title">Checklist</h2>
+      <p class="subtitle">Abertura e fechamento diários</p>
+      <div class="info-box"><span>🔔</span><span>Alertas automáticos: 08:55 (abertura) e 13:55 (fechamento).</span></div>
+
+      <div class="card" id="ckAbertura">
+        <div class="row-between">
+          <h3>Abertura</h3>
+          <span class="pill green" id="ckAberturaStatus">Feito</span>
+        </div>
+        <p class="label">Janela: 08:15 – 09:15</p>
+        <button class="btn secondary" onclick="enviarImagem('Abertura')">📎 Enviar imagem</button>
+      </div>
+
+      <div class="card" id="ckFechamento">
+        <div class="row-between">
+          <h3>Fechamento</h3>
+          <span class="pill yellow" id="ckFechamentoStatus">Pendente</span>
+        </div>
+        <p class="label">Janela: 13:15 – 14:15</p>
+        <button class="btn secondary" onclick="enviarImagem('Fechamento')">📎 Enviar imagem</button>
+      </div>
+    </section>
+
+    <!-- OPERADORES -->
+    <section id="operadores" class="view">
+      <h2 class="page-title">Operadores</h2>
+      <p class="subtitle">Cadastro e contagem por turno</p>
+      <div class="stat-row">
+        <div class="stat"><div class="v">8</div><div class="l">Abertura</div></div>
+        <div class="stat"><div class="v">6</div><div class="l">Interm.</div></div>
+        <div class="stat"><div class="v">9</div><div class="l">Fecham.</div></div>
+      </div>
+      <div class="card" style="text-align:center;padding:12px;">
+        <span class="badge-soft" style="font-size:13px;">Total trabalhando hoje: 23 operadores</span>
+      </div>
+      <div class="section-label">Operadores cadastrados</div>
+      <div class="card" id="operadoresList"></div>
+    </section>
+
+    <!-- NOTIFICACOES -->
+    <section id="notificacoes" class="view">
+      <h2 class="page-title">Notificações</h2>
+      <p class="subtitle">Alertas e avisos do app</p>
+      <div class="card" id="notifList"></div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============ SAMPLE DATA (fictício) ============ */
+var state = { profile:'GERENTE', offline:false, pending:2, day:1 };
+
+var operadores = ["Ana Souza","Bruno Lima","Carla Dias","Diego Melo","Elaine Rocha","Felipe Antunes","Gabriela Reis","Heitor Pinto","Isabela Cruz"];
+
+var rankingCancel = [
+  {nome:"Diego Melo", val:"R$ 980"},
+  {nome:"Bruno Lima", val:"R$ 740"},
+  {nome:"Carla Dias", val:"R$ 510"},
+  {nome:"Ana Souza", val:"R$ 320"},
+  {nome:"Elaine Rocha", val:"R$ 160"}
+];
+
+var insumosData = [
+  {nome:"Sacolas (fardos)", ico:"🛍️", saldo:"42 fardos", low:false},
+  {nome:"Bobinas", ico:"🧾", saldo:"8 un.", low:true},
+  {nome:"Panos de limpeza", ico:"🧽", saldo:"25 un.", low:false},
+  {nome:"Lacres de malote", ico:"🔒", saldo:"60 un.", low:false}
+];
+
+var fiscaisData = [
+  {nome:"Carla Dias", turno:"Abertura", status:"disp", label:"Disponível", hora:"08:10"},
+  {nome:"Felipe Antunes", turno:"Intermediário", status:"atend", label:"Em atendimento", hora:"11:42"},
+  {nome:"Gabriela Reis", turno:"Intermediário", status:"interv", label:"Em intervalo", hora:"11:30"},
+  {nome:"Heitor Pinto", turno:"Fechamento", status:"disp", label:"Disponível", hora:"13:05"}
+];
+
+var dias = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+var escalaPorDia = {
+  0:[["Carla Dias","08:00","16:20"],["Felipe Antunes","10:00","18:20"],["Heitor Pinto","13:30","21:50"],["Ana Souza","07:50","16:10"]],
+  1:[["Gabriela Reis","08:00","16:20"],["Bruno Lima","10:00","18:20"],["Heitor Pinto","13:30","21:50"]],
+  2:[["Carla Dias","08:00","16:20"],["Felipe Antunes","10:00","18:20"],["Diego Melo","13:30","21:50"]],
+  3:[["Gabriela Reis","08:00","16:20"],["Bruno Lima","10:00","18:20"],["Heitor Pinto","13:30","21:50"]],
+  4:[["Carla Dias","08:00","16:20"],["Felipe Antunes","10:00","18:20"],["Diego Melo","13:30","21:50"]],
+  5:[["Gabriela Reis","09:00","17:20"],["Bruno Lima","11:00","19:20"],["Heitor Pinto","13:30","21:50"]],
+  6:[["Plantão reduzido","09:00","15:00"]]
+};
+var folgaPorDia = {0:["Bruno Lima"],1:["Carla Dias","Diego Melo"],2:["Gabriela Reis"],3:["Felipe Antunes"],4:["Heitor Pinto"],5:["Diego Melo"],6:["Equipe completa (domingo)"]};
+
+var notifData = [
+  {ico:"🔴", t:"Checklist de fechamento pendente", s:"Hoje 13:55 • janela 13:15–14:15"},
+  {ico:"⚠️", t:"Estoque baixo: Bobinas", s:"Saldo 8 un. (mín. 15)"},
+  {ico:"📥", t:"Arquivo de Devoluções pendente", s:"Importação do dia ainda não realizada"},
+  {ico:"🔴", t:"Cancelamentos acima da meta", s:"1,45% vs meta 0,75%"},
+  {ico:"✅", t:"Checklist de abertura concluído", s:"Enviado por Carla Dias • 08:40"}
+];
+
+/* areas: fiscal sees only operational */
+var areas = [
+  {id:"indicadores", ico:"📊", title:"Indicadores", sub:"Metas e KPIs", gerenteOnly:false},
+  {id:"vendas", ico:"💰", title:"Painel de Vendas", sub:"Acumulados", gerenteOnly:true},
+  {id:"apae", ico:"🛍️", title:"Lote APAE", sub:"Sacolas solidárias", gerenteOnly:false},
+  {id:"insumos", ico:"📦", title:"Insumos", sub:"Estoque", gerenteOnly:false},
+  {id:"fiscais", ico:"👮", title:"Fiscais", sub:"Tempo real", gerenteOnly:false},
+  {id:"escala", ico:"📅", title:"Escala", sub:"Horários", gerenteOnly:false},
+  {id:"checklist", ico:"✅", title:"Checklist", sub:"Abertura/Fech.", gerenteOnly:false},
+  {id:"operadores", ico:"👥", title:"Operadores", sub:"Caixas e turnos", gerenteOnly:true},
+  {id:"notificacoes", ico:"🔔", title:"Notificações", sub:"Avisos", gerenteOnly:false}
+];
+
+var titles = {
+  home:"Stok Center", indicadores:"Indicadores", vendas:"Painel de Vendas", apae:"Lote APAE",
+  insumos:"Insumos", fiscais:"Fiscais", escala:"Escala", checklist:"Checklist",
+  operadores:"Operadores", notificacoes:"Notificações"
+};
+
+/* ============ NAV ============ */
+function doLogin(){
+  document.getElementById('login').classList.remove('active');
+  document.getElementById('appbar').style.display='flex';
+  document.getElementById('main').style.display='block';
+  var u = document.getElementById('loginUser').value || 'ana.souza';
+  document.getElementById('userName').textContent = "Ana Souza";
+  goHome();
+}
+function show(id){
+  document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+  document.getElementById('screenTitle').textContent = titles[id]||"Stok Center";
+  document.getElementById('backBtn').style.display = (id==='home')?'none':'flex';
+  document.getElementById('main').scrollTop = 0;
+  if(window.scrollTo) window.scrollTo(0,0);
+}
+function goHome(){ show('home'); }
+function open(id){ show(id); }
+
+/* ============ PROFILE ============ */
+function setProfile(p){
+  state.profile = p;
+  document.getElementById('pGerente').classList.toggle('active', p==='GERENTE');
+  document.getElementById('pFiscal').classList.toggle('active', p==='FISCAL');
+  document.getElementById('profileTag').textContent = (p==='GERENTE')?'Gerente':'Fiscal';
+  renderHome();
+}
+function renderHome(){
+  var grid = document.getElementById('homeGrid');
+  grid.innerHTML='';
+  areas.forEach(function(a){
+    if(state.profile==='FISCAL' && a.gerenteOnly) return;
+    var notif = (a.id==='notificacoes') ? '<span class="notif-dot">'+notifData.length+'</span>' : '';
+    var el = document.createElement('div');
+    el.className='tile';
+    el.setAttribute('onclick',"open('"+a.id+"')");
+    el.innerHTML = notif+'<span class="ico">'+a.ico+'</span><div class="t-title">'+a.title+'</div><div class="t-sub">'+a.sub+'</div>';
+    grid.appendChild(el);
+  });
+}
+
+/* ============ OFFLINE ============ */
+function toggleOffline(){
+  state.offline = document.getElementById('offlineToggle').checked;
+  document.getElementById('offlineBanner').classList.toggle('show', state.offline);
+  document.getElementById('pendCount').textContent = state.pending+' ações pendentes';
+  document.getElementById('insumoQueued').classList.remove('show');
+  document.getElementById('fiscalQueued').classList.remove('show');
+  toast(state.offline ? 'Modo offline ativado' : 'Conexão restabelecida — sincronizando…');
+}
+
+/* ============ ACTIONS ============ */
+function informarVenda(){
+  var v = document.getElementById('vendaValor').value;
+  if(v==='' || Number(v)<0){ toast('Informe um valor maior ou igual a zero'); return; }
+  toast('Venda registrada e acumulados atualizados (exemplo)');
+}
+function biparFardo(){
+  if(state.offline){
+    state.pending++;
+    document.getElementById('insumoQueued').classList.add('show');
+    document.getElementById('pendCount').textContent = state.pending+' ações pendentes';
+    toast('📷 Fardo bipado — guardado offline');
+  } else {
+    toast('✅ Fardo SC-7782 reconhecido • -1 fardo no estoque');
+  }
+}
+function setMyStatus(btn, label){
+  var seg = btn.parentNode;
+  seg.querySelectorAll('button').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  if(state.offline){
+    state.pending++;
+    document.getElementById('fiscalQueued').classList.add('show');
+    document.getElementById('pendCount').textContent = state.pending+' ações pendentes';
+    toast('Status enfileirado: '+label);
+  } else {
+    toast('Status alterado para: '+label);
+  }
+}
+function enviarImagem(tipo){
+  var statusEl = document.getElementById('ck'+tipo+'Status');
+  statusEl.textContent='Feito';
+  statusEl.className='pill green';
+  toast('📎 Imagem enviada — '+tipo+' marcado como Feito');
+}
+
+/* ============ RENDERERS ============ */
+function initials(n){var p=n.split(' ');return (p[0][0]+(p[1]?p[1][0]:'')).toUpperCase();}
+
+function renderRanking(){
+  var c = document.getElementById('rankCancel'); c.innerHTML='';
+  rankingCancel.forEach(function(r,i){
+    var row=document.createElement('div'); row.className='list-row';
+    row.innerHTML='<div class="rank-num">'+(i+1)+'</div><div class="avatar">'+initials(r.nome)+'</div>'+
+      '<div class="info"><div class="nm">'+r.nome+'</div></div><div class="badge-soft">'+r.val+'</div>';
+    c.appendChild(row);
+  });
+}
+function renderInsumos(){
+  var c=document.getElementById('insumoList'); c.innerHTML='';
+  insumosData.forEach(function(it){
+    var row=document.createElement('div'); row.className='list-row';
+    var tag = it.low ? '<span class="pill red">Baixo</span>' : '<span class="badge-soft">OK</span>';
+    row.innerHTML='<div class="avatar" style="background:#eef2fb;color:var(--primary);font-size:18px;">'+it.ico+'</div>'+
+      '<div class="info"><div class="nm">'+it.nome+'</div><div class="sub">Saldo: '+it.saldo+'</div></div>'+tag;
+    c.appendChild(row);
+  });
+}
+function renderFiscais(){
+  var c=document.getElementById('fiscaisList'); c.innerHTML='';
+  fiscaisData.forEach(function(f){
+    var row=document.createElement('div'); row.className='list-row';
+    row.innerHTML='<div class="avatar">'+initials(f.nome)+'</div>'+
+      '<div class="info"><div class="nm">'+f.nome+'</div><div class="sub">'+f.turno+' • desde '+f.hora+'</div></div>'+
+      '<span class="chip '+f.status+'">'+f.label+'</span>';
+    c.appendChild(row);
+  });
+}
+function renderWeek(){
+  var seg=document.getElementById('weekSeg'); seg.innerHTML='';
+  dias.forEach(function(d,i){
+    var b=document.createElement('button');
+    b.textContent=d; if(i===state.day) b.className='active';
+    b.onclick=function(){state.day=i;renderWeek();renderEscala();};
+    seg.appendChild(b);
+  });
+}
+function renderEscala(){
+  var body=document.getElementById('escalaBody'); body.innerHTML='';
+  (escalaPorDia[state.day]||[]).forEach(function(r){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td>';
+    body.appendChild(tr);
+  });
+  var f=document.getElementById('folgaList'); f.innerHTML='';
+  (folgaPorDia[state.day]||[]).forEach(function(n){
+    var row=document.createElement('div'); row.className='list-row';
+    row.innerHTML='<div class="avatar" style="background:#fdf2d8;color:#9a7400;">🌴</div><div class="info"><div class="nm">'+n+'</div><div class="sub">Folga</div></div>';
+    f.appendChild(row);
+  });
+}
+function renderOperadores(){
+  var c=document.getElementById('operadoresList'); c.innerHTML='';
+  operadores.forEach(function(n){
+    var row=document.createElement('div'); row.className='list-row';
+    row.innerHTML='<div class="avatar">'+initials(n)+'</div><div class="info"><div class="nm">'+n+'</div><div class="sub">Operador de caixa</div></div>';
+    c.appendChild(row);
+  });
+}
+function renderNotif(){
+  var c=document.getElementById('notifList'); c.innerHTML='';
+  notifData.forEach(function(n){
+    var row=document.createElement('div'); row.className='list-row';
+    row.innerHTML='<div class="avatar" style="background:#eef2fb;color:var(--primary);font-size:18px;">'+n.ico+'</div>'+
+      '<div class="info"><div class="nm">'+n.t+'</div><div class="sub">'+n.s+'</div></div>';
+    c.appendChild(row);
+  });
+}
+
+/* ============ TOAST ============ */
+var toastTimer;
+function toast(msg){
+  var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(function(){t.classList.remove('show');},2200);
+}
+
+/* ============ INIT ============ */
+(function init(){
+  document.getElementById('vendaData').valueAsDate = new Date();
+  renderHome(); renderRanking(); renderInsumos(); renderFiscais();
+  renderWeek(); renderEscala(); renderOperadores(); renderNotif();
+})();
+</script>
+</body>
+</html>
