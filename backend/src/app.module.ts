@@ -12,6 +12,7 @@ import { LoteApaeModule } from './lote-apae/lote-apae.module';
 import { InsumosModule } from './insumos/insumos.module';
 import { FiscaisModule } from './fiscais/fiscais.module';
 import { ChecklistModule } from './checklist/checklist.module';
+import { NotificacoesModule } from './notificacoes/notificacoes.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ChecklistModule } from './checklist/checklist.module';
     InsumosModule,
     FiscaisModule,
     ChecklistModule,
+    NotificacoesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

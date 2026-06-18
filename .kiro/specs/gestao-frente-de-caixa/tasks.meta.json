@@ -123,6 +123,14 @@
     "10.4 Escrever teste de propriedade para disparo do alerta no horário-limite": {
       "status": "passed",
       "lastRunTimestamp": 1781788994813
+    },
+    "11.2 Escrever teste de propriedade para destinatários do alerta de checklist": {
+      "status": "passed",
+      "lastRunTimestamp": 1781789134576
+    },
+    "11.3 Escrever teste de propriedade para entrega em dois canais": {
+      "status": "passed",
+      "lastRunTimestamp": 1781789134959
     }
   },
   "executionHistory": {}

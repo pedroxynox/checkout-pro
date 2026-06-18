@@ -249,17 +249,17 @@ graph TD
     - Verificar as janelas 08:15–09:15 e 13:15–14:15
     - _Requisitos: 5.2.1, 5.2.2, 5.2.3_
 
-- [ ] 11. Implementar serviço transversal de Notificações
-  - [ ] 11.1 Implementar `NotificacoesService` (envio duplo canal, alvos, histórico)
+- [x] 11. Implementar serviço transversal de Notificações
+  - [x] 11.1 Implementar `NotificacoesService` (envio duplo canal, alvos, histórico)
     - Implementar `enviar` entregando por push e in-app, `fiscaisOnline`, `loginGerencial` (sempre presente) e `historico` por usuário; calcular destinatários do alerta de checklist como união dos fiscais online com o login gerencial
     - _Requisitos: 5.3.3, 5.3.4, 7.3.1, 7.3.2, 7.3.3_
-  - [ ]* 11.2 Escrever teste de propriedade para destinatários do alerta de checklist
+  - [x]* 11.2 Escrever teste de propriedade para destinatários do alerta de checklist
     - **Property 24: Destinatários do alerta de checklist**
     - **Validates: Requirements 5.3.3, 5.3.4**
-  - [ ]* 11.3 Escrever teste de propriedade para entrega em dois canais
+  - [x]* 11.3 Escrever teste de propriedade para entrega em dois canais
     - **Property 30: Notificação entregue pelos dois canais**
     - **Validates: Requirements 7.3.2**
-  - [ ]* 11.4 Escrever testes de exemplo para histórico de notificações
+  - [x]* 11.4 Escrever testes de exemplo para histórico de notificações
     - Verificar o histórico por usuário
     - _Requisitos: 7.3.3_
 
