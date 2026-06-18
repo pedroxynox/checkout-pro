@@ -48,3 +48,24 @@ services:
       # Troque este valor pelo desejado antes do primeiro deploy, se preferir.
       - key: SENHA_INICIAL
         value: StokCenter@2025
+
+
+  # Site estático: versão WEB do app (Expo Web / React Native Web).
+  # Útil para visualizar mudanças de layout rapidamente em qualquer navegador,
+  # sem reinstalar o APK. Sites estáticos no Render são gratuitos e NÃO dormem.
+  # Atualiza automaticamente a cada push na branch conectada.
+  - type: web
+    runtime: static
+    name: stok-center-web
+    rootDir: mobile
+    buildCommand: npm install --include=dev && npx expo export --platform web --output-dir dist
+    staticPublishPath: ./dist
+    # Reescreve todas as rotas para index.html (navegação SPA do React Navigation).
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      # URL pública da API (mesmo backend do app móvel).
+      - key: EXPO_PUBLIC_API_URL
+        value: https://stok-center-api.onrender.com
