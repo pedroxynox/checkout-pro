@@ -337,8 +337,8 @@ graph TD
     - Com mocks do provedor de push, verificar duplo canal e alvo (online + gerencial)
     - _Requisitos: 7.3.2, 5.3.3, 5.3.4_
 
-- [ ] 21. Implementar testes de UI do app
-  - [ ]* 21.1 Escrever testes de leitura de código de barras e navegação por perfil
+- [x] 21. Implementar testes de UI do app
+  - [x]* 21.1 Escrever testes de leitura de código de barras e navegação por perfil
     - Com mocks de câmera, validar leitura de fardo; validar que gerente vê tudo e fiscal vê apenas o operacional
     - _Requisitos: 3.1.1, 7.2.2, 7.2.3, 7.2.4_
 
