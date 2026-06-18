@@ -11,6 +11,7 @@ import { IndicadoresModule } from './indicadores/indicadores.module';
 import { LoteApaeModule } from './lote-apae/lote-apae.module';
 import { InsumosModule } from './insumos/insumos.module';
 import { FiscaisModule } from './fiscais/fiscais.module';
+import { ChecklistModule } from './checklist/checklist.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { FiscaisModule } from './fiscais/fiscais.module';
     LoteApaeModule,
     InsumosModule,
     FiscaisModule,
+    ChecklistModule,
   ],
   controllers: [AppController],
   providers: [AppService],

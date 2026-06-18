@@ -111,6 +111,18 @@
     "9.6 Escrever teste de propriedade para horário especial": {
       "status": "passed",
       "lastRunTimestamp": 1781788829445
+    },
+    "10.2 Escrever teste de propriedade para status do checklist": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788991931
+    },
+    "10.3 Escrever teste de propriedade para rejeição de arquivo não-imagem": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788992983
+    },
+    "10.4 Escrever teste de propriedade para disparo do alerta no horário-limite": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788994813
     }
   },
   "executionHistory": {}

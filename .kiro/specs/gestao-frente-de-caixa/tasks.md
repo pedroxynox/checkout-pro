@@ -232,20 +232,20 @@ graph TD
     - Cobrir cadastro com horários por dia, intervalo variável e folga
     - _Requisitos: 4.3.1, 4.3.2, 4.3.3, 4.3.4_
 
-- [ ] 10. Implementar domínio do Módulo Checklist
-  - [ ] 10.1 Implementar `ChecklistService` (envio de imagem, status, janelas, alerta)
+- [x] 10. Implementar domínio do Módulo Checklist
+  - [x] 10.1 Implementar `ChecklistService` (envio de imagem, status, janelas, alerta)
     - Disponibilizar checklist diário de abertura/fechamento; validar que o arquivo é imagem (`ArquivoNaoImagemError`); marcar "Feito" com data/horário/usuário ao enviar imagem válida; expor janelas fixas (08:15–09:15 / 13:15–14:15) e `verificarAlerta` (08:55 / 13:55 com status pendente)
     - _Requisitos: 5.1.1, 5.1.2, 5.1.3, 5.1.4, 5.1.5, 5.2.1, 5.2.2, 5.2.3, 5.3.1, 5.3.2_
-  - [ ]* 10.2 Escrever teste de propriedade para status do checklist
+  - [x]* 10.2 Escrever teste de propriedade para status do checklist
     - **Property 21: Status do checklist reflete o envio de imagem**
     - **Validates: Requirements 5.1.2, 5.1.5**
-  - [ ]* 10.3 Escrever teste de propriedade para rejeição de arquivo não-imagem
+  - [x]* 10.3 Escrever teste de propriedade para rejeição de arquivo não-imagem
     - **Property 22: Arquivo não-imagem é rejeitado**
     - **Validates: Requirements 5.1.4**
-  - [ ]* 10.4 Escrever teste de propriedade para disparo do alerta no horário-limite
+  - [x]* 10.4 Escrever teste de propriedade para disparo do alerta no horário-limite
     - **Property 23: Disparo do alerta de checklist no horário-limite**
     - **Validates: Requirements 5.3.1, 5.3.2**
-  - [ ]* 10.5 Escrever testes de exemplo para janelas fixas de execução
+  - [x]* 10.5 Escrever testes de exemplo para janelas fixas de execução
     - Verificar as janelas 08:15–09:15 e 13:15–14:15
     - _Requisitos: 5.2.1, 5.2.2, 5.2.3_
 
