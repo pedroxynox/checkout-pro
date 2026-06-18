@@ -47,6 +47,30 @@
     "5.7 Escrever teste de propriedade para histórico ordenado e filtrado": {
       "status": "passed",
       "lastRunTimestamp": 1781787738559
+    },
+    "6.2 Escrever teste de propriedade para acumulados de vendas": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787998456
+    },
+    "6.3 Escrever teste de propriedade para rejeição de venda negativa": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788002006
+    },
+    "6.5 Escrever teste de propriedade para o cálculo do indicador percentual": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788002712
+    },
+    "6.6 Escrever teste de propriedade para classificação de cor \"menor é melhor\"": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788003222
+    },
+    "6.7 Escrever teste de propriedade para classificação de cor \"maior é melhor\"": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788003715
+    },
+    "6.9 Escrever teste de propriedade para ranking ordenado e completo": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788004611
     }
   },
   "executionHistory": {}

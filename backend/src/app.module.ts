@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AcessosModule } from './acessos/acessos.module';
 import { OperadoresModule } from './operadores/operadores.module';
 import { ImportacoesModule } from './importacoes/importacoes.module';
+import { IndicadoresModule } from './indicadores/indicadores.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ImportacoesModule } from './importacoes/importacoes.module';
     AcessosModule,
     OperadoresModule,
     ImportacoesModule,
+    IndicadoresModule,
   ],
   controllers: [AppController],
   providers: [AppService],

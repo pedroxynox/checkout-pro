@@ -148,32 +148,32 @@ graph TD
     - Verificar o registro de data/nome/valor por tipo e a configuração do horário de fim do dia
     - _Requisitos: 1.1.2, 1.1.3, 1.1.4, 1.1.5, 1.4.2_
 
-- [ ] 6. Implementar domínio do Painel de Vendas e Indicadores
-  - [ ] 6.1 Implementar `PainelVendas` (registrar, alterar, acumulados dia/semana/mês)
+- [x] 6. Implementar domínio do Painel de Vendas e Indicadores
+  - [x] 6.1 Implementar `PainelVendas` (registrar, alterar, acumulados dia/semana/mês)
     - Acumular por agregação de `VendaDiaria` recalculada do zero; rejeitar valores negativos lançando `ValorVendaInvalidoError`
     - _Requisitos: 2.1.1, 2.1.2, 2.1.3, 2.1.4, 2.1.5_
-  - [ ]* 6.2 Escrever teste de propriedade para acumulados de vendas
+  - [x]* 6.2 Escrever teste de propriedade para acumulados de vendas
     - **Property 5: Acumulados de vendas consistentes com recálculo**
     - **Validates: Requirements 2.1.2, 2.1.3, 2.1.5**
-  - [ ]* 6.3 Escrever teste de propriedade para rejeição de venda negativa
+  - [x]* 6.3 Escrever teste de propriedade para rejeição de venda negativa
     - **Property 6: Valor de vendas negativo é rejeitado**
     - **Validates: Requirements 2.1.4**
-  - [ ] 6.4 Implementar cálculo de percentual e classificação de cor
+  - [x] 6.4 Implementar cálculo de percentual e classificação de cor
     - Implementar `percentual` (sobre total de vendas > 0) e `statusCor` para os dois sentidos (menor é melhor: Cancelamento/Devoluções; maior é melhor: Troco/Recargas) com metas configuráveis (0,75% / 0,05% / R$2.000 / R$2.000)
     - _Requisitos: 2.2.1, 2.2.2, 2.2.3, 2.2.4, 2.2.5, 2.3.1, 2.3.2, 2.3.3, 2.3.4, 2.3.5, 2.4.2, 2.4.3, 2.4.4, 2.4.5, 2.5.2, 2.5.3, 2.5.4, 2.5.5_
-  - [ ]* 6.5 Escrever teste de propriedade para o cálculo do indicador percentual
+  - [x]* 6.5 Escrever teste de propriedade para o cálculo do indicador percentual
     - **Property 7: Cálculo do indicador percentual**
     - **Validates: Requirements 2.2.1, 2.3.1**
-  - [ ]* 6.6 Escrever teste de propriedade para classificação de cor "menor é melhor"
+  - [x]* 6.6 Escrever teste de propriedade para classificação de cor "menor é melhor"
     - **Property 8: Classificação de cor "menor é melhor"**
     - **Validates: Requirements 2.2.3, 2.2.4, 2.2.5, 2.3.3, 2.3.4, 2.3.5**
-  - [ ]* 6.7 Escrever teste de propriedade para classificação de cor "maior é melhor"
+  - [x]* 6.7 Escrever teste de propriedade para classificação de cor "maior é melhor"
     - **Property 9: Classificação de cor "maior é melhor"**
     - **Validates: Requirements 2.4.3, 2.4.4, 2.4.5, 2.5.3, 2.5.4, 2.5.5**
-  - [ ] 6.8 Implementar rankings de operadores e fiscais
+  - [x] 6.8 Implementar rankings de operadores e fiscais
     - Implementar `rankingOperadores` e `rankingFiscais` ordenados de forma decrescente, preservando todas as pessoas como permutação exata da entrada
     - _Requisitos: 2.2.6, 2.3.6, 2.4.6, 2.5.6_
-  - [ ]* 6.9 Escrever teste de propriedade para ranking ordenado e completo
+  - [x]* 6.9 Escrever teste de propriedade para ranking ordenado e completo
     - **Property 10: Ranking ordenado e completo**
     - **Validates: Requirements 2.2.6, 2.3.6, 2.4.6, 2.5.6**
 
