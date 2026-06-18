@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "Stok Center",
+    "owner": "pedroxynox",
     "slug": "stok-center-frente-de-caixa",
     "scheme": "stokcenter",
     "version": "0.1.0",
