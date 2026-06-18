@@ -1,4 +1,4 @@
-import { plainToInstance } from 'class-transformer';
+import { plainToInstance, Type } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
@@ -25,6 +25,10 @@ export class EnvironmentVariables {
   @IsOptional()
   NODE_ENV: Ambiente = Ambiente.Development;
 
+  // @Type garante a conversão explícita de string -> number, pois provedores
+  // de hospedagem (ex.: Render) sempre fornecem PORT como string. Não depende
+  // de enableImplicitConversion/emitDecoratorMetadata.
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(65535)
