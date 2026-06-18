@@ -1,0 +1,50 @@
+# Blueprint de implantação no Render (https://render.com) — gratuito.
+#
+# Cria automaticamente:
+#   1. Um banco de dados PostgreSQL (plano free).
+#   2. Um serviço web Node com o backend NestJS (plano free).
+#
+# O serviço web, no build, instala dependências, gera o Prisma Client e compila.
+# No start, aplica as migrações, executa o seed (idempotente) e sobe a API.
+#
+# Observação sobre o plano gratuito:
+#   - O serviço web "dorme" após ~15 min sem uso; a primeira requisição depois
+#     disso pode demorar ~30-60s para "acordar".
+#   - O banco PostgreSQL gratuito do Render tem validade limitada (expira após
+#     ~30 dias). Para uso contínuo, migre para um plano pago de baixo custo.
+
+databases:
+  - name: stok-center-db
+    plan: free
+    databaseName: stok_center
+    user: stok_center
+
+services:
+  - type: web
+    name: stok-center-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    # --include=dev força a instalação das devDependencies (NestJS CLI, Prisma,
+    # ts-node) mesmo com NODE_ENV=production, necessárias para build e seed.
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && npx prisma db seed && node dist/main.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stok-center-db
+          property: connectionString
+      # Segredo de assinatura dos tokens JWT: gerado automaticamente pelo Render.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: HORARIO_FIM_DO_DIA
+        value: "18:00"
+      # Senha inicial dos usuários criados pelo seed (gerentes e fiscais).
+      # Troque este valor pelo desejado antes do primeiro deploy, se preferir.
+      - key: SENHA_INICIAL
+        value: StokCenter@2025
