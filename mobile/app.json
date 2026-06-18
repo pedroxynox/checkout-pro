@@ -31,7 +31,9 @@
         "backgroundColor": "#0B5FFF"
       },
       "permissions": [
-        "CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -54,7 +56,10 @@
       "expo-sqlite"
     ],
     "extra": {
-      "apiBaseUrl": "https://stok-center-api.onrender.com"
+      "apiBaseUrl": "https://stok-center-api.onrender.com",
+      "eas": {
+        "projectId": "40ea3b1a-6c63-4f2e-8202-ba1a6f88fb05"
+      }
     }
   }
 }
