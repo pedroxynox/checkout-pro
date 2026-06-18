@@ -53,7 +53,8 @@
           "photosPermission": "O Stok Center acessa suas fotos para enviar as imagens dos checklists de abertura e fechamento."
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-font"
     ],
     "extra": {
       "apiBaseUrl": "https://stok-center-api.onrender.com",
