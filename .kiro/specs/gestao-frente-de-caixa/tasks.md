@@ -263,7 +263,7 @@ graph TD
     - Verificar o histórico por usuário
     - _Requisitos: 7.3.3_
 
-- [ ] 12. Checkpoint - Garantir que todos os testes de domínio passem
+- [x] 12. Checkpoint - Garantir que todos os testes de domínio passem
   - Garantir que todos os testes passem, perguntar ao usuário em caso de dúvidas.
 
 - [ ] 13. Implementar a camada de API REST e autorização por módulo
