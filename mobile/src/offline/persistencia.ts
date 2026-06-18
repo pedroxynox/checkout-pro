@@ -9,7 +9,8 @@
  *  - `PersistenciaMemoria`: implementação em memória, usada nos testes e como
  *    fallback, com a mesma semântica observável.
  */
-import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
+import { Platform } from 'react-native';
+import type { SQLiteDatabase } from 'expo-sqlite';
 import { AcaoPendente } from './tipos';
 
 /**
@@ -127,6 +128,20 @@ export class PersistenciaSqlite implements PersistenciaOffline {
  * app, em um dispositivo/emulador com o runtime do Expo.
  */
 export async function abrirPersistenciaSqlite(): Promise<PersistenciaSqlite> {
+  // Em web não existe o módulo nativo de SQLite. Lançamos cedo (antes de
+  // qualquer require de `expo-sqlite`) para que o módulo nativo NUNCA seja
+  // avaliado no bundle web — caso contrário, o app quebra com
+  // "Cannot find native module 'ExpoSQLite'" e fica com a tela branca.
+  // O OfflineProvider captura este erro e mantém a persistência em memória.
+  if (Platform.OS === 'web') {
+    throw new Error(
+      'SQLite local indisponível na web; usando persistência em memória.',
+    );
+  }
+  // Import perezoso via require: o módulo nativo só é carregado em runtime
+  // nativo (nunca avaliado no bundle web).
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { openDatabaseAsync } = require('expo-sqlite') as typeof import('expo-sqlite');
   const db = await openDatabaseAsync(NOME_BANCO);
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
