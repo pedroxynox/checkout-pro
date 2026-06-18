@@ -326,14 +326,14 @@ graph TD
     - Validar enfileiramento e sincronização posterior das ações
     - _Requisitos: 3.1.1, 4.1.2_
 
-- [ ] 20. Implementar testes de integração ponta a ponta
-  - [ ]* 20.1 Escrever testes de integração de importação ponta a ponta
+- [x] 20. Implementar testes de integração ponta a ponta
+  - [x]* 20.1 Escrever testes de integração de importação ponta a ponta
     - Upload real de CSV/XLSX dos quatro tipos validando parsing, vinculação e persistência (1–3 exemplos por tipo)
     - _Requisitos: 1.1.1, 1.1.2, 1.1.3, 1.1.4, 1.1.5, 1.1.7, 1.1.8_
-  - [ ]* 20.2 Escrever testes de integração de upload de imagem de checklist
+  - [x]* 20.2 Escrever testes de integração de upload de imagem de checklist
     - Validar armazenamento em object storage e marcação "Feito"
     - _Requisitos: 5.1.2, 5.1.3_
-  - [ ]* 20.3 Escrever testes de integração de entrega de notificações
+  - [x]* 20.3 Escrever testes de integração de entrega de notificações
     - Com mocks do provedor de push, verificar duplo canal e alvo (online + gerencial)
     - _Requisitos: 7.3.2, 5.3.3, 5.3.4_
 
