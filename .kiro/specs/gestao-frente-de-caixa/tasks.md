@@ -209,26 +209,26 @@ graph TD
     - **Property 16: Alerta de estoque baixo na fronteira do limite**
     - **Validates: Requirements 3.1.5, 3.2.3, 3.3.3**
 
-- [ ] 9. Implementar domínio do Módulo Fiscais e Escala
-  - [ ] 9.1 Implementar `FiscaisService` (status, check-in/check-out, histórico)
+- [x] 9. Implementar domínio do Módulo Fiscais e Escala
+  - [x] 9.1 Implementar `FiscaisService` (status, check-in/check-out, histórico)
     - Implementar `alterarStatus` (última alteração vence, status válido) e check-in/check-out registrando data/horário; rejeitar check-in com sessão ativa (`CheckInAtivoError`)
     - _Requisitos: 4.1.1, 4.1.2, 4.1.3, 4.2.1, 4.2.2, 4.2.3, 4.2.4_
-  - [ ]* 9.2 Escrever teste de propriedade para status do fiscal
+  - [x]* 9.2 Escrever teste de propriedade para status do fiscal
     - **Property 17: Status do fiscal reflete a última alteração**
     - **Validates: Requirements 4.1.1, 4.1.2**
-  - [ ]* 9.3 Escrever teste de propriedade para transições de check-in/check-out
+  - [x]* 9.3 Escrever teste de propriedade para transições de check-in/check-out
     - **Property 18: Transições de check-in e check-out**
     - **Validates: Requirements 4.2.1, 4.2.2**
-  - [ ]* 9.4 Escrever teste de propriedade para check-in duplicado
+  - [x]* 9.4 Escrever teste de propriedade para check-in duplicado
     - **Property 19: Check-in duplicado é rejeitado**
     - **Validates: Requirements 4.2.3**
-  - [ ] 9.5 Implementar `EscalaService` (cadastro por dia, intervalo variável, folga, horário especial)
+  - [x] 9.5 Implementar `EscalaService` (cadastro por dia, intervalo variável, folga, horário especial)
     - Implementar `cadastrarEscala`, `definirHorarioEspecial`, `resolverEscalaEfetiva` (especial prevalece sobre regra geral; senão folga) e `escalaConsolidada` por dia da semana
     - _Requisitos: 4.3.1, 4.3.2, 4.3.3, 4.3.4, 4.3.5, 4.3.6_
-  - [ ]* 9.6 Escrever teste de propriedade para horário especial
+  - [x]* 9.6 Escrever teste de propriedade para horário especial
     - **Property 20: Horário especial prevalece sobre a regra geral**
     - **Validates: Requirements 4.3.5**
-  - [ ]* 9.7 Escrever testes de exemplo para cadastro de escala
+  - [x]* 9.7 Escrever testes de exemplo para cadastro de escala
     - Cobrir cadastro com horários por dia, intervalo variável e folga
     - _Requisitos: 4.3.1, 4.3.2, 4.3.3, 4.3.4_
 

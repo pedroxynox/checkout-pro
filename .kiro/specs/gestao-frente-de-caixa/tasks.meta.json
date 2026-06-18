@@ -95,6 +95,22 @@
     "8.5 Escrever teste de propriedade para alerta de estoque baixo": {
       "status": "passed",
       "lastRunTimestamp": 1781788567110
+    },
+    "9.2 Escrever teste de propriedade para status do fiscal": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788826594
+    },
+    "9.3 Escrever teste de propriedade para transições de check-in/check-out": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788827534
+    },
+    "9.4 Escrever teste de propriedade para check-in duplicado": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788828493
+    },
+    "9.6 Escrever teste de propriedade para horário especial": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788829445
     }
   },
   "executionHistory": {}

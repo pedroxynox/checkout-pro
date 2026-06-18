@@ -10,6 +10,7 @@ import { ImportacoesModule } from './importacoes/importacoes.module';
 import { IndicadoresModule } from './indicadores/indicadores.module';
 import { LoteApaeModule } from './lote-apae/lote-apae.module';
 import { InsumosModule } from './insumos/insumos.module';
+import { FiscaisModule } from './fiscais/fiscais.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { InsumosModule } from './insumos/insumos.module';
     IndicadoresModule,
     LoteApaeModule,
     InsumosModule,
+    FiscaisModule,
   ],
   controllers: [AppController],
   providers: [AppService],
