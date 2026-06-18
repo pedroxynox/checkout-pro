@@ -11,6 +11,26 @@
     "3.4 Escrever teste de propriedade para unicidade e exclusividade de login": {
       "status": "passed",
       "lastRunTimestamp": 1781786842968
+    },
+    "4.2 Escrever teste de propriedade para unicidade de nome de operador": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787215775
+    },
+    "4.4 Escrever teste de propriedade para unicidade de ausência": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787216683
+    },
+    "4.5 Escrever teste de propriedade para o relatório de ausências": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787219548
+    },
+    "4.8 Escrever teste de propriedade para classificação de operador por turno": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787220145
+    },
+    "4.9 Escrever teste de propriedade para contagem por turno": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787220661
     }
   },
   "executionHistory": {}

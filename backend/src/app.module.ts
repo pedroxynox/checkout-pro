@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
 import { AcessosModule } from './acessos/acessos.module';
+import { OperadoresModule } from './operadores/operadores.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AcessosModule } from './acessos/acessos.module';
     }),
     PrismaModule,
     AcessosModule,
+    OperadoresModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,0 +1,55 @@
+/**
+ * Erros de domínio tipados do Modulo_Operadores.
+ *
+ * São erros puros (sem dependência do Nest ou do banco) para que a lógica de
+ * domínio permaneça testável de forma isolada. A camada de API mapeará cada um
+ * deles para a resposta HTTP apropriada (Tarefa 13).
+ */
+
+/** Classe base para os erros de domínio do módulo de operadores. */
+export abstract class OperadoresError extends Error {
+  constructor(mensagem: string) {
+    super(mensagem);
+    this.name = new.target.name;
+    // Mantém a cadeia de protótipos correta ao estender Error em TS/ES5+.
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+/**
+ * Lançado quando o gerente tenta cadastrar (ou editar para) um nome de
+ * operador idêntico a um operador já cadastrado — Requisito 6.1.3.
+ */
+export class NomeDuplicadoError extends OperadoresError {
+  constructor(nome?: string) {
+    super(
+      nome
+        ? `Já existe um operador cadastrado com o nome "${nome}".`
+        : 'Já existe um operador cadastrado com este nome.',
+    );
+  }
+}
+
+/**
+ * Lançado quando já existe uma ausência registrada para a mesma pessoa
+ * (operador ou fiscal) na mesma data — Requisito 6.2.3.
+ */
+export class AusenciaDuplicadaError extends OperadoresError {
+  constructor(mensagem = 'Já existe uma ausência registrada para esta data.') {
+    super(mensagem);
+  }
+}
+
+/**
+ * Lançado quando um horário de entrada não está no formato esperado "HH:mm"
+ * ou representa um horário inválido (usado na classificação de turno).
+ */
+export class HorarioInvalidoError extends OperadoresError {
+  constructor(horario?: string) {
+    super(
+      horario
+        ? `Horário de entrada inválido: "${horario}". Use o formato HH:mm.`
+        : 'Horário de entrada inválido. Use o formato HH:mm.',
+    );
+  }
+}

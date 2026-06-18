@@ -91,33 +91,33 @@ graph TD
     - **Property 31: Unicidade e exclusividade de login**
     - **Validates: Requirements 7.1.4, 7.1.6**
 
-- [ ] 4. Implementar domínio do Módulo Operadores e Ausências
-  - [ ] 4.1 Implementar `OperadoresService` (cadastro, edição, listagem com unicidade de nome)
+- [x] 4. Implementar domínio do Módulo Operadores e Ausências
+  - [x] 4.1 Implementar `OperadoresService` (cadastro, edição, listagem com unicidade de nome)
     - Lançar `NomeDuplicadoError` em nome idêntico já cadastrado
     - _Requisitos: 6.1.1, 6.1.2, 6.1.3, 6.1.4, 6.1.5_
-  - [ ]* 4.2 Escrever teste de propriedade para unicidade de nome de operador
+  - [x]* 4.2 Escrever teste de propriedade para unicidade de nome de operador
     - **Property 25: Unicidade de nome de operador**
     - **Validates: Requirements 6.1.3**
-  - [ ] 4.3 Implementar registro/remoção de ausências e relatório por pessoa
+  - [x] 4.3 Implementar registro/remoção de ausências e relatório por pessoa
     - Garantir no máximo uma ausência por par (pessoa, data), lançando `AusenciaDuplicadaError`; gerar relatório filtrado por período e ordenado de forma decrescente
     - _Requisitos: 6.2.1, 6.2.2, 6.2.3, 6.2.4, 6.3.1, 6.3.2, 6.3.3_
-  - [ ]* 4.4 Escrever teste de propriedade para unicidade de ausência
+  - [x]* 4.4 Escrever teste de propriedade para unicidade de ausência
     - **Property 26: Unicidade de ausência por pessoa e dia**
     - **Validates: Requirements 6.2.3**
-  - [ ]* 4.5 Escrever teste de propriedade para o relatório de ausências
+  - [x]* 4.5 Escrever teste de propriedade para o relatório de ausências
     - **Property 27: Relatório de ausências filtrado e ordenado**
     - **Validates: Requirements 6.3.1, 6.3.2, 6.3.3**
-  - [ ]* 4.6 Escrever testes de exemplo para CRUD de operadores e ausências
+  - [x]* 4.6 Escrever testes de exemplo para CRUD de operadores e ausências
     - Cobrir cadastro/edição/listagem e registro/remoção em casos concretos
     - _Requisitos: 6.1.1, 6.1.4, 6.1.5, 6.2.1, 6.2.4_
-  - [ ] 4.7 Implementar classificação e contagem de operadores por turno
+  - [x] 4.7 Implementar classificação e contagem de operadores por turno
     - Implementar `classificarTurnoOperador(entrada)` derivando o turno do horário de entrada da escala (abertura se `entrada < 10:00`; intermediário se `10:00 ≤ entrada < 13:00`; fechamento se `entrada ≥ 13:00`), com partição total e exclusiva
     - Implementar `contagemPorTurno`, considerando apenas operadores trabalhando no dia/escala selecionado (excluindo folga, férias e desligados) e retornando a contagem por turno (abertura, intermediário, fechamento) mais o total de operadores trabalhando
     - _Requisitos: 6.6.1, 6.6.2, 6.6.3, 6.6.4, 6.6.5, 6.6.6, 6.6.7_
-  - [ ]* 4.8 Escrever teste de propriedade para classificação de operador por turno
+  - [x]* 4.8 Escrever teste de propriedade para classificação de operador por turno
     - **Property 32: Classificação de operador por turno conforme horário de entrada**
     - **Validates: Requirements 6.6.1, 6.6.2, 6.6.3, 6.6.4**
-  - [ ]* 4.9 Escrever teste de propriedade para contagem por turno
+  - [x]* 4.9 Escrever teste de propriedade para contagem por turno
     - **Property 33: Contagem por turno consistente com o total**
     - **Validates: Requirements 6.6.5, 6.6.6, 6.6.7**
 
