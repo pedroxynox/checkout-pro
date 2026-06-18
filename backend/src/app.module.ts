@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AlertasModule } from './alertas/alertas.module';
 import { DominioExceptionFilter } from './common/filters/dominio-exception.filter';
 import { SegurancaModule } from './common/seguranca.module';
 import { StorageModule } from './storage/storage.module';
@@ -24,6 +26,7 @@ import { NotificacoesModule } from './notificacoes/notificacoes.module';
       isGlobal: true,
       validate: validateEnv,
     }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     SegurancaModule,
     StorageModule,
@@ -36,6 +39,7 @@ import { NotificacoesModule } from './notificacoes/notificacoes.module';
     FiscaisModule,
     ChecklistModule,
     NotificacoesModule,
+    AlertasModule,
   ],
   controllers: [AppController],
   providers: [

@@ -283,11 +283,11 @@ graph TD
     - Validar propagação em tempo real a clientes conectados
     - _Requisitos: 4.1.2_
 
-- [ ] 15. Implementar os cron jobs de alertas
-  - [ ] 15.1 Implementar agendamento de alertas de checklist e de importações pendentes
+- [x] 15. Implementar os cron jobs de alertas
+  - [x] 15.1 Implementar agendamento de alertas de checklist e de importações pendentes
     - Usar `@nestjs/schedule` com relógio injetável para disparar alertas de checklist (08:55/13:55) e de arquivos pendentes no horário de fim do dia configurável, acionando o `NotificacoesService`
     - _Requisitos: 1.4.1, 1.4.2, 5.3.1, 5.3.2, 5.3.3, 5.3.4_
-  - [ ]* 15.2 Escrever teste de integração dos cron jobs com relógio injetável
+  - [x]* 15.2 Escrever teste de integração dos cron jobs com relógio injetável
     - Validar disparo nos horários-limite e seleção de destinatários
     - _Requisitos: 1.4.1, 5.3.1, 5.3.2_
 
