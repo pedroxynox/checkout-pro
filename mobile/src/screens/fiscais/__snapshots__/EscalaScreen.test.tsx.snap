@@ -1,0 +1,479 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
+<RCTScrollView
+  contentContainerStyle={
+    [
+      {
+        "paddingBottom": 16,
+        "paddingHorizontal": 16,
+        "paddingTop": 16,
+      },
+      undefined,
+    ]
+  }
+  keyboardShouldPersistTaps="handled"
+  refreshControl={
+    <RefreshControlMock
+      colors={
+        [
+          "#0B5FFF",
+        ]
+      }
+      onRefresh={[Function]}
+      refreshing={false}
+      tintColor="#0B5FFF"
+    />
+  }
+  style={
+    {
+      "backgroundColor": "#F4F6FB",
+      "flex": 1,
+    }
+  }
+>
+  <RCTRefreshControl />
+  <View>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+          "marginBottom": 12,
+        }
+      }
+    >
+      <Text
+        onPress={[Function]}
+        style={
+          [
+            {
+              "borderRadius": 6,
+              "color": "#5A6886",
+              "fontSize": 13,
+              "fontWeight": "600",
+              "minWidth": 42,
+              "overflow": "hidden",
+              "paddingHorizontal": 8,
+              "paddingVertical": 8,
+              "textAlign": "center",
+            },
+            false,
+          ]
+        }
+      >
+        Dom
+      </Text>
+      <Text
+        onPress={[Function]}
+        style={
+          [
+            {
+              "borderRadius": 6,
+              "color": "#5A6886",
+              "fontSize": 13,
+              "fontWeight": "600",
+              "minWidth": 42,
+              "overflow": "hidden",
+              "paddingHorizontal": 8,
+              "paddingVertical": 8,
+              "textAlign": "center",
+            },
+            false,
+          ]
+        }
+      >
+        Seg
+      </Text>
+      <Text
+        onPress={[Function]}
+        style={
+          [
+            {
+              "borderRadius": 6,
+              "color": "#5A6886",
+              "fontSize": 13,
+              "fontWeight": "600",
+              "minWidth": 42,
+              "overflow": "hidden",
+              "paddingHorizontal": 8,
+              "paddingVertical": 8,
+              "textAlign": "center",
+            },
+            false,
+          ]
+        }
+      >
+        Ter
+      </Text>
+      <Text
+        onPress={[Function]}
+        style={
+          [
+            {
+              "borderRadius": 6,
+              "color": "#5A6886",
+              "fontSize": 13,
+              "fontWeight": "600",
+              "minWidth": 42,
+              "overflow": "hidden",
+              "paddingHorizontal": 8,
+              "paddingVertical": 8,
+              "textAlign": "center",
+            },
+            false,
+          ]
+        }
+      >
+        Qua
+      </Text>
+      <Text
+        onPress={[Function]}
+        style={
+          [
+            {
+              "borderRadius": 6,
+              "color": "#5A6886",
+              "fontSize": 13,
+              "fontWeight": "600",
+              "minWidth": 42,
+              "overflow": "hidden",
+              "paddingHorizontal": 8,
+              "paddingVertical": 8,
+              "textAlign": "center",
+            },
+            {
+              "backgroundColor": "#0B5FFF",
+              "color": "#FFFFFF",
+            },
+          ]
+        }
+      >
+        Qui
+      </Text>
+      <Text
+        onPress={[Function]}
+        style={
+          [
+            {
+              "borderRadius": 6,
+              "color": "#5A6886",
+              "fontSize": 13,
+              "fontWeight": "600",
+              "minWidth": 42,
+              "overflow": "hidden",
+              "paddingHorizontal": 8,
+              "paddingVertical": 8,
+              "textAlign": "center",
+            },
+            false,
+          ]
+        }
+      >
+        Sex
+      </Text>
+      <Text
+        onPress={[Function]}
+        style={
+          [
+            {
+              "borderRadius": 6,
+              "color": "#5A6886",
+              "fontSize": 13,
+              "fontWeight": "600",
+              "minWidth": 42,
+              "overflow": "hidden",
+              "paddingHorizontal": 8,
+              "paddingVertical": 8,
+              "textAlign": "center",
+            },
+            false,
+          ]
+        }
+      >
+        Sáb
+      </Text>
+    </View>
+    <Text
+      style={
+        {
+          "color": "#11203A",
+          "fontSize": 15,
+          "fontWeight": "700",
+          "marginBottom": 12,
+        }
+      }
+    >
+      Quinta-feira
+    </Text>
+    <View
+      style={
+        [
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderRadius": 16,
+            "elevation": 2,
+            "marginBottom": 12,
+            "padding": 16,
+            "shadowColor": "#0B1B3A",
+            "shadowOffset": {
+              "height": 2,
+              "width": 0,
+            },
+            "shadowOpacity": 0.08,
+            "shadowRadius": 8,
+          },
+          undefined,
+        ]
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            {
+              "color": "#11203A",
+              "flex": 1,
+              "fontSize": 15,
+              "fontWeight": "600",
+              "paddingRight": 8,
+            }
+          }
+        >
+          Ana Souza
+        </Text>
+      </View>
+      <Text
+        style={
+          {
+            "color": "#5A6886",
+            "fontSize": 12,
+            "fontWeight": "400",
+            "marginTop": 4,
+          }
+        }
+      >
+        08:00
+         às 
+        16:00
+         · intervalo 
+        60
+         min
+      </Text>
+    </View>
+    <View
+      style={
+        [
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderRadius": 16,
+            "elevation": 2,
+            "marginBottom": 12,
+            "padding": 16,
+            "shadowColor": "#0B1B3A",
+            "shadowOffset": {
+              "height": 2,
+              "width": 0,
+            },
+            "shadowOpacity": 0.08,
+            "shadowRadius": 8,
+          },
+          undefined,
+        ]
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            {
+              "color": "#11203A",
+              "flex": 1,
+              "fontSize": 15,
+              "fontWeight": "600",
+              "paddingRight": 8,
+            }
+          }
+        >
+          Bruno Lima
+        </Text>
+        <View
+          style={
+            [
+              {
+                "alignItems": "center",
+                "alignSelf": "flex-start",
+                "borderRadius": 999,
+                "flexDirection": "row",
+                "paddingHorizontal": 8,
+                "paddingVertical": 4,
+              },
+              {
+                "backgroundColor": "#E7F0FF",
+              },
+            ]
+          }
+        >
+          <View
+            style={
+              [
+                {
+                  "borderRadius": 4,
+                  "height": 8,
+                  "marginRight": 4,
+                  "width": 8,
+                },
+                {
+                  "backgroundColor": "#0B5FFF",
+                },
+              ]
+            }
+          />
+          <Text
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#0B5FFF",
+                },
+              ]
+            }
+          >
+            Especial
+          </Text>
+        </View>
+      </View>
+      <Text
+        style={
+          {
+            "color": "#5A6886",
+            "fontSize": 12,
+            "fontWeight": "400",
+            "marginTop": 4,
+          }
+        }
+      >
+        13:00
+         às 
+        21:00
+         · intervalo 
+        30
+         min
+      </Text>
+    </View>
+    <View
+      style={
+        [
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderRadius": 16,
+            "elevation": 2,
+            "marginBottom": 12,
+            "padding": 16,
+            "shadowColor": "#0B1B3A",
+            "shadowOffset": {
+              "height": 2,
+              "width": 0,
+            },
+            "shadowOpacity": 0.08,
+            "shadowRadius": 8,
+          },
+          undefined,
+        ]
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            {
+              "color": "#11203A",
+              "flex": 1,
+              "fontSize": 15,
+              "fontWeight": "600",
+              "paddingRight": 8,
+            }
+          }
+        >
+          Carla Dias
+        </Text>
+        <View
+          style={
+            [
+              {
+                "alignItems": "center",
+                "alignSelf": "flex-start",
+                "borderRadius": 999,
+                "flexDirection": "row",
+                "paddingHorizontal": 8,
+                "paddingVertical": 4,
+              },
+              {
+                "backgroundColor": "#F0F2F8",
+              },
+            ]
+          }
+        >
+          <View
+            style={
+              [
+                {
+                  "borderRadius": 4,
+                  "height": 8,
+                  "marginRight": 4,
+                  "width": 8,
+                },
+                {
+                  "backgroundColor": "#5A6886",
+                },
+              ]
+            }
+          />
+          <Text
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#5A6886",
+                },
+              ]
+            }
+          >
+            Folga
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+</RCTScrollView>
+`;

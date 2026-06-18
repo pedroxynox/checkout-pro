@@ -1,0 +1,137 @@
+{
+  "pbtResults": {
+    "3.2 Escrever teste de propriedade para autenticação": {
+      "status": "passed",
+      "lastRunTimestamp": 1781786841374
+    },
+    "3.3 Escrever teste de propriedade para autorização por perfil": {
+      "status": "passed",
+      "lastRunTimestamp": 1781786841983
+    },
+    "3.4 Escrever teste de propriedade para unicidade e exclusividade de login": {
+      "status": "passed",
+      "lastRunTimestamp": 1781786842968
+    },
+    "4.2 Escrever teste de propriedade para unicidade de nome de operador": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787215775
+    },
+    "4.4 Escrever teste de propriedade para unicidade de ausência": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787216683
+    },
+    "4.5 Escrever teste de propriedade para o relatório de ausências": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787219548
+    },
+    "4.8 Escrever teste de propriedade para classificação de operador por turno": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787220145
+    },
+    "4.9 Escrever teste de propriedade para contagem por turno": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787220661
+    },
+    "5.2 Escrever teste de propriedade para validação de colunas": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787735534
+    },
+    "5.4 Escrever teste de propriedade para particionamento por nome": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787736568
+    },
+    "5.6 Escrever teste de propriedade para status do dia e pendentes": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787737585
+    },
+    "5.7 Escrever teste de propriedade para histórico ordenado e filtrado": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787738559
+    },
+    "6.2 Escrever teste de propriedade para acumulados de vendas": {
+      "status": "passed",
+      "lastRunTimestamp": 1781787998456
+    },
+    "6.3 Escrever teste de propriedade para rejeição de venda negativa": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788002006
+    },
+    "6.5 Escrever teste de propriedade para o cálculo do indicador percentual": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788002712
+    },
+    "6.6 Escrever teste de propriedade para classificação de cor \"menor é melhor\"": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788003222
+    },
+    "6.7 Escrever teste de propriedade para classificação de cor \"maior é melhor\"": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788003715
+    },
+    "6.9 Escrever teste de propriedade para ranking ordenado e completo": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788004611
+    },
+    "7.2 Escrever teste de propriedade para quantidade vendida e percentual do lote": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788186548
+    },
+    "7.3 Escrever teste de propriedade para rejeição de atualização inválida de lote": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788187539
+    },
+    "7.4 Escrever teste de propriedade para reinício de lote": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788188660
+    },
+    "8.2 Escrever teste de propriedade para saldo igual à soma dos movimentos": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788566484
+    },
+    "8.3 Escrever teste de propriedade para fardo não reconhecido": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788566622
+    },
+    "8.5 Escrever teste de propriedade para alerta de estoque baixo": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788567110
+    },
+    "9.2 Escrever teste de propriedade para status do fiscal": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788826594
+    },
+    "9.3 Escrever teste de propriedade para transições de check-in/check-out": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788827534
+    },
+    "9.4 Escrever teste de propriedade para check-in duplicado": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788828493
+    },
+    "9.6 Escrever teste de propriedade para horário especial": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788829445
+    },
+    "10.2 Escrever teste de propriedade para status do checklist": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788991931
+    },
+    "10.3 Escrever teste de propriedade para rejeição de arquivo não-imagem": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788992983
+    },
+    "10.4 Escrever teste de propriedade para disparo do alerta no horário-limite": {
+      "status": "passed",
+      "lastRunTimestamp": 1781788994813
+    },
+    "11.2 Escrever teste de propriedade para destinatários do alerta de checklist": {
+      "status": "passed",
+      "lastRunTimestamp": 1781789134576
+    },
+    "11.3 Escrever teste de propriedade para entrega em dois canais": {
+      "status": "passed",
+      "lastRunTimestamp": 1781789134959
+    }
+  },
+  "executionHistory": {}
+}

@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "Stok Center",
+    "slug": "stok-center-frente-de-caixa",
+    "scheme": "stokcenter",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "primaryColor": "#0B5FFF",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B5FFF"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "center.stok.frentedecaixa",
+      "infoPlist": {
+        "NSCameraUsageDescription": "O Stok Center usa a câmera para ler o código de barras dos fardos de insumos e para enviar as imagens dos checklists."
+      }
+    },
+    "android": {
+      "package": "center.stok.frentedecaixa",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B5FFF"
+      },
+      "permissions": ["CAMERA"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O Stok Center usa a câmera para ler o código de barras dos fardos de insumos."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O Stok Center acessa suas fotos para enviar as imagens dos checklists de abertura e fechamento."
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:3000"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+import { LoteApaeController } from './lote-apae.controller';
+import { SaldoInvalidoError } from './lote-apae.errors';
+import { LoteApaeService } from './lote-apae.service';
+
+/**
+ * Testes de exemplo do `LoteApaeController` (Tarefa 13.2): registro de lote
+ * (Req 2.6.1) e propagação de erro de atualização inválida de saldo (Req 2.6.4).
+ */
+describe('LoteApaeController', () => {
+  it('registra um lote inicial delegando ao serviço', async () => {
+    const registrar = jest.fn(() =>
+      Promise.resolve({ id: 'l1', quantidadeInicial: 100 } as never),
+    );
+    const controller = new LoteApaeController({
+      registrarLoteInicial: registrar,
+    } as unknown as LoteApaeService);
+
+    await controller.registrarLoteInicial({ quantidadeInicial: 100 });
+    expect(registrar).toHaveBeenCalledWith(100);
+  });
+
+  it('propaga SaldoInvalidoError ao atualizar com saldo maior que o anterior', async () => {
+    const controller = new LoteApaeController({
+      atualizarSaldo: jest.fn(() =>
+        Promise.reject(new SaldoInvalidoError(10, 5)),
+      ),
+    } as unknown as LoteApaeService);
+
+    await expect(
+      controller.atualizarSaldo('l1', { saldoAtual: 10 }),
+    ).rejects.toBeInstanceOf(SaldoInvalidoError);
+  });
+});
