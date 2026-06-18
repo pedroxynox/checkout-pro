@@ -1,0 +1,272 @@
+// Schema Prisma do backend - Gestão de Frente de Caixa (Stok Center)
+// Banco de dados: PostgreSQL. Modelos derivados do diagrama ER do design
+// (.kiro/specs/gestao-frente-de-caixa/design.md - seção "Modelos de Dados").
+//
+// Notas de modelagem:
+// - `RegistroOperacional` e `Ausencia` referenciam pessoas que podem ser
+//   Operador ou Fiscal (pessoaId é polimórfico no domínio). Para preservar a
+//   integridade onde possível, RegistroOperacional mantém relações opcionais
+//   explícitas para Operador e Fiscal (refletindo o ER), além do campo
+//   conceitual `pessoaId`. Ausência usa apenas `pessoaId` (operador OU fiscal).
+// - `EscalaEntry.funcionarioId` é polimórfico (fiscal, operador ou gerente);
+//   operadores não possuem `Usuario`, portanto é mantido como identificador
+//   sem chave estrangeira rígida.
+// - Horários (`entrada`/`saida`) são armazenados como String "HH:mm" para
+//   alinhar com a lógica de domínio (tipo Time) de classificação de turno.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------- Enums --------------------------------------
+
+enum Perfil {
+  GERENTE
+  FISCAL
+}
+
+// Tipo de registro operacional / tipo de arquivo de importação.
+enum TipoRegistro {
+  CANCELAMENTO
+  TROCO
+  RECARGA
+  DEVOLUCAO
+}
+
+enum CategoriaInsumo {
+  SACOLA
+  BOBINA
+  PANO
+  OUTRO
+}
+
+enum StatusLote {
+  ABERTO
+  ENCERRADO
+}
+
+enum StatusChecklist {
+  PENDENTE
+  FEITO
+}
+
+enum TipoChecklist {
+  ABERTURA
+  FECHAMENTO
+}
+
+enum StatusFiscal {
+  DISPONIVEL
+  EM_INTERVALO
+  EM_ATENDIMENTO
+}
+
+enum TurnoFiscal {
+  ABERTURA
+  INTERMEDIARIO
+  FECHAMENTO
+}
+
+// ---------------------------- Modelos -------------------------------------
+
+model Usuario {
+  id        String   @id @default(uuid())
+  login     String   @unique
+  senhaHash String
+  perfil    Perfil
+  online    Boolean  @default(false)
+  criadoEm  DateTime @default(now())
+
+  fiscal       Fiscal?
+  notificacoes Notificacao[]
+  importacoes  RegistroImportacao[] @relation("ImportadoPor")
+  movimentos   MovimentoEstoque[]   @relation("ResponsavelMovimento")
+
+  @@map("usuarios")
+}
+
+model Operador {
+  id       String   @id @default(uuid())
+  nome     String   @unique
+  ativo    Boolean  @default(true)
+  criadoEm DateTime @default(now())
+
+  registros RegistroOperacional[]
+
+  @@map("operadores")
+}
+
+model Fiscal {
+  id        String      @id @default(uuid())
+  nome      String      @unique
+  turno     TurnoFiscal
+  especial  Boolean     @default(false)
+  usuarioId String?     @unique
+  criadoEm  DateTime    @default(now())
+
+  usuario   Usuario?              @relation(fields: [usuarioId], references: [id])
+  sessoes   SessaoFiscal[]
+  registros RegistroOperacional[]
+
+  @@map("fiscais")
+}
+
+model RegistroOperacional {
+  id           String       @id @default(uuid())
+  tipo         TipoRegistro
+  data         DateTime
+  pessoaId     String
+  valor        Decimal      @db.Decimal(12, 2)
+  importacaoId String?
+  operadorId   String?
+  fiscalId     String?
+
+  importacao RegistroImportacao? @relation(fields: [importacaoId], references: [id])
+  operador   Operador?           @relation(fields: [operadorId], references: [id])
+  fiscal     Fiscal?             @relation(fields: [fiscalId], references: [id])
+
+  @@index([tipo, data])
+  @@map("registros_operacionais")
+}
+
+model RegistroImportacao {
+  id                   String       @id @default(uuid())
+  tipo                 TipoRegistro
+  dataReferencia       DateTime
+  importadoEm          DateTime     @default(now())
+  importadoPor         String?
+  nomesNaoReconhecidos Json         @default("[]")
+
+  usuario   Usuario?              @relation("ImportadoPor", fields: [importadoPor], references: [id])
+  registros RegistroOperacional[]
+
+  @@index([dataReferencia])
+  @@map("registros_importacao")
+}
+
+model VendaDiaria {
+  id    String   @id @default(uuid())
+  data  DateTime @unique
+  valor Decimal  @db.Decimal(14, 2)
+
+  @@map("vendas_diarias")
+}
+
+model LoteApae {
+  id                String     @id @default(uuid())
+  quantidadeInicial Int
+  saldoAtual        Int
+  quantidadeVendida Int        @default(0)
+  dataInicio        DateTime   @default(now())
+  dataEncerramento  DateTime?
+  status            StatusLote @default(ABERTO)
+
+  @@map("lotes_apae")
+}
+
+model Insumo {
+  id           String          @id @default(uuid())
+  nome         String
+  categoria    CategoriaInsumo
+  saldo        Int             @default(0)
+  limiteMinimo Int             @default(0)
+
+  movimentos MovimentoEstoque[]
+
+  @@map("insumos")
+}
+
+model Fardo {
+  id               String @id @default(uuid())
+  codigoBarras     String @unique
+  quantidadeSacolas Int
+
+  @@map("fardos")
+}
+
+model MovimentoEstoque {
+  id            String   @id @default(uuid())
+  insumoId      String
+  delta         Int
+  responsavelId String?
+  dataHora      DateTime @default(now())
+  destino       String?
+  pdvId         String?
+
+  insumo      Insumo   @relation(fields: [insumoId], references: [id])
+  responsavel Usuario? @relation("ResponsavelMovimento", fields: [responsavelId], references: [id])
+
+  @@index([insumoId])
+  @@map("movimentos_estoque")
+}
+
+model SessaoFiscal {
+  id              String       @id @default(uuid())
+  fiscalId        String
+  checkIn         DateTime
+  checkOut        DateTime?
+  statusAtual     StatusFiscal @default(DISPONIVEL)
+  statusDefinidoEm DateTime    @default(now())
+
+  fiscal Fiscal @relation(fields: [fiscalId], references: [id])
+
+  @@index([fiscalId])
+  @@map("sessoes_fiscais")
+}
+
+model EscalaEntry {
+  id            String  @id @default(uuid())
+  funcionarioId String
+  diaSemana     Int
+  entrada       String?
+  saida         String?
+  intervaloMin  Int     @default(0)
+  folga         Boolean @default(false)
+  especial      Boolean @default(false)
+
+  @@index([funcionarioId, diaSemana])
+  @@map("escala_entries")
+}
+
+model Checklist {
+  id         String          @id @default(uuid())
+  tipo       TipoChecklist
+  data       DateTime
+  status     StatusChecklist @default(PENDENTE)
+  imagemUrl  String?
+  enviadoPor String?
+  enviadoEm  DateTime?
+
+  @@unique([tipo, data])
+  @@map("checklists")
+}
+
+model Ausencia {
+  id       String   @id @default(uuid())
+  pessoaId String
+  data     DateTime
+
+  @@unique([pessoaId, data])
+  @@map("ausencias")
+}
+
+model Notificacao {
+  id        String   @id @default(uuid())
+  usuarioId String
+  titulo    String
+  mensagem  String
+  canalPush Boolean  @default(false)
+  canalInApp Boolean @default(false)
+  lida      Boolean  @default(false)
+  criadaEm  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@index([usuarioId])
+  @@map("notificacoes")
+}

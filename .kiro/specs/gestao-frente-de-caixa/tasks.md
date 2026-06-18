@@ -64,13 +64,13 @@ graph TD
   - Criar o bootstrap do NestJS com `AppModule`, configuração de ambiente e validação global de DTOs (`class-validator`)
   - _Requisitos: base para todos os módulos_
 
-- [ ] 2. Definir o schema Prisma e os modelos de dados
-  - [ ] 2.1 Modelar entidades no `schema.prisma`
+- [x] 2. Definir o schema Prisma e os modelos de dados
+  - [x] 2.1 Modelar entidades no `schema.prisma`
     - Definir os modelos: `Usuario`, `Operador`, `Fiscal`, `RegistroOperacional`, `RegistroImportacao`, `VendaDiaria`, `LoteApae`, `Insumo`, `Fardo`, `MovimentoEstoque`, `SessaoFiscal`, `EscalaEntry`, `Checklist`, `Ausencia`, `Notificacao`
     - Aplicar enums (`Perfil`, `TipoArquivo`/tipo de registro, categoria de insumo, status de lote, status de checklist, status de fiscal) e índices de unicidade (nome de operador, código de barras de fardo)
     - Gerar a migração inicial e o Prisma Client
     - _Requisitos: 1.1, 1.3, 2.1, 2.6, 3.1, 3.2, 3.3, 4.2, 4.3, 5.1, 6.1, 6.2, 7.1, 7.3_
-  - [ ] 2.2 Criar o módulo de acesso ao banco (PrismaService) e seed básico
+  - [x] 2.2 Criar o módulo de acesso ao banco (PrismaService) e seed básico
     - Implementar `PrismaModule`/`PrismaService` e dados de seed mínimos (usuário gerente, perfis)
     - No seed, criar para **cada fiscal e cada gerente um `Usuario` com login individual e único** (login não compartilhado), vinculado ao respectivo registro de pessoa (`Fiscal`/gerente)
     - _Requisitos: base de persistência para todos os módulos; 6.4.11, 7.1.4, 7.1.5, 7.1.6_
