@@ -66,6 +66,18 @@ jest.mock('expo-image-picker', () => ({
   MediaTypeOptions: { Images: 'Images' },
 }));
 
+// SQLite local: mock leve (o cache offline é exercitado com persistência em
+// memória nos testes; aqui evitamos exigir o módulo nativo ao importar).
+jest.mock('expo-sqlite', () => ({
+  openDatabaseAsync: jest.fn(async () => ({
+    execAsync: jest.fn(async () => undefined),
+    runAsync: jest.fn(async () => ({ changes: 0, lastInsertRowId: 0 })),
+    getFirstAsync: jest.fn(async () => null),
+    getAllAsync: jest.fn(async () => []),
+    withTransactionAsync: jest.fn(async (cb) => cb()),
+  })),
+}));
+
 // Ícones vetoriais: evita carregar fontes nativas nos snapshots.
 jest.mock('@expo/vector-icons', () => {
   const React = require('react');

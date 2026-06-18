@@ -318,11 +318,11 @@ graph TD
     - Cobrir painel de vendas, saldos, escala consolidada e históricos
     - _Requisitos: 2.1.3, 3.1.4, 4.1.3, 4.3.6_
 
-- [ ] 19. Implementar cache offline e sincronização no app
-  - [ ] 19.1 Configurar SQLite local e fila de ações pendentes
+- [x] 19. Implementar cache offline e sincronização no app
+  - [x] 19.1 Configurar SQLite local e fila de ações pendentes
     - Implementar leitura offline de indicadores/escala/históricos e fila de ações (leitura de fardo, alteração de status) com sincronização ao reconectar; resolução de conflito de status por "última alteração vence"
     - _Requisitos: 3.1.1, 4.1.1, 4.1.2_
-  - [ ]* 19.2 Escrever teste de UI de operação offline e sincronização
+  - [x]* 19.2 Escrever teste de UI de operação offline e sincronização
     - Validar enfileiramento e sincronização posterior das ações
     - _Requisitos: 3.1.1, 4.1.2_
 

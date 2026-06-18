@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/auth/AuthContext';
+import { OfflineProvider } from './src/offline/OfflineContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 export default function App(): React.ReactElement {
@@ -15,7 +16,9 @@ export default function App(): React.ReactElement {
     <SafeAreaProvider>
       <StatusBar style="light" />
       <AuthProvider>
-        <RootNavigator />
+        <OfflineProvider>
+          <RootNavigator />
+        </OfflineProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
