@@ -300,17 +300,17 @@ graph TD
     - Definir a identidade/branding do aplicativo como "Stok Center" (nome do app, título e tela de login) na configuração do Expo (`app.json`)
     - _Requisitos: 7.1.1, 7.1.2, 7.1.3, 7.2.2, 7.2.3, 7.2.4_
 
-- [ ] 18. Implementar as telas do app por módulo
-  - [ ] 18.1 Telas de Importações, Indicadores e Painel de Vendas
+- [x] 18. Implementar as telas do app por módulo
+  - [x] 18.1 Telas de Importações, Indicadores e Painel de Vendas
     - Tela de status diário e histórico de importações; painel de vendas (informar/exibir acumulados); indicadores com cor (verde/amarelo/vermelho), metas e rankings; lote APAE e histórico
     - _Requisitos: 1.2, 1.3, 2.1.3, 2.2, 2.3, 2.4, 2.5, 2.6.7_
-  - [ ] 18.2 Telas de Insumos com leitura de código de barras
+  - [x] 18.2 Telas de Insumos com leitura de código de barras
     - Saldos em tempo real, leitura de fardo (`expo-barcode-scanner`), consumo de bobinas/insumos, alertas de estoque baixo e cadastro de insumo
     - _Requisitos: 3.1.1, 3.1.4, 3.1.6, 3.2.1, 3.2.4, 3.3.1, 3.3.4_
-  - [ ] 18.3 Telas de Fiscais (painel em tempo real), Escala e Checklist
+  - [x] 18.3 Telas de Fiscais (painel em tempo real), Escala e Checklist
     - Painel de fiscais consumindo WebSocket, check-in/check-out, escala consolidada; checklist com upload de imagem e janelas de execução
     - _Requisitos: 4.1, 4.2, 4.3.6, 5.1, 5.2.3_
-  - [ ] 18.4 Telas de Operadores/Ausências e Notificações
+  - [x] 18.4 Telas de Operadores/Ausências e Notificações
     - CRUD de operadores, registro/remoção de ausências, relatório de ausências; centro de notificações in-app com histórico
     - Exibir, na seção de Operadores, as contagens por turno (abertura, intermediário, fechamento) e o total de operadores trabalhando no dia selecionado
     - _Requisitos: 6.1.5, 6.2, 6.3, 6.6.5, 6.6.6, 6.6.7, 7.3.1, 7.3.3_

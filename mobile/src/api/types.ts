@@ -110,9 +110,8 @@ export interface SessaoFiscal {
   statusDefinidoEm: string;
 }
 
-export interface ItemEscalaConsolidada {
+export interface EscalaEntry {
   funcionarioId: string;
-  nome?: string;
   diaSemana: number;
   entrada: string | null;
   saida: string | null;
@@ -121,7 +120,14 @@ export interface ItemEscalaConsolidada {
   especial: boolean;
 }
 
-export type EscalaEfetiva = ItemEscalaConsolidada | 'FOLGA';
+/** Escala efetiva resolvida: a entrada aplicável ou 'FOLGA'. */
+export type EscalaEfetiva = EscalaEntry | 'FOLGA';
+
+/** Item da escala consolidada por funcionário (ver escala.domain do backend). */
+export interface ItemEscalaConsolidada {
+  funcionarioId: string;
+  efetiva: EscalaEfetiva;
+}
 
 /** Evento recebido pelo WebSocket do painel de fiscais. */
 export interface EventoStatusFiscal {
@@ -165,8 +171,7 @@ export interface Ausencia {
 
 export interface ItemRelatorioAusencia {
   pessoaId: string;
-  nome?: string;
-  totalAusencias: number;
+  quantidade: number;
 }
 
 export interface ContagemTurno {
