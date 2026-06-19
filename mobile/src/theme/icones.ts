@@ -76,3 +76,16 @@ export const SVG_FUNDO_ONDAS =
   '<path d="M0 1920 H1080 V1680 C840 1590 760 1810 470 1735 C250 1680 150 1775 0 1745 Z" fill="#E31B23"/>' +
   '<path d="M0 1920 H1080 V1780 C860 1700 770 1870 500 1810 C280 1762 150 1850 0 1830 Z" fill="#C8102E" opacity="0.85"/>' +
   '</svg>';
+
+
+/** Fundo profissional: claro no centro (texto legível) com cantos vermelhos. */
+export const SVG_FUNDO_PRO =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" preserveAspectRatio="xMidYMid slice">' +
+  '<rect width="1080" height="1920" fill="#F5F6F8"/>' +
+  '<path d="M0 0 H470 C 300 160 150 150 0 310 Z" fill="#E31B23"/>' +
+  '<path d="M0 0 H330 C 200 130 100 125 0 235 Z" fill="#C8102E"/>' +
+  '<path d="M1080 0 V250 C 995 185 1015 80 1080 30 Z" fill="#E31B23" opacity="0.9"/>' +
+  '<path d="M1080 1920 V1640 C 985 1730 1030 1870 840 1920 Z" fill="#E31B23"/>' +
+  '<path d="M1080 1920 V1700 C 1010 1760 1040 1880 905 1920 Z" fill="#C8102E"/>' +
+  '<path d="M0 1920 V1810 C 85 1848 66 1902 0 1920 Z" fill="#E31B23" opacity="0.4"/>' +
+  '</svg>';

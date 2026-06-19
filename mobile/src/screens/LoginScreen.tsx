@@ -29,7 +29,7 @@ import { useAuth } from '../auth/AuthContext';
 import {
   SVG_CARRINHO,
   SVG_ENTRAR,
-  SVG_FUNDO_ONDAS,
+  SVG_FUNDO_PRO,
   SVG_OLHO,
   SVG_SEGURANCA,
   SVG_SENHA,
@@ -101,9 +101,9 @@ export function LoginScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <View style={StyleSheet.absoluteFill}>
-        <SvgXml xml={SVG_FUNDO_ONDAS} width={width} height={height} />
+        <SvgXml xml={SVG_FUNDO_PRO} width={width} height={height} />
       </View>
 
       <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
@@ -119,10 +119,10 @@ export function LoginScreen(): React.ReactElement {
           >
             {/* ===== Logo Stok Center ===== */}
             <View style={styles.logoLinha}>
-              <SvgXml xml={recolorir(SVG_CARRINHO, VERMELHO)} width={34} height={34} />
               <Text style={styles.logoStok}>Stok</Text>
               <Text style={styles.logoCenter}>CENTER</Text>
             </View>
+            <Text style={styles.tagline}>Gestão Inteligente</Text>
 
             {/* ===== Hero ===== */}
             <View style={styles.heroLinha}>
@@ -145,9 +145,6 @@ export function LoginScreen(): React.ReactElement {
               </View>
             </View>
             <View style={styles.heroSublinhado} />
-            <Text style={styles.subtitulo}>
-              Gestão Inteligente da Frente de Caixa
-            </Text>
 
             {/* ===== Card ===== */}
             <View style={styles.card}>
@@ -257,13 +254,8 @@ export function LoginScreen(): React.ReactElement {
 
             {/* ===== Rodapé ===== */}
             <View style={styles.rodape}>
-              <View style={styles.rodapeBadge}>
-                <SvgXml xml={recolorir(SVG_SEGURANCA, VERMELHO)} width={16} height={16} />
-              </View>
-              <Text style={styles.rodapeTexto}>Plataforma de Gestão Operacional</Text>
-              <Text style={styles.rodapeMarca}>STOK CENTER</Text>
               <Text style={styles.rodapeVersao}>
-                Versão {versao} · Desenvolvido por Pedro · 2026
+                Check-out Pro · Versão {versao} · Desenvolvido por Pedro · 2026
               </Text>
             </View>
           </ScrollView>
@@ -302,6 +294,13 @@ const styles = StyleSheet.create({
     color: ESCURO,
     letterSpacing: 3,
     marginTop: 8,
+  },
+  tagline: {
+    color: '#3A4151',
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 4,
   },
 
   // Hero
@@ -345,13 +344,6 @@ const styles = StyleSheet.create({
     backgroundColor: VERMELHO,
     alignSelf: 'center',
     marginTop: 12,
-  },
-  subtitulo: {
-    color: '#3A4151',
-    fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginTop: 10,
   },
 
   // Card
