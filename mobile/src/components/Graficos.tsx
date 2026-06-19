@@ -125,6 +125,7 @@ export function GraficoPizza({
               <Text style={styles.legendaNome} numberOfLines={1}>
                 {f.rotulo}
               </Text>
+              <View style={styles.legendaConector} />
               <Text style={styles.legendaValor}>{textoDireita}</Text>
             </View>
           );
@@ -201,7 +202,15 @@ const styles = StyleSheet.create({
   legendaNome: {
     ...tipografia.legenda,
     color: cores.texto,
+    flexShrink: 1,
+  },
+  legendaConector: {
     flex: 1,
+    marginHorizontal: espacamento.xs,
+    marginBottom: 3,
+    borderBottomWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: cores.divisor,
   },
   legendaValor: {
     ...tipografia.legenda,
