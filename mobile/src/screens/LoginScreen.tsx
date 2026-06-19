@@ -1,9 +1,9 @@
 /**
- * Tela de Login (Req 7.1) — identidade "Checkout Pro Workforce / Stok Center".
+ * Tela de Login (Req 7.1) — identidade "Checkout Pro Workforce".
  *
- * Recriação do layout corporativo (fundo claro com ondas vermelhas, logo com
- * carrinho, card de acesso e rodapé). Autentica pelo login individual e senha;
- * credenciais inválidas mostram "Senha incorreta.".
+ * Layout fixo (sem rolagem): hero Check-out Pro, card de acesso e três atalhos
+ * ilustrativos na base (Colaboradores, Indicadores, Registros). Autentica pelo
+ * login individual e senha; credenciais inválidas mostram "Senha incorreta.".
  */
 import React, { useEffect, useState } from 'react';
 import {
@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -28,11 +27,14 @@ import { ApiError } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import {
   SVG_CARRINHO,
+  SVG_COLABORADORES,
   SVG_ENTRAR,
   SVG_FUNDO_PRO,
+  SVG_INDICADORES,
   SVG_OLHO,
   SVG_SEGURANCA,
   SVG_SENHA,
+  SVG_TAREFAS,
   SVG_USUARIO,
   recolorir,
 } from '../theme/icones';
@@ -42,6 +44,24 @@ const VERMELHO_ESCURO = '#B3121A';
 const ESCURO = '#1B2233';
 const ROSA = '#FCE7E9';
 const CHAVE_LOGIN_SALVO = 'checkoutpro:login-lembrado';
+
+/** Atalho ilustrativo na base (abre após o login). */
+function Atalho({
+  xml,
+  rotulo,
+}: {
+  xml: string;
+  rotulo: string;
+}): React.ReactElement {
+  return (
+    <View style={styles.tile}>
+      <View style={styles.tileIcone}>
+        <SvgXml xml={xml} width={24} height={24} />
+      </View>
+      <Text style={styles.tileRotulo}>{rotulo}</Text>
+    </View>
+  );
+}
 
 export function LoginScreen(): React.ReactElement {
   const { entrar } = useAuth();
@@ -109,22 +129,10 @@ export function LoginScreen(): React.ReactElement {
       <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.flex}
+          style={styles.conteudo}
         >
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-          >
-            {/* ===== Logo Stok Center ===== */}
-            <View style={styles.logoLinha}>
-              <Text style={styles.logoStok}>Stok</Text>
-              <Text style={styles.logoCenter}>CENTER</Text>
-            </View>
-            <Text style={styles.tagline}>Gestão Inteligente</Text>
-
-            {/* ===== Hero ===== */}
+          {/* ===== Hero ===== */}
+          <View style={styles.topo}>
             <View style={styles.heroLinha}>
               <LinearGradient
                 colors={[VERMELHO, VERMELHO_ESCURO]}
@@ -132,7 +140,7 @@ export function LoginScreen(): React.ReactElement {
                 end={{ x: 1, y: 1 }}
                 style={styles.heroIcone}
               >
-                <SvgXml xml={recolorir(SVG_CARRINHO, '#fff')} width={42} height={42} />
+                <SvgXml xml={recolorir(SVG_CARRINHO, '#fff')} width={44} height={44} />
               </LinearGradient>
               <View style={styles.heroTextos}>
                 <View style={styles.heroTitulo}>
@@ -145,120 +153,122 @@ export function LoginScreen(): React.ReactElement {
               </View>
             </View>
             <View style={styles.heroSublinhado} />
+            <Text style={styles.tagline}>Gestão Inteligente</Text>
+          </View>
 
-            {/* ===== Card ===== */}
-            <View style={styles.card}>
-              <View style={styles.escudoMarca} pointerEvents="none">
-                <SvgXml
-                  xml={recolorir(SVG_SEGURANCA, '#EEF0F3')}
-                  width={120}
-                  height={120}
+          {/* ===== Card ===== */}
+          <View style={styles.card}>
+            <View style={styles.escudoMarca} pointerEvents="none">
+              <SvgXml
+                xml={recolorir(SVG_SEGURANCA, '#EEF0F3')}
+                width={110}
+                height={110}
+              />
+            </View>
+
+            <Text style={styles.boasVindas}>Bem-vindo!</Text>
+            <Text style={styles.boasVindasSub}>
+              Acesse sua conta para continuar
+            </Text>
+
+            <View style={styles.campo}>
+              <View style={styles.campoIcone}>
+                <SvgXml xml={SVG_USUARIO} width={22} height={22} />
+              </View>
+              <View style={styles.campoCorpo}>
+                <Text style={styles.campoRotulo}>Acesso</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Seu login"
+                  placeholderTextColor="#9AA0AC"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="username"
+                  value={login}
+                  onChangeText={setLogin}
+                  returnKeyType="next"
                 />
               </View>
+            </View>
 
-              <Text style={styles.boasVindas}>Bem-vindo!</Text>
-              <Text style={styles.boasVindasSub}>
-                Acesse sua conta para continuar
-              </Text>
-
-              {/* Campo Acesso */}
-              <View style={styles.campo}>
-                <View style={styles.campoIcone}>
-                  <SvgXml xml={SVG_USUARIO} width={22} height={22} />
-                </View>
-                <View style={styles.campoCorpo}>
-                  <Text style={styles.campoRotulo}>Acesso</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Seu login"
-                    placeholderTextColor="#9AA0AC"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="username"
-                    value={login}
-                    onChangeText={setLogin}
-                    returnKeyType="next"
-                  />
-                </View>
+            <View style={styles.campo}>
+              <View style={styles.campoIcone}>
+                <SvgXml xml={SVG_SENHA} width={22} height={22} />
               </View>
-
-              {/* Campo Senha */}
-              <View style={styles.campo}>
-                <View style={styles.campoIcone}>
-                  <SvgXml xml={SVG_SENHA} width={22} height={22} />
-                </View>
-                <View style={styles.campoCorpo}>
-                  <Text style={styles.campoRotulo}>Senha</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Sua senha"
-                    placeholderTextColor="#9AA0AC"
-                    secureTextEntry={!mostrarSenha}
-                    autoComplete="password"
-                    value={senha}
-                    onChangeText={setSenha}
-                    onSubmitEditing={aoEntrar}
-                    returnKeyType="go"
-                  />
-                </View>
-                <Pressable
-                  onPress={() => setMostrarSenha((v) => !v)}
-                  hitSlop={10}
-                  style={styles.olho}
-                >
-                  <SvgXml
-                    xml={recolorir(SVG_OLHO, mostrarSenha ? VERMELHO : '#9AA0AC')}
-                    width={24}
-                    height={24}
-                  />
-                </Pressable>
+              <View style={styles.campoCorpo}>
+                <Text style={styles.campoRotulo}>Senha</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Sua senha"
+                  placeholderTextColor="#9AA0AC"
+                  secureTextEntry={!mostrarSenha}
+                  autoComplete="password"
+                  value={senha}
+                  onChangeText={setSenha}
+                  onSubmitEditing={aoEntrar}
+                  returnKeyType="go"
+                />
               </View>
-
-              {erro ? <Text style={styles.erro}>{erro}</Text> : null}
-              {aviso ? <Text style={styles.aviso}>{aviso}</Text> : null}
-              <Pressable onPress={esqueciSenha} hitSlop={6} style={styles.esqueciBox}>
-                <Text style={styles.esqueci}>Esqueci minha senha</Text>
-              </Pressable>
-
-              {/* Botão Entrar */}
               <Pressable
-                onPress={aoEntrar}
-                disabled={enviando}
-                style={({ pressed }) => [pressed && styles.botaoPressed]}
+                onPress={() => setMostrarSenha((v) => !v)}
+                hitSlop={10}
+                style={styles.olho}
               >
-                <LinearGradient
-                  colors={[VERMELHO, VERMELHO_ESCURO]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.botao}
-                >
-                  {enviando ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <>
-                      <Text style={styles.botaoTexto}>Entrar</Text>
-                      <SvgXml xml={recolorir(SVG_ENTRAR, '#fff')} width={22} height={22} />
-                    </>
-                  )}
-                </LinearGradient>
+                <SvgXml
+                  xml={recolorir(SVG_OLHO, mostrarSenha ? VERMELHO : '#9AA0AC')}
+                  width={24}
+                  height={24}
+                />
               </Pressable>
-
-              {/* Linha "acesso seguro" */}
-              <View style={styles.seguro}>
-                <View style={styles.seguroLinha} />
-                <SvgXml xml={recolorir(SVG_SEGURANCA, VERMELHO)} width={16} height={16} />
-                <Text style={styles.seguroTexto}>Acesso seguro e exclusivo</Text>
-                <View style={styles.seguroLinha} />
-              </View>
             </View>
 
-            {/* ===== Rodapé ===== */}
-            <View style={styles.rodape}>
-              <Text style={styles.rodapeVersao}>
-                Check-out Pro · Versão {versao} · Desenvolvido por Pedro · 2026
-              </Text>
+            {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+            {aviso ? <Text style={styles.aviso}>{aviso}</Text> : null}
+            <Pressable onPress={esqueciSenha} hitSlop={6} style={styles.esqueciBox}>
+              <Text style={styles.esqueci}>Esqueci minha senha</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={aoEntrar}
+              disabled={enviando}
+              style={({ pressed }) => [pressed && styles.botaoPressed]}
+            >
+              <LinearGradient
+                colors={[VERMELHO, VERMELHO_ESCURO]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.botao}
+              >
+                {enviando ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Text style={styles.botaoTexto}>Entrar</Text>
+                    <SvgXml xml={recolorir(SVG_ENTRAR, '#fff')} width={22} height={22} />
+                  </>
+                )}
+              </LinearGradient>
+            </Pressable>
+
+            <View style={styles.seguro}>
+              <View style={styles.seguroLinha} />
+              <SvgXml xml={recolorir(SVG_SEGURANCA, VERMELHO)} width={16} height={16} />
+              <Text style={styles.seguroTexto}>Acesso seguro e exclusivo</Text>
+              <View style={styles.seguroLinha} />
             </View>
-          </ScrollView>
+          </View>
+
+          {/* ===== Atalhos + créditos ===== */}
+          <View style={styles.base}>
+            <View style={styles.tiles}>
+              <Atalho xml={SVG_COLABORADORES} rotulo="Colaboradores" />
+              <Atalho xml={SVG_INDICADORES} rotulo="Indicadores" />
+              <Atalho xml={SVG_TAREFAS} rotulo="Registros" />
+            </View>
+            <Text style={styles.creditos}>
+              Check-out Pro · Versão {versao} · Desenvolvido por Pedro · 2026
+            </Text>
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
@@ -266,50 +276,23 @@ export function LoginScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F1F2F4' },
+  container: { flex: 1, backgroundColor: '#F5F6F8' },
   flex: { flex: 1 },
-  scroll: {
-    flexGrow: 1,
+  conteudo: {
+    flex: 1,
     paddingHorizontal: 22,
-    paddingVertical: 14,
+    paddingTop: 8,
+    paddingBottom: 10,
     justifyContent: 'space-between',
   },
 
-  // Logo
-  logoLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  logoStok: {
-    fontSize: 30,
-    fontWeight: '900',
-    color: VERMELHO,
-    fontStyle: 'italic',
-  },
-  logoCenter: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: ESCURO,
-    letterSpacing: 3,
-    marginTop: 8,
-  },
-  tagline: {
-    color: '#3A4151',
-    fontSize: 15,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-
   // Hero
+  topo: { alignItems: 'center' },
   heroLinha: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 14,
-    marginTop: 14,
   },
   heroIcone: {
     width: 66,
@@ -331,19 +314,19 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     alignItems: 'center',
   },
-  workforce: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 6,
-  },
+  workforce: { color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 6 },
   heroSublinhado: {
     width: 56,
     height: 3,
     borderRadius: 2,
     backgroundColor: VERMELHO,
-    alignSelf: 'center',
     marginTop: 12,
+  },
+  tagline: {
+    color: '#3A4151',
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 8,
   },
 
   // Card
@@ -351,7 +334,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 22,
-    marginTop: 16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
@@ -382,12 +364,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   campoCorpo: { flex: 1, marginLeft: 10 },
-  campoRotulo: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#8A91A0',
-    marginBottom: -2,
-  },
+  campoRotulo: { fontSize: 11, fontWeight: '700', color: '#8A91A0', marginBottom: -2 },
   input: { fontSize: 16, color: ESCURO, paddingVertical: Platform.OS === 'web' ? 6 : 2 },
   olho: { padding: 6 },
   erro: { color: VERMELHO, fontSize: 14, marginLeft: 4 },
@@ -410,27 +387,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 16,
+    marginTop: 14,
   },
   seguroLinha: { flex: 1, height: 1, backgroundColor: '#E6E8EC' },
   seguroTexto: { color: '#8A91A0', fontSize: 12, fontWeight: '600' },
 
-  // Rodapé
-  rodape: { alignItems: 'center', marginTop: 16 },
-  rodapeBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: VERMELHO,
+  // Base (atalhos + créditos)
+  base: { alignItems: 'center' },
+  tiles: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignSelf: 'stretch' },
+  tile: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  tileIcone: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: ROSA,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  rodapeTexto: { color: '#5A6072', fontSize: 12 },
-  rodapeMarca: { color: ESCURO, fontSize: 14, fontWeight: '900', letterSpacing: 1 },
-  rodapeVersao: { color: '#8A8F9C', fontSize: 11, marginTop: 4 },
+  tileRotulo: { fontSize: 12, fontWeight: '700', color: ESCURO },
+  creditos: { color: '#8A8F9C', fontSize: 11, marginTop: 12, textAlign: 'center' },
 });
 
 export default LoginScreen;
