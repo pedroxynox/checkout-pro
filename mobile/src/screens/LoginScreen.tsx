@@ -26,7 +26,6 @@ import Constants from 'expo-constants';
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import {
-  SVG_CARRINHO,
   SVG_COLABORADORES,
   SVG_ENTRAR,
   SVG_FUNDO_PRO,
@@ -131,30 +130,19 @@ export function LoginScreen(): React.ReactElement {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.conteudo}
         >
-          {/* ===== Hero ===== */}
-          <View style={styles.topo}>
-            <View style={styles.heroLinha}>
-              <LinearGradient
-                colors={[VERMELHO, VERMELHO_ESCURO]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.heroIcone}
-              >
-                <SvgXml xml={recolorir(SVG_CARRINHO, '#fff')} width={44} height={44} />
-              </LinearGradient>
-              <View style={styles.heroTextos}>
-                <View style={styles.heroTitulo}>
-                  <Text style={styles.checkout}>CHECKOUT </Text>
-                  <Text style={styles.pro}>PRO</Text>
-                </View>
-                <View style={styles.workforceBar}>
-                  <Text style={styles.workforce}>WORKFORCE</Text>
-                </View>
+          {/* ===== Hero (centrado, sem carrinho) + Card ===== */}
+          <View style={styles.meio}>
+            <View style={styles.topo}>
+              <View style={styles.heroTitulo}>
+                <Text style={styles.checkout}>CHECKOUT </Text>
+                <Text style={styles.pro}>PRO</Text>
               </View>
+              <View style={styles.workforceBar}>
+                <Text style={styles.workforce}>WORKFORCE</Text>
+              </View>
+              <View style={styles.heroSublinhado} />
+              <Text style={styles.tagline}>GESTÃO INTELIGENTE</Text>
             </View>
-            <View style={styles.heroSublinhado} />
-            <Text style={styles.tagline}>Gestão Inteligente</Text>
-          </View>
 
           {/* ===== Card ===== */}
           <View style={styles.card}>
@@ -257,6 +245,7 @@ export function LoginScreen(): React.ReactElement {
               <View style={styles.seguroLinha} />
             </View>
           </View>
+          </View>
 
           {/* ===== Atalhos + créditos ===== */}
           <View style={styles.base}>
@@ -283,38 +272,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 8,
     paddingBottom: 10,
-    justifyContent: 'space-between',
   },
 
   // Hero
-  topo: { alignItems: 'center' },
-  heroLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 14,
-  },
-  heroIcone: {
-    width: 66,
-    height: 66,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroTextos: { alignItems: 'flex-start' },
-  heroTitulo: { flexDirection: 'row', alignItems: 'center' },
-  checkout: { fontSize: 30, fontWeight: '900', color: ESCURO },
-  pro: { fontSize: 30, fontWeight: '900', color: VERMELHO },
+  meio: { flex: 1, justifyContent: 'center' },
+  topo: { alignItems: 'center', marginBottom: 14 },
+  heroTitulo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  checkout: { fontSize: 32, fontWeight: '900', color: ESCURO },
+  pro: { fontSize: 32, fontWeight: '900', color: VERMELHO },
   workforceBar: {
     backgroundColor: VERMELHO,
     borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    marginTop: 2,
-    alignSelf: 'stretch',
+    paddingHorizontal: 14,
+    paddingVertical: 3,
+    marginTop: 4,
+    alignSelf: 'center',
     alignItems: 'center',
   },
-  workforce: { color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 6 },
+  workforce: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 8 },
   heroSublinhado: {
     width: 56,
     height: 3,
@@ -324,8 +299,9 @@ const styles = StyleSheet.create({
   },
   tagline: {
     color: '#3A4151',
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 4,
     marginTop: 8,
   },
 
