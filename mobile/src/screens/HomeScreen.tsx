@@ -26,7 +26,7 @@ export function HomeScreen({
       <StatusBar style="light" />
       <View style={styles.topo}>
         <View>
-          <Text style={styles.marca}>Stok Center</Text>
+          <Text style={styles.marca}>Check-out Pro</Text>
           <Text style={styles.saudacao}>
             {usuario?.login ?? ''} ·{' '}
             {perfil === 'GERENTE' ? 'Gerente' : 'Fiscal'}
