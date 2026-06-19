@@ -17,17 +17,17 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
     <RefreshControlMock
       colors={
         [
-          "#0B5FFF",
+          "#C8102E",
         ]
       }
       onRefresh={[Function]}
       refreshing={false}
-      tintColor="#0B5FFF"
+      tintColor="#C8102E"
     />
   }
   style={
     {
-      "backgroundColor": "#F4F6FB",
+      "backgroundColor": "#F5F5F7",
       "flex": 1,
     }
   }
@@ -58,7 +58,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
       <Text
         style={
           {
-            "color": "#11203A",
+            "color": "#1A1A1F",
             "fontSize": 15,
             "fontWeight": "700",
             "marginBottom": 12,
@@ -100,7 +100,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
         style={
           {
             "alignItems": "center",
-            "borderBottomColor": "#EAEEF6",
+            "borderBottomColor": "#EDEDF2",
             "borderBottomWidth": 0.5,
             "flexDirection": "row",
             "justifyContent": "space-between",
@@ -118,7 +118,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           <Text
             style={
               {
-                "color": "#11203A",
+                "color": "#1A1A1F",
                 "fontSize": 15,
                 "fontWeight": "600",
               }
@@ -129,7 +129,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           <Text
             style={
               {
-                "color": "#5A6886",
+                "color": "#5C5C6B",
                 "fontSize": 12,
                 "fontWeight": "400",
                 "marginTop": 2,
@@ -153,7 +153,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           <Text
             style={
               {
-                "color": "#11203A",
+                "color": "#1A1A1F",
                 "fontSize": 18,
                 "fontWeight": "600",
               }
@@ -201,7 +201,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
         style={
           {
             "alignItems": "center",
-            "borderBottomColor": "#EAEEF6",
+            "borderBottomColor": "#EDEDF2",
             "borderBottomWidth": 0.5,
             "flexDirection": "row",
             "justifyContent": "space-between",
@@ -219,7 +219,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           <Text
             style={
               {
-                "color": "#11203A",
+                "color": "#1A1A1F",
                 "fontSize": 15,
                 "fontWeight": "600",
               }
@@ -230,7 +230,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           <Text
             style={
               {
-                "color": "#5A6886",
+                "color": "#5C5C6B",
                 "fontSize": 12,
                 "fontWeight": "400",
                 "marginTop": 2,
@@ -254,7 +254,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           <Text
             style={
               {
-                "color": "#11203A",
+                "color": "#1A1A1F",
                 "fontSize": 18,
                 "fontWeight": "600",
               }
@@ -342,7 +342,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
       <Text
         style={
           {
-            "color": "#11203A",
+            "color": "#1A1A1F",
             "fontSize": 15,
             "fontWeight": "700",
             "marginBottom": 12,
@@ -354,7 +354,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
       <Text
         style={
           {
-            "color": "#5A6886",
+            "color": "#5C5C6B",
             "fontSize": 13,
             "fontWeight": "600",
             "marginBottom": 4,
@@ -406,8 +406,8 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           style={
             [
               {
-                "backgroundColor": "#F0F2F8",
-                "borderColor": "#DDE3EF",
+                "backgroundColor": "#F1F1F4",
+                "borderColor": "#E3E3E9",
                 "borderRadius": 999,
                 "borderWidth": 1,
                 "paddingHorizontal": 12,
@@ -421,7 +421,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
             style={
               [
                 {
-                  "color": "#5A6886",
+                  "color": "#5C5C6B",
                   "fontSize": 12,
                   "fontWeight": "400",
                 },
@@ -474,7 +474,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
               "paddingHorizontal": 16,
             },
             {
-              "backgroundColor": "#0B5FFF",
+              "backgroundColor": "#C8102E",
             },
             false,
             false,
@@ -526,7 +526,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
       <Text
         style={
           {
-            "color": "#11203A",
+            "color": "#1A1A1F",
             "fontSize": 15,
             "fontWeight": "700",
             "marginBottom": 12,
@@ -538,7 +538,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
       <Text
         style={
           {
-            "color": "#5A6886",
+            "color": "#5C5C6B",
             "fontSize": 13,
             "fontWeight": "600",
             "marginBottom": 4,
@@ -590,8 +590,8 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           style={
             [
               {
-                "backgroundColor": "#F0F2F8",
-                "borderColor": "#DDE3EF",
+                "backgroundColor": "#F1F1F4",
+                "borderColor": "#E3E3E9",
                 "borderRadius": 999,
                 "borderWidth": 1,
                 "paddingHorizontal": 12,
@@ -605,7 +605,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
             style={
               [
                 {
-                  "color": "#5A6886",
+                  "color": "#5C5C6B",
                   "fontSize": 12,
                   "fontWeight": "400",
                 },
@@ -649,8 +649,8 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           style={
             [
               {
-                "backgroundColor": "#F0F2F8",
-                "borderColor": "#DDE3EF",
+                "backgroundColor": "#F1F1F4",
+                "borderColor": "#E3E3E9",
                 "borderRadius": 999,
                 "borderWidth": 1,
                 "paddingHorizontal": 12,
@@ -664,7 +664,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
             style={
               [
                 {
-                  "color": "#5A6886",
+                  "color": "#5C5C6B",
                   "fontSize": 12,
                   "fontWeight": "400",
                 },
@@ -686,7 +686,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
         <Text
           style={
             {
-              "color": "#5A6886",
+              "color": "#5C5C6B",
               "fontSize": 13,
               "fontWeight": "600",
               "marginBottom": 4,
@@ -699,15 +699,15 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           keyboardType="number-pad"
           onChangeText={[Function]}
           placeholder="0"
-          placeholderTextColor="#5A6886"
+          placeholderTextColor="#5C5C6B"
           style={
             [
               {
                 "backgroundColor": "#FFFFFF",
-                "borderColor": "#DDE3EF",
+                "borderColor": "#E3E3E9",
                 "borderRadius": 10,
                 "borderWidth": 1,
-                "color": "#11203A",
+                "color": "#1A1A1F",
                 "fontSize": 15,
                 "minHeight": 48,
                 "paddingHorizontal": 12,
@@ -760,7 +760,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
               "paddingHorizontal": 16,
             },
             {
-              "backgroundColor": "#0B5FFF",
+              "backgroundColor": "#C8102E",
             },
             false,
             false,
@@ -810,7 +810,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
       <Text
         style={
           {
-            "color": "#11203A",
+            "color": "#1A1A1F",
             "fontSize": 15,
             "fontWeight": "700",
             "marginBottom": 12,
@@ -829,7 +829,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
         <Text
           style={
             {
-              "color": "#5A6886",
+              "color": "#5C5C6B",
               "fontSize": 13,
               "fontWeight": "600",
               "marginBottom": 4,
@@ -841,15 +841,15 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
         <TextInput
           onChangeText={[Function]}
           placeholder="Nome do insumo"
-          placeholderTextColor="#5A6886"
+          placeholderTextColor="#5C5C6B"
           style={
             [
               {
                 "backgroundColor": "#FFFFFF",
-                "borderColor": "#DDE3EF",
+                "borderColor": "#E3E3E9",
                 "borderRadius": 10,
                 "borderWidth": 1,
-                "color": "#11203A",
+                "color": "#1A1A1F",
                 "fontSize": 15,
                 "minHeight": 48,
                 "paddingHorizontal": 12,
@@ -864,7 +864,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
       <Text
         style={
           {
-            "color": "#5A6886",
+            "color": "#5C5C6B",
             "fontSize": 13,
             "fontWeight": "600",
             "marginBottom": 4,
@@ -876,7 +876,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
       <View
         style={
           {
-            "backgroundColor": "#F0F2F8",
+            "backgroundColor": "#F1F1F4",
             "borderRadius": 10,
             "flexDirection": "row",
             "marginBottom": 12,
@@ -932,12 +932,12 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
             style={
               [
                 {
-                  "color": "#5A6886",
+                  "color": "#5C5C6B",
                   "fontSize": 13,
                   "fontWeight": "600",
                 },
                 {
-                  "color": "#0B5FFF",
+                  "color": "#C8102E",
                 },
               ]
             }
@@ -991,7 +991,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
             style={
               [
                 {
-                  "color": "#5A6886",
+                  "color": "#5C5C6B",
                   "fontSize": 13,
                   "fontWeight": "600",
                 },
@@ -1048,7 +1048,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
             style={
               [
                 {
-                  "color": "#5A6886",
+                  "color": "#5C5C6B",
                   "fontSize": 13,
                   "fontWeight": "600",
                 },
@@ -1105,7 +1105,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
             style={
               [
                 {
-                  "color": "#5A6886",
+                  "color": "#5C5C6B",
                   "fontSize": 13,
                   "fontWeight": "600",
                 },
@@ -1127,7 +1127,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
         <Text
           style={
             {
-              "color": "#5A6886",
+              "color": "#5C5C6B",
               "fontSize": 13,
               "fontWeight": "600",
               "marginBottom": 4,
@@ -1140,15 +1140,15 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           keyboardType="number-pad"
           onChangeText={[Function]}
           placeholder="0"
-          placeholderTextColor="#5A6886"
+          placeholderTextColor="#5C5C6B"
           style={
             [
               {
                 "backgroundColor": "#FFFFFF",
-                "borderColor": "#DDE3EF",
+                "borderColor": "#E3E3E9",
                 "borderRadius": 10,
                 "borderWidth": 1,
-                "color": "#11203A",
+                "color": "#1A1A1F",
                 "fontSize": 15,
                 "minHeight": 48,
                 "paddingHorizontal": 12,
@@ -1170,7 +1170,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
         <Text
           style={
             {
-              "color": "#5A6886",
+              "color": "#5C5C6B",
               "fontSize": 13,
               "fontWeight": "600",
               "marginBottom": 4,
@@ -1183,15 +1183,15 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           keyboardType="number-pad"
           onChangeText={[Function]}
           placeholder="0"
-          placeholderTextColor="#5A6886"
+          placeholderTextColor="#5C5C6B"
           style={
             [
               {
                 "backgroundColor": "#FFFFFF",
-                "borderColor": "#DDE3EF",
+                "borderColor": "#E3E3E9",
                 "borderRadius": 10,
                 "borderWidth": 1,
-                "color": "#11203A",
+                "color": "#1A1A1F",
                 "fontSize": 15,
                 "minHeight": 48,
                 "paddingHorizontal": 12,
@@ -1244,7 +1244,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
               "paddingHorizontal": 16,
             },
             {
-              "backgroundColor": "#0B5FFF",
+              "backgroundColor": "#C8102E",
             },
             false,
             false,
@@ -1281,7 +1281,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
               "padding": 12,
             },
             {
-              "backgroundColor": "#E7F0FF",
+              "backgroundColor": "#FCE6EA",
             },
           ]
         }
@@ -1301,7 +1301,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
                 "lineHeight": 18,
               },
               {
-                "color": "#0B5FFF",
+                "color": "#C8102E",
               },
             ]
           }

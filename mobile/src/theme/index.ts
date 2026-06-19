@@ -7,21 +7,21 @@
  */
 
 export const cores = {
-  // Identidade Stok Center
-  primaria: '#0B5FFF',
-  primariaEscura: '#0A48BF',
-  primariaClara: '#E7F0FF',
+  // Identidade Stok Center (vermelho/branco — tema do mercado)
+  primaria: '#C8102E',
+  primariaEscura: '#9E0C24',
+  primariaClara: '#FCE6EA',
 
-  fundo: '#F4F6FB',
+  fundo: '#F5F5F7',
   superficie: '#FFFFFF',
-  superficieAlternativa: '#F0F2F8',
+  superficieAlternativa: '#F1F1F4',
 
-  texto: '#11203A',
-  textoSecundario: '#5A6886',
+  texto: '#1A1A1F',
+  textoSecundario: '#5C5C6B',
   textoInverso: '#FFFFFF',
 
-  borda: '#DDE3EF',
-  divisor: '#EAEEF6',
+  borda: '#E3E3E9',
+  divisor: '#EDEDF2',
 
   // Cores semânticas de status de indicadores (StatusCor do backend)
   verde: '#1E9E5A',
@@ -35,12 +35,12 @@ export const cores = {
   sucesso: '#1E9E5A',
   alerta: '#C99700',
   erro: '#D23B3B',
-  info: '#0B5FFF',
+  info: '#C8102E',
 
   // Status de fiscais
   disponivel: '#1E9E5A',
   emIntervalo: '#C99700',
-  emAtendimento: '#0B5FFF',
+  emAtendimento: '#9E0C24',
 } as const;
 
 export const espacamento = {

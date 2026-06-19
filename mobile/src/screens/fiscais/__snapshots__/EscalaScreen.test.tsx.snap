@@ -17,17 +17,17 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
     <RefreshControlMock
       colors={
         [
-          "#0B5FFF",
+          "#C8102E",
         ]
       }
       onRefresh={[Function]}
       refreshing={false}
-      tintColor="#0B5FFF"
+      tintColor="#C8102E"
     />
   }
   style={
     {
-      "backgroundColor": "#F4F6FB",
+      "backgroundColor": "#F5F5F7",
       "flex": 1,
     }
   }
@@ -49,7 +49,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
           [
             {
               "borderRadius": 6,
-              "color": "#5A6886",
+              "color": "#5C5C6B",
               "fontSize": 13,
               "fontWeight": "600",
               "minWidth": 42,
@@ -70,7 +70,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
           [
             {
               "borderRadius": 6,
-              "color": "#5A6886",
+              "color": "#5C5C6B",
               "fontSize": 13,
               "fontWeight": "600",
               "minWidth": 42,
@@ -91,7 +91,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
           [
             {
               "borderRadius": 6,
-              "color": "#5A6886",
+              "color": "#5C5C6B",
               "fontSize": 13,
               "fontWeight": "600",
               "minWidth": 42,
@@ -112,7 +112,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
           [
             {
               "borderRadius": 6,
-              "color": "#5A6886",
+              "color": "#5C5C6B",
               "fontSize": 13,
               "fontWeight": "600",
               "minWidth": 42,
@@ -133,31 +133,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
           [
             {
               "borderRadius": 6,
-              "color": "#5A6886",
-              "fontSize": 13,
-              "fontWeight": "600",
-              "minWidth": 42,
-              "overflow": "hidden",
-              "paddingHorizontal": 8,
-              "paddingVertical": 8,
-              "textAlign": "center",
-            },
-            {
-              "backgroundColor": "#0B5FFF",
-              "color": "#FFFFFF",
-            },
-          ]
-        }
-      >
-        Qui
-      </Text>
-      <Text
-        onPress={[Function]}
-        style={
-          [
-            {
-              "borderRadius": 6,
-              "color": "#5A6886",
+              "color": "#5C5C6B",
               "fontSize": 13,
               "fontWeight": "600",
               "minWidth": 42,
@@ -170,6 +146,30 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
           ]
         }
       >
+        Qui
+      </Text>
+      <Text
+        onPress={[Function]}
+        style={
+          [
+            {
+              "borderRadius": 6,
+              "color": "#5C5C6B",
+              "fontSize": 13,
+              "fontWeight": "600",
+              "minWidth": 42,
+              "overflow": "hidden",
+              "paddingHorizontal": 8,
+              "paddingVertical": 8,
+              "textAlign": "center",
+            },
+            {
+              "backgroundColor": "#C8102E",
+              "color": "#FFFFFF",
+            },
+          ]
+        }
+      >
         Sex
       </Text>
       <Text
@@ -178,7 +178,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
           [
             {
               "borderRadius": 6,
-              "color": "#5A6886",
+              "color": "#5C5C6B",
               "fontSize": 13,
               "fontWeight": "600",
               "minWidth": 42,
@@ -197,14 +197,14 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
     <Text
       style={
         {
-          "color": "#11203A",
+          "color": "#1A1A1F",
           "fontSize": 15,
           "fontWeight": "700",
           "marginBottom": 12,
         }
       }
     >
-      Quinta-feira
+      Sexta-feira
     </Text>
     <View
       style={
@@ -240,7 +240,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
           numberOfLines={1}
           style={
             {
-              "color": "#11203A",
+              "color": "#1A1A1F",
               "flex": 1,
               "fontSize": 15,
               "fontWeight": "600",
@@ -254,7 +254,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
       <Text
         style={
           {
-            "color": "#5A6886",
+            "color": "#5C5C6B",
             "fontSize": 12,
             "fontWeight": "400",
             "marginTop": 4,
@@ -303,7 +303,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
           numberOfLines={1}
           style={
             {
-              "color": "#11203A",
+              "color": "#1A1A1F",
               "flex": 1,
               "fontSize": 15,
               "fontWeight": "600",
@@ -325,7 +325,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
                 "paddingVertical": 4,
               },
               {
-                "backgroundColor": "#E7F0FF",
+                "backgroundColor": "#FCE6EA",
               },
             ]
           }
@@ -340,7 +340,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
                   "width": 8,
                 },
                 {
-                  "backgroundColor": "#0B5FFF",
+                  "backgroundColor": "#C8102E",
                 },
               ]
             }
@@ -353,7 +353,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
                   "fontWeight": "600",
                 },
                 {
-                  "color": "#0B5FFF",
+                  "color": "#C8102E",
                 },
               ]
             }
@@ -365,7 +365,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
       <Text
         style={
           {
-            "color": "#5A6886",
+            "color": "#5C5C6B",
             "fontSize": 12,
             "fontWeight": "400",
             "marginTop": 4,
@@ -414,7 +414,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
           numberOfLines={1}
           style={
             {
-              "color": "#11203A",
+              "color": "#1A1A1F",
               "flex": 1,
               "fontSize": 15,
               "fontWeight": "600",
@@ -436,7 +436,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
                 "paddingVertical": 4,
               },
               {
-                "backgroundColor": "#F0F2F8",
+                "backgroundColor": "#F1F1F4",
               },
             ]
           }
@@ -451,7 +451,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
                   "width": 8,
                 },
                 {
-                  "backgroundColor": "#5A6886",
+                  "backgroundColor": "#5C5C6B",
                 },
               ]
             }
@@ -464,7 +464,7 @@ exports[`EscalaScreen mantém o snapshot da escala consolidada 1`] = `
                   "fontWeight": "600",
                 },
                 {
-                  "color": "#5A6886",
+                  "color": "#5C5C6B",
                 },
               ]
             }
