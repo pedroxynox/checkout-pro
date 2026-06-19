@@ -15,5 +15,11 @@ export const API_BASE_URL: string =
 /** Namespace do WebSocket do painel de fiscais (ver FiscaisGateway). */
 export const WS_NAMESPACE_FISCAIS = '/fiscais';
 
-/** Tempo máximo (ms) de espera por uma resposta HTTP antes de abortar. */
-export const TIMEOUT_REQUISICAO_MS = 15000;
+/**
+ * Tempo máximo (ms) de espera por uma resposta HTTP antes de abortar.
+ *
+ * 60s para tolerar o "cold start" de servidores gratuitos (ex.: Render free),
+ * que hibernam após inatividade e podem levar ~50s para responder à primeira
+ * requisição. Assim o login funciona já na primeira tentativa.
+ */
+export const TIMEOUT_REQUISICAO_MS = 60000;
