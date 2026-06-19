@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
+exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
 <RCTScrollView
   contentContainerStyle={
     [
@@ -203,641 +203,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
           }
         }
       >
-        Status do dia
-      </Text>
-      <View
-        style={
-          {
-            "alignItems": "center",
-            "borderBottomColor": "#EDEDF2",
-            "borderBottomWidth": 0.5,
-            "flexDirection": "row",
-            "justifyContent": "space-between",
-            "paddingVertical": 8,
-          }
-        }
-      >
-        <View
-          style={
-            {
-              "flex": 1,
-              "gap": 4,
-            }
-          }
-        >
-          <Text
-            style={
-              {
-                "color": "#1A1A1F",
-                "fontSize": 15,
-                "fontWeight": "600",
-              }
-            }
-          >
-            Cancelamento de itens
-          </Text>
-          <View
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "alignSelf": "flex-start",
-                  "borderRadius": 999,
-                  "flexDirection": "row",
-                  "paddingHorizontal": 8,
-                  "paddingVertical": 4,
-                },
-                {
-                  "backgroundColor": "#E4F6EC",
-                },
-              ]
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "borderRadius": 4,
-                    "height": 8,
-                    "marginRight": 4,
-                    "width": 8,
-                  },
-                  {
-                    "backgroundColor": "#1E9E5A",
-                  },
-                ]
-              }
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontSize": 12,
-                    "fontWeight": "600",
-                  },
-                  {
-                    "color": "#1E9E5A",
-                  },
-                ]
-              }
-            >
-              Importado
-            </Text>
-          </View>
-        </View>
-        <View
-          accessibilityRole="button"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": false,
-              "expanded": undefined,
-              "selected": undefined,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "alignItems": "center",
-                "borderRadius": 10,
-                "justifyContent": "center",
-                "minHeight": 48,
-                "paddingHorizontal": 16,
-              },
-              {
-                "backgroundColor": "#FCE6EA",
-              },
-              false,
-              false,
-              false,
-              {
-                "minHeight": 40,
-                "paddingHorizontal": 12,
-              },
-            ]
-          }
-        >
-          <Text
-            style={
-              [
-                {
-                  "fontSize": 15,
-                  "fontWeight": "600",
-                },
-                {
-                  "color": "#C8102E",
-                },
-              ]
-            }
-          >
-            Reenviar
-          </Text>
-        </View>
-      </View>
-      <View
-        style={
-          {
-            "alignItems": "center",
-            "borderBottomColor": "#EDEDF2",
-            "borderBottomWidth": 0.5,
-            "flexDirection": "row",
-            "justifyContent": "space-between",
-            "paddingVertical": 8,
-          }
-        }
-      >
-        <View
-          style={
-            {
-              "flex": 1,
-              "gap": 4,
-            }
-          }
-        >
-          <Text
-            style={
-              {
-                "color": "#1A1A1F",
-                "fontSize": 15,
-                "fontWeight": "600",
-              }
-            }
-          >
-            Troco solidário
-          </Text>
-          <View
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "alignSelf": "flex-start",
-                  "borderRadius": 999,
-                  "flexDirection": "row",
-                  "paddingHorizontal": 8,
-                  "paddingVertical": 4,
-                },
-                {
-                  "backgroundColor": "#FBF3DA",
-                },
-              ]
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "borderRadius": 4,
-                    "height": 8,
-                    "marginRight": 4,
-                    "width": 8,
-                  },
-                  {
-                    "backgroundColor": "#C99700",
-                  },
-                ]
-              }
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontSize": 12,
-                    "fontWeight": "600",
-                  },
-                  {
-                    "color": "#C99700",
-                  },
-                ]
-              }
-            >
-              Pendente
-            </Text>
-          </View>
-        </View>
-        <View
-          accessibilityRole="button"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": false,
-              "expanded": undefined,
-              "selected": undefined,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "alignItems": "center",
-                "borderRadius": 10,
-                "justifyContent": "center",
-                "minHeight": 48,
-                "paddingHorizontal": 16,
-              },
-              {
-                "backgroundColor": "#FCE6EA",
-              },
-              false,
-              false,
-              false,
-              {
-                "minHeight": 40,
-                "paddingHorizontal": 12,
-              },
-            ]
-          }
-        >
-          <Text
-            style={
-              [
-                {
-                  "fontSize": 15,
-                  "fontWeight": "600",
-                },
-                {
-                  "color": "#C8102E",
-                },
-              ]
-            }
-          >
-            Enviar
-          </Text>
-        </View>
-      </View>
-      <View
-        style={
-          {
-            "alignItems": "center",
-            "borderBottomColor": "#EDEDF2",
-            "borderBottomWidth": 0.5,
-            "flexDirection": "row",
-            "justifyContent": "space-between",
-            "paddingVertical": 8,
-          }
-        }
-      >
-        <View
-          style={
-            {
-              "flex": 1,
-              "gap": 4,
-            }
-          }
-        >
-          <Text
-            style={
-              {
-                "color": "#1A1A1F",
-                "fontSize": 15,
-                "fontWeight": "600",
-              }
-            }
-          >
-            Recargas de celular
-          </Text>
-          <View
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "alignSelf": "flex-start",
-                  "borderRadius": 999,
-                  "flexDirection": "row",
-                  "paddingHorizontal": 8,
-                  "paddingVertical": 4,
-                },
-                {
-                  "backgroundColor": "#FBF3DA",
-                },
-              ]
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "borderRadius": 4,
-                    "height": 8,
-                    "marginRight": 4,
-                    "width": 8,
-                  },
-                  {
-                    "backgroundColor": "#C99700",
-                  },
-                ]
-              }
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontSize": 12,
-                    "fontWeight": "600",
-                  },
-                  {
-                    "color": "#C99700",
-                  },
-                ]
-              }
-            >
-              Pendente
-            </Text>
-          </View>
-        </View>
-        <View
-          accessibilityRole="button"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": false,
-              "expanded": undefined,
-              "selected": undefined,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "alignItems": "center",
-                "borderRadius": 10,
-                "justifyContent": "center",
-                "minHeight": 48,
-                "paddingHorizontal": 16,
-              },
-              {
-                "backgroundColor": "#FCE6EA",
-              },
-              false,
-              false,
-              false,
-              {
-                "minHeight": 40,
-                "paddingHorizontal": 12,
-              },
-            ]
-          }
-        >
-          <Text
-            style={
-              [
-                {
-                  "fontSize": 15,
-                  "fontWeight": "600",
-                },
-                {
-                  "color": "#C8102E",
-                },
-              ]
-            }
-          >
-            Enviar
-          </Text>
-        </View>
-      </View>
-      <View
-        style={
-          {
-            "alignItems": "center",
-            "borderBottomColor": "#EDEDF2",
-            "borderBottomWidth": 0.5,
-            "flexDirection": "row",
-            "justifyContent": "space-between",
-            "paddingVertical": 8,
-          }
-        }
-      >
-        <View
-          style={
-            {
-              "flex": 1,
-              "gap": 4,
-            }
-          }
-        >
-          <Text
-            style={
-              {
-                "color": "#1A1A1F",
-                "fontSize": 15,
-                "fontWeight": "600",
-              }
-            }
-          >
-            Devoluções
-          </Text>
-          <View
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "alignSelf": "flex-start",
-                  "borderRadius": 999,
-                  "flexDirection": "row",
-                  "paddingHorizontal": 8,
-                  "paddingVertical": 4,
-                },
-                {
-                  "backgroundColor": "#E4F6EC",
-                },
-              ]
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "borderRadius": 4,
-                    "height": 8,
-                    "marginRight": 4,
-                    "width": 8,
-                  },
-                  {
-                    "backgroundColor": "#1E9E5A",
-                  },
-                ]
-              }
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontSize": 12,
-                    "fontWeight": "600",
-                  },
-                  {
-                    "color": "#1E9E5A",
-                  },
-                ]
-              }
-            >
-              Importado
-            </Text>
-          </View>
-        </View>
-        <View
-          accessibilityRole="button"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": false,
-              "expanded": undefined,
-              "selected": undefined,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "alignItems": "center",
-                "borderRadius": 10,
-                "justifyContent": "center",
-                "minHeight": 48,
-                "paddingHorizontal": 16,
-              },
-              {
-                "backgroundColor": "#FCE6EA",
-              },
-              false,
-              false,
-              false,
-              {
-                "minHeight": 40,
-                "paddingHorizontal": 12,
-              },
-            ]
-          }
-        >
-          <Text
-            style={
-              [
-                {
-                  "fontSize": 15,
-                  "fontWeight": "600",
-                },
-                {
-                  "color": "#C8102E",
-                },
-              ]
-            }
-          >
-            Reenviar
-          </Text>
-        </View>
-      </View>
-    </View>
-    <View
-      style={
-        [
-          {
-            "backgroundColor": "#FFFFFF",
-            "borderRadius": 16,
-            "elevation": 2,
-            "marginBottom": 12,
-            "padding": 16,
-            "shadowColor": "#0B1B3A",
-            "shadowOffset": {
-              "height": 2,
-              "width": 0,
-            },
-            "shadowOpacity": 0.08,
-            "shadowRadius": 8,
-          },
-          undefined,
-        ]
-      }
-    >
-      <Text
-        style={
-          {
-            "color": "#1A1A1F",
-            "fontSize": 15,
-            "fontWeight": "700",
-            "marginBottom": 12,
-          }
-        }
-      >
-        Indicadores (arquivos .txt)
+        Indicadores
       </Text>
       <Text
         style={
@@ -849,7 +215,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
           }
         }
       >
-        Envie o bloc de notas de cada indicador do dia selecionado. O app separa por operador e atualiza os Indicadores.
+        Envie o bloc de notas de cada indicador do dia selecionado. O app separa por pessoa e atualiza os Indicadores.
       </Text>
       <View
         style={
@@ -897,17 +263,54 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
               Troco Solidário
             </Text>
           </View>
-          <Text
+          <View
             style={
-              {
-                "color": "#5C5C6B",
-                "fontSize": 12,
-                "fontWeight": "400",
-              }
+              [
+                {
+                  "alignItems": "center",
+                  "alignSelf": "flex-start",
+                  "borderRadius": 999,
+                  "flexDirection": "row",
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "backgroundColor": "#E4F6EC",
+                },
+              ]
             }
           >
-            Quanto cada operador arrecadou. Meta fixa de R$ 2.000.
-          </Text>
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 4,
+                    "height": 8,
+                    "marginRight": 4,
+                    "width": 8,
+                  },
+                  {
+                    "backgroundColor": "#1E9E5A",
+                  },
+                ]
+              }
+            />
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                    "fontWeight": "600",
+                  },
+                  {
+                    "color": "#1E9E5A",
+                  },
+                ]
+              }
+            >
+              Enviado
+            </Text>
+          </View>
         </View>
         <View
           accessibilityRole="button"
@@ -975,7 +378,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
               ]
             }
           >
-            Enviar
+            Reenviar
           </Text>
         </View>
       </View>
@@ -1025,17 +428,54 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
               Recargas de Celular
             </Text>
           </View>
-          <Text
+          <View
             style={
-              {
-                "color": "#5C5C6B",
-                "fontSize": 12,
-                "fontWeight": "400",
-              }
+              [
+                {
+                  "alignItems": "center",
+                  "alignSelf": "flex-start",
+                  "borderRadius": 999,
+                  "flexDirection": "row",
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "backgroundColor": "#FBF3DA",
+                },
+              ]
             }
           >
-            Recargas vendidas por operador. Meta fixa de R$ 2.000.
-          </Text>
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 4,
+                    "height": 8,
+                    "marginRight": 4,
+                    "width": 8,
+                  },
+                  {
+                    "backgroundColor": "#C99700",
+                  },
+                ]
+              }
+            />
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                    "fontWeight": "600",
+                  },
+                  {
+                    "color": "#C99700",
+                  },
+                ]
+              }
+            >
+              Pendente
+            </Text>
+          </View>
         </View>
         <View
           accessibilityRole="button"
@@ -1153,17 +593,54 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
               Cancelamento de Itens
             </Text>
           </View>
-          <Text
+          <View
             style={
-              {
-                "color": "#5C5C6B",
-                "fontSize": 12,
-                "fontWeight": "400",
-              }
+              [
+                {
+                  "alignItems": "center",
+                  "alignSelf": "flex-start",
+                  "borderRadius": 999,
+                  "flexDirection": "row",
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "backgroundColor": "#FBF3DA",
+                },
+              ]
             }
           >
-            Valor cancelado por operador. Meta de até 0,75% das vendas.
-          </Text>
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 4,
+                    "height": 8,
+                    "marginRight": 4,
+                    "width": 8,
+                  },
+                  {
+                    "backgroundColor": "#C99700",
+                  },
+                ]
+              }
+            />
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                    "fontWeight": "600",
+                  },
+                  {
+                    "color": "#C99700",
+                  },
+                ]
+              }
+            >
+              Pendente
+            </Text>
+          </View>
         </View>
         <View
           accessibilityRole="button"
@@ -1281,17 +758,54 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
               Cancelamento de Cupom
             </Text>
           </View>
-          <Text
+          <View
             style={
-              {
-                "color": "#5C5C6B",
-                "fontSize": 12,
-                "fontWeight": "400",
-              }
+              [
+                {
+                  "alignItems": "center",
+                  "alignSelf": "flex-start",
+                  "borderRadius": 999,
+                  "flexDirection": "row",
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "backgroundColor": "#FBF3DA",
+                },
+              ]
             }
           >
-            Cupons cancelados por operador. Meta de até 0,5% das vendas.
-          </Text>
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 4,
+                    "height": 8,
+                    "marginRight": 4,
+                    "width": 8,
+                  },
+                  {
+                    "backgroundColor": "#C99700",
+                  },
+                ]
+              }
+            />
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                    "fontWeight": "600",
+                  },
+                  {
+                    "color": "#C99700",
+                  },
+                ]
+              }
+            >
+              Pendente
+            </Text>
+          </View>
         </View>
         <View
           accessibilityRole="button"
@@ -1409,17 +923,54 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
               Devoluções
             </Text>
           </View>
-          <Text
+          <View
             style={
-              {
-                "color": "#5C5C6B",
-                "fontSize": 12,
-                "fontWeight": "400",
-              }
+              [
+                {
+                  "alignItems": "center",
+                  "alignSelf": "flex-start",
+                  "borderRadius": 999,
+                  "flexDirection": "row",
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "backgroundColor": "#E4F6EC",
+                },
+              ]
             }
           >
-            Valor devolvido por fiscal. Meta de até 0,05% das vendas.
-          </Text>
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 4,
+                    "height": 8,
+                    "marginRight": 4,
+                    "width": 8,
+                  },
+                  {
+                    "backgroundColor": "#1E9E5A",
+                  },
+                ]
+              }
+            />
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                    "fontWeight": "600",
+                  },
+                  {
+                    "color": "#1E9E5A",
+                  },
+                ]
+              }
+            >
+              Enviado
+            </Text>
+          </View>
         </View>
         <View
           accessibilityRole="button"
@@ -1487,137 +1038,9 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
               ]
             }
           >
-            Enviar
+            Reenviar
           </Text>
         </View>
-      </View>
-    </View>
-    <Text
-      style={
-        {
-          "color": "#1A1A1F",
-          "fontSize": 15,
-          "fontWeight": "700",
-          "marginBottom": 12,
-          "marginTop": 8,
-        }
-      }
-    >
-      Histórico
-    </Text>
-    <View
-      style={
-        [
-          {
-            "backgroundColor": "#FFFFFF",
-            "borderRadius": 16,
-            "elevation": 2,
-            "marginBottom": 12,
-            "padding": 16,
-            "shadowColor": "#0B1B3A",
-            "shadowOffset": {
-              "height": 2,
-              "width": 0,
-            },
-            "shadowOpacity": 0.08,
-            "shadowRadius": 8,
-          },
-          undefined,
-        ]
-      }
-    >
-      <View
-        style={
-          {
-            "alignItems": "center",
-            "flexDirection": "row",
-            "gap": 4,
-            "marginBottom": 4,
-          }
-        }
-      >
-        <Text
-          testID="icon-document-text-outline"
-        >
-          document-text-outline
-        </Text>
-        <Text
-          style={
-            {
-              "color": "#1A1A1F",
-              "fontSize": 15,
-              "fontWeight": "700",
-            }
-          }
-        >
-          Cancelamento de itens
-        </Text>
-      </View>
-      <Text
-        style={
-          {
-            "color": "#5C5C6B",
-            "fontSize": 12,
-            "fontWeight": "400",
-            "marginTop": 2,
-          }
-        }
-      >
-        Referência: 
-        10/03/2024
-      </Text>
-      <Text
-        style={
-          {
-            "color": "#5C5C6B",
-            "fontSize": 12,
-            "fontWeight": "400",
-            "marginTop": 2,
-          }
-        }
-      >
-        Importado em: 
-        10/03/2024, 12:00
-      </Text>
-      <View
-        style={
-          [
-            {
-              "alignItems": "flex-start",
-              "borderRadius": 10,
-              "flexDirection": "row",
-              "gap": 8,
-              "marginBottom": 12,
-              "padding": 12,
-            },
-            {
-              "backgroundColor": "#FBF3DA",
-            },
-          ]
-        }
-      >
-        <Text
-          testID="icon-warning-outline"
-        >
-          warning-outline
-        </Text>
-        <Text
-          style={
-            [
-              {
-                "flex": 1,
-                "fontSize": 12,
-                "fontWeight": "400",
-                "lineHeight": 18,
-              },
-              {
-                "color": "#C99700",
-              },
-            ]
-          }
-        >
-          1 nome(s) não reconhecido(s): Fulano Desconhecido
-        </Text>
       </View>
     </View>
   </View>

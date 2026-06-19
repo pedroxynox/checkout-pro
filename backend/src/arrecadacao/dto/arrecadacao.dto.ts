@@ -35,3 +35,8 @@ export class RankingArrecadacaoDto {
   @IsISO8601()
   fim!: string;
 }
+
+export class StatusArrecadacaoDto {
+  @IsISO8601()
+  data!: string;
+}

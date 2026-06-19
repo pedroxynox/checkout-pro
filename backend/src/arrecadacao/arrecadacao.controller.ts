@@ -13,6 +13,7 @@ import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
   RankingArrecadacaoDto,
   ResumoArrecadacaoDto,
+  StatusArrecadacaoDto,
   UploadArrecadacaoDto,
 } from './dto/arrecadacao.dto';
 import { parseArrecadacao } from './arrecadacao.parser';
@@ -22,6 +23,7 @@ import {
   ItemRankingArrecadacao,
   ResultadoUploadArrecadacao,
   ResumoArrecadacao,
+  StatusArrecadacao,
 } from './arrecadacao.service';
 
 /**
@@ -55,6 +57,13 @@ export class ArrecadacaoController {
   @Get('resumo')
   resumo(@Query() dto: ResumoArrecadacaoDto): Promise<ResumoArrecadacao> {
     return this.arrecadacaoService.resumo(dto.tipo, new Date(dto.data));
+  }
+
+  /** Status (enviado/pendente) de cada tipo no dia. */
+  @Get('status')
+  @Funcionalidade('IMPORTACOES')
+  status(@Query() dto: StatusArrecadacaoDto): Promise<StatusArrecadacao> {
+    return this.arrecadacaoService.status(new Date(dto.data));
   }
 
   /** Ranking de operadores por valor no intervalo informado. */

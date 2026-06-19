@@ -12,6 +12,7 @@ import {
   ItemRankingArrecadacao,
   ResultadoUploadArrecadacao,
   ResumoArrecadacao,
+  StatusArrecadacao,
   TipoArrecadacao,
 } from '../types';
 
@@ -48,6 +49,11 @@ export const arrecadacaoService = {
       tipo,
       data,
     });
+  },
+
+  /** Status (enviado/pendente) de cada tipo no dia. */
+  status(data: string): Promise<StatusArrecadacao> {
+    return apiClient.get<StatusArrecadacao>('/arrecadacao/status', { data });
   },
 
   /** Ranking de operadores por valor no intervalo [início, fim]. */

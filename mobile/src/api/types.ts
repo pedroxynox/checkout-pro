@@ -116,6 +116,9 @@ export interface ItemRankingArrecadacao {
   quantidade: number | null;
 }
 
+/** Status (true=enviado, false=pendente) de cada tipo no dia. */
+export type StatusArrecadacao = Record<TipoArrecadacao, boolean>;
+
 export interface DetalheArrecadacao {
   nome: string;
   autorizadoPor: string | null;

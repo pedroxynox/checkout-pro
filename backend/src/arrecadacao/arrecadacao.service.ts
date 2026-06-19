@@ -4,6 +4,7 @@ import { LinhaArrecadacao } from './arrecadacao.parser';
 import {
   CONFIG_ARRECADACAO,
   TipoArrecadacao,
+  TIPOS_ARRECADACAO,
   inicioDaProximaSemana,
   inicioDaSemana,
   inicioDoDia,
@@ -57,6 +58,9 @@ export interface DetalheArrecadacao {
   data: string;
 }
 
+/** Mapa tipo -> já enviado no dia (true) ou pendente (false). */
+export type StatusArrecadacao = Record<TipoArrecadacao, boolean>;
+
 function arredondar(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -96,6 +100,27 @@ export class ArrecadacaoService {
     ]);
     const total = linhas.reduce((soma, l) => soma + l.valor, 0);
     return { tipo, data: dia, quantidade: linhas.length, total: arredondar(total) };
+  }
+
+  /** Status (enviado/pendente) de cada tipo no dia informado. */
+  async status(data: Date): Promise<StatusArrecadacao> {
+    const dia = inicioDoDia(data);
+    const proximo = inicioDoProximoDia(data);
+    const grupos = await this.prisma.registroArrecadacao.groupBy({
+      by: ['tipo'],
+      where: { data: { gte: dia, lt: proximo } },
+      _count: { _all: true },
+    });
+    const enviados = new Set(
+      grupos
+        .filter((g) => (g._count?._all ?? 0) > 0)
+        .map((g) => g.tipo),
+    );
+    const resultado = {} as StatusArrecadacao;
+    for (const tipo of TIPOS_ARRECADACAO) {
+      resultado[tipo] = enviados.has(tipo);
+    }
+    return resultado;
   }
 
   private async somar(
