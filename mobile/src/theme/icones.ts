@@ -57,3 +57,22 @@ export const SVG_WORKFORCE =
 /** Fundo da tela de login (claro com triângulos vermelhos nos cantos). */
 export const SVG_FUNDO =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#f5f5f5"/><stop offset="1" stop-color="#e8e8e8"/></linearGradient></defs><rect width="1080" height="1920" fill="url(#g)"/><polygon points="0,0 380,0 0,820" fill="#e31b23"/><polygon points="720,1920 1080,1920 1080,1500" fill="#e31b23"/></svg>';
+
+
+// ===== Carrinho (logo) e fundo com ondas vermelhas =====
+
+/** Carrinho de compras (cor da marca; use recolorir para branco). */
+export const SVG_CARRINHO =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#E30613" d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>';
+
+/** Fundo da tela: claro com ondas vermelhas no topo e na base. */
+export const SVG_FUNDO_ONDAS =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" preserveAspectRatio="xMidYMid slice">' +
+  '<rect width="1080" height="1920" fill="#F1F2F4"/>' +
+  '<path d="M0 0 H1080 V250 C880 340 740 170 540 240 C340 310 180 250 0 320 Z" fill="#E31B23"/>' +
+  '<path d="M0 0 H1080 V140 C820 240 690 110 450 185 C300 230 140 200 0 240 Z" fill="#C8102E"/>' +
+  '<path d="M0 300 C140 380 70 560 0 650 Z" fill="#E31B23" opacity="0.18"/>' +
+  '<path d="M1080 360 C940 420 1000 560 1080 640 Z" fill="#E31B23" opacity="0.12"/>' +
+  '<path d="M0 1920 H1080 V1680 C840 1590 760 1810 470 1735 C250 1680 150 1775 0 1745 Z" fill="#E31B23"/>' +
+  '<path d="M0 1920 H1080 V1780 C860 1700 770 1870 500 1810 C280 1762 150 1850 0 1830 Z" fill="#C8102E" opacity="0.85"/>' +
+  '</svg>';
