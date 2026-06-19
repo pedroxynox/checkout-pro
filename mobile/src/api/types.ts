@@ -19,6 +19,15 @@ export interface UsuarioAutenticado {
   perfil: Perfil;
 }
 
+/** Conta de usuário gerenciável no painel de pessoas (login por matrícula). */
+export interface UsuarioConta {
+  id: string;
+  matricula: string;
+  nome?: string | null;
+  perfil: Perfil;
+  criadoEm?: string;
+}
+
 // ----- Importações (Req 1.x) -----
 export type TipoArquivo =
   | 'CANCELAMENTO_ITENS'

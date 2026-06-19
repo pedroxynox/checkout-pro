@@ -22,6 +22,7 @@ export interface Area {
     | 'Escala'
     | 'Checklist'
     | 'Operadores'
+    | 'Usuarios'
     | 'Notificacoes'
   >;
   titulo: string;
@@ -93,6 +94,13 @@ export const AREAS: Area[] = [
     descricao: 'Cadastro, ausências e turnos',
     icone: 'id-card-outline',
     funcionalidade: 'OPERADORES_CRUD',
+  },
+  {
+    rota: 'Usuarios',
+    titulo: 'Pessoas e Acessos',
+    descricao: 'Cadastrar pessoas e definir acessos',
+    icone: 'person-add-outline',
+    funcionalidade: 'USUARIOS_CRUD',
   },
   {
     rota: 'Notificacoes',

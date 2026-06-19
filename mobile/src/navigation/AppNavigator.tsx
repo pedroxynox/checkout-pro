@@ -21,6 +21,7 @@ import { FiscaisScreen } from '../screens/fiscais/FiscaisScreen';
 import { EscalaScreen } from '../screens/fiscais/EscalaScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
 import { OperadoresScreen } from '../screens/operadores/OperadoresScreen';
+import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
 import { NotificacoesScreen } from '../screens/notificacoes/NotificacoesScreen';
 import { cores } from '../theme';
 import { RootStackParamList } from './types';
@@ -114,6 +115,13 @@ export function AppNavigator(): React.ReactElement {
           name="Operadores"
           component={OperadoresScreen}
           options={{ title: 'Operadores' }}
+        />
+      )}
+      {podeAcessar('USUARIOS_CRUD') && (
+        <Stack.Screen
+          name="Usuarios"
+          component={UsuariosScreen}
+          options={{ title: 'Pessoas e Acessos' }}
         />
       )}
       {podeAcessar('NOTIFICACOES') && (

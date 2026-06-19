@@ -13,6 +13,7 @@ export type RootStackParamList = {
   Escala: undefined;
   Checklist: undefined;
   Operadores: undefined;
+  Usuarios: undefined;
   Notificacoes: undefined;
 };
 

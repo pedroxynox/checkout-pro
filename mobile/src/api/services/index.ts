@@ -9,4 +9,5 @@ export { fiscaisService, escalaService } from './fiscais';
 export { checklistService } from './checklist';
 export type { ImagemSelecionada } from './checklist';
 export { operadoresService } from './operadores';
+export { usuariosService } from './usuarios';
 export { notificacoesService } from './notificacoes';

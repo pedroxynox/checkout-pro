@@ -30,6 +30,11 @@ import {
   HorarioInvalidoError,
   NomeDuplicadoError,
 } from '../../operadores/operadores.errors';
+import {
+  MatriculaDuplicadaError,
+  OperacaoInvalidaError,
+  UsuarioNaoEncontradoError,
+} from '../../usuarios/usuarios.errors';
 
 /** Constrói uma entrada do mapa erro de domínio -> status HTTP. */
 type ConstrutorErro = new (...args: never[]) => Error;
@@ -45,11 +50,14 @@ const MAPA_STATUS: ReadonlyArray<readonly [ConstrutorErro, HttpStatus]> = [
   [PermissaoInsuficienteError, HttpStatus.FORBIDDEN],
   // 404 — recurso (fardo) não reconhecido pelo código de barras.
   [FardoNaoReconhecidoError, HttpStatus.NOT_FOUND],
+  [UsuarioNaoEncontradoError, HttpStatus.NOT_FOUND],
   // 409 — conflitos de unicidade / estado.
   [NomeDuplicadoError, HttpStatus.CONFLICT],
+  [MatriculaDuplicadaError, HttpStatus.CONFLICT],
   [AusenciaDuplicadaError, HttpStatus.CONFLICT],
   [CheckInAtivoError, HttpStatus.CONFLICT],
   // 400 — entradas inválidas / regras de validação de domínio.
+  [OperacaoInvalidaError, HttpStatus.BAD_REQUEST],
   [ColunaAusenteError, HttpStatus.BAD_REQUEST],
   [ValorVendaInvalidoError, HttpStatus.BAD_REQUEST],
   [SaldoInvalidoError, HttpStatus.BAD_REQUEST],

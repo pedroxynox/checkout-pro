@@ -11,6 +11,7 @@ import { StorageModule } from './storage/storage.module';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
 import { AcessosModule } from './acessos/acessos.module';
+import { UsuariosModule } from './usuarios/usuarios.module';
 import { OperadoresModule } from './operadores/operadores.module';
 import { ImportacoesModule } from './importacoes/importacoes.module';
 import { IndicadoresModule } from './indicadores/indicadores.module';
@@ -31,6 +32,7 @@ import { NotificacoesModule } from './notificacoes/notificacoes.module';
     SegurancaModule,
     StorageModule,
     AcessosModule,
+    UsuariosModule,
     OperadoresModule,
     ImportacoesModule,
     IndicadoresModule,
