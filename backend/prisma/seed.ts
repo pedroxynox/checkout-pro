@@ -65,8 +65,20 @@ const FISCAIS: SeedFiscal[] = [
   { nome: 'Yannelit Subero', turno: TurnoFiscal.FECHAMENTO },
 ];
 
-// Gerentes com perfil GERENTE (Req 6.4.6)
-const GERENTES: string[] = ['Pedro Munoz', 'Arlete Pacheco Fernandes'];
+interface SeedGerente {
+  nome: string;
+  /** Matrícula usada como login (login por matrícula). Se ausente, usa o slug. */
+  matricula?: string;
+  /** Senha inicial específica; se ausente, usa SENHA_INICIAL. */
+  senha?: string;
+}
+
+// Gerentes com perfil GERENTE (Req 6.4.6). O login é a matrícula, quando
+// informada; caso contrário, o slug do nome.
+const GERENTES: SeedGerente[] = [
+  { nome: 'Pedro Munoz', matricula: '232152', senha: '123456' },
+  { nome: 'Arlete Pacheco Fernandes' },
+];
 
 // 39 operadores do cadastro inicial (Req 6.5.2). Não inclui Patricia Del Valle
 // Palmares Fernandez (desligada) nem Paola Rio / Claudia Bertushi / Nancy
@@ -119,9 +131,10 @@ async function seedFiscais(): Promise<void> {
     // Usuário individual e único por fiscal (Req 6.4.11, 7.1.4).
     const usuario = await prisma.usuario.upsert({
       where: { login },
-      update: { perfil: Perfil.FISCAL },
+      update: { perfil: Perfil.FISCAL, nome: f.nome },
       create: {
         login,
+        nome: f.nome,
         senhaHash: senhaHashInicial,
         perfil: Perfil.FISCAL,
       },
@@ -145,15 +158,17 @@ async function seedFiscais(): Promise<void> {
 }
 
 async function seedGerentes(): Promise<void> {
-  for (const nome of GERENTES) {
-    const login = slugLogin(nome);
+  for (const g of GERENTES) {
+    const login = g.matricula ?? slugLogin(g.nome);
+    const senhaHash = g.senha ? await bcrypt.hash(g.senha, 10) : senhaHashInicial;
     // Usuário individual e único por gerente (Req 6.4.6, 6.4.7, 7.1.4).
     await prisma.usuario.upsert({
       where: { login },
-      update: { perfil: Perfil.GERENTE },
+      update: { perfil: Perfil.GERENTE, nome: g.nome },
       create: {
         login,
-        senhaHash: senhaHashInicial,
+        nome: g.nome,
+        senhaHash,
         perfil: Perfil.GERENTE,
       },
     });

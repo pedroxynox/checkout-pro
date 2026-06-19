@@ -8,6 +8,7 @@ import { Perfil } from '../../acessos/acessos.domain';
 export interface UsuarioAutenticado {
   sub: string;
   login: string;
+  nome?: string | null;
   perfil: Perfil;
 }
 

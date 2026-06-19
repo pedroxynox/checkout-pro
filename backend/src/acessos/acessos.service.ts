@@ -52,6 +52,7 @@ export class AcessosService {
     const token = await this.jwtService.signAsync({
       sub: usuario.id,
       login: usuario.login,
+      nome: usuario.nome ?? null,
       perfil,
     });
 

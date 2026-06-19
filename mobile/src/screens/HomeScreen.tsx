@@ -21,12 +21,17 @@ export function HomeScreen({
   const { usuario, perfil, podeAcessar, sair } = useAuth();
   const areasVisiveis = AREAS.filter((a) => podeAcessar(a.funcionalidade));
 
-  // Nome amigável a partir do login (ex.: "pedro.munoz" -> "Pedro Munoz").
-  const nome = (usuario?.login ?? '')
+  // Nome a exibir: usa o nome do usuário (quando houver); senão, deriva do
+  // login (ex.: "pedro.munoz" -> "Pedro Munoz").
+  const derivadoDoLogin = (usuario?.login ?? '')
     .split(/[._-]+/)
     .filter(Boolean)
     .map((parte) => parte.charAt(0).toUpperCase() + parte.slice(1).toLowerCase())
     .join(' ');
+  const nome =
+    usuario?.nome && usuario.nome.trim().length > 0
+      ? usuario.nome
+      : derivadoDoLogin;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
