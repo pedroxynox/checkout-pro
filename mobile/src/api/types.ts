@@ -119,6 +119,33 @@ export interface ItemRankingArrecadacao {
 /** Status (true=enviado, false=pendente) de cada tipo no dia. */
 export type StatusArrecadacao = Record<TipoArrecadacao, boolean>;
 
+// ----- Vendas por hora (Painel de Vendas) -----
+export interface ItemVendaHora {
+  hora: number;
+  valor: number;
+}
+
+export interface VendasPorHora {
+  total: number;
+  horas: ItemVendaHora[];
+}
+
+export interface ResumoVendas {
+  totalDia: number;
+  totalSemana: number;
+  totalMes: number;
+}
+
+export interface ResultadoUploadVendas {
+  data: string;
+  horas: number;
+  total: number;
+}
+
+export interface StatusVendas {
+  enviado: boolean;
+}
+
 export interface DetalheArrecadacao {
   nome: string;
   autorizadoPor: string | null;

@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`PainelVendasScreen oculta o formulário e exibe aviso para o fiscal (snapshot) 1`] = `
+exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
 <RCTScrollView
   contentContainerStyle={
     [
@@ -51,7 +51,7 @@ exports[`PainelVendasScreen oculta o formulário e exibe aviso para o fiscal (sn
           }
         }
       >
-        Data de referência
+        Dia de referência
       </Text>
       <View
         style={
@@ -203,7 +203,336 @@ exports[`PainelVendasScreen oculta o formulário e exibe aviso para o fiscal (sn
           }
         }
       >
-        Acumulado de vendas
+        Enviar vendas do dia
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#5C5C6B",
+            "fontSize": 12,
+            "fontWeight": "400",
+            "marginBottom": 8,
+          }
+        }
+      >
+        Envie o arquivo (.txt) com as vendas por hora do dia. Qualquer pessoa pode enviar. Não há ajuste manual.
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 8,
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "alignItems": "center",
+                "alignSelf": "flex-start",
+                "borderRadius": 999,
+                "flexDirection": "row",
+                "paddingHorizontal": 8,
+                "paddingVertical": 4,
+              },
+              {
+                "backgroundColor": "#E4F6EC",
+              },
+            ]
+          }
+        >
+          <View
+            style={
+              [
+                {
+                  "borderRadius": 4,
+                  "height": 8,
+                  "marginRight": 4,
+                  "width": 8,
+                },
+                {
+                  "backgroundColor": "#1E9E5A",
+                },
+              ]
+            }
+          />
+          <Text
+            style={
+              [
+                {
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#1E9E5A",
+                },
+              ]
+            }
+          >
+            Enviado
+          </Text>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 48,
+                "paddingHorizontal": 16,
+              },
+              {
+                "backgroundColor": "#FCE6EA",
+              },
+              false,
+              false,
+              false,
+              {
+                "minHeight": 40,
+                "paddingHorizontal": 16,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#C8102E",
+                },
+              ]
+            }
+          >
+            Reenviar
+          </Text>
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        [
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderRadius": 16,
+            "elevation": 2,
+            "marginBottom": 12,
+            "padding": 16,
+            "shadowColor": "#0B1B3A",
+            "shadowOffset": {
+              "height": 2,
+              "width": 0,
+            },
+            "shadowOpacity": 0.08,
+            "shadowRadius": 8,
+          },
+          undefined,
+        ]
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#1A1A1F",
+            "fontSize": 15,
+            "fontWeight": "700",
+            "marginBottom": 12,
+          }
+        }
+      >
+        Totais de vendas
+      </Text>
+      <View
+        style={
+          {
+            "flexDirection": "row",
+            "gap": 8,
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#F5F5F7",
+              "borderRadius": 10,
+              "flex": 1,
+              "paddingHorizontal": 4,
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#5C5C6B",
+                "fontSize": 12,
+                "fontWeight": "400",
+              }
+            }
+          >
+            Dia
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#1A1A1F",
+                "fontSize": 15,
+                "fontWeight": "700",
+                "marginTop": 2,
+                "textAlign": "center",
+              }
+            }
+          >
+            R$ 12.345,67
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#F5F5F7",
+              "borderRadius": 10,
+              "flex": 1,
+              "paddingHorizontal": 4,
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#5C5C6B",
+                "fontSize": 12,
+                "fontWeight": "400",
+              }
+            }
+          >
+            Semana
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#1A1A1F",
+                "fontSize": 15,
+                "fontWeight": "700",
+                "marginTop": 2,
+                "textAlign": "center",
+              }
+            }
+          >
+            R$ 50.000,00
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#F5F5F7",
+              "borderRadius": 10,
+              "flex": 1,
+              "paddingHorizontal": 4,
+              "paddingVertical": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#5C5C6B",
+                "fontSize": 12,
+                "fontWeight": "400",
+              }
+            }
+          >
+            Mês
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#1A1A1F",
+                "fontSize": 15,
+                "fontWeight": "700",
+                "marginTop": 2,
+                "textAlign": "center",
+              }
+            }
+          >
+            R$ 200.000,00
+          </Text>
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        [
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderRadius": 16,
+            "elevation": 2,
+            "marginBottom": 12,
+            "padding": 16,
+            "shadowColor": "#0B1B3A",
+            "shadowOffset": {
+              "height": 2,
+              "width": 0,
+            },
+            "shadowOpacity": 0.08,
+            "shadowRadius": 8,
+          },
+          undefined,
+        ]
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#1A1A1F",
+            "fontSize": 15,
+            "fontWeight": "700",
+            "marginBottom": 12,
+          }
+        }
+      >
+        Vendas por hora
       </Text>
       <View
         style={
@@ -391,60 +720,422 @@ exports[`PainelVendasScreen oculta o formulário e exibe aviso para o fiscal (sn
             Mês
           </Text>
         </View>
+        <View
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 6,
+                "flex": 1,
+                "paddingVertical": 8,
+              },
+              false,
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "color": "#5C5C6B",
+                  "fontSize": 13,
+                  "fontWeight": "600",
+                },
+                false,
+              ]
+            }
+          >
+            Período
+          </Text>
+        </View>
       </View>
       <Text
         style={
           {
             "color": "#C8102E",
-            "fontSize": 30,
+            "fontSize": 15,
             "fontWeight": "700",
-            "marginVertical": 12,
-            "textAlign": "center",
+            "marginBottom": 8,
           }
         }
       >
-        R$ 12.345,67
+        Total do período: 
+        R$ 9.999,99
       </Text>
+      <View>
+        <View
+          style={
+            [
+              {
+                "alignItems": "flex-end",
+                "flexDirection": "row",
+                "gap": 3,
+                "justifyContent": "space-between",
+              },
+              {
+                "height": 150,
+              },
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flex": 1,
+                "gap": 4,
+                "justifyContent": "flex-end",
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 3,
+                    "width": "78%",
+                  },
+                  {
+                    "backgroundColor": "#FCE6EA",
+                    "height": 54.85722122460175,
+                  },
+                ]
+              }
+            />
+            <Text
+              numberOfLines={1}
+              style={
+                {
+                  "color": "#5C5C6B",
+                  "fontSize": 9,
+                }
+              }
+            >
+              8h
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flex": 1,
+                "gap": 4,
+                "justifyContent": "flex-end",
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 3,
+                    "width": "78%",
+                  },
+                  {
+                    "backgroundColor": "#C8102E",
+                    "height": 128,
+                  },
+                ]
+              }
+            />
+            <Text
+              numberOfLines={1}
+              style={
+                {
+                  "color": "#5C5C6B",
+                  "fontSize": 9,
+                }
+              }
+            >
+              9h
+            </Text>
+          </View>
+        </View>
+      </View>
     </View>
     <View
       style={
         [
           {
-            "alignItems": "flex-start",
-            "borderRadius": 10,
-            "flexDirection": "row",
-            "gap": 8,
+            "backgroundColor": "#FFFFFF",
+            "borderRadius": 16,
+            "elevation": 2,
             "marginBottom": 12,
-            "padding": 12,
+            "padding": 16,
+            "shadowColor": "#0B1B3A",
+            "shadowOffset": {
+              "height": 2,
+              "width": 0,
+            },
+            "shadowOpacity": 0.08,
+            "shadowRadius": 8,
           },
-          {
-            "backgroundColor": "#FCE6EA",
-          },
+          undefined,
         ]
       }
     >
       <Text
-        testID="icon-information-circle-outline"
-      >
-        information-circle-outline
-      </Text>
-      <Text
         style={
-          [
-            {
-              "flex": 1,
-              "fontSize": 12,
-              "fontWeight": "400",
-              "lineHeight": 18,
-            },
-            {
-              "color": "#C8102E",
-            },
-          ]
+          {
+            "color": "#1A1A1F",
+            "fontSize": 15,
+            "fontWeight": "700",
+            "marginBottom": 12,
+          }
         }
       >
-        Apenas o gerente pode informar ou alterar o valor de vendas.
+        Horas que mais venderam
       </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "gap": 12,
+          }
+        }
+      >
+        <RNSVGSvgView
+          bbHeight={180}
+          bbWidth={180}
+          focusable={false}
+          height={180}
+          style={
+            [
+              {
+                "backgroundColor": "transparent",
+                "borderWidth": 0,
+              },
+              {
+                "flex": 0,
+                "height": 180,
+                "width": 180,
+              },
+            ]
+          }
+          width={180}
+        >
+          <RNSVGGroup
+            fill={
+              {
+                "payload": 4278190080,
+                "type": 0,
+              }
+            }
+          >
+            <RNSVGGroup
+              fill={
+                {
+                  "payload": 4278190080,
+                  "type": 0,
+                }
+              }
+              matrix={
+                [
+                  6.123233995736766e-17,
+                  -1,
+                  1,
+                  6.123233995736766e-17,
+                  0,
+                  180,
+                ]
+              }
+            >
+              <RNSVGCircle
+                cx={90}
+                cy={90}
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeDasharray",
+                    "strokeDashoffset",
+                  ]
+                }
+                r={73}
+                stroke={
+                  {
+                    "payload": 4291301422,
+                    "type": 0,
+                  }
+                }
+                strokeDasharray={
+                  [
+                    "137.60189582912875",
+                    "321.070631594981",
+                  ]
+                }
+                strokeDashoffset={null}
+                strokeWidth={34}
+              />
+              <RNSVGCircle
+                cx={90}
+                cy={90}
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeDasharray",
+                    "strokeDashoffset",
+                  ]
+                }
+                r={73}
+                stroke={
+                  {
+                    "payload": 4280196698,
+                    "type": 0,
+                  }
+                }
+                strokeDasharray={
+                  [
+                    "321.070631594981",
+                    "137.60189582912875",
+                  ]
+                }
+                strokeDashoffset={-137.60189582912875}
+                strokeWidth={34}
+              />
+            </RNSVGGroup>
+          </RNSVGGroup>
+        </RNSVGSvgView>
+        <View
+          style={
+            {
+              "gap": 4,
+              "width": "100%",
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 6,
+                    "height": 12,
+                    "width": 12,
+                  },
+                  {
+                    "backgroundColor": "#C8102E",
+                  },
+                ]
+              }
+            />
+            <Text
+              numberOfLines={1}
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "flex": 1,
+                  "fontSize": 12,
+                  "fontWeight": "400",
+                }
+              }
+            >
+              8h
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 12,
+                  "fontWeight": "700",
+                }
+              }
+            >
+              30%
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 6,
+                    "height": 12,
+                    "width": 12,
+                  },
+                  {
+                    "backgroundColor": "#1E9E5A",
+                  },
+                ]
+              }
+            />
+            <Text
+              numberOfLines={1}
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "flex": 1,
+                  "fontSize": 12,
+                  "fontWeight": "400",
+                }
+              }
+            >
+              9h
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 12,
+                  "fontWeight": "700",
+                }
+              }
+            >
+              70%
+            </Text>
+          </View>
+        </View>
+      </View>
     </View>
   </View>
 </RCTScrollView>

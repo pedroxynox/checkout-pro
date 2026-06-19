@@ -1,74 +1,62 @@
 /**
- * Testes de componente/snapshot da tela do Painel de Vendas (Task 18.5).
+ * Testes de componente/snapshot do Painel de Vendas.
  *
- * Cobre a exibição do acumulado de vendas formatado (Req 2.1.3) e a navegação
- * por perfil na tela (o formulário de informar vendas só aparece para o
- * gerente; o fiscal recebe um aviso).
+ * Cobre a exibição dos totais (dia/semana/mês), o status do dia
+ * (enviado/pendente) e os gráficos por hora a partir do serviço de vendas.
  */
 import { render, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { PainelVendasScreen } from './PainelVendasScreen';
 
 jest.mock('../../api/services', () => ({
-  indicadoresService: {
-    acumulado: jest.fn(),
-    registrarVenda: jest.fn(),
+  vendasService: {
+    status: jest.fn(),
+    resumo: jest.fn(),
+    porHora: jest.fn(),
+    upload: jest.fn(),
   },
 }));
 
-jest.mock('../../auth/AuthContext', () => ({
-  useAuth: jest.fn(),
-}));
-
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { indicadoresService } = require('../../api/services');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { useAuth } = require('../../auth/AuthContext');
+const { vendasService } = require('../../api/services');
 
 describe('PainelVendasScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    indicadoresService.acumulado.mockResolvedValue({ total: 12345.67 });
+    vendasService.status.mockResolvedValue({ enviado: true });
+    vendasService.resumo.mockResolvedValue({
+      totalDia: 12345.67,
+      totalSemana: 50000,
+      totalMes: 200000,
+    });
+    vendasService.porHora.mockResolvedValue({
+      total: 9999.99,
+      horas: [
+        { hora: 8, valor: 3000 },
+        { hora: 9, valor: 6999.99 },
+      ],
+    });
   });
 
-  it('exibe o acumulado de vendas formatado em reais', async () => {
-    useAuth.mockReturnValue({ perfil: 'GERENTE' });
-
+  it('exibe os totais de vendas formatados em reais', async () => {
     render(<PainelVendasScreen />);
 
-    // O total formatado em pt-BR contém o símbolo de real e os centavos.
     expect(await screen.findByText(/12\.345,67/)).toBeTruthy();
-    expect(indicadoresService.acumulado).toHaveBeenCalledWith(
-      expect.any(String),
-      'DIA',
-    );
+    expect(vendasService.resumo).toHaveBeenCalled();
+    expect(vendasService.porHora).toHaveBeenCalled();
   });
 
-  it('mostra o formulário de informar vendas para o gerente', async () => {
-    useAuth.mockReturnValue({ perfil: 'GERENTE' });
-
+  it('mostra o status do dia (enviado/pendente)', async () => {
     render(<PainelVendasScreen />);
 
-    await waitFor(() =>
-      expect(indicadoresService.acumulado).toHaveBeenCalled(),
-    );
-    expect(screen.getByText('Informar vendas do dia')).toBeTruthy();
+    expect(await screen.findByText('Enviado')).toBeTruthy();
   });
 
-  it('oculta o formulário e exibe aviso para o fiscal (snapshot)', async () => {
-    useAuth.mockReturnValue({ perfil: 'FISCAL' });
-
+  it('mantém o snapshot do painel', async () => {
     const arvore = render(<PainelVendasScreen />);
 
-    await waitFor(() =>
-      expect(indicadoresService.acumulado).toHaveBeenCalled(),
-    );
-    expect(screen.queryByText('Informar vendas do dia')).toBeNull();
-    expect(
-      screen.getByText(
-        'Apenas o gerente pode informar ou alterar o valor de vendas.',
-      ),
-    ).toBeTruthy();
+    await waitFor(() => expect(vendasService.porHora).toHaveBeenCalled());
+    await screen.findByText(/12\.345,67/);
     expect(arvore.toJSON()).toMatchSnapshot();
   });
 });

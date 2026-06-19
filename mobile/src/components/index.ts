@@ -7,4 +7,11 @@ export { Carregando, MensagemErro, EstadoVazio } from './Estados';
 export { Segmentado, LinhaInfo, ItemLista } from './Diversos';
 export { SeletorData } from './SeletorData';
 export { Aviso } from './Aviso';
+export {
+  GraficoPizza,
+  GraficoBarrasVerticais,
+  montarFatias,
+  CORES_GRAFICO,
+} from './Graficos';
+export type { FatiaGrafico, BarraVertical } from './Graficos';
 export { LeitorCodigoBarras } from './LeitorCodigoBarras';

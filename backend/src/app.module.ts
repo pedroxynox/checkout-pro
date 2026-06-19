@@ -13,6 +13,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AcessosModule } from './acessos/acessos.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { ArrecadacaoModule } from './arrecadacao/arrecadacao.module';
+import { VendasModule } from './vendas/vendas.module';
 import { OperadoresModule } from './operadores/operadores.module';
 import { ImportacoesModule } from './importacoes/importacoes.module';
 import { IndicadoresModule } from './indicadores/indicadores.module';
@@ -35,6 +36,7 @@ import { NotificacoesModule } from './notificacoes/notificacoes.module';
     AcessosModule,
     UsuariosModule,
     ArrecadacaoModule,
+    VendasModule,
     OperadoresModule,
     ImportacoesModule,
     IndicadoresModule,
