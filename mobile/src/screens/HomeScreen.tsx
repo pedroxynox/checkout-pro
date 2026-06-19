@@ -21,6 +21,13 @@ export function HomeScreen({
   const { usuario, perfil, podeAcessar, sair } = useAuth();
   const areasVisiveis = AREAS.filter((a) => podeAcessar(a.funcionalidade));
 
+  // Nome amigável a partir do login (ex.: "pedro.munoz" -> "Pedro Munoz").
+  const nome = (usuario?.login ?? '')
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((parte) => parte.charAt(0).toUpperCase() + parte.slice(1).toLowerCase())
+    .join(' ');
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="light" />
@@ -28,8 +35,7 @@ export function HomeScreen({
         <View>
           <Text style={styles.marca}>Check-out Pro</Text>
           <Text style={styles.saudacao}>
-            {usuario?.login ?? ''} ·{' '}
-            {perfil === 'GERENTE' ? 'Gerente' : 'Fiscal'}
+            {nome} · {perfil === 'GERENTE' ? 'Gerente' : 'Fiscal'}
           </Text>
         </View>
         <Pressable
