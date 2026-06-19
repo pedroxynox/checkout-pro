@@ -16,6 +16,7 @@ import {
   StatusVendas,
   VendasPorHora,
 } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
 import {
   Botao,
   Carregando,
@@ -84,6 +85,8 @@ interface Aviso {
 }
 
 export function PainelVendasScreen(): React.ReactElement {
+  const { perfil } = useAuth();
+  const ehGerente = perfil === 'GERENTE';
   const [data, setData] = useState(hojeISO());
   const [periodo, setPeriodo] = useState<PeriodoGrafico>('DIA');
   const [inicioPers, setInicioPers] = useState(hojeISO());
@@ -159,10 +162,6 @@ export function PainelVendasScreen(): React.ReactElement {
       <SeletorData valor={data} aoMudar={setData} rotulo="Dia de referência" />
 
       <Cartao titulo="Enviar vendas do dia">
-        <Text style={styles.ajuda}>
-          Envie o arquivo (.txt) com as vendas por hora do dia. Qualquer pessoa
-          pode enviar. Não há ajuste manual.
-        </Text>
         {aviso ? (
           <View
             style={[
@@ -193,14 +192,22 @@ export function PainelVendasScreen(): React.ReactElement {
               fundo={enviado ? cores.verdeFundo : cores.amareloFundo}
             />
           )}
-          <Botao
-            titulo={enviado ? 'Reenviar' : 'Enviar'}
-            variante="secundario"
-            carregando={enviando}
-            aoPressionar={() => void enviarArquivo()}
-            estilo={styles.botaoEnviar}
-          />
+          {!enviado || ehGerente ? (
+            <Botao
+              titulo={enviado ? 'Reenviar' : 'Enviar'}
+              variante="secundario"
+              carregando={enviando}
+              aoPressionar={() => void enviarArquivo()}
+              estilo={styles.botaoEnviar}
+            />
+          ) : null}
         </View>
+        {enviado && !ehGerente ? (
+          <Text style={styles.notaBloqueio}>
+            As vendas deste dia já foram enviadas. Apenas o gerente pode
+            reenviar.
+          </Text>
+        ) : null}
       </Cartao>
 
       <Cartao titulo="Totais de vendas">
@@ -281,6 +288,12 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginBottom: espacamento.sm,
+  },
+  notaBloqueio: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: espacamento.sm,
+    fontStyle: 'italic',
   },
   aviso: {
     borderRadius: 8,

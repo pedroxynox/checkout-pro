@@ -205,18 +205,6 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
       >
         Enviar vendas do dia
       </Text>
-      <Text
-        style={
-          {
-            "color": "#5C5C6B",
-            "fontSize": 12,
-            "fontWeight": "400",
-            "marginBottom": 8,
-          }
-        }
-      >
-        Envie o arquivo (.txt) com as vendas por hora do dia. Qualquer pessoa pode enviar. Não há ajuste manual.
-      </Text>
       <View
         style={
           {

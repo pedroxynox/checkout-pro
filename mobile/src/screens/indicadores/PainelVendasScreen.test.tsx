@@ -17,6 +17,10 @@ jest.mock('../../api/services', () => ({
   },
 }));
 
+jest.mock('../../auth/AuthContext', () => ({
+  useAuth: () => ({ perfil: 'GERENTE' }),
+}));
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { vendasService } = require('../../api/services');
 

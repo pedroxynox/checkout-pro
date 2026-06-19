@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Controller,
+  ForbiddenException,
   Get,
   Post,
   Query,
@@ -10,6 +11,10 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ArquivoUpload } from '../common/arquivo-upload';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
+import {
+  UsuarioAtual,
+  UsuarioAutenticado,
+} from '../common/decorators/usuario-atual.decorator';
 import {
   DataVendasDto,
   IntervaloVendasDto,
@@ -40,9 +45,18 @@ export class VendasController {
   async upload(
     @UploadedFile() arquivo: ArquivoUpload | undefined,
     @Query() dto: UploadVendasDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<ResultadoUploadVendas> {
     if (!arquivo) {
       throw new BadRequestException('Nenhum arquivo enviado no campo "file".');
+    }
+    const data = dto.data ? new Date(dto.data) : new Date();
+    // Após enviado, só o gerente pode reenviar as vendas do dia.
+    const jaEnviado = (await this.vendasService.status(data)).enviado;
+    if (jaEnviado && usuario?.perfil !== 'GERENTE') {
+      throw new ForbiddenException(
+        'As vendas deste dia já foram enviadas. Apenas o gerente pode reenviar.',
+      );
     }
     const conteudo = arquivo.buffer.toString('utf-8');
     const linhas = parseVendasHora(conteudo);
@@ -51,7 +65,6 @@ export class VendasController {
         'Não foi possível ler vendas por hora do arquivo. Verifique o formato.',
       );
     }
-    const data = dto.data ? new Date(dto.data) : new Date();
     return this.vendasService.importar(data, linhas);
   }
 
