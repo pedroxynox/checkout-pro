@@ -119,6 +119,7 @@ export function UsuariosScreen(): React.ReactElement {
         <Segmentado
           opcoes={[
             { valor: 'FISCAL', rotulo: 'Fiscal' },
+            { valor: 'SUPERVISOR', rotulo: 'Supervisor' },
             { valor: 'GERENTE', rotulo: 'Gerente' },
           ]}
           selecionado={perfil}

@@ -27,6 +27,7 @@ datasource db {
 
 enum Perfil {
   GERENTE
+  SUPERVISOR
   FISCAL
 }
 

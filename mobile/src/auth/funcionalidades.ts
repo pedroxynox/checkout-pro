@@ -11,13 +11,10 @@
 import { Perfil } from '../api/types';
 
 /**
- * Conjunto de funcionalidades operacionais liberadas ao perfil FISCAL.
- * Idêntico ao `FUNCIONALIDADES_FISCAL` do backend (acessos.domain.ts).
+ * Funcionalidades operacionais liberadas ao perfil FISCAL (rotina diária +
+ * comunicação + seções gerais). Idêntico ao backend (acessos.domain.ts).
  */
 export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
-  'IMPORTACOES',
-  'INDICADORES_VISUALIZAR',
-  'PAINEL_VENDAS_VISUALIZAR',
   'LOTE_APAE',
   'INSUMOS',
   'FISCAIS_STATUS',
@@ -26,20 +23,34 @@ export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
   'NOTIFICACOES',
   'ALERTAS_FILA',
   'NORMATIVAS',
+]);
+
+/** Funcionalidades do SUPERVISOR: fiscal + vendas/indicadores/importações/quebra. */
+export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
+  ...FUNCIONALIDADES_FISCAL,
+  'IMPORTACOES',
+  'INDICADORES_VISUALIZAR',
+  'PAINEL_VENDAS_VISUALIZAR',
   'INDICADOR_QUEBRA',
 ]);
 
 const FUNCIONALIDADES_FISCAL_SET = new Set<string>(FUNCIONALIDADES_FISCAL);
+const FUNCIONALIDADES_SUPERVISOR_SET = new Set<string>(
+  FUNCIONALIDADES_SUPERVISOR,
+);
 
 /**
  * Decide se um perfil pode acessar uma funcionalidade (Req 7.2):
- * - GERENTE: sempre autorizado (acesso total) — Req 7.2.2.
- * - FISCAL: autorizado se e somente se a funcionalidade estiver na lista
- *   operacional — Req 7.2.3 / 7.2.4.
+ * - GERENTE: sempre autorizado (acesso total).
+ * - SUPERVISOR: autorizado se pertencer ao conjunto do supervisor.
+ * - FISCAL: autorizado se pertencer ao conjunto operacional do fiscal.
  */
 export function podeAcessar(perfil: Perfil, funcionalidade: string): boolean {
   if (perfil === 'GERENTE') {
     return true;
+  }
+  if (perfil === 'SUPERVISOR') {
+    return FUNCIONALIDADES_SUPERVISOR_SET.has(funcionalidade);
   }
   return FUNCIONALIDADES_FISCAL_SET.has(funcionalidade);
 }

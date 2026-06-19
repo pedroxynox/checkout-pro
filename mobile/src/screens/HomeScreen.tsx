@@ -34,7 +34,11 @@ export function HomeScreen({
       : derivadoDoLogin;
   const primeiroNome = nomeCompleto.split(/\s+/)[0] ?? nomeCompleto;
   const rotuloPerfil =
-    perfil === 'GERENTE' ? 'Gerente' : perfil === 'FISCAL' ? 'Fiscal' : perfil;
+    perfil === 'GERENTE'
+      ? 'Gerente'
+      : perfil === 'SUPERVISOR'
+        ? 'Supervisor'
+        : 'Fiscal';
   const nome = primeiroNome;
 
   return (

@@ -5,7 +5,7 @@
  * permaneça desacoplado, com nomes em Português alinhados ao domínio.
  */
 
-export type Perfil = 'GERENTE' | 'FISCAL';
+export type Perfil = 'GERENTE' | 'SUPERVISOR' | 'FISCAL';
 
 export interface ResultadoLogin {
   token: string;

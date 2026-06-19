@@ -9,41 +9,52 @@
  * Requisitos: 7.1 (login individual e exclusivo) e 7.2 (perfis de acesso).
  */
 
-export type Perfil = 'GERENTE' | 'FISCAL';
+export type Perfil = 'GERENTE' | 'SUPERVISOR' | 'FISCAL';
 
 /**
  * Conjunto de funcionalidades **operacionais** liberadas ao perfil FISCAL
- * (Requisito 7.2.3). O gerente possui acesso total (Requisito 7.2.2); qualquer
- * funcionalidade fora deste conjunto é considerada restrita ao gerente
- * (Requisito 7.2.4).
- *
- * A lista reflete as áreas operacionais do produto que um fiscal utiliza no
- * dia a dia (importações, indicadores/painel de vendas, lote APAE, insumos,
- * fiscais/escala, checklist e notificações). Operações administrativas —
- * cadastro de operadores, gestão de ausências, configuração de metas, cadastro
- * de escala e gestão de acessos — permanecem exclusivas do gerente.
+ * (Requisito 7.2.3): rotina diária + comunicação + seções gerais. O fiscal NÃO
+ * acessa relatórios de vendas/indicadores/importações (isso é do supervisor)
+ * nem cadastros administrativos (gerente).
  */
 export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
-  'IMPORTACOES',
-  'INDICADORES_VISUALIZAR',
-  'PAINEL_VENDAS_VISUALIZAR',
   'LOTE_APAE',
   'INSUMOS',
   'FISCAIS_STATUS',
   'ESCALA_VISUALIZAR',
   'CHECKLIST',
   'NOTIFICACOES',
+  'ALERTAS_FILA',
+  'NORMATIVAS',
+]);
+
+/**
+ * Funcionalidades liberadas ao perfil SUPERVISOR: tudo do fiscal + as áreas de
+ * vendas/indicadores/importações e o indicador de quebra. Permanecem exclusivas
+ * do gerente: cadastro de operadores e gestão de pessoas/acessos.
+ */
+export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
+  ...FUNCIONALIDADES_FISCAL,
+  'IMPORTACOES',
+  'INDICADORES_VISUALIZAR',
+  'PAINEL_VENDAS_VISUALIZAR',
+  'INDICADOR_QUEBRA',
 ]);
 
 const FUNCIONALIDADES_FISCAL_SET = new Set<string>(FUNCIONALIDADES_FISCAL);
+const FUNCIONALIDADES_SUPERVISOR_SET = new Set<string>(
+  FUNCIONALIDADES_SUPERVISOR,
+);
 
 /**
  * Decide, de forma pura, se um perfil está autorizado a usar uma
  * funcionalidade (Requisito 7.2).
  *
  * - GERENTE: sempre autorizado (acesso total) — Req 7.2.2.
+ * - SUPERVISOR: autorizado se a funcionalidade pertencer ao conjunto do
+ *   supervisor.
  * - FISCAL: autorizado **se e somente se** a funcionalidade pertencer ao
- *   conjunto de funcionalidades operacionais liberadas — Req 7.2.3 / 7.2.4.
+ *   conjunto operacional do fiscal — Req 7.2.3 / 7.2.4.
  */
 export function decidirAutorizacao(
   perfil: Perfil,
@@ -51,6 +62,9 @@ export function decidirAutorizacao(
 ): boolean {
   if (perfil === 'GERENTE') {
     return true;
+  }
+  if (perfil === 'SUPERVISOR') {
+    return FUNCIONALIDADES_SUPERVISOR_SET.has(funcionalidade);
   }
   return FUNCIONALIDADES_FISCAL_SET.has(funcionalidade);
 }

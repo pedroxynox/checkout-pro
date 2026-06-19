@@ -10,10 +10,10 @@ export class CadastrarUsuarioDto {
   @IsNotEmpty({ message: 'O nome é obrigatório.' })
   nome!: string;
 
-  @IsIn(['GERENTE', 'FISCAL'], {
-    message: 'O perfil deve ser GERENTE ou FISCAL.',
+  @IsIn(['GERENTE', 'SUPERVISOR', 'FISCAL'], {
+    message: 'O perfil deve ser GERENTE, SUPERVISOR ou FISCAL.',
   })
-  perfil!: 'GERENTE' | 'FISCAL';
+  perfil!: 'GERENTE' | 'SUPERVISOR' | 'FISCAL';
 
   @IsString()
   @MinLength(4, { message: 'A senha deve ter ao menos 4 caracteres.' })
