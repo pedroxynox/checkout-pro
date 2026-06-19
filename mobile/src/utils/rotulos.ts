@@ -95,6 +95,8 @@ export interface DefinicaoArrecadacao {
   descricao: string;
   /** Ícone (Ionicons) representando o indicador. */
   icone: string;
+  /** Mostra a lista de detalhe (operador, autorizou, motivo) — ex.: cupom. */
+  mostraDetalhe?: boolean;
 }
 
 // Espelha CONFIG_ARRECADACAO do backend (arrecadacao.domain.ts).
@@ -134,6 +136,7 @@ export const ARRECADACAO: DefinicaoArrecadacao[] = [
     sentido: 'MENOR_MELHOR',
     descricao: 'Cupons cancelados por operador. Meta de até 0,5% das vendas.',
     icone: 'receipt-outline',
+    mostraDetalhe: true,
   },
   {
     tipo: 'DEVOLUCOES',

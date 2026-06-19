@@ -49,6 +49,14 @@ export interface ItemRankingArrecadacao {
   quantidade: number | null;
 }
 
+export interface DetalheArrecadacao {
+  nome: string;
+  autorizadoPor: string | null;
+  motivo: string | null;
+  valor: number;
+  data: string;
+}
+
 function arredondar(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -81,6 +89,8 @@ export class ArrecadacaoService {
           matricula: l.matricula ?? null,
           valor: l.valor,
           quantidade: l.quantidade ?? null,
+          autorizadoPor: l.autorizadoPor ?? null,
+          motivo: l.motivo ?? null,
         })),
       }),
     ]);
@@ -229,6 +239,32 @@ export class ArrecadacaoService {
         g._sum.quantidade === null || g._sum.quantidade === undefined
           ? null
           : Number(g._sum.quantidade),
+    }));
+  }
+
+  /**
+   * Detalhe de cada lançamento no intervalo (operador, quem autorizou, motivo
+   * e valor). Útil para o cancelamento de cupom, onde o gerente quer ver cada
+   * cancelamento individualmente. Ordenado pelo maior valor.
+   */
+  async detalhes(
+    tipo: TipoArrecadacao,
+    inicio: Date,
+    fim: Date,
+  ): Promise<DetalheArrecadacao[]> {
+    const gte = inicioDoDia(inicio);
+    const lt = inicioDoProximoDia(fim);
+    const regs = await this.prisma.registroArrecadacao.findMany({
+      where: { tipo, data: { gte, lt } },
+      orderBy: { valor: 'desc' },
+      take: 300,
+    });
+    return regs.map((r) => ({
+      nome: r.nome,
+      autorizadoPor: r.autorizadoPor,
+      motivo: r.motivo,
+      valor: arredondar(Number(r.valor)),
+      data: r.data.toISOString(),
     }));
   }
 }

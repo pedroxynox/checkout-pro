@@ -8,6 +8,7 @@
  */
 import { apiClient } from '../client';
 import {
+  DetalheArrecadacao,
   ItemRankingArrecadacao,
   ResultadoUploadArrecadacao,
   ResumoArrecadacao,
@@ -56,6 +57,19 @@ export const arrecadacaoService = {
     fim: string,
   ): Promise<ItemRankingArrecadacao[]> {
     return apiClient.get<ItemRankingArrecadacao[]>('/arrecadacao/ranking', {
+      tipo,
+      inicio,
+      fim,
+    });
+  },
+
+  /** Detalhe de cada lançamento (operador, autorização, motivo, valor). */
+  detalhes(
+    tipo: TipoArrecadacao,
+    inicio: string,
+    fim: string,
+  ): Promise<DetalheArrecadacao[]> {
+    return apiClient.get<DetalheArrecadacao[]>('/arrecadacao/detalhes', {
       tipo,
       inicio,
       fim,

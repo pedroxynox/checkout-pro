@@ -164,14 +164,16 @@ model VendaDiaria {
 // apenas o essencial: nome do operador + valor, por tipo e data (dia do
 // fechamento). Alimenta os indicadores (total dia/semana/mes e ranking).
 model RegistroArrecadacao {
-  id         String   @id @default(uuid())
-  tipo       String
-  data       DateTime
-  matricula  String?
-  nome       String
-  valor      Decimal  @db.Decimal(12, 2)
-  quantidade Int?
-  criadoEm   DateTime @default(now())
+  id            String   @id @default(uuid())
+  tipo          String
+  data          DateTime
+  matricula     String?
+  nome          String
+  valor         Decimal  @db.Decimal(12, 2)
+  quantidade    Int?
+  autorizadoPor String?
+  motivo        String?
+  criadoEm      DateTime @default(now())
 
   @@index([tipo, data])
   @@map("registros_arrecadacao")

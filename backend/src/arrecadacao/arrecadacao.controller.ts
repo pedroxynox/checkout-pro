@@ -18,6 +18,7 @@ import {
 import { parseArrecadacao } from './arrecadacao.parser';
 import {
   ArrecadacaoService,
+  DetalheArrecadacao,
   ItemRankingArrecadacao,
   ResultadoUploadArrecadacao,
   ResumoArrecadacao,
@@ -62,6 +63,18 @@ export class ArrecadacaoController {
     @Query() dto: RankingArrecadacaoDto,
   ): Promise<ItemRankingArrecadacao[]> {
     return this.arrecadacaoService.ranking(
+      dto.tipo,
+      new Date(dto.inicio),
+      new Date(dto.fim),
+    );
+  }
+
+  /** Detalhe de cada lançamento (operador, autorização, motivo, valor). */
+  @Get('detalhes')
+  detalhes(
+    @Query() dto: RankingArrecadacaoDto,
+  ): Promise<DetalheArrecadacao[]> {
+    return this.arrecadacaoService.detalhes(
       dto.tipo,
       new Date(dto.inicio),
       new Date(dto.fim),

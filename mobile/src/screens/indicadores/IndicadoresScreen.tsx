@@ -14,6 +14,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { arrecadacaoService } from '../../api/services';
 import {
+  DetalheArrecadacao,
   ItemRankingArrecadacao,
   Periodo,
   ResumoArrecadacao,
@@ -200,15 +201,19 @@ function SecaoIndicador({
 }): React.ReactElement {
   const req = useRequisicao(async () => {
     const { inicio, fim } = intervaloDoPeriodo(periodo, data);
-    const [resumo, ranking] = await Promise.all([
+    const [resumo, ranking, detalhes] = await Promise.all([
       arrecadacaoService.resumo(def.tipo, data),
       arrecadacaoService.ranking(def.tipo, inicio, fim),
+      def.mostraDetalhe
+        ? arrecadacaoService.detalhes(def.tipo, inicio, fim)
+        : Promise.resolve([] as DetalheArrecadacao[]),
     ]);
-    return { resumo, ranking };
+    return { resumo, ranking, detalhes };
   }, [def.tipo, data, periodo]);
 
   const resumo = req.dados?.resumo;
   const ranking: ItemRankingArrecadacao[] = req.dados?.ranking ?? [];
+  const detalhes: DetalheArrecadacao[] = req.dados?.detalhes ?? [];
 
   const metaTexto =
     def.base === 'FIXA'
@@ -275,6 +280,42 @@ function SecaoIndicador({
               descricao="Nenhum arquivo importado neste período."
             />
           )}
+
+          {def.mostraDetalhe ? (
+            <>
+              <Text style={styles.rankingTitulo}>
+                Cancelamentos {ROTULO_PERIODO[periodo]}
+              </Text>
+              {detalhes.length > 0 ? (
+                detalhes.map((d, idx) => (
+                  <View key={`${d.nome}-${idx}`} style={styles.detalheItem}>
+                    <View style={styles.detalheTopo}>
+                      <Text style={styles.detalheNome} numberOfLines={1}>
+                        {d.nome}
+                      </Text>
+                      <Text style={styles.detalheValor}>
+                        {formatarMoeda(d.valor)}
+                      </Text>
+                    </View>
+                    {d.autorizadoPor ? (
+                      <Text style={styles.detalheLinha}>
+                        Autorizado por: {d.autorizadoPor}
+                      </Text>
+                    ) : null}
+                    {d.motivo ? (
+                      <Text style={styles.detalheLinha}>
+                        Motivo: {d.motivo}
+                      </Text>
+                    ) : null}
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.semDetalhe}>
+                  Nenhum cancelamento no período.
+                </Text>
+              )}
+            </>
+          ) : null}
         </>
       ) : null}
     </Cartao>
@@ -409,6 +450,38 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginTop: 1,
+  },
+  detalheItem: {
+    paddingVertical: espacamento.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: cores.divisor,
+  },
+  detalheTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: espacamento.sm,
+  },
+  detalheNome: {
+    ...tipografia.corpo,
+    color: cores.texto,
+    fontWeight: '600',
+    flex: 1,
+  },
+  detalheValor: {
+    ...tipografia.corpo,
+    fontWeight: '700',
+    color: cores.primaria,
+  },
+  detalheLinha: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+  },
+  semDetalhe: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    paddingVertical: espacamento.sm,
   },
 });
 

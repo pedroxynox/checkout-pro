@@ -116,6 +116,14 @@ export interface ItemRankingArrecadacao {
   quantidade: number | null;
 }
 
+export interface DetalheArrecadacao {
+  nome: string;
+  autorizadoPor: string | null;
+  motivo: string | null;
+  valor: number;
+  data: string;
+}
+
 // ----- Lote APAE (Req 2.6) -----
 export type StatusLote = 'ABERTO' | 'ENCERRADO';
 
