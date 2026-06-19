@@ -94,9 +94,9 @@ export const AREAS: Area[] = [
   {
     rota: 'Operadores',
     titulo: 'Operadores',
-    descricao: 'Cadastro, ausências e turnos',
+    descricao: 'Ausências e (gerência) cadastro de operadores',
     icone: 'id-card-outline',
-    funcionalidade: 'OPERADORES_CRUD',
+    funcionalidade: 'OPERADORES_AUSENCIAS',
   },
   {
     rota: 'Usuarios',

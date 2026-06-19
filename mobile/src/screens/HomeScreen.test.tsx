@@ -49,17 +49,18 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     expect(screen.getByText('Operadores')).toBeTruthy();
   });
 
-  it('o fiscal vê apenas as áreas operacionais (sem Operadores)', () => {
+  it('o fiscal vê as áreas operacionais, mas não a gestão de acessos', () => {
     montarAuth('FISCAL');
     render(<HomeScreen navigation={navegacaoFake()} route={{} as never} />);
 
-    // Áreas operacionais visíveis.
+    // Áreas operacionais visíveis (inclui Operadores para lançar ausências).
     expect(screen.getByText('Insumos')).toBeTruthy();
     expect(screen.getByText('Checklist')).toBeTruthy();
     expect(screen.getByText('Fiscais')).toBeTruthy();
+    expect(screen.getByText('Operadores')).toBeTruthy();
 
-    // Área restrita ao gerente não aparece para o fiscal (Req 7.2.4).
-    expect(screen.queryByText('Operadores')).toBeNull();
+    // Área restrita ao gerente (gestão de pessoas/acessos) não aparece.
+    expect(screen.queryByText('Pessoas e Acessos')).toBeNull();
   });
 
   it('navega para a rota da área ao tocar no cartão', () => {

@@ -26,19 +26,21 @@ export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
   'NOTIFICACOES',
   'ALERTAS_FILA',
   'NORMATIVAS',
-]);
-
-/**
- * Funcionalidades liberadas ao perfil SUPERVISOR: tudo do fiscal + as áreas de
- * vendas/indicadores/importações e o indicador de quebra. Permanecem exclusivas
- * do gerente: cadastro de operadores e gestão de pessoas/acessos.
- */
-export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
-  ...FUNCIONALIDADES_FISCAL,
   'IMPORTACOES',
   'INDICADORES_VISUALIZAR',
   'PAINEL_VENDAS_VISUALIZAR',
   'INDICADOR_QUEBRA',
+  'OPERADORES_AUSENCIAS',
+]);
+
+/**
+ * Funcionalidades liberadas ao perfil SUPERVISOR: tudo do fiscal + o cadastro
+ * de operadores. Permanece exclusiva do gerente a gestão de pessoas/acessos
+ * (USUARIOS_CRUD).
+ */
+export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
+  ...FUNCIONALIDADES_FISCAL,
+  'OPERADORES_CRUD',
 ]);
 
 const FUNCIONALIDADES_FISCAL_SET = new Set<string>(FUNCIONALIDADES_FISCAL);

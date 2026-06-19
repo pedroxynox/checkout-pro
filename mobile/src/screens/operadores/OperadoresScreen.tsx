@@ -25,6 +25,7 @@ import {
   Tela,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
+import { useAuth } from '../../auth/AuthContext';
 import { cores, espacamento, tipografia } from '../../theme';
 import { formatarData, hojeISO } from '../../utils/formato';
 
@@ -44,6 +45,10 @@ function inicioDoMesISO(): string {
 
 export function OperadoresScreen(): React.ReactElement {
   const operadores = useRequisicao(() => operadoresService.listar(), []);
+  const { podeAcessar } = useAuth();
+  // Cadastro/edição de operadores é restrito a supervisor/gerente; o fiscal
+  // pode lançar ausências e ver a lista.
+  const podeCadastrar = podeAcessar('OPERADORES_CRUD');
 
   const [dia, setDia] = useState(hojeISO());
   const [novoNome, setNovoNome] = useState('');
@@ -181,15 +186,17 @@ export function OperadoresScreen(): React.ReactElement {
         />
       </Cartao>
 
-      <Cartao titulo="Cadastrar operador">
-        <CampoTexto
-          rotulo="Nome"
-          value={novoNome}
-          onChangeText={setNovoNome}
-          placeholder="Nome do operador"
-        />
-        <Botao titulo="Cadastrar" aoPressionar={cadastrar} carregando={salvando} />
-      </Cartao>
+      {podeCadastrar ? (
+        <Cartao titulo="Cadastrar operador">
+          <CampoTexto
+            rotulo="Nome"
+            value={novoNome}
+            onChangeText={setNovoNome}
+            placeholder="Nome do operador"
+          />
+          <Botao titulo="Cadastrar" aoPressionar={cadastrar} carregando={salvando} />
+        </Cartao>
+      ) : null}
 
       <Text style={styles.tituloSecao}>Operadores</Text>
       {operadores.carregando ? (
@@ -223,15 +230,17 @@ export function OperadoresScreen(): React.ReactElement {
                     {op.nome}
                   </Text>
                   <View style={styles.opAcoes}>
-                    <Ionicons
-                      name="create-outline"
-                      size={20}
-                      color={cores.primaria}
-                      onPress={() => {
-                        setEditandoId(op.id);
-                        setNomeEditado(op.nome);
-                      }}
-                    />
+                    {podeCadastrar ? (
+                      <Ionicons
+                        name="create-outline"
+                        size={20}
+                        color={cores.primaria}
+                        onPress={() => {
+                          setEditandoId(op.id);
+                          setNomeEditado(op.nome);
+                        }}
+                      />
+                    ) : null}
                     <Ionicons
                       name="calendar-clear-outline"
                       size={20}

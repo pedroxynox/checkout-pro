@@ -113,11 +113,11 @@ export function AppNavigator(): React.ReactElement {
           options={{ title: 'Checklist' }}
         />
       )}
-      {podeAcessar('OPERADORES_CRUD') && (
+      {podeAcessar('OPERADORES_AUSENCIAS') && (
         <Stack.Screen
           name="Operadores"
           component={OperadoresScreen}
-          options={{ title: 'Operadores' }}
+          options={{ title: 'Operadores e Ausências' }}
         />
       )}
       {podeAcessar('USUARIOS_CRUD') && (

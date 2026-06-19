@@ -38,8 +38,9 @@ export class OperadoresController {
     return this.operadoresService.cadastrar(dto.nome);
   }
 
-  /** Lista os operadores cadastrados (Req 6.1.5). */
+  /** Lista os operadores cadastrados (Req 6.1.5). Liberado a quem lança ausências. */
   @Get()
+  @Funcionalidade('OPERADORES_AUSENCIAS')
   async listar(): Promise<Operador[]> {
     return this.operadoresService.listar();
   }
@@ -55,6 +56,7 @@ export class OperadoresController {
 
   /** Registra uma ausência de uma pessoa numa data (Req 6.2.1–6.2.3). */
   @Post('ausencias')
+  @Funcionalidade('OPERADORES_AUSENCIAS')
   async registrarAusencia(
     @Body() dto: RegistrarAusenciaDto,
   ): Promise<Ausencia> {
@@ -66,6 +68,7 @@ export class OperadoresController {
 
   /** Remove uma ausência registrada (Req 6.2.4). */
   @Delete('ausencias/:id')
+  @Funcionalidade('OPERADORES_AUSENCIAS')
   @HttpCode(HttpStatus.NO_CONTENT)
   async removerAusencia(@Param('id') id: string): Promise<void> {
     await this.operadoresService.removerAusencia(id);
@@ -73,6 +76,7 @@ export class OperadoresController {
 
   /** Relatório de ausências por pessoa, filtrado e ordenado (Req 6.3). */
   @Get('ausencias/relatorio')
+  @Funcionalidade('OPERADORES_AUSENCIAS')
   async relatorioAusencias(
     @Query() periodo: PeriodoAusenciasDto,
   ): Promise<ItemRelatorioAusencia[]> {
@@ -84,6 +88,7 @@ export class OperadoresController {
 
   /** Contagem de operadores por turno no dia/escala informado (Req 6.6). */
   @Post('contagem-turno')
+  @Funcionalidade('OPERADORES_AUSENCIAS')
   @HttpCode(HttpStatus.OK)
   contagemPorTurno(@Body() dto: ContagemTurnoDto): ContagemTurno {
     return this.operadoresService.contagemPorTurno(

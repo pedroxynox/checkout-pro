@@ -23,15 +23,17 @@ export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
   'NOTIFICACOES',
   'ALERTAS_FILA',
   'NORMATIVAS',
-]);
-
-/** Funcionalidades do SUPERVISOR: fiscal + vendas/indicadores/importações/quebra. */
-export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
-  ...FUNCIONALIDADES_FISCAL,
   'IMPORTACOES',
   'INDICADORES_VISUALIZAR',
   'PAINEL_VENDAS_VISUALIZAR',
   'INDICADOR_QUEBRA',
+  'OPERADORES_AUSENCIAS',
+]);
+
+/** Funcionalidades do SUPERVISOR: tudo do fiscal + cadastro de operadores. */
+export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
+  ...FUNCIONALIDADES_FISCAL,
+  'OPERADORES_CRUD',
 ]);
 
 const FUNCIONALIDADES_FISCAL_SET = new Set<string>(FUNCIONALIDADES_FISCAL);
