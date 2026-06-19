@@ -44,25 +44,28 @@ function slugLogin(nome: string): string {
 
 interface SeedFiscal {
   nome: string;
+  matricula: string;
   turno: TurnoFiscal;
   especial?: boolean;
 }
 
+// Fiscais cadastradas com matrícula (login por matrícula). A senha inicial é a
+// própria matrícula (pode ser alterada depois).
 const FISCAIS: SeedFiscal[] = [
   // Turno de abertura (Req 6.4.2)
-  { nome: 'Carmen Felicia', turno: TurnoFiscal.ABERTURA },
-  { nome: 'Fabiana Sirlei Sarafim', turno: TurnoFiscal.ABERTURA },
+  { nome: 'Carmen Felicia Moreno', matricula: '232150', turno: TurnoFiscal.ABERTURA },
+  { nome: 'Fabiana Sirley Sarafim', matricula: '243183', turno: TurnoFiscal.ABERTURA },
   // Josiane Cardoso possui escala especial individual (Req 6.4.8)
-  { nome: 'Josiane Cardoso', turno: TurnoFiscal.ABERTURA, especial: true },
+  { nome: 'Josiane Cardoso da Silva', matricula: '227315', turno: TurnoFiscal.ABERTURA, especial: true },
   // Turno intermediário (Req 6.4.3)
-  { nome: 'Sheila Vieira', turno: TurnoFiscal.INTERMEDIARIO },
-  { nome: 'Auri Nellys Coronado de Garcia', turno: TurnoFiscal.INTERMEDIARIO },
-  { nome: 'Raquel Silva de Oliveira Beneton', turno: TurnoFiscal.INTERMEDIARIO },
+  { nome: 'Sheila Vieira', matricula: '234958', turno: TurnoFiscal.INTERMEDIARIO },
+  { nome: 'Auri Nellys Coronado De Garcia', matricula: '232849', turno: TurnoFiscal.INTERMEDIARIO },
+  { nome: 'Raquel Silve De Oliveira Beneton', matricula: '248011', turno: TurnoFiscal.INTERMEDIARIO },
   // Turno de fechamento (Req 6.4.4)
-  { nome: 'Karen Barro', turno: TurnoFiscal.FECHAMENTO },
-  { nome: 'Betzabeth Elisa Castellano Reyes', turno: TurnoFiscal.FECHAMENTO },
-  { nome: 'Maryolis Alexandra Lanza Lamar', turno: TurnoFiscal.FECHAMENTO },
-  { nome: 'Yannelit Subero', turno: TurnoFiscal.FECHAMENTO },
+  { nome: 'Karen Nicholle Mendoza Barro', matricula: '223747', turno: TurnoFiscal.FECHAMENTO },
+  { nome: 'Betzabeth Elisa Castellano Reyes', matricula: '231787', turno: TurnoFiscal.FECHAMENTO },
+  { nome: 'Maryolis Alexandra Lanza Lamar', matricula: '239242', turno: TurnoFiscal.FECHAMENTO },
+  { nome: 'Yannelyt Elizabet Lopez Subero', matricula: '233902', turno: TurnoFiscal.FECHAMENTO },
 ];
 
 interface SeedGerente {
@@ -127,7 +130,9 @@ const OPERADORES: string[] = [
 
 async function seedFiscais(): Promise<void> {
   for (const f of FISCAIS) {
-    const login = slugLogin(f.nome);
+    const login = f.matricula;
+    // Senha inicial = a própria matrícula (login por matrícula).
+    const senhaHash = await bcrypt.hash(f.matricula, 10);
     // Usuário individual e único por fiscal (Req 6.4.11, 7.1.4).
     const usuario = await prisma.usuario.upsert({
       where: { login },
@@ -135,7 +140,7 @@ async function seedFiscais(): Promise<void> {
       create: {
         login,
         nome: f.nome,
-        senhaHash: senhaHashInicial,
+        senhaHash,
         perfil: Perfil.FISCAL,
       },
     });
