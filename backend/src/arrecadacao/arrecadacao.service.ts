@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { LinhaArrecadacao } from './arrecadacao.parser';
 import {
   CONFIG_ARRECADACAO,
@@ -71,7 +72,12 @@ function arredondar(n: number): number {
  */
 @Injectable()
 export class ArrecadacaoService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(ArrecadacaoService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificacoes: NotificacoesService,
+  ) {}
 
   /** Substitui os lançamentos do tipo no dia informado pelos do arquivo. */
   async importar(
@@ -81,6 +87,9 @@ export class ArrecadacaoService {
   ): Promise<ResultadoUploadArrecadacao> {
     const dia = inicioDoDia(data);
     const proximo = inicioDoProximoDia(data);
+    // Verifica se o dia já estava completo antes deste envio, para só notificar
+    // o fechamento na transição (evita avisos repetidos em reenvios).
+    const completoAntes = await this.diaCompleto(data);
     await this.prisma.$transaction([
       this.prisma.registroArrecadacao.deleteMany({
         where: { tipo, data: { gte: dia, lt: proximo } },
@@ -98,8 +107,49 @@ export class ArrecadacaoService {
         })),
       }),
     ]);
+    // Se este envio completou os 5 arquivos do dia, avisa os gerentes.
+    if (!completoAntes) {
+      const completoAgora = await this.diaCompleto(data);
+      if (completoAgora) {
+        await this.notificarFechamentoConcluido(dia);
+      }
+    }
     const total = linhas.reduce((soma, l) => soma + l.valor, 0);
     return { tipo, data: dia, quantidade: linhas.length, total: arredondar(total) };
+  }
+
+  /** Indica se todos os 5 tipos já foram enviados no dia informado. */
+  private async diaCompleto(data: Date): Promise<boolean> {
+    const status = await this.status(data);
+    return TIPOS_ARRECADACAO.every((tipo) => status[tipo] === true);
+  }
+
+  /**
+   * Notifica os gerentes que o fechamento da loja foi concluído com sucesso
+   * (todos os arquivos do dia enviados). Falhas no envio não interrompem a
+   * importação.
+   */
+  private async notificarFechamentoConcluido(dia: Date): Promise<void> {
+    try {
+      const gerentes = await this.notificacoes.loginGerencial();
+      if (gerentes.length === 0) {
+        return;
+      }
+      const dataBR = new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        timeZone: 'UTC',
+      }).format(dia);
+      await this.notificacoes.enviar(gerentes, {
+        titulo: 'Fechamento concluído',
+        mensagem: `O fechamento da loja do dia ${dataBR} foi realizado com sucesso. Todos os arquivos dos indicadores foram enviados.`,
+      });
+    } catch (erro) {
+      this.logger.error(
+        `Falha ao notificar fechamento concluído: ${(erro as Error).message}`,
+      );
+    }
   }
 
   /** Status (enviado/pendente) de cada tipo no dia informado. */
