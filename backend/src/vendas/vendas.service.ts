@@ -70,7 +70,7 @@ export class VendasService {
   }
 
   private async somar(gte: Date, lt: Date): Promise<number> {
-    const r = await this.prisma.vendaDiaria.aggregate({
+    const r = await this.prisma.vendaHora.aggregate({
       where: { data: { gte, lt } },
       _sum: { valor: true },
     });

@@ -32,7 +32,7 @@ import {
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, tipografia } from '../../theme';
-import { formatarMoeda, hojeISO } from '../../utils/formato';
+import { formatarData, formatarMoeda, hojeISO } from '../../utils/formato';
 
 type PeriodoGrafico = 'DIA' | 'SEMANA' | 'MES' | 'PERSONALIZADO';
 
@@ -237,6 +237,12 @@ export function PainelVendasScreen(): React.ReactElement {
           </>
         ) : null}
 
+        <Text style={styles.periodoTexto}>
+          {inicio === fim
+            ? `Período: ${formatarData(inicio)}`
+            : `Período: ${formatarData(inicio)} a ${formatarData(fim)}`}
+        </Text>
+
         {req.carregando ? (
           <Carregando />
         ) : req.erro ? (
@@ -323,6 +329,11 @@ const styles = StyleSheet.create({
     ...tipografia.corpo,
     fontWeight: '700',
     color: cores.primaria,
+    marginBottom: espacamento.sm,
+  },
+  periodoTexto: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
     marginBottom: espacamento.sm,
   },
 });
