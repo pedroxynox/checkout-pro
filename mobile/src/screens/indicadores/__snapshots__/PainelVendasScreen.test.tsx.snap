@@ -1057,17 +1057,46 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
             </RNSVGGroup>
           </RNSVGSvgView>
           <View
-            pointerEvents="none"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
             style={
               {
                 "alignItems": "center",
-                "bottom": 0,
+                "borderRadius": 50,
+                "height": 100,
                 "justifyContent": "center",
-                "left": 0,
-                "paddingHorizontal": 38,
+                "left": 40,
+                "paddingHorizontal": 8,
                 "position": "absolute",
-                "right": 0,
-                "top": 0,
+                "top": 40,
+                "width": 100,
               }
             }
           >

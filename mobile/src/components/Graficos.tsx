@@ -125,7 +125,10 @@ export function GraficoPizza({
             )}
           </G>
         </Svg>
-        <View style={styles.centro} pointerEvents="none">
+        <Pressable
+          style={styles.centro}
+          onPress={() => setSelecionada(null)}
+        >
           {fatiaSel ? (
             <>
               <Text style={styles.centroRotulo} numberOfLines={2}>
@@ -141,7 +144,7 @@ export function GraficoPizza({
           ) : (
             <Text style={styles.centroDica}>Toque numa fatia</Text>
           )}
-        </View>
+        </Pressable>
       </View>
       <View style={styles.legenda}>
         {fatias.map((f, i) => {
@@ -230,10 +233,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   centro: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 40,
+    left: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 38,
+    paddingHorizontal: 8,
   },
   centroRotulo: {
     ...tipografia.legenda,
