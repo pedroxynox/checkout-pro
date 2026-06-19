@@ -28,7 +28,7 @@
       "package": "center.stok.frentedecaixa",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#C8102E"
+        "backgroundColor": "#E30613"
       },
       "permissions": [
         "android.permission.CAMERA",
