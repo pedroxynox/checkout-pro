@@ -17,17 +17,17 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
     <RefreshControlMock
       colors={
         [
-          "#0B5FFF",
+          "#C8102E",
         ]
       }
       onRefresh={[Function]}
       refreshing={false}
-      tintColor="#0B5FFF"
+      tintColor="#C8102E"
     />
   }
   style={
     {
-      "backgroundColor": "#F4F6FB",
+      "backgroundColor": "#F5F5F7",
       "flex": 1,
     }
   }
@@ -44,7 +44,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
       <Text
         style={
           {
-            "color": "#5A6886",
+            "color": "#5C5C6B",
             "fontSize": 13,
             "fontWeight": "600",
             "marginBottom": 4,
@@ -58,7 +58,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
           {
             "alignItems": "center",
             "backgroundColor": "#FFFFFF",
-            "borderColor": "#DDE3EF",
+            "borderColor": "#E3E3E9",
             "borderRadius": 10,
             "borderWidth": 1,
             "flexDirection": "row",
@@ -115,13 +115,13 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
         <Text
           style={
             {
-              "color": "#11203A",
+              "color": "#1A1A1F",
               "fontSize": 15,
               "fontWeight": "600",
             }
           }
         >
-          18/06/2026
+          19/06/2026
         </Text>
         <View
           accessibilityLabel="Próximo dia"
@@ -196,7 +196,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
       <Text
         style={
           {
-            "color": "#11203A",
+            "color": "#1A1A1F",
             "fontSize": 15,
             "fontWeight": "700",
             "marginBottom": 12,
@@ -209,7 +209,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
         style={
           {
             "alignItems": "center",
-            "borderBottomColor": "#EAEEF6",
+            "borderBottomColor": "#EDEDF2",
             "borderBottomWidth": 0.5,
             "flexDirection": "row",
             "justifyContent": "space-between",
@@ -228,7 +228,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
           <Text
             style={
               {
-                "color": "#11203A",
+                "color": "#1A1A1F",
                 "fontSize": 15,
                 "fontWeight": "600",
               }
@@ -326,7 +326,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
                 "paddingHorizontal": 16,
               },
               {
-                "backgroundColor": "#E7F0FF",
+                "backgroundColor": "#FCE6EA",
               },
               false,
               false,
@@ -346,7 +346,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
                   "fontWeight": "600",
                 },
                 {
-                  "color": "#0B5FFF",
+                  "color": "#C8102E",
                 },
               ]
             }
@@ -359,7 +359,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
         style={
           {
             "alignItems": "center",
-            "borderBottomColor": "#EAEEF6",
+            "borderBottomColor": "#EDEDF2",
             "borderBottomWidth": 0.5,
             "flexDirection": "row",
             "justifyContent": "space-between",
@@ -378,7 +378,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
           <Text
             style={
               {
-                "color": "#11203A",
+                "color": "#1A1A1F",
                 "fontSize": 15,
                 "fontWeight": "600",
               }
@@ -476,7 +476,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
                 "paddingHorizontal": 16,
               },
               {
-                "backgroundColor": "#E7F0FF",
+                "backgroundColor": "#FCE6EA",
               },
               false,
               false,
@@ -496,7 +496,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
                   "fontWeight": "600",
                 },
                 {
-                  "color": "#0B5FFF",
+                  "color": "#C8102E",
                 },
               ]
             }
@@ -509,7 +509,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
         style={
           {
             "alignItems": "center",
-            "borderBottomColor": "#EAEEF6",
+            "borderBottomColor": "#EDEDF2",
             "borderBottomWidth": 0.5,
             "flexDirection": "row",
             "justifyContent": "space-between",
@@ -528,7 +528,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
           <Text
             style={
               {
-                "color": "#11203A",
+                "color": "#1A1A1F",
                 "fontSize": 15,
                 "fontWeight": "600",
               }
@@ -626,7 +626,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
                 "paddingHorizontal": 16,
               },
               {
-                "backgroundColor": "#E7F0FF",
+                "backgroundColor": "#FCE6EA",
               },
               false,
               false,
@@ -646,7 +646,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
                   "fontWeight": "600",
                 },
                 {
-                  "color": "#0B5FFF",
+                  "color": "#C8102E",
                 },
               ]
             }
@@ -659,7 +659,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
         style={
           {
             "alignItems": "center",
-            "borderBottomColor": "#EAEEF6",
+            "borderBottomColor": "#EDEDF2",
             "borderBottomWidth": 0.5,
             "flexDirection": "row",
             "justifyContent": "space-between",
@@ -678,7 +678,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
           <Text
             style={
               {
-                "color": "#11203A",
+                "color": "#1A1A1F",
                 "fontSize": 15,
                 "fontWeight": "600",
               }
@@ -776,7 +776,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
                 "paddingHorizontal": 16,
               },
               {
-                "backgroundColor": "#E7F0FF",
+                "backgroundColor": "#FCE6EA",
               },
               false,
               false,
@@ -796,7 +796,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
                   "fontWeight": "600",
                 },
                 {
-                  "color": "#0B5FFF",
+                  "color": "#C8102E",
                 },
               ]
             }
@@ -809,7 +809,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
     <Text
       style={
         {
-          "color": "#11203A",
+          "color": "#1A1A1F",
           "fontSize": 15,
           "fontWeight": "700",
           "marginBottom": 12,
@@ -858,7 +858,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
         <Text
           style={
             {
-              "color": "#11203A",
+              "color": "#1A1A1F",
               "fontSize": 15,
               "fontWeight": "700",
             }
@@ -870,7 +870,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
       <Text
         style={
           {
-            "color": "#5A6886",
+            "color": "#5C5C6B",
             "fontSize": 12,
             "fontWeight": "400",
             "marginTop": 2,
@@ -883,7 +883,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
       <Text
         style={
           {
-            "color": "#5A6886",
+            "color": "#5C5C6B",
             "fontSize": 12,
             "fontWeight": "400",
             "marginTop": 2,
