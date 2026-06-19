@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import Constants from 'expo-constants';
 import { ApiError } from '../api/client';
 import { Botao, CampoTexto } from '../components';
 import { useAuth } from '../auth/AuthContext';
@@ -28,10 +29,14 @@ export function LoginScreen(): React.ReactElement {
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
+  // Versão exibida nos créditos (major.minor), lida do app.json. Ex.: 1.0.
+  const versaoCompleta = Constants.expoConfig?.version ?? '1.0.0';
+  const versao = versaoCompleta.split('.').slice(0, 2).join('.');
+
   const aoEntrar = async () => {
     setErro(null);
     if (!login.trim() || !senha) {
-      setErro('Informe o login e a senha.');
+      setErro('Informe o usuário e a senha.');
       return;
     }
     setEnviando(true);
@@ -39,9 +44,7 @@ export function LoginScreen(): React.ReactElement {
       await entrar(login, senha);
     } catch (e) {
       if (e instanceof ApiError) {
-        setErro(
-          e.naoAutorizado ? 'Login ou senha inválidos.' : e.message,
-        );
+        setErro(e.naoAutorizado ? 'Senha incorreta.' : e.message);
       } else {
         setErro('Não foi possível entrar. Tente novamente.');
       }
@@ -68,8 +71,8 @@ export function LoginScreen(): React.ReactElement {
         <View style={styles.formulario}>
           <Text style={styles.tituloForm}>Entrar</Text>
           <CampoTexto
-            rotulo="Login"
-            placeholder="seu.login"
+            rotulo="Usuário"
+            placeholder="Digite seu usuário"
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="username"
@@ -79,7 +82,7 @@ export function LoginScreen(): React.ReactElement {
           />
           <CampoTexto
             rotulo="Senha"
-            placeholder="Sua senha"
+            placeholder="Digite sua senha"
             secureTextEntry
             autoComplete="password"
             value={senha}
@@ -98,6 +101,9 @@ export function LoginScreen(): React.ReactElement {
 
         <Text style={styles.rodape}>
           Cada usuário acessa com o seu login individual e exclusivo.
+        </Text>
+        <Text style={styles.creditos}>
+          Check-out Pro v{versao} · Desenvolvido por Pedro · 2026
         </Text>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -157,6 +163,13 @@ const styles = StyleSheet.create({
     color: cores.primariaClara,
     textAlign: 'center',
     marginTop: espacamento.xl,
+  },
+  creditos: {
+    fontSize: 11,
+    color: cores.primariaClara,
+    opacity: 0.7,
+    textAlign: 'center',
+    marginTop: espacamento.md,
   },
 });
 
