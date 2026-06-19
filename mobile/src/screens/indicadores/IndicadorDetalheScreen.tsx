@@ -9,6 +9,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle, G } from 'react-native-svg';
 import { arrecadacaoService } from '../../api/services';
 import {
   DetalheArrecadacao,
@@ -247,6 +248,118 @@ function GraficoMeta({
   );
 }
 
+/** Paleta de cores para as fatias do gráfico pizza. */
+const CORES_PIZZA = [
+  '#C8102E',
+  '#1E9E5A',
+  '#C99700',
+  '#2E6FD2',
+  '#8E44AD',
+  '#E67E22',
+  '#16A085',
+  '#7F8C8D',
+];
+
+interface FatiaPizza {
+  rotulo: string;
+  valor: number;
+  cor: string;
+}
+
+/**
+ * Monta as fatias do gráfico a partir do ranking: mostra os maiores e agrupa
+ * o restante em "Outros", para o gráfico não ficar poluído.
+ */
+function montarFatias(
+  ranking: ItemRankingArrecadacao[],
+  maximoFatias = 6,
+): FatiaPizza[] {
+  const positivos = ranking.filter((r) => r.total > 0);
+  const principais = positivos.slice(0, maximoFatias);
+  const fatias: FatiaPizza[] = principais.map((r, i) => ({
+    rotulo: r.nome,
+    valor: r.total,
+    cor: CORES_PIZZA[i % CORES_PIZZA.length],
+  }));
+  const resto = positivos.slice(maximoFatias);
+  if (resto.length > 0) {
+    fatias.push({
+      rotulo: `Outros (${resto.length})`,
+      valor: resto.reduce((s, r) => s + r.total, 0),
+      cor: CORES_PIZZA[CORES_PIZZA.length - 1],
+    });
+  }
+  return fatias;
+}
+
+/** Gráfico pizza (rosca) com legenda de participação por pessoa. */
+function GraficoPizza({
+  fatias,
+}: {
+  fatias: FatiaPizza[];
+}): React.ReactElement {
+  const total = fatias.reduce((s, f) => s + f.valor, 0);
+  const tamanho = 180;
+  const espessura = 34;
+  const raio = (tamanho - espessura) / 2;
+  const circunferencia = 2 * Math.PI * raio;
+  let acumulado = 0;
+
+  return (
+    <View style={styles.pizzaContainer}>
+      <Svg width={tamanho} height={tamanho}>
+        <G rotation={-90} originX={tamanho / 2} originY={tamanho / 2}>
+          {total > 0 ? (
+            fatias.map((f, i) => {
+              const comprimento = (f.valor / total) * circunferencia;
+              const elemento = (
+                <Circle
+                  key={`${f.rotulo}-${i}`}
+                  cx={tamanho / 2}
+                  cy={tamanho / 2}
+                  r={raio}
+                  stroke={f.cor}
+                  strokeWidth={espessura}
+                  fill="none"
+                  strokeDasharray={`${comprimento} ${circunferencia - comprimento}`}
+                  strokeDashoffset={-acumulado}
+                />
+              );
+              acumulado += comprimento;
+              return elemento;
+            })
+          ) : (
+            <Circle
+              cx={tamanho / 2}
+              cy={tamanho / 2}
+              r={raio}
+              stroke={cores.divisor}
+              strokeWidth={espessura}
+              fill="none"
+            />
+          )}
+        </G>
+      </Svg>
+      <View style={styles.legenda}>
+        {fatias.map((f, i) => {
+          const pct = total > 0 ? (f.valor / total) * 100 : 0;
+          return (
+            <View key={`${f.rotulo}-leg-${i}`} style={styles.legendaLinha}>
+              <View style={[styles.legendaPonto, { backgroundColor: f.cor }]} />
+              <Text style={styles.legendaNome} numberOfLines={1}>
+                {f.rotulo}
+              </Text>
+              <Text style={styles.legendaValor}>
+                {formatarPercentual(pct, 0)}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export function IndicadorDetalheScreen({
   route,
 }: PropsTela<'IndicadorDetalhe'>): React.ReactElement {
@@ -343,6 +456,14 @@ export function IndicadorDetalheScreen({
               />
             )}
           </Cartao>
+
+          {ranking.some((r) => r.total > 0) ? (
+            <Cartao
+              titulo={`Participação por ${def.rankingDe ?? 'operadores'}`}
+            >
+              <GraficoPizza fatias={montarFatias(ranking)} />
+            </Cartao>
+          ) : null}
 
           {def.mostraDetalhe ? (
             <Cartao titulo={`Cancelamentos ${ROTULO_PERIODO[periodo]}`}>
@@ -475,6 +596,34 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     paddingVertical: espacamento.sm,
+  },
+  pizzaContainer: {
+    alignItems: 'center',
+    gap: espacamento.md,
+  },
+  legenda: {
+    width: '100%',
+    gap: espacamento.xs,
+  },
+  legendaLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+  },
+  legendaPonto: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  legendaNome: {
+    ...tipografia.legenda,
+    color: cores.texto,
+    flex: 1,
+  },
+  legendaValor: {
+    ...tipografia.legenda,
+    color: cores.texto,
+    fontWeight: '700',
   },
 });
 
