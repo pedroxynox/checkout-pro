@@ -367,23 +367,15 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
       >
         Totais de vendas
       </Text>
-      <View
-        style={
-          {
-            "flexDirection": "row",
-            "gap": 8,
-            "justifyContent": "space-between",
-          }
-        }
-      >
+      <View>
         <View
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#F5F5F7",
-              "borderRadius": 10,
-              "flex": 1,
-              "paddingHorizontal": 4,
+              "borderBottomColor": "#EDEDF2",
+              "borderBottomWidth": 0.5,
+              "flexDirection": "row",
+              "justifyContent": "space-between",
               "paddingVertical": 8,
             }
           }
@@ -392,7 +384,7 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
             style={
               {
                 "color": "#5C5C6B",
-                "fontSize": 12,
+                "fontSize": 15,
                 "fontWeight": "400",
               }
             }
@@ -400,13 +392,15 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
             Dia
           </Text>
           <Text
+            adjustsFontSizeToFit={true}
+            numberOfLines={1}
             style={
               {
                 "color": "#1A1A1F",
-                "fontSize": 15,
+                "fontSize": 18,
                 "fontWeight": "700",
-                "marginTop": 2,
-                "textAlign": "center",
+                "maxWidth": "65%",
+                "textAlign": "right",
               }
             }
           >
@@ -417,10 +411,10 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#F5F5F7",
-              "borderRadius": 10,
-              "flex": 1,
-              "paddingHorizontal": 4,
+              "borderBottomColor": "#EDEDF2",
+              "borderBottomWidth": 0.5,
+              "flexDirection": "row",
+              "justifyContent": "space-between",
               "paddingVertical": 8,
             }
           }
@@ -429,7 +423,7 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
             style={
               {
                 "color": "#5C5C6B",
-                "fontSize": 12,
+                "fontSize": 15,
                 "fontWeight": "400",
               }
             }
@@ -437,13 +431,15 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
             Semana
           </Text>
           <Text
+            adjustsFontSizeToFit={true}
+            numberOfLines={1}
             style={
               {
                 "color": "#1A1A1F",
-                "fontSize": 15,
+                "fontSize": 18,
                 "fontWeight": "700",
-                "marginTop": 2,
-                "textAlign": "center",
+                "maxWidth": "65%",
+                "textAlign": "right",
               }
             }
           >
@@ -454,10 +450,10 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
           style={
             {
               "alignItems": "center",
-              "backgroundColor": "#F5F5F7",
-              "borderRadius": 10,
-              "flex": 1,
-              "paddingHorizontal": 4,
+              "borderBottomColor": "#EDEDF2",
+              "borderBottomWidth": 0.5,
+              "flexDirection": "row",
+              "justifyContent": "space-between",
               "paddingVertical": 8,
             }
           }
@@ -466,7 +462,7 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
             style={
               {
                 "color": "#5C5C6B",
-                "fontSize": 12,
+                "fontSize": 15,
                 "fontWeight": "400",
               }
             }
@@ -474,13 +470,15 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
             Mês
           </Text>
           <Text
+            adjustsFontSizeToFit={true}
+            numberOfLines={1}
             style={
               {
                 "color": "#1A1A1F",
-                "fontSize": 15,
+                "fontSize": 18,
                 "fontWeight": "700",
-                "marginTop": 2,
-                "textAlign": "center",
+                "maxWidth": "65%",
+                "textAlign": "right",
               }
             }
           >

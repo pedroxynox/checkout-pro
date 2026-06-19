@@ -216,15 +216,21 @@ export function PainelVendasScreen(): React.ReactElement {
         ) : req.erro ? (
           <MensagemErro mensagem={req.erro} aoTentarNovamente={req.recarregar} />
         ) : (
-          <View style={styles.totais}>
+          <View>
             {[
               { rotulo: 'Dia', valor: resumo?.totalDia ?? 0 },
               { rotulo: 'Semana', valor: resumo?.totalSemana ?? 0 },
               { rotulo: 'Mês', valor: resumo?.totalMes ?? 0 },
             ].map((t) => (
-              <View key={t.rotulo} style={styles.totalBloco}>
-                <Text style={styles.totalRotulo}>{t.rotulo}</Text>
-                <Text style={styles.totalValor}>{formatarMoeda(t.valor)}</Text>
+              <View key={t.rotulo} style={styles.totalLinha}>
+                <Text style={styles.totalLinhaRotulo}>{t.rotulo}</Text>
+                <Text
+                  style={styles.totalLinhaValor}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {formatarMoeda(t.valor)}
+                </Text>
               </View>
             ))}
           </View>
@@ -337,6 +343,25 @@ const styles = StyleSheet.create({
     color: cores.texto,
     marginTop: 2,
     textAlign: 'center',
+  },
+  totalLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: espacamento.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: cores.divisor,
+  },
+  totalLinhaRotulo: {
+    ...tipografia.corpo,
+    color: cores.textoSecundario,
+  },
+  totalLinhaValor: {
+    ...tipografia.subtitulo,
+    fontWeight: '700',
+    color: cores.texto,
+    maxWidth: '65%',
+    textAlign: 'right',
   },
   totalPeriodo: {
     ...tipografia.corpo,
