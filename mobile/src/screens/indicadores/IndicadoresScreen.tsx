@@ -101,6 +101,17 @@ function vendasDoPeriodo(
   return resumo.vendasMes;
 }
 
+function itensDoPeriodo(resumo: ResumoArrecadacao, periodo: Periodo): number {
+  if (periodo === 'DIA') return resumo.itensDia;
+  if (periodo === 'SEMANA') return resumo.itensSemana;
+  return resumo.itensMes;
+}
+
+/** Texto "N item(ns)" para a quantidade (ex.: itens cancelados). */
+function rotuloItens(q: number): string {
+  return `${q} ${q === 1 ? 'item' : 'itens'}`;
+}
+
 interface CorStatus {
   cor: string;
   fundo: string;
@@ -165,6 +176,11 @@ function LinhaTotais({
           {base === 'VENDAS' ? (
             <Text style={styles.totalPct}>
               {formatarPercentual(percentualDoPeriodo(resumo, it.periodo) ?? 0)}
+            </Text>
+          ) : null}
+          {itensDoPeriodo(resumo, it.periodo) > 0 ? (
+            <Text style={styles.totalPct}>
+              {rotuloItens(itensDoPeriodo(resumo, it.periodo))}
             </Text>
           ) : null}
         </View>
@@ -239,9 +255,16 @@ function SecaoIndicador({
                   <Text style={styles.rankingNome} numberOfLines={1}>
                     {item.nome}
                   </Text>
-                  <Text style={styles.rankingValor}>
-                    {formatarMoeda(item.total)}
-                  </Text>
+                  <View style={styles.rankingDireita}>
+                    <Text style={styles.rankingValor}>
+                      {formatarMoeda(item.total)}
+                    </Text>
+                    {item.quantidade != null ? (
+                      <Text style={styles.rankingQtd}>
+                        {rotuloItens(item.quantidade)}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
               ))}
             </View>
@@ -374,10 +397,18 @@ const styles = StyleSheet.create({
     color: cores.texto,
     flex: 1,
   },
+  rankingDireita: {
+    alignItems: 'flex-end',
+  },
   rankingValor: {
     ...tipografia.corpo,
     fontWeight: '700',
     color: cores.texto,
+  },
+  rankingQtd: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 1,
   },
 });
 

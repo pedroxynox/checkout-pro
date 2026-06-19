@@ -29,6 +29,10 @@ export interface ResumoArrecadacao {
   totalSemana: number;
   totalMes: number;
   quantidadeDia: number;
+  // Soma da quantidade (ex.: itens cancelados), quando o arquivo informa.
+  itensDia: number;
+  itensSemana: number;
+  itensMes: number;
   // Apenas para base 'VENDAS': vendas do período e o % (total / vendas * 100).
   vendasDia?: number;
   vendasSemana?: number;
@@ -41,6 +45,8 @@ export interface ResumoArrecadacao {
 export interface ItemRankingArrecadacao {
   nome: string;
   total: number;
+  /** Soma da quantidade (itens/cupons) do operador, quando informado. */
+  quantidade: number | null;
 }
 
 function arredondar(n: number): number {
@@ -74,6 +80,7 @@ export class ArrecadacaoService {
           nome: l.nome,
           matricula: l.matricula ?? null,
           valor: l.valor,
+          quantidade: l.quantidade ?? null,
         })),
       }),
     ]);
@@ -101,6 +108,19 @@ export class ArrecadacaoService {
     return arredondar(Number(r._sum.valor ?? 0));
   }
 
+  /** Soma da quantidade (itens/cupons) do tipo no intervalo. */
+  private async somarItens(
+    tipo: TipoArrecadacao,
+    gte: Date,
+    lt: Date,
+  ): Promise<number> {
+    const r = await this.prisma.registroArrecadacao.aggregate({
+      where: { tipo, data: { gte, lt } },
+      _sum: { quantidade: true },
+    });
+    return Number(r._sum.quantidade ?? 0);
+  }
+
   /** Totais do dia, da semana (seg–dom) e do mês que contêm a data. */
   async resumo(tipo: TipoArrecadacao, data: Date): Promise<ResumoArrecadacao> {
     const config = CONFIG_ARRECADACAO[tipo];
@@ -126,6 +146,22 @@ export class ArrecadacaoService {
       },
     });
 
+    const itensDia = await this.somarItens(
+      tipo,
+      inicioDoDia(data),
+      inicioDoProximoDia(data),
+    );
+    const itensSemana = await this.somarItens(
+      tipo,
+      inicioDaSemana(data),
+      inicioDaProximaSemana(data),
+    );
+    const itensMes = await this.somarItens(
+      tipo,
+      inicioDoMes(data),
+      inicioDoProximoMes(data),
+    );
+
     const base: ResumoArrecadacao = {
       tipo,
       titulo: config.titulo,
@@ -136,6 +172,9 @@ export class ArrecadacaoService {
       totalSemana,
       totalMes,
       quantidadeDia,
+      itensDia,
+      itensSemana,
+      itensMes,
     };
 
     if (config.base !== 'VENDAS') {
@@ -180,12 +219,16 @@ export class ArrecadacaoService {
     const grupos = await this.prisma.registroArrecadacao.groupBy({
       by: ['nome'],
       where: { tipo, data: { gte, lt } },
-      _sum: { valor: true },
+      _sum: { valor: true, quantidade: true },
       orderBy: { _sum: { valor: 'desc' } },
     });
     return grupos.map((g) => ({
       nome: g.nome,
       total: arredondar(Number(g._sum.valor ?? 0)),
+      quantidade:
+        g._sum.quantidade === null || g._sum.quantidade === undefined
+          ? null
+          : Number(g._sum.quantidade),
     }));
   }
 }

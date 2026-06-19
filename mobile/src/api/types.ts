@@ -99,6 +99,9 @@ export interface ResumoArrecadacao {
   totalSemana: number;
   totalMes: number;
   quantidadeDia: number;
+  itensDia: number;
+  itensSemana: number;
+  itensMes: number;
   vendasDia?: number;
   vendasSemana?: number;
   vendasMes?: number;
@@ -110,6 +113,7 @@ export interface ResumoArrecadacao {
 export interface ItemRankingArrecadacao {
   nome: string;
   total: number;
+  quantidade: number | null;
 }
 
 // ----- Lote APAE (Req 2.6) -----
