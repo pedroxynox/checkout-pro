@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
     borderBottomWidth: 1,
     borderStyle: 'dashed',
-    borderColor: cores.divisor,
+    borderColor: cores.textoSecundario,
   },
   legendaValor: {
     ...tipografia.legenda,
