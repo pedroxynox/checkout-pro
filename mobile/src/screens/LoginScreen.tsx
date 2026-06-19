@@ -61,7 +61,7 @@ export function LoginScreen(): React.ReactElement {
           <View style={styles.logo}>
             <Text style={styles.logoTexto}>SC</Text>
           </View>
-          <Text style={styles.marca}>Stok Center</Text>
+          <Text style={styles.marca}>Check-out Pro</Text>
           <Text style={styles.subtitulo}>Gestão de Frente de Caixa</Text>
         </View>
 

@@ -34,7 +34,7 @@ export function RootNavigator(): React.ReactElement {
   if (carregando) {
     return (
       <View style={{ flex: 1, backgroundColor: cores.fundo }}>
-        <Carregando texto="Carregando o Stok Center..." />
+        <Carregando texto="Carregando o Check-out Pro..." />
       </View>
     );
   }
