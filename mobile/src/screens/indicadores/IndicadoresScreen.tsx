@@ -250,7 +250,7 @@ function SecaoIndicador({
           <LinhaTotais resumo={resumo} base={def.base} />
 
           <Text style={styles.rankingTitulo}>
-            Ranking de operadores {ROTULO_PERIODO[periodo]}
+            Ranking de {def.rankingDe ?? 'operadores'} {ROTULO_PERIODO[periodo]}
           </Text>
           {ranking.length > 0 ? (
             <View>

@@ -8,11 +8,14 @@
  *   Recargas:  NROEMPRESA;LOGIN;MATRICULA;NOME;VALOR_TOTAL
  *   Cancel.:   EMPRESA;OPERACAO;COD_OPERADOR;NOME_OPERADOR;QTD_ITENS;VALOR_TOTAL
  *   Cupom:     ...;NOME_OPERADOR;...;NOME_USU_AUTORIZACAO;...;VALOR;MOTIVO;...
+ *   Devol.:    NROEMPRESA;USUARIO_LANCAMENTO;DATA_HORA;VALOR_NF;NF;NOME_CLIENTE
  *
  * O que importa é NOME + VALOR (e, quando existir, QTD = quantidade de itens,
- * NOME de quem autorizou e o MOTIVO do cancelamento). O valor usa vírgula
- * decimal (ex.: ",50" = 0,50) e é interpretado por `parseValor` (reaproveitado
- * do parser de importações).
+ * NOME de quem autorizou e o MOTIVO do cancelamento). Em devoluções o nome do
+ * fiscal vem junto com a matrícula ("243183 - Fulano"), então é extraído da
+ * coluna USUARIO_LANCAMENTO; a coluna NOME_CLIENTE é ignorada. O valor usa
+ * vírgula decimal (ex.: ",50" = 0,50) e é interpretado por `parseValor`
+ * (reaproveitado do parser de importações).
  */
 import { parseValor } from '../importacoes/importacoes.parser';
 
@@ -26,6 +29,23 @@ export interface LinhaArrecadacao {
   autorizadoPor?: string;
   /** Motivo do cancelamento (ex.: cancelamento de cupom). */
   motivo?: string;
+}
+
+/**
+ * Extrai o nome de um campo "MATRICULA - NOME" (ex.: "243183 - Fulano").
+ * Devolve o nome e, quando houver, a matrícula. Se não houver o separador,
+ * o texto inteiro é tratado como nome.
+ */
+function separarMatriculaNome(bruto: string): {
+  nome: string;
+  matricula?: string;
+} {
+  const texto = bruto.trim();
+  const m = texto.match(/^(\d+)\s*-\s*(.+)$/);
+  if (m) {
+    return { matricula: m[1].trim(), nome: m[2].trim() };
+  }
+  return { nome: texto };
 }
 
 export function parseArrecadacao(conteudo: string): LinhaArrecadacao[] {
@@ -45,15 +65,27 @@ export function parseArrecadacao(conteudo: string): LinhaArrecadacao[] {
   let idxAutoriza = -1;
   let idxMotivo = -1;
   let inicio = 0;
+  // Quando o nome vem como "MATRICULA - NOME" (ex.: devoluções).
+  let extrairDeUsuario = false;
 
   const primeira = linhas[0];
   const temCabecalho =
-    /(nome|valor|filial|login|empresa|qtd|quant|motivo|autoriza)/i.test(
+    /(nome|valor|filial|login|empresa|qtd|quant|motivo|autoriza|usuario)/i.test(
       primeira,
     );
   if (temCabecalho) {
     const colunas = primeira.split(';').map((c) => c.trim().toLowerCase());
-    const fNome = colunas.findIndex((c) => c.includes('nome'));
+    // Nome do operador/fiscal: coluna com "nome", exceto a do cliente.
+    let fNome = colunas.findIndex(
+      (c) => c.includes('nome') && !c.includes('cliente'),
+    );
+    if (fNome < 0) {
+      // Devoluções: o nome vem na coluna do usuário de lançamento.
+      fNome = colunas.findIndex(
+        (c) => c.includes('usuario') || c.includes('lancamento'),
+      );
+      extrairDeUsuario = fNome >= 0;
+    }
     const fValor = colunas.findIndex((c) => c.includes('valor'));
     const fMat = colunas.findIndex(
       (c) =>
@@ -79,12 +111,17 @@ export function parseArrecadacao(conteudo: string): LinhaArrecadacao[] {
   const registros: LinhaArrecadacao[] = [];
   for (let i = inicio; i < linhas.length; i++) {
     const colunas = linhas[i].split(';');
-    const nome = (colunas[idxNome] ?? '').trim();
     const valor = parseValor(colunas[idxValor]);
-    const matricula =
+    let nome = (colunas[idxNome] ?? '').trim();
+    let matricula =
       idxMatricula >= 0
         ? (colunas[idxMatricula] ?? '').trim() || undefined
         : undefined;
+    if (extrairDeUsuario) {
+      const sep = separarMatriculaNome(nome);
+      nome = sep.nome;
+      matricula = sep.matricula ?? matricula;
+    }
     let quantidade: number | undefined;
     if (idxQtd >= 0) {
       const bruto = (colunas[idxQtd] ?? '').trim();

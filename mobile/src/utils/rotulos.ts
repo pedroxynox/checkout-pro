@@ -97,6 +97,8 @@ export interface DefinicaoArrecadacao {
   icone: string;
   /** Mostra a lista de detalhe (operador, autorizou, motivo) — ex.: cupom. */
   mostraDetalhe?: boolean;
+  /** Quem aparece no ranking: "operadores" (padrão) ou "fiscais". */
+  rankingDe?: string;
 }
 
 // Espelha CONFIG_ARRECADACAO do backend (arrecadacao.domain.ts).
@@ -144,8 +146,9 @@ export const ARRECADACAO: DefinicaoArrecadacao[] = [
     base: 'VENDAS',
     meta: 0.05,
     sentido: 'MENOR_MELHOR',
-    descricao: 'Valor devolvido por operador. Meta de até 0,05% das vendas.',
+    descricao: 'Valor devolvido por fiscal. Meta de até 0,05% das vendas.',
     icone: 'return-down-back-outline',
+    rankingDe: 'fiscais',
   },
 ];
 

@@ -1418,7 +1418,7 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
               }
             }
           >
-            Valor devolvido por operador. Meta de até 0,05% das vendas.
+            Valor devolvido por fiscal. Meta de até 0,05% das vendas.
           </Text>
         </View>
         <View
