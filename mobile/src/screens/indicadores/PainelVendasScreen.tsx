@@ -290,11 +290,6 @@ export function PainelVendasScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  ajuda: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    marginBottom: espacamento.sm,
-  },
   notaBloqueio: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
@@ -319,30 +314,6 @@ const styles = StyleSheet.create({
   botaoEnviar: {
     minHeight: 40,
     paddingHorizontal: espacamento.lg,
-  },
-  totais: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: espacamento.sm,
-  },
-  totalBloco: {
-    flex: 1,
-    backgroundColor: cores.fundo,
-    borderRadius: 10,
-    paddingVertical: espacamento.sm,
-    paddingHorizontal: espacamento.xs,
-    alignItems: 'center',
-  },
-  totalRotulo: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-  },
-  totalValor: {
-    ...tipografia.corpo,
-    fontWeight: '700',
-    color: cores.texto,
-    marginTop: 2,
-    textAlign: 'center',
   },
   totalLinha: {
     flexDirection: 'row',

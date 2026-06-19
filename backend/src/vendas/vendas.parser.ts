@@ -65,7 +65,9 @@ export function parseVendasHora(conteudo: string): LinhaVendaHora[] {
     primeira,
   );
   if (temCabecalho) {
-    const colunas = primeira.split(separador).map((c) => c.trim().toLowerCase());
+    const colunas = primeira
+      .split(separador)
+      .map((c) => c.trim().toLowerCase());
     const fHora = colunas.findIndex((c) => c.includes('hora'));
     // Preferir a venda líquida ("liq" + "valor"); senão valor/venda/total.
     let fValor = colunas.findIndex(

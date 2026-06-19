@@ -88,8 +88,7 @@ export function parseArrecadacao(conteudo: string): LinhaArrecadacao[] {
     }
     const fValor = colunas.findIndex((c) => c.includes('valor'));
     const fMat = colunas.findIndex(
-      (c) =>
-        c.includes('login') || c.includes('matr') || c.includes('cod'),
+      (c) => c.includes('login') || c.includes('matr') || c.includes('cod'),
     );
     const fQtd = colunas.findIndex(
       (c) => c.includes('qtd') || c.includes('quant'),
@@ -139,7 +138,14 @@ export function parseArrecadacao(conteudo: string): LinhaArrecadacao[] {
         ? (colunas[idxMotivo] ?? '').trim() || undefined
         : undefined;
     if (nome !== '' && !Number.isNaN(valor)) {
-      registros.push({ nome, matricula, valor, quantidade, autorizadoPor, motivo });
+      registros.push({
+        nome,
+        matricula,
+        valor,
+        quantidade,
+        autorizadoPor,
+        motivo,
+      });
     }
   }
   return registros;

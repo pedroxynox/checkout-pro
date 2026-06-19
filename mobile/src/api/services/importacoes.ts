@@ -1,4 +1,11 @@
-/** Serviço de Importações (Req 1.x): upload, status, pendentes e histórico. */
+/**
+ * Serviço de Importações (Req 1.x): upload, status, pendentes e histórico.
+ *
+ * NOTA (manutenção): este é o fluxo ANTIGO de importação (CSV/XLSX dos 4 tipos).
+ * A UI atual de "Importações" usa `arrecadacaoService` (arquivos .txt dos
+ * indicadores). Este cliente é mantido pois os endpoints `/importacoes/*` ainda
+ * existem no backend, mas hoje NENHUMA tela o utiliza.
+ */
 import { apiClient } from '../client';
 import {
   RegistroImportacao,

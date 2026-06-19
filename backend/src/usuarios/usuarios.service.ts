@@ -33,7 +33,13 @@ export class UsuariosService {
   async listar(): Promise<UsuarioResumo[]> {
     const usuarios = await this.prisma.usuario.findMany({
       orderBy: [{ perfil: 'asc' }, { nome: 'asc' }],
-      select: { id: true, login: true, nome: true, perfil: true, criadoEm: true },
+      select: {
+        id: true,
+        login: true,
+        nome: true,
+        perfil: true,
+        criadoEm: true,
+      },
     });
     return usuarios.map((u) => ({
       id: u.id,
@@ -63,7 +69,13 @@ export class UsuariosService {
         senhaHash,
         perfil: dados.perfil,
       },
-      select: { id: true, login: true, nome: true, perfil: true, criadoEm: true },
+      select: {
+        id: true,
+        login: true,
+        nome: true,
+        perfil: true,
+        criadoEm: true,
+      },
     });
     return {
       id: u.id,

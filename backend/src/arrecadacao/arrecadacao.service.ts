@@ -115,7 +115,12 @@ export class ArrecadacaoService {
       }
     }
     const total = linhas.reduce((soma, l) => soma + l.valor, 0);
-    return { tipo, data: dia, quantidade: linhas.length, total: arredondar(total) };
+    return {
+      tipo,
+      data: dia,
+      quantidade: linhas.length,
+      total: arredondar(total),
+    };
   }
 
   /** Indica se todos os 5 tipos já foram enviados no dia informado. */
@@ -162,9 +167,7 @@ export class ArrecadacaoService {
       _count: { _all: true },
     });
     const enviados = new Set(
-      grupos
-        .filter((g) => (g._count?._all ?? 0) > 0)
-        .map((g) => g.tipo),
+      grupos.filter((g) => (g._count?._all ?? 0) > 0).map((g) => g.tipo),
     );
     const resultado = {} as StatusArrecadacao;
     for (const tipo of TIPOS_ARRECADACAO) {

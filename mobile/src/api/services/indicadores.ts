@@ -1,4 +1,11 @@
-/** Serviço de Indicadores e Painel de Vendas (Req 2.1–2.5). */
+/**
+ * Serviço de Indicadores e Painel de Vendas (Req 2.1–2.5).
+ *
+ * NOTA (manutenção): fluxo ANTIGO. As vendas hoje são tratadas por
+ * `vendasService` (vendas por hora via .txt) e os indicadores por
+ * `arrecadacaoService`. Este cliente é mantido porque os endpoints
+ * `/indicadores/*` ainda existem no backend, mas hoje NENHUMA tela o utiliza.
+ */
 import { apiClient } from '../client';
 import {
   IndicadorTipo,

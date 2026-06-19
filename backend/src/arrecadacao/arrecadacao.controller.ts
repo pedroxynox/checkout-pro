@@ -80,9 +80,7 @@ export class ArrecadacaoController {
 
   /** Detalhe de cada lançamento (operador, autorização, motivo, valor). */
   @Get('detalhes')
-  detalhes(
-    @Query() dto: RankingArrecadacaoDto,
-  ): Promise<DetalheArrecadacao[]> {
+  detalhes(@Query() dto: RankingArrecadacaoDto): Promise<DetalheArrecadacao[]> {
     return this.arrecadacaoService.detalhes(
       dto.tipo,
       new Date(dto.inicio),
