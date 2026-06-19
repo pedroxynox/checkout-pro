@@ -14,6 +14,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TextStyle,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -43,6 +44,13 @@ const VERMELHO_ESCURO = '#B3121A';
 const ESCURO = '#1B2233';
 const ROSA = '#FCE7E9';
 const CHAVE_LOGIN_SALVO = 'checkoutpro:login-lembrado';
+
+// Remove o contorno (outline) preto de foco que o navegador adiciona aos
+// inputs na versão web. Sem efeito no app nativo.
+const SEM_CONTORNO_WEB =
+  Platform.OS === 'web'
+    ? ({ outlineStyle: 'none', outlineWidth: 0 } as unknown as TextStyle)
+    : undefined;
 
 /** Atalho ilustrativo na base (abre após o login). */
 function Atalho({
@@ -166,8 +174,8 @@ export function LoginScreen(): React.ReactElement {
               <View style={styles.campoCorpo}>
                 <Text style={styles.campoRotulo}>Acesso</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="Seu login"
+                  style={[styles.input, SEM_CONTORNO_WEB]}
+                  placeholder="Usuário"
                   placeholderTextColor="#9AA0AC"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -186,8 +194,8 @@ export function LoginScreen(): React.ReactElement {
               <View style={styles.campoCorpo}>
                 <Text style={styles.campoRotulo}>Senha</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="Sua senha"
+                  style={[styles.input, SEM_CONTORNO_WEB]}
+                  placeholder="Senha"
                   placeholderTextColor="#9AA0AC"
                   secureTextEntry={!mostrarSenha}
                   autoComplete="password"
