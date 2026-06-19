@@ -10,8 +10,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
-import { importacoesService } from '../../api/services';
-import { StatusDia, TipoArquivo } from '../../api/types';
+import { arrecadacaoService, importacoesService } from '../../api/services';
+import { StatusDia, TipoArquivo, TipoArrecadacao } from '../../api/types';
 import {
   Aviso,
   Botao,
@@ -25,12 +25,17 @@ import {
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, tipografia } from '../../theme';
-import { formatarData, formatarDataHora, hojeISO } from '../../utils/formato';
-import { ROTULO_TIPO_ARQUIVO, TIPOS_ARQUIVO } from '../../utils/rotulos';
+import { formatarData, formatarDataHora, formatarMoeda, hojeISO } from '../../utils/formato';
+import {
+  ARRECADACAO,
+  ROTULO_TIPO_ARQUIVO,
+  TIPOS_ARQUIVO,
+} from '../../utils/rotulos';
 
 export function ImportacoesScreen(): React.ReactElement {
   const [data, setData] = useState(hojeISO());
   const [enviando, setEnviando] = useState<TipoArquivo | null>(null);
+  const [enviandoTxt, setEnviandoTxt] = useState<TipoArrecadacao | null>(null);
 
   const status = useRequisicao<StatusDia>(
     () => importacoesService.statusDoDia(data),
@@ -44,6 +49,41 @@ export function ImportacoesScreen(): React.ReactElement {
   const recarregarTudo = () => {
     status.recarregar();
     historico.recarregar();
+  };
+
+  const enviarTxtIndicador = async (tipo: TipoArrecadacao) => {
+    try {
+      const escolha = await DocumentPicker.getDocumentAsync({
+        type: ['text/plain', 'text/*', 'application/octet-stream', '*/*'],
+        copyToCacheDirectory: true,
+      });
+      if (escolha.canceled || !escolha.assets?.[0]) {
+        return;
+      }
+      const arquivo = escolha.assets[0];
+      setEnviandoTxt(tipo);
+      const resultado = await arrecadacaoService.upload(
+        tipo,
+        {
+          uri: arquivo.uri,
+          name: arquivo.name,
+          mimeType: arquivo.mimeType,
+        },
+        data,
+      );
+      const titulo =
+        ARRECADACAO.find((d) => d.tipo === tipo)?.titulo ?? 'Indicador';
+      Alert.alert(
+        'Arquivo importado',
+        `${titulo}: ${resultado.quantidade} operador(es), total ${formatarMoeda(resultado.total)}.`,
+      );
+    } catch (e) {
+      const msg =
+        e instanceof ApiError ? e.message : 'Falha ao enviar o arquivo.';
+      Alert.alert('Erro na importação', msg);
+    } finally {
+      setEnviandoTxt(null);
+    }
   };
 
   const enviarArquivo = async (tipo: TipoArquivo) => {
@@ -124,6 +164,35 @@ export function ImportacoesScreen(): React.ReactElement {
         )}
       </Cartao>
 
+      <Cartao titulo="Indicadores (arquivos .txt)">
+        <Text style={styles.ajudaTexto}>
+          Envie o bloc de notas de cada indicador do dia selecionado. O app
+          separa por operador e atualiza os Indicadores.
+        </Text>
+        {ARRECADACAO.map((def) => (
+          <View key={def.tipo} style={styles.linhaTipo}>
+            <View style={styles.tipoTextos}>
+              <View style={styles.tipoTituloLinha}>
+                <Ionicons
+                  name={def.icone as keyof typeof Ionicons.glyphMap}
+                  size={18}
+                  color={cores.primaria}
+                />
+                <Text style={styles.tipoNome}>{def.titulo}</Text>
+              </View>
+              <Text style={styles.tipoDescricao}>{def.descricao}</Text>
+            </View>
+            <Botao
+              titulo="Enviar"
+              variante="secundario"
+              carregando={enviandoTxt === def.tipo}
+              aoPressionar={() => void enviarTxtIndicador(def.tipo)}
+              estilo={styles.botaoEnviar}
+            />
+          </View>
+        ))}
+      </Cartao>
+
       <Text style={styles.tituloSecao}>Histórico</Text>
       {historico.carregando ? (
         <Carregando />
@@ -185,6 +254,20 @@ const styles = StyleSheet.create({
     ...tipografia.corpo,
     color: cores.texto,
     fontWeight: '600',
+  },
+  tipoTituloLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+  },
+  tipoDescricao: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  ajudaTexto: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginBottom: espacamento.sm,
   },
   botaoEnviar: {
     minHeight: 40,

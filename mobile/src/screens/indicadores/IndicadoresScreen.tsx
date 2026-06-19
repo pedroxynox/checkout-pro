@@ -1,263 +1,361 @@
 /**
- * Tela de Indicadores (Req 2.2–2.5).
+ * Tela de Indicadores (arrecadação por operador).
  *
- * Para cada um dos quatro indicadores exibe a meta oficial e classifica a cor
- * (verde/amarelo/vermelho) com base no valor atual informado e no limite
- * amarelo, consultando o backend. Inclui uma calculadora de percentual (sobre
- * vendas) e a seção de rankings de operadores/fiscais por período.
+ * Divide-se em cinco mini-seções, uma por indicador: Troco Solidário, Recargas
+ * de Celular, Cancelamento de Itens, Cancelamento de Cupom e Devoluções. Os
+ * dados vêm dos arquivos .txt que o fiscal envia em Importações.
+ *
+ * Para cada indicador exibe o total do dia/semana/mês, a meta (fixa em R$ para
+ * troco/recargas; % sobre as vendas para cancelamentos/devoluções) e o ranking
+ * de operadores no período selecionado (dia, semana ou mês).
  */
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
-import { ApiError } from '../../api/client';
-import { indicadoresService } from '../../api/services';
+import { StyleSheet, Text, View } from 'react-native';
+import { arrecadacaoService } from '../../api/services';
 import {
-  IndicadorTipo,
-  RankingItem,
-  StatusCor,
-  TipoRankingOperador,
+  ItemRankingArrecadacao,
+  Periodo,
+  ResumoArrecadacao,
 } from '../../api/types';
 import {
-  Botao,
-  CampoTexto,
+  Carregando,
   Cartao,
   EstadoVazio,
   MensagemErro,
   Segmentado,
+  Selo,
   SeletorData,
-  StatusBadge,
   Tela,
 } from '../../components';
+import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, tipografia } from '../../theme';
-import { formatarMoeda, formatarPercentual } from '../../utils/formato';
-import { DefinicaoIndicador, INDICADORES } from '../../utils/rotulos';
+import {
+  formatarMoeda,
+  formatarPercentual,
+  hojeISO,
+} from '../../utils/formato';
+import { ARRECADACAO, DefinicaoArrecadacao } from '../../utils/rotulos';
 
-function numero(texto: string): number {
-  return Number(texto.replace(/\./g, '').replace(',', '.'));
+const OPCOES_PERIODO: { valor: Periodo; rotulo: string }[] = [
+  { valor: 'DIA', rotulo: 'Dia' },
+  { valor: 'SEMANA', rotulo: 'Semana' },
+  { valor: 'MES', rotulo: 'Mês' },
+];
+
+const ROTULO_PERIODO: Record<Periodo, string> = {
+  DIA: 'no dia',
+  SEMANA: 'na semana',
+  MES: 'no mês',
+};
+
+function iso(data: Date): string {
+  return data.toISOString().slice(0, 10);
 }
 
-function CalculadoraPercentual(): React.ReactElement {
-  const [indicadorTotal, setIndicadorTotal] = useState('');
-  const [vendasTotal, setVendasTotal] = useState('');
-  const [resultado, setResultado] = useState<number | null>(null);
-  const [calculando, setCalculando] = useState(false);
+/** Intervalo [início, fim] (ISO) do período que contém a data informada. */
+function intervaloDoPeriodo(
+  periodo: Periodo,
+  dataISO: string,
+): { inicio: string; fim: string } {
+  const d = new Date(`${dataISO}T00:00:00.000Z`);
+  if (periodo === 'DIA') {
+    return { inicio: dataISO, fim: dataISO };
+  }
+  if (periodo === 'SEMANA') {
+    const dow = d.getUTCDay(); // 0=domingo
+    const diff = dow === 0 ? -6 : 1 - dow;
+    const ini = new Date(d);
+    ini.setUTCDate(d.getUTCDate() + diff);
+    const fim = new Date(ini);
+    fim.setUTCDate(ini.getUTCDate() + 6);
+    return { inicio: iso(ini), fim: iso(fim) };
+  }
+  // MES
+  const ini = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+  const fim = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+  return { inicio: iso(ini), fim: iso(fim) };
+}
 
-  const calcular = async () => {
-    setCalculando(true);
-    try {
-      const { percentual } = await indicadoresService.percentual(
-        numero(indicadorTotal),
-        numero(vendasTotal),
-      );
-      setResultado(percentual);
-    } catch (e) {
-      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao calcular.');
-    } finally {
-      setCalculando(false);
+function totalDoPeriodo(resumo: ResumoArrecadacao, periodo: Periodo): number {
+  if (periodo === 'DIA') return resumo.totalDia;
+  if (periodo === 'SEMANA') return resumo.totalSemana;
+  return resumo.totalMes;
+}
+
+function percentualDoPeriodo(
+  resumo: ResumoArrecadacao,
+  periodo: Periodo,
+): number | undefined {
+  if (periodo === 'DIA') return resumo.percentualDia;
+  if (periodo === 'SEMANA') return resumo.percentualSemana;
+  return resumo.percentualMes;
+}
+
+function vendasDoPeriodo(
+  resumo: ResumoArrecadacao,
+  periodo: Periodo,
+): number | undefined {
+  if (periodo === 'DIA') return resumo.vendasDia;
+  if (periodo === 'SEMANA') return resumo.vendasSemana;
+  return resumo.vendasMes;
+}
+
+interface CorStatus {
+  cor: string;
+  fundo: string;
+  rotulo: string;
+}
+
+/** Avalia a cor (verde/amarelo/vermelho) do indicador no período. */
+function avaliarCor(
+  def: DefinicaoArrecadacao,
+  resumo: ResumoArrecadacao,
+  periodo: Periodo,
+): CorStatus {
+  if (def.base === 'FIXA') {
+    const total = totalDoPeriodo(resumo, periodo);
+    if (total >= def.meta) {
+      return { cor: cores.verde, fundo: cores.verdeFundo, rotulo: 'Meta batida' };
     }
-  };
-
-  return (
-    <Cartao titulo="Calculadora de percentual">
-      <CampoTexto
-        rotulo="Total do indicador (R$)"
-        keyboardType="decimal-pad"
-        value={indicadorTotal}
-        onChangeText={setIndicadorTotal}
-        placeholder="0,00"
-      />
-      <CampoTexto
-        rotulo="Total de vendas (R$)"
-        keyboardType="decimal-pad"
-        value={vendasTotal}
-        onChangeText={setVendasTotal}
-        placeholder="0,00"
-      />
-      <Botao titulo="Calcular" aoPressionar={calcular} carregando={calculando} />
-      {resultado !== null ? (
-        <Text style={styles.resultado}>
-          Percentual sobre vendas: {formatarPercentual(resultado)}
-        </Text>
-      ) : null}
-    </Cartao>
-  );
+    if (total >= def.meta * 0.75) {
+      return { cor: cores.amarelo, fundo: cores.amareloFundo, rotulo: 'Quase lá' };
+    }
+    return { cor: cores.vermelho, fundo: cores.vermelhoFundo, rotulo: 'Abaixo' };
+  }
+  // Base VENDAS (menor é melhor): compara o % com a meta.
+  const vendas = vendasDoPeriodo(resumo, periodo) ?? 0;
+  if (vendas <= 0) {
+    return {
+      cor: cores.textoSecundario,
+      fundo: cores.divisor,
+      rotulo: 'Sem vendas',
+    };
+  }
+  const pct = percentualDoPeriodo(resumo, periodo) ?? 0;
+  if (pct <= def.meta) {
+    return { cor: cores.verde, fundo: cores.verdeFundo, rotulo: 'Dentro da meta' };
+  }
+  if (pct <= def.meta * 1.5) {
+    return { cor: cores.amarelo, fundo: cores.amareloFundo, rotulo: 'Atenção' };
+  }
+  return { cor: cores.vermelho, fundo: cores.vermelhoFundo, rotulo: 'Acima da meta' };
 }
 
-function IndicadorCard({
-  def,
+function LinhaTotais({
+  resumo,
+  base,
 }: {
-  def: DefinicaoIndicador;
+  resumo: ResumoArrecadacao;
+  base: 'FIXA' | 'VENDAS';
 }): React.ReactElement {
-  const [valor, setValor] = useState('');
-  const [limiteAmarelo, setLimiteAmarelo] = useState(
-    String(def.limiteAmareloPadrao).replace('.', ','),
+  const itens: { rotulo: string; periodo: Periodo }[] = [
+    { rotulo: 'Dia', periodo: 'DIA' },
+    { rotulo: 'Semana', periodo: 'SEMANA' },
+    { rotulo: 'Mês', periodo: 'MES' },
+  ];
+  return (
+    <View style={styles.totais}>
+      {itens.map((it) => (
+        <View key={it.periodo} style={styles.totalBloco}>
+          <Text style={styles.totalRotulo}>{it.rotulo}</Text>
+          <Text style={styles.totalValor}>
+            {formatarMoeda(totalDoPeriodo(resumo, it.periodo))}
+          </Text>
+          {base === 'VENDAS' ? (
+            <Text style={styles.totalPct}>
+              {formatarPercentual(percentualDoPeriodo(resumo, it.periodo) ?? 0)}
+            </Text>
+          ) : null}
+        </View>
+      ))}
+    </View>
   );
-  const [cor, setCor] = useState<StatusCor | null>(null);
-  const [avaliando, setAvaliando] = useState(false);
+}
 
-  const metaFmt =
-    def.unidade === '%' ? formatarPercentual(def.meta) : formatarMoeda(def.meta);
+function SecaoIndicador({
+  def,
+  data,
+  periodo,
+}: {
+  def: DefinicaoArrecadacao;
+  data: string;
+  periodo: Periodo;
+}): React.ReactElement {
+  const req = useRequisicao(async () => {
+    const { inicio, fim } = intervaloDoPeriodo(periodo, data);
+    const [resumo, ranking] = await Promise.all([
+      arrecadacaoService.resumo(def.tipo, data),
+      arrecadacaoService.ranking(def.tipo, inicio, fim),
+    ]);
+    return { resumo, ranking };
+  }, [def.tipo, data, periodo]);
 
-  const avaliar = async () => {
-    setAvaliando(true);
-    try {
-      const resp = await indicadoresService.cor(
-        def.tipo as IndicadorTipo,
-        numero(valor),
-        numero(limiteAmarelo),
-      );
-      setCor(resp.cor);
-    } catch (e) {
-      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao avaliar.');
-    } finally {
-      setAvaliando(false);
-    }
-  };
+  const resumo = req.dados?.resumo;
+  const ranking: ItemRankingArrecadacao[] = req.dados?.ranking ?? [];
+
+  const metaTexto =
+    def.base === 'FIXA'
+      ? `Meta: ${formatarMoeda(def.meta)} (fixa)`
+      : `Meta: até ${formatarPercentual(def.meta)} das vendas`;
 
   return (
     <Cartao>
-      <View style={styles.indCabecalho}>
-        <Text style={styles.indTitulo}>{def.titulo}</Text>
-        {cor ? <StatusBadge status={cor} /> : null}
-      </View>
-      <Text style={styles.indMeta}>
-        Meta: {metaFmt} ·{' '}
-        {def.sentido === 'MENOR_MELHOR' ? 'menor é melhor' : 'maior é melhor'}
-      </Text>
-      <CampoTexto
-        rotulo={def.unidade === '%' ? 'Valor atual (%)' : 'Valor atual (R$)'}
-        keyboardType="decimal-pad"
-        value={valor}
-        onChangeText={setValor}
-        placeholder="0,00"
-      />
-      <CampoTexto
-        rotulo={`Limite amarelo (${def.unidade === '%' ? '%' : 'R$'})`}
-        keyboardType="decimal-pad"
-        value={limiteAmarelo}
-        onChangeText={setLimiteAmarelo}
-      />
-      <Botao
-        titulo="Avaliar cor"
-        variante="secundario"
-        aoPressionar={avaliar}
-        carregando={avaliando}
-      />
-    </Cartao>
-  );
-}
-
-const OPCOES_RANKING: { valor: TipoRankingOperador | 'DEVOLUCOES'; rotulo: string }[] = [
-  { valor: 'CANCELAMENTO', rotulo: 'Cancel.' },
-  { valor: 'TROCO', rotulo: 'Troco' },
-  { valor: 'RECARGA', rotulo: 'Recarga' },
-  { valor: 'DEVOLUCOES', rotulo: 'Devol.' },
-];
-
-function inicioDoMesISO(): string {
-  const d = new Date();
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1))
-    .toISOString()
-    .slice(0, 10);
-}
-
-function SecaoRankings(): React.ReactElement {
-  const [tipo, setTipo] = useState<TipoRankingOperador | 'DEVOLUCOES'>(
-    'CANCELAMENTO',
-  );
-  const [inicio, setInicio] = useState(inicioDoMesISO());
-  const [fim, setFim] = useState(new Date().toISOString().slice(0, 10));
-  const [itens, setItens] = useState<RankingItem[] | null>(null);
-  const [carregando, setCarregando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
-  const buscar = async () => {
-    setCarregando(true);
-    setErro(null);
-    try {
-      const resultado =
-        tipo === 'DEVOLUCOES'
-          ? await indicadoresService.rankingFiscais(inicio, fim)
-          : await indicadoresService.rankingOperadores(tipo, inicio, fim);
-      setItens(resultado);
-    } catch (e) {
-      setErro(e instanceof ApiError ? e.message : 'Falha ao buscar ranking.');
-    } finally {
-      setCarregando(false);
-    }
-  };
-
-  return (
-    <Cartao titulo="Rankings">
-      <Segmentado
-        opcoes={OPCOES_RANKING}
-        selecionado={tipo}
-        aoSelecionar={(v) => setTipo(v)}
-      />
-      <SeletorData valor={inicio} aoMudar={setInicio} rotulo="Início" />
-      <SeletorData valor={fim} aoMudar={setFim} rotulo="Fim" />
-      <Botao titulo="Gerar ranking" aoPressionar={buscar} carregando={carregando} />
-      {erro ? <MensagemErro mensagem={erro} /> : null}
-      {itens && itens.length > 0 ? (
-        <View style={styles.ranking}>
-          {itens.map((item, idx) => (
-            <View key={item.pessoaId} style={styles.rankingLinha}>
-              <Text style={styles.rankingPos}>{idx + 1}º</Text>
-              <Text style={styles.rankingNome} numberOfLines={1}>
-                {item.pessoaId}
-              </Text>
-              <Text style={styles.rankingValor}>{formatarMoeda(item.total)}</Text>
-            </View>
-          ))}
+      <View style={styles.cabecalho}>
+        <View style={styles.cabecalhoTitulo}>
+          <Ionicons
+            name={def.icone as keyof typeof Ionicons.glyphMap}
+            size={20}
+            color={cores.primaria}
+          />
+          <Text style={styles.titulo}>{def.titulo}</Text>
         </View>
-      ) : itens ? (
-        <EstadoVazio
-          icone="trophy-outline"
-          titulo="Sem dados"
-          descricao="Nenhum registro no período selecionado."
-        />
+        {resumo ? (
+          (() => {
+            const c = avaliarCor(def, resumo, periodo);
+            return <Selo texto={c.rotulo} cor={c.cor} fundo={c.fundo} />;
+          })()
+        ) : null}
+      </View>
+      <Text style={styles.descricao}>{def.descricao}</Text>
+      <Text style={styles.meta}>{metaTexto}</Text>
+
+      {req.carregando ? (
+        <Carregando />
+      ) : req.erro ? (
+        <MensagemErro mensagem={req.erro} aoTentarNovamente={req.recarregar} />
+      ) : resumo ? (
+        <>
+          <LinhaTotais resumo={resumo} base={def.base} />
+
+          <Text style={styles.rankingTitulo}>
+            Ranking de operadores {ROTULO_PERIODO[periodo]}
+          </Text>
+          {ranking.length > 0 ? (
+            <View>
+              {ranking.map((item, idx) => (
+                <View key={`${item.nome}-${idx}`} style={styles.rankingLinha}>
+                  <Text style={styles.rankingPos}>{idx + 1}º</Text>
+                  <Text style={styles.rankingNome} numberOfLines={1}>
+                    {item.nome}
+                  </Text>
+                  <Text style={styles.rankingValor}>
+                    {formatarMoeda(item.total)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <EstadoVazio
+              icone="trophy-outline"
+              titulo="Sem dados"
+              descricao="Nenhum arquivo importado neste período."
+            />
+          )}
+        </>
       ) : null}
     </Cartao>
   );
 }
 
 export function IndicadoresScreen(): React.ReactElement {
+  const [data, setData] = useState(hojeISO());
+  const [periodo, setPeriodo] = useState<Periodo>('DIA');
+
   return (
     <Tela>
-      <CalculadoraPercentual />
-      {INDICADORES.map((def) => (
-        <IndicadorCard key={def.tipo} def={def} />
+      <Cartao>
+        <SeletorData valor={data} aoMudar={setData} rotulo="Data de referência" />
+        <Text style={styles.periodoRotulo}>Período do ranking</Text>
+        <Segmentado
+          opcoes={OPCOES_PERIODO}
+          selecionado={periodo}
+          aoSelecionar={setPeriodo}
+        />
+      </Cartao>
+
+      {ARRECADACAO.map((def) => (
+        <SecaoIndicador
+          key={def.tipo}
+          def={def}
+          data={data}
+          periodo={periodo}
+        />
       ))}
-      <SecaoRankings />
     </Tela>
   );
 }
 
 const styles = StyleSheet.create({
-  resultado: {
-    ...tipografia.corpo,
-    fontWeight: '700',
-    color: cores.primaria,
-    marginTop: espacamento.md,
-    textAlign: 'center',
+  periodoRotulo: {
+    ...tipografia.rotulo,
+    color: cores.textoSecundario,
+    marginTop: espacamento.sm,
+    marginBottom: espacamento.xs,
   },
-  indCabecalho: {
+  cabecalho: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: espacamento.xs,
   },
-  indTitulo: {
-    ...tipografia.secao,
-    color: cores.texto,
+  cabecalhoTitulo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
     flex: 1,
   },
-  indMeta: {
+  titulo: {
+    ...tipografia.secao,
+    color: cores.texto,
+    flexShrink: 1,
+  },
+  descricao: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
+  },
+  meta: {
+    ...tipografia.legenda,
+    color: cores.primaria,
+    fontWeight: '700',
+    marginTop: 2,
+    marginBottom: espacamento.sm,
+  },
+  totais: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: espacamento.sm,
     marginBottom: espacamento.md,
   },
-  ranking: {
-    marginTop: espacamento.md,
+  totalBloco: {
+    flex: 1,
+    backgroundColor: cores.fundo,
+    borderRadius: 10,
+    paddingVertical: espacamento.sm,
+    paddingHorizontal: espacamento.xs,
+    alignItems: 'center',
+  },
+  totalRotulo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  totalValor: {
+    ...tipografia.corpo,
+    fontWeight: '700',
+    color: cores.texto,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  totalPct: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+  },
+  rankingTitulo: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    fontWeight: '700',
+    marginBottom: espacamento.xs,
   },
   rankingLinha: {
     flexDirection: 'row',

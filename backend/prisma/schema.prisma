@@ -159,6 +159,23 @@ model VendaDiaria {
   @@map("vendas_diarias")
 }
 
+// Registro de arrecadacao/lancamento por operador, vindo dos arquivos .txt que
+// o fiscal sobe (troco solidario, recargas, cancelamentos, devolucoes). Guarda
+// apenas o essencial: nome do operador + valor, por tipo e data (dia do
+// fechamento). Alimenta os indicadores (total dia/semana/mes e ranking).
+model RegistroArrecadacao {
+  id        String   @id @default(uuid())
+  tipo      String
+  data      DateTime
+  matricula String?
+  nome      String
+  valor     Decimal  @db.Decimal(12, 2)
+  criadoEm  DateTime @default(now())
+
+  @@index([tipo, data])
+  @@map("registros_arrecadacao")
+}
+
 model LoteApae {
   id                String     @id @default(uuid())
   quantidadeInicial Int

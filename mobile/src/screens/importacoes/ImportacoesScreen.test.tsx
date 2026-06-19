@@ -14,6 +14,11 @@ jest.mock('../../api/services', () => ({
     historico: jest.fn(),
     upload: jest.fn(),
   },
+  arrecadacaoService: {
+    upload: jest.fn(),
+    resumo: jest.fn(),
+    ranking: jest.fn(),
+  },
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires

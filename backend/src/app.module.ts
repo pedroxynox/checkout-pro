@@ -12,6 +12,7 @@ import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
 import { AcessosModule } from './acessos/acessos.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
+import { ArrecadacaoModule } from './arrecadacao/arrecadacao.module';
 import { OperadoresModule } from './operadores/operadores.module';
 import { ImportacoesModule } from './importacoes/importacoes.module';
 import { IndicadoresModule } from './indicadores/indicadores.module';
@@ -33,6 +34,7 @@ import { NotificacoesModule } from './notificacoes/notificacoes.module';
     StorageModule,
     AcessosModule,
     UsuariosModule,
+    ArrecadacaoModule,
     OperadoresModule,
     ImportacoesModule,
     IndicadoresModule,

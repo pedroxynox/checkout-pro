@@ -806,6 +806,692 @@ exports[`ImportacoesScreen mantém o snapshot do status e histórico 1`] = `
         </View>
       </View>
     </View>
+    <View
+      style={
+        [
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderRadius": 16,
+            "elevation": 2,
+            "marginBottom": 12,
+            "padding": 16,
+            "shadowColor": "#0B1B3A",
+            "shadowOffset": {
+              "height": 2,
+              "width": 0,
+            },
+            "shadowOpacity": 0.08,
+            "shadowRadius": 8,
+          },
+          undefined,
+        ]
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#1A1A1F",
+            "fontSize": 15,
+            "fontWeight": "700",
+            "marginBottom": 12,
+          }
+        }
+      >
+        Indicadores (arquivos .txt)
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#5C5C6B",
+            "fontSize": 12,
+            "fontWeight": "400",
+            "marginBottom": 8,
+          }
+        }
+      >
+        Envie o bloc de notas de cada indicador do dia selecionado. O app separa por operador e atualiza os Indicadores.
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "borderBottomColor": "#EDEDF2",
+            "borderBottomWidth": 0.5,
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "flex": 1,
+              "gap": 4,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              testID="icon-heart-outline"
+            >
+              heart-outline
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                }
+              }
+            >
+              Troco Solidário
+            </Text>
+          </View>
+          <Text
+            style={
+              {
+                "color": "#5C5C6B",
+                "fontSize": 12,
+                "fontWeight": "400",
+              }
+            }
+          >
+            Quanto cada operador arrecadou. Meta fixa de R$ 2.000.
+          </Text>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 48,
+                "paddingHorizontal": 16,
+              },
+              {
+                "backgroundColor": "#FCE6EA",
+              },
+              false,
+              false,
+              false,
+              {
+                "minHeight": 40,
+                "paddingHorizontal": 12,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#C8102E",
+                },
+              ]
+            }
+          >
+            Enviar
+          </Text>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "borderBottomColor": "#EDEDF2",
+            "borderBottomWidth": 0.5,
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "flex": 1,
+              "gap": 4,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              testID="icon-phone-portrait-outline"
+            >
+              phone-portrait-outline
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                }
+              }
+            >
+              Recargas de Celular
+            </Text>
+          </View>
+          <Text
+            style={
+              {
+                "color": "#5C5C6B",
+                "fontSize": 12,
+                "fontWeight": "400",
+              }
+            }
+          >
+            Recargas vendidas por operador. Meta fixa de R$ 2.000.
+          </Text>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 48,
+                "paddingHorizontal": 16,
+              },
+              {
+                "backgroundColor": "#FCE6EA",
+              },
+              false,
+              false,
+              false,
+              {
+                "minHeight": 40,
+                "paddingHorizontal": 12,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#C8102E",
+                },
+              ]
+            }
+          >
+            Enviar
+          </Text>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "borderBottomColor": "#EDEDF2",
+            "borderBottomWidth": 0.5,
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "flex": 1,
+              "gap": 4,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              testID="icon-remove-circle-outline"
+            >
+              remove-circle-outline
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                }
+              }
+            >
+              Cancelamento de Itens
+            </Text>
+          </View>
+          <Text
+            style={
+              {
+                "color": "#5C5C6B",
+                "fontSize": 12,
+                "fontWeight": "400",
+              }
+            }
+          >
+            Valor cancelado por operador. Meta de até 0,75% das vendas.
+          </Text>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 48,
+                "paddingHorizontal": 16,
+              },
+              {
+                "backgroundColor": "#FCE6EA",
+              },
+              false,
+              false,
+              false,
+              {
+                "minHeight": 40,
+                "paddingHorizontal": 12,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#C8102E",
+                },
+              ]
+            }
+          >
+            Enviar
+          </Text>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "borderBottomColor": "#EDEDF2",
+            "borderBottomWidth": 0.5,
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "flex": 1,
+              "gap": 4,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              testID="icon-receipt-outline"
+            >
+              receipt-outline
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                }
+              }
+            >
+              Cancelamento de Cupom
+            </Text>
+          </View>
+          <Text
+            style={
+              {
+                "color": "#5C5C6B",
+                "fontSize": 12,
+                "fontWeight": "400",
+              }
+            }
+          >
+            Cupons cancelados por operador. Meta de até 0,5% das vendas.
+          </Text>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 48,
+                "paddingHorizontal": 16,
+              },
+              {
+                "backgroundColor": "#FCE6EA",
+              },
+              false,
+              false,
+              false,
+              {
+                "minHeight": 40,
+                "paddingHorizontal": 12,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#C8102E",
+                },
+              ]
+            }
+          >
+            Enviar
+          </Text>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "borderBottomColor": "#EDEDF2",
+            "borderBottomWidth": 0.5,
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "flex": 1,
+              "gap": 4,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              testID="icon-return-down-back-outline"
+            >
+              return-down-back-outline
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                }
+              }
+            >
+              Devoluções
+            </Text>
+          </View>
+          <Text
+            style={
+              {
+                "color": "#5C5C6B",
+                "fontSize": 12,
+                "fontWeight": "400",
+              }
+            }
+          >
+            Valor devolvido por operador. Meta de até 0,05% das vendas.
+          </Text>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 48,
+                "paddingHorizontal": 16,
+              },
+              {
+                "backgroundColor": "#FCE6EA",
+              },
+              false,
+              false,
+              false,
+              {
+                "minHeight": 40,
+                "paddingHorizontal": 12,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#C8102E",
+                },
+              ]
+            }
+          >
+            Enviar
+          </Text>
+        </View>
+      </View>
+    </View>
     <Text
       style={
         {

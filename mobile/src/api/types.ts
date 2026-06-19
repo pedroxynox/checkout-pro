@@ -74,6 +74,44 @@ export interface RankingItem {
   total: number;
 }
 
+// ----- Arrecadação por operador (indicadores a partir dos .txt) -----
+export type TipoArrecadacao =
+  | 'TROCO_SOLIDARIO'
+  | 'RECARGAS_CELULAR'
+  | 'CANCELAMENTO_ITENS'
+  | 'CANCELAMENTO_CUPOM'
+  | 'DEVOLUCOES';
+
+export interface ResultadoUploadArrecadacao {
+  tipo: TipoArrecadacao;
+  data: string;
+  quantidade: number;
+  total: number;
+}
+
+export interface ResumoArrecadacao {
+  tipo: TipoArrecadacao;
+  titulo: string;
+  base: 'FIXA' | 'VENDAS';
+  meta: number;
+  sentido: 'MAIOR_MELHOR' | 'MENOR_MELHOR';
+  totalDia: number;
+  totalSemana: number;
+  totalMes: number;
+  quantidadeDia: number;
+  vendasDia?: number;
+  vendasSemana?: number;
+  vendasMes?: number;
+  percentualDia?: number;
+  percentualSemana?: number;
+  percentualMes?: number;
+}
+
+export interface ItemRankingArrecadacao {
+  nome: string;
+  total: number;
+}
+
 // ----- Lote APAE (Req 2.6) -----
 export type StatusLote = 'ABERTO' | 'ENCERRADO';
 

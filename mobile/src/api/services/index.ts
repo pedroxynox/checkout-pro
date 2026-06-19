@@ -2,6 +2,8 @@
 export { acessosService } from './acessos';
 export { importacoesService } from './importacoes';
 export type { ArquivoSelecionado } from './importacoes';
+export { arrecadacaoService } from './arrecadacao';
+export type { ArquivoArrecadacao } from './arrecadacao';
 export { indicadoresService } from './indicadores';
 export { loteApaeService } from './loteApae';
 export { insumosService } from './insumos';
