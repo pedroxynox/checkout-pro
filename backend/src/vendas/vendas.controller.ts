@@ -73,4 +73,14 @@ export class VendasController {
   status(@Query() dto: DataVendasDto): Promise<{ enviado: boolean }> {
     return this.vendasService.status(new Date(dto.data));
   }
+
+  /**
+   * Manutenção (gerente): remove totais diários sem detalhe por hora
+   * (lançamentos manuais/antigos), mantendo só os dias enviados por arquivo.
+   */
+  @Post('limpar-sem-hora')
+  @Funcionalidade('USUARIOS_CRUD')
+  limparSemHora(): Promise<{ removidos: number }> {
+    return this.vendasService.limparSemDetalheHora();
+  }
 }

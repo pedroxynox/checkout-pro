@@ -119,4 +119,21 @@ export class VendasService {
     });
     return { enviado: qtd > 0 };
   }
+
+  /**
+   * Remove os totais diários (VendaDiaria) que não têm detalhe por hora
+   * (VendaHora) — ou seja, lançamentos manuais/antigos. Mantém apenas os dias
+   * enviados por arquivo. Retorna quantos foram removidos.
+   */
+  async limparSemDetalheHora(): Promise<{ removidos: number }> {
+    const dias = await this.prisma.vendaHora.findMany({
+      distinct: ['data'],
+      select: { data: true },
+    });
+    const comHora = dias.map((d) => d.data);
+    const r = await this.prisma.vendaDiaria.deleteMany({
+      where: { data: { notIn: comHora } },
+    });
+    return { removidos: r.count };
+  }
 }
