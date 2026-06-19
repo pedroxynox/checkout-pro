@@ -463,7 +463,16 @@ export function IndicadorDetalheScreen({
             >
               <GraficoPizza fatias={montarFatias(ranking)} />
             </Cartao>
-          ) : null}
+          ) : (
+            <Cartao
+              titulo={`Participação por ${def.rankingDe ?? 'operadores'}`}
+            >
+              <GraficoPizza fatias={[]} />
+              <Text style={styles.semDetalhe}>
+                Sem dados no período. Envie o arquivo em Importações.
+              </Text>
+            </Cartao>
+          )}
 
           {def.mostraDetalhe ? (
             <Cartao titulo={`Cancelamentos ${ROTULO_PERIODO[periodo]}`}>
