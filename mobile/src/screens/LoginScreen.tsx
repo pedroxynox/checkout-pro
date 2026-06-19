@@ -25,11 +25,22 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { SvgXml } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import {
+  SVG_COLABORADORES,
+  SVG_ENTRAR,
+  SVG_INDICADORES,
+  SVG_METAS,
+  SVG_OLHO,
+  SVG_SENHA,
+  SVG_TAREFAS,
+  SVG_USUARIO,
+  recolorir,
+} from '../theme/icones';
 
 const VERMELHO = '#D81E2C';
 const VERMELHO_ESCURO = '#A50F1E';
@@ -193,7 +204,7 @@ export function LoginScreen(): React.ReactElement {
             <View style={styles.card}>
               <View style={styles.boasVindasLinha}>
                 <IconeCaixa tamanho={52}>
-                  <Ionicons name="person-outline" size={26} color="#fff" />
+                  <SvgXml xml={recolorir(SVG_USUARIO, '#fff')} width={28} height={28} />
                 </IconeCaixa>
                 <View style={styles.boasVindasTexto}>
                   <Text style={styles.boasVindasTitulo}>Bem-vindo!</Text>
@@ -206,7 +217,7 @@ export function LoginScreen(): React.ReactElement {
               {/* Campo usuário */}
               <View style={styles.campo}>
                 <IconeCaixa>
-                  <Ionicons name="person-outline" size={22} color="#fff" />
+                  <SvgXml xml={recolorir(SVG_USUARIO, '#fff')} width={24} height={24} />
                 </IconeCaixa>
                 <TextInput
                   style={styles.input}
@@ -224,7 +235,7 @@ export function LoginScreen(): React.ReactElement {
               {/* Campo senha */}
               <View style={styles.campo}>
                 <IconeCaixa>
-                  <Ionicons name="lock-closed-outline" size={22} color="#fff" />
+                  <SvgXml xml={recolorir(SVG_SENHA, '#fff')} width={24} height={24} />
                 </IconeCaixa>
                 <TextInput
                   style={styles.input}
@@ -242,10 +253,10 @@ export function LoginScreen(): React.ReactElement {
                   hitSlop={10}
                   style={styles.olho}
                 >
-                  <Ionicons
-                    name={mostrarSenha ? 'eye-off-outline' : 'eye-outline'}
-                    size={22}
-                    color="#6B7280"
+                  <SvgXml
+                    xml={recolorir(SVG_OLHO, mostrarSenha ? VERMELHO : '#6B7280')}
+                    width={24}
+                    height={24}
                   />
                 </Pressable>
               </View>
@@ -260,11 +271,9 @@ export function LoginScreen(): React.ReactElement {
                   onPress={() => setLembrar((v) => !v)}
                   hitSlop={8}
                 >
-                  <Ionicons
-                    name={lembrar ? 'checkbox' : 'square-outline'}
-                    size={20}
-                    color={lembrar ? VERMELHO : '#9AA0AC'}
-                  />
+                  <View style={[styles.check, lembrar && styles.checkOn]}>
+                    {lembrar ? <Text style={styles.checkMarca}>✓</Text> : null}
+                  </View>
                   <Text style={styles.lembrarTexto}>Lembrar meu acesso</Text>
                 </Pressable>
                 <Pressable onPress={esqueciSenha} hitSlop={8}>
@@ -288,7 +297,7 @@ export function LoginScreen(): React.ReactElement {
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <>
-                      <Ionicons name="log-in-outline" size={22} color="#fff" />
+                      <SvgXml xml={recolorir(SVG_ENTRAR, '#fff')} width={24} height={24} />
                       <Text style={styles.botaoTexto}>Entrar</Text>
                     </>
                   )}
@@ -301,42 +310,22 @@ export function LoginScreen(): React.ReactElement {
               <Atalho
                 rotulo="Colaboradores"
                 aoTocar={atalhoInfo}
-                icone={
-                  <Ionicons name="people" size={26} color={VERMELHO} />
-                }
+                icone={<SvgXml xml={SVG_COLABORADORES} width={28} height={28} />}
               />
               <Atalho
                 rotulo="Metas"
                 aoTocar={atalhoInfo}
-                icone={
-                  <MaterialCommunityIcons
-                    name="target"
-                    size={26}
-                    color={VERMELHO}
-                  />
-                }
+                icone={<SvgXml xml={SVG_METAS} width={28} height={28} />}
               />
               <Atalho
                 rotulo="Tarefas"
                 aoTocar={atalhoInfo}
-                icone={
-                  <MaterialCommunityIcons
-                    name="clipboard-text-outline"
-                    size={26}
-                    color={VERMELHO}
-                  />
-                }
+                icone={<SvgXml xml={SVG_TAREFAS} width={28} height={28} />}
               />
               <Atalho
                 rotulo="Indicadores"
                 aoTocar={atalhoInfo}
-                icone={
-                  <MaterialCommunityIcons
-                    name="chart-bar"
-                    size={26}
-                    color={VERMELHO}
-                  />
-                }
+                icone={<SvgXml xml={SVG_INDICADORES} width={28} height={28} />}
               />
             </View>
 
@@ -475,6 +464,17 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   lembrar: { flexDirection: 'row', alignItems: 'center' },
+  check: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: '#9AA0AC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkOn: { backgroundColor: VERMELHO, borderColor: VERMELHO },
+  checkMarca: { color: '#fff', fontSize: 13, fontWeight: '900', lineHeight: 16 },
   lembrarTexto: { marginLeft: 8, color: '#4B5563', fontSize: 14 },
   esqueci: { color: VERMELHO, fontSize: 14, fontWeight: '700' },
   botao: {
