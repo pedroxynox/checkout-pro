@@ -3,8 +3,8 @@
  * react-native-svg): gráfico pizza (rosca) com legenda e gráfico de barras
  * verticais. Usados no Painel de Vendas e nos Indicadores.
  */
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import { cores, espacamento, tipografia } from '../theme';
 
@@ -71,6 +71,7 @@ export function GraficoPizza({
   mostrarValor?: boolean;
   formatarValor?: (valor: number) => string;
 }): React.ReactElement {
+  const [selecionada, setSelecionada] = useState<number | null>(null);
   const total = fatias.reduce((s, f) => s + f.valor, 0);
   const tamanho = 180;
   const espessura = 34;
@@ -78,56 +79,93 @@ export function GraficoPizza({
   const circunferencia = 2 * Math.PI * raio;
   let acumulado = 0;
 
+  const alternar = (i: number) =>
+    setSelecionada((atual) => (atual === i ? null : i));
+
+  const fatiaSel = selecionada != null ? fatias[selecionada] : undefined;
+  const valorFmt = (v: number): string =>
+    formatarValor ? formatarValor(v) : String(v);
+
   return (
     <View style={styles.pizzaContainer}>
-      <Svg width={tamanho} height={tamanho}>
-        <G rotation={-90} originX={tamanho / 2} originY={tamanho / 2}>
-          {total > 0 ? (
-            fatias.map((f, i) => {
-              const comprimento = (f.valor / total) * circunferencia;
-              const elemento = (
-                <Circle
-                  key={`${f.rotulo}-${i}`}
-                  cx={tamanho / 2}
-                  cy={tamanho / 2}
-                  r={raio}
-                  stroke={f.cor}
-                  strokeWidth={espessura}
-                  fill="none"
-                  strokeDasharray={`${comprimento} ${circunferencia - comprimento}`}
-                  strokeDashoffset={-acumulado}
-                />
-              );
-              acumulado += comprimento;
-              return elemento;
-            })
+      <View style={styles.donutWrap}>
+        <Svg width={tamanho} height={tamanho}>
+          <G rotation={-90} originX={tamanho / 2} originY={tamanho / 2}>
+            {total > 0 ? (
+              fatias.map((f, i) => {
+                const comprimento = (f.valor / total) * circunferencia;
+                const elemento = (
+                  <Circle
+                    key={`${f.rotulo}-${i}`}
+                    cx={tamanho / 2}
+                    cy={tamanho / 2}
+                    r={raio}
+                    stroke={f.cor}
+                    strokeWidth={selecionada === i ? espessura + 8 : espessura}
+                    opacity={selecionada == null || selecionada === i ? 1 : 0.35}
+                    fill="none"
+                    strokeDasharray={`${comprimento} ${circunferencia - comprimento}`}
+                    strokeDashoffset={-acumulado}
+                    onPress={() => alternar(i)}
+                    onPressIn={() => alternar(i)}
+                  />
+                );
+                acumulado += comprimento;
+                return elemento;
+              })
+            ) : (
+              <Circle
+                cx={tamanho / 2}
+                cy={tamanho / 2}
+                r={raio}
+                stroke={cores.divisor}
+                strokeWidth={espessura}
+                fill="none"
+              />
+            )}
+          </G>
+        </Svg>
+        <View style={styles.centro} pointerEvents="none">
+          {fatiaSel ? (
+            <>
+              <Text style={styles.centroRotulo} numberOfLines={2}>
+                {fatiaSel.rotulo}
+              </Text>
+              <Text style={styles.centroValor}>{valorFmt(fatiaSel.valor)}</Text>
+              <Text style={styles.centroPct}>
+                {total > 0
+                  ? `${((fatiaSel.valor / total) * 100).toFixed(1)}%`
+                  : ''}
+              </Text>
+            </>
           ) : (
-            <Circle
-              cx={tamanho / 2}
-              cy={tamanho / 2}
-              r={raio}
-              stroke={cores.divisor}
-              strokeWidth={espessura}
-              fill="none"
-            />
+            <Text style={styles.centroDica}>Toque numa fatia</Text>
           )}
-        </G>
-      </Svg>
+        </View>
+      </View>
       <View style={styles.legenda}>
         {fatias.map((f, i) => {
           const pct = total > 0 ? (f.valor / total) * 100 : 0;
           const textoDireita = mostrarValor
             ? (formatarValor ? formatarValor(f.valor) : String(f.valor))
             : `${pct.toFixed(0)}%`;
+          const ativa = selecionada === i;
           return (
-            <View key={`${f.rotulo}-leg-${i}`} style={styles.legendaLinha}>
+            <Pressable
+              key={`${f.rotulo}-leg-${i}`}
+              onPress={() => alternar(i)}
+              style={[styles.legendaLinha, ativa && styles.legendaLinhaAtiva]}
+            >
               <View style={[styles.legendaPonto, { backgroundColor: f.cor }]} />
-              <Text style={styles.legendaNome} numberOfLines={1}>
+              <Text
+                style={[styles.legendaNome, ativa && styles.legendaNomeAtiva]}
+                numberOfLines={1}
+              >
                 {f.rotulo}
               </Text>
               <View style={styles.legendaConector} />
               <Text style={styles.legendaValor}>{textoDireita}</Text>
-            </View>
+            </Pressable>
           );
         })}
       </View>
@@ -185,6 +223,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: espacamento.md,
   },
+  donutWrap: {
+    width: 180,
+    height: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centro: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 38,
+  },
+  centroRotulo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    textAlign: 'center',
+  },
+  centroValor: {
+    ...tipografia.corpo,
+    color: cores.texto,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  centroPct: {
+    ...tipografia.legenda,
+    color: cores.primaria,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  centroDica: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    textAlign: 'center',
+  },
   legenda: {
     width: '100%',
     gap: espacamento.xs,
@@ -193,6 +266,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: espacamento.sm,
+  },
+  legendaLinhaAtiva: {
+    backgroundColor: cores.fundo,
+    borderRadius: 6,
+  },
+  legendaNomeAtiva: {
+    fontWeight: '700',
   },
   legendaPonto: {
     width: 12,
