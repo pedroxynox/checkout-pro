@@ -22,16 +22,20 @@ export function HomeScreen({
   const areasVisiveis = AREAS.filter((a) => podeAcessar(a.funcionalidade));
 
   // Nome a exibir: usa o nome do usuário (quando houver); senão, deriva do
-  // login (ex.: "pedro.munoz" -> "Pedro Munoz").
+  // login. Exibe apenas o PRIMEIRO nome.
   const derivadoDoLogin = (usuario?.login ?? '')
     .split(/[._-]+/)
     .filter(Boolean)
     .map((parte) => parte.charAt(0).toUpperCase() + parte.slice(1).toLowerCase())
     .join(' ');
-  const nome =
+  const nomeCompleto =
     usuario?.nome && usuario.nome.trim().length > 0
-      ? usuario.nome
+      ? usuario.nome.trim()
       : derivadoDoLogin;
+  const primeiroNome = nomeCompleto.split(/\s+/)[0] ?? nomeCompleto;
+  const rotuloPerfil =
+    perfil === 'GERENTE' ? 'Gerente' : perfil === 'FISCAL' ? 'Fiscal' : perfil;
+  const nome = primeiroNome;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -40,7 +44,7 @@ export function HomeScreen({
         <View>
           <Text style={styles.marca}>Check-out Pro</Text>
           <Text style={styles.saudacao}>
-            {nome} · {perfil === 'GERENTE' ? 'Gerente' : 'Fiscal'}
+            {nome} · {rotuloPerfil}
           </Text>
         </View>
         <Pressable

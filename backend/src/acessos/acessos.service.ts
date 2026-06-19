@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
 import {
   decidirAutorizacao,
   loginDisponivelEntre,
@@ -100,5 +101,18 @@ export class AcessosService {
   async gerarHashSenha(senha: string): Promise<string> {
     const SALT_ROUNDS = 10;
     return bcrypt.hash(senha, SALT_ROUNDS);
+  }
+
+  /**
+   * Retorna a identidade do usuário autenticado, garantindo o `nome` atual
+   * a partir do banco (independente de o token ter sido emitido antes do
+   * campo existir).
+   */
+  async identidade(usuario: UsuarioAutenticado): Promise<UsuarioAutenticado> {
+    const registro = await this.prisma.usuario.findUnique({
+      where: { id: usuario.sub },
+      select: { nome: true },
+    });
+    return { ...usuario, nome: registro?.nome ?? usuario.nome ?? null };
   }
 }

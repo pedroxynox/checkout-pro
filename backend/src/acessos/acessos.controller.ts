@@ -36,7 +36,7 @@ export class AcessosController {
 
   /** Retorna a identidade do usuário autenticado (perfil e login). */
   @Get('eu')
-  eu(@UsuarioAtual() usuario: UsuarioAutenticado): UsuarioAutenticado {
-    return usuario;
+  eu(@UsuarioAtual() usuario: UsuarioAutenticado): Promise<UsuarioAutenticado> {
+    return this.acessosService.identidade(usuario);
   }
 }

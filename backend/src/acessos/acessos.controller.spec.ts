@@ -37,13 +37,21 @@ describe('AcessosController', () => {
     ).rejects.toBeInstanceOf(CredenciaisInvalidasError);
   });
 
-  it('retorna a identidade do usuário autenticado em /eu', () => {
-    const controller = new AcessosController({} as AcessosService);
+  it('retorna a identidade do usuário autenticado em /eu', async () => {
     const usuario: UsuarioAutenticado = {
       sub: 'u1',
-      login: 'ana',
-      perfil: 'FISCAL',
+      login: '232152',
+      perfil: 'GERENTE',
     };
-    expect(controller.eu(usuario)).toBe(usuario);
+    const service = {
+      identidade: jest.fn(() =>
+        Promise.resolve({ ...usuario, nome: 'Pedro Munoz' }),
+      ),
+    } as unknown as AcessosService;
+    const controller = new AcessosController(service);
+
+    const resultado = await controller.eu(usuario);
+
+    expect(resultado).toEqual({ ...usuario, nome: 'Pedro Munoz' });
   });
 });
