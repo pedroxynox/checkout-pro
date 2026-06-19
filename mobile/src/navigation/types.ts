@@ -14,6 +14,9 @@ export type RootStackParamList = {
   Checklist: undefined;
   Operadores: undefined;
   Usuarios: undefined;
+  AlertasFila: undefined;
+  Normativas: undefined;
+  IndicadorQuebra: undefined;
   Notificacoes: undefined;
 };
 

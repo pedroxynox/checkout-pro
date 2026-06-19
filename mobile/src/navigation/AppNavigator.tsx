@@ -22,6 +22,9 @@ import { EscalaScreen } from '../screens/fiscais/EscalaScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
 import { OperadoresScreen } from '../screens/operadores/OperadoresScreen';
 import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
+import { AlertasFilaScreen } from '../screens/alertasFila/AlertasFilaScreen';
+import { NormativasScreen } from '../screens/normativas/NormativasScreen';
+import { IndicadorQuebraScreen } from '../screens/quebra/IndicadorQuebraScreen';
 import { NotificacoesScreen } from '../screens/notificacoes/NotificacoesScreen';
 import { cores } from '../theme';
 import { RootStackParamList } from './types';
@@ -129,6 +132,27 @@ export function AppNavigator(): React.ReactElement {
           name="Notificacoes"
           component={NotificacoesScreen}
           options={{ title: 'Notificações' }}
+        />
+      )}
+      {podeAcessar('ALERTAS_FILA') && (
+        <Stack.Screen
+          name="AlertasFila"
+          component={AlertasFilaScreen}
+          options={{ title: 'Alertas de Fila' }}
+        />
+      )}
+      {podeAcessar('NORMATIVAS') && (
+        <Stack.Screen
+          name="Normativas"
+          component={NormativasScreen}
+          options={{ title: 'Normativas' }}
+        />
+      )}
+      {podeAcessar('INDICADOR_QUEBRA') && (
+        <Stack.Screen
+          name="IndicadorQuebra"
+          component={IndicadorQuebraScreen}
+          options={{ title: 'Indicador de Quebra' }}
         />
       )}
     </Stack.Navigator>

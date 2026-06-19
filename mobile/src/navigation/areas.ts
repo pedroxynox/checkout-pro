@@ -23,6 +23,9 @@ export interface Area {
     | 'Checklist'
     | 'Operadores'
     | 'Usuarios'
+    | 'AlertasFila'
+    | 'Normativas'
+    | 'IndicadorQuebra'
     | 'Notificacoes'
   >;
   titulo: string;
@@ -108,5 +111,26 @@ export const AREAS: Area[] = [
     descricao: 'Central de avisos do app',
     icone: 'notifications-outline',
     funcionalidade: 'NOTIFICACOES',
+  },
+  {
+    rota: 'AlertasFila',
+    titulo: 'Alertas de Fila',
+    descricao: 'Avisos de filas/caixas (em breve)',
+    icone: 'alert-circle-outline',
+    funcionalidade: 'ALERTAS_FILA',
+  },
+  {
+    rota: 'Normativas',
+    titulo: 'Normativas',
+    descricao: 'Normas e procedimentos (em breve)',
+    icone: 'document-text-outline',
+    funcionalidade: 'NORMATIVAS',
+  },
+  {
+    rota: 'IndicadorQuebra',
+    titulo: 'Indicador de Quebra',
+    descricao: 'Quebras e perdas (em breve)',
+    icone: 'trending-down-outline',
+    funcionalidade: 'INDICADOR_QUEBRA',
   },
 ];
