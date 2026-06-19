@@ -6,6 +6,7 @@
  * Cancelamento de Cupom e Devoluções. Este serviço faz o upload do arquivo de
  * um tipo e consulta os totais (dia/semana/mês) e o ranking por operador.
  */
+import { Platform } from 'react-native';
 import { apiClient } from '../client';
 import {
   DetalheArrecadacao,
@@ -23,19 +24,38 @@ export interface ArquivoArrecadacao {
   mimeType?: string;
 }
 
+/**
+ * Monta o FormData do arquivo de forma compatível com web e nativo.
+ *
+ * No nativo (APK), o React Native aceita o objeto { uri, name, type }. Na web,
+ * é preciso anexar um Blob real — por isso buscamos o conteúdo da URI e o
+ * anexamos com o nome do arquivo.
+ */
+async function montarFormArquivo(arquivo: ArquivoArrecadacao): Promise<FormData> {
+  const form = new FormData();
+  const tipoMime = arquivo.mimeType ?? 'text/plain';
+  if (Platform.OS === 'web') {
+    const resposta = await fetch(arquivo.uri);
+    const blob = await resposta.blob();
+    form.append('file', blob, arquivo.name);
+  } else {
+    form.append('file', {
+      uri: arquivo.uri,
+      name: arquivo.name,
+      type: tipoMime,
+    } as unknown as Blob);
+  }
+  return form;
+}
+
 export const arrecadacaoService = {
   /** Envia o arquivo .txt de um tipo, importando as linhas do dia informado. */
-  upload(
+  async upload(
     tipo: TipoArrecadacao,
     arquivo: ArquivoArrecadacao,
     data?: string,
   ): Promise<ResultadoUploadArrecadacao> {
-    const form = new FormData();
-    form.append('file', {
-      uri: arquivo.uri,
-      name: arquivo.name,
-      type: arquivo.mimeType ?? 'text/plain',
-    } as unknown as Blob);
+    const form = await montarFormArquivo(arquivo);
     return apiClient.upload<ResultadoUploadArrecadacao>(
       '/arrecadacao/upload',
       form,

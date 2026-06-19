@@ -27,9 +27,15 @@ import { cores, espacamento, tipografia } from '../../theme';
 import { formatarMoeda, hojeISO } from '../../utils/formato';
 import { ARRECADACAO } from '../../utils/rotulos';
 
+interface Aviso {
+  tom: 'ok' | 'erro';
+  texto: string;
+}
+
 export function ImportacoesScreen(): React.ReactElement {
   const [data, setData] = useState(hojeISO());
   const [enviando, setEnviando] = useState<TipoArrecadacao | null>(null);
+  const [aviso, setAviso] = useState<Aviso | null>(null);
 
   const status = useRequisicao<StatusArrecadacao>(
     () => arrecadacaoService.status(data),
@@ -37,6 +43,7 @@ export function ImportacoesScreen(): React.ReactElement {
   );
 
   const enviarArquivo = async (tipo: TipoArrecadacao) => {
+    setAviso(null);
     try {
       const escolha = await DocumentPicker.getDocumentAsync({
         type: ['text/plain', 'text/*', 'application/octet-stream', '*/*'],
@@ -58,14 +65,14 @@ export function ImportacoesScreen(): React.ReactElement {
       );
       const titulo =
         ARRECADACAO.find((d) => d.tipo === tipo)?.titulo ?? 'Indicador';
-      Alert.alert(
-        'Arquivo enviado',
-        `${titulo}: ${resultado.quantidade} pessoa(s), total ${formatarMoeda(resultado.total)}.`,
-      );
+      const msg = `${titulo}: ${resultado.quantidade} pessoa(s), total ${formatarMoeda(resultado.total)}.`;
+      setAviso({ tom: 'ok', texto: `Arquivo enviado. ${msg}` });
+      Alert.alert('Arquivo enviado', msg);
       status.recarregar();
     } catch (e) {
       const msg =
         e instanceof ApiError ? e.message : 'Falha ao enviar o arquivo.';
+      setAviso({ tom: 'erro', texto: msg });
       Alert.alert('Erro no envio', msg);
     } finally {
       setEnviando(null);
@@ -81,6 +88,26 @@ export function ImportacoesScreen(): React.ReactElement {
           Envie o bloc de notas de cada indicador do dia selecionado. O app
           separa por pessoa e atualiza os Indicadores.
         </Text>
+        {aviso ? (
+          <View
+            style={[
+              styles.aviso,
+              {
+                backgroundColor:
+                  aviso.tom === 'ok' ? cores.verdeFundo : cores.vermelhoFundo,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.avisoTexto,
+                { color: aviso.tom === 'ok' ? cores.verde : cores.vermelho },
+              ]}
+            >
+              {aviso.texto}
+            </Text>
+          </View>
+        ) : null}
         {status.erro ? (
           <MensagemErro mensagem={status.erro} aoTentarNovamente={status.recarregar} />
         ) : null}
@@ -149,6 +176,15 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginBottom: espacamento.sm,
+  },
+  aviso: {
+    borderRadius: 8,
+    padding: espacamento.sm,
+    marginBottom: espacamento.sm,
+  },
+  avisoTexto: {
+    ...tipografia.legenda,
+    fontWeight: '600',
   },
   botaoEnviar: {
     minHeight: 40,
