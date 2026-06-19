@@ -42,3 +42,18 @@ export const SVG_LOGO_CHECKOUT =
 export function recolorir(svg: string, cor: string): string {
   return svg.split(COR_MARCA).join(cor);
 }
+
+
+// ===== Artes oficiais (logos e fundo) =====
+
+/** Logo "Stok Center". Texto branco no original; use recolorir para o tema claro. */
+export const SVG_LOGO_STOK =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300"><text x="80" y="170" font-size="140" font-family="Arial, Helvetica, sans-serif" font-weight="700" fill="#ffffff" stroke="#333333" stroke-width="10">Stok</text><text x="360" y="250" font-size="60" font-family="Arial, Helvetica, sans-serif" font-weight="700" fill="#ffffff">CENTER</text></svg>';
+
+/** Wordmark "CHECK-OUT PRO WORKFORCE". */
+export const SVG_WORKFORCE =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400"><text x="40" y="150" font-size="120" font-family="Arial" fill="#ffffff">CHECK-OUT</text><rect x="820" y="40" width="260" height="130" rx="20" fill="#e31b23"/><text x="855" y="140" font-size="100" font-family="Arial" fill="white" font-weight="700">PRO</text><text x="250" y="280" font-size="70" letter-spacing="16" font-family="Arial" fill="#ffffff">WORKFORCE</text></svg>';
+
+/** Fundo da tela de login (claro com triângulos vermelhos nos cantos). */
+export const SVG_FUNDO =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#f5f5f5"/><stop offset="1" stop-color="#e8e8e8"/></linearGradient></defs><rect width="1080" height="1920" fill="url(#g)"/><polygon points="0,0 380,0 0,820" fill="#e31b23"/><polygon points="720,1920 1080,1920 1080,1500" fill="#e31b23"/></svg>';
