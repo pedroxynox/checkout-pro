@@ -1072,7 +1072,7 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
                 }
               }
             >
-              8h
+              8h às 9h
             </Text>
             <Text
               style={
@@ -1083,7 +1083,7 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
                 }
               }
             >
-              30%
+              R$ 3.000,00
             </Text>
           </View>
           <View
@@ -1120,7 +1120,7 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
                 }
               }
             >
-              9h
+              9h às 10h
             </Text>
             <Text
               style={
@@ -1131,7 +1131,7 @@ exports[`PainelVendasScreen mantém o snapshot do painel 1`] = `
                 }
               }
             >
-              70%
+              R$ 6.999,99
             </Text>
           </View>
         </View>

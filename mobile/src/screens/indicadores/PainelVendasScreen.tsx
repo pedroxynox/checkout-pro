@@ -112,10 +112,13 @@ export function PainelVendasScreen(): React.ReactElement {
     rotulo: `${h.hora}h`,
     valor: h.valor,
   }));
+  // Pizza completa: todas as horas (sem agrupar em "Outros").
   const fatiasPizza = montarFatias(
-    horas.map((h) => ({ rotulo: `${h.hora}h`, valor: h.valor })),
-    8,
+    horas.map((h) => ({ rotulo: `${h.hora}h às ${h.hora + 1}h`, valor: h.valor })),
+    24,
   );
+  // No "Dia" mostra o valor de cada hora; em semana/mês, o percentual.
+  const pizzaMostraValor = periodo === 'DIA';
 
   const enviarArquivo = async () => {
     setAviso(null);
@@ -256,7 +259,11 @@ export function PainelVendasScreen(): React.ReactElement {
 
       {horas.length > 0 ? (
         <Cartao titulo="Horas que mais venderam">
-          <GraficoPizza fatias={fatiasPizza} />
+          <GraficoPizza
+            fatias={fatiasPizza}
+            mostrarValor={pizzaMostraValor}
+            formatarValor={formatarMoeda}
+          />
         </Cartao>
       ) : null}
     </Tela>

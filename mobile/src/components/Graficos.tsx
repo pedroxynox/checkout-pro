@@ -18,6 +18,14 @@ export const CORES_GRAFICO = [
   '#E67E22',
   '#16A085',
   '#7F8C8D',
+  '#D81B60',
+  '#43A047',
+  '#FB8C00',
+  '#3949AB',
+  '#00897B',
+  '#6D4C41',
+  '#5E35B1',
+  '#00ACC1',
 ];
 
 export interface FatiaGrafico {
@@ -52,11 +60,16 @@ export function montarFatias(
   return fatias;
 }
 
-/** Gráfico pizza (rosca) com legenda em percentual. */
+/** Gráfico pizza (rosca) com legenda em percentual ou em valor. */
 export function GraficoPizza({
   fatias,
+  mostrarValor = false,
+  formatarValor,
 }: {
   fatias: FatiaGrafico[];
+  /** Quando true, a legenda mostra o valor (formatado) em vez do percentual. */
+  mostrarValor?: boolean;
+  formatarValor?: (valor: number) => string;
 }): React.ReactElement {
   const total = fatias.reduce((s, f) => s + f.valor, 0);
   const tamanho = 180;
@@ -103,13 +116,16 @@ export function GraficoPizza({
       <View style={styles.legenda}>
         {fatias.map((f, i) => {
           const pct = total > 0 ? (f.valor / total) * 100 : 0;
+          const textoDireita = mostrarValor
+            ? (formatarValor ? formatarValor(f.valor) : String(f.valor))
+            : `${pct.toFixed(0)}%`;
           return (
             <View key={`${f.rotulo}-leg-${i}`} style={styles.legendaLinha}>
               <View style={[styles.legendaPonto, { backgroundColor: f.cor }]} />
               <Text style={styles.legendaNome} numberOfLines={1}>
                 {f.rotulo}
               </Text>
-              <Text style={styles.legendaValor}>{`${pct.toFixed(0)}%`}</Text>
+              <Text style={styles.legendaValor}>{textoDireita}</Text>
             </View>
           );
         })}
