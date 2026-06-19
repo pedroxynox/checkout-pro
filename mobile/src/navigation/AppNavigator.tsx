@@ -13,6 +13,7 @@ import { useAuth } from '../auth/AuthContext';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ImportacoesScreen } from '../screens/importacoes/ImportacoesScreen';
 import { IndicadoresScreen } from '../screens/indicadores/IndicadoresScreen';
+import { IndicadorDetalheScreen } from '../screens/indicadores/IndicadorDetalheScreen';
 import { PainelVendasScreen } from '../screens/indicadores/PainelVendasScreen';
 import { LoteApaeScreen } from '../screens/loteApae/LoteApaeScreen';
 import { InsumosScreen } from '../screens/insumos/InsumosScreen';
@@ -27,6 +28,7 @@ import { NormativasScreen } from '../screens/normativas/NormativasScreen';
 import { IndicadorQuebraScreen } from '../screens/quebra/IndicadorQuebraScreen';
 import { NotificacoesScreen } from '../screens/notificacoes/NotificacoesScreen';
 import { cores } from '../theme';
+import { ROTULO_TIPO_ARRECADACAO } from '../utils/rotulos';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -58,11 +60,20 @@ export function AppNavigator(): React.ReactElement {
         />
       )}
       {podeAcessar('INDICADORES_VISUALIZAR') && (
-        <Stack.Screen
-          name="Indicadores"
-          component={IndicadoresScreen}
-          options={{ title: 'Indicadores' }}
-        />
+        <>
+          <Stack.Screen
+            name="Indicadores"
+            component={IndicadoresScreen}
+            options={{ title: 'Indicadores' }}
+          />
+          <Stack.Screen
+            name="IndicadorDetalhe"
+            component={IndicadorDetalheScreen}
+            options={({ route }) => ({
+              title: ROTULO_TIPO_ARRECADACAO[route.params.tipo] ?? 'Indicador',
+            })}
+          />
+        </>
       )}
       {podeAcessar('PAINEL_VENDAS_VISUALIZAR') && (
         <Stack.Screen

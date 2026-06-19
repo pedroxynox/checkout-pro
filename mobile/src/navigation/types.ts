@@ -1,10 +1,12 @@
 /** Tipos das rotas do app (pilha principal autenticada). */
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { TipoArrecadacao } from '../api/types';
 
 export type RootStackParamList = {
   Home: undefined;
   Importacoes: undefined;
   Indicadores: undefined;
+  IndicadorDetalhe: { tipo: TipoArrecadacao };
   PainelVendas: undefined;
   LoteApae: undefined;
   Insumos: undefined;
