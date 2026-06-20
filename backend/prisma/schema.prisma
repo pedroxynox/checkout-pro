@@ -30,6 +30,7 @@ enum Perfil {
   GERENTE_DESENVOLVEDOR
   SUPERVISOR
   FISCAL
+  IMPORTADOR
 }
 
 // Tipo de registro operacional / tipo de arquivo de importação.

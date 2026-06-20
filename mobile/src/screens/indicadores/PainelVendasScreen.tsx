@@ -1,24 +1,16 @@
 /**
- * Painel de Vendas.
+ * Painel de Vendas (somente informativo).
  *
- * As vendas por hora são enviadas diariamente por arquivo .txt (qualquer
- * pessoa pode enviar; não há ajuste manual). A tela mostra o status do dia, os
- * totais do dia/semana/mês, e gráficos por hora (barras verticais e pizza) do
- * período escolhido (dia, semana, mês ou um intervalo personalizado).
+ * As vendas por hora são carregadas na seção Importações (pelo usuário de
+ * carga) e o status do dia é visto no Fechamento. Aqui mostramos apenas os
+ * informativos: totais do dia/semana/mês e gráficos por hora (barras e pizza)
+ * do período escolhido (dia, semana, mês ou intervalo personalizado).
  */
-import * as DocumentPicker from 'expo-document-picker';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
-import { ApiError } from '../../api/client';
+import { StyleSheet, Text, View } from 'react-native';
 import { vendasService } from '../../api/services';
+import { ResumoVendas, VendasPorHora } from '../../api/types';
 import {
-  ResumoVendas,
-  StatusVendas,
-  VendasPorHora,
-} from '../../api/types';
-import { useAuth } from '../../auth/AuthContext';
-import {
-  Botao,
   Carregando,
   Cartao,
   EstadoVazio,
@@ -27,7 +19,6 @@ import {
   MensagemErro,
   montarFatias,
   Segmentado,
-  Selo,
   SeletorData,
   Tela,
 } from '../../components';
@@ -56,7 +47,6 @@ function intervaloDoPeriodo(
   fimPers: string,
 ): { inicio: string; fim: string } {
   if (periodo === 'PERSONALIZADO') {
-    // Garante início <= fim.
     return inicioPers <= fimPers
       ? { inicio: inicioPers, fim: fimPers }
       : { inicio: fimPers, fim: inicioPers };
@@ -79,136 +69,36 @@ function intervaloDoPeriodo(
   return { inicio: iso(ini), fim: iso(fim) };
 }
 
-interface Aviso {
-  tom: 'ok' | 'erro';
-  texto: string;
-}
-
 export function PainelVendasScreen(): React.ReactElement {
-  const { perfil } = useAuth();
-  const ehGerente = perfil === 'GERENTE';
   const [data, setData] = useState(hojeISO());
   const [periodo, setPeriodo] = useState<PeriodoGrafico>('DIA');
   const [inicioPers, setInicioPers] = useState(hojeISO());
   const [fimPers, setFimPers] = useState(hojeISO());
-  const [enviando, setEnviando] = useState(false);
-  const [aviso, setAviso] = useState<Aviso | null>(null);
 
   const { inicio, fim } = intervaloDoPeriodo(periodo, data, inicioPers, fimPers);
 
   const req = useRequisicao(async () => {
-    const [status, resumo, porHora] = await Promise.all([
-      vendasService.status(data),
+    const [resumo, porHora] = await Promise.all([
       vendasService.resumo(data),
       vendasService.porHora(inicio, fim),
     ]);
-    return { status, resumo, porHora };
+    return { resumo, porHora };
   }, [data, periodo, inicio, fim]);
 
-  const status: StatusVendas | undefined = req.dados?.status;
   const resumo: ResumoVendas | undefined = req.dados?.resumo;
   const porHora: VendasPorHora | undefined = req.dados?.porHora;
-  const enviado = status?.enviado === true;
 
   const horas = porHora?.horas ?? [];
-  const dadosBarras = horas.map((h) => ({
-    rotulo: `${h.hora}h`,
-    valor: h.valor,
-  }));
-  // Pizza completa: todas as horas (sem agrupar em "Outros").
+  const dadosBarras = horas.map((h) => ({ rotulo: `${h.hora}h`, valor: h.valor }));
   const fatiasPizza = montarFatias(
     horas.map((h) => ({ rotulo: `${h.hora}h às ${h.hora + 1}h`, valor: h.valor })),
     24,
   );
-  // No "Dia" mostra o valor de cada hora; em semana/mês, o percentual.
   const pizzaMostraValor = periodo === 'DIA';
-
-  const enviarArquivo = async () => {
-    setAviso(null);
-    try {
-      const escolha = await DocumentPicker.getDocumentAsync({
-        type: ['text/plain', 'text/*', 'application/octet-stream', '*/*'],
-        copyToCacheDirectory: true,
-      });
-      if (escolha.canceled || !escolha.assets?.[0]) {
-        return;
-      }
-      const arquivo = escolha.assets[0];
-      setEnviando(true);
-      const resultado = await vendasService.upload(
-        {
-          uri: arquivo.uri,
-          name: arquivo.name,
-          mimeType: arquivo.mimeType,
-        },
-        data,
-      );
-      const msg = `${resultado.horas} hora(s), total ${formatarMoeda(resultado.total)}.`;
-      setAviso({ tom: 'ok', texto: `Vendas enviadas. ${msg}` });
-      Alert.alert('Vendas enviadas', msg);
-      req.recarregar();
-    } catch (e) {
-      const texto =
-        e instanceof ApiError ? e.message : 'Falha ao enviar o arquivo.';
-      setAviso({ tom: 'erro', texto });
-      Alert.alert('Erro no envio', texto);
-    } finally {
-      setEnviando(false);
-    }
-  };
 
   return (
     <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
       <SeletorData valor={data} aoMudar={setData} rotulo="Dia de referência" />
-
-      <Cartao titulo="Enviar vendas do dia">
-        {aviso ? (
-          <View
-            style={[
-              styles.aviso,
-              {
-                backgroundColor:
-                  aviso.tom === 'ok' ? cores.verdeFundo : cores.vermelhoFundo,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.avisoTexto,
-                { color: aviso.tom === 'ok' ? cores.verde : cores.vermelho },
-              ]}
-            >
-              {aviso.texto}
-            </Text>
-          </View>
-        ) : null}
-        <View style={styles.envioLinha}>
-          {req.carregando ? (
-            <Carregando />
-          ) : (
-            <Selo
-              texto={enviado ? 'Enviado' : 'Pendente'}
-              cor={enviado ? cores.verde : cores.amarelo}
-              fundo={enviado ? cores.verdeFundo : cores.amareloFundo}
-            />
-          )}
-          {!enviado || ehGerente ? (
-            <Botao
-              titulo={enviado ? 'Reenviar' : 'Enviar'}
-              variante="secundario"
-              carregando={enviando}
-              aoPressionar={() => void enviarArquivo()}
-              estilo={styles.botaoEnviar}
-            />
-          ) : null}
-        </View>
-        {enviado && !ehGerente ? (
-          <Text style={styles.notaBloqueio}>
-            As vendas deste dia já foram enviadas. Apenas o gerente pode
-            reenviar.
-          </Text>
-        ) : null}
-      </Cartao>
 
       <Cartao titulo="Totais de vendas">
         {req.carregando ? (
@@ -271,7 +161,7 @@ export function PainelVendasScreen(): React.ReactElement {
           <EstadoVazio
             icone="bar-chart-outline"
             titulo="Sem vendas no período"
-            descricao="Envie o arquivo de vendas por hora para ver os gráficos."
+            descricao="As vendas são carregadas na seção Importações."
           />
         )}
       </Cartao>
@@ -290,31 +180,6 @@ export function PainelVendasScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  notaBloqueio: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    marginTop: espacamento.sm,
-    fontStyle: 'italic',
-  },
-  aviso: {
-    borderRadius: 8,
-    padding: espacamento.sm,
-    marginBottom: espacamento.sm,
-  },
-  avisoTexto: {
-    ...tipografia.legenda,
-    fontWeight: '600',
-  },
-  envioLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: espacamento.sm,
-  },
-  botaoEnviar: {
-    minHeight: 40,
-    paddingHorizontal: espacamento.lg,
-  },
   totalLinha: {
     flexDirection: 'row',
     alignItems: 'center',

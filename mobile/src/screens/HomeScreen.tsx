@@ -40,7 +40,9 @@ export function HomeScreen({
         ? 'Gerente Desenvolvedor'
         : perfil === 'SUPERVISOR'
           ? 'Supervisor'
-          : 'Fiscal';
+          : perfil === 'IMPORTADOR'
+            ? 'Importador'
+            : 'Fiscal';
   const nome = primeiroNome;
 
   return (

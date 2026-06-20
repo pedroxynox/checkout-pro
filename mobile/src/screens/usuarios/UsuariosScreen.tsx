@@ -31,6 +31,7 @@ const ROTULO_PERFIL: Record<Perfil, string> = {
   GERENTE_DESENVOLVEDOR: 'Gerente Dev',
   SUPERVISOR: 'Supervisor',
   FISCAL: 'Fiscal',
+  IMPORTADOR: 'Importador',
 };
 
 export function UsuariosScreen(): React.ReactElement {
@@ -128,6 +129,7 @@ export function UsuariosScreen(): React.ReactElement {
             { valor: 'SUPERVISOR', rotulo: 'Supervisor' },
             { valor: 'GERENTE', rotulo: 'Gerente' },
             { valor: 'GERENTE_DESENVOLVEDOR', rotulo: 'Gerente Dev' },
+            { valor: 'IMPORTADOR', rotulo: 'Importador' },
           ]}
           selecionado={perfil}
           aoSelecionar={setPerfil}

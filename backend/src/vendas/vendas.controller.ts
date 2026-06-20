@@ -40,7 +40,7 @@ export class VendasController {
 
   /** Recebe o arquivo .txt de vendas por hora e importa o dia. */
   @Post('upload')
-  @Funcionalidade('PAINEL_VENDAS_EDITAR')
+  @Funcionalidade('IMPORTACOES')
   @UseInterceptors(FileInterceptor('file'))
   async upload(
     @UploadedFile() arquivo: ArquivoUpload | undefined,
@@ -51,12 +51,14 @@ export class VendasController {
       throw new BadRequestException('Nenhum arquivo enviado no campo "file".');
     }
     const data = dto.data ? new Date(dto.data) : new Date();
-    // Após enviado, só o gerente pode reenviar as vendas do dia.
+    // Após enviado, só quem carrega os arquivos (importador) ou o gerente pode
+    // reenviar as vendas do dia.
     const jaEnviado = (await this.vendasService.status(data)).enviado;
-    const ehGerente =
+    const podeReenviar =
       usuario?.perfil === 'GERENTE' ||
-      usuario?.perfil === 'GERENTE_DESENVOLVEDOR';
-    if (jaEnviado && !ehGerente) {
+      usuario?.perfil === 'GERENTE_DESENVOLVEDOR' ||
+      usuario?.perfil === 'IMPORTADOR';
+    if (jaEnviado && !podeReenviar) {
       throw new ForbiddenException(
         'As vendas deste dia já foram enviadas. Apenas o gerente pode reenviar.',
       );

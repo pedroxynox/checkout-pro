@@ -1,29 +1,21 @@
 /**
- * Tela de Importações.
+ * Tela de Importações (carga dos arquivos do dia).
  *
- * O fiscal do fechamento envia, para o dia selecionado, o arquivo .txt (bloc
- * de notas) de cada indicador: Troco Solidário, Recargas de Celular,
- * Cancelamento de Itens, Cancelamento de Cupom e Devoluções. Cada tipo mostra
- * se já foi enviado (Enviado) ou ainda está pendente (Pendente) no dia.
+ * Seção dedicada ao usuário de carga (perfil IMPORTADOR), deixado no computador
+ * da loja. Aqui se **enviam** todos os arquivos .txt do dia: as 5 arrecadações
+ * (Troco Solidário, Recargas, Cancelamentos e Devoluções) e as Vendas por hora.
+ * O status consolidado (enviado/pendente) é visto na seção "Fechamento".
  */
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
-import { arrecadacaoService } from '../../api/services';
-import { StatusArrecadacao, TipoArrecadacao } from '../../api/types';
-import {
-  Botao,
-  Carregando,
-  Cartao,
-  MensagemErro,
-  Selo,
-  SeletorData,
-  Tela,
-} from '../../components';
-import { useRequisicao } from '../../hooks/useRequisicao';
+import { arrecadacaoService, vendasService } from '../../api/services';
+import { TipoArrecadacao } from '../../api/types';
+import { Botao, Cartao, SeletorData, Tela } from '../../components';
 import { cores, espacamento, tipografia } from '../../theme';
+import { notificar } from '../../utils/dialogos';
 import { formatarMoeda, hojeISO } from '../../utils/formato';
 import { ARRECADACAO } from '../../utils/rotulos';
 
@@ -32,61 +24,74 @@ interface Aviso {
   texto: string;
 }
 
+/** Itens carregáveis: as 5 arrecadações + as vendas por hora. */
+type ItemCarga = { id: TipoArrecadacao | 'VENDAS'; titulo: string; icone: string };
+
+const ITENS: ItemCarga[] = [
+  ...ARRECADACAO.map((d) => ({
+    id: d.tipo as TipoArrecadacao,
+    titulo: d.titulo,
+    icone: d.icone,
+  })),
+  { id: 'VENDAS', titulo: 'Vendas por hora', icone: 'cash-outline' },
+];
+
+async function escolherArquivo(): Promise<DocumentPicker.DocumentPickerAsset | null> {
+  const escolha = await DocumentPicker.getDocumentAsync({
+    type: ['text/plain', 'text/*', 'application/octet-stream', '*/*'],
+    copyToCacheDirectory: true,
+  });
+  if (escolha.canceled || !escolha.assets?.[0]) {
+    return null;
+  }
+  return escolha.assets[0];
+}
+
 export function ImportacoesScreen(): React.ReactElement {
   const [data, setData] = useState(hojeISO());
-  const [enviando, setEnviando] = useState<TipoArrecadacao | null>(null);
+  const [enviando, setEnviando] = useState<string | null>(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
 
-  const status = useRequisicao<StatusArrecadacao>(
-    () => arrecadacaoService.status(data),
-    [data],
-  );
-
-  const enviarArquivo = async (tipo: TipoArrecadacao) => {
+  const enviar = async (item: ItemCarga) => {
     setAviso(null);
     try {
-      const escolha = await DocumentPicker.getDocumentAsync({
-        type: ['text/plain', 'text/*', 'application/octet-stream', '*/*'],
-        copyToCacheDirectory: true,
-      });
-      if (escolha.canceled || !escolha.assets?.[0]) {
+      const arquivo = await escolherArquivo();
+      if (!arquivo) {
         return;
       }
-      const arquivo = escolha.assets[0];
-      setEnviando(tipo);
-      const resultado = await arrecadacaoService.upload(
-        tipo,
-        {
-          uri: arquivo.uri,
-          name: arquivo.name,
-          mimeType: arquivo.mimeType,
-        },
-        data,
-      );
-      const titulo =
-        ARRECADACAO.find((d) => d.tipo === tipo)?.titulo ?? 'Indicador';
-      const msg = `${titulo}: ${resultado.quantidade} pessoa(s), total ${formatarMoeda(resultado.total)}.`;
-      setAviso({ tom: 'ok', texto: `Arquivo enviado. ${msg}` });
-      Alert.alert('Arquivo enviado', msg);
-      status.recarregar();
+      setEnviando(item.id);
+      const ref = {
+        uri: arquivo.uri,
+        name: arquivo.name,
+        mimeType: arquivo.mimeType,
+      };
+      let msg: string;
+      if (item.id === 'VENDAS') {
+        const r = await vendasService.upload(ref, data);
+        msg = `Vendas: ${r.horas} hora(s), total ${formatarMoeda(r.total)}.`;
+      } else {
+        const r = await arrecadacaoService.upload(item.id, ref, data);
+        msg = `${item.titulo}: ${r.quantidade} pessoa(s), total ${formatarMoeda(r.total)}.`;
+      }
+      setAviso({ tom: 'ok', texto: `Arquivo carregado. ${msg}` });
+      notificar('Arquivo carregado', msg);
     } catch (e) {
-      const msg =
-        e instanceof ApiError ? e.message : 'Falha ao enviar o arquivo.';
-      setAviso({ tom: 'erro', texto: msg });
-      Alert.alert('Erro no envio', msg);
+      const texto = e instanceof ApiError ? e.message : 'Falha ao carregar o arquivo.';
+      setAviso({ tom: 'erro', texto });
+      notificar('Erro no envio', texto);
     } finally {
       setEnviando(null);
     }
   };
 
   return (
-    <Tela aoAtualizar={status.recarregar} atualizando={status.atualizando}>
+    <Tela>
       <SeletorData valor={data} aoMudar={setData} rotulo="Dia de referência" />
 
-      <Cartao titulo="Indicadores">
-        <Text style={styles.ajudaTexto}>
-          Envie o bloc de notas de cada indicador do dia selecionado. O app
-          separa por pessoa e atualiza os Indicadores.
+      <Cartao titulo="Carregar arquivos do dia">
+        <Text style={styles.ajuda}>
+          Envie o bloc de notas de cada arquivo do dia selecionado. O status de
+          cada um é acompanhado na seção Fechamento.
         </Text>
         {aviso ? (
           <View
@@ -108,71 +113,32 @@ export function ImportacoesScreen(): React.ReactElement {
             </Text>
           </View>
         ) : null}
-        {status.erro ? (
-          <MensagemErro mensagem={status.erro} aoTentarNovamente={status.recarregar} />
-        ) : null}
-        {ARRECADACAO.map((def) => {
-          const enviado = status.dados?.[def.tipo] === true;
-          return (
-            <View key={def.tipo} style={styles.linhaTipo}>
-              <View style={styles.tipoTextos}>
-                <View style={styles.tipoTituloLinha}>
-                  <Ionicons
-                    name={def.icone as keyof typeof Ionicons.glyphMap}
-                    size={18}
-                    color={cores.primaria}
-                  />
-                  <Text style={styles.tipoNome}>{def.titulo}</Text>
-                </View>
-                {status.carregando ? (
-                  <Carregando />
-                ) : (
-                  <Selo
-                    texto={enviado ? 'Enviado' : 'Pendente'}
-                    cor={enviado ? cores.verde : cores.amarelo}
-                    fundo={enviado ? cores.verdeFundo : cores.amareloFundo}
-                  />
-                )}
-              </View>
-              <Botao
-                titulo={enviado ? 'Reenviar' : 'Enviar'}
-                variante="secundario"
-                carregando={enviando === def.tipo}
-                aoPressionar={() => void enviarArquivo(def.tipo)}
-                estilo={styles.botaoEnviar}
+        {ITENS.map((item) => (
+          <View key={item.id} style={styles.linha}>
+            <View style={styles.tituloLinha}>
+              <Ionicons
+                name={item.icone as keyof typeof Ionicons.glyphMap}
+                size={18}
+                color={cores.primaria}
               />
+              <Text style={styles.nome}>{item.titulo}</Text>
             </View>
-          );
-        })}
+            <Botao
+              titulo="Carregar"
+              variante="secundario"
+              carregando={enviando === item.id}
+              aoPressionar={() => void enviar(item)}
+              estilo={styles.botao}
+            />
+          </View>
+        ))}
       </Cartao>
     </Tela>
   );
 }
 
 const styles = StyleSheet.create({
-  linhaTipo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: espacamento.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: cores.divisor,
-  },
-  tipoTextos: {
-    flex: 1,
-    gap: espacamento.xs,
-  },
-  tipoTituloLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: espacamento.xs,
-  },
-  tipoNome: {
-    ...tipografia.corpo,
-    color: cores.texto,
-    fontWeight: '600',
-  },
-  ajudaTexto: {
+  ajuda: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginBottom: espacamento.sm,
@@ -186,7 +152,26 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     fontWeight: '600',
   },
-  botaoEnviar: {
+  linha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: espacamento.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: cores.divisor,
+  },
+  tituloLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+    flex: 1,
+  },
+  nome: {
+    ...tipografia.corpo,
+    color: cores.texto,
+    fontWeight: '600',
+  },
+  botao: {
     minHeight: 40,
     paddingHorizontal: espacamento.md,
   },

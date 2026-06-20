@@ -14,6 +14,7 @@ export interface Area {
   rota: Extract<
     RotaApp,
     | 'Importacoes'
+    | 'Fechamento'
     | 'Indicadores'
     | 'PainelVendas'
     | 'LoteApae'
@@ -37,9 +38,16 @@ export interface Area {
 
 export const AREAS: Area[] = [
   {
+    rota: 'Fechamento',
+    titulo: 'Fechamento',
+    descricao: 'Status dos arquivos do dia (enviado/pendente)',
+    icone: 'checkmark-done-outline',
+    funcionalidade: 'FECHAMENTO',
+  },
+  {
     rota: 'Importacoes',
     titulo: 'Importações',
-    descricao: 'Status diário e histórico dos arquivos',
+    descricao: 'Carregar os arquivos do dia',
     icone: 'cloud-upload-outline',
     funcionalidade: 'IMPORTACOES',
   },

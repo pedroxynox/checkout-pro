@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
+exports[`ImportacoesScreen mantém o snapshot da tela de carga 1`] = `
 <RCTScrollView
   contentContainerStyle={
     [
@@ -13,18 +13,6 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
     ]
   }
   keyboardShouldPersistTaps="handled"
-  refreshControl={
-    <RefreshControlMock
-      colors={
-        [
-          "#C8102E",
-        ]
-      }
-      onRefresh={[Function]}
-      refreshing={false}
-      tintColor="#C8102E"
-    />
-  }
   style={
     {
       "backgroundColor": "#F5F5F7",
@@ -32,7 +20,6 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
     }
   }
 >
-  <RCTRefreshControl />
   <View>
     <View
       style={
@@ -203,7 +190,7 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
           }
         }
       >
-        Indicadores
+        Carregar arquivos do dia
       </Text>
       <Text
         style={
@@ -215,7 +202,7 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
           }
         }
       >
-        Envie o bloc de notas de cada indicador do dia selecionado. O app separa por pessoa e atualiza os Indicadores.
+        Envie o bloc de notas de cada arquivo do dia selecionado. O status de cada um é acompanhado na seção Fechamento.
       </Text>
       <View
         style={
@@ -232,85 +219,29 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
         <View
           style={
             {
+              "alignItems": "center",
               "flex": 1,
+              "flexDirection": "row",
               "gap": 4,
             }
           }
         >
-          <View
+          <Text
+            testID="icon-heart-outline"
+          >
+            heart-outline
+          </Text>
+          <Text
             style={
               {
-                "alignItems": "center",
-                "flexDirection": "row",
-                "gap": 4,
+                "color": "#1A1A1F",
+                "fontSize": 15,
+                "fontWeight": "600",
               }
             }
           >
-            <Text
-              testID="icon-heart-outline"
-            >
-              heart-outline
-            </Text>
-            <Text
-              style={
-                {
-                  "color": "#1A1A1F",
-                  "fontSize": 15,
-                  "fontWeight": "600",
-                }
-              }
-            >
-              Troco Solidário
-            </Text>
-          </View>
-          <View
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "alignSelf": "flex-start",
-                  "borderRadius": 999,
-                  "flexDirection": "row",
-                  "paddingHorizontal": 8,
-                  "paddingVertical": 4,
-                },
-                {
-                  "backgroundColor": "#E4F6EC",
-                },
-              ]
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "borderRadius": 4,
-                    "height": 8,
-                    "marginRight": 4,
-                    "width": 8,
-                  },
-                  {
-                    "backgroundColor": "#1E9E5A",
-                  },
-                ]
-              }
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontSize": 12,
-                    "fontWeight": "600",
-                  },
-                  {
-                    "color": "#1E9E5A",
-                  },
-                ]
-              }
-            >
-              Enviado
-            </Text>
-          </View>
+            Troco Solidário
+          </Text>
         </View>
         <View
           accessibilityRole="button"
@@ -378,7 +309,7 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
               ]
             }
           >
-            Reenviar
+            Carregar
           </Text>
         </View>
       </View>
@@ -397,85 +328,29 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
         <View
           style={
             {
+              "alignItems": "center",
               "flex": 1,
+              "flexDirection": "row",
               "gap": 4,
             }
           }
         >
-          <View
+          <Text
+            testID="icon-phone-portrait-outline"
+          >
+            phone-portrait-outline
+          </Text>
+          <Text
             style={
               {
-                "alignItems": "center",
-                "flexDirection": "row",
-                "gap": 4,
+                "color": "#1A1A1F",
+                "fontSize": 15,
+                "fontWeight": "600",
               }
             }
           >
-            <Text
-              testID="icon-phone-portrait-outline"
-            >
-              phone-portrait-outline
-            </Text>
-            <Text
-              style={
-                {
-                  "color": "#1A1A1F",
-                  "fontSize": 15,
-                  "fontWeight": "600",
-                }
-              }
-            >
-              Recargas de Celular
-            </Text>
-          </View>
-          <View
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "alignSelf": "flex-start",
-                  "borderRadius": 999,
-                  "flexDirection": "row",
-                  "paddingHorizontal": 8,
-                  "paddingVertical": 4,
-                },
-                {
-                  "backgroundColor": "#FBF3DA",
-                },
-              ]
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "borderRadius": 4,
-                    "height": 8,
-                    "marginRight": 4,
-                    "width": 8,
-                  },
-                  {
-                    "backgroundColor": "#C99700",
-                  },
-                ]
-              }
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontSize": 12,
-                    "fontWeight": "600",
-                  },
-                  {
-                    "color": "#C99700",
-                  },
-                ]
-              }
-            >
-              Pendente
-            </Text>
-          </View>
+            Recargas de Celular
+          </Text>
         </View>
         <View
           accessibilityRole="button"
@@ -543,7 +418,7 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
               ]
             }
           >
-            Enviar
+            Carregar
           </Text>
         </View>
       </View>
@@ -562,85 +437,29 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
         <View
           style={
             {
+              "alignItems": "center",
               "flex": 1,
+              "flexDirection": "row",
               "gap": 4,
             }
           }
         >
-          <View
+          <Text
+            testID="icon-remove-circle-outline"
+          >
+            remove-circle-outline
+          </Text>
+          <Text
             style={
               {
-                "alignItems": "center",
-                "flexDirection": "row",
-                "gap": 4,
+                "color": "#1A1A1F",
+                "fontSize": 15,
+                "fontWeight": "600",
               }
             }
           >
-            <Text
-              testID="icon-remove-circle-outline"
-            >
-              remove-circle-outline
-            </Text>
-            <Text
-              style={
-                {
-                  "color": "#1A1A1F",
-                  "fontSize": 15,
-                  "fontWeight": "600",
-                }
-              }
-            >
-              Cancelamento de Itens
-            </Text>
-          </View>
-          <View
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "alignSelf": "flex-start",
-                  "borderRadius": 999,
-                  "flexDirection": "row",
-                  "paddingHorizontal": 8,
-                  "paddingVertical": 4,
-                },
-                {
-                  "backgroundColor": "#FBF3DA",
-                },
-              ]
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "borderRadius": 4,
-                    "height": 8,
-                    "marginRight": 4,
-                    "width": 8,
-                  },
-                  {
-                    "backgroundColor": "#C99700",
-                  },
-                ]
-              }
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontSize": 12,
-                    "fontWeight": "600",
-                  },
-                  {
-                    "color": "#C99700",
-                  },
-                ]
-              }
-            >
-              Pendente
-            </Text>
-          </View>
+            Cancelamento de Itens
+          </Text>
         </View>
         <View
           accessibilityRole="button"
@@ -708,7 +527,7 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
               ]
             }
           >
-            Enviar
+            Carregar
           </Text>
         </View>
       </View>
@@ -727,85 +546,29 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
         <View
           style={
             {
+              "alignItems": "center",
               "flex": 1,
+              "flexDirection": "row",
               "gap": 4,
             }
           }
         >
-          <View
+          <Text
+            testID="icon-receipt-outline"
+          >
+            receipt-outline
+          </Text>
+          <Text
             style={
               {
-                "alignItems": "center",
-                "flexDirection": "row",
-                "gap": 4,
+                "color": "#1A1A1F",
+                "fontSize": 15,
+                "fontWeight": "600",
               }
             }
           >
-            <Text
-              testID="icon-receipt-outline"
-            >
-              receipt-outline
-            </Text>
-            <Text
-              style={
-                {
-                  "color": "#1A1A1F",
-                  "fontSize": 15,
-                  "fontWeight": "600",
-                }
-              }
-            >
-              Cancelamento de Cupom
-            </Text>
-          </View>
-          <View
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "alignSelf": "flex-start",
-                  "borderRadius": 999,
-                  "flexDirection": "row",
-                  "paddingHorizontal": 8,
-                  "paddingVertical": 4,
-                },
-                {
-                  "backgroundColor": "#FBF3DA",
-                },
-              ]
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "borderRadius": 4,
-                    "height": 8,
-                    "marginRight": 4,
-                    "width": 8,
-                  },
-                  {
-                    "backgroundColor": "#C99700",
-                  },
-                ]
-              }
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontSize": 12,
-                    "fontWeight": "600",
-                  },
-                  {
-                    "color": "#C99700",
-                  },
-                ]
-              }
-            >
-              Pendente
-            </Text>
-          </View>
+            Cancelamento de Cupom
+          </Text>
         </View>
         <View
           accessibilityRole="button"
@@ -873,7 +636,7 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
               ]
             }
           >
-            Enviar
+            Carregar
           </Text>
         </View>
       </View>
@@ -892,85 +655,29 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
         <View
           style={
             {
+              "alignItems": "center",
               "flex": 1,
+              "flexDirection": "row",
               "gap": 4,
             }
           }
         >
-          <View
+          <Text
+            testID="icon-return-down-back-outline"
+          >
+            return-down-back-outline
+          </Text>
+          <Text
             style={
               {
-                "alignItems": "center",
-                "flexDirection": "row",
-                "gap": 4,
+                "color": "#1A1A1F",
+                "fontSize": 15,
+                "fontWeight": "600",
               }
             }
           >
-            <Text
-              testID="icon-return-down-back-outline"
-            >
-              return-down-back-outline
-            </Text>
-            <Text
-              style={
-                {
-                  "color": "#1A1A1F",
-                  "fontSize": 15,
-                  "fontWeight": "600",
-                }
-              }
-            >
-              Devoluções
-            </Text>
-          </View>
-          <View
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "alignSelf": "flex-start",
-                  "borderRadius": 999,
-                  "flexDirection": "row",
-                  "paddingHorizontal": 8,
-                  "paddingVertical": 4,
-                },
-                {
-                  "backgroundColor": "#E4F6EC",
-                },
-              ]
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "borderRadius": 4,
-                    "height": 8,
-                    "marginRight": 4,
-                    "width": 8,
-                  },
-                  {
-                    "backgroundColor": "#1E9E5A",
-                  },
-                ]
-              }
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontSize": 12,
-                    "fontWeight": "600",
-                  },
-                  {
-                    "color": "#1E9E5A",
-                  },
-                ]
-              }
-            >
-              Enviado
-            </Text>
-          </View>
+            Devoluções
+          </Text>
         </View>
         <View
           accessibilityRole="button"
@@ -1038,7 +745,116 @@ exports[`ImportacoesScreen mantém o snapshot da lista de indicadores 1`] = `
               ]
             }
           >
-            Reenviar
+            Carregar
+          </Text>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "borderBottomColor": "#EDEDF2",
+            "borderBottomWidth": 0.5,
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flex": 1,
+              "flexDirection": "row",
+              "gap": 4,
+            }
+          }
+        >
+          <Text
+            testID="icon-cash-outline"
+          >
+            cash-outline
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#1A1A1F",
+                "fontSize": 15,
+                "fontWeight": "600",
+              }
+            }
+          >
+            Vendas por hora
+          </Text>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 48,
+                "paddingHorizontal": 16,
+              },
+              {
+                "backgroundColor": "#FCE6EA",
+              },
+              false,
+              false,
+              false,
+              {
+                "minHeight": 40,
+                "paddingHorizontal": 12,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                },
+                {
+                  "color": "#C8102E",
+                },
+              ]
+            }
+          >
+            Carregar
           </Text>
         </View>
       </View>

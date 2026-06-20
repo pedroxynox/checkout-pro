@@ -23,7 +23,6 @@ export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
   'NOTIFICACOES',
   'ALERTAS_FILA',
   'NORMATIVAS',
-  'IMPORTACOES',
   'INDICADORES_VISUALIZAR',
   'PAINEL_VENDAS_VISUALIZAR',
   'PAINEL_VENDAS_EDITAR',
@@ -31,16 +30,25 @@ export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
   'OPERADORES_AUSENCIAS',
 ]);
 
-/** Funcionalidades do SUPERVISOR: tudo do fiscal + cadastro de operadores. */
+/** Funcionalidades do SUPERVISOR: tudo do fiscal + operadores + requisições + fechamento. */
 export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
   ...FUNCIONALIDADES_FISCAL,
   'OPERADORES_CRUD',
   'INSUMOS_GERENCIAR',
+  'FECHAMENTO',
+]);
+
+/** Funcionalidades do IMPORTADOR: usuário dedicado só carrega arquivos (Importações). */
+export const FUNCIONALIDADES_IMPORTADOR: readonly string[] = Object.freeze([
+  'IMPORTACOES',
 ]);
 
 const FUNCIONALIDADES_FISCAL_SET = new Set<string>(FUNCIONALIDADES_FISCAL);
 const FUNCIONALIDADES_SUPERVISOR_SET = new Set<string>(
   FUNCIONALIDADES_SUPERVISOR,
+);
+const FUNCIONALIDADES_IMPORTADOR_SET = new Set<string>(
+  FUNCIONALIDADES_IMPORTADOR,
 );
 
 /**
@@ -59,7 +67,7 @@ export const FUNCIONALIDADES_GERENTE: readonly string[] = Object.freeze([
   'ALERTAS_FILA',
   'NORMATIVAS',
   'INDICADOR_QUEBRA',
-  'IMPORTACOES',
+  'FECHAMENTO',
   'INSUMOS',
   'INSUMOS_GERENCIAR',
   'LOTE_APAE',
@@ -75,6 +83,7 @@ const FUNCIONALIDADES_GERENTE_SET = new Set<string>(FUNCIONALIDADES_GERENTE);
  * - GERENTE_DESENVOLVEDOR: acesso total.
  * - GERENTE: apenas o conjunto de gerente (ver tudo + operação do dia a dia).
  * - SUPERVISOR: conjunto do supervisor.
+ * - IMPORTADOR: apenas carregar arquivos (Importações).
  * - FISCAL: conjunto operacional do fiscal.
  */
 export function podeAcessar(perfil: Perfil, funcionalidade: string): boolean {
@@ -86,6 +95,9 @@ export function podeAcessar(perfil: Perfil, funcionalidade: string): boolean {
   }
   if (perfil === 'SUPERVISOR') {
     return FUNCIONALIDADES_SUPERVISOR_SET.has(funcionalidade);
+  }
+  if (perfil === 'IMPORTADOR') {
+    return FUNCIONALIDADES_IMPORTADOR_SET.has(funcionalidade);
   }
   return FUNCIONALIDADES_FISCAL_SET.has(funcionalidade);
 }

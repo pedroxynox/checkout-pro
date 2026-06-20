@@ -12,6 +12,7 @@ import React from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ImportacoesScreen } from '../screens/importacoes/ImportacoesScreen';
+import { FechamentoScreen } from '../screens/fechamento/FechamentoScreen';
 import { IndicadoresScreen } from '../screens/indicadores/IndicadoresScreen';
 import { IndicadorDetalheScreen } from '../screens/indicadores/IndicadorDetalheScreen';
 import { PainelVendasScreen } from '../screens/indicadores/PainelVendasScreen';
@@ -59,6 +60,13 @@ export function AppNavigator(): React.ReactElement {
           name="Importacoes"
           component={ImportacoesScreen}
           options={{ title: 'Importações' }}
+        />
+      )}
+      {podeAcessar('FECHAMENTO') && (
+        <Stack.Screen
+          name="Fechamento"
+          component={FechamentoScreen}
+          options={{ title: 'Fechamento' }}
         />
       )}
       {podeAcessar('INDICADORES_VISUALIZAR') && (

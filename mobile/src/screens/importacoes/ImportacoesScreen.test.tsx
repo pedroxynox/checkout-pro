@@ -1,58 +1,36 @@
 /**
- * Testes de componente/snapshot da tela de Importações.
+ * Testes de componente/snapshot da tela de Importações (carga dos arquivos).
  *
- * Cobre o envio dos arquivos .txt por indicador e o status (Enviado/Pendente)
- * de cada tipo no dia selecionado.
+ * Cobre a exibição dos itens carregáveis (5 arrecadações + vendas) com o botão
+ * de carregar. A carga em si é feita pelo usuário dedicado (perfil IMPORTADOR).
  */
 import { render, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { ImportacoesScreen } from './ImportacoesScreen';
 
 jest.mock('../../api/services', () => ({
-  arrecadacaoService: {
-    status: jest.fn(),
-    upload: jest.fn(),
-  },
+  arrecadacaoService: { upload: jest.fn() },
+  vendasService: { upload: jest.fn() },
 }));
 
-// "Hoje" determinístico (sexta-feira, 19/06/2026) para o snapshot não depender
-// da data real de execução — ver utils/formato (fuso de Brasília).
+// "Hoje" determinístico para o snapshot do seletor de data.
 jest.mock('../../utils/formato', () => {
   const real = jest.requireActual('../../utils/formato');
   return { ...real, hojeISO: () => '2026-06-19', diaSemanaHoje: () => 5 };
 });
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { arrecadacaoService } = require('../../api/services');
-
-const STATUS = {
-  TROCO_SOLIDARIO: true,
-  RECARGAS_CELULAR: false,
-  CANCELAMENTO_ITENS: false,
-  CANCELAMENTO_CUPOM: false,
-  DEVOLUCOES: true,
-};
-
 describe('ImportacoesScreen', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    arrecadacaoService.status.mockResolvedValue(STATUS);
-  });
-
-  it('lista os indicadores e o status (enviado/pendente)', async () => {
+  it('lista os arquivos carregáveis (arrecadações + vendas)', async () => {
     render(<ImportacoesScreen />);
 
     expect(await screen.findByText('Troco Solidário')).toBeTruthy();
-    expect(screen.getByText('Recargas de Celular')).toBeTruthy();
-    // Há ao menos um tipo enviado e um pendente.
-    expect((await screen.findAllByText('Enviado')).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Pendente').length).toBeGreaterThan(0);
+    expect(screen.getByText('Vendas por hora')).toBeTruthy();
+    // Um botão "Carregar" por item (5 arrecadações + vendas = 6).
+    expect(screen.getAllByText('Carregar').length).toBe(6);
   });
 
-  it('mantém o snapshot da lista de indicadores', async () => {
+  it('mantém o snapshot da tela de carga', async () => {
     const arvore = render(<ImportacoesScreen />);
-
-    await waitFor(() => expect(arrecadacaoService.status).toHaveBeenCalled());
     await screen.findByText('Troco Solidário');
     expect(arvore.toJSON()).toMatchSnapshot();
   });

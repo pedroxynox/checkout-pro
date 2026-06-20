@@ -9,7 +9,8 @@ export type Perfil =
   | 'GERENTE'
   | 'GERENTE_DESENVOLVEDOR'
   | 'SUPERVISOR'
-  | 'FISCAL';
+  | 'FISCAL'
+  | 'IMPORTADOR';
 
 export interface ResultadoLogin {
   token: string;

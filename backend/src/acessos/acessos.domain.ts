@@ -13,7 +13,8 @@ export type Perfil =
   | 'GERENTE'
   | 'GERENTE_DESENVOLVEDOR'
   | 'SUPERVISOR'
-  | 'FISCAL';
+  | 'FISCAL'
+  | 'IMPORTADOR';
 
 /**
  * Conjunto de funcionalidades **operacionais** liberadas ao perfil FISCAL
@@ -30,7 +31,6 @@ export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
   'NOTIFICACOES',
   'ALERTAS_FILA',
   'NORMATIVAS',
-  'IMPORTACOES',
   'INDICADORES_VISUALIZAR',
   'PAINEL_VENDAS_VISUALIZAR',
   'PAINEL_VENDAS_EDITAR',
@@ -39,19 +39,32 @@ export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
 ]);
 
 /**
- * Funcionalidades liberadas ao perfil SUPERVISOR: tudo do fiscal + o cadastro
- * de operadores. Permanece exclusiva do gerente a gestão de pessoas/acessos
- * (USUARIOS_CRUD).
+ * Funcionalidades liberadas ao perfil SUPERVISOR: tudo do fiscal + cadastro de
+ * operadores, gestão de requisições e o **Fechamento** (status dos arquivos do
+ * dia). Permanece exclusiva do gerente a gestão de pessoas/acessos.
  */
 export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
   ...FUNCIONALIDADES_FISCAL,
   'OPERADORES_CRUD',
   'INSUMOS_GERENCIAR',
+  'FECHAMENTO',
+]);
+
+/**
+ * Funcionalidades do perfil IMPORTADOR: usuário dedicado, deixado no computador
+ * da loja, cuja única função é **carregar os arquivos do dia** (Importações).
+ * Não enxerga nenhuma outra área.
+ */
+export const FUNCIONALIDADES_IMPORTADOR: readonly string[] = Object.freeze([
+  'IMPORTACOES',
 ]);
 
 const FUNCIONALIDADES_FISCAL_SET = new Set<string>(FUNCIONALIDADES_FISCAL);
 const FUNCIONALIDADES_SUPERVISOR_SET = new Set<string>(
   FUNCIONALIDADES_SUPERVISOR,
+);
+const FUNCIONALIDADES_IMPORTADOR_SET = new Set<string>(
+  FUNCIONALIDADES_IMPORTADOR,
 );
 
 /**
@@ -74,8 +87,8 @@ export const FUNCIONALIDADES_GERENTE: readonly string[] = Object.freeze([
   'ALERTAS_FILA',
   'NORMATIVAS',
   'INDICADOR_QUEBRA',
+  'FECHAMENTO',
   // Operação permitida ao gerente comum
-  'IMPORTACOES',
   'INSUMOS',
   'INSUMOS_GERENCIAR',
   'LOTE_APAE',
@@ -111,6 +124,9 @@ export function decidirAutorizacao(
   }
   if (perfil === 'SUPERVISOR') {
     return FUNCIONALIDADES_SUPERVISOR_SET.has(funcionalidade);
+  }
+  if (perfil === 'IMPORTADOR') {
+    return FUNCIONALIDADES_IMPORTADOR_SET.has(funcionalidade);
   }
   return FUNCIONALIDADES_FISCAL_SET.has(funcionalidade);
 }

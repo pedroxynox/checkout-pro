@@ -5,6 +5,7 @@ import type { TipoArrecadacao } from '../api/types';
 export type RootStackParamList = {
   Home: undefined;
   Importacoes: undefined;
+  Fechamento: undefined;
   Indicadores: undefined;
   IndicadorDetalhe: { tipo: TipoArrecadacao };
   PainelVendas: undefined;
