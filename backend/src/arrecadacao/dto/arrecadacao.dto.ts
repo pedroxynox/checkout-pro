@@ -40,3 +40,14 @@ export class StatusArrecadacaoDto {
   @IsISO8601()
   data!: string;
 }
+
+/** Marca/desmarca "sem movimento" de um tipo num dia. */
+export class SemMovimentoArrecadacaoDto {
+  @IsIn(TIPOS_ARRECADACAO as unknown as string[], {
+    message: 'Tipo de arrecadação inválido.',
+  })
+  tipo!: TipoArrecadacao;
+
+  @IsISO8601()
+  data!: string;
+}

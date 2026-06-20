@@ -71,9 +71,19 @@ export const arrecadacaoService = {
     });
   },
 
-  /** Status (enviado/pendente) de cada tipo no dia. */
+  /** Status (enviado/sem movimento/pendente) de cada tipo no dia. */
   status(data: string): Promise<StatusArrecadacao> {
     return apiClient.get<StatusArrecadacao>('/arrecadacao/status', { data });
+  },
+
+  /** Marca um tipo como "sem movimento" no dia (carga — perfil IMPORTADOR). */
+  marcarSemMovimento(tipo: TipoArrecadacao, data: string): Promise<void> {
+    return apiClient.post<void>('/arrecadacao/sem-movimento', { tipo, data });
+  },
+
+  /** Remove a marca de "sem movimento" (correção). */
+  removerSemMovimento(tipo: TipoArrecadacao, data: string): Promise<void> {
+    return apiClient.delete<void>('/arrecadacao/sem-movimento', { tipo, data });
   },
 
   /** Ranking de operadores por valor no intervalo [início, fim]. */

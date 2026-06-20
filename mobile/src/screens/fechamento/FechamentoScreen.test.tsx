@@ -23,24 +23,24 @@ describe('FechamentoScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     arrecadacaoService.status.mockResolvedValue({
-      TROCO_SOLIDARIO: true,
-      RECARGAS_CELULAR: false,
-      CANCELAMENTO_ITENS: false,
-      CANCELAMENTO_CUPOM: false,
-      DEVOLUCOES: false,
+      TROCO_SOLIDARIO: 'ENVIADO',
+      RECARGAS_CELULAR: 'PENDENTE',
+      CANCELAMENTO_ITENS: 'SEM_MOVIMENTO',
+      CANCELAMENTO_CUPOM: 'PENDENTE',
+      DEVOLUCOES: 'PENDENTE',
     });
     vendasService.status.mockResolvedValue({ enviado: true });
   });
 
-  it('mostra o status de cada arquivo e o resumo', async () => {
+  it('mostra o status de cada arquivo (enviado/sem movimento/pendente) e o resumo', async () => {
     render(<FechamentoScreen />);
 
     expect(await screen.findByText('Troco Solidário')).toBeTruthy();
     expect(screen.getByText('Vendas por hora')).toBeTruthy();
-    // Troco + Vendas enviados = 2 de 6.
-    expect(screen.getByText(/2 de 6/)).toBeTruthy();
-    // Pelo menos um "Enviado" e um "Pendente".
+    // Troco (enviado) + Itens (sem movimento) + Vendas (enviado) = 3 de 6.
+    expect(screen.getByText(/3 de 6/)).toBeTruthy();
     expect(screen.getAllByText('Enviado').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('Sem movimento')).toBeTruthy();
     expect(screen.getAllByText('Pendente').length).toBeGreaterThanOrEqual(1);
   });
 });

@@ -121,8 +121,11 @@ export interface ItemRankingArrecadacao {
   quantidade: number | null;
 }
 
-/** Status (true=enviado, false=pendente) de cada tipo no dia. */
-export type StatusArrecadacao = Record<TipoArrecadacao, boolean>;
+/** Estado de um arquivo de arrecadação no dia. */
+export type StatusArquivoArrecadacao = 'ENVIADO' | 'SEM_MOVIMENTO' | 'PENDENTE';
+
+/** Status (enviado/sem movimento/pendente) de cada tipo no dia. */
+export type StatusArrecadacao = Record<TipoArrecadacao, StatusArquivoArrecadacao>;
 
 // ----- Vendas por hora (Painel de Vendas) -----
 export interface ItemVendaHora {

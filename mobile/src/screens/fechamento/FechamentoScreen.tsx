@@ -11,7 +11,11 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { arrecadacaoService, vendasService } from '../../api/services';
-import { StatusArrecadacao, TipoArrecadacao } from '../../api/types';
+import {
+  StatusArquivoArrecadacao,
+  StatusArrecadacao,
+  TipoArrecadacao,
+} from '../../api/types';
 import {
   Carregando,
   Cartao,
@@ -29,16 +33,22 @@ interface ItemStatus {
   id: TipoArrecadacao | 'VENDAS';
   titulo: string;
   icone: string;
-  enviado: boolean;
+  status: StatusArquivoArrecadacao;
 }
 
-function seloDoStatus(enviado: boolean, diaPassou: boolean): {
-  texto: string;
-  cor: string;
-  fundo: string;
-} {
-  if (enviado) {
+function seloDoStatus(
+  status: StatusArquivoArrecadacao,
+  diaPassou: boolean,
+): { texto: string; cor: string; fundo: string } {
+  if (status === 'ENVIADO') {
     return { texto: 'Enviado', cor: cores.verde, fundo: cores.verdeFundo };
+  }
+  if (status === 'SEM_MOVIMENTO') {
+    return {
+      texto: 'Sem movimento',
+      cor: cores.textoSecundario,
+      fundo: cores.superficieAlternativa,
+    };
   }
   if (diaPassou) {
     return { texto: 'Não enviado', cor: cores.vermelho, fundo: cores.vermelhoFundo };
@@ -65,17 +75,17 @@ export function FechamentoScreen(): React.ReactElement {
       id: d.tipo as TipoArrecadacao,
       titulo: d.titulo,
       icone: d.icone,
-      enviado: arrecadacao?.[d.tipo] === true,
+      status: (arrecadacao?.[d.tipo] ?? 'PENDENTE') as StatusArquivoArrecadacao,
     })),
     {
       id: 'VENDAS' as const,
       titulo: 'Vendas por hora',
       icone: 'cash-outline',
-      enviado: req.dados?.vendas?.enviado === true,
+      status: (req.dados?.vendas?.enviado ? 'ENVIADO' : 'PENDENTE') as StatusArquivoArrecadacao,
     },
   ];
 
-  const totalEnviados = itens.filter((i) => i.enviado).length;
+  const concluidos = itens.filter((i) => i.status !== 'PENDENTE').length;
 
   return (
     <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
@@ -83,7 +93,7 @@ export function FechamentoScreen(): React.ReactElement {
 
       <Cartao titulo="Status do fechamento">
         <Text style={styles.resumo}>
-          {totalEnviados} de {itens.length} arquivos carregados
+          {concluidos} de {itens.length} arquivos concluídos
         </Text>
         {req.carregando ? (
           <Carregando />
@@ -91,7 +101,7 @@ export function FechamentoScreen(): React.ReactElement {
           <MensagemErro mensagem={req.erro} aoTentarNovamente={req.recarregar} />
         ) : (
           itens.map((item) => {
-            const selo = seloDoStatus(item.enviado, diaPassou);
+            const selo = seloDoStatus(item.status, diaPassou);
             return (
               <View key={item.id} style={styles.linha}>
                 <View style={styles.tituloLinha}>

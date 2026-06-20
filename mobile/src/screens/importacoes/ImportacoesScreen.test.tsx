@@ -4,7 +4,7 @@
  * Cobre a exibição dos itens carregáveis (5 arrecadações + vendas) com o botão
  * de carregar. A carga em si é feita pelo usuário dedicado (perfil IMPORTADOR).
  */
-import { render, screen, waitFor } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { ImportacoesScreen } from './ImportacoesScreen';
 

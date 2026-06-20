@@ -202,6 +202,20 @@ model RegistroArrecadacao {
   @@map("registros_arrecadacao")
 }
 
+// Marca de que um tipo de arrecadação NÃO teve movimento num dia (ex.: nenhum
+// cancelamento de itens). Permite ao Fechamento distinguir "sem movimento" de
+// "pendente/não enviado". Único por (tipo, data).
+model ArrecadacaoSemMovimento {
+  id         String   @id @default(uuid())
+  tipo       String
+  data       DateTime
+  marcadoPor String?
+  criadoEm   DateTime @default(now())
+
+  @@unique([tipo, data])
+  @@map("arrecadacao_sem_movimento")
+}
+
 model LoteApae {
   id                String     @id @default(uuid())
   quantidadeInicial Int

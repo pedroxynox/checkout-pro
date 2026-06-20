@@ -8,12 +8,12 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { arrecadacaoService, vendasService } from '../../api/services';
 import { TipoArrecadacao } from '../../api/types';
-import { Botao, Cartao, SeletorData, Tela } from '../../components';
+import { Botao, Cartao, Selo, SeletorData, Tela } from '../../components';
 import { cores, espacamento, tipografia } from '../../theme';
 import { notificar } from '../../utils/dialogos';
 import { formatarMoeda, hojeISO } from '../../utils/formato';
@@ -51,6 +51,14 @@ export function ImportacoesScreen(): React.ReactElement {
   const [data, setData] = useState(hojeISO());
   const [enviando, setEnviando] = useState<string | null>(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
+  // Estado local da sessão por item: o que foi feito hoje nesta tela.
+  const [estado, setEstado] = useState<Record<string, 'carregado' | 'sem_movimento'>>({});
+
+  // Ao trocar o dia, zera o estado local (refere-se ao dia anterior).
+  useEffect(() => {
+    setEstado({});
+    setAviso(null);
+  }, [data]);
 
   const enviar = async (item: ItemCarga) => {
     setAviso(null);
@@ -73,6 +81,7 @@ export function ImportacoesScreen(): React.ReactElement {
         const r = await arrecadacaoService.upload(item.id, ref, data);
         msg = `${item.titulo}: ${r.quantidade} pessoa(s), total ${formatarMoeda(r.total)}.`;
       }
+      setEstado((s) => ({ ...s, [item.id]: 'carregado' }));
       setAviso({ tom: 'ok', texto: `Arquivo carregado. ${msg}` });
       notificar('Arquivo carregado', msg);
     } catch (e) {
@@ -84,14 +93,30 @@ export function ImportacoesScreen(): React.ReactElement {
     }
   };
 
+  const marcarSemMovimento = async (item: ItemCarga) => {
+    if (item.id === 'VENDAS') {
+      return;
+    }
+    setEnviando(item.id);
+    try {
+      await arrecadacaoService.marcarSemMovimento(item.id, data);
+      setEstado((s) => ({ ...s, [item.id]: 'sem_movimento' }));
+      notificar('Marcado', `${item.titulo}: sem movimento no dia.`);
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao marcar.');
+    } finally {
+      setEnviando(null);
+    }
+  };
+
   return (
     <Tela>
       <SeletorData valor={data} aoMudar={setData} rotulo="Dia de referência" />
 
       <Cartao titulo="Carregar arquivos do dia">
         <Text style={styles.ajuda}>
-          Envie o bloc de notas de cada arquivo do dia selecionado. O status de
-          cada um é acompanhado na seção Fechamento.
+          Envie o bloc de notas de cada arquivo do dia. Se um indicador não teve
+          movimento (ex.: nenhum cancelamento), toque em &quot;Sem movimento&quot;.
         </Text>
         {aviso ? (
           <View
@@ -113,25 +138,46 @@ export function ImportacoesScreen(): React.ReactElement {
             </Text>
           </View>
         ) : null}
-        {ITENS.map((item) => (
-          <View key={item.id} style={styles.linha}>
-            <View style={styles.tituloLinha}>
-              <Ionicons
-                name={item.icone as keyof typeof Ionicons.glyphMap}
-                size={18}
-                color={cores.primaria}
-              />
-              <Text style={styles.nome}>{item.titulo}</Text>
+        {ITENS.map((item) => {
+          const st = estado[item.id];
+          return (
+            <View key={item.id} style={styles.item}>
+              <View style={styles.tituloLinha}>
+                <Ionicons
+                  name={item.icone as keyof typeof Ionicons.glyphMap}
+                  size={18}
+                  color={cores.primaria}
+                />
+                <Text style={styles.nome}>{item.titulo}</Text>
+                {st === 'carregado' ? (
+                  <Selo texto="Carregado" cor={cores.verde} fundo={cores.verdeFundo} />
+                ) : st === 'sem_movimento' ? (
+                  <Selo
+                    texto="Sem movimento"
+                    cor={cores.textoSecundario}
+                    fundo={cores.superficieAlternativa}
+                  />
+                ) : null}
+              </View>
+              <View style={styles.acoes}>
+                <Botao
+                  titulo="Carregar"
+                  variante="secundario"
+                  carregando={enviando === item.id}
+                  aoPressionar={() => void enviar(item)}
+                  estilo={styles.botao}
+                />
+                {item.id !== 'VENDAS' ? (
+                  <Botao
+                    titulo="Sem movimento"
+                    variante="texto"
+                    aoPressionar={() => void marcarSemMovimento(item)}
+                  />
+                ) : null}
+              </View>
             </View>
-            <Botao
-              titulo="Carregar"
-              variante="secundario"
-              carregando={enviando === item.id}
-              aoPressionar={() => void enviar(item)}
-              estilo={styles.botao}
-            />
-          </View>
-        ))}
+          );
+        })}
       </Cartao>
     </Tela>
   );
@@ -152,10 +198,7 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     fontWeight: '600',
   },
-  linha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  item: {
     paddingVertical: espacamento.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: cores.divisor,
@@ -164,12 +207,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: espacamento.xs,
-    flex: 1,
+    marginBottom: espacamento.xs,
   },
   nome: {
     ...tipografia.corpo,
     color: cores.texto,
     fontWeight: '600',
+    flex: 1,
+  },
+  acoes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
   },
   botao: {
     minHeight: 40,

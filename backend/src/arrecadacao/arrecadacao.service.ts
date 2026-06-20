@@ -59,8 +59,11 @@ export interface DetalheArrecadacao {
   data: string;
 }
 
-/** Mapa tipo -> já enviado no dia (true) ou pendente (false). */
-export type StatusArrecadacao = Record<TipoArrecadacao, boolean>;
+/** Estado de um arquivo de arrecadação no dia. */
+export type StatusArquivo = 'ENVIADO' | 'SEM_MOVIMENTO' | 'PENDENTE';
+
+/** Mapa tipo -> estado (enviado / sem movimento / pendente) no dia. */
+export type StatusArrecadacao = Record<TipoArrecadacao, StatusArquivo>;
 
 function arredondar(n: number): number {
   return Math.round(n * 100) / 100;
@@ -106,6 +109,10 @@ export class ArrecadacaoService {
           motivo: l.motivo ?? null,
         })),
       }),
+      // Houve movimento de fato: remove eventual marca de "sem movimento".
+      this.prisma.arrecadacaoSemMovimento.deleteMany({
+        where: { tipo, data: { gte: dia, lt: proximo } },
+      }),
     ]);
     // Se este envio completou os 5 arquivos do dia, avisa os gerentes.
     if (!completoAntes) {
@@ -126,7 +133,8 @@ export class ArrecadacaoService {
   /** Indica se todos os 5 tipos já foram enviados no dia informado. */
   private async diaCompleto(data: Date): Promise<boolean> {
     const status = await this.status(data);
-    return TIPOS_ARRECADACAO.every((tipo) => status[tipo] === true);
+    // "Completo" = nenhum tipo pendente (enviado OU marcado sem movimento).
+    return TIPOS_ARRECADACAO.every((tipo) => status[tipo] !== 'PENDENTE');
   }
 
   /**
@@ -157,23 +165,60 @@ export class ArrecadacaoService {
     }
   }
 
-  /** Status (enviado/pendente) de cada tipo no dia informado. */
+  /** Status (enviado / sem movimento / pendente) de cada tipo no dia. */
   async status(data: Date): Promise<StatusArrecadacao> {
     const dia = inicioDoDia(data);
     const proximo = inicioDoProximoDia(data);
-    const grupos = await this.prisma.registroArrecadacao.groupBy({
-      by: ['tipo'],
-      where: { data: { gte: dia, lt: proximo } },
-      _count: { _all: true },
-    });
+    const [grupos, marcas] = await Promise.all([
+      this.prisma.registroArrecadacao.groupBy({
+        by: ['tipo'],
+        where: { data: { gte: dia, lt: proximo } },
+        _count: { _all: true },
+      }),
+      this.prisma.arrecadacaoSemMovimento.findMany({
+        where: { data: { gte: dia, lt: proximo } },
+        select: { tipo: true },
+      }),
+    ]);
     const enviados = new Set(
       grupos.filter((g) => (g._count?._all ?? 0) > 0).map((g) => g.tipo),
     );
+    const semMovimento = new Set(marcas.map((m) => m.tipo));
     const resultado = {} as StatusArrecadacao;
     for (const tipo of TIPOS_ARRECADACAO) {
-      resultado[tipo] = enviados.has(tipo);
+      resultado[tipo] = enviados.has(tipo)
+        ? 'ENVIADO'
+        : semMovimento.has(tipo)
+          ? 'SEM_MOVIMENTO'
+          : 'PENDENTE';
     }
     return resultado;
+  }
+
+  /**
+   * Marca um tipo como "sem movimento" no dia (ex.: nenhum cancelamento de
+   * itens). Idempotente (upsert por tipo+data).
+   */
+  async marcarSemMovimento(
+    tipo: TipoArrecadacao,
+    data: Date,
+    marcadoPor?: string,
+  ): Promise<void> {
+    const dia = inicioDoDia(data);
+    await this.prisma.arrecadacaoSemMovimento.upsert({
+      where: { tipo_data: { tipo, data: dia } },
+      update: { marcadoPor },
+      create: { tipo, data: dia, marcadoPor },
+    });
+  }
+
+  /** Remove a marca de "sem movimento" de um tipo no dia (correção). */
+  async removerSemMovimento(tipo: TipoArrecadacao, data: Date): Promise<void> {
+    const dia = inicioDoDia(data);
+    const proximo = inicioDoProximoDia(data);
+    await this.prisma.arrecadacaoSemMovimento.deleteMany({
+      where: { tipo, data: { gte: dia, lt: proximo } },
+    });
   }
 
   private async somar(

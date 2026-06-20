@@ -1,7 +1,11 @@
 import {
   BadRequestException,
+  Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Post,
   Query,
   UploadedFile,
@@ -13,9 +17,14 @@ import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
   RankingArrecadacaoDto,
   ResumoArrecadacaoDto,
+  SemMovimentoArrecadacaoDto,
   StatusArrecadacaoDto,
   UploadArrecadacaoDto,
 } from './dto/arrecadacao.dto';
+import {
+  UsuarioAtual,
+  UsuarioAutenticado,
+} from '../common/decorators/usuario-atual.decorator';
 import { parseArrecadacao } from './arrecadacao.parser';
 import {
   ArrecadacaoService,
@@ -59,11 +68,39 @@ export class ArrecadacaoController {
     return this.arrecadacaoService.resumo(dto.tipo, new Date(dto.data));
   }
 
-  /** Status (enviado/pendente) de cada tipo no dia. */
+  /** Status (enviado / sem movimento / pendente) de cada tipo no dia. */
   @Get('status')
-  @Funcionalidade('IMPORTACOES')
+  @Funcionalidade('FECHAMENTO')
   status(@Query() dto: StatusArrecadacaoDto): Promise<StatusArrecadacao> {
     return this.arrecadacaoService.status(new Date(dto.data));
+  }
+
+  /** Marca um tipo como "sem movimento" no dia (carga — perfil IMPORTADOR). */
+  @Post('sem-movimento')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Funcionalidade('IMPORTACOES')
+  async marcarSemMovimento(
+    @Body() dto: SemMovimentoArrecadacaoDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<void> {
+    await this.arrecadacaoService.marcarSemMovimento(
+      dto.tipo,
+      new Date(dto.data),
+      usuario?.sub,
+    );
+  }
+
+  /** Remove a marca de "sem movimento" (correção — perfil IMPORTADOR). */
+  @Delete('sem-movimento')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Funcionalidade('IMPORTACOES')
+  async removerSemMovimento(
+    @Query() dto: SemMovimentoArrecadacaoDto,
+  ): Promise<void> {
+    await this.arrecadacaoService.removerSemMovimento(
+      dto.tipo,
+      new Date(dto.data),
+    );
   }
 
   /** Ranking de operadores por valor no intervalo informado. */
