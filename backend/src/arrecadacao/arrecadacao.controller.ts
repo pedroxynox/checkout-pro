@@ -77,13 +77,12 @@ export class ArrecadacaoController {
 
   /** Marca um tipo como "sem movimento" no dia (carga — perfil IMPORTADOR). */
   @Post('sem-movimento')
-  @HttpCode(HttpStatus.NO_CONTENT)
   @Funcionalidade('IMPORTACOES')
   async marcarSemMovimento(
     @Body() dto: SemMovimentoArrecadacaoDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
-  ): Promise<void> {
-    await this.arrecadacaoService.marcarSemMovimento(
+  ): Promise<{ fechamentoConcluido: boolean }> {
+    return this.arrecadacaoService.marcarSemMovimento(
       dto.tipo,
       new Date(dto.data),
       usuario?.sub,

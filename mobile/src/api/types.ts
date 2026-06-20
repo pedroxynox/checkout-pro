@@ -92,6 +92,8 @@ export interface ResultadoUploadArrecadacao {
   data: string;
   quantidade: number;
   total: number;
+  /** Verdadeiro se ESTE envio concluiu o fechamento do dia. */
+  fechamentoConcluido: boolean;
 }
 
 export interface ResumoArrecadacao {
@@ -148,6 +150,8 @@ export interface ResultadoUploadVendas {
   data: string;
   horas: number;
   total: number;
+  /** Verdadeiro se ESTE envio concluiu o fechamento do dia. */
+  fechamentoConcluido: boolean;
 }
 
 export interface StatusVendas {

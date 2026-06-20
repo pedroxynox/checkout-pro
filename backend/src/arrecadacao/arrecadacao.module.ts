@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { NotificacoesModule } from '../notificacoes/notificacoes.module';
+import { FechamentoModule } from '../fechamento/fechamento.module';
 import { ArrecadacaoController } from './arrecadacao.controller';
 import { ArrecadacaoService } from './arrecadacao.service';
 
@@ -8,11 +8,11 @@ import { ArrecadacaoService } from './arrecadacao.service';
  * recargas, cancelamentos, devoluções) e fornece totais (dia/semana/mês) e
  * ranking por operador para os indicadores. PrismaService é global.
  *
- * Importa o NotificacoesModule para avisar os gerentes quando o fechamento do
- * dia é concluído (todos os arquivos enviados).
+ * Importa o FechamentoModule para concluir e avisar os gestores quando todos
+ * os arquivos do dia são resolvidos.
  */
 @Module({
-  imports: [NotificacoesModule],
+  imports: [FechamentoModule],
   providers: [ArrecadacaoService],
   controllers: [ArrecadacaoController],
   exports: [ArrecadacaoService],

@@ -10,10 +10,13 @@ export class CadastrarUsuarioDto {
   @IsNotEmpty({ message: 'O nome é obrigatório.' })
   nome!: string;
 
-  @IsIn(['GERENTE', 'GERENTE_DESENVOLVEDOR', 'SUPERVISOR', 'FISCAL', 'IMPORTADOR'], {
-    message:
-      'O perfil deve ser GERENTE, GERENTE_DESENVOLVEDOR, SUPERVISOR, FISCAL ou IMPORTADOR.',
-  })
+  @IsIn(
+    ['GERENTE', 'GERENTE_DESENVOLVEDOR', 'SUPERVISOR', 'FISCAL', 'IMPORTADOR'],
+    {
+      message:
+        'O perfil deve ser GERENTE, GERENTE_DESENVOLVEDOR, SUPERVISOR, FISCAL ou IMPORTADOR.',
+    },
+  )
   perfil!:
     | 'GERENTE'
     | 'GERENTE_DESENVOLVEDOR'

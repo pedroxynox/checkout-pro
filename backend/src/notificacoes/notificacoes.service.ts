@@ -68,6 +68,18 @@ export class NotificacoesService {
   }
 
   /**
+   * Gestores: gerentes (comum e desenvolvedor) e supervisores. Alvo de avisos
+   * de gestão (ex.: fechamento concluído, novas requisições).
+   */
+  async gestores(): Promise<Usuario[]> {
+    return this.prisma.usuario.findMany({
+      where: {
+        perfil: { in: ['GERENTE', 'GERENTE_DESENVOLVEDOR', 'SUPERVISOR'] },
+      },
+    });
+  }
+
+  /**
    * Calcula os destinatários do alerta de checklist (Req 5.3.3, 5.3.4): união
    * dos fiscais online com o login gerencial (sempre presente).
    */

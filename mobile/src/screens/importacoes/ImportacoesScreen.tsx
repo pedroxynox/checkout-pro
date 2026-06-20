@@ -74,16 +74,27 @@ export function ImportacoesScreen(): React.ReactElement {
         mimeType: arquivo.mimeType,
       };
       let msg: string;
+      let fechou: boolean;
       if (item.id === 'VENDAS') {
         const r = await vendasService.upload(ref, data);
         msg = `Vendas: ${r.horas} hora(s), total ${formatarMoeda(r.total)}.`;
+        fechou = r.fechamentoConcluido;
       } else {
         const r = await arrecadacaoService.upload(item.id, ref, data);
         msg = `${item.titulo}: ${r.quantidade} pessoa(s), total ${formatarMoeda(r.total)}.`;
+        fechou = r.fechamentoConcluido;
       }
       setEstado((s) => ({ ...s, [item.id]: 'carregado' }));
-      setAviso({ tom: 'ok', texto: `Arquivo carregado. ${msg}` });
-      notificar('Arquivo carregado', msg);
+      if (fechou) {
+        setAviso({ tom: 'ok', texto: 'Fechamento realizado com sucesso!' });
+        notificar(
+          'Fechamento realizado com sucesso!',
+          'Todos os arquivos do dia foram enviados. Os gestores foram avisados.',
+        );
+      } else {
+        setAviso({ tom: 'ok', texto: `Arquivo carregado. ${msg}` });
+        notificar('Arquivo carregado', msg);
+      }
     } catch (e) {
       const texto = e instanceof ApiError ? e.message : 'Falha ao carregar o arquivo.';
       setAviso({ tom: 'erro', texto });
@@ -99,9 +110,17 @@ export function ImportacoesScreen(): React.ReactElement {
     }
     setEnviando(item.id);
     try {
-      await arrecadacaoService.marcarSemMovimento(item.id, data);
+      const r = await arrecadacaoService.marcarSemMovimento(item.id, data);
       setEstado((s) => ({ ...s, [item.id]: 'sem_movimento' }));
-      notificar('Marcado', `${item.titulo}: sem movimento no dia.`);
+      if (r.fechamentoConcluido) {
+        setAviso({ tom: 'ok', texto: 'Fechamento realizado com sucesso!' });
+        notificar(
+          'Fechamento realizado com sucesso!',
+          'Todos os arquivos do dia foram enviados. Os gestores foram avisados.',
+        );
+      } else {
+        notificar('Marcado', `${item.titulo}: sem movimento no dia.`);
+      }
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao marcar.');
     } finally {

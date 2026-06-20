@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { FechamentoService } from '../fechamento/fechamento.service';
 import { LinhaVendaHora } from './vendas.parser';
 import {
   inicioDaProximaSemana,
@@ -14,6 +15,8 @@ export interface ResultadoUploadVendas {
   data: Date;
   horas: number;
   total: number;
+  /** Verdadeiro se ESTE envio concluiu o fechamento do dia. */
+  fechamentoConcluido: boolean;
 }
 
 export interface ItemVendaHora {
@@ -43,7 +46,10 @@ function arredondar(n: number): number {
  */
 @Injectable()
 export class VendasService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fechamento: FechamentoService,
+  ) {}
 
   /** Substitui as vendas por hora do dia e atualiza o total em VendaDiaria. */
   async importar(
@@ -53,6 +59,9 @@ export class VendasService {
     const dia = inicioDoDia(data);
     const proximo = inicioDoProximoDia(data);
     const total = arredondar(linhas.reduce((s, l) => s + l.valor, 0));
+    // Captura se o dia já estava concluído antes deste envio (para notificar
+    // o fechamento apenas na transição).
+    const completoAntes = await this.fechamento.estaCompleto(data);
     await this.prisma.$transaction([
       this.prisma.vendaHora.deleteMany({
         where: { data: { gte: dia, lt: proximo } },
@@ -66,7 +75,11 @@ export class VendasService {
         update: { valor: total },
       }),
     ]);
-    return { data: dia, horas: linhas.length, total };
+    const fechamentoConcluido = await this.fechamento.concluirSeCompletou(
+      data,
+      completoAntes,
+    );
+    return { data: dia, horas: linhas.length, total, fechamentoConcluido };
   }
 
   private async somar(gte: Date, lt: Date): Promise<number> {

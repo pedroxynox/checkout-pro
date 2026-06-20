@@ -77,8 +77,14 @@ export const arrecadacaoService = {
   },
 
   /** Marca um tipo como "sem movimento" no dia (carga — perfil IMPORTADOR). */
-  marcarSemMovimento(tipo: TipoArrecadacao, data: string): Promise<void> {
-    return apiClient.post<void>('/arrecadacao/sem-movimento', { tipo, data });
+  marcarSemMovimento(
+    tipo: TipoArrecadacao,
+    data: string,
+  ): Promise<{ fechamentoConcluido: boolean }> {
+    return apiClient.post<{ fechamentoConcluido: boolean }>(
+      '/arrecadacao/sem-movimento',
+      { tipo, data },
+    );
   },
 
   /** Remove a marca de "sem movimento" (correção). */
