@@ -89,6 +89,111 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
         <View
           style={
             {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 12,
+            }
+          }
+        >
+          <Text
+            testID="icon-file-tray-full-outline"
+          >
+            file-tray-full-outline
+          </Text>
+          <View
+            style={
+              {
+                "flex": 1,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 15,
+                  "fontWeight": "700",
+                }
+              }
+            >
+              Requisições
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#5C5C6B",
+                  "fontSize": 12,
+                  "fontWeight": "400",
+                  "marginTop": 2,
+                }
+              }
+            >
+              Solicitar insumos e aprovar pedidos
+            </Text>
+          </View>
+          <Text
+            testID="icon-chevron-forward"
+          >
+            chevron-forward
+          </Text>
+        </View>
+      </View>
+    </View>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onBlur={[Function]}
+      onClick={[Function]}
+      onFocus={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+    >
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 16,
+              "elevation": 2,
+              "marginBottom": 12,
+              "padding": 16,
+              "shadowColor": "#0B1B3A",
+              "shadowOffset": {
+                "height": 2,
+                "width": 0,
+              },
+              "shadowOpacity": 0.08,
+              "shadowRadius": 8,
+            },
+            undefined,
+          ]
+        }
+      >
+        <View
+          style={
+            {
               "alignItems": "flex-start",
               "flexDirection": "row",
               "justifyContent": "space-between",
@@ -599,6 +704,51 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
           </Text>
         </View>
       </View>
+    </View>
+    <View
+      style={
+        [
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderRadius": 16,
+            "elevation": 2,
+            "marginBottom": 12,
+            "padding": 16,
+            "shadowColor": "#0B1B3A",
+            "shadowOffset": {
+              "height": 2,
+              "width": 0,
+            },
+            "shadowOpacity": 0.08,
+            "shadowRadius": 8,
+          },
+          undefined,
+        ]
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#1A1A1F",
+            "fontSize": 15,
+            "fontWeight": "700",
+            "marginBottom": 12,
+          }
+        }
+      >
+        Entradas recentes
+      </Text>
+      <Text
+        style={
+          {
+            "color": "#5C5C6B",
+            "fontSize": 12,
+            "fontWeight": "400",
+          }
+        }
+      >
+        Nenhuma entrada registrada ainda.
+      </Text>
     </View>
     <View
       style={

@@ -74,3 +74,19 @@ export class ConsumoInsumoDto {
   @Min(1, { message: 'A quantidade deve ser maior que zero.' })
   quantidade!: number;
 }
+
+/** Registro de entrada de estoque (delta positivo) — Controle de requisição. */
+export class RegistrarEntradaDto {
+  @Type(() => Number)
+  @IsInt({ message: 'A quantidade deve ser um número inteiro.' })
+  @Min(1, { message: 'A quantidade deve ser maior que zero.' })
+  quantidade!: number;
+
+  @IsOptional()
+  @IsString()
+  origem?: string;
+
+  @IsOptional()
+  @IsString()
+  data?: string;
+}

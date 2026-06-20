@@ -9,6 +9,7 @@ export type { ArquivoVendas } from './vendas';
 export { indicadoresService } from './indicadores';
 export { loteApaeService } from './loteApae';
 export { insumosService } from './insumos';
+export { requisicoesService } from './requisicoes';
 export { fiscaisService, escalaService } from './fiscais';
 export { checklistService } from './checklist';
 export type { ImagemSelecionada } from './checklist';

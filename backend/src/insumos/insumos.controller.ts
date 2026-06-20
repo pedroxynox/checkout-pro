@@ -17,9 +17,14 @@ import {
   CadastrarInsumoDto,
   ConsumoBobinaDto,
   ConsumoInsumoDto,
+  RegistrarEntradaDto,
   RetiradaFardoDto,
 } from './dto/insumos.dto';
-import { InsumosService, InsumoComResumo } from './insumos.service';
+import {
+  InsumosService,
+  InsumoComResumo,
+  EntradaResumo,
+} from './insumos.service';
 
 /**
  * Controller do Modulo_Insumos (Req 3.1–3.3): cadastro de insumos, retirada de
@@ -36,6 +41,34 @@ export class InsumosController {
   @Get()
   async listar(): Promise<InsumoComResumo[]> {
     return this.insumosService.listarInsumos();
+  }
+
+  /** Lista as entradas recentes de estoque (Controle de requisição). */
+  @Get('entradas')
+  async entradas(): Promise<EntradaResumo[]> {
+    return this.insumosService.listarEntradas();
+  }
+
+  /**
+   * Registra uma entrada de estoque (Controle de requisição). Apenas
+   * gerente/supervisor (`INSUMOS_GERENCIAR`).
+   */
+  @Post(':id/entrada')
+  @HttpCode(HttpStatus.OK)
+  @Funcionalidade('INSUMOS_GERENCIAR')
+  async registrarEntrada(
+    @Param('id') id: string,
+    @Body() dto: RegistrarEntradaDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<{ saldo: number }> {
+    const saldo = await this.insumosService.registrarEntrada(
+      id,
+      dto.quantidade,
+      dto.origem ?? 'ENTRADA',
+      usuario?.sub,
+      dto.data ? new Date(dto.data) : undefined,
+    );
+    return { saldo };
   }
 
   /** Cadastra um novo insumo com limite mínimo (Req 3.3.4). */

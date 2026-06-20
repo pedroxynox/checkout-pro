@@ -10,6 +10,7 @@ import {
   resumoEstoque,
 } from './insumos.domain';
 import { FardoNaoReconhecidoError } from './insumos.errors';
+import { QuantidadeInvalidaError } from './insumos.errors';
 
 /** Parâmetros de uma retirada de fardo de sacolas (Req 3.1.1). */
 export interface RetiradaFardoInput {
@@ -26,6 +27,19 @@ export interface InsumoComResumo extends Insumo {
   consumoSemana: number;
   entradaSemana: number;
   semanasRestantes: number | null;
+}
+
+/** Uma entrada de estoque (movimento com delta > 0) para o "Controle de requisição". */
+export interface EntradaResumo {
+  id: string;
+  insumoId: string;
+  insumoNome: string;
+  unidade: string;
+  embalagem: string;
+  fatorEmbalagem: number;
+  quantidade: number;
+  origem: string | null;
+  dataHora: Date;
 }
 
 /**
@@ -178,5 +192,66 @@ export class InsumosService {
       where: { insumoId },
       orderBy: { dataHora: 'desc' },
     });
+  }
+
+  /**
+   * Registra uma **entrada** de estoque (delta positivo) — o "Controle de
+   * requisição". Aumenta o saldo na quantidade informada (já em unidade base),
+   * com origem (ex.: ENTRADA, REQUISICAO, COMPRA) e data opcional. Retorna o
+   * novo saldo.
+   */
+  async registrarEntrada(
+    insumoId: string,
+    quantidade: number,
+    origem = 'ENTRADA',
+    responsavelId?: string,
+    data?: Date,
+  ): Promise<number> {
+    if (!Number.isInteger(quantidade) || quantidade <= 0) {
+      throw new QuantidadeInvalidaError(quantidade);
+    }
+    await this.prisma.movimentoEstoque.create({
+      data: {
+        insumoId,
+        delta: quantidade,
+        origem,
+        responsavelId,
+        ...(data ? { dataHora: data } : {}),
+      },
+    });
+    return this.saldo(insumoId);
+  }
+
+  /**
+   * Lista as entradas (movimentos com delta > 0) mais recentes de todos os
+   * insumos, com o nome/unidade do insumo, para o "Controle de requisição".
+   */
+  async listarEntradas(limite = 50): Promise<EntradaResumo[]> {
+    const movimentos = await this.prisma.movimentoEstoque.findMany({
+      where: { delta: { gt: 0 } },
+      orderBy: { dataHora: 'desc' },
+      take: limite,
+      include: {
+        insumo: {
+          select: {
+            nome: true,
+            unidade: true,
+            embalagem: true,
+            fatorEmbalagem: true,
+          },
+        },
+      },
+    });
+    return movimentos.map((m) => ({
+      id: m.id,
+      insumoId: m.insumoId,
+      insumoNome: m.insumo.nome,
+      unidade: m.insumo.unidade,
+      embalagem: m.insumo.embalagem,
+      fatorEmbalagem: m.insumo.fatorEmbalagem,
+      quantidade: m.delta,
+      origem: m.origem,
+      dataHora: m.dataHora,
+    }));
   }
 }

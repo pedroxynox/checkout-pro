@@ -35,6 +35,7 @@ export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
 export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
   ...FUNCIONALIDADES_FISCAL,
   'OPERADORES_CRUD',
+  'INSUMOS_GERENCIAR',
 ]);
 
 const FUNCIONALIDADES_FISCAL_SET = new Set<string>(FUNCIONALIDADES_FISCAL);

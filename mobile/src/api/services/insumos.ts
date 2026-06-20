@@ -1,11 +1,39 @@
 /** Serviço de Insumos (Req 3.x): saldo, retirada de fardo e consumos. */
 import { apiClient } from '../client';
-import { CategoriaInsumo, Insumo, InsumoResumo, MovimentoEstoque } from '../types';
+import {
+  CategoriaInsumo,
+  EntradaInsumo,
+  Insumo,
+  InsumoResumo,
+  MovimentoEstoque,
+} from '../types';
 
 export const insumosService = {
   /** Lista os insumos ativos com o resumo de estoque (painel do almoxarifado). */
   listar(): Promise<InsumoResumo[]> {
     return apiClient.get<InsumoResumo[]>('/insumos');
+  },
+
+  /** Lista as entradas recentes de estoque (Controle de requisição). */
+  entradas(): Promise<EntradaInsumo[]> {
+    return apiClient.get<EntradaInsumo[]>('/insumos/entradas');
+  },
+
+  /**
+   * Registra uma entrada de estoque (Controle de requisição). `quantidade` já
+   * em unidade base. Apenas gerente/supervisor.
+   */
+  registrarEntrada(
+    insumoId: string,
+    quantidade: number,
+    origem?: string,
+    data?: string,
+  ): Promise<{ saldo: number }> {
+    return apiClient.post<{ saldo: number }>(`/insumos/${insumoId}/entrada`, {
+      quantidade,
+      origem,
+      data,
+    });
   },
 
   /** Cadastra um novo insumo com limite mínimo (Req 3.3.4). */

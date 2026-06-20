@@ -201,6 +201,40 @@ export interface MovimentoEstoque {
   dataHora: string;
   destino: string | null;
   pdvId: string | null;
+  origem?: string | null;
+}
+
+/** Uma entrada de estoque (movimento com delta > 0) — Controle de requisição. */
+export interface EntradaInsumo {
+  id: string;
+  insumoId: string;
+  insumoNome: string;
+  unidade: string;
+  embalagem: string;
+  fatorEmbalagem: number;
+  quantidade: number;
+  origem: string | null;
+  dataHora: string;
+}
+
+// ----- Requisições de insumos -----
+export type StatusRequisicao = 'PENDENTE' | 'APROVADA' | 'NEGADA';
+
+export interface Requisicao {
+  id: string;
+  insumoId: string;
+  insumoNome: string;
+  unidade: string;
+  embalagem: string;
+  fatorEmbalagem: number;
+  quantidade: number;
+  status: StatusRequisicao;
+  observacao: string | null;
+  solicitanteNome: string | null;
+  criadaEm: string;
+  decididaPorNome: string | null;
+  decididaEm: string | null;
+  motivo: string | null;
 }
 
 // ----- Fiscais / Escala (Req 4.x) -----

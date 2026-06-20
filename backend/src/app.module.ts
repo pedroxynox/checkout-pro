@@ -19,6 +19,7 @@ import { ImportacoesModule } from './importacoes/importacoes.module';
 import { IndicadoresModule } from './indicadores/indicadores.module';
 import { LoteApaeModule } from './lote-apae/lote-apae.module';
 import { InsumosModule } from './insumos/insumos.module';
+import { RequisicoesModule } from './requisicoes/requisicoes.module';
 import { FiscaisModule } from './fiscais/fiscais.module';
 import { ChecklistModule } from './checklist/checklist.module';
 import { NotificacoesModule } from './notificacoes/notificacoes.module';
@@ -42,6 +43,7 @@ import { NotificacoesModule } from './notificacoes/notificacoes.module';
     IndicadoresModule,
     LoteApaeModule,
     InsumosModule,
+    RequisicoesModule,
     FiscaisModule,
     ChecklistModule,
     NotificacoesModule,

@@ -11,14 +11,26 @@ import { InsumosScreen } from './InsumosScreen';
 jest.mock('../../api/services', () => ({
   insumosService: {
     listar: jest.fn(),
+    entradas: jest.fn(),
     retirarFardo: jest.fn(),
     consumirBobina: jest.fn(),
     consumirInsumo: jest.fn(),
   },
+  requisicoesService: {
+    pendentes: jest.fn(),
+    listar: jest.fn(),
+    criar: jest.fn(),
+    aprovar: jest.fn(),
+    negar: jest.fn(),
+  },
+}));
+
+jest.mock('../../auth/AuthContext', () => ({
+  useAuth: () => ({ podeAcessar: () => false }),
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { insumosService } = require('../../api/services');
+const { insumosService, requisicoesService } = require('../../api/services');
 
 const INSUMOS = [
   {
@@ -61,6 +73,8 @@ describe('InsumosScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     insumosService.listar.mockResolvedValue(INSUMOS);
+    insumosService.entradas.mockResolvedValue([]);
+    requisicoesService.pendentes.mockResolvedValue({ total: 0 });
   });
 
   it('exibe os insumos com saldo e o selo de estoque baixo', async () => {

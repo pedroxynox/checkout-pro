@@ -2,20 +2,20 @@
  * Tela de Insumos — "Almoxarifado do Setor" (Req 3.1–3.3).
  *
  * Painel vivo dos insumos do setor (Sacolas, Bobina, Pano, Álcool), medido em
- * QUANTIDADE (nunca em R$). Para cada insumo mostra: saldo em tempo real na
- * unidade base + equivalente em embalagens, semáforo de estoque baixo, consumo
- * da semana e previsão de ruptura ("dura ~X semanas"). Permite registrar
- * consumo e retirada de fardo por código de barras.
+ * QUANTIDADE (nunca em R$): saldo em tempo real + equivalente em embalagens,
+ * semáforo, consumo da semana e previsão de ruptura. Inclui o "Controle de
+ * requisição" (entradas com data — gerente/supervisor), o registro de consumo,
+ * a retirada de fardo por código de barras e o acesso às Requisições.
  *
- * A lista de insumos vem do backend (`GET /insumos`), compartilhada entre todos
- * os dispositivos/usuários.
+ * A lista de insumos e as entradas vêm do backend, compartilhadas entre todos.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
-import { insumosService } from '../../api/services';
-import { InsumoResumo } from '../../api/types';
+import { insumosService, requisicoesService } from '../../api/services';
+import { EntradaInsumo, InsumoResumo } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
 import {
   Botao,
   CampoTexto,
@@ -25,12 +25,13 @@ import {
   LeitorCodigoBarras,
   MensagemErro,
   Selo,
+  SeletorData,
   Tela,
 } from '../../components';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { notificar } from '../../utils/dialogos';
-import { formatarNumero } from '../../utils/formato';
+import { formatarDataHora, formatarNumero, hojeISO } from '../../utils/formato';
 import { ROTULO_CATEGORIA_INSUMO } from '../../utils/rotulos';
 
 /** Pluraliza a unidade base de forma simples (sacola→sacolas, metro→metros). */
@@ -40,13 +41,16 @@ function comUnidade(qtd: number, unidade: string): string {
 }
 
 /** Equivalente em embalagens (ex.: "≈ 5 rolos" / "≈ 1,2 caixa"). */
-function emEmbalagens(insumo: InsumoResumo, qtd: number): string | null {
-  if (insumo.fatorEmbalagem <= 1 || qtd <= 0) {
+function emEmbalagens(
+  fatorEmbalagem: number,
+  embalagem: string,
+  qtd: number,
+): string | null {
+  if (fatorEmbalagem <= 1 || qtd <= 0) {
     return null;
   }
-  const n = qtd / insumo.fatorEmbalagem;
-  const arredondado = Math.round(n * 10) / 10;
-  return `≈ ${formatarNumero(arredondado)} ${insumo.embalagem}`;
+  const n = Math.round((qtd / fatorEmbalagem) * 10) / 10;
+  return `≈ ${formatarNumero(n)} ${embalagem}`;
 }
 
 function SeletorInsumo({
@@ -84,10 +88,21 @@ function SeletorInsumo({
 export function InsumosScreen({
   navigation,
 }: PropsTela<'Insumos'>): React.ReactElement {
+  const { podeAcessar } = useAuth();
+  const podeGerenciar = podeAcessar('INSUMOS_GERENCIAR');
+
   const [insumos, setInsumos] = useState<InsumoResumo[]>([]);
+  const [entradas, setEntradas] = useState<EntradaInsumo[]>([]);
+  const [pendentes, setPendentes] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  // Controle de requisição (entrada)
+  const [insumoEntrada, setInsumoEntrada] = useState<string | null>(null);
+  const [qtdEntrada, setQtdEntrada] = useState('');
+  const [dataEntrada, setDataEntrada] = useState(hojeISO());
+  const [registrandoEntrada, setRegistrandoEntrada] = useState(false);
 
   // Retirada de fardo
   const [insumoFardo, setInsumoFardo] = useState<string | null>(null);
@@ -103,8 +118,14 @@ export function InsumosScreen({
     if (ehAtualizacao) setAtualizando(true);
     else setCarregando(true);
     try {
-      const lista = await insumosService.listar();
+      const [lista, listaEntradas, cont] = await Promise.all([
+        insumosService.listar(),
+        insumosService.entradas(),
+        requisicoesService.pendentes(),
+      ]);
       setInsumos(lista);
+      setEntradas(listaEntradas);
+      setPendentes(cont.total);
       setErro(null);
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Falha ao carregar os insumos.');
@@ -117,6 +138,37 @@ export function InsumosScreen({
   useEffect(() => {
     void carregar();
   }, [carregar]);
+
+  const insumoEntradaObj = insumos.find((i) => i.id === insumoEntrada);
+
+  const registrarEntrada = async () => {
+    if (!insumoEntradaObj) {
+      notificar('Selecione o insumo', 'Escolha o insumo que entrou.');
+      return;
+    }
+    const embalagens = Number(qtdEntrada);
+    if (!Number.isInteger(embalagens) || embalagens <= 0) {
+      notificar('Quantidade inválida', 'Informe um inteiro maior que zero.');
+      return;
+    }
+    const base = embalagens * insumoEntradaObj.fatorEmbalagem;
+    setRegistrandoEntrada(true);
+    try {
+      await insumosService.registrarEntrada(
+        insumoEntradaObj.id,
+        base,
+        'ENTRADA',
+        `${dataEntrada}T12:00:00.000Z`,
+      );
+      setQtdEntrada('');
+      await carregar(true);
+      notificar('Entrada registrada', `+ ${comUnidade(base, insumoEntradaObj.unidade)} no estoque.`);
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar entrada.');
+    } finally {
+      setRegistrandoEntrada(false);
+    }
+  };
 
   const retirarFardo = async (codigoBarras: string) => {
     setScannerVisivel(false);
@@ -167,6 +219,25 @@ export function InsumosScreen({
 
   return (
     <Tela aoAtualizar={() => void carregar(true)} atualizando={atualizando}>
+      {/* Acesso às requisições com badge de pendentes */}
+      <Pressable onPress={() => navigation.navigate('Requisicoes')}>
+        <Cartao>
+          <View style={styles.linkRequisicoes}>
+            <Ionicons name="file-tray-full-outline" size={22} color={cores.primaria} />
+            <View style={styles.flex1}>
+              <Text style={styles.linkTitulo}>Requisições</Text>
+              <Text style={styles.linkSub}>Solicitar insumos e aprovar pedidos</Text>
+            </View>
+            {pendentes > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeTexto}>{pendentes}</Text>
+              </View>
+            ) : null}
+            <Ionicons name="chevron-forward" size={18} color={cores.textoSecundario} />
+          </View>
+        </Cartao>
+      </Pressable>
+
       {carregando ? (
         <Carregando />
       ) : erro ? (
@@ -179,8 +250,8 @@ export function InsumosScreen({
         />
       ) : (
         insumos.map((i) => {
-          const eqSaldo = emEmbalagens(i, i.saldo);
-          const eqConsumo = emEmbalagens(i, i.consumoSemana);
+          const eqSaldo = emEmbalagens(i.fatorEmbalagem, i.embalagem, i.saldo);
+          const eqConsumo = emEmbalagens(i.fatorEmbalagem, i.embalagem, i.consumoSemana);
           return (
             <Pressable
               key={i.id}
@@ -241,6 +312,60 @@ export function InsumosScreen({
         })
       )}
 
+      {/* Controle de requisição: registro de entradas (gerente/supervisor) */}
+      {podeGerenciar ? (
+        <Cartao titulo="Controle de requisição (entrada)">
+          <Text style={styles.rotulo}>Insumo</Text>
+          <SeletorInsumo
+            insumos={insumos}
+            selecionado={insumoEntrada}
+            aoSelecionar={setInsumoEntrada}
+          />
+          <SeletorData rotulo="Data da entrada" valor={dataEntrada} aoMudar={setDataEntrada} />
+          <CampoTexto
+            rotulo={
+              insumoEntradaObj
+                ? `Quantidade (em ${insumoEntradaObj.embalagem}s)`
+                : 'Quantidade (em embalagens)'
+            }
+            keyboardType="number-pad"
+            value={qtdEntrada}
+            onChangeText={setQtdEntrada}
+            placeholder="0"
+          />
+          {insumoEntradaObj && Number(qtdEntrada) > 0 ? (
+            <Text style={styles.preview}>
+              = {comUnidade(Number(qtdEntrada) * insumoEntradaObj.fatorEmbalagem, insumoEntradaObj.unidade)}
+            </Text>
+          ) : null}
+          <Botao
+            titulo="Registrar entrada"
+            aoPressionar={registrarEntrada}
+            carregando={registrandoEntrada}
+          />
+        </Cartao>
+      ) : null}
+
+      {/* Lista de entradas recentes (todos veem) */}
+      <Cartao titulo="Entradas recentes">
+        {entradas.length === 0 ? (
+          <Text style={styles.vazioInline}>Nenhuma entrada registrada ainda.</Text>
+        ) : (
+          entradas.slice(0, 10).map((e) => (
+            <View key={e.id} style={styles.entradaLinha}>
+              <View style={styles.flex1}>
+                <Text style={styles.entradaNome}>{e.insumoNome}</Text>
+                <Text style={styles.entradaMeta}>
+                  {formatarDataHora(e.dataHora)}
+                  {e.origem ? ` · ${e.origem === 'REQUISICAO' ? 'requisição' : 'entrada'}` : ''}
+                </Text>
+              </View>
+              <Text style={styles.entradaQtd}>+ {comUnidade(e.quantidade, e.unidade)}</Text>
+            </View>
+          ))
+        )}
+      </Cartao>
+
       <Cartao titulo="Registrar consumo (saída)">
         <Text style={styles.rotulo}>Insumo</Text>
         <SeletorInsumo
@@ -295,7 +420,41 @@ const styles = StyleSheet.create({
   vazioInline: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
+  },
+  preview: {
+    ...tipografia.legenda,
+    color: cores.primaria,
+    fontWeight: '700',
     marginBottom: espacamento.sm,
+  },
+  linkRequisicoes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.md,
+  },
+  linkTitulo: {
+    ...tipografia.corpo,
+    fontWeight: '700',
+    color: cores.texto,
+  },
+  linkSub: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+  },
+  badge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    backgroundColor: cores.primaria,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeTexto: {
+    color: cores.textoInverso,
+    fontWeight: '700',
+    fontSize: 12,
   },
   cabecalho: {
     flexDirection: 'row',
@@ -358,6 +517,29 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     flex: 1,
+  },
+  entradaLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: espacamento.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: cores.divisor,
+  },
+  entradaNome: {
+    ...tipografia.corpo,
+    fontWeight: '600',
+    color: cores.texto,
+  },
+  entradaMeta: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+  },
+  entradaQtd: {
+    ...tipografia.corpo,
+    fontWeight: '700',
+    color: cores.verde,
   },
   chips: {
     flexDirection: 'row',

@@ -11,6 +11,7 @@ export type RootStackParamList = {
   LoteApae: undefined;
   Insumos: undefined;
   InsumoDetalhe: { insumoId: string; nome: string };
+  Requisicoes: undefined;
   Fiscais: undefined;
   Escala: undefined;
   Checklist: undefined;

@@ -18,6 +18,7 @@ import { PainelVendasScreen } from '../screens/indicadores/PainelVendasScreen';
 import { LoteApaeScreen } from '../screens/loteApae/LoteApaeScreen';
 import { InsumosScreen } from '../screens/insumos/InsumosScreen';
 import { InsumoDetalheScreen } from '../screens/insumos/InsumoDetalheScreen';
+import { RequisicoesScreen } from '../screens/insumos/RequisicoesScreen';
 import { FiscaisScreen } from '../screens/fiscais/FiscaisScreen';
 import { EscalaScreen } from '../screens/fiscais/EscalaScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
@@ -100,6 +101,11 @@ export function AppNavigator(): React.ReactElement {
             name="InsumoDetalhe"
             component={InsumoDetalheScreen}
             options={{ title: 'Insumo' }}
+          />
+          <Stack.Screen
+            name="Requisicoes"
+            component={RequisicoesScreen}
+            options={{ title: 'Requisições' }}
           />
         </>
       )}

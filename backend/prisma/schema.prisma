@@ -68,6 +68,12 @@ enum StatusFiscal {
   EM_ATENDIMENTO
 }
 
+enum StatusRequisicao {
+  PENDENTE
+  APROVADA
+  NEGADA
+}
+
 enum TurnoFiscal {
   ABERTURA
   INTERMEDIARIO
@@ -220,7 +226,8 @@ model Insumo {
   fatorEmbalagem Int           @default(1)
   ativo        Boolean         @default(true)
 
-  movimentos MovimentoEstoque[]
+  movimentos  MovimentoEstoque[]
+  requisicoes Requisicao[]
 
   @@map("insumos")
 }
@@ -241,12 +248,37 @@ model MovimentoEstoque {
   dataHora      DateTime @default(now())
   destino       String?
   pdvId         String?
+  // Origem do movimento para o "Controle de requisição" (ex.: ENTRADA,
+  // REQUISICAO, COMPRA, AJUSTE, CONSUMO, FARDO). Entradas têm delta > 0.
+  origem        String?
 
   insumo      Insumo   @relation(fields: [insumoId], references: [id])
   responsavel Usuario? @relation("ResponsavelMovimento", fields: [responsavelId], references: [id])
 
   @@index([insumoId])
   @@map("movimentos_estoque")
+}
+
+// Requisição de insumo solicitada por um fiscal e decidida (aprovada/negada)
+// por gerente ou supervisor. Ao aprovar, gera uma entrada no estoque.
+model Requisicao {
+  id              String           @id @default(uuid())
+  insumoId        String
+  quantidade      Int
+  status          StatusRequisicao @default(PENDENTE)
+  observacao      String?
+  solicitanteId   String?
+  solicitanteNome String?
+  criadaEm        DateTime         @default(now())
+  decididaPorId   String?
+  decididaPorNome String?
+  decididaEm      DateTime?
+  motivo          String?
+
+  insumo Insumo @relation(fields: [insumoId], references: [id])
+
+  @@index([status])
+  @@map("requisicoes")
 }
 
 model SessaoFiscal {
