@@ -45,23 +45,26 @@ function capitalizar(texto: string): string {
   return texto.length ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
 }
 
-/** Plural pt-BR da embalagem (fardo→fardos, caixa→caixas, galão→galões). */
-function pluralEmbalagem(embalagem: string): string {
+/** Plural pt-BR da embalagem conforme a quantidade (1 galão / 2 galões / caixas). */
+function pluralEmbalagem(embalagem: string, qtd: number): string {
+  if (qtd === 1) {
+    return embalagem;
+  }
   return embalagem.endsWith('ão')
     ? `${embalagem.slice(0, -2)}ões`
     : `${embalagem}s`;
 }
 
 /**
- * Saldo expresso na **embalagem** (ex.: "0 Caixas", "1,5 Fardos"), que já
- * embute a conversão. Insumos sem embalagem (fator 1) caem na unidade base.
+ * Saldo expresso na **embalagem** (ex.: "0 Caixas", "1 Galão", "1,5 Fardos"),
+ * que já embute a conversão. Insumos sem embalagem (fator 1) caem na unidade base.
  */
 function comEmbalagem(qtd: number, insumo: InsumoResumo): string {
   if (insumo.fatorEmbalagem <= 1) {
     return comUnidade(qtd, insumo.unidade);
   }
   const pacotes = qtd / insumo.fatorEmbalagem;
-  return `${formatarNumero(pacotes)} ${capitalizar(pluralEmbalagem(insumo.embalagem))}`;
+  return `${formatarNumero(pacotes)} ${capitalizar(pluralEmbalagem(insumo.embalagem, pacotes))}`;
 }
 
 function SeletorInsumo({
@@ -169,6 +172,7 @@ export function InsumosScreen({
   );
 
   const insumoEntradaObj = insumos.find((i) => i.id === insumoEntrada);
+  const insumoConsumoObj = insumos.find((i) => i.id === insumoConsumo);
 
   const registrarEntrada = async () => {
     if (!insumoEntradaObj) {
@@ -191,7 +195,10 @@ export function InsumosScreen({
       );
       setQtdEntrada('');
       await carregar(true);
-      notificar('Entrada registrada', `+ ${comUnidade(base, insumoEntradaObj.unidade)} no estoque.`);
+      notificar(
+        'Entrada registrada',
+        `+ ${formatarNumero(embalagens)} ${pluralEmbalagem(insumoEntradaObj.embalagem, embalagens)} no estoque.`,
+      );
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar entrada.');
     } finally {
@@ -215,28 +222,31 @@ export function InsumosScreen({
   };
 
   const registrarConsumo = async () => {
-    if (!insumoConsumo) {
+    const insumo = insumos.find((i) => i.id === insumoConsumo);
+    if (!insumo) {
       notificar('Selecione o insumo', 'Escolha o insumo a consumir.');
       return;
     }
-    const q = Number(quantidade);
-    if (!Number.isInteger(q) || q <= 0) {
-      notificar('Quantidade inválida', 'Informe um inteiro maior que zero.');
+    const embalagens = Number(quantidade);
+    if (!Number.isInteger(embalagens) || embalagens <= 0) {
+      notificar('Quantidade inválida', 'Informe um número inteiro de embalagens.');
       return;
     }
-    const insumo = insumos.find((i) => i.id === insumoConsumo);
+    const base = embalagens * insumo.fatorEmbalagem;
     setConsumindo(true);
     try {
-      if (insumo?.categoria === 'BOBINA') {
-        await insumosService.consumirBobina(insumoConsumo, pdv.trim() || 'PDV', q);
+      if (insumo.categoria === 'BOBINA') {
+        await insumosService.consumirBobina(insumo.id, pdv.trim() || 'PDV', base);
       } else {
-        await insumosService.consumirInsumo(insumoConsumo, q);
+        await insumosService.consumirInsumo(insumo.id, base);
       }
       setQuantidade('');
       setPdv('');
       await carregar(true);
-      const u = insumo ? comUnidade(q, insumo.unidade) : `${q}`;
-      notificar('Consumo registrado', `Saída de ${u} registrada.`);
+      notificar(
+        'Consumo registrado',
+        `Saída de ${formatarNumero(embalagens)} ${pluralEmbalagem(insumo.embalagem, embalagens)} registrada.`,
+      );
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar consumo.');
     } finally {
@@ -379,7 +389,10 @@ export function InsumosScreen({
                   {e.origem ? ` · ${e.origem === 'REQUISICAO' ? 'requisição' : 'entrada'}` : ''}
                 </Text>
               </View>
-              <Text style={styles.entradaQtd}>+ {comUnidade(e.quantidade, e.unidade)}</Text>
+              <Text style={styles.entradaQtd}>
+                + {formatarNumero(e.quantidade / e.fatorEmbalagem)}{' '}
+                {pluralEmbalagem(e.embalagem, e.quantidade / e.fatorEmbalagem)}
+              </Text>
             </View>
           ))
         )}
@@ -392,16 +405,25 @@ export function InsumosScreen({
           selecionado={insumoConsumo}
           aoSelecionar={setInsumoConsumo}
         />
-        {insumos.find((i) => i.id === insumoConsumo)?.categoria === 'BOBINA' ? (
+        {insumoConsumoObj?.categoria === 'BOBINA' ? (
           <CampoTexto rotulo="PDV" value={pdv} onChangeText={setPdv} placeholder="Ex.: PDV 12" />
         ) : null}
         <CampoTexto
-          rotulo="Quantidade (na unidade do insumo)"
+          rotulo={
+            insumoConsumoObj
+              ? `Quantidade (em ${pluralEmbalagem(insumoConsumoObj.embalagem, 2)})`
+              : 'Quantidade (em embalagens)'
+          }
           keyboardType="number-pad"
           value={quantidade}
           onChangeText={setQuantidade}
           placeholder="0"
         />
+        {insumoConsumoObj && Number(quantidade) > 0 ? (
+          <Text style={styles.preview}>
+            = {comUnidade(Number(quantidade) * insumoConsumoObj.fatorEmbalagem, insumoConsumoObj.unidade)}
+          </Text>
+        ) : null}
         <Botao titulo="Registrar consumo" aoPressionar={registrarConsumo} carregando={consumindo} />
       </Cartao>
 
