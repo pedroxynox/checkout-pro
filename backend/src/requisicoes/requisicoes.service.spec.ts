@@ -76,7 +76,7 @@ describe('RequisicoesService', () => {
     const r = await service.aprovar('r1', 'g1');
     expect(insumos.registrarEntrada).toHaveBeenCalledWith(
       'i1',
-      5,
+      25, // 5 caixas/galões × fator 5 = 25 unidades base
       'REQUISICAO',
       'g1',
     );

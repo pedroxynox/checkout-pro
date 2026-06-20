@@ -32,6 +32,19 @@ function comUnidade(qtd: number, unidade: string): string {
   return `${formatarNumero(qtd)} ${plural}`;
 }
 
+/** Plural pt-BR da embalagem conforme a quantidade (1 caixa / 2 caixas / galões). */
+function pluralEmbalagem(embalagem: string, qtd: number): string {
+  if (qtd === 1) {
+    return embalagem;
+  }
+  return embalagem.endsWith('ão') ? `${embalagem.slice(0, -2)}ões` : `${embalagem}s`;
+}
+
+/** Quantidade expressa em embalagens (ex.: "2 caixas", "1 galão"). */
+function comEmbalagem(qtd: number, embalagem: string): string {
+  return `${formatarNumero(qtd)} ${pluralEmbalagem(embalagem, qtd)}`;
+}
+
 const ESTILO_STATUS: Record<
   StatusRequisicao,
   { rotulo: string; cor: string; fundo: string }
@@ -102,7 +115,7 @@ export function RequisicoesScreen(): React.ReactElement {
     }
     const q = Number(quantidade);
     if (!Number.isInteger(q) || q <= 0) {
-      notificar('Quantidade inválida', 'Informe um inteiro maior que zero.');
+      notificar('Quantidade inválida', 'Informe um número inteiro de embalagens (1, 2, 3...).');
       return;
     }
     setOcupado(true);
@@ -123,7 +136,7 @@ export function RequisicoesScreen(): React.ReactElement {
   const aprovar = async (req: Requisicao) => {
     const ok = await confirmar(
       'Aprovar requisição',
-      `Aprovar ${comUnidade(req.quantidade, req.unidade)} de ${req.insumoNome}? A quantidade será somada ao estoque.`,
+      `Aprovar ${comEmbalagem(req.quantidade, req.embalagem)} de ${req.insumoNome}? Equivale a ${comUnidade(req.quantidade * req.fatorEmbalagem, req.unidade)} no estoque.`,
       'Aprovar',
     );
     if (!ok) return;
@@ -142,7 +155,7 @@ export function RequisicoesScreen(): React.ReactElement {
   const negar = async (req: Requisicao) => {
     const ok = await confirmar(
       'Negar requisição',
-      `Negar a requisição de ${comUnidade(req.quantidade, req.unidade)} de ${req.insumoNome}?`,
+      `Negar a requisição de ${comEmbalagem(req.quantidade, req.embalagem)} de ${req.insumoNome}?`,
       'Negar',
     );
     if (!ok) return;
@@ -157,6 +170,8 @@ export function RequisicoesScreen(): React.ReactElement {
       setDecidindo(null);
     }
   };
+
+  const insumoSelObj = insumos.find((i) => i.id === insumoSel);
 
   return (
     <Tela aoAtualizar={() => void carregar(true)} atualizando={atualizando}>
@@ -183,12 +198,21 @@ export function RequisicoesScreen(): React.ReactElement {
           </View>
         )}
         <CampoTexto
-          rotulo="Quantidade (na unidade do insumo)"
+          rotulo={
+            insumoSelObj
+              ? `Quantidade (em ${pluralEmbalagem(insumoSelObj.embalagem, 2)})`
+              : 'Quantidade (em embalagens)'
+          }
           keyboardType="number-pad"
           value={quantidade}
           onChangeText={setQuantidade}
           placeholder="0"
         />
+        {insumoSelObj && Number(quantidade) > 0 ? (
+          <Text style={styles.preview}>
+            = {comUnidade(Number(quantidade) * insumoSelObj.fatorEmbalagem, insumoSelObj.unidade)}
+          </Text>
+        ) : null}
         <CampoTexto
           rotulo="Observação (opcional)"
           value={observacao}
@@ -217,7 +241,10 @@ export function RequisicoesScreen(): React.ReactElement {
               <View style={styles.cabecalho}>
                 <View style={styles.flex1}>
                   <Text style={styles.nome}>{r.insumoNome}</Text>
-                  <Text style={styles.detalhe}>{comUnidade(r.quantidade, r.unidade)}</Text>
+                  <Text style={styles.detalhe}>
+                    {comEmbalagem(r.quantidade, r.embalagem)} (={' '}
+                    {comUnidade(r.quantidade * r.fatorEmbalagem, r.unidade)})
+                  </Text>
                 </View>
                 <Selo texto={st.rotulo} cor={st.cor} fundo={st.fundo} />
               </View>
@@ -272,6 +299,12 @@ const styles = StyleSheet.create({
   vazioInline: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
+    marginBottom: espacamento.sm,
+  },
+  preview: {
+    ...tipografia.legenda,
+    color: cores.primaria,
+    fontWeight: '700',
     marginBottom: espacamento.sm,
   },
   tituloSecao: {

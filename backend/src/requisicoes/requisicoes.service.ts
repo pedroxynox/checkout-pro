@@ -16,6 +16,7 @@ export interface RequisicaoResumo {
   unidade: string;
   embalagem: string;
   fatorEmbalagem: number;
+  /** Quantidade pedida em EMBALAGENS inteiras (ex.: 2 = 2 caixas/fardos/galões). */
   quantidade: number;
   status: StatusRequisicao;
   observacao: string | null;
@@ -40,6 +41,16 @@ const INCLUDE_INSUMO = {
     },
   },
 } as const;
+
+/** Plural pt-BR da embalagem conforme a quantidade (1 caixa / 2 caixas / galões). */
+function pluralEmbalagem(embalagem: string, qtd: number): string {
+  if (qtd === 1) {
+    return embalagem;
+  }
+  return embalagem.endsWith('ão')
+    ? `${embalagem.slice(0, -2)}ões`
+    : `${embalagem}s`;
+}
 
 /**
  * Serviço de Requisições de insumos: o fiscal solicita um insumo; gerente ou
@@ -119,7 +130,7 @@ export class RequisicoesService {
     });
     await this.notificacoes.enviar(gestores, {
       titulo: 'Nova requisição de insumo',
-      mensagem: `${solicitanteNome ?? 'Um fiscal'} solicitou ${quantidade} ${insumo.unidade} de ${insumo.nome}.`,
+      mensagem: `${solicitanteNome ?? 'Um fiscal'} solicitou ${quantidade} ${pluralEmbalagem(insumo.embalagem, quantidade)} de ${insumo.nome}.`,
     });
 
     return this.mapResumo(criada);
@@ -149,10 +160,15 @@ export class RequisicoesService {
     if (req.status !== 'PENDENTE') {
       throw new BadRequestException('A requisição já foi decidida.');
     }
-    // Entrada automática no estoque (delta positivo, origem REQUISICAO).
+    // A requisição é em embalagens inteiras; converte para a unidade base ao
+    // dar entrada no estoque (ex.: 2 caixas × 20 = 40 bobinas).
+    const insumo = await this.prisma.insumo.findUnique({
+      where: { id: req.insumoId },
+    });
+    const base = req.quantidade * (insumo?.fatorEmbalagem ?? 1);
     await this.insumos.registrarEntrada(
       req.insumoId,
-      req.quantidade,
+      base,
       'REQUISICAO',
       decisorId,
     );
@@ -170,7 +186,7 @@ export class RequisicoesService {
     if (req.solicitanteId) {
       await this.notificacoes.enviar([{ id: req.solicitanteId }], {
         titulo: 'Requisição aprovada',
-        mensagem: `Sua requisição de ${atualizada.quantidade} ${atualizada.insumo.unidade} de ${atualizada.insumo.nome} foi aprovada e somada ao estoque.`,
+        mensagem: `Sua requisição de ${atualizada.quantidade} ${pluralEmbalagem(atualizada.insumo.embalagem, atualizada.quantidade)} de ${atualizada.insumo.nome} foi aprovada e somada ao estoque.`,
       });
     }
     return this.mapResumo(atualizada);
