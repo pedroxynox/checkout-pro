@@ -36,6 +36,11 @@ export const insumosService = {
     });
   },
 
+  /** Zera o estoque de todos os insumos (administrativo, apenas gerente). */
+  zerarEstoque(): Promise<{ removidos: number }> {
+    return apiClient.delete<{ removidos: number }>('/insumos/movimentos');
+  },
+
   /** Cadastra um novo insumo com limite mínimo (Req 3.3.4). */
   cadastrar(
     nome: string,

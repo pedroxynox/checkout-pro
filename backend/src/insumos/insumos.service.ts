@@ -195,6 +195,16 @@ export class InsumosService {
   }
 
   /**
+   * Zera o estoque de todos os insumos removendo todos os movimentos. O saldo
+   * de cada insumo (soma dos movimentos) volta a 0. Retorna quantos movimentos
+   * foram removidos. Operação administrativa.
+   */
+  async zerarEstoque(): Promise<number> {
+    const { count } = await this.prisma.movimentoEstoque.deleteMany({});
+    return count;
+  }
+
+  /**
    * Registra uma **entrada** de estoque (delta positivo) — o "Controle de
    * requisição". Aumenta o saldo na quantidade informada (já em unidade base),
    * com origem (ex.: ENTRADA, REQUISICAO, COMPRA) e data opcional. Retorna o

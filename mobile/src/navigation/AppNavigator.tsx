@@ -28,6 +28,7 @@ import { AlertasFilaScreen } from '../screens/alertasFila/AlertasFilaScreen';
 import { NormativasScreen } from '../screens/normativas/NormativasScreen';
 import { IndicadorQuebraScreen } from '../screens/quebra/IndicadorQuebraScreen';
 import { NotificacoesScreen } from '../screens/notificacoes/NotificacoesScreen';
+import { GerenciarDadosScreen } from '../screens/admin/GerenciarDadosScreen';
 import { cores } from '../theme';
 import { ROTULO_TIPO_ARRECADACAO } from '../utils/rotulos';
 import { RootStackParamList } from './types';
@@ -170,6 +171,13 @@ export function AppNavigator(): React.ReactElement {
           name="IndicadorQuebra"
           component={IndicadorQuebraScreen}
           options={{ title: 'Indicador de Quebra' }}
+        />
+      )}
+      {podeAcessar('ADMIN_DADOS') && (
+        <Stack.Screen
+          name="GerenciarDados"
+          component={GerenciarDadosScreen}
+          options={{ title: 'Gerenciar dados' }}
         />
       )}
     </Stack.Navigator>

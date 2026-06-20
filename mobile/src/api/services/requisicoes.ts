@@ -38,4 +38,9 @@ export const requisicoesService = {
   negar(id: string, motivo?: string): Promise<Requisicao> {
     return apiClient.post<Requisicao>(`/requisicoes/${id}/negar`, { motivo });
   },
+
+  /** Remove TODAS as requisições (administrativo, apenas gerente). */
+  limparTodas(): Promise<{ removidos: number }> {
+    return apiClient.delete<{ removidos: number }>('/requisicoes');
+  },
 };

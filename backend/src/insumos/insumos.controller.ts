@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -148,5 +149,15 @@ export class InsumosController {
   @Get(':id/historico')
   async historico(@Param('id') id: string): Promise<MovimentoEstoque[]> {
     return this.insumosService.historicoConsumo(id);
+  }
+
+  /**
+   * Zera o estoque de todos os insumos (remove todos os movimentos). Operação
+   * administrativa restrita ao gerente (`ADMIN_DADOS`).
+   */
+  @Delete('movimentos')
+  @Funcionalidade('ADMIN_DADOS')
+  async zerarEstoque(): Promise<{ removidos: number }> {
+    return { removidos: await this.insumosService.zerarEstoque() };
   }
 }

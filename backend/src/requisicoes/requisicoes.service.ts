@@ -151,6 +151,12 @@ export class RequisicoesService {
     return this.prisma.requisicao.count({ where: { status: 'PENDENTE' } });
   }
 
+  /** Remove TODAS as requisições (operação administrativa). Retorna a quantidade. */
+  async limparTodas(): Promise<number> {
+    const { count } = await this.prisma.requisicao.deleteMany({});
+    return count;
+  }
+
   /** Aprova uma requisição pendente: gera entrada no estoque e notifica o solicitante. */
   async aprovar(id: string, decisorId?: string): Promise<RequisicaoResumo> {
     const req = await this.prisma.requisicao.findUnique({ where: { id } });

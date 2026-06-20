@@ -46,4 +46,15 @@ describe('RequisicoesController', () => {
     } as never);
     expect(negar).toHaveBeenCalledWith('r1', 'sem estoque', 's1');
   });
+
+  it('limpa todas as requisições delegando ao serviço', async () => {
+    const limparTodas = jest.fn(() => Promise.resolve(7));
+    const controller = new RequisicoesController({
+      limparTodas,
+    } as unknown as RequisicoesService);
+
+    const resultado = await controller.limparTodas();
+    expect(limparTodas).toHaveBeenCalled();
+    expect(resultado).toEqual({ removidos: 7 });
+  });
 });

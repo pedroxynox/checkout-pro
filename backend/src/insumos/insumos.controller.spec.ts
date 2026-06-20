@@ -62,4 +62,15 @@ describe('InsumosController', () => {
 
     expect(cadastrar).toHaveBeenCalledWith('Bobina', 'BOBINA', 5, 0);
   });
+
+  it('zera o estoque delegando ao serviço', async () => {
+    const zerar = jest.fn(() => Promise.resolve(42));
+    const controller = new InsumosController({
+      zerarEstoque: zerar,
+    } as unknown as InsumosService);
+
+    const resultado = await controller.zerarEstoque();
+    expect(zerar).toHaveBeenCalled();
+    expect(resultado).toEqual({ removidos: 42 });
+  });
 });

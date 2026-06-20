@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -53,6 +54,13 @@ export class RequisicoesController {
   @Get('pendentes/contagem')
   async pendentes(): Promise<{ total: number }> {
     return { total: await this.service.contarPendentes() };
+  }
+
+  /** Remove TODAS as requisições (administrativo, apenas gerente). */
+  @Delete()
+  @Funcionalidade('ADMIN_DADOS')
+  async limparTodas(): Promise<{ removidos: number }> {
+    return { removidos: await this.service.limparTodas() };
   }
 
   /** Aprova uma requisição (gerente/supervisor). */

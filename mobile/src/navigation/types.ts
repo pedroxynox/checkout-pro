@@ -21,6 +21,7 @@ export type RootStackParamList = {
   Normativas: undefined;
   IndicadorQuebra: undefined;
   Notificacoes: undefined;
+  GerenciarDados: undefined;
 };
 
 export type RotaApp = keyof RootStackParamList;
