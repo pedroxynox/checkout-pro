@@ -348,3 +348,15 @@ export interface Notificacao {
   criadaEm: string;
   lida?: boolean;
 }
+
+
+// ----- Assistente de IA (chat flutuante) -----
+/** Papel de uma mensagem: 'user' (pergunta) ou 'model' (resposta da IA). */
+export type PapelAssistente = 'user' | 'model';
+
+export interface MensagemAssistente {
+  id: string;
+  papel: PapelAssistente;
+  conteudo: string;
+  criadaEm: string;
+}

@@ -23,6 +23,7 @@ import { RequisicoesModule } from './requisicoes/requisicoes.module';
 import { FiscaisModule } from './fiscais/fiscais.module';
 import { ChecklistModule } from './checklist/checklist.module';
 import { NotificacoesModule } from './notificacoes/notificacoes.module';
+import { AssistenteModule } from './assistente/assistente.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { NotificacoesModule } from './notificacoes/notificacoes.module';
     FiscaisModule,
     ChecklistModule,
     NotificacoesModule,
+    AssistenteModule,
     AlertasModule,
   ],
   controllers: [AppController],

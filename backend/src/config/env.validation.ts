@@ -55,6 +55,19 @@ export class EnvironmentVariables {
   @IsString()
   @IsOptional()
   JWT_EXPIRES_IN?: string;
+
+  // Chave da API do Google Gemini (assistente de IA / chat flutuante). Obtida
+  // gratuitamente no Google AI Studio. Opcional: sem ela, o assistente
+  // responde com uma mensagem amigável de "não configurado".
+  @IsString()
+  @IsOptional()
+  GEMINI_API_KEY?: string;
+
+  // Modelo Gemini usado pelo assistente. Padrão: gemini-2.0-flash (rápido e
+  // com camada gratuita generosa).
+  @IsString()
+  @IsOptional()
+  GEMINI_MODEL = 'gemini-2.0-flash';
 }
 
 /**

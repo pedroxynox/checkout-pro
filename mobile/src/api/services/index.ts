@@ -16,3 +16,4 @@ export type { ImagemSelecionada } from './checklist';
 export { operadoresService } from './operadores';
 export { usuariosService } from './usuarios';
 export { notificacoesService } from './notificacoes';
+export { assistenteService } from './assistente';

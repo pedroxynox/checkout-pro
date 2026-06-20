@@ -362,3 +362,19 @@ model Notificacao {
   @@index([usuarioId])
   @@map("notificacoes")
 }
+
+// Mensagem de uma conversa com o assistente de IA (chat flutuante). Cada
+// usuário tem o seu próprio fio (isolado por `usuarioId`). As conversas são
+// efêmeras: ficam guardadas por 24h (para o usuário recuperar a conversa caso
+// feche o app sem querer) e são apagadas por um cron diário. `papel` segue a
+// convenção da API Gemini: 'user' (pergunta) ou 'model' (resposta).
+model MensagemAssistente {
+  id        String   @id @default(uuid())
+  usuarioId String
+  papel     String
+  conteudo  String
+  criadaEm  DateTime @default(now())
+
+  @@index([usuarioId, criadaEm])
+  @@map("mensagens_assistente")
+}
