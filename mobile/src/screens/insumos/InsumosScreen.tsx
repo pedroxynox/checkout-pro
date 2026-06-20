@@ -39,30 +39,28 @@ function comUnidade(qtd: number, unidade: string): string {
   return `${formatarNumero(qtd)} ${plural}`;
 }
 
-/** Primeira letra maiúscula (título do insumo). */
+/** Primeira letra maiúscula (título/rótulo). */
 function capitalizar(texto: string): string {
   return texto.length ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
 }
 
-/** Referência de conversão (ex.: "1 galão = 5 litros"); null se não houver embalagem. */
-function referenciaEmbalagem(insumo: InsumoResumo): string | null {
-  if (insumo.fatorEmbalagem <= 1) {
-    return null;
-  }
-  return `1 ${insumo.embalagem} = ${comUnidade(insumo.fatorEmbalagem, insumo.unidade)}`;
+/** Plural pt-BR da embalagem (fardo→fardos, caixa→caixas, galão→galões). */
+function pluralEmbalagem(embalagem: string): string {
+  return embalagem.endsWith('ão')
+    ? `${embalagem.slice(0, -2)}ões`
+    : `${embalagem}s`;
 }
 
-/** Equivalente em embalagens (ex.: "≈ 5 rolos" / "≈ 1,2 caixa"). */
-function emEmbalagens(
-  fatorEmbalagem: number,
-  embalagem: string,
-  qtd: number,
-): string | null {
-  if (fatorEmbalagem <= 1 || qtd <= 0) {
-    return null;
+/**
+ * Saldo expresso na **embalagem** (ex.: "0 Caixas", "1,5 Fardos"), que já
+ * embute a conversão. Insumos sem embalagem (fator 1) caem na unidade base.
+ */
+function comEmbalagem(qtd: number, insumo: InsumoResumo): string {
+  if (insumo.fatorEmbalagem <= 1) {
+    return comUnidade(qtd, insumo.unidade);
   }
-  const n = Math.round((qtd / fatorEmbalagem) * 10) / 10;
-  return `≈ ${formatarNumero(n)} ${embalagem}`;
+  const pacotes = qtd / insumo.fatorEmbalagem;
+  return `${formatarNumero(pacotes)} ${capitalizar(pluralEmbalagem(insumo.embalagem))}`;
 }
 
 function SeletorInsumo({
@@ -262,9 +260,6 @@ export function InsumosScreen({
         />
       ) : (
         insumos.map((i) => {
-          const eqSaldo = emEmbalagens(i.fatorEmbalagem, i.embalagem, i.saldo);
-          const eqConsumo = emEmbalagens(i.fatorEmbalagem, i.embalagem, i.consumoSemana);
-          const ref = referenciaEmbalagem(i);
           return (
             <Pressable
               key={i.id}
@@ -274,10 +269,7 @@ export function InsumosScreen({
             >
               <Cartao>
                 <View style={styles.cabecalho}>
-                  <View style={styles.flex1}>
-                    <Text style={styles.nome}>{capitalizar(i.nome)}</Text>
-                    {ref ? <Text style={styles.categoria}>{ref}</Text> : null}
-                  </View>
+                  <Text style={[styles.nome, styles.flex1]}>{capitalizar(i.nome)}</Text>
                   {i.estoqueBaixo ? (
                     <Selo texto="Baixo" cor={cores.vermelho} fundo={cores.vermelhoFundo} />
                   ) : (
@@ -286,22 +278,20 @@ export function InsumosScreen({
                 </View>
 
                 <View style={styles.saldoLinha}>
-                  <Text style={styles.saldo}>{comUnidade(i.saldo, i.unidade)}</Text>
-                  {eqSaldo ? <Text style={styles.equivalente}>{eqSaldo}</Text> : null}
+                  <Text style={styles.saldo}>{comEmbalagem(i.saldo, i)}</Text>
                 </View>
 
                 <View style={styles.metricas}>
                   <View style={styles.metrica}>
                     <Text style={styles.metricaRotulo}>Consumo (7 dias)</Text>
                     <Text style={styles.metricaValor}>
-                      {comUnidade(i.consumoSemana, i.unidade)}
-                      {eqConsumo ? ` (${eqConsumo})` : ''}
+                      {formatarNumero(i.consumoSemana)}
                     </Text>
                   </View>
                   <View style={styles.metrica}>
                     <Text style={styles.metricaRotulo}>Entrada (7 dias)</Text>
                     <Text style={styles.metricaValor}>
-                      {comUnidade(i.entradaSemana, i.unidade)}
+                      {formatarNumero(i.entradaSemana)}
                     </Text>
                   </View>
                 </View>
@@ -476,11 +466,6 @@ const styles = StyleSheet.create({
     ...tipografia.subtitulo,
     color: cores.texto,
   },
-  categoria: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    marginTop: 2,
-  },
   saldoLinha: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -491,10 +476,6 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '700',
     color: cores.texto,
-  },
-  equivalente: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
   },
   metricas: {
     flexDirection: 'row',

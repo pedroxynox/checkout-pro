@@ -200,37 +200,22 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
             }
           }
         >
-          <View
+          <Text
             style={
-              {
-                "flex": 1,
-              }
-            }
-          >
-            <Text
-              style={
+              [
                 {
                   "color": "#1A1A1F",
                   "fontSize": 18,
                   "fontWeight": "600",
-                }
-              }
-            >
-              Sacolas
-            </Text>
-            <Text
-              style={
+                },
                 {
-                  "color": "#5C5C6B",
-                  "fontSize": 12,
-                  "fontWeight": "400",
-                  "marginTop": 2,
-                }
-              }
-            >
-              1 fardo = 1.000 sacolas
-            </Text>
-          </View>
+                  "flex": 1,
+                },
+              ]
+            }
+          >
+            Sacolas
+          </Text>
           <View
             style={
               [
@@ -299,18 +284,7 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
               }
             }
           >
-            3.200 sacolas
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#5C5C6B",
-                "fontSize": 12,
-                "fontWeight": "400",
-              }
-            }
-          >
-            ≈ 3,2 fardo
+            3,2 Fardos
           </Text>
         </View>
         <View
@@ -350,8 +324,7 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
                 }
               }
             >
-              500 sacolas
-               (≈ 0,5 fardo)
+              500
             </Text>
           </View>
           <View
@@ -382,7 +355,7 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
                 }
               }
             >
-              1.000 sacolas
+              1.000
             </Text>
           </View>
         </View>
@@ -480,37 +453,22 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
             }
           }
         >
-          <View
+          <Text
             style={
-              {
-                "flex": 1,
-              }
-            }
-          >
-            <Text
-              style={
+              [
                 {
                   "color": "#1A1A1F",
                   "fontSize": 18,
                   "fontWeight": "600",
-                }
-              }
-            >
-              Bobina
-            </Text>
-            <Text
-              style={
+                },
                 {
-                  "color": "#5C5C6B",
-                  "fontSize": 12,
-                  "fontWeight": "400",
-                  "marginTop": 2,
-                }
-              }
-            >
-              1 caixa = 20 bobinas
-            </Text>
-          </View>
+                  "flex": 1,
+                },
+              ]
+            }
+          >
+            Bobina
+          </Text>
           <View
             style={
               [
@@ -579,18 +537,7 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
               }
             }
           >
-            8 bobinas
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#5C5C6B",
-                "fontSize": 12,
-                "fontWeight": "400",
-              }
-            }
-          >
-            ≈ 0,4 caixa
+            0,4 Caixas
           </Text>
         </View>
         <View
@@ -630,8 +577,7 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
                 }
               }
             >
-              10 bobinas
-               (≈ 0,5 caixa)
+              10
             </Text>
           </View>
           <View
@@ -662,7 +608,7 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
                 }
               }
             >
-              0 bobinas
+              0
             </Text>
           </View>
         </View>
