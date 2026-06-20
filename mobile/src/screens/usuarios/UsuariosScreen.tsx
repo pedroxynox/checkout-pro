@@ -7,7 +7,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { usuariosService } from '../../api/services';
 import { Perfil } from '../../api/types';
@@ -24,6 +24,14 @@ import {
 import { useAuth } from '../../auth/AuthContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, tipografia } from '../../theme';
+import { confirmar, notificar } from '../../utils/dialogos';
+
+const ROTULO_PERFIL: Record<Perfil, string> = {
+  GERENTE: 'Gerente',
+  GERENTE_DESENVOLVEDOR: 'Gerente Dev',
+  SUPERVISOR: 'Supervisor',
+  FISCAL: 'Fiscal',
+};
 
 export function UsuariosScreen(): React.ReactElement {
   const { usuario } = useAuth();
@@ -42,7 +50,7 @@ export function UsuariosScreen(): React.ReactElement {
 
   const cadastrar = async () => {
     if (!matricula.trim() || !nome.trim() || !senha.trim()) {
-      Alert.alert('Campos obrigatórios', 'Informe matrícula, nome e senha.');
+      notificar('Campos obrigatórios', 'Informe matrícula, nome e senha.');
       return;
     }
     setSalvando(true);
@@ -58,9 +66,9 @@ export function UsuariosScreen(): React.ReactElement {
       setSenha('');
       setPerfil('FISCAL');
       usuarios.recarregar();
-      Alert.alert('Pronto', 'Pessoa cadastrada com sucesso.');
+      notificar('Pronto', 'Pessoa cadastrada com sucesso.');
     } catch (e) {
-      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao cadastrar.');
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao cadastrar.');
     } finally {
       setSalvando(false);
     }
@@ -72,30 +80,28 @@ export function UsuariosScreen(): React.ReactElement {
       await usuariosService.redefinirSenha(id, novaSenha.trim());
       setRedefinindoId(null);
       setNovaSenha('');
-      Alert.alert('Pronto', 'Senha redefinida.');
+      notificar('Pronto', 'Senha redefinida.');
     } catch (e) {
-      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao redefinir senha.');
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao redefinir senha.');
     }
   };
 
-  const remover = (id: string, nomePessoa: string) => {
-    Alert.alert('Excluir pessoa', `Remover "${nomePessoa}" do sistema?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir',
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            try {
-              await usuariosService.remover(id);
-              usuarios.recarregar();
-            } catch (e) {
-              Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao excluir.');
-            }
-          })();
-        },
-      },
-    ]);
+  const remover = async (id: string, nomePessoa: string) => {
+    const ok = await confirmar(
+      'Excluir pessoa',
+      `Remover "${nomePessoa}" do sistema? Esta ação não pode ser desfeita.`,
+      'Excluir',
+    );
+    if (!ok) {
+      return;
+    }
+    try {
+      await usuariosService.remover(id);
+      usuarios.recarregar();
+      notificar('Pronto', `"${nomePessoa}" foi removido.`);
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao excluir.');
+    }
   };
 
   return (
@@ -155,8 +161,7 @@ export function UsuariosScreen(): React.ReactElement {
                     {u.nome ?? u.matricula}
                   </Text>
                   <Text style={styles.detalhe}>
-                    Matrícula {u.matricula} ·{' '}
-                    {u.perfil === 'GERENTE' ? 'Gerente' : 'Fiscal'}
+                    Matrícula {u.matricula} · {ROTULO_PERFIL[u.perfil]}
                     {ehEu ? ' · você' : ''}
                   </Text>
                 </View>
@@ -175,7 +180,7 @@ export function UsuariosScreen(): React.ReactElement {
                       name="trash-outline"
                       size={22}
                       color={cores.erro}
-                      onPress={() => remover(u.id, u.nome ?? u.matricula)}
+                      onPress={() => void remover(u.id, u.nome ?? u.matricula)}
                     />
                   ) : null}
                 </View>
