@@ -19,7 +19,7 @@ import {
   ConsumoInsumoDto,
   RetiradaFardoDto,
 } from './dto/insumos.dto';
-import { InsumosService } from './insumos.service';
+import { InsumosService, InsumoComResumo } from './insumos.service';
 
 /**
  * Controller do Modulo_Insumos (Req 3.1–3.3): cadastro de insumos, retirada de
@@ -31,6 +31,12 @@ import { InsumosService } from './insumos.service';
 @Funcionalidade('INSUMOS')
 export class InsumosController {
   constructor(private readonly insumosService: InsumosService) {}
+
+  /** Lista os insumos ativos com o resumo de estoque (painel do almoxarifado). */
+  @Get()
+  async listar(): Promise<InsumoComResumo[]> {
+    return this.insumosService.listarInsumos();
+  }
 
   /** Cadastra um novo insumo com limite mínimo (Req 3.3.4). */
   @Post()

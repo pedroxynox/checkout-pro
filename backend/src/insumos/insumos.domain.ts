@@ -100,3 +100,56 @@ export function resolverDeltaFardo<T extends FardoRef>(
 export function estoqueBaixo(saldo: number, limiteMinimo: number): boolean {
   return saldo <= limiteMinimo;
 }
+
+/** Movimento com data, para os cálculos do painel (consumo/entrada por período). */
+export interface MovimentoComData {
+  delta: number;
+  dataHora: Date;
+}
+
+/**
+ * Resumo de estoque de um insumo para o painel do almoxarifado. Tudo é medido
+ * em **quantidade** (unidade base), nunca em R$:
+ * - `saldo`: soma de todos os movimentos;
+ * - `consumoSemana`/`entradaSemana`: quantidade consumida/recebida nos últimos
+ *   7 dias (a partir de `agora`);
+ * - `semanasRestantes`: previsão de ruptura = saldo ÷ consumo semanal (null
+ *   quando não houve consumo, pois não há base para projetar).
+ */
+export interface ResumoEstoque {
+  saldo: number;
+  estoqueBaixo: boolean;
+  consumoSemana: number;
+  entradaSemana: number;
+  semanasRestantes: number | null;
+}
+
+const UMA_SEMANA_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function resumoEstoque(
+  movimentos: readonly MovimentoComData[],
+  limiteMinimo: number,
+  agora: Date,
+): ResumoEstoque {
+  const saldo = calcularSaldo(0, movimentos);
+  const inicioSemana = agora.getTime() - UMA_SEMANA_MS;
+  let consumoSemana = 0;
+  let entradaSemana = 0;
+  for (const m of movimentos) {
+    if (m.dataHora.getTime() >= inicioSemana) {
+      if (m.delta < 0) {
+        consumoSemana += -m.delta;
+      } else {
+        entradaSemana += m.delta;
+      }
+    }
+  }
+  const semanasRestantes = consumoSemana > 0 ? saldo / consumoSemana : null;
+  return {
+    saldo,
+    estoqueBaixo: estoqueBaixo(saldo, limiteMinimo),
+    consumoSemana,
+    entradaSemana,
+    semanasRestantes,
+  };
+}

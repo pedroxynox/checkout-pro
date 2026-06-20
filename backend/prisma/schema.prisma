@@ -43,6 +43,7 @@ enum CategoriaInsumo {
   SACOLA
   BOBINA
   PANO
+  ALCOOL
   OUTRO
 }
 
@@ -211,6 +212,13 @@ model Insumo {
   categoria    CategoriaInsumo
   saldo        Int             @default(0)
   limiteMinimo Int             @default(0)
+  // Unidade base de contagem do saldo (ex.: "sacola", "bobina", "metro", "litro").
+  unidade      String          @default("un")
+  // Embalagem de entrada e quantas unidades base ela contém (ex.: fardo=1000
+  // sacolas, caixa=20 bobinas, rolo=100 metros, galão=5 litros).
+  embalagem    String          @default("un")
+  fatorEmbalagem Int           @default(1)
+  ativo        Boolean         @default(true)
 
   movimentos MovimentoEstoque[]
 

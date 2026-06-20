@@ -168,7 +168,7 @@ export interface LoteApae {
 }
 
 // ----- Insumos (Req 3.x) -----
-export type CategoriaInsumo = 'SACOLA' | 'BOBINA' | 'PANO' | 'OUTRO';
+export type CategoriaInsumo = 'SACOLA' | 'BOBINA' | 'PANO' | 'ALCOOL' | 'OUTRO';
 
 export interface Insumo {
   id: string;
@@ -176,6 +176,21 @@ export interface Insumo {
   categoria: CategoriaInsumo;
   saldo: number;
   limiteMinimo: number;
+  /** Unidade base de contagem (ex.: sacola, bobina, metro, litro). */
+  unidade: string;
+  /** Embalagem de entrada (ex.: fardo, caixa, rolo, galão). */
+  embalagem: string;
+  /** Quantas unidades base há em uma embalagem (ex.: 1000, 20, 100, 5). */
+  fatorEmbalagem: number;
+  ativo: boolean;
+}
+
+/** Insumo com o resumo de estoque do painel (tudo em quantidade, não R$). */
+export interface InsumoResumo extends Insumo {
+  estoqueBaixo: boolean;
+  consumoSemana: number;
+  entradaSemana: number;
+  semanasRestantes: number | null;
 }
 
 export interface MovimentoEstoque {

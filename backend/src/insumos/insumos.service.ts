@@ -7,6 +7,7 @@ import {
   deltaRetiradaFardo,
   estoqueBaixo,
   resolverFardo,
+  resumoEstoque,
 } from './insumos.domain';
 import { FardoNaoReconhecidoError } from './insumos.errors';
 
@@ -17,6 +18,14 @@ export interface RetiradaFardoInput {
   insumoId: string;
   responsavelId?: string;
   destino?: string;
+}
+
+/** Insumo com o resumo de estoque calculado (para o painel do almoxarifado). */
+export interface InsumoComResumo extends Insumo {
+  estoqueBaixo: boolean;
+  consumoSemana: number;
+  entradaSemana: number;
+  semanasRestantes: number | null;
 }
 
 /**
@@ -31,6 +40,30 @@ export interface RetiradaFardoInput {
 @Injectable()
 export class InsumosService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Lista os insumos ativos com o resumo de estoque calculado (saldo em tempo
+   * real, alerta de estoque baixo, consumo e entrada da semana e previsão de
+   * semanas restantes). Fonte compartilhada do painel do almoxarifado —
+   * substitui a lista local por dispositivo.
+   */
+  async listarInsumos(): Promise<InsumoComResumo[]> {
+    const insumos = await this.prisma.insumo.findMany({
+      where: { ativo: true },
+      orderBy: { nome: 'asc' },
+    });
+    const agora = new Date();
+    const resultado: InsumoComResumo[] = [];
+    for (const insumo of insumos) {
+      const movimentos = await this.prisma.movimentoEstoque.findMany({
+        where: { insumoId: insumo.id },
+        select: { delta: true, dataHora: true },
+      });
+      const resumo = resumoEstoque(movimentos, insumo.limiteMinimo, agora);
+      resultado.push({ ...insumo, ...resumo });
+    }
+    return resultado;
+  }
 
   /**
    * Cadastra um novo tipo de insumo com seu limite mínimo (Req 3.3.4). Quando

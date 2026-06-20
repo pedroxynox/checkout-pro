@@ -13,7 +13,7 @@
  * Requer um DATABASE_URL apontando para um PostgreSQL acessível.
  */
 import * as bcrypt from 'bcrypt';
-import { Perfil, PrismaClient, TurnoFiscal } from '@prisma/client';
+import { CategoriaInsumo, Perfil, PrismaClient, TurnoFiscal } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -190,6 +190,58 @@ async function seedOperadores(): Promise<void> {
   }
 }
 
+interface SeedInsumo {
+  nome: string;
+  categoria: CategoriaInsumo;
+  /** Unidade base de contagem do saldo. */
+  unidade: string;
+  /** Embalagem de entrada e quantas unidades base ela contém. */
+  embalagem: string;
+  fatorEmbalagem: number;
+  limiteMinimo: number;
+}
+
+// Os 4 insumos padrão do setor (Almoxarifado). Mensurados em QUANTIDADE, não
+// em R$. A entrada é registrada por embalagem (multiplicada pelo fator) e o
+// saldo/consumo são contados na unidade base.
+const INSUMOS_PADRAO: SeedInsumo[] = [
+  { nome: 'Sacolas', categoria: CategoriaInsumo.SACOLA, unidade: 'sacola', embalagem: 'fardo', fatorEmbalagem: 1000, limiteMinimo: 1000 },
+  { nome: 'Bobina', categoria: CategoriaInsumo.BOBINA, unidade: 'bobina', embalagem: 'caixa', fatorEmbalagem: 20, limiteMinimo: 20 },
+  { nome: 'Pano', categoria: CategoriaInsumo.PANO, unidade: 'metro', embalagem: 'rolo', fatorEmbalagem: 100, limiteMinimo: 100 },
+  { nome: 'Álcool', categoria: CategoriaInsumo.ALCOOL, unidade: 'litro', embalagem: 'galão', fatorEmbalagem: 5, limiteMinimo: 5 },
+];
+
+async function seedInsumos(): Promise<void> {
+  for (const i of INSUMOS_PADRAO) {
+    const existente = await prisma.insumo.findFirst({ where: { nome: i.nome } });
+    if (existente) {
+      await prisma.insumo.update({
+        where: { id: existente.id },
+        data: {
+          categoria: i.categoria,
+          unidade: i.unidade,
+          embalagem: i.embalagem,
+          fatorEmbalagem: i.fatorEmbalagem,
+          limiteMinimo: i.limiteMinimo,
+          ativo: true,
+        },
+      });
+    } else {
+      await prisma.insumo.create({
+        data: {
+          nome: i.nome,
+          categoria: i.categoria,
+          unidade: i.unidade,
+          embalagem: i.embalagem,
+          fatorEmbalagem: i.fatorEmbalagem,
+          limiteMinimo: i.limiteMinimo,
+          saldo: 0,
+        },
+      });
+    }
+  }
+}
+
 async function main(): Promise<void> {
   // Gera o hash da senha inicial uma única vez antes de criar os usuários.
   senhaHashInicial = await bcrypt.hash(SENHA_INICIAL, 10);
@@ -197,15 +249,17 @@ async function main(): Promise<void> {
   await seedFiscais();
   await seedGerentes();
   await seedOperadores();
+  await seedInsumos();
 
   const totalUsuarios = await prisma.usuario.count();
   const totalFiscais = await prisma.fiscal.count();
   const totalOperadores = await prisma.operador.count();
+  const totalInsumos = await prisma.insumo.count();
 
   // eslint-disable-next-line no-console
   console.log(
     `Seed concluído: ${totalFiscais} fiscais, ${GERENTES.length} gerentes, ` +
-      `${totalOperadores} operadores e ${totalUsuarios} usuários (logins individuais).`,
+      `${totalOperadores} operadores, ${totalInsumos} insumos e ${totalUsuarios} usuários (logins individuais).`,
   );
 }
 

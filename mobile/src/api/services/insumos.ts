@@ -1,8 +1,13 @@
 /** Serviço de Insumos (Req 3.x): saldo, retirada de fardo e consumos. */
 import { apiClient } from '../client';
-import { CategoriaInsumo, Insumo, MovimentoEstoque } from '../types';
+import { CategoriaInsumo, Insumo, InsumoResumo, MovimentoEstoque } from '../types';
 
 export const insumosService = {
+  /** Lista os insumos ativos com o resumo de estoque (painel do almoxarifado). */
+  listar(): Promise<InsumoResumo[]> {
+    return apiClient.get<InsumoResumo[]>('/insumos');
+  },
+
   /** Cadastra um novo insumo com limite mínimo (Req 3.3.4). */
   cadastrar(
     nome: string,

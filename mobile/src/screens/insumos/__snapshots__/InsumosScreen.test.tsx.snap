@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
+exports[`InsumosScreen mantém o snapshot do painel 1`] = `
 <RCTScrollView
   contentContainerStyle={
     [
@@ -35,83 +35,156 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
   <RCTRefreshControl />
   <View>
     <View
-      style={
-        [
-          {
-            "backgroundColor": "#FFFFFF",
-            "borderRadius": 16,
-            "elevation": 2,
-            "marginBottom": 12,
-            "padding": 16,
-            "shadowColor": "#0B1B3A",
-            "shadowOffset": {
-              "height": 2,
-              "width": 0,
-            },
-            "shadowOpacity": 0.08,
-            "shadowRadius": 8,
-          },
-          undefined,
-        ]
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
       }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onBlur={[Function]}
+      onClick={[Function]}
+      onFocus={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
     >
-      <Text
-        style={
-          {
-            "color": "#1A1A1F",
-            "fontSize": 15,
-            "fontWeight": "700",
-            "marginBottom": 12,
-          }
-        }
-      >
-        Saldos em tempo real
-      </Text>
       <View
-        accessibilityState={
-          {
-            "busy": undefined,
-            "checked": undefined,
-            "disabled": undefined,
-            "expanded": undefined,
-            "selected": undefined,
-          }
-        }
-        accessibilityValue={
-          {
-            "max": undefined,
-            "min": undefined,
-            "now": undefined,
-            "text": undefined,
-          }
-        }
-        accessible={true}
-        collapsable={false}
-        focusable={true}
-        onBlur={[Function]}
-        onClick={[Function]}
-        onFocus={[Function]}
-        onResponderGrant={[Function]}
-        onResponderMove={[Function]}
-        onResponderRelease={[Function]}
-        onResponderTerminate={[Function]}
-        onResponderTerminationRequest={[Function]}
-        onStartShouldSetResponder={[Function]}
         style={
-          {
-            "alignItems": "center",
-            "borderBottomColor": "#EDEDF2",
-            "borderBottomWidth": 0.5,
-            "flexDirection": "row",
-            "justifyContent": "space-between",
-            "paddingVertical": 12,
-          }
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 16,
+              "elevation": 2,
+              "marginBottom": 12,
+              "padding": 16,
+              "shadowColor": "#0B1B3A",
+              "shadowOffset": {
+                "height": 2,
+                "width": 0,
+              },
+              "shadowOpacity": 0.08,
+              "shadowRadius": 8,
+            },
+            undefined,
+          ]
         }
       >
         <View
           style={
             {
-              "flex": 1,
+              "alignItems": "flex-start",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "flex": 1,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 18,
+                  "fontWeight": "600",
+                }
+              }
+            >
+              Sacolas
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#5C5C6B",
+                  "fontSize": 12,
+                  "fontWeight": "400",
+                  "marginTop": 2,
+                }
+              }
+            >
+              Sacola
+               · mín.
+               
+              1.000 sacolas
+            </Text>
+          </View>
+          <View
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "alignSelf": "flex-start",
+                  "borderRadius": 999,
+                  "flexDirection": "row",
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 4,
+                },
+                {
+                  "backgroundColor": "#E4F6EC",
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 4,
+                    "height": 8,
+                    "marginRight": 4,
+                    "width": 8,
+                  },
+                  {
+                    "backgroundColor": "#1E9E5A",
+                  },
+                ]
+              }
+            />
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 12,
+                    "fontWeight": "600",
+                  },
+                  {
+                    "color": "#1E9E5A",
+                  },
+                ]
+              }
+            >
+              OK
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "baseline",
+              "flexDirection": "row",
+              "gap": 8,
+              "marginTop": 8,
             }
           }
         >
@@ -119,12 +192,12 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
             style={
               {
                 "color": "#1A1A1F",
-                "fontSize": 15,
-                "fontWeight": "600",
+                "fontSize": 26,
+                "fontWeight": "700",
               }
             }
           >
-            Sacola P
+            3.200 sacolas
           </Text>
           <Text
             style={
@@ -132,34 +205,109 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
                 "color": "#5C5C6B",
                 "fontSize": 12,
                 "fontWeight": "400",
-                "marginTop": 2,
               }
             }
           >
-            Sacola
-             · mín. 
-            50
+            ≈ 3,2 fardo
           </Text>
         </View>
         <View
           style={
             {
-              "alignItems": "center",
               "flexDirection": "row",
-              "gap": 8,
+              "gap": 12,
+              "marginTop": 12,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "flex": 1,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#5C5C6B",
+                  "fontSize": 12,
+                  "fontWeight": "400",
+                }
+              }
+            >
+              Consumo (7 dias)
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                  "marginTop": 2,
+                }
+              }
+            >
+              500 sacolas
+               (≈ 0,5 fardo)
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "flex": 1,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#5C5C6B",
+                  "fontSize": 12,
+                  "fontWeight": "400",
+                }
+              }
+            >
+              Entrada (7 dias)
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                  "marginTop": 2,
+                }
+              }
+            >
+              1.000 sacolas
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "borderTopColor": "#EDEDF2",
+              "borderTopWidth": 0.5,
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "marginTop": 12,
+              "paddingTop": 8,
             }
           }
         >
           <Text
             style={
               {
-                "color": "#1A1A1F",
-                "fontSize": 18,
-                "fontWeight": "600",
+                "color": "#5C5C6B",
+                "flex": 1,
+                "fontSize": 12,
+                "fontWeight": "400",
               }
             }
           >
-            320
+            Dura ~6,4 semana(s) no ritmo atual
           </Text>
           <Text
             testID="icon-chevron-forward"
@@ -168,100 +316,102 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           </Text>
         </View>
       </View>
+    </View>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onBlur={[Function]}
+      onClick={[Function]}
+      onFocus={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+    >
       <View
-        accessibilityState={
-          {
-            "busy": undefined,
-            "checked": undefined,
-            "disabled": undefined,
-            "expanded": undefined,
-            "selected": undefined,
-          }
-        }
-        accessibilityValue={
-          {
-            "max": undefined,
-            "min": undefined,
-            "now": undefined,
-            "text": undefined,
-          }
-        }
-        accessible={true}
-        collapsable={false}
-        focusable={true}
-        onBlur={[Function]}
-        onClick={[Function]}
-        onFocus={[Function]}
-        onResponderGrant={[Function]}
-        onResponderMove={[Function]}
-        onResponderRelease={[Function]}
-        onResponderTerminate={[Function]}
-        onResponderTerminationRequest={[Function]}
-        onStartShouldSetResponder={[Function]}
         style={
-          {
-            "alignItems": "center",
-            "borderBottomColor": "#EDEDF2",
-            "borderBottomWidth": 0.5,
-            "flexDirection": "row",
-            "justifyContent": "space-between",
-            "paddingVertical": 12,
-          }
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 16,
+              "elevation": 2,
+              "marginBottom": 12,
+              "padding": 16,
+              "shadowColor": "#0B1B3A",
+              "shadowOffset": {
+                "height": 2,
+                "width": 0,
+              },
+              "shadowOpacity": 0.08,
+              "shadowRadius": 8,
+            },
+            undefined,
+          ]
         }
       >
         <View
           style={
             {
-              "flex": 1,
-            }
-          }
-        >
-          <Text
-            style={
-              {
-                "color": "#1A1A1F",
-                "fontSize": 15,
-                "fontWeight": "600",
-              }
-            }
-          >
-            Bobina 80mm
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#5C5C6B",
-                "fontSize": 12,
-                "fontWeight": "400",
-                "marginTop": 2,
-              }
-            }
-          >
-            Bobina
-             · mín. 
-            10
-          </Text>
-        </View>
-        <View
-          style={
-            {
-              "alignItems": "center",
+              "alignItems": "flex-start",
               "flexDirection": "row",
-              "gap": 8,
+              "justifyContent": "space-between",
             }
           }
         >
-          <Text
+          <View
             style={
               {
-                "color": "#1A1A1F",
-                "fontSize": 18,
-                "fontWeight": "600",
+                "flex": 1,
               }
             }
           >
-            8
-          </Text>
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 18,
+                  "fontWeight": "600",
+                }
+              }
+            >
+              Bobina
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#5C5C6B",
+                  "fontSize": 12,
+                  "fontWeight": "400",
+                  "marginTop": 2,
+                }
+              }
+            >
+              Bobina
+               · mín.
+               
+              20 bobinas
+            </Text>
+          </View>
           <View
             style={
               [
@@ -310,6 +460,138 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
               Baixo
             </Text>
           </View>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "baseline",
+              "flexDirection": "row",
+              "gap": 8,
+              "marginTop": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#1A1A1F",
+                "fontSize": 26,
+                "fontWeight": "700",
+              }
+            }
+          >
+            8 bobinas
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#5C5C6B",
+                "fontSize": 12,
+                "fontWeight": "400",
+              }
+            }
+          >
+            ≈ 0,4 caixa
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "flexDirection": "row",
+              "gap": 12,
+              "marginTop": 12,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "flex": 1,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#5C5C6B",
+                  "fontSize": 12,
+                  "fontWeight": "400",
+                }
+              }
+            >
+              Consumo (7 dias)
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                  "marginTop": 2,
+                }
+              }
+            >
+              10 bobinas
+               (≈ 0,5 caixa)
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "flex": 1,
+              }
+            }
+          >
+            <Text
+              style={
+                {
+                  "color": "#5C5C6B",
+                  "fontSize": 12,
+                  "fontWeight": "400",
+                }
+              }
+            >
+              Entrada (7 dias)
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#1A1A1F",
+                  "fontSize": 15,
+                  "fontWeight": "600",
+                  "marginTop": 2,
+                }
+              }
+            >
+              0 bobinas
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "borderTopColor": "#EDEDF2",
+              "borderTopWidth": 0.5,
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "marginTop": 12,
+              "paddingTop": 8,
+            }
+          }
+        >
+          <Text
+            style={
+              {
+                "color": "#5C5C6B",
+                "flex": 1,
+                "fontSize": 12,
+                "fontWeight": "400",
+              }
+            }
+          >
+            Dura ~0,8 semana(s) no ritmo atual
+          </Text>
           <Text
             testID="icon-chevron-forward"
           >
@@ -349,191 +631,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           }
         }
       >
-        Retirada de fardo (sacolas)
-      </Text>
-      <Text
-        style={
-          {
-            "color": "#5C5C6B",
-            "fontSize": 13,
-            "fontWeight": "600",
-            "marginBottom": 4,
-          }
-        }
-      >
-        Insumo de sacolas
-      </Text>
-      <View
-        style={
-          {
-            "flexDirection": "row",
-            "flexWrap": "wrap",
-            "gap": 8,
-            "marginBottom": 8,
-          }
-        }
-      >
-        <View
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": undefined,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "backgroundColor": "#F1F1F4",
-                "borderColor": "#E3E3E9",
-                "borderRadius": 999,
-                "borderWidth": 1,
-                "paddingHorizontal": 12,
-                "paddingVertical": 4,
-              },
-              false,
-            ]
-          }
-        >
-          <Text
-            style={
-              [
-                {
-                  "color": "#5C5C6B",
-                  "fontSize": 12,
-                  "fontWeight": "400",
-                },
-                false,
-              ]
-            }
-          >
-            Sacola P
-          </Text>
-        </View>
-      </View>
-      <View
-        accessibilityRole="button"
-        accessibilityState={
-          {
-            "busy": undefined,
-            "checked": undefined,
-            "disabled": false,
-            "expanded": undefined,
-            "selected": undefined,
-          }
-        }
-        accessibilityValue={
-          {
-            "max": undefined,
-            "min": undefined,
-            "now": undefined,
-            "text": undefined,
-          }
-        }
-        accessible={true}
-        collapsable={false}
-        focusable={true}
-        onBlur={[Function]}
-        onClick={[Function]}
-        onFocus={[Function]}
-        onResponderGrant={[Function]}
-        onResponderMove={[Function]}
-        onResponderRelease={[Function]}
-        onResponderTerminate={[Function]}
-        onResponderTerminationRequest={[Function]}
-        onStartShouldSetResponder={[Function]}
-        style={
-          [
-            {
-              "alignItems": "center",
-              "borderRadius": 10,
-              "justifyContent": "center",
-              "minHeight": 48,
-              "paddingHorizontal": 16,
-            },
-            {
-              "backgroundColor": "#C8102E",
-            },
-            false,
-            false,
-            false,
-            {
-              "marginTop": 8,
-            },
-          ]
-        }
-      >
-        <Text
-          style={
-            [
-              {
-                "fontSize": 15,
-                "fontWeight": "600",
-              },
-              {
-                "color": "#FFFFFF",
-              },
-            ]
-          }
-        >
-          Ler código de barras
-        </Text>
-      </View>
-    </View>
-    <View
-      style={
-        [
-          {
-            "backgroundColor": "#FFFFFF",
-            "borderRadius": 16,
-            "elevation": 2,
-            "marginBottom": 12,
-            "padding": 16,
-            "shadowColor": "#0B1B3A",
-            "shadowOffset": {
-              "height": 2,
-              "width": 0,
-            },
-            "shadowOpacity": 0.08,
-            "shadowRadius": 8,
-          },
-          undefined,
-        ]
-      }
-    >
-      <Text
-        style={
-          {
-            "color": "#1A1A1F",
-            "fontSize": 15,
-            "fontWeight": "700",
-            "marginBottom": 12,
-          }
-        }
-      >
-        Registrar consumo
+        Registrar consumo (saída)
       </Text>
       <Text
         style={
@@ -613,7 +711,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
               ]
             }
           >
-            Sacola P
+            Sacolas
           </Text>
         </View>
         <View
@@ -672,7 +770,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
               ]
             }
           >
-            Bobina 80mm
+            Bobina
           </Text>
         </View>
       </View>
@@ -693,7 +791,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
             }
           }
         >
-          Quantidade
+          Quantidade (na unidade do insumo)
         </Text>
         <TextInput
           keyboardType="number-pad"
@@ -817,50 +915,8 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           }
         }
       >
-        Cadastrar insumo
+        Retirada de fardo (sacolas)
       </Text>
-      <View
-        style={
-          {
-            "marginBottom": 12,
-          }
-        }
-      >
-        <Text
-          style={
-            {
-              "color": "#5C5C6B",
-              "fontSize": 13,
-              "fontWeight": "600",
-              "marginBottom": 4,
-            }
-          }
-        >
-          Nome
-        </Text>
-        <TextInput
-          onChangeText={[Function]}
-          placeholder="Nome do insumo"
-          placeholderTextColor="#5C5C6B"
-          style={
-            [
-              {
-                "backgroundColor": "#FFFFFF",
-                "borderColor": "#E3E3E9",
-                "borderRadius": 10,
-                "borderWidth": 1,
-                "color": "#1A1A1F",
-                "fontSize": 15,
-                "minHeight": 48,
-                "paddingHorizontal": 12,
-              },
-              null,
-              undefined,
-            ]
-          }
-          value=""
-        />
-      </View>
       <Text
         style={
           {
@@ -871,16 +927,15 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           }
         }
       >
-        Categoria
+        Insumo de sacolas
       </Text>
       <View
         style={
           {
-            "backgroundColor": "#F1F1F4",
-            "borderRadius": 10,
             "flexDirection": "row",
-            "marginBottom": 12,
-            "padding": 4,
+            "flexWrap": "wrap",
+            "gap": 8,
+            "marginBottom": 8,
           }
         }
       >
@@ -917,291 +972,32 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
           style={
             [
               {
-                "alignItems": "center",
-                "borderRadius": 6,
-                "flex": 1,
-                "paddingVertical": 8,
-              },
-              {
-                "backgroundColor": "#FFFFFF",
-              },
-            ]
-          }
-        >
-          <Text
-            style={
-              [
-                {
-                  "color": "#5C5C6B",
-                  "fontSize": 13,
-                  "fontWeight": "600",
-                },
-                {
-                  "color": "#C8102E",
-                },
-              ]
-            }
-          >
-            Sacola
-          </Text>
-        </View>
-        <View
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": undefined,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "alignItems": "center",
-                "borderRadius": 6,
-                "flex": 1,
-                "paddingVertical": 8,
-              },
-              false,
-            ]
-          }
-        >
-          <Text
-            style={
-              [
-                {
-                  "color": "#5C5C6B",
-                  "fontSize": 13,
-                  "fontWeight": "600",
-                },
-                false,
-              ]
-            }
-          >
-            Bobina
-          </Text>
-        </View>
-        <View
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": undefined,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "alignItems": "center",
-                "borderRadius": 6,
-                "flex": 1,
-                "paddingVertical": 8,
-              },
-              false,
-            ]
-          }
-        >
-          <Text
-            style={
-              [
-                {
-                  "color": "#5C5C6B",
-                  "fontSize": 13,
-                  "fontWeight": "600",
-                },
-                false,
-              ]
-            }
-          >
-            Pano
-          </Text>
-        </View>
-        <View
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": undefined,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "alignItems": "center",
-                "borderRadius": 6,
-                "flex": 1,
-                "paddingVertical": 8,
-              },
-              false,
-            ]
-          }
-        >
-          <Text
-            style={
-              [
-                {
-                  "color": "#5C5C6B",
-                  "fontSize": 13,
-                  "fontWeight": "600",
-                },
-                false,
-              ]
-            }
-          >
-            Outro
-          </Text>
-        </View>
-      </View>
-      <View
-        style={
-          {
-            "marginBottom": 12,
-          }
-        }
-      >
-        <Text
-          style={
-            {
-              "color": "#5C5C6B",
-              "fontSize": 13,
-              "fontWeight": "600",
-              "marginBottom": 4,
-            }
-          }
-        >
-          Limite mínimo
-        </Text>
-        <TextInput
-          keyboardType="number-pad"
-          onChangeText={[Function]}
-          placeholder="0"
-          placeholderTextColor="#5C5C6B"
-          style={
-            [
-              {
-                "backgroundColor": "#FFFFFF",
+                "backgroundColor": "#F1F1F4",
                 "borderColor": "#E3E3E9",
-                "borderRadius": 10,
+                "borderRadius": 999,
                 "borderWidth": 1,
-                "color": "#1A1A1F",
-                "fontSize": 15,
-                "minHeight": 48,
                 "paddingHorizontal": 12,
+                "paddingVertical": 4,
               },
-              null,
-              undefined,
+              false,
             ]
-          }
-          value=""
-        />
-      </View>
-      <View
-        style={
-          {
-            "marginBottom": 12,
-          }
-        }
-      >
-        <Text
-          style={
-            {
-              "color": "#5C5C6B",
-              "fontSize": 13,
-              "fontWeight": "600",
-              "marginBottom": 4,
-            }
           }
         >
-          Saldo inicial
-        </Text>
-        <TextInput
-          keyboardType="number-pad"
-          onChangeText={[Function]}
-          placeholder="0"
-          placeholderTextColor="#5C5C6B"
-          style={
-            [
-              {
-                "backgroundColor": "#FFFFFF",
-                "borderColor": "#E3E3E9",
-                "borderRadius": 10,
-                "borderWidth": 1,
-                "color": "#1A1A1F",
-                "fontSize": 15,
-                "minHeight": 48,
-                "paddingHorizontal": 12,
-              },
-              null,
-              undefined,
-            ]
-          }
-          value=""
-        />
+          <Text
+            style={
+              [
+                {
+                  "color": "#5C5C6B",
+                  "fontSize": 12,
+                  "fontWeight": "400",
+                },
+                false,
+              ]
+            }
+          >
+            Sacolas
+          </Text>
+        </View>
       </View>
       <View
         accessibilityRole="button"
@@ -1249,7 +1045,9 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
             false,
             false,
             false,
-            undefined,
+            {
+              "marginTop": 8,
+            },
           ]
         }
       >
@@ -1266,47 +1064,7 @@ exports[`InsumosScreen mantém o snapshot dos saldos em tempo real 1`] = `
             ]
           }
         >
-          Cadastrar
-        </Text>
-      </View>
-      <View
-        style={
-          [
-            {
-              "alignItems": "flex-start",
-              "borderRadius": 10,
-              "flexDirection": "row",
-              "gap": 8,
-              "marginBottom": 12,
-              "padding": 12,
-            },
-            {
-              "backgroundColor": "#FCE6EA",
-            },
-          ]
-        }
-      >
-        <Text
-          testID="icon-information-circle-outline"
-        >
-          information-circle-outline
-        </Text>
-        <Text
-          style={
-            [
-              {
-                "flex": 1,
-                "fontSize": 12,
-                "fontWeight": "400",
-                "lineHeight": 18,
-              },
-              {
-                "color": "#C8102E",
-              },
-            ]
-          }
-        >
-          Insumos cadastrados ficam disponíveis neste aparelho para acompanhamento de saldo.
+          Ler código de barras
         </Text>
       </View>
     </View>

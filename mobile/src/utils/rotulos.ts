@@ -8,6 +8,7 @@ export const ROTULO_CATEGORIA_INSUMO: Record<CategoriaInsumo, string> = {
   SACOLA: 'Sacola',
   BOBINA: 'Bobina',
   PANO: 'Pano',
+  ALCOOL: 'Álcool',
   OUTRO: 'Outro',
 };
 
