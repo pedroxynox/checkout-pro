@@ -30,6 +30,24 @@ export class FiscaisService {
   }
 
   /**
+   * Indica se o fiscal pertence ao usuário informado (Fiscal.usuarioId). Usado
+   * para garantir que apenas o próprio fiscal (ou o desenvolvedor) altere o
+   * seu status / check-in / check-out.
+   */
+  async pertenceAoUsuario(
+    fiscalId: string,
+    usuarioId?: string,
+  ): Promise<boolean> {
+    if (!usuarioId) {
+      return false;
+    }
+    const fiscal = await this.prisma.fiscal.findUnique({
+      where: { id: fiscalId },
+    });
+    return !!fiscal && fiscal.usuarioId === usuarioId;
+  }
+
+  /**
    * Altera o status de um fiscal (Req 4.1.1, 4.1.2). Valida o status e aplica a
    * regra "última alteração vence", atualizando o status atual da sessão ativa
    * e o horário em que ele foi definido (Req 4.1.3).

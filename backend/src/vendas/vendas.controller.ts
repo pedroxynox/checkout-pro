@@ -53,7 +53,10 @@ export class VendasController {
     const data = dto.data ? new Date(dto.data) : new Date();
     // Após enviado, só o gerente pode reenviar as vendas do dia.
     const jaEnviado = (await this.vendasService.status(data)).enviado;
-    if (jaEnviado && usuario?.perfil !== 'GERENTE') {
+    const ehGerente =
+      usuario?.perfil === 'GERENTE' ||
+      usuario?.perfil === 'GERENTE_DESENVOLVEDOR';
+    if (jaEnviado && !ehGerente) {
       throw new ForbiddenException(
         'As vendas deste dia já foram enviadas. Apenas o gerente pode reenviar.',
       );

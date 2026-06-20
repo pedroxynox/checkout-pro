@@ -74,12 +74,19 @@ interface SeedGerente {
   matricula?: string;
   /** Senha inicial específica; se ausente, usa SENHA_INICIAL. */
   senha?: string;
+  /** Perfil; padrão GERENTE. Pedro é o GERENTE_DESENVOLVEDOR (acesso total). */
+  perfil?: Perfil;
 }
 
 // Gerentes com perfil GERENTE (Req 6.4.6). O login é a matrícula, quando
 // informada; caso contrário, o slug do nome.
 const GERENTES: SeedGerente[] = [
-  { nome: 'Pedro Munoz', matricula: '232152', senha: '123456' },
+  {
+    nome: 'Pedro Munoz',
+    matricula: '232152',
+    senha: '123456',
+    perfil: Perfil.GERENTE_DESENVOLVEDOR,
+  },
   { nome: 'Arlete Pacheco Fernandes' },
 ];
 
@@ -166,15 +173,16 @@ async function seedGerentes(): Promise<void> {
   for (const g of GERENTES) {
     const login = g.matricula ?? slugLogin(g.nome);
     const senhaHash = g.senha ? await bcrypt.hash(g.senha, 10) : senhaHashInicial;
+    const perfil = g.perfil ?? Perfil.GERENTE;
     // Usuário individual e único por gerente (Req 6.4.6, 6.4.7, 7.1.4).
     await prisma.usuario.upsert({
       where: { login },
-      update: { perfil: Perfil.GERENTE, nome: g.nome },
+      update: { perfil, nome: g.nome },
       create: {
         login,
         nome: g.nome,
         senhaHash,
-        perfil: Perfil.GERENTE,
+        perfil,
       },
     });
   }

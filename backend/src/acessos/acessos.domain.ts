@@ -9,7 +9,11 @@
  * Requisitos: 7.1 (login individual e exclusivo) e 7.2 (perfis de acesso).
  */
 
-export type Perfil = 'GERENTE' | 'SUPERVISOR' | 'FISCAL';
+export type Perfil =
+  | 'GERENTE'
+  | 'GERENTE_DESENVOLVEDOR'
+  | 'SUPERVISOR'
+  | 'FISCAL';
 
 /**
  * Conjunto de funcionalidades **operacionais** liberadas ao perfil FISCAL
@@ -51,10 +55,45 @@ const FUNCIONALIDADES_SUPERVISOR_SET = new Set<string>(
 );
 
 /**
+ * Funcionalidades liberadas ao perfil GERENTE (comum). Pode **ver tudo** e
+ * executar a operação do dia a dia, MAS não as operações de gestão estrutural
+ * de dados, que ficam exclusivas do GERENTE_DESENVOLVEDOR:
+ * - NÃO inclui: `LOTE_APAE_GERENCIAR` (registrar/reiniciar lote), `USUARIOS_CRUD`
+ *   (gestão de pessoas), `OPERADORES_CRUD` (cadastro de operadores),
+ *   `ESCALA_EDITAR` (edição de escala) e `ADMIN_DADOS` (zerar/limpar dados).
+ * - A alteração de status de fiscal não é por funcionalidade: só o próprio
+ *   fiscal (do seu status) ou o desenvolvedor podem alterar (ver FiscaisController).
+ */
+export const FUNCIONALIDADES_GERENTE: readonly string[] = Object.freeze([
+  // Visualização / relatórios
+  'INDICADORES_VISUALIZAR',
+  'PAINEL_VENDAS_VISUALIZAR',
+  'PAINEL_VENDAS_EDITAR',
+  'ESCALA_VISUALIZAR',
+  'NOTIFICACOES',
+  'ALERTAS_FILA',
+  'NORMATIVAS',
+  'INDICADOR_QUEBRA',
+  // Operação permitida ao gerente comum
+  'IMPORTACOES',
+  'INSUMOS',
+  'INSUMOS_GERENCIAR',
+  'LOTE_APAE',
+  'CHECKLIST',
+  'OPERADORES_AUSENCIAS',
+  'FISCAIS_STATUS',
+]);
+
+const FUNCIONALIDADES_GERENTE_SET = new Set<string>(FUNCIONALIDADES_GERENTE);
+
+/**
  * Decide, de forma pura, se um perfil está autorizado a usar uma
  * funcionalidade (Requisito 7.2).
  *
- * - GERENTE: sempre autorizado (acesso total) — Req 7.2.2.
+ * - GERENTE_DESENVOLVEDOR: sempre autorizado (acesso total, inclui operações
+ *   que alteram dados da DB e a área administrativa).
+ * - GERENTE: autorizado apenas para o conjunto de gerente (ver tudo + operação
+ *   do dia a dia, sem gestão estrutural de dados).
  * - SUPERVISOR: autorizado se a funcionalidade pertencer ao conjunto do
  *   supervisor.
  * - FISCAL: autorizado **se e somente se** a funcionalidade pertencer ao
@@ -64,8 +103,11 @@ export function decidirAutorizacao(
   perfil: Perfil,
   funcionalidade: string,
 ): boolean {
-  if (perfil === 'GERENTE') {
+  if (perfil === 'GERENTE_DESENVOLVEDOR') {
     return true;
+  }
+  if (perfil === 'GERENTE') {
+    return FUNCIONALIDADES_GERENTE_SET.has(funcionalidade);
   }
   if (perfil === 'SUPERVISOR') {
     return FUNCIONALIDADES_SUPERVISOR_SET.has(funcionalidade);

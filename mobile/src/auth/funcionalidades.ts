@@ -44,14 +44,45 @@ const FUNCIONALIDADES_SUPERVISOR_SET = new Set<string>(
 );
 
 /**
+ * Funcionalidades do GERENTE comum (espelho do backend): vê tudo + operação do
+ * dia a dia, MAS não a gestão estrutural de dados (registrar lote APAE, gestão
+ * de pessoas/operadores, edição de escala, zerar/limpar dados) — isso é só do
+ * GERENTE_DESENVOLVEDOR. Alterar status de fiscal não é por funcionalidade
+ * (só o próprio fiscal ou o desenvolvedor).
+ */
+export const FUNCIONALIDADES_GERENTE: readonly string[] = Object.freeze([
+  'INDICADORES_VISUALIZAR',
+  'PAINEL_VENDAS_VISUALIZAR',
+  'PAINEL_VENDAS_EDITAR',
+  'ESCALA_VISUALIZAR',
+  'NOTIFICACOES',
+  'ALERTAS_FILA',
+  'NORMATIVAS',
+  'INDICADOR_QUEBRA',
+  'IMPORTACOES',
+  'INSUMOS',
+  'INSUMOS_GERENCIAR',
+  'LOTE_APAE',
+  'CHECKLIST',
+  'OPERADORES_AUSENCIAS',
+  'FISCAIS_STATUS',
+]);
+
+const FUNCIONALIDADES_GERENTE_SET = new Set<string>(FUNCIONALIDADES_GERENTE);
+
+/**
  * Decide se um perfil pode acessar uma funcionalidade (Req 7.2):
- * - GERENTE: sempre autorizado (acesso total).
- * - SUPERVISOR: autorizado se pertencer ao conjunto do supervisor.
- * - FISCAL: autorizado se pertencer ao conjunto operacional do fiscal.
+ * - GERENTE_DESENVOLVEDOR: acesso total.
+ * - GERENTE: apenas o conjunto de gerente (ver tudo + operação do dia a dia).
+ * - SUPERVISOR: conjunto do supervisor.
+ * - FISCAL: conjunto operacional do fiscal.
  */
 export function podeAcessar(perfil: Perfil, funcionalidade: string): boolean {
-  if (perfil === 'GERENTE') {
+  if (perfil === 'GERENTE_DESENVOLVEDOR') {
     return true;
+  }
+  if (perfil === 'GERENTE') {
+    return FUNCIONALIDADES_GERENTE_SET.has(funcionalidade);
   }
   if (perfil === 'SUPERVISOR') {
     return FUNCIONALIDADES_SUPERVISOR_SET.has(funcionalidade);

@@ -38,15 +38,30 @@ function navegacaoFake() {
 describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('o gerente vê todas as áreas', () => {
-    montarAuth('GERENTE');
+  it('o gerente desenvolvedor vê todas as áreas', () => {
+    montarAuth('GERENTE_DESENVOLVEDOR');
     render(<HomeScreen navigation={navegacaoFake()} route={{} as never} />);
 
     for (const area of AREAS) {
       expect(screen.getByText(area.titulo)).toBeTruthy();
     }
-    // Inclui a área exclusiva do gerente (Operadores).
+    // Inclui as áreas administrativas exclusivas do desenvolvedor.
+    expect(screen.getByText('Pessoas e Acessos')).toBeTruthy();
+    expect(screen.getByText('Gerenciar dados')).toBeTruthy();
+  });
+
+  it('o gerente comum vê a operação, mas não a gestão de dados', () => {
+    montarAuth('GERENTE');
+    render(<HomeScreen navigation={navegacaoFake()} route={{} as never} />);
+
+    // Operação do dia a dia visível.
+    expect(screen.getByText('Insumos')).toBeTruthy();
+    expect(screen.getByText('Checklist')).toBeTruthy();
     expect(screen.getByText('Operadores')).toBeTruthy();
+
+    // Gestão estrutural de dados NÃO aparece para o gerente comum.
+    expect(screen.queryByText('Pessoas e Acessos')).toBeNull();
+    expect(screen.queryByText('Gerenciar dados')).toBeNull();
   });
 
   it('o fiscal vê as áreas operacionais, mas não a gestão de acessos', () => {

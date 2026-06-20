@@ -2,6 +2,7 @@ import * as fc from 'fast-check';
 import {
   CredencialUsuario,
   FUNCIONALIDADES_FISCAL,
+  FUNCIONALIDADES_GERENTE,
   Perfil,
   decidirAutenticacao,
   decidirAutorizacao,
@@ -19,7 +20,11 @@ import {
 
 const NUM_RUNS = 100;
 
-const perfilArb: fc.Arbitrary<Perfil> = fc.constantFrom('GERENTE', 'FISCAL');
+const perfilArb: fc.Arbitrary<Perfil> = fc.constantFrom(
+  'GERENTE',
+  'GERENTE_DESENVOLVEDOR',
+  'FISCAL',
+);
 
 // Gera um conjunto de usuários com logins necessariamente únicos.
 const usuariosArb: fc.Arbitrary<CredencialUsuario[]> = fc
@@ -92,13 +97,17 @@ describe('Modulo_Acessos — testes de propriedade', () => {
 
   // Feature: gestao-frente-de-caixa, Property 29: Autorização por perfil
   // Validates: Requirements 7.2.2, 7.2.3, 7.2.4
-  it('Property 29: gerente é sempre autorizado; fiscal é autorizado sse a funcionalidade for operacional', () => {
+  it('Property 29: desenvolvedor sempre autorizado; gerente conforme seu conjunto; fiscal sse operacional', () => {
     const operacionais = new Set<string>(FUNCIONALIDADES_FISCAL);
+    const deGerente = new Set<string>(FUNCIONALIDADES_GERENTE);
     fc.assert(
       fc.property(perfilArb, funcionalidadeArb, (perfil, funcionalidade) => {
         const autorizado = decidirAutorizacao(perfil, funcionalidade);
-        if (perfil === 'GERENTE') {
+        if (perfil === 'GERENTE_DESENVOLVEDOR') {
           return autorizado === true;
+        }
+        if (perfil === 'GERENTE') {
+          return autorizado === deGerente.has(funcionalidade);
         }
         return autorizado === operacionais.has(funcionalidade);
       }),

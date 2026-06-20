@@ -121,6 +121,7 @@ export function UsuariosScreen(): React.ReactElement {
             { valor: 'FISCAL', rotulo: 'Fiscal' },
             { valor: 'SUPERVISOR', rotulo: 'Supervisor' },
             { valor: 'GERENTE', rotulo: 'Gerente' },
+            { valor: 'GERENTE_DESENVOLVEDOR', rotulo: 'Gerente Dev' },
           ]}
           selecionado={perfil}
           aoSelecionar={setPerfil}

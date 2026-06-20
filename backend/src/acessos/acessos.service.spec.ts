@@ -72,10 +72,24 @@ describe('AcessosService', () => {
   });
 
   describe('autorizar / exigirAutorizacao', () => {
-    it('gerente é autorizado em qualquer funcionalidade', () => {
+    it('gerente desenvolvedor é autorizado em qualquer funcionalidade', () => {
       const service = criarServico([]);
-      expect(service.autorizar('GERENTE', 'OPERADORES_CRUD')).toBe(true);
+      expect(
+        service.autorizar('GERENTE_DESENVOLVEDOR', 'OPERADORES_CRUD'),
+      ).toBe(true);
+      expect(service.autorizar('GERENTE_DESENVOLVEDOR', 'ADMIN_DADOS')).toBe(
+        true,
+      );
+    });
+
+    it('gerente comum é restrito: opera o dia a dia mas não gestão de dados', () => {
+      const service = criarServico([]);
       expect(service.autorizar('GERENTE', 'INSUMOS')).toBe(true);
+      expect(service.autorizar('GERENTE', 'INSUMOS_GERENCIAR')).toBe(true);
+      expect(service.autorizar('GERENTE', 'OPERADORES_CRUD')).toBe(false);
+      expect(service.autorizar('GERENTE', 'USUARIOS_CRUD')).toBe(false);
+      expect(service.autorizar('GERENTE', 'LOTE_APAE_GERENCIAR')).toBe(false);
+      expect(service.autorizar('GERENTE', 'ADMIN_DADOS')).toBe(false);
     });
 
     it('fiscal é autorizado em funcionalidade operacional e negado em gerente-only', () => {
@@ -90,7 +104,7 @@ describe('AcessosService', () => {
         service.exigirAutorizacao('FISCAL', 'OPERADORES_CRUD'),
       ).toThrow(PermissaoInsuficienteError);
       expect(() =>
-        service.exigirAutorizacao('GERENTE', 'OPERADORES_CRUD'),
+        service.exigirAutorizacao('GERENTE_DESENVOLVEDOR', 'OPERADORES_CRUD'),
       ).not.toThrow();
     });
   });

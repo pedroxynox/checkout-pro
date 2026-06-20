@@ -36,9 +36,11 @@ export function HomeScreen({
   const rotuloPerfil =
     perfil === 'GERENTE'
       ? 'Gerente'
-      : perfil === 'SUPERVISOR'
-        ? 'Supervisor'
-        : 'Fiscal';
+      : perfil === 'GERENTE_DESENVOLVEDOR'
+        ? 'Gerente Desenvolvedor'
+        : perfil === 'SUPERVISOR'
+          ? 'Supervisor'
+          : 'Fiscal';
   const nome = primeiroNome;
 
   return (

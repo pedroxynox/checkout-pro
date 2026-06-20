@@ -40,10 +40,18 @@ describe('PerfilGuard', () => {
     expect(guardCom(undefined).canActivate(contexto('FISCAL'))).toBe(true);
   });
 
-  it('gerente é autorizado em funcionalidade administrativa', () => {
-    expect(guardCom('OPERADORES_CRUD').canActivate(contexto('GERENTE'))).toBe(
-      true,
-    );
+  it('gerente desenvolvedor é autorizado em funcionalidade administrativa', () => {
+    expect(
+      guardCom('OPERADORES_CRUD').canActivate(
+        contexto('GERENTE_DESENVOLVEDOR'),
+      ),
+    ).toBe(true);
+  });
+
+  it('gerente comum é negado em funcionalidade administrativa (ADMIN_DADOS)', () => {
+    expect(() =>
+      guardCom('ADMIN_DADOS').canActivate(contexto('GERENTE')),
+    ).toThrow(PermissaoInsuficienteError);
   });
 
   it('fiscal é autorizado em funcionalidade operacional', () => {
