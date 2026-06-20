@@ -14,7 +14,7 @@
  * percentual vendido e barras de arrecadação por lote no histórico.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { loteApaeService } from '../../api/services';
 import { LoteApae } from '../../api/types';
@@ -34,6 +34,7 @@ import {
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
+import { confirmar, notificar } from '../../utils/dialogos';
 import {
   formatarData,
   formatarMoeda,
@@ -118,7 +119,7 @@ export function LoteApaeScreen(): React.ReactElement {
   const registrar = async () => {
     const q = Number(quantidadeInicial);
     if (!Number.isInteger(q) || q < 0) {
-      Alert.alert('Quantidade inválida', 'Informe um número inteiro maior ou igual a zero.');
+      notificar('Quantidade inválida', 'Informe um número inteiro maior ou igual a zero.');
       return;
     }
     setOcupado(true);
@@ -127,7 +128,7 @@ export function LoteApaeScreen(): React.ReactElement {
       setLote(criado);
       setQuantidadeInicial('');
     } catch (e) {
-      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar lote.');
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar lote.');
     } finally {
       setOcupado(false);
     }
@@ -137,7 +138,7 @@ export function LoteApaeScreen(): React.ReactElement {
     if (!lote) return;
     const s = Number(novoSaldo);
     if (!Number.isInteger(s) || s < 0) {
-      Alert.alert('Saldo inválido', 'Informe um número inteiro maior ou igual a zero.');
+      notificar('Saldo inválido', 'Informe um número inteiro maior ou igual a zero.');
       return;
     }
     setOcupado(true);
@@ -148,7 +149,7 @@ export function LoteApaeScreen(): React.ReactElement {
         // Saldo zerado: o lote foi salvo automaticamente como vendido.
         setLote(null);
         historico.recarregar();
-        Alert.alert(
+        notificar(
           'Lote concluído! 🎉',
           `Todas as sacolas foram vendidas. Lote salvo no histórico — ${formatarMoeda(
             valorArrecadado(atualizado.quantidadeVendida),
@@ -158,7 +159,7 @@ export function LoteApaeScreen(): React.ReactElement {
         setLote(atualizado);
       }
     } catch (e) {
-      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao atualizar saldo.');
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao atualizar saldo.');
     } finally {
       setOcupado(false);
     }
@@ -168,7 +169,7 @@ export function LoteApaeScreen(): React.ReactElement {
     if (!lote) return;
     const q = Number(reinicioQtd);
     if (!Number.isInteger(q) || q < 0) {
-      Alert.alert('Quantidade inválida', 'Informe um número inteiro válido para o novo lote.');
+      notificar('Quantidade inválida', 'Informe um número inteiro válido para o novo lote.');
       return;
     }
     setOcupado(true);
@@ -177,33 +178,30 @@ export function LoteApaeScreen(): React.ReactElement {
       setLote(novo);
       setReinicioQtd('');
       historico.recarregar();
-      Alert.alert('Pronto', 'Lote substituído. O lote anterior foi para o histórico.');
+      notificar('Pronto', 'Lote substituído. O lote anterior foi para o histórico.');
     } catch (e) {
-      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao reiniciar.');
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao reiniciar.');
     } finally {
       setOcupado(false);
     }
   };
 
-  const confirmarLimparHistorico = () => {
-    Alert.alert(
+  const confirmarLimparHistorico = async () => {
+    const ok = await confirmar(
       'Limpar histórico',
       'Remover todos os lotes vendidos do histórico? Esta ação não pode ser desfeita. O lote ativo não é afetado.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Limpar', style: 'destructive', onPress: limparHistorico },
-      ],
+      'Limpar',
     );
-  };
-
-  const limparHistorico = async () => {
+    if (!ok) {
+      return;
+    }
     setOcupado(true);
     try {
       const { removidos } = await loteApaeService.limparHistorico();
       historico.recarregar();
-      Alert.alert('Histórico limpo', `${removidos} lote(s) removido(s) do histórico.`);
+      notificar('Histórico limpo', `${removidos} lote(s) removido(s) do histórico.`);
     } catch (e) {
-      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao limpar histórico.');
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao limpar histórico.');
     } finally {
       setOcupado(false);
     }
