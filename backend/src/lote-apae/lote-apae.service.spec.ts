@@ -45,6 +45,23 @@ describe('LoteApaeService', () => {
         const lote = lotes.find((l) => l.id === id);
         return Promise.resolve(lote ? { ...lote } : null);
       },
+      findFirst: (args?: {
+        where?: { status?: string };
+        orderBy?: { dataInicio?: 'asc' | 'desc' };
+      }) => {
+        let lista = [...lotes];
+        if (args?.where?.status) {
+          lista = lista.filter((l) => l.status === args.where!.status);
+        }
+        if (args?.orderBy?.dataInicio) {
+          const dir = args.orderBy.dataInicio === 'desc' ? -1 : 1;
+          lista.sort(
+            (a, b) =>
+              (a.dataInicio.getTime() - b.dataInicio.getTime()) * dir,
+          );
+        }
+        return Promise.resolve(lista.length > 0 ? { ...lista[0] } : null);
+      },
       update: ({
         where: { id },
         data,
@@ -119,12 +136,12 @@ describe('LoteApaeService', () => {
   it('reinicia o lote preservando o histórico e zerando a vendida do novo', async () => {
     const { service } = criarServico();
     const lote = await service.registrarLoteInicial(100);
-    await service.atualizarSaldo(lote.id, 0); // tudo vendido
+    await service.atualizarSaldo(lote.id, 30); // ainda há saldo no lote
     const { encerrado, novo } = await service.reiniciarLote(lote.id, 300);
 
     expect(encerrado.status).toBe('ENCERRADO');
     expect(encerrado.quantidadeInicial).toBe(100);
-    expect(encerrado.quantidadeVendida).toBe(100);
+    expect(encerrado.quantidadeVendida).toBe(70);
     expect(encerrado.dataEncerramento).not.toBeNull();
 
     expect(novo.status).toBe('ABERTO');
@@ -134,5 +151,21 @@ describe('LoteApaeService', () => {
     const historico = await service.historicoLotes();
     expect(historico).toHaveLength(1);
     expect(historico[0].id).toBe(encerrado.id);
+  });
+
+  it('encerra o lote automaticamente ao zerar o saldo (lote vendido)', async () => {
+    const { service } = criarServico();
+    const lote = await service.registrarLoteInicial(100);
+    const atualizado = await service.atualizarSaldo(lote.id, 0);
+
+    expect(atualizado.status).toBe('ENCERRADO');
+    expect(atualizado.quantidadeVendida).toBe(100);
+    expect(atualizado.dataEncerramento).not.toBeNull();
+
+    // Não há mais lote ativo e o lote vendido vai para o histórico.
+    expect(await service.loteAtivo()).toBeNull();
+    const historico = await service.historicoLotes();
+    expect(historico).toHaveLength(1);
+    expect(historico[0].id).toBe(lote.id);
   });
 });

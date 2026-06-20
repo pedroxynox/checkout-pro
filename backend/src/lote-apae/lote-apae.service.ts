@@ -51,6 +51,11 @@ export class LoteApaeService {
    * quantidade vendida (`inicial - saldoAtual`) e persiste. Rejeita saldo
    * atual maior que o anterior lançando `SaldoInvalidoError` (Req 2.6.4),
    * caso em que o lote permanece inalterado.
+   *
+   * **Ao zerar o saldo** (lote totalmente vendido), encerra automaticamente o
+   * lote, salvando-o como "lote vendido" no histórico (status ENCERRADO +
+   * data de encerramento). Não há mais saldo a atualizar, e um novo lote passa
+   * a ser registrado pelo gerente.
    */
   async atualizarSaldo(loteId: string, saldoAtual: number): Promise<LoteApae> {
     const lote = await this.prisma.loteApae.findUnique({
@@ -66,9 +71,16 @@ export class LoteApaeService {
       lote.quantidadeInicial,
       saldoAtual,
     );
+    const encerrarAgora = saldoAtual === 0 && lote.status === 'ABERTO';
     return this.prisma.loteApae.update({
       where: { id: loteId },
-      data: { saldoAtual, quantidadeVendida },
+      data: {
+        saldoAtual,
+        quantidadeVendida,
+        ...(encerrarAgora
+          ? { status: 'ENCERRADO', dataEncerramento: new Date() }
+          : {}),
+      },
     });
   }
 
