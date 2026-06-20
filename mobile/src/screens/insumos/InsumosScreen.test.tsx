@@ -29,6 +29,15 @@ jest.mock('../../auth/AuthContext', () => ({
   useAuth: () => ({ podeAcessar: () => false }),
 }));
 
+// useFocusEffect roda o efeito na montagem (sem precisar de NavigationContainer no teste).
+jest.mock('@react-navigation/native', () => ({
+  useFocusEffect: (cb: () => void) => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { useEffect } = require('react');
+    useEffect(cb, [cb]);
+  },
+}));
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { insumosService, requisicoesService } = require('../../api/services');
 

@@ -6,8 +6,9 @@
  * pode **aprovar** (gera entrada no estoque) ou **negar**. Tudo medido em
  * quantidade.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { ApiError } from '../../api/client';
 import { insumosService, requisicoesService } from '../../api/services';
 import { InsumoResumo, Requisicao, StatusRequisicao } from '../../api/types';
@@ -56,28 +57,43 @@ export function RequisicoesScreen(): React.ReactElement {
   const [ocupado, setOcupado] = useState(false);
   const [decidindo, setDecidindo] = useState<string | null>(null);
 
-  const carregar = useCallback(async (ehAtualizacao = false) => {
-    if (ehAtualizacao) setAtualizando(true);
-    else setCarregando(true);
-    try {
-      const [listaInsumos, listaReqs] = await Promise.all([
-        insumosService.listar(),
-        requisicoesService.listar(),
-      ]);
-      setInsumos(listaInsumos);
-      setRequisicoes(listaReqs);
-      setErro(null);
-    } catch (e) {
-      setErro(e instanceof ApiError ? e.message : 'Falha ao carregar requisições.');
-    } finally {
-      setCarregando(false);
-      setAtualizando(false);
-    }
+  const buscar = useCallback(async () => {
+    const [listaInsumos, listaReqs] = await Promise.all([
+      insumosService.listar(),
+      requisicoesService.listar(),
+    ]);
+    setInsumos(listaInsumos);
+    setRequisicoes(listaReqs);
+    setErro(null);
   }, []);
 
-  useEffect(() => {
-    void carregar();
-  }, [carregar]);
+  const carregar = useCallback(
+    async (ehAtualizacao = false) => {
+      if (ehAtualizacao) setAtualizando(true);
+      else setCarregando(true);
+      try {
+        await buscar();
+      } catch (e) {
+        setErro(e instanceof ApiError ? e.message : 'Falha ao carregar requisições.');
+      } finally {
+        setCarregando(false);
+        setAtualizando(false);
+      }
+    },
+    [buscar],
+  );
+
+  const primeiraCarga = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (primeiraCarga.current) {
+        primeiraCarga.current = false;
+        void carregar();
+      } else {
+        void buscar().catch(() => undefined);
+      }
+    }, [carregar, buscar]),
+  );
 
   const solicitar = async () => {
     if (!insumoSel) {

@@ -10,7 +10,8 @@
  * A lista de insumos e as entradas vêm do backend, compartilhadas entre todos.
  */
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { insumosService, requisicoesService } from '../../api/services';
@@ -124,30 +125,48 @@ export function InsumosScreen({
   const [quantidade, setQuantidade] = useState('');
   const [consumindo, setConsumindo] = useState(false);
 
-  const carregar = useCallback(async (ehAtualizacao = false) => {
-    if (ehAtualizacao) setAtualizando(true);
-    else setCarregando(true);
-    try {
-      const [lista, listaEntradas, cont] = await Promise.all([
-        insumosService.listar(),
-        insumosService.entradas(),
-        requisicoesService.pendentes(),
-      ]);
-      setInsumos(lista);
-      setEntradas(listaEntradas);
-      setPendentes(cont.total);
-      setErro(null);
-    } catch (e) {
-      setErro(e instanceof ApiError ? e.message : 'Falha ao carregar os insumos.');
-    } finally {
-      setCarregando(false);
-      setAtualizando(false);
-    }
+  const buscar = useCallback(async () => {
+    const [lista, listaEntradas, cont] = await Promise.all([
+      insumosService.listar(),
+      insumosService.entradas(),
+      requisicoesService.pendentes(),
+    ]);
+    setInsumos(lista);
+    setEntradas(listaEntradas);
+    setPendentes(cont.total);
+    setErro(null);
   }, []);
 
-  useEffect(() => {
-    void carregar();
-  }, [carregar]);
+  const carregar = useCallback(
+    async (ehAtualizacao = false) => {
+      if (ehAtualizacao) setAtualizando(true);
+      else setCarregando(true);
+      try {
+        await buscar();
+      } catch (e) {
+        setErro(e instanceof ApiError ? e.message : 'Falha ao carregar os insumos.');
+      } finally {
+        setCarregando(false);
+        setAtualizando(false);
+      }
+    },
+    [buscar],
+  );
+
+  // Recarrega ao abrir e, silenciosamente, sempre que a tela volta ao foco
+  // (ex.: depois de aprovar uma requisição em "Requisições"), mantendo o saldo,
+  // as entradas e o badge em dia.
+  const primeiraCarga = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (primeiraCarga.current) {
+        primeiraCarga.current = false;
+        void carregar();
+      } else {
+        void buscar().catch(() => undefined);
+      }
+    }, [carregar, buscar]),
+  );
 
   const insumoEntradaObj = insumos.find((i) => i.id === insumoEntrada);
 
