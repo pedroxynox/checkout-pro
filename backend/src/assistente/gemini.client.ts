@@ -29,7 +29,7 @@ export class GeminiIndisponivelError extends Error {
 }
 
 const URL_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const MAX_TENTATIVAS = 4;
+const MAX_TENTATIVAS = 3;
 
 interface RespostaGemini {
   candidates?: {
@@ -126,13 +126,17 @@ export class GeminiClient {
         return this.extrairTexto(dados);
       }
 
-      // 429 (limite por minuto) e 503 (sobrecarga) são temporários: reintenta.
+      // 429 (limite) e 503 (sobrecarga) podem ser temporários: reintenta.
+      // Guarda o motivo detalhado da API para diagnóstico (qual cota).
       if (resposta.status === 429 || resposta.status === 503) {
-        ultimoErro = `HTTP ${resposta.status}`;
+        const corpo = await resposta.text().catch(() => '');
+        ultimoErro = this.descreverErro(resposta.status, corpo);
         this.logger.warn(
-          `Gemini ${resposta.status} (tentativa ${tentativa}/${MAX_TENTATIVAS}); aguardando para reintentar.`,
+          `Gemini ${resposta.status} (tentativa ${tentativa}/${MAX_TENTATIVAS}) — ${ultimoErro}`,
         );
-        await dormir(this.atraso(tentativa));
+        if (tentativa < MAX_TENTATIVAS) {
+          await dormir(this.atraso(tentativa));
+        }
         continue;
       }
 
@@ -146,7 +150,7 @@ export class GeminiClient {
     }
 
     throw new GeminiIndisponivelError(
-      `O assistente está sobrecarregado no momento. Tente novamente em instantes. (${ultimoErro})`,
+      `O assistente atingiu um limite da API do Gemini. Detalhe: ${ultimoErro}`,
     );
   }
 
