@@ -66,13 +66,16 @@ async function extrairMensagemErro(
 ): Promise<{ mensagem: string; corpo: unknown }> {
   try {
     const corpo = await resposta.json();
-    const mensagem =
-      (Array.isArray(corpo?.message)
-        ? corpo.message.join(', ')
-        : corpo?.message) ??
+    // O backend normaliza erros como { statusCode, mensagem } (em Português);
+    // validações do Nest usam { message }. Aceitamos ambos para sempre exibir
+    // a mensagem real do servidor, com fallback genérico.
+    const bruto =
+      corpo?.mensagem ??
+      (Array.isArray(corpo?.message) ? corpo.message.join(', ') : corpo?.message) ??
       corpo?.error ??
       `Erro ${resposta.status}`;
-    return { mensagem: String(mensagem), corpo };
+    const mensagem = Array.isArray(bruto) ? bruto.join(', ') : String(bruto);
+    return { mensagem, corpo };
   } catch {
     return {
       mensagem: `Erro ${resposta.status} ao comunicar com o servidor.`,

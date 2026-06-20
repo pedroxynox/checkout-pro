@@ -138,8 +138,10 @@ export class GeminiClient {
 
       // Outros erros não são recuperáveis com reintento.
       const detalhe = await resposta.text().catch(() => '');
+      const motivo = this.descreverErro(resposta.status, detalhe);
+      this.logger.error(`Gemini rejeitou a chamada — ${motivo}`);
       throw new GeminiIndisponivelError(
-        `Falha ao consultar o assistente (HTTP ${resposta.status}). ${detalhe.slice(0, 200)}`,
+        `Falha ao consultar o assistente — ${motivo}`,
       );
     }
 
@@ -151,6 +153,26 @@ export class GeminiClient {
   /** Backoff exponencial simples: ~1s, 2s, 4s, 8s. */
   private atraso(tentativa: number): number {
     return 2 ** (tentativa - 1) * 1000;
+  }
+
+  /**
+   * Extrai um motivo legível do corpo de erro da API do Gemini, que costuma
+   * vir como { error: { code, status, message } }. Ajuda a diagnosticar
+   * problemas comuns (chave inválida, modelo inexistente, API não habilitada).
+   */
+  private descreverErro(status: number, corpo: string): string {
+    try {
+      const json = JSON.parse(corpo) as {
+        error?: { status?: string; message?: string };
+      };
+      const erro = json.error;
+      if (erro?.message) {
+        return `${erro.status ?? `HTTP ${status}`}: ${erro.message}`;
+      }
+    } catch {
+      // corpo não é JSON; usa o texto cru abaixo.
+    }
+    return `HTTP ${status}. ${corpo.slice(0, 200)}`.trim();
   }
 
   private extrairTexto(dados: RespostaGemini): string {
