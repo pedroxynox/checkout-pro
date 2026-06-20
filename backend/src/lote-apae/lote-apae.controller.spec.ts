@@ -43,4 +43,15 @@ describe('LoteApaeController', () => {
     expect(loteAtivo).toHaveBeenCalled();
     expect(ativo).toEqual({ id: 'l1', status: 'ABERTO' });
   });
+
+  it('limpa o histórico delegando ao serviço', async () => {
+    const limparHistorico = jest.fn(() => Promise.resolve(3));
+    const controller = new LoteApaeController({
+      limparHistorico,
+    } as unknown as LoteApaeService);
+
+    const resultado = await controller.limparHistorico();
+    expect(limparHistorico).toHaveBeenCalled();
+    expect(resultado).toEqual({ removidos: 3 });
+  });
 });

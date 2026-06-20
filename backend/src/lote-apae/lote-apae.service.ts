@@ -177,4 +177,16 @@ export class LoteApaeService {
       orderBy: { dataEncerramento: 'desc' },
     });
   }
+
+  /**
+   * Remove **todos** os lotes encerrados do histórico, retornando a quantidade
+   * removida. Não afeta o lote ativo (ABERTO). Usado para limpar lotes de
+   * teste; o registro de novos lotes encerrados continua normalmente.
+   */
+  async limparHistorico(): Promise<number> {
+    const { count } = await this.prisma.loteApae.deleteMany({
+      where: { status: 'ENCERRADO' },
+    });
+    return count;
+  }
 }

@@ -185,6 +185,30 @@ export function LoteApaeScreen(): React.ReactElement {
     }
   };
 
+  const confirmarLimparHistorico = () => {
+    Alert.alert(
+      'Limpar histórico',
+      'Remover todos os lotes vendidos do histórico? Esta ação não pode ser desfeita. O lote ativo não é afetado.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Limpar', style: 'destructive', onPress: limparHistorico },
+      ],
+    );
+  };
+
+  const limparHistorico = async () => {
+    setOcupado(true);
+    try {
+      const { removidos } = await loteApaeService.limparHistorico();
+      historico.recarregar();
+      Alert.alert('Histórico limpo', `${removidos} lote(s) removido(s) do histórico.`);
+    } catch (e) {
+      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao limpar histórico.');
+    } finally {
+      setOcupado(false);
+    }
+  };
+
   const pct = lote ? percentualVendido(lote) : 0;
   const fatias = lote
     ? [
@@ -318,21 +342,39 @@ export function LoteApaeScreen(): React.ReactElement {
               <GraficoBarrasVerticais dados={barrasHistorico} />
             </Cartao>
           )}
-          {lotesVendidos.map((l) => (
-            <Cartao key={l.id}>
-              <LinhaInfo rotulo="Quantidade inicial" valor={l.quantidadeInicial} />
-              <LinhaInfo rotulo="Total vendido" valor={l.quantidadeVendida} />
-              <LinhaInfo
-                rotulo="Arrecadado"
-                valor={formatarMoeda(valorArrecadado(l.quantidadeVendida))}
-              />
-              <LinhaInfo rotulo="Início" valor={formatarData(l.dataInicio)} />
-              <LinhaInfo
-                rotulo="Encerramento"
-                valor={l.dataEncerramento ? formatarData(l.dataEncerramento) : '--'}
-              />
-            </Cartao>
-          ))}
+          {lotesVendidos.map((l) => {
+            const pctLote = percentualVendido(l);
+            return (
+              <Cartao key={l.id}>
+                <View style={styles.progressoCabecalho}>
+                  <Text style={styles.progressoRotulo}>Vendido do lote</Text>
+                  <Text style={styles.progressoPct}>{formatarPercentual(pctLote)}</Text>
+                </View>
+                <BarraProgresso percentual={pctLote} />
+                <View style={{ marginTop: espacamento.sm }}>
+                  <LinhaInfo rotulo="Quantidade inicial" valor={l.quantidadeInicial} />
+                  <LinhaInfo rotulo="Total vendido" valor={l.quantidadeVendida} />
+                  <LinhaInfo
+                    rotulo="Arrecadado"
+                    valor={formatarMoeda(valorArrecadado(l.quantidadeVendida))}
+                  />
+                  <LinhaInfo rotulo="Início" valor={formatarData(l.dataInicio)} />
+                  <LinhaInfo
+                    rotulo="Encerramento"
+                    valor={l.dataEncerramento ? formatarData(l.dataEncerramento) : '--'}
+                  />
+                </View>
+              </Cartao>
+            );
+          })}
+          {podeGerenciar && (
+            <Botao
+              titulo="Limpar histórico"
+              variante="perigo"
+              aoPressionar={confirmarLimparHistorico}
+              carregando={ocupado}
+            />
+          )}
         </>
       )}
     </Tela>

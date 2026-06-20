@@ -33,4 +33,9 @@ export const loteApaeService = {
   ativo(): Promise<LoteApae | null> {
     return apiClient.get<LoteApae | null>('/lote-apae/ativo');
   },
+
+  /** Remove todos os lotes encerrados do histórico (apenas gerente). */
+  limparHistorico(): Promise<{ removidos: number }> {
+    return apiClient.delete<{ removidos: number }>('/lote-apae/historico');
+  },
 };

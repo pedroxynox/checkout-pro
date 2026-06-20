@@ -94,6 +94,15 @@ describe('LoteApaeService', () => {
         }
         return Promise.resolve(lista.map((l) => ({ ...l })));
       },
+      deleteMany: (args?: { where?: { status?: string } }) => {
+        const antes = lotes.length;
+        for (let i = lotes.length - 1; i >= 0; i--) {
+          if (!args?.where?.status || lotes[i].status === args.where.status) {
+            lotes.splice(i, 1);
+          }
+        }
+        return Promise.resolve({ count: antes - lotes.length });
+      },
     };
 
     const prismaFake = {
@@ -166,5 +175,19 @@ describe('LoteApaeService', () => {
     const historico = await service.historicoLotes();
     expect(historico).toHaveLength(1);
     expect(historico[0].id).toBe(lote.id);
+  });
+
+  it('limpa o histórico removendo apenas os lotes encerrados', async () => {
+    const { service } = criarServico();
+    const a = await service.registrarLoteInicial(100);
+    await service.atualizarSaldo(a.id, 0); // encerra → vai ao histórico
+    await service.registrarLoteInicial(50); // novo lote ativo (ABERTO)
+
+    const removidos = await service.limparHistorico();
+
+    expect(removidos).toBe(1);
+    expect(await service.historicoLotes()).toHaveLength(0);
+    // O lote ativo é preservado.
+    expect(await service.loteAtivo()).not.toBeNull();
   });
 });

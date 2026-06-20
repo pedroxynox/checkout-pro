@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { LoteApae } from '@prisma/client';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
@@ -56,6 +64,17 @@ export class LoteApaeController {
   @Get('historico')
   async historico(): Promise<LoteApae[]> {
     return this.loteApaeService.historicoLotes();
+  }
+
+  /**
+   * Remove todos os lotes encerrados do histórico (não afeta o lote ativo).
+   * Apenas GERENTE. Retorna a quantidade removida.
+   */
+  @Delete('historico')
+  @Funcionalidade('LOTE_APAE_GERENCIAR')
+  async limparHistorico(): Promise<{ removidos: number }> {
+    const removidos = await this.loteApaeService.limparHistorico();
+    return { removidos };
   }
 
   /**
