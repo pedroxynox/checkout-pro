@@ -32,12 +32,24 @@ import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { notificar } from '../../utils/dialogos';
 import { formatarDataHora, formatarNumero, hojeISO } from '../../utils/formato';
-import { ROTULO_CATEGORIA_INSUMO } from '../../utils/rotulos';
 
 /** Pluraliza a unidade base de forma simples (sacola→sacolas, metro→metros). */
 function comUnidade(qtd: number, unidade: string): string {
   const plural = qtd === 1 ? unidade : `${unidade}s`;
   return `${formatarNumero(qtd)} ${plural}`;
+}
+
+/** Primeira letra maiúscula (título do insumo). */
+function capitalizar(texto: string): string {
+  return texto.length ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
+}
+
+/** Referência de conversão (ex.: "1 galão = 5 litros"); null se não houver embalagem. */
+function referenciaEmbalagem(insumo: InsumoResumo): string | null {
+  if (insumo.fatorEmbalagem <= 1) {
+    return null;
+  }
+  return `1 ${insumo.embalagem} = ${comUnidade(insumo.fatorEmbalagem, insumo.unidade)}`;
 }
 
 /** Equivalente em embalagens (ex.: "≈ 5 rolos" / "≈ 1,2 caixa"). */
@@ -252,6 +264,7 @@ export function InsumosScreen({
         insumos.map((i) => {
           const eqSaldo = emEmbalagens(i.fatorEmbalagem, i.embalagem, i.saldo);
           const eqConsumo = emEmbalagens(i.fatorEmbalagem, i.embalagem, i.consumoSemana);
+          const ref = referenciaEmbalagem(i);
           return (
             <Pressable
               key={i.id}
@@ -262,11 +275,8 @@ export function InsumosScreen({
               <Cartao>
                 <View style={styles.cabecalho}>
                   <View style={styles.flex1}>
-                    <Text style={styles.nome}>{i.nome}</Text>
-                    <Text style={styles.categoria}>
-                      {ROTULO_CATEGORIA_INSUMO[i.categoria]} · mín.{' '}
-                      {comUnidade(i.limiteMinimo, i.unidade)}
-                    </Text>
+                    <Text style={styles.nome}>{capitalizar(i.nome)}</Text>
+                    {ref ? <Text style={styles.categoria}>{ref}</Text> : null}
                   </View>
                   {i.estoqueBaixo ? (
                     <Selo texto="Baixo" cor={cores.vermelho} fundo={cores.vermelhoFundo} />
@@ -300,8 +310,8 @@ export function InsumosScreen({
                   <Text style={styles.previsao}>
                     {i.semanasRestantes != null
                       ? `Dura ~${formatarNumero(
-                          Math.round(i.semanasRestantes * 10) / 10,
-                        )} semana(s) no ritmo atual`
+                          Math.round(i.semanasRestantes * 7),
+                        )} dia(s) no ritmo atual`
                       : 'Sem consumo na semana'}
                   </Text>
                   <Ionicons name="chevron-forward" size={18} color={cores.textoSecundario} />

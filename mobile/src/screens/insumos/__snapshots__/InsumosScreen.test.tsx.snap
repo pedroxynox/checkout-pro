@@ -228,10 +228,7 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
                 }
               }
             >
-              Sacola
-               · mín.
-               
-              1.000 sacolas
+              1 fardo = 1.000 sacolas
             </Text>
           </View>
           <View
@@ -412,7 +409,7 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
               }
             }
           >
-            Dura ~6,4 semana(s) no ritmo atual
+            Dura ~45 dia(s) no ritmo atual
           </Text>
           <Text
             testID="icon-chevron-forward"
@@ -511,10 +508,7 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
                 }
               }
             >
-              Bobina
-               · mín.
-               
-              20 bobinas
+              1 caixa = 20 bobinas
             </Text>
           </View>
           <View
@@ -695,7 +689,7 @@ exports[`InsumosScreen mantém o snapshot do painel 1`] = `
               }
             }
           >
-            Dura ~0,8 semana(s) no ritmo atual
+            Dura ~6 dia(s) no ritmo atual
           </Text>
           <Text
             testID="icon-chevron-forward"
