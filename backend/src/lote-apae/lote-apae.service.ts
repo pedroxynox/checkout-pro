@@ -5,6 +5,7 @@ import {
   atualizacaoSaldoValida,
   calcularPercentualVendido,
   calcularQuantidadeVendida,
+  calcularValorArrecadado,
   criarLote,
 } from './lote-apae.domain';
 import {
@@ -82,6 +83,28 @@ export class LoteApaeService {
       lote.quantidadeInicial,
       lote.quantidadeVendida,
     );
+  }
+
+  /**
+   * Valor total arrecadado (em R$) de um lote em benefício da APAE. Delega à
+   * função pura `calcularValorArrecadado` (quantidade vendida × preço unitário
+   * da sacola).
+   */
+  valorArrecadado(lote: Pick<LoteApae, 'quantidadeVendida'>): number {
+    return calcularValorArrecadado(lote.quantidadeVendida);
+  }
+
+  /**
+   * Retorna o lote em andamento (status ABERTO), ou `null` se não houver
+   * nenhum. Substitui o estado local do app (AsyncStorage) por uma fonte
+   * compartilhada no backend, permitindo retomar o lote em qualquer
+   * dispositivo. Caso exista mais de um lote aberto, retorna o mais recente.
+   */
+  async loteAtivo(): Promise<LoteApae | null> {
+    return this.prisma.loteApae.findFirst({
+      where: { status: 'ABERTO' },
+      orderBy: { dataInicio: 'desc' },
+    });
   }
 
   /**

@@ -1,15 +1,14 @@
 /**
- * Tela do Lote de Sacolas APAE (Req 2.6).
+ * Tela de Sacolas APAE (Req 2.6).
  *
  * Permite registrar o lote inicial, atualizar o saldo restante (com cálculo de
- * quantidade vendida e percentual), reiniciar o ciclo e consultar o histórico
- * de lotes encerrados. Como o backend expõe ações sobre um lote por id (sem um
- * endpoint de "lote ativo"), o lote em andamento é mantido localmente
- * (AsyncStorage) entre sessões.
+ * quantidade vendida, percentual e valor arrecadado), reiniciar o ciclo e
+ * consultar o histórico de lotes encerrados. O lote em andamento é obtido do
+ * backend (`GET /lote-apae/ativo`), de modo que seja compartilhado entre
+ * dispositivos e sobreviva à troca de aparelho.
  */
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { loteApaeService } from '../../api/services';
 import { LoteApae } from '../../api/types';
@@ -25,16 +24,38 @@ import {
   Tela,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
-import { cores, espacamento, tipografia } from '../../theme';
-import { formatarData, formatarPercentual } from '../../utils/formato';
+import { cores, espacamento, raio, tipografia } from '../../theme';
+import {
+  formatarData,
+  formatarMoeda,
+  formatarPercentual,
+} from '../../utils/formato';
 
-const CHAVE_LOTE_ATIVO = 'stokcenter.loteApae.ativo';
+/** Preço unitário (R$) de cada sacola APAE — espelha o backend. */
+const PRECO_SACOLA_APAE = 0.49;
 
+/** Percentual vendido do lote em [0, 100]. */
 function percentualVendido(lote: LoteApae): number {
   if (lote.quantidadeInicial <= 0) {
     return 0;
   }
-  return (lote.quantidadeVendida / lote.quantidadeInicial) * 100;
+  const p = (lote.quantidadeVendida / lote.quantidadeInicial) * 100;
+  return Math.max(0, Math.min(100, p));
+}
+
+/** Valor arrecadado (R$) em benefício da APAE. */
+function valorArrecadado(quantidadeVendida: number): number {
+  return Math.max(0, quantidadeVendida) * PRECO_SACOLA_APAE;
+}
+
+/** Barra de progresso horizontal (0–100%). */
+function BarraProgresso({ percentual }: { percentual: number }): React.ReactElement {
+  const largura = `${Math.max(0, Math.min(100, percentual))}%` as const;
+  return (
+    <View style={styles.barraTrilha}>
+      <View style={[styles.barraPreenchida, { width: largura }]} />
+    </View>
+  );
 }
 
 export function LoteApaeScreen(): React.ReactElement {
@@ -47,28 +68,26 @@ export function LoteApaeScreen(): React.ReactElement {
 
   const historico = useRequisicao(() => loteApaeService.historico(), []);
 
-  useEffect(() => {
-    (async () => {
-      const salvo = await AsyncStorage.getItem(CHAVE_LOTE_ATIVO);
-      if (salvo) {
-        try {
-          setLote(JSON.parse(salvo) as LoteApae);
-        } catch {
-          await AsyncStorage.removeItem(CHAVE_LOTE_ATIVO);
-        }
-      }
+  const carregarAtivo = useCallback(async () => {
+    setCarregandoAtivo(true);
+    try {
+      const ativo = await loteApaeService.ativo();
+      setLote(ativo);
+    } catch {
+      // Mantém o estado atual em caso de falha de rede; o usuário pode atualizar.
+    } finally {
       setCarregandoAtivo(false);
-    })();
+    }
   }, []);
 
-  const persistir = async (novo: LoteApae | null) => {
-    setLote(novo);
-    if (novo) {
-      await AsyncStorage.setItem(CHAVE_LOTE_ATIVO, JSON.stringify(novo));
-    } else {
-      await AsyncStorage.removeItem(CHAVE_LOTE_ATIVO);
-    }
-  };
+  useEffect(() => {
+    carregarAtivo();
+  }, [carregarAtivo]);
+
+  const aoAtualizar = useCallback(() => {
+    carregarAtivo();
+    historico.recarregar();
+  }, [carregarAtivo, historico]);
 
   const registrar = async () => {
     const q = Number(quantidadeInicial);
@@ -79,7 +98,7 @@ export function LoteApaeScreen(): React.ReactElement {
     setOcupado(true);
     try {
       const criado = await loteApaeService.registrarLote(q);
-      await persistir(criado);
+      setLote(criado);
       setQuantidadeInicial('');
     } catch (e) {
       Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar lote.');
@@ -98,7 +117,7 @@ export function LoteApaeScreen(): React.ReactElement {
     setOcupado(true);
     try {
       const atualizado = await loteApaeService.atualizarSaldo(lote.id, s);
-      await persistir(atualizado);
+      setLote(atualizado);
       setNovoSaldo('');
     } catch (e) {
       Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao atualizar saldo.');
@@ -117,7 +136,7 @@ export function LoteApaeScreen(): React.ReactElement {
     setOcupado(true);
     try {
       const { novo } = await loteApaeService.reiniciar(lote.id, q);
-      await persistir(novo);
+      setLote(novo);
       setReinicioQtd('');
       historico.recarregar();
       Alert.alert('Pronto', 'Lote reiniciado. O lote anterior foi para o histórico.');
@@ -129,17 +148,31 @@ export function LoteApaeScreen(): React.ReactElement {
   };
 
   return (
-    <Tela aoAtualizar={historico.recarregar} atualizando={historico.atualizando}>
+    <Tela aoAtualizar={aoAtualizar} atualizando={historico.atualizando}>
       {carregandoAtivo ? (
         <Carregando />
       ) : lote ? (
         <Cartao titulo="Lote atual">
+          <View style={styles.destaque}>
+            <Text style={styles.percentual}>
+              {formatarPercentual(percentualVendido(lote))}
+            </Text>
+            <Text style={styles.percentualRotulo}>vendido do lote</Text>
+            <BarraProgresso percentual={percentualVendido(lote)} />
+            <View style={styles.arrecadado}>
+              <Text style={styles.arrecadadoRotulo}>Arrecadado para a APAE</Text>
+              <Text style={styles.arrecadadoValor}>
+                {formatarMoeda(valorArrecadado(lote.quantidadeVendida))}
+              </Text>
+            </View>
+          </View>
+
           <LinhaInfo rotulo="Quantidade inicial" valor={lote.quantidadeInicial} />
           <LinhaInfo rotulo="Saldo atual" valor={lote.saldoAtual} />
           <LinhaInfo rotulo="Quantidade vendida" valor={lote.quantidadeVendida} />
           <LinhaInfo
-            rotulo="Percentual vendido"
-            valor={formatarPercentual(percentualVendido(lote))}
+            rotulo="Preço por sacola"
+            valor={formatarMoeda(PRECO_SACOLA_APAE)}
           />
           <CampoTexto
             rotulo="Atualizar saldo restante"
@@ -195,6 +228,10 @@ export function LoteApaeScreen(): React.ReactElement {
           <Cartao key={l.id}>
             <LinhaInfo rotulo="Quantidade inicial" valor={l.quantidadeInicial} />
             <LinhaInfo rotulo="Total vendido" valor={l.quantidadeVendida} />
+            <LinhaInfo
+              rotulo="Arrecadado"
+              valor={formatarMoeda(valorArrecadado(l.quantidadeVendida))}
+            />
             <LinhaInfo rotulo="Início" valor={formatarData(l.dataInicio)} />
             <LinhaInfo
               rotulo="Encerramento"
@@ -213,6 +250,48 @@ const styles = StyleSheet.create({
     color: cores.texto,
     marginTop: espacamento.sm,
     marginBottom: espacamento.md,
+  },
+  destaque: {
+    alignItems: 'center',
+    paddingBottom: espacamento.md,
+    marginBottom: espacamento.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: cores.divisor,
+  },
+  percentual: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: cores.verde,
+  },
+  percentualRotulo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginBottom: espacamento.md,
+  },
+  barraTrilha: {
+    width: '100%',
+    height: 12,
+    borderRadius: raio.pill,
+    backgroundColor: cores.divisor,
+    overflow: 'hidden',
+  },
+  barraPreenchida: {
+    height: '100%',
+    borderRadius: raio.pill,
+    backgroundColor: cores.verde,
+  },
+  arrecadado: {
+    marginTop: espacamento.md,
+    alignItems: 'center',
+  },
+  arrecadadoRotulo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  arrecadadoValor: {
+    ...tipografia.titulo,
+    color: cores.texto,
+    marginTop: 2,
   },
 });
 

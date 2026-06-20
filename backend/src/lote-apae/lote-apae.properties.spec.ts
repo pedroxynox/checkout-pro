@@ -1,9 +1,11 @@
 import * as fc from 'fast-check';
 import {
   LoteApaeEstado,
+  PRECO_SACOLA_APAE,
   atualizarSaldo,
   calcularPercentualVendido,
   calcularQuantidadeVendida,
+  calcularValorArrecadado,
   criarLote,
   reiniciarLote,
 } from './lote-apae.domain';
@@ -154,6 +156,28 @@ describe('Lote de Sacolas APAE — testes de propriedade', () => {
             novo.dataEncerramento === null;
 
           return encerradoOk && novoOk;
+        },
+      ),
+      { numRuns: NUM_RUNS },
+    );
+  });
+
+  // Feature: gestao-frente-de-caixa, Property 14: Valor arrecadado da APAE
+  // Validates: cálculo de arrecadação (quantidade vendida × preço unitário)
+  it('Property 14: valor arrecadado = quantidade vendida × preço unitário e nunca negativo', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 100000 }),
+        fc.float({ min: 0, max: 1, noNaN: true }),
+        dataArb,
+        (quantidadeInicial, fracaoSaldo, dataInicio) => {
+          const saldoAtual = Math.round(quantidadeInicial * fracaoSaldo);
+          const lote = criarLote(quantidadeInicial, dataInicio);
+          const atualizado = atualizarSaldo(lote, saldoAtual);
+
+          const valor = calcularValorArrecadado(atualizado.quantidadeVendida);
+          const esperado = atualizado.quantidadeVendida * PRECO_SACOLA_APAE;
+          return valor >= 0 && Math.abs(valor - esperado) < 1e-9;
         },
       ),
       { numRuns: NUM_RUNS },

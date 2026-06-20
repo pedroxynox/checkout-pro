@@ -58,8 +58,8 @@ export const AREAS: Area[] = [
   },
   {
     rota: 'LoteApae',
-    titulo: 'Lote APAE',
-    descricao: 'Sacolas APAE e histórico de lotes',
+    titulo: 'Sacolas APAE',
+    descricao: 'Venda por lote e valor arrecadado',
     icone: 'bag-handle-outline',
     funcionalidade: 'LOTE_APAE',
   },

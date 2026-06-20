@@ -30,4 +30,17 @@ describe('LoteApaeController', () => {
       controller.atualizarSaldo('l1', { saldoAtual: 10 }),
     ).rejects.toBeInstanceOf(SaldoInvalidoError);
   });
+
+  it('retorna o lote ativo delegando ao serviço', async () => {
+    const loteAtivo = jest.fn(() =>
+      Promise.resolve({ id: 'l1', status: 'ABERTO' } as never),
+    );
+    const controller = new LoteApaeController({
+      loteAtivo,
+    } as unknown as LoteApaeService);
+
+    const ativo = await controller.ativo();
+    expect(loteAtivo).toHaveBeenCalled();
+    expect(ativo).toEqual({ id: 'l1', status: 'ABERTO' });
+  });
 });

@@ -16,6 +16,12 @@ import {
 
 export type StatusLote = 'ABERTO' | 'ENCERRADO';
 
+/**
+ * Preço unitário (em R$) de cada sacola APAE vendida. Usado para calcular o
+ * valor total arrecadado em benefício da APAE a partir da quantidade vendida.
+ */
+export const PRECO_SACOLA_APAE = 0.49;
+
 /** Estado de um lote de sacolas APAE. */
 export interface LoteApaeEstado {
   quantidadeInicial: number;
@@ -68,6 +74,18 @@ export function atualizacaoSaldoValida(
   saldoAtual: number,
 ): boolean {
   return saldoAtual >= 0 && saldoAtual <= saldoAnterior;
+}
+
+/**
+ * Calcula o valor total arrecadado (em R$) de um lote em benefício da APAE: a
+ * quantidade vendida multiplicada pelo preço unitário da sacola
+ * (`PRECO_SACOLA_APAE`). Quantidades não-finitas ou negativas resultam em 0.
+ */
+export function calcularValorArrecadado(quantidadeVendida: number): number {
+  if (!Number.isFinite(quantidadeVendida) || quantidadeVendida <= 0) {
+    return 0;
+  }
+  return quantidadeVendida * PRECO_SACOLA_APAE;
 }
 
 /**

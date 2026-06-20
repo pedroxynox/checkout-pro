@@ -47,4 +47,13 @@ export class LoteApaeController {
   async historico(): Promise<LoteApae[]> {
     return this.loteApaeService.historicoLotes();
   }
+
+  /**
+   * Lote em andamento (status ABERTO) ou `null` se não houver. Fonte
+   * compartilhada do lote ativo entre dispositivos.
+   */
+  @Get('ativo')
+  async ativo(): Promise<LoteApae | null> {
+    return this.loteApaeService.loteAtivo();
+  }
 }

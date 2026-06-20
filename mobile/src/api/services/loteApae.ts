@@ -28,4 +28,9 @@ export const loteApaeService = {
   historico(): Promise<LoteApae[]> {
     return apiClient.get<LoteApae[]>('/lote-apae/historico');
   },
+
+  /** Lote em andamento (status ABERTO) ou `null` se não houver. */
+  ativo(): Promise<LoteApae | null> {
+    return apiClient.get<LoteApae | null>('/lote-apae/ativo');
+  },
 };

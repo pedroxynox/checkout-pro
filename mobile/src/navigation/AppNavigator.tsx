@@ -86,7 +86,7 @@ export function AppNavigator(): React.ReactElement {
         <Stack.Screen
           name="LoteApae"
           component={LoteApaeScreen}
-          options={{ title: 'Lote APAE' }}
+          options={{ title: 'Sacolas APAE' }}
         />
       )}
       {podeAcessar('INSUMOS') && (
