@@ -18,14 +18,34 @@ export function formatarPercentual(valor: number, casas = 2): string {
   return `${seguro.toFixed(casas).replace('.', ',')}%`;
 }
 
+/**
+ * Deslocamento de Brasília em relação ao UTC (UTC−3). O Brasil não adota
+ * horário de verão desde 2019, então o offset é fixo. Usamos isto para que
+ * "hoje" e o dia da semana correspondam sempre ao **dia-calendário de
+ * Brasília**, independentemente do fuso do dispositivo/servidor (que pode
+ * estar em UTC — caso em que, após as 21h de Brasília, o UTC já virou o dia
+ * seguinte).
+ */
+const OFFSET_BRASILIA_MS = -3 * 60 * 60 * 1000;
+
+/** Instante atual deslocado para Brasília (para extrair dia/dia da semana). */
+function agoraEmBrasilia(): Date {
+  return new Date(Date.now() + OFFSET_BRASILIA_MS);
+}
+
 /** Converte uma Date para ISO de data (yyyy-mm-dd), em UTC. */
 export function dataParaISO(data: Date): string {
   return data.toISOString().slice(0, 10);
 }
 
-/** Hoje em formato ISO (yyyy-mm-dd). */
+/** Hoje (dia-calendário de Brasília) em formato ISO (yyyy-mm-dd). */
 export function hojeISO(): string {
-  return dataParaISO(new Date());
+  return agoraEmBrasilia().toISOString().slice(0, 10);
+}
+
+/** Dia da semana de hoje em Brasília: 0 (domingo) – 6 (sábado). */
+export function diaSemanaHoje(): number {
+  return agoraEmBrasilia().getUTCDay();
 }
 
 /** Formata uma data ISO/Date para dd/mm/aaaa. */

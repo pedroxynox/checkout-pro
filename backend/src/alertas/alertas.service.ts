@@ -14,6 +14,13 @@ import { NotificacoesService } from '../notificacoes/notificacoes.service';
 const JOB_IMPORTACOES_PENDENTES = 'alerta-importacoes-pendentes';
 
 /**
+ * Fuso horário de operação da loja (Brasília, UTC−3). Os jobs agendados devem
+ * disparar no horário **local de Brasília** (08:55, 13:55 e fim do dia), e não
+ * no horário do servidor (UTC), que está 3 horas adiante.
+ */
+const FUSO_BRASILIA = 'America/Sao_Paulo';
+
+/**
  * Monta a expressão cron diária (minuto hora * * *) a partir de um horário
  * "HH:mm". Função pura, testável de forma isolada (Req 1.4.2).
  */
@@ -61,24 +68,36 @@ export class AlertasService implements OnModuleInit {
     if (this.scheduler.doesExist('cron', JOB_IMPORTACOES_PENDENTES)) {
       return;
     }
-    const job = new CronJob(expressao, () => {
-      void this.dispararAlertaImportacoesPendentes();
-    });
+    const job = new CronJob(
+      expressao,
+      () => {
+        void this.dispararAlertaImportacoesPendentes();
+      },
+      null,
+      false,
+      FUSO_BRASILIA,
+    );
     this.scheduler.addCronJob(JOB_IMPORTACOES_PENDENTES, job as never);
     job.start();
     this.logger.log(
-      `Alerta de importações pendentes agendado para ${horario} (${expressao}).`,
+      `Alerta de importações pendentes agendado para ${horario} (${expressao}, ${FUSO_BRASILIA}).`,
     );
   }
 
   /** Job de alerta do checklist de abertura no horário-limite (08:55). */
-  @Cron('55 8 * * *', { name: 'alerta-checklist-abertura' })
+  @Cron('55 8 * * *', {
+    name: 'alerta-checklist-abertura',
+    timeZone: FUSO_BRASILIA,
+  })
   async alertaChecklistAbertura(): Promise<boolean> {
     return this.dispararAlertaChecklist('ABERTURA');
   }
 
   /** Job de alerta do checklist de fechamento no horário-limite (13:55). */
-  @Cron('55 13 * * *', { name: 'alerta-checklist-fechamento' })
+  @Cron('55 13 * * *', {
+    name: 'alerta-checklist-fechamento',
+    timeZone: FUSO_BRASILIA,
+  })
   async alertaChecklistFechamento(): Promise<boolean> {
     return this.dispararAlertaChecklist('FECHAMENTO');
   }

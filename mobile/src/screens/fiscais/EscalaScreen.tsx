@@ -19,10 +19,10 @@ import {
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { DIAS_SEMANA, DIAS_SEMANA_CURTO } from '../../utils/formato';
+import { DIAS_SEMANA, DIAS_SEMANA_CURTO, diaSemanaHoje } from '../../utils/formato';
 
 export function EscalaScreen(): React.ReactElement {
-  const hoje = new Date().getDay();
+  const hoje = diaSemanaHoje();
   const [dia, setDia] = useState<number>(hoje);
 
   const escala = useRequisicao<ItemEscalaConsolidada[]>(

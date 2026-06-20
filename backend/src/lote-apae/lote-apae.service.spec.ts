@@ -56,8 +56,7 @@ describe('LoteApaeService', () => {
         if (args?.orderBy?.dataInicio) {
           const dir = args.orderBy.dataInicio === 'desc' ? -1 : 1;
           lista.sort(
-            (a, b) =>
-              (a.dataInicio.getTime() - b.dataInicio.getTime()) * dir,
+            (a, b) => (a.dataInicio.getTime() - b.dataInicio.getTime()) * dir,
           );
         }
         return Promise.resolve(lista.length > 0 ? { ...lista[0] } : null);

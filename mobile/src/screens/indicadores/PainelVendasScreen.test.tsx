@@ -21,6 +21,13 @@ jest.mock('../../auth/AuthContext', () => ({
   useAuth: () => ({ perfil: 'GERENTE' }),
 }));
 
+// "Hoje" determinístico (sexta-feira, 19/06/2026) para o snapshot não depender
+// da data real de execução — ver utils/formato (fuso de Brasília).
+jest.mock('../../utils/formato', () => {
+  const real = jest.requireActual('../../utils/formato');
+  return { ...real, hojeISO: () => '2026-06-19', diaSemanaHoje: () => 5 };
+});
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { vendasService } = require('../../api/services');
 

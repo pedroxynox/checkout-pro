@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { cores, espacamento, raio, tipografia } from '../theme';
-import { formatarData } from '../utils/formato';
+import { formatarData, hojeISO } from '../utils/formato';
 
 function deslocarDias(iso: string, dias: number): string {
   const data = new Date(`${iso}T00:00:00.000Z`);
@@ -26,7 +26,7 @@ export function SeletorData({
   rotulo?: string;
   permitirFuturo?: boolean;
 }): React.ReactElement {
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeISO();
   const proximoBloqueado = !permitirFuturo && valor >= hoje;
 
   return (
