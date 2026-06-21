@@ -19,6 +19,7 @@ import {
   ItemPainel,
   ResumoStatus,
 } from './fiscais.service';
+import { Jornada } from './fiscais.domain';
 
 /**
  * API do Modulo_Fiscais (controle de jornada).
@@ -51,7 +52,7 @@ export class FiscaisController {
   async definirMeuStatus(
     @Body() dto: DefinirStatusDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
-  ): Promise<ResumoStatus> {
+  ): Promise<ResumoStatus & Jornada> {
     const fiscal = await this.service.meuFiscal(usuario.sub);
     return this.service.definirStatus(fiscal.id, dto.status);
   }

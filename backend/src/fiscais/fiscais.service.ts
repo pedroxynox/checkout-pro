@@ -109,7 +109,7 @@ export class FiscaisService {
     fiscalId: string,
     status: StatusFiscal,
     em: Date = new Date(),
-  ): Promise<ResumoStatus> {
+  ): Promise<ResumoStatus & Jornada> {
     const fiscal = await this.prisma.fiscal.findUnique({
       where: { id: fiscalId },
     });
@@ -135,7 +135,11 @@ export class FiscaisService {
       });
     }
 
-    return { fiscalId, primeiroNome: pn, status, em: em.toISOString() };
+    // Recalcular jornada com o novo registro incluído.
+    const registros = await this.registrosDoDia(fiscalId, em);
+    const jornada = calcularJornada(registros, em);
+
+    return { fiscalId, primeiroNome: pn, status, em: em.toISOString(), ...jornada };
   }
 
   /** Painel de todos os fiscais com o status atual (tempo real via WebSocket). */
