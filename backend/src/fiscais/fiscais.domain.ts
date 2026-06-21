@@ -83,7 +83,7 @@ export interface Jornada {
   tempoTrabalhandoMs: number;
   /** Tempo somado em INTERVALO. */
   tempoIntervaloMs: number;
-  /** Tempo total no expediente (trabalhando + intervalo). */
+  /** Tempo total trabalhado no dia (sem intervalo). */
   cargaHorariaMs: number;
 }
 
@@ -119,7 +119,7 @@ export function calcularJornada(
   return {
     tempoTrabalhandoMs: trabalho,
     tempoIntervaloMs: intervalo,
-    cargaHorariaMs: trabalho + intervalo,
+    cargaHorariaMs: trabalho,
   };
 }
 
