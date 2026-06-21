@@ -220,7 +220,7 @@ export function AssistenteFlutuante(): React.ReactElement {
                 </View>
                 <View>
                   <Text style={styles.titulo}>Cluby</Text>
-                  <Text style={styles.subtitulo}>Sua assistente de caixa</Text>
+                  <Text style={styles.subtitulo}>Sua super assistente do mercado</Text>
                 </View>
               </View>
               <View style={styles.cabecalhoAcoes}>
@@ -263,9 +263,9 @@ export function AssistenteFlutuante(): React.ReactElement {
                   <Text style={styles.vazioEmoji}>🤖</Text>
                   <Text style={styles.vazioTitulo}>Oi! Eu sou a Cluby</Text>
                   <Text style={styles.vazioTexto}>
-                    Sua assistente da frente de caixa. Pergunte sobre fechamento,
-                    troco, cancelamentos, códigos de erro da maquineta, direitos
-                    do consumidor e muito mais!
+                    Sua super assistente do mercado. Pergunte sobre caixa,
+                    fechamento, estoque, validade, reposição, equipe, direitos do
+                    consumidor e muito mais!
                   </Text>
                 </View>
               ) : (
