@@ -6,8 +6,8 @@ import { StatusFiscal, TipoArrecadacao } from '../api/types';
 
 export const ROTULO_STATUS_FISCAL: Record<StatusFiscal, string> = {
   DISPONIVEL: 'Disponível',
-  EM_INTERVALO: 'Em intervalo',
-  EM_ATENDIMENTO: 'Em atendimento',
+  INTERVALO: 'Em intervalo',
+  FORA_EXPEDIENTE: 'Fora de expediente',
 };
 
 // ----- Arrecadação por operador (indicadores a partir dos .txt) -----

@@ -18,8 +18,8 @@ export type TipoAcao = 'RETIRADA_FARDO' | 'ALTERACAO_STATUS_FISCAL';
 /** Status possíveis de um fiscal (espelha o backend). */
 export type StatusFiscalOffline =
   | 'DISPONIVEL'
-  | 'EM_INTERVALO'
-  | 'EM_ATENDIMENTO';
+  | 'INTERVALO'
+  | 'FORA_EXPEDIENTE';
 
 /** Carga de uma retirada de fardo por leitura de código de barras. */
 export interface PayloadRetiradaFardo {

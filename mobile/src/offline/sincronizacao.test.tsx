@@ -62,7 +62,7 @@ describe('useOffline — operação offline e sincronização', () => {
       );
       await result.current.enfileirar(
         'ALTERACAO_STATUS_FISCAL',
-        { fiscalId: 'fiscal-1', status: 'EM_INTERVALO' },
+        { fiscalId: 'fiscal-1', status: 'INTERVALO' },
         'fiscal-1',
       );
       await result.current.enfileirar(

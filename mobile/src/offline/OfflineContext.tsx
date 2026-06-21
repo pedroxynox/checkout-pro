@@ -33,8 +33,9 @@ const OfflineContext = createContext<EstadoOffline | undefined>(undefined);
 const executoresProducao: ExecutoresSincronizacao = criarExecutoresApi({
   retirarFardo: (codigoBarras, insumoId, destino) =>
     insumosService.retirarFardo(codigoBarras, insumoId, destino),
-  alterarStatus: (fiscalId, status) =>
-    fiscaisService.alterarStatus(fiscalId, status),
+  // O fiscal é identificado pelo login no backend; o fiscalId enfileirado é
+  // usado apenas para resolver conflitos (last-write-wins).
+  alterarStatus: (_fiscalId, status) => fiscaisService.definirStatus(status),
 });
 
 export function OfflineProvider({

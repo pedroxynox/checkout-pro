@@ -250,15 +250,36 @@ export interface Requisicao {
 }
 
 // ----- Fiscais / Escala (Req 4.x) -----
-export type StatusFiscal = 'DISPONIVEL' | 'EM_INTERVALO' | 'EM_ATENDIMENTO';
+export type StatusFiscal = 'DISPONIVEL' | 'INTERVALO' | 'FORA_EXPEDIENTE';
 
-export interface SessaoFiscal {
-  id: string;
+/** Tempos da jornada do dia (em milissegundos). */
+export interface JornadaTempos {
+  tempoTrabalhandoMs: number;
+  tempoIntervaloMs: number;
+  cargaHorariaMs: number;
+}
+
+/** Item do painel em tempo real: um fiscal e seu status atual. */
+export interface ItemPainelFiscal {
   fiscalId: string;
-  checkIn: string;
-  checkOut: string | null;
-  statusAtual: StatusFiscal;
-  statusDefinidoEm: string;
+  primeiroNome: string;
+  status: StatusFiscal;
+  desde: string | null;
+}
+
+/** Resumo do próprio fiscal (status atual + jornada do dia). */
+export interface MeuResumoFiscal extends JornadaTempos {
+  fiscalId: string;
+  primeiroNome: string;
+  status: StatusFiscal;
+  em: string;
+}
+
+/** Item do log de jornada do dia (tempos por fiscal) — uso gerencial. */
+export interface ItemJornadaFiscal extends JornadaTempos {
+  fiscalId: string;
+  primeiroNome: string;
+  status: StatusFiscal;
 }
 
 export interface EscalaEntry {
@@ -280,11 +301,12 @@ export interface ItemEscalaConsolidada {
   efetiva: EscalaEfetiva;
 }
 
-/** Evento recebido pelo WebSocket do painel de fiscais. */
+/** Evento recebido pelo WebSocket do painel de fiscais (tempo real). */
 export interface EventoStatusFiscal {
   fiscalId: string;
+  primeiroNome: string;
   status: StatusFiscal;
-  statusDefinidoEm: string;
+  em: string;
 }
 
 // ----- Checklist (Req 5.x) -----

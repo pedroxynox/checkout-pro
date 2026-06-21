@@ -21,6 +21,7 @@ import { InsumosScreen } from '../screens/insumos/InsumosScreen';
 import { InsumoDetalheScreen } from '../screens/insumos/InsumoDetalheScreen';
 import { RequisicoesScreen } from '../screens/insumos/RequisicoesScreen';
 import { FiscaisScreen } from '../screens/fiscais/FiscaisScreen';
+import { JornadaFiscaisScreen } from '../screens/fiscais/JornadaFiscaisScreen';
 import { EscalaScreen } from '../screens/fiscais/EscalaScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
 import { OperadoresScreen } from '../screens/operadores/OperadoresScreen';
@@ -123,6 +124,13 @@ export function AppNavigator(): React.ReactElement {
           name="Fiscais"
           component={FiscaisScreen}
           options={{ title: 'Fiscais' }}
+        />
+      )}
+      {podeAcessar('FISCAIS_JORNADA') && (
+        <Stack.Screen
+          name="JornadaFiscais"
+          component={JornadaFiscaisScreen}
+          options={{ title: 'Jornada da equipe' }}
         />
       )}
       {podeAcessar('ESCALA_VISUALIZAR') && (

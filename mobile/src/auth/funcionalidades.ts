@@ -36,6 +36,7 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
   'OPERADORES_CRUD',
   'INSUMOS_GERENCIAR',
   'FECHAMENTO',
+  'FISCAIS_JORNADA',
 ]);
 
 /** Funcionalidades do IMPORTADOR: usuário dedicado só carrega arquivos (Importações). */
@@ -74,6 +75,7 @@ export const FUNCIONALIDADES_GERENTE: readonly string[] = Object.freeze([
   'CHECKLIST',
   'OPERADORES_AUSENCIAS',
   'FISCAIS_STATUS',
+  'FISCAIS_JORNADA',
 ]);
 
 const FUNCIONALIDADES_GERENTE_SET = new Set<string>(FUNCIONALIDADES_GERENTE);

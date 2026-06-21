@@ -14,6 +14,7 @@ export type RootStackParamList = {
   InsumoDetalhe: { insumoId: string; nome: string };
   Requisicoes: undefined;
   Fiscais: undefined;
+  JornadaFiscais: undefined;
   Escala: undefined;
   Checklist: undefined;
   Operadores: undefined;

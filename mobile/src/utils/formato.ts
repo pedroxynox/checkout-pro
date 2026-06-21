@@ -103,3 +103,15 @@ export const DIAS_SEMANA_CURTO = [
   'Sex',
   'Sáb',
 ] as const;
+
+
+/** Formata uma duração em milissegundos como "Xh Ymin" (ou "Ymin"). */
+export function formatarDuracao(ms: number): string {
+  const totalMin = Math.max(0, Math.floor(ms / 60000));
+  const horas = Math.floor(totalMin / 60);
+  const min = totalMin % 60;
+  if (horas <= 0) {
+    return `${min}min`;
+  }
+  return `${horas}h ${min.toString().padStart(2, '0')}min`;
+}

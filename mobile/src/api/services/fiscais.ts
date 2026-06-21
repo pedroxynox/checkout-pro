@@ -1,33 +1,38 @@
-/** Serviço de Fiscais e Escala (Req 4.x). */
+/** Serviço de Fiscais (controle de jornada) e Escala (Req 4.x). */
 import { apiClient } from '../client';
 import {
   EscalaEfetiva,
   ItemEscalaConsolidada,
-  SessaoFiscal,
+  ItemJornadaFiscal,
+  ItemPainelFiscal,
+  MeuResumoFiscal,
   StatusFiscal,
 } from '../types';
 
 export const fiscaisService = {
-  /** Altera o status atual de um fiscal (Req 4.1.1–4.1.3). */
-  alterarStatus(fiscalId: string, status: StatusFiscal): Promise<SessaoFiscal> {
-    return apiClient.post<SessaoFiscal>(`/fiscais/${fiscalId}/status`, {
-      status,
-    });
+  /** Painel de todos os fiscais com o status atual. */
+  painel(): Promise<ItemPainelFiscal[]> {
+    return apiClient.get<ItemPainelFiscal[]>('/fiscais/painel');
   },
 
-  /** Check-in de um fiscal (Req 4.2.1, 4.2.3). */
-  checkIn(fiscalId: string): Promise<SessaoFiscal> {
-    return apiClient.post<SessaoFiscal>(`/fiscais/${fiscalId}/check-in`);
+  /** Resumo do próprio fiscal (status + jornada); null se o usuário não for fiscal. */
+  meuResumo(): Promise<MeuResumoFiscal | null> {
+    return apiClient.get<MeuResumoFiscal | null>('/fiscais/eu');
   },
 
-  /** Check-out de um fiscal (Req 4.2.2). */
-  checkOut(fiscalId: string): Promise<SessaoFiscal> {
-    return apiClient.post<SessaoFiscal>(`/fiscais/${fiscalId}/check-out`);
+  /** O fiscal define o próprio status (auto-identificado pelo login). */
+  definirStatus(status: StatusFiscal): Promise<MeuResumoFiscal> {
+    return apiClient.post<MeuResumoFiscal>('/fiscais/eu/status', { status });
   },
 
-  /** Histórico de sessões de um fiscal (Req 4.2.4). */
-  historicoSessoes(fiscalId: string): Promise<SessaoFiscal[]> {
-    return apiClient.get<SessaoFiscal[]>(`/fiscais/${fiscalId}/sessoes`);
+  /** O fiscal informa a própria falta do dia atual. */
+  informarFalta(): Promise<void> {
+    return apiClient.post<void>('/fiscais/eu/falta');
+  },
+
+  /** Log de jornada do dia (tempos por fiscal) — apenas gestores. */
+  jornada(data?: string): Promise<ItemJornadaFiscal[]> {
+    return apiClient.get<ItemJornadaFiscal[]>('/fiscais/jornada', { data });
   },
 };
 

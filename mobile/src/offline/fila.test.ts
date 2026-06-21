@@ -16,7 +16,7 @@ function statusAcao(
   id: string,
   fiscalId: string,
   criadaEm: number,
-  status: 'DISPONIVEL' | 'EM_INTERVALO' | 'EM_ATENDIMENTO' = 'DISPONIVEL',
+  status: 'DISPONIVEL' | 'INTERVALO' | 'FORA_EXPEDIENTE' = 'DISPONIVEL',
 ): AcaoPendente {
   return {
     id,
@@ -59,15 +59,15 @@ describe('fila offline — resolução de conflito (last-write-wins)', () => {
   it('mantém apenas a alteração de status mais recente por fiscal', () => {
     const fila = [
       statusAcao('s1', 'fiscal-1', 10, 'DISPONIVEL'),
-      statusAcao('s2', 'fiscal-1', 20, 'EM_INTERVALO'),
-      statusAcao('s3', 'fiscal-1', 30, 'EM_ATENDIMENTO'),
+      statusAcao('s2', 'fiscal-1', 20, 'INTERVALO'),
+      statusAcao('s3', 'fiscal-1', 30, 'FORA_EXPEDIENTE'),
     ];
     const { mantidas, descartadas } = resolverConflitos(fila);
 
     expect(mantidas.map((a) => a.id)).toEqual(['s3']);
     expect(descartadas.map((a) => a.id).sort()).toEqual(['s1', 's2']);
     expect((mantidas[0].payload as { status: string }).status).toBe(
-      'EM_ATENDIMENTO',
+      'FORA_EXPEDIENTE',
     );
   });
 
