@@ -119,7 +119,7 @@ export function FiscaisScreen({
     setEnviando(status);
     try {
       const r = await fiscaisService.definirStatus(status);
-      setMeu(r);
+      setMeu((prev) => (prev ? { ...prev, ...r } : prev));
       setPainel((lista) =>
         lista.map((p) =>
           p.fiscalId === r.fiscalId
