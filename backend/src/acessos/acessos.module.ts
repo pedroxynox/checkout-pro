@@ -20,10 +20,10 @@ import { AcessosService } from './acessos.service';
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET') ?? 'dev-secret-trocar',
         signOptions: {
-          // `expiresIn` aceita formatos como "8h"/"30m"; o tipo do pacote `ms`
-          // é restritivo, então normalizamos para string.
+          // Sessão de 30 dias por padrão (a equipe permanece logada ~1 mês);
+          // ajustável via JWT_EXPIRES_IN (ex.: "8h", "30m", "30d").
           expiresIn: (config.get<string>('JWT_EXPIRES_IN') ??
-            '8h') as `${number}h`,
+            '30d') as `${number}d`,
         },
       }),
     }),

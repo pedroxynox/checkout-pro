@@ -116,7 +116,7 @@ EXPO_PUBLIC_API_URL=http://localhost:3000 npm run start
 | --- | --- | --- | --- |
 | `DATABASE_URL` | sim | — | String de conexão PostgreSQL (Prisma) |
 | `JWT_SECRET` | **sim em produção** | `dev-secret-trocar` (inseguro) | Segredo de assinatura dos tokens JWT. Use algo longo e aleatório (`openssl rand -hex 32`) |
-| `JWT_EXPIRES_IN` | não | `8h` | Expiração do token de acesso |
+| `JWT_EXPIRES_IN` | não | `30d` | Expiração do token de acesso (a equipe fica logada ~1 mês) |
 | `PORT` | não | `3000` | Porta HTTP (o Render injeta automaticamente) |
 | `NODE_ENV` | não | `development` | `development` \| `test` \| `production` |
 | `HORARIO_FIM_DO_DIA` | não | `18:00` | Horário (HH:mm) para alertas de importações pendentes |

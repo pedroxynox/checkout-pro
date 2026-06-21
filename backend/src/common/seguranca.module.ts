@@ -26,8 +26,9 @@ import { PerfilGuard } from './guards/perfil.guard';
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET') ?? 'dev-secret-trocar',
         signOptions: {
+          // Mesma expiração do AcessosModule: 30 dias por padrão.
           expiresIn: (config.get<string>('JWT_EXPIRES_IN') ??
-            '8h') as `${number}h`,
+            '30d') as `${number}d`,
         },
       }),
     }),
