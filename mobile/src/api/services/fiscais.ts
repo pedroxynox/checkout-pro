@@ -3,6 +3,7 @@ import { apiClient } from '../client';
 import {
   EscalaEfetiva,
   ItemEscalaConsolidada,
+  ItemHorasExtrasFiscal,
   ItemJornadaFiscal,
   ItemPainelFiscal,
   MeuResumoFiscal,
@@ -33,6 +34,11 @@ export const fiscaisService = {
   /** Log de jornada do dia (tempos por fiscal) — apenas gestores. */
   jornada(data?: string): Promise<ItemJornadaFiscal[]> {
     return apiClient.get<ItemJornadaFiscal[]>('/fiscais/jornada', { data });
+  },
+
+  /** Acumulado de horas extras do mês por fiscal — apenas gestores. */
+  horasExtrasMes(mes?: string): Promise<ItemHorasExtrasFiscal[]> {
+    return apiClient.get<ItemHorasExtrasFiscal[]>('/fiscais/horas-extras-mes', { mes });
   },
 };
 

@@ -136,3 +136,21 @@ export function inicioDoProximoDia(data: Date): Date {
   d.setUTCDate(d.getUTCDate() + 1);
   return d;
 }
+
+
+/**
+ * Jornada esperada por dia da semana (em milissegundos).
+ * - Seg a Qui (1-4): 7h = 25.200.000 ms
+ * - Sex e Sáb (5-6): 8h = 28.800.000 ms
+ * - Dom (0): 7h20min = 26.400.000 ms (não conta para horas extras)
+ */
+export function jornadaEsperadaMs(diaSemana: number): number {
+  if (diaSemana === 0) return 26400000; // Domingo: 7h20min
+  if (diaSemana >= 1 && diaSemana <= 4) return 25200000; // Seg-Qui: 7h
+  return 28800000; // Sex-Sáb: 8h
+}
+
+/** Verifica se o dia da semana é domingo (não conta para horas extras). */
+export function isDomingo(diaSemana: number): boolean {
+  return diaSemana === 0;
+}

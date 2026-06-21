@@ -283,6 +283,13 @@ export interface ItemJornadaFiscal extends JornadaTempos {
   status: StatusFiscal;
 }
 
+/** Acumulado de horas extras do mês por fiscal. */
+export interface ItemHorasExtrasFiscal {
+  fiscalId: string;
+  primeiroNome: string;
+  horasExtrasMs: number;
+}
+
 export interface EscalaEntry {
   funcionarioId: string;
   diaSemana: number;

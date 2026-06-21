@@ -15,6 +15,7 @@ import {
 import { DefinirStatusDto } from './dto/fiscais.dto';
 import {
   FiscaisService,
+  ItemHorasExtras,
   ItemJornada,
   ItemPainel,
   ResumoStatus,
@@ -72,5 +73,12 @@ export class FiscaisController {
   @Funcionalidade('FISCAIS_JORNADA')
   jornada(@Query('data') data?: string): Promise<ItemJornada[]> {
     return this.service.jornadaDoDia(data ? new Date(data) : new Date());
+  }
+
+  /** Acumulado de horas extras do mês (por fiscal) — apenas gestores. */
+  @Get('horas-extras-mes')
+  @Funcionalidade('FISCAIS_JORNADA')
+  horasExtrasMes(@Query('mes') mes?: string): Promise<ItemHorasExtras[]> {
+    return this.service.horasExtrasMes(mes ? new Date(mes) : undefined);
   }
 }

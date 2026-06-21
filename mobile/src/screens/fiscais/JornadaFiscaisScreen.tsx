@@ -3,14 +3,16 @@
  * FISCAIS_JORNADA). Mostra, por fiscal, o tempo trabalhando, o tempo de
  * intervalo e a carga horária do dia com cores de status.
  *
- * Os fiscais veem apenas as próprias horas (na tela de Fiscais); aqui é a
- * visão consolidada de toda a equipe para gestores.
+ * Inclui:
+ * - Card com a data de hoje
+ * - Acumulado de horas extras do mês (excluindo domingos)
+ * - Cards por fiscal com status colorido e tempos
  */
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { fiscaisService } from '../../api/services';
-import { ItemJornadaFiscal, StatusFiscal } from '../../api/types';
+import { ItemHorasExtrasFiscal, ItemJornadaFiscal, StatusFiscal } from '../../api/types';
 import {
   Carregando,
   Cartao,
@@ -26,6 +28,7 @@ import { cores, espacamento, raio, tipografia } from '../../theme';
 const VERDE = cores.sucesso ?? '#1E9E5A';
 const AMARELO = cores.amarelo ?? '#C99700';
 const CINZA = cores.textoSecundario;
+const AZUL = '#2563EB';
 
 function corStatus(status: StatusFiscal): string {
   if (status === 'DISPONIVEL') return VERDE;
@@ -45,21 +48,120 @@ function iconeStatus(status: StatusFiscal): keyof typeof Ionicons.glyphMap {
   return 'exit-outline';
 }
 
+/** Formata a data de hoje em português: "Segunda-feira, 21 de junho de 2026" */
+function formatarDataHoje(): string {
+  const dias = [
+    'Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
+    'Quinta-feira', 'Sexta-feira', 'Sábado',
+  ];
+  const meses = [
+    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+  ];
+  const hoje = new Date();
+  const diaSemana = dias[hoje.getDay()];
+  const dia = hoje.getDate();
+  const mes = meses[hoje.getMonth()];
+  const ano = hoje.getFullYear();
+  return `${diaSemana}, ${dia} de ${mes} de ${ano}`;
+}
+
+/** Nome do mês atual para o acumulado */
+function nomeMesAtual(): string {
+  const meses = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+  ];
+  return meses[new Date().getMonth()];
+}
+
 export function JornadaFiscaisScreen(): React.ReactElement {
   const jornada = useRequisicao<ItemJornadaFiscal[]>(
     () => fiscaisService.jornada(),
     [],
   );
 
+  const horasExtras = useRequisicao<ItemHorasExtrasFiscal[]>(
+    () => fiscaisService.horasExtrasMes(),
+    [],
+  );
+
+  /** Cria mapa de horas extras por fiscalId para lookup rápido */
+  const mapaExtras = React.useMemo(() => {
+    const m = new Map<string, number>();
+    if (horasExtras.dados) {
+      for (const he of horasExtras.dados) {
+        m.set(he.fiscalId, he.horasExtrasMs);
+      }
+    }
+    return m;
+  }, [horasExtras.dados]);
+
+  /** Total geral de horas extras da equipe no mês */
+  const totalExtrasEquipe = React.useMemo(() => {
+    if (!horasExtras.dados) return 0;
+    return horasExtras.dados.reduce((acc, he) => acc + he.horasExtrasMs, 0);
+  }, [horasExtras.dados]);
+
+  const recarregarTudo = async () => {
+    await Promise.all([jornada.recarregar(), horasExtras.recarregar()]);
+  };
+
   return (
-    <Tela aoAtualizar={jornada.recarregar} atualizando={jornada.atualizando}>
-      <Text style={styles.titulo}>Jornada de hoje</Text>
+    <Tela aoAtualizar={recarregarTudo} atualizando={jornada.atualizando || horasExtras.atualizando}>
+      {/* Card com a data de hoje */}
+      <Cartao style={styles.cardData}>
+        <View style={styles.dataRow}>
+          <View style={styles.dataIcone}>
+            <Ionicons name="calendar" size={22} color={cores.primaria} />
+          </View>
+          <View>
+            <Text style={styles.dataLabel}>Jornada de hoje</Text>
+            <Text style={styles.dataTexto}>{formatarDataHoje()}</Text>
+          </View>
+        </View>
+      </Cartao>
+
+      {/* Card acumulado de horas extras do mês */}
+      <Cartao style={styles.cardExtras}>
+        <View style={styles.extrasRow}>
+          <View style={[styles.dataIcone, { backgroundColor: '#EFF6FF' }]}>
+            <Ionicons name="trending-up" size={22} color={AZUL} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.extrasLabel}>Horas extras — {nomeMesAtual()}</Text>
+            <Text style={styles.extrasTotalValor}>{formatarDuracao(totalExtrasEquipe)}</Text>
+          </View>
+        </View>
+
+        {/* Detalhamento por fiscal */}
+        {horasExtras.dados && horasExtras.dados.length > 0 && (
+          <View style={styles.extrasLista}>
+            {horasExtras.dados
+              .filter((he) => he.horasExtrasMs > 0)
+              .sort((a, b) => b.horasExtrasMs - a.horasExtrasMs)
+              .map((he) => (
+                <View key={he.fiscalId} style={styles.extrasItem}>
+                  <Text style={styles.extrasNome}>{he.primeiroNome}</Text>
+                  <Text style={styles.extrasValor}>+{formatarDuracao(he.horasExtrasMs)}</Text>
+                </View>
+              ))}
+            {horasExtras.dados.every((he) => he.horasExtrasMs === 0) && (
+              <Text style={styles.extrasSemDados}>Nenhuma hora extra registrada neste mês.</Text>
+            )}
+          </View>
+        )}
+      </Cartao>
+
+      {/* Título da seção de jornada individual */}
+      <Text style={styles.secaoTitulo}>Equipe</Text>
+
       {jornada.carregando ? (
         <Carregando />
       ) : jornada.erro ? (
         <MensagemErro
           mensagem={jornada.erro}
-          aoTentarNovamente={jornada.recarregar}
+          aoTentarNovamente={recarregarTudo}
         />
       ) : !jornada.dados || jornada.dados.length === 0 ? (
         <EstadoVazio
@@ -93,10 +195,20 @@ export function JornadaFiscaisScreen(): React.ReactElement {
 
             {/* Tempos */}
             <View style={styles.tempos}>
-              <Item rotulo="Trabalhando" valor={formatarDuracao(f.tempoTrabalhandoMs)} cor={VERDE} />
-              <Item rotulo="Intervalo" valor={formatarDuracao(f.tempoIntervaloMs)} cor={AMARELO} />
-              <Item rotulo="Carga" valor={formatarDuracao(f.cargaHorariaMs)} cor={cores.texto} />
+              <ItemTempo rotulo="Trabalhando" valor={formatarDuracao(f.tempoTrabalhandoMs)} cor={VERDE} />
+              <ItemTempo rotulo="Intervalo" valor={formatarDuracao(f.tempoIntervaloMs)} cor={AMARELO} />
+              <ItemTempo rotulo="Carga" valor={formatarDuracao(f.cargaHorariaMs)} cor={cores.texto} />
             </View>
+
+            {/* Horas extras do mês deste fiscal */}
+            {(mapaExtras.get(f.fiscalId) ?? 0) > 0 && (
+              <View style={styles.extrasFiscalRow}>
+                <Ionicons name="trending-up" size={14} color={AZUL} />
+                <Text style={styles.extrasFiscalTexto}>
+                  +{formatarDuracao(mapaExtras.get(f.fiscalId)!)} extras no mês
+                </Text>
+              </View>
+            )}
           </Cartao>
         ))
       )}
@@ -104,7 +216,7 @@ export function JornadaFiscaisScreen(): React.ReactElement {
   );
 }
 
-function Item({
+function ItemTempo({
   rotulo,
   valor,
   cor,
@@ -122,10 +234,79 @@ function Item({
 }
 
 const styles = StyleSheet.create({
-  titulo: {
+  cardData: {
+    marginBottom: 0,
+  },
+  dataRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.md,
+  },
+  dataIcone: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: cores.primariaClara,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dataLabel: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  dataTexto: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    marginTop: 2,
+  },
+  cardExtras: {
+    marginBottom: 0,
+  },
+  extrasRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.md,
+  },
+  extrasLabel: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  extrasTotalValor: {
+    ...tipografia.subtitulo,
+    color: AZUL,
+    marginTop: 2,
+  },
+  extrasLista: {
+    marginTop: espacamento.md,
+    borderTopWidth: 1,
+    borderTopColor: cores.divisor,
+    paddingTop: espacamento.sm,
+  },
+  extrasItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: espacamento.xs,
+  },
+  extrasNome: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+  },
+  extrasValor: {
+    ...tipografia.rotulo,
+    color: AZUL,
+  },
+  extrasSemDados: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    textAlign: 'center',
+    paddingVertical: espacamento.sm,
+  },
+  secaoTitulo: {
     ...tipografia.secao,
     color: cores.texto,
-    marginBottom: espacamento.md,
+    marginTop: espacamento.lg,
+    marginBottom: espacamento.sm,
   },
   cartaoFiscal: {
     overflow: 'hidden',
@@ -194,6 +375,20 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginTop: 2,
+  },
+  extrasFiscalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+    marginTop: espacamento.sm,
+    paddingTop: espacamento.sm,
+    borderTopWidth: 1,
+    borderTopColor: cores.divisor,
+  },
+  extrasFiscalTexto: {
+    ...tipografia.legenda,
+    color: AZUL,
+    fontWeight: '600',
   },
 });
 

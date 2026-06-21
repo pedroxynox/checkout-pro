@@ -9,6 +9,8 @@ import {
   calcularJornada,
   inicioDoDia,
   inicioDoProximoDia,
+  isDomingo,
+  jornadaEsperadaMs,
   mensagemTransicao,
   primeiroNome,
   statusAtual,
@@ -38,6 +40,13 @@ export interface ResumoStatus {
   primeiroNome: string;
   status: StatusFiscal;
   em: string;
+}
+
+/** Acumulado de horas extras do mês por fiscal. */
+export interface ItemHorasExtras {
+  fiscalId: string;
+  primeiroNome: string;
+  horasExtrasMs: number;
 }
 
 /**
@@ -232,6 +241,77 @@ export class FiscaisService {
         mensagem: `${primeiroNome(fiscal.nome)} informou falta hoje.`,
       });
     }
+  }
+
+  /**
+   * Acumulado de horas extras do mês por fiscal (excluindo domingos).
+   * Horas extras = soma de max(0, cargaTrabalhada - jornadaEsperada) por dia.
+   */
+  async horasExtrasMes(
+    mes?: Date,
+  ): Promise<ItemHorasExtras[]> {
+    const referencia = mes ?? new Date();
+    const inicioMes = new Date(
+      Date.UTC(referencia.getUTCFullYear(), referencia.getUTCMonth(), 1),
+    );
+    const fimMes = new Date(
+      Date.UTC(referencia.getUTCFullYear(), referencia.getUTCMonth() + 1, 1),
+    );
+    // Limita ao dia de hoje se for o mês atual.
+    const agora = new Date();
+    const limite = agora < fimMes ? agora : fimMes;
+
+    const [fiscais, registros] = await Promise.all([
+      this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
+      this.prisma.registroPontoFiscal.findMany({
+        where: { data: { gte: inicioMes, lt: fimMes } },
+        orderBy: { em: 'asc' },
+      }),
+    ]);
+
+    // Agrupar registros por fiscalId e por data (dia).
+    const porFiscalDia = new Map<string, Map<string, RegistroPonto[]>>();
+    for (const r of registros) {
+      const diaKey = r.data.toISOString();
+      if (!porFiscalDia.has(r.fiscalId)) {
+        porFiscalDia.set(r.fiscalId, new Map());
+      }
+      const mapaFiscal = porFiscalDia.get(r.fiscalId)!;
+      if (!mapaFiscal.has(diaKey)) {
+        mapaFiscal.set(diaKey, []);
+      }
+      mapaFiscal.get(diaKey)!.push({ status: r.status as StatusFiscal, em: r.em });
+    }
+
+    return fiscais.map((f) => {
+      const mapaFiscal = porFiscalDia.get(f.id);
+      let horasExtrasMs = 0;
+
+      if (mapaFiscal) {
+        for (const [diaKey, regs] of mapaFiscal.entries()) {
+          const diaDate = new Date(diaKey);
+          const diaSemana = diaDate.getUTCDay();
+
+          // Domingos não contam para horas extras.
+          if (isDomingo(diaSemana)) continue;
+
+          const fimDia = inicioDoProximoDia(diaDate);
+          const limiteDia = limite < fimDia ? limite : fimDia;
+          const jornada = calcularJornada(regs, limiteDia);
+          const esperado = jornadaEsperadaMs(diaSemana);
+          const extra = jornada.cargaHorariaMs - esperado;
+          if (extra > 0) {
+            horasExtrasMs += extra;
+          }
+        }
+      }
+
+      return {
+        fiscalId: f.id,
+        primeiroNome: primeiroNome(f.nome),
+        horasExtrasMs,
+      };
+    });
   }
 
   /** Agrupa registros (linha do banco) por fiscalId, mantendo a ordem. */
