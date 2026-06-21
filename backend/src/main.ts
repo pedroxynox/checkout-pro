@@ -51,7 +51,7 @@ async function bootstrap(): Promise<void> {
   // Escuta em 0.0.0.0 para funcionar em provedores de hospedagem (ex.: Render),
   // que encaminham o tráfego para a porta definida na variável de ambiente PORT.
   await app.listen(port, '0.0.0.0');
-  logger.log(`Backend Stok Center ouvindo na porta ${port}`);
+  logger.log(`Backend Check-out PRO ouvindo na porta ${port}`);
 }
 
 void bootstrap();

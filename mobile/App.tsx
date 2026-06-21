@@ -1,5 +1,5 @@
 /**
- * Componente raiz do app Stok Center.
+ * Componente raiz do app Check-out PRO.
  *
  * Compõe os provedores globais (área segura e autenticação) ao redor do
  * navegador raiz, que alterna entre o login e o app conforme a sessão.

@@ -14,7 +14,7 @@ export class AppService {
    */
   info(): InfoAplicacao {
     return {
-      nome: 'Gestão de Frente de Caixa — Stok Center',
+      nome: 'Check-out PRO',
       descricao: 'API backend (NestJS)',
       status: 'ok',
     };

@@ -1,6 +1,6 @@
-# Check-out PRO — Gestão de Frente de Caixa (Stok Center)
+# Check-out PRO — Gestão Inteligente de Supermercado
 
-Aplicativo de gestão da operação de supermercado da rede **Stok Center**, voltado a
+Aplicativo de gestão da operação de supermercado da rede **Check-out PRO**, voltado a
 gerentes, supervisores, fiscais e operadores. Centraliza a operação de frente de
 caixa e do mercado num só lugar, com uma assistente de IA (**Cluby**) que orienta a
 equipe e mostra o passo a passo das normativas com fotos.

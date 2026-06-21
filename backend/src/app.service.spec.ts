@@ -14,6 +14,6 @@ describe('AppService (smoke)', () => {
   it('deve retornar informações da aplicação com status ok', () => {
     const info = service.info();
     expect(info.status).toBe('ok');
-    expect(info.nome).toContain('Stok Center');
+    expect(info.nome).toContain('Check-out PRO');
   });
 });

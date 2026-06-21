@@ -1,5 +1,5 @@
 /**
- * Ícones e artes oficiais "Check-out Pro / Stok Center" (SVG da marca).
+ * Ícones e artes da marca "Check-out PRO" (SVG).
  *
  * São strings SVG renderizadas com `SvgXml` (react-native-svg), funcionando em
  * nativo e web. A cor original é o vermelho da marca (#E30613); use `recolorir`

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Stok Center — Gestão de Frente de Caixa (Protótipo)</title>
+<title>Check-out PRO — Gestão de Frente de Caixa (Protótipo)</title>
 <style>
   :root{
     --primary:#0B5FFF;
@@ -217,7 +217,7 @@
   <!-- LOGIN -->
   <section id="login" class="active">
     <div class="logo-big">SC</div>
-    <h1>Stok Center</h1>
+    <h1>Check-out PRO</h1>
     <p class="tag">Gestão de Frente de Caixa</p>
     <div class="form">
       <div class="field">
@@ -236,7 +236,7 @@
   <!-- APP CHROME -->
   <header id="appbar" style="display:none">
     <button id="backBtn" onclick="goHome()">‹</button>
-    <div class="brand"><span class="logo">SC</span><span class="screenTitle" id="screenTitle">Stok Center</span></div>
+    <div class="brand"><span class="logo">SC</span><span class="screenTitle" id="screenTitle">Check-out PRO</span></div>
     <div class="spacer"></div>
     <div class="toggle-wrap">
       <span>Offline</span>
@@ -259,7 +259,7 @@
         <button id="pFiscal" onclick="setProfile('FISCAL')">Fiscal</button>
       </div>
       <div class="grid" id="homeGrid"></div>
-      <p class="footer-note">Protótipo visual — dados de exemplo. App real: Gestão de Frente de Caixa — Stok Center.</p>
+      <p class="footer-note">Protótipo visual — dados de exemplo. App real: Gestão de Frente de Caixa — Check-out PRO.</p>
     </section>
 
     <!-- INDICADORES -->
@@ -543,7 +543,7 @@ var areas = [
 ];
 
 var titles = {
-  home:"Stok Center", indicadores:"Indicadores", vendas:"Painel de Vendas", apae:"Lote APAE",
+  home:"Check-out PRO", indicadores:"Indicadores", vendas:"Painel de Vendas", apae:"Lote APAE",
   insumos:"Insumos", fiscais:"Fiscais", escala:"Escala", checklist:"Checklist",
   operadores:"Operadores", notificacoes:"Notificações"
 };
@@ -560,7 +560,7 @@ function doLogin(){
 function show(id){
   document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});
   document.getElementById(id).classList.add('active');
-  document.getElementById('screenTitle').textContent = titles[id]||"Stok Center";
+  document.getElementById('screenTitle').textContent = titles[id]||"Check-out PRO";
   document.getElementById('backBtn').style.display = (id==='home')?'none':'flex';
   document.getElementById('main').scrollTop = 0;
   if(window.scrollTo) window.scrollTo(0,0);

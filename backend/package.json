@@ -1,7 +1,7 @@
 {
   "name": "@stok-center/backend",
   "version": "0.1.0",
-  "description": "Backend NestJS do aplicativo de Gestão de Frente de Caixa - Stok Center.",
+  "description": "Backend NestJS do Check-out PRO — gestão inteligente de supermercado.",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

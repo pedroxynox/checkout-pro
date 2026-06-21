@@ -1,4 +1,4 @@
-# Arquitetura — Check-out PRO (Stok Center)
+# Arquitetura — Check-out PRO (Check-out PRO)
 
 Guia rápido para humanos e IA entenderem o projeto sem reler tudo.
 

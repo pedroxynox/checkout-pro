@@ -1,5 +1,5 @@
 /**
- * Script de seed (cadastro inicial) do Stok Center.
+ * Script de seed (cadastro inicial) do Check-out PRO.
  *
  * Cria de forma idempotente (upsert por chave única, sem duplicação):
  *  - Fiscais por turno, cada um com um `Usuario` de login individual e único

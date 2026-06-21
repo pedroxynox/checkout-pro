@@ -1,4 +1,4 @@
-// Schema Prisma do backend - Gestão de Frente de Caixa (Stok Center)
+// Schema Prisma do backend - Check-out PRO (gestão inteligente de supermercado)
 // Banco de dados: PostgreSQL. Modelos derivados do diagrama ER do design
 // (.kiro/specs/gestao-frente-de-caixa/design.md - seção "Modelos de Dados").
 //

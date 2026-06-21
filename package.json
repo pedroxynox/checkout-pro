@@ -2,7 +2,7 @@
   "name": "gestao-frente-de-caixa-stok-center",
   "version": "0.1.0",
   "private": true,
-  "description": "Monorepo do aplicativo de Gestão de Frente de Caixa - Stok Center (backend NestJS + app móvel Expo).",
+  "description": "Monorepo do Check-out PRO — gestão inteligente de supermercado (backend NestJS + app móvel Expo).",
   "workspaces": [
     "backend",
     "mobile"

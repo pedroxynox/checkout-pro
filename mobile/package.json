@@ -2,7 +2,7 @@
   "name": "@stok-center/mobile",
   "version": "0.1.0",
   "private": true,
-  "description": "Aplicativo móvel React Native + Expo (TypeScript) do Gestão de Frente de Caixa - Stok Center.",
+  "description": "App móvel React Native + Expo (TypeScript) do Check-out PRO — gestão inteligente de supermercado.",
   "license": "UNLICENSED",
   "main": "index.ts",
   "scripts": {

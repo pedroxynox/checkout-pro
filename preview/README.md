@@ -1,14 +1,14 @@
-# Protótipo Visual — Gestão de Frente de Caixa (Stok Center)
+# Protótipo Visual — Gestão de Frente de Caixa (Check-out PRO)
 
 Este diretório contém um **protótipo visual navegável** do aplicativo móvel
-**Gestão de Frente de Caixa — Stok Center**.
+**Gestão de Frente de Caixa — Check-out PRO**.
 
 ## O que é
 
 - Um único arquivo **`index.html`**, totalmente autocontido (CSS e JavaScript embutidos).
 - **Sem build, sem dependências externas, sem rede / CDN** — basta abrir o arquivo
   em qualquer navegador (de preferência em visualização mobile / largura ~430px).
-- Layout **mobile-first**, em **Português do Brasil**, com a marca **Stok Center**
+- Layout **mobile-first**, em **Português do Brasil**, com a marca **Check-out PRO**
   (cor primária `#0B5FFF`).
 
 ## Importante: dados de exemplo
@@ -41,4 +41,4 @@ Abra `preview/index.html` diretamente no navegador. Nenhuma instalação é nece
 O **modo offline** afeta visivelmente Home, Fiscais e Insumos (banner e mensagens enfileiradas).
 
 ---
-Protótipo visual — dados de exemplo. App real: Gestão de Frente de Caixa — Stok Center.
+Protótipo visual — dados de exemplo. App real: Gestão de Frente de Caixa — Check-out PRO.

@@ -1,5 +1,5 @@
 /**
- * Tema visual do app Stok Center.
+ * Tema visual do app Check-out PRO.
  *
  * Centraliza cores, espaçamentos, tipografia e raios de borda para manter as
  * telas consistentes. As cores de status (verde/amarelo/vermelho) refletem a
@@ -7,7 +7,7 @@
  */
 
 export const cores = {
-  // Identidade Stok Center (vermelho/branco — tema do mercado)
+  // Identidade Check-out PRO (vermelho/branco — tema do mercado)
   primaria: '#C8102E',
   primariaEscura: '#9E0C24',
   primariaClara: '#FCE6EA',

@@ -1,7 +1,7 @@
-# Stok Center — App Móvel (Gestão de Frente de Caixa)
+# Check-out PRO — App Móvel (Gestão de Frente de Caixa)
 
 Aplicativo móvel **React Native + Expo** (TypeScript) do sistema de Gestão de
-Frente de Caixa do supermercado **Stok Center**. Toda a interface é em
+Frente de Caixa do supermercado **Check-out PRO**. Toda a interface é em
 Português do Brasil.
 
 ## Como executar
@@ -31,7 +31,7 @@ Scripts úteis (dentro de `mobile/`):
 ```
 mobile/
   App.tsx                 # raiz: provedores (SafeArea, Auth) + navegação
-  app.json                # identidade/branding "Stok Center"
+  app.json                # identidade/branding "Check-out PRO"
   src/
     api/                  # cliente HTTP, token seguro, tipos e serviços por módulo
       client.ts           # fetch + token JWT + mapeamento de erros (pt-BR)

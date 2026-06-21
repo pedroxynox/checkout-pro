@@ -21,7 +21,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "center.stok.frentedecaixa",
       "infoPlist": {
-        "NSCameraUsageDescription": "O Stok Center usa a câmera para ler o código de barras dos fardos de insumos e para enviar as imagens dos checklists."
+        "NSCameraUsageDescription": "O Check-out PRO usa a câmera para ler o código de barras dos fardos de insumos e para enviar as imagens dos checklists."
       }
     },
     "android": {
@@ -43,13 +43,13 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "O Stok Center usa a câmera para ler o código de barras dos fardos de insumos."
+          "cameraPermission": "O Check-out PRO usa a câmera para ler o código de barras dos fardos de insumos."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "O Stok Center acessa suas fotos para enviar as imagens dos checklists de abertura e fechamento."
+          "photosPermission": "O Check-out PRO acessa suas fotos para enviar as imagens dos checklists de abertura e fechamento."
         }
       ],
       "expo-sqlite",
