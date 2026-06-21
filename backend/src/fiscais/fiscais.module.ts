@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { FiscaisController } from './fiscais.controller';
 import { FiscaisService } from './fiscais.service';
+import { FiscaisHorarioService } from './fiscais-horario.service';
 import { EscalaController } from './escala.controller';
 import { EscalaService } from './escala.service';
 import { FiscaisGateway } from './fiscais.gateway';
@@ -19,6 +20,7 @@ import { FiscalStatusEventos } from './fiscais.eventos';
   imports: [NotificacoesModule],
   providers: [
     FiscaisService,
+    FiscaisHorarioService,
     EscalaService,
     FiscalStatusEventos,
     FiscaisGateway,

@@ -3,6 +3,7 @@ import { apiClient } from '../client';
 import {
   EscalaEfetiva,
   ItemEscalaConsolidada,
+  ItemFolgaFiscal,
   ItemHorasExtrasFiscal,
   ItemJornadaFiscal,
   ItemPainelFiscal,
@@ -39,6 +40,11 @@ export const fiscaisService = {
   /** Acumulado de horas extras do mês por fiscal — apenas gestores. */
   horasExtrasMes(mes?: string): Promise<ItemHorasExtrasFiscal[]> {
     return apiClient.get<ItemHorasExtrasFiscal[]>('/fiscais/horas-extras-mes', { mes });
+  },
+
+  /** Lista de fiscais de folga hoje. */
+  folgaHoje(): Promise<ItemFolgaFiscal[]> {
+    return apiClient.get<ItemFolgaFiscal[]>('/fiscais/folga-hoje');
   },
 };
 

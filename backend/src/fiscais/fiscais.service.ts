@@ -15,7 +15,7 @@ import {
   primeiroNome,
   statusAtual,
 } from './fiscais.domain';
-import { FiscalNaoEncontradoError, FaltaRegistradaError, JaIniciouJornadaError } from './fiscais.errors';
+import { FiscalNaoEncontradoError, FaltaRegistradaError, JaIniciouJornadaError, FiscalDeFolgaError } from './fiscais.errors';
 import { FiscalStatusEventos } from './fiscais.eventos';
 
 /** Item do painel em tempo real: um fiscal e seu status atual. */
@@ -47,6 +47,12 @@ export interface ItemHorasExtras {
   fiscalId: string;
   primeiroNome: string;
   horasExtrasMs: number;
+}
+
+/** Fiscal de folga hoje. */
+export interface ItemFolga {
+  fiscalId: string;
+  primeiroNome: string;
 }
 
 /**
@@ -81,7 +87,7 @@ export class FiscaisService {
    * Resumo do próprio fiscal (status atual + jornada do dia). Retorna null se o
    * usuário autenticado não for um fiscal (ex.: gerente apenas visualizando).
    */
-  async meuResumo(usuarioId: string): Promise<(ResumoStatus & Jornada & { faltaHoje: boolean }) | null> {
+  async meuResumo(usuarioId: string): Promise<(ResumoStatus & Jornada & { faltaHoje: boolean; folgaHoje: boolean }) | null> {
     const fiscal = await this.prisma.fiscal.findFirst({ where: { usuarioId } });
     if (!fiscal) {
       return null;
@@ -92,12 +98,14 @@ export class FiscaisService {
     const faltaHoje = !!(await this.prisma.ausencia.findUnique({
       where: { pessoaId_data: { pessoaId: fiscal.id, data: inicioDoDia(agora) } },
     }));
+    const folgaHoje = await this.isFolgaHoje(fiscal.id, agora);
     return {
       fiscalId: fiscal.id,
       primeiroNome: primeiroNome(fiscal.nome),
       status: statusAtual(registros) ?? 'FORA_EXPEDIENTE',
       em: (ultimo?.em ?? agora).toISOString(),
       faltaHoje,
+      folgaHoje,
       ...calcularJornada(registros, agora),
     };
   }
@@ -123,6 +131,11 @@ export class FiscaisService {
     status: StatusFiscal,
     em: Date = new Date(),
   ): Promise<ResumoStatus & Jornada> {
+    // Validar: si está de folga hoy, no puede registrar ponto.
+    if (await this.isFolgaHoje(fiscalId, em)) {
+      throw new FiscalDeFolgaError();
+    }
+
     // Validar: si ya marcó falta hoy, no puede registrar ponto.
     const faltaHoje = await this.prisma.ausencia.findUnique({
       where: { pessoaId_data: { pessoaId: fiscalId, data: inicioDoDia(em) } },
@@ -218,6 +231,11 @@ export class FiscaisService {
   ): Promise<void> {
     const data = inicioDoDia(dia);
 
+    // Validar: si está de folga hoy, no puede marcar falta.
+    if (await this.isFolgaHoje(fiscalId, dia)) {
+      throw new FiscalDeFolgaError();
+    }
+
     // Validar: si ya tiene registros de ponto hoy, no puede marcar falta.
     const registrosHoje = await this.prisma.registroPontoFiscal.findFirst({
       where: { fiscalId, data },
@@ -312,6 +330,34 @@ export class FiscaisService {
         horasExtrasMs,
       };
     });
+  }
+
+  /** Verifica se o fiscal está de folga num dia (baseado na escala). */
+  private async isFolgaHoje(fiscalId: string, dia: Date = new Date()): Promise<boolean> {
+    const diaSemana = dia.getDay();
+    const escala = await this.prisma.escalaEntry.findFirst({
+      where: { funcionarioId: fiscalId, diaSemana, folga: true },
+    });
+    return !!escala;
+  }
+
+  /** Lista de fiscais que estão de folga hoje. */
+  async folgaHoje(dia: Date = new Date()): Promise<ItemFolga[]> {
+    const diaSemana = dia.getDay();
+    const escalas = await this.prisma.escalaEntry.findMany({
+      where: { diaSemana, folga: true },
+    });
+    if (escalas.length === 0) return [];
+
+    const fiscalIds = escalas.map((e) => e.funcionarioId);
+    const fiscais = await this.prisma.fiscal.findMany({
+      where: { id: { in: fiscalIds } },
+      orderBy: { nome: 'asc' },
+    });
+    return fiscais.map((f) => ({
+      fiscalId: f.id,
+      primeiroNome: primeiroNome(f.nome),
+    }));
   }
 
   /** Agrupa registros (linha do banco) por fiscalId, mantendo a ordem. */

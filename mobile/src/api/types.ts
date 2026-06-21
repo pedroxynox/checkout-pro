@@ -274,6 +274,7 @@ export interface MeuResumoFiscal extends JornadaTempos {
   status: StatusFiscal;
   em: string;
   faltaHoje: boolean;
+  folgaHoje: boolean;
 }
 
 /** Item do log de jornada do dia (tempos por fiscal) — uso gerencial. */
@@ -288,6 +289,12 @@ export interface ItemHorasExtrasFiscal {
   fiscalId: string;
   primeiroNome: string;
   horasExtrasMs: number;
+}
+
+/** Fiscal de folga hoje. */
+export interface ItemFolgaFiscal {
+  fiscalId: string;
+  primeiroNome: string;
 }
 
 export interface EscalaEntry {

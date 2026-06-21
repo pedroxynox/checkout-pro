@@ -14,6 +14,7 @@ import { ArquivoNaoImagemError } from '../../checklist/checklist.errors';
 import {
   FiscalNaoEncontradoError,
   FaltaRegistradaError,
+  FiscalDeFolgaError,
   JaIniciouJornadaError,
   StatusInvalidoError,
 } from '../../fiscais/fiscais.errors';
@@ -60,6 +61,7 @@ const MAPA_STATUS: ReadonlyArray<readonly [ConstrutorErro, HttpStatus]> = [
   [AusenciaDuplicadaError, HttpStatus.CONFLICT],
   [JaIniciouJornadaError, HttpStatus.CONFLICT],
   [FaltaRegistradaError, HttpStatus.CONFLICT],
+  [FiscalDeFolgaError, HttpStatus.CONFLICT],
   // 400 — entradas inválidas / regras de validação de domínio.
   [OperacaoInvalidaError, HttpStatus.BAD_REQUEST],
   [ColunaAusenteError, HttpStatus.BAD_REQUEST],

@@ -19,6 +19,7 @@ import { ApiError } from '../../api/client';
 import { fiscaisService } from '../../api/services';
 import { ConexaoFiscais, conectarPainelFiscais } from '../../api/socket';
 import {
+  ItemFolgaFiscal,
   ItemPainelFiscal,
   MeuResumoFiscal,
   StatusFiscal,
@@ -93,6 +94,7 @@ export function FiscaisScreen({
   const { podeAcessar } = useAuth();
   const [painel, setPainel] = useState<ItemPainelFiscal[]>([]);
   const [meu, setMeu] = useState<MeuResumoFiscal | null>(null);
+  const [folgas, setFolgas] = useState<ItemFolgaFiscal[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [enviando, setEnviando] = useState<StatusFiscal | null>(null);
@@ -100,12 +102,14 @@ export function FiscaisScreen({
   const conexaoRef = useRef<ConexaoFiscais | null>(null);
 
   const carregar = useCallback(async () => {
-    const [p, m] = await Promise.all([
+    const [p, m, f] = await Promise.all([
       fiscaisService.painel(),
       fiscaisService.meuResumo().catch(() => null),
+      fiscaisService.folgaHoje().catch(() => [] as ItemFolgaFiscal[]),
     ]);
     setPainel(p);
     setMeu(m);
+    setFolgas(f);
   }, []);
 
   useEffect(() => {
@@ -255,7 +259,11 @@ export function FiscaisScreen({
         <Cartao>
           <View style={styles.linhaTopo}>
             <Text style={styles.titulo}>Minha jornada</Text>
-            {meu.faltaHoje ? (
+            {meu.folgaHoje ? (
+              <View style={[styles.badge, { backgroundColor: '#6366F1' }]}>
+                <Text style={styles.badgeTexto}>Folga</Text>
+              </View>
+            ) : meu.faltaHoje ? (
               <View style={[styles.badge, { backgroundColor: cores.vermelho }]}>  
                 <Text style={styles.badgeTexto}>Falta informada</Text>
               </View>
@@ -268,8 +276,15 @@ export function FiscaisScreen({
             )}
           </View>
 
-          {/* Se marcou falta: aviso e sem botões de status */}
-          {meu.faltaHoje ? (
+          {/* Se está de folga: aviso e sem botões */}
+          {meu.folgaHoje ? (
+            <View style={styles.avisoFolga}>
+              <Ionicons name="bed-outline" size={20} color="#6366F1" />
+              <Text style={styles.avisoFolgaTexto}>
+                Hoje é seu dia de folga. Descanse e aproveite!
+              </Text>
+            </View>
+          ) : meu.faltaHoje ? (
             <View style={styles.avisoFalta}>
               <Ionicons name="information-circle" size={20} color={cores.vermelho} />
               <Text style={styles.avisoFaltaTexto}>
@@ -349,6 +364,21 @@ export function FiscaisScreen({
           </Text>
         </View>
       </View>
+
+      {/* Card de folga do dia */}
+      {folgas.length > 0 && (
+        <View style={styles.cardFolga}>
+          <View style={styles.cardFolgaIcone}>
+            <Ionicons name="bed-outline" size={20} color="#6366F1" />
+          </View>
+          <View style={styles.cardFolgaInfo}>
+            <Text style={styles.cardFolgaTitulo}>Folga hoje</Text>
+            <Text style={styles.cardFolgaNomes}>
+              {folgas.map((f) => f.primeiroNome).join(', ')}
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Painel de todos os fiscais — cards individuais ordenados por status */}
       {painelOrdenado.map((f) => (
@@ -491,6 +521,52 @@ const styles = StyleSheet.create({
     ...tipografia.rotulo,
     color: cores.vermelho,
     flex: 1,
+  },
+  avisoFolga: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    marginTop: espacamento.md,
+    backgroundColor: '#EEF2FF',
+    borderRadius: raio.md,
+    padding: espacamento.md,
+  },
+  avisoFolgaTexto: {
+    ...tipografia.rotulo,
+    color: '#6366F1',
+    flex: 1,
+  },
+  cardFolga: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.md,
+    backgroundColor: '#EEF2FF',
+    borderRadius: raio.md,
+    paddingHorizontal: espacamento.lg,
+    paddingVertical: espacamento.md,
+    marginBottom: espacamento.md,
+    borderLeftWidth: 4,
+    borderLeftColor: '#6366F1',
+  },
+  cardFolgaIcone: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E0E7FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardFolgaInfo: {
+    flex: 1,
+  },
+  cardFolgaTitulo: {
+    ...tipografia.rotulo,
+    color: '#6366F1',
+  },
+  cardFolgaNomes: {
+    ...tipografia.legenda,
+    color: '#4338CA',
+    marginTop: 2,
   },
   linkJornada: {
     flexDirection: 'row',

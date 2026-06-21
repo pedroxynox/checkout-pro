@@ -34,3 +34,11 @@ export class FaltaRegistradaError extends Error {
     this.name = 'FaltaRegistradaError';
   }
 }
+
+/** O fiscal está de folga hoje — não pode registrar ponto nem falta. */
+export class FiscalDeFolgaError extends Error {
+  constructor() {
+    super('Hoje é seu dia de folga. Não é possível registrar ponto ou falta.');
+    this.name = 'FiscalDeFolgaError';
+  }
+}

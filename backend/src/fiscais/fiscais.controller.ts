@@ -15,6 +15,7 @@ import {
 import { DefinirStatusDto } from './dto/fiscais.dto';
 import {
   FiscaisService,
+  ItemFolga,
   ItemHorasExtras,
   ItemJornada,
   ItemPainel,
@@ -80,5 +81,12 @@ export class FiscaisController {
   @Funcionalidade('FISCAIS_JORNADA')
   horasExtrasMes(@Query('mes') mes?: string): Promise<ItemHorasExtras[]> {
     return this.service.horasExtrasMes(mes ? new Date(mes) : undefined);
+  }
+
+  /** Lista de fiscais que estão de folga hoje. */
+  @Get('folga-hoje')
+  @Funcionalidade('FISCAIS_STATUS')
+  folgaHoje(): Promise<ItemFolga[]> {
+    return this.service.folgaHoje();
   }
 }

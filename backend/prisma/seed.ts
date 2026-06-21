@@ -59,7 +59,7 @@ const FISCAIS: SeedFiscal[] = [
   { nome: 'Josiane Cardoso da Silva', matricula: '227315', turno: TurnoFiscal.ABERTURA, especial: true },
   // Turno intermediário (Req 6.4.3)
   { nome: 'Sheila Vieira', matricula: '234958', turno: TurnoFiscal.INTERMEDIARIO },
-  { nome: 'Auri Nellys Coronado De Garcia', matricula: '232849', turno: TurnoFiscal.INTERMEDIARIO },
+  { nome: 'Auri Nellys Coronado De Garcia', matricula: '232849', turno: TurnoFiscal.INTERMEDIARIO, especial: true },
   { nome: 'Raquel Silve De Oliveira Beneton', matricula: '248011', turno: TurnoFiscal.INTERMEDIARIO },
   // Turno de fechamento (Req 6.4.4)
   { nome: 'Karen Nicholle Mendoza Barro', matricula: '223747', turno: TurnoFiscal.FECHAMENTO },
@@ -250,6 +250,145 @@ async function seedInsumos(): Promise<void> {
   }
 }
 
+async function seedEscalas(): Promise<void> {
+  // Definir folgas por nome e dia da semana (0=Dom, 1=Seg, ..., 6=Sáb)
+  const FOLGAS: Record<string, number> = {
+    'Karen Nicholle Mendoza Barro': 1,       // Segunda
+    'Maryolis Alexandra Lanza Lamar': 1,     // Segunda
+    'Josiane Cardoso da Silva': 1,           // Segunda
+    'Betzabeth Elisa Castellano Reyes': 2,   // Terça
+    'Raquel Silve De Oliveira Beneton': 2,   // Terça
+    'Carmen Felicia Moreno': 2,              // Terça
+    'Yannelyt Elizabet Lopez Subero': 3,     // Quarta
+    'Sheila Vieira': 3,                      // Quarta
+    'Auri Nellys Coronado De Garcia': 4,     // Quinta
+    'Fabiana Sirley Sarafim': 4,             // Quinta
+  };
+
+  // Horários por turno:
+  // ABERTURA (normal): Seg-Qui 06:50-15:50, Sex-Sáb 06:50-16:50
+  // ABERTURA (especial - Josiane): Seg-Qui 08:00-17:00, Sex-Sáb 08:00-18:00
+  // INTERMEDIARIO (normal): Seg-Qui 11:00-20:00, Sex-Sáb 11:00-21:00
+  // INTERMEDIARIO (especial - Auri): Seg-Qui 12:00-21:00, Sex-Sáb 12:00-22:00
+  // FECHAMENTO: Seg-Qui 13:50-22:50, Sex-Sáb 12:50-22:50
+
+  interface HorarioDia {
+    entrada: string;
+    saida: string;
+  }
+
+  type HorarioPorDia = Record<number, HorarioDia>; // diaSemana -> horario
+
+  function horarioAbertura(especial: boolean): HorarioPorDia {
+    if (especial) {
+      return {
+        1: { entrada: '08:00', saida: '17:00' },
+        2: { entrada: '08:00', saida: '17:00' },
+        3: { entrada: '08:00', saida: '17:00' },
+        4: { entrada: '08:00', saida: '17:00' },
+        5: { entrada: '08:00', saida: '18:00' },
+        6: { entrada: '08:00', saida: '18:00' },
+        0: { entrada: '08:00', saida: '17:00' }, // Domingo
+      };
+    }
+    return {
+      1: { entrada: '06:50', saida: '15:50' },
+      2: { entrada: '06:50', saida: '15:50' },
+      3: { entrada: '06:50', saida: '15:50' },
+      4: { entrada: '06:50', saida: '15:50' },
+      5: { entrada: '06:50', saida: '16:50' },
+      6: { entrada: '06:50', saida: '16:50' },
+      0: { entrada: '06:50', saida: '15:50' }, // Domingo
+    };
+  }
+
+  function horarioIntermediario(especial: boolean): HorarioPorDia {
+    if (especial) {
+      return {
+        1: { entrada: '12:00', saida: '21:00' },
+        2: { entrada: '12:00', saida: '21:00' },
+        3: { entrada: '12:00', saida: '21:00' },
+        4: { entrada: '12:00', saida: '21:00' },
+        5: { entrada: '12:00', saida: '22:00' },
+        6: { entrada: '12:00', saida: '22:00' },
+        0: { entrada: '12:00', saida: '21:00' }, // Domingo
+      };
+    }
+    return {
+      1: { entrada: '11:00', saida: '20:00' },
+      2: { entrada: '11:00', saida: '20:00' },
+      3: { entrada: '11:00', saida: '20:00' },
+      4: { entrada: '11:00', saida: '20:00' },
+      5: { entrada: '11:00', saida: '21:00' },
+      6: { entrada: '11:00', saida: '21:00' },
+      0: { entrada: '11:00', saida: '20:00' }, // Domingo
+    };
+  }
+
+  function horarioFechamento(): HorarioPorDia {
+    return {
+      1: { entrada: '13:50', saida: '22:50' },
+      2: { entrada: '13:50', saida: '22:50' },
+      3: { entrada: '13:50', saida: '22:50' },
+      4: { entrada: '13:50', saida: '22:50' },
+      5: { entrada: '12:50', saida: '22:50' },
+      6: { entrada: '12:50', saida: '22:50' },
+      0: { entrada: '13:50', saida: '22:50' }, // Domingo
+    };
+  }
+
+  const fiscais = await prisma.fiscal.findMany();
+
+  for (const fiscal of fiscais) {
+    const folgaDia = FOLGAS[fiscal.nome] ?? -1; // -1 = sem folga definida
+
+    let horarios: HorarioPorDia;
+    if (fiscal.turno === 'ABERTURA') {
+      horarios = horarioAbertura(fiscal.especial);
+    } else if (fiscal.turno === 'INTERMEDIARIO') {
+      horarios = horarioIntermediario(fiscal.especial);
+    } else {
+      horarios = horarioFechamento();
+    }
+
+    // Criar entrada para cada dia da semana (0-6)
+    for (let dia = 0; dia <= 6; dia++) {
+      const folga = dia === folgaDia;
+      const h = horarios[dia];
+
+      // Buscar se já existe (idempotência)
+      const existente = await prisma.escalaEntry.findFirst({
+        where: { funcionarioId: fiscal.id, diaSemana: dia },
+      });
+
+      if (existente) {
+        await prisma.escalaEntry.update({
+          where: { id: existente.id },
+          data: {
+            entrada: folga ? null : h?.entrada ?? null,
+            saida: folga ? null : h?.saida ?? null,
+            folga,
+            especial: fiscal.especial,
+            intervaloMin: 120, // 2h de intervalo para todos
+          },
+        });
+      } else {
+        await prisma.escalaEntry.create({
+          data: {
+            funcionarioId: fiscal.id,
+            diaSemana: dia,
+            entrada: folga ? null : h?.entrada ?? null,
+            saida: folga ? null : h?.saida ?? null,
+            folga,
+            especial: fiscal.especial,
+            intervaloMin: 120,
+          },
+        });
+      }
+    }
+  }
+}
+
 async function main(): Promise<void> {
   // Gera o hash da senha inicial uma única vez antes de criar os usuários.
   senhaHashInicial = await bcrypt.hash(SENHA_INICIAL, 10);
@@ -258,6 +397,7 @@ async function main(): Promise<void> {
   await seedGerentes();
   await seedOperadores();
   await seedInsumos();
+  await seedEscalas();
 
   const totalUsuarios = await prisma.usuario.count();
   const totalFiscais = await prisma.fiscal.count();
