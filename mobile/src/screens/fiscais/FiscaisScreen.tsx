@@ -4,12 +4,15 @@
  * - O fiscal logado é identificado automaticamente: marca Disponível ao entrar,
  *   Intervalo ao pausar, e Fora de expediente ao encerrar. Vê apenas as SUAS
  *   horas (trabalhando, intervalo e carga do dia) e pode informar falta.
- * - Painel: todos os fiscais com o primeiro nome e o status, atualizado em
+ * - Painel: todos os fiscais como cards individuais com estado colorido,
+ *   ordenados por status (Disponível > Intervalo > Fora) e atualizados em
  *   tempo real por WebSocket (sem recarregar).
+ * - Contador de fiscais disponíveis em tempo real.
+ * - Data do dia exibida no topo (não permite registros em dias passados/futuros).
  * - Gestores têm acesso ao log de jornada de toda a equipe (outra tela).
  */
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../../auth/AuthContext';
 import { ApiError } from '../../api/client';
@@ -29,6 +32,7 @@ import { cores, espacamento, raio, tipografia } from '../../theme';
 
 const VERDE = cores.sucesso ?? '#1FA463';
 const AMARELO = cores.amarelo ?? '#B7791F';
+const CINZA = cores.textoSecundario;
 
 const ACOES: {
   status: StatusFiscal;
@@ -40,10 +44,47 @@ const ACOES: {
   { status: 'FORA_EXPEDIENTE', rotulo: 'Encerrar', icone: 'exit-outline' },
 ];
 
+/** Ordem de prioridade para ordenação do painel. */
+const ORDEM_STATUS: Record<StatusFiscal, number> = {
+  DISPONIVEL: 0,
+  INTERVALO: 1,
+  FORA_EXPEDIENTE: 2,
+};
+
 function corStatus(status: StatusFiscal): string {
   if (status === 'DISPONIVEL') return VERDE;
   if (status === 'INTERVALO') return AMARELO;
-  return cores.textoSecundario;
+  return CINZA;
+}
+
+function corFundoStatus(status: StatusFiscal): string {
+  if (status === 'DISPONIVEL') return cores.verdeFundo ?? '#E4F6EC';
+  if (status === 'INTERVALO') return cores.amareloFundo ?? '#FBF3DA';
+  return cores.fundo;
+}
+
+function iconeStatus(status: StatusFiscal): keyof typeof Ionicons.glyphMap {
+  if (status === 'DISPONIVEL') return 'checkmark-circle';
+  if (status === 'INTERVALO') return 'cafe';
+  return 'exit-outline';
+}
+
+/** Formata a data de hoje em português: "Segunda-feira, 21 de junho de 2026" */
+function formatarDataHoje(): string {
+  const dias = [
+    'Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
+    'Quinta-feira', 'Sexta-feira', 'Sábado',
+  ];
+  const meses = [
+    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+  ];
+  const hoje = new Date();
+  const diaSemana = dias[hoje.getDay()];
+  const dia = hoje.getDate();
+  const mes = meses[hoje.getMonth()];
+  const ano = hoje.getFullYear();
+  return `${diaSemana}, ${dia} de ${mes} de ${ano}`;
 }
 
 export function FiscaisScreen({
@@ -102,6 +143,21 @@ export function FiscaisScreen({
     };
   }, [carregar]);
 
+  /** Painel ordenado por status: Disponível → Intervalo → Fora de expediente */
+  const painelOrdenado = useMemo(
+    () =>
+      [...painel].sort(
+        (a, b) => ORDEM_STATUS[a.status] - ORDEM_STATUS[b.status],
+      ),
+    [painel],
+  );
+
+  /** Contador de fiscais disponíveis en tiempo real */
+  const totalDisponivel = useMemo(
+    () => painel.filter((f) => f.status === 'DISPONIVEL').length,
+    [painel],
+  );
+
   const aoAtualizar = async () => {
     setAtualizando(true);
     try {
@@ -124,7 +180,7 @@ export function FiscaisScreen({
       },
       INTERVALO: {
         titulo: '☕ Ir para intervalo',
-        corpo: 'Deseja fazer uma pausa? Seu tempo de intervalo será registrado.',
+        corpo: 'Deseja fazer uma pausa?\n\n⚠️ Lembre-se: o intervalo mínimo é de 1 hora e 10 minutos. Retorne somente após esse período.',
       },
       FORA_EXPEDIENTE: {
         titulo: '🔴 Encerrar expediente',
@@ -186,6 +242,12 @@ export function FiscaisScreen({
   return (
     <Tela aoAtualizar={aoAtualizar} atualizando={atualizando}>
       {erro && <MensagemErro mensagem={erro} aoTentarNovamente={aoAtualizar} />}
+
+      {/* Data de hoje */}
+      <View style={styles.cabecalhoData}>
+        <Ionicons name="calendar-outline" size={18} color={cores.textoSecundario} />
+        <Text style={styles.dataTexto}>{formatarDataHoje()}</Text>
+      </View>
 
       {/* Minha jornada (só para fiscais) */}
       {meu && (
@@ -255,15 +317,39 @@ export function FiscaisScreen({
         </Pressable>
       )}
 
-      {/* Painel de todos os fiscais (tempo real) */}
-      <Text style={styles.secao}>Fiscais</Text>
-      {painel.map((f) => (
-        <View key={f.fiscalId} style={styles.itemPainel}>
-          <View style={[styles.pontinho, { backgroundColor: corStatus(f.status) }]} />
-          <Text style={styles.nome}>{f.primeiroNome}</Text>
-          <Text style={[styles.statusTexto, { color: corStatus(f.status) }]}>
-            {ROTULO_STATUS_FISCAL[f.status]}
+      {/* Contador de disponíveis + título da seção */}
+      <View style={styles.secaoCabecalho}>
+        <Text style={styles.secao}>Equipe</Text>
+        <View style={styles.contadorDisponivel}>
+          <Ionicons name="people" size={16} color={VERDE} />
+          <Text style={styles.contadorTexto}>
+            {totalDisponivel} disponíve{totalDisponivel === 1 ? 'l' : 'is'}
           </Text>
+        </View>
+      </View>
+
+      {/* Painel de todos os fiscais — cards individuais ordenados por status */}
+      {painelOrdenado.map((f) => (
+        <View
+          key={f.fiscalId}
+          style={[styles.cardFiscal, { borderLeftColor: corStatus(f.status) }]}
+        >
+          <View style={[styles.cardIconeContainer, { backgroundColor: corFundoStatus(f.status) }]}>
+            <Ionicons
+              name={iconeStatus(f.status)}
+              size={20}
+              color={corStatus(f.status)}
+            />
+          </View>
+          <View style={styles.cardInfo}>
+            <Text style={styles.cardNome}>{f.primeiroNome}</Text>
+            <Text style={[styles.cardStatus, { color: corStatus(f.status) }]}>
+              {ROTULO_STATUS_FISCAL[f.status]}
+            </Text>
+          </View>
+          <View style={[styles.cardBadge, { backgroundColor: corFundoStatus(f.status) }]}>
+            <View style={[styles.pontinho, { backgroundColor: corStatus(f.status) }]} />
+          </View>
         </View>
       ))}
     </Tela>
@@ -280,6 +366,16 @@ function Tempo({ rotulo, valor }: { rotulo: string; valor: string }): React.Reac
 }
 
 const styles = StyleSheet.create({
+  cabecalhoData: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    marginBottom: espacamento.lg,
+  },
+  dataTexto: {
+    ...tipografia.rotulo,
+    color: cores.textoSecundario,
+  },
   linhaTopo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -374,35 +470,72 @@ const styles = StyleSheet.create({
     color: cores.texto,
     flex: 1,
   },
-  secao: {
-    ...tipografia.secao,
-    color: cores.texto,
+  secaoCabecalho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: espacamento.xl,
     marginBottom: espacamento.sm,
   },
-  itemPainel: {
+  secao: {
+    ...tipografia.secao,
+    color: cores.texto,
+  },
+  contadorDisponivel: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.sm,
+    gap: espacamento.xs,
+    backgroundColor: cores.verdeFundo ?? '#E4F6EC',
+    paddingHorizontal: espacamento.sm,
+    paddingVertical: 4,
+    borderRadius: raio.pill,
+  },
+  contadorTexto: {
+    ...tipografia.legenda,
+    color: VERDE,
+    fontWeight: '700',
+  },
+  cardFiscal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.md,
     backgroundColor: cores.superficie,
     borderRadius: raio.md,
     paddingHorizontal: espacamento.lg,
     paddingVertical: espacamento.md,
     marginBottom: espacamento.sm,
+    borderLeftWidth: 4,
   },
-  pontinho: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  cardIconeContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  nome: {
-    ...tipografia.rotulo,
-    color: cores.texto,
+  cardInfo: {
     flex: 1,
   },
-  statusTexto: {
+  cardNome: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+  },
+  cardStatus: {
     ...tipografia.legenda,
-    fontWeight: '700',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  cardBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pontinho: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
 });
 
