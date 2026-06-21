@@ -31,6 +31,7 @@ import { ApiError } from '../api/client';
 import { assistenteService } from '../api/services';
 import { MensagemAssistente } from '../api/types';
 import { confirmar } from '../utils/dialogos';
+import { MarkdownTexto } from './MarkdownTexto';
 import { cores, espacamento, raio, sombra, tipografia } from '../theme';
 
 let contadorLocal = 0;
@@ -47,10 +48,55 @@ export function AssistenteFlutuante(): React.ReactElement {
   const [configurado, setConfigurado] = useState<boolean | null>(null);
   const [mensagens, setMensagens] = useState<MensagemAssistente[]>([]);
   const [entrada, setEntrada] = useState('');
+  const [animando, setAnimando] = useState<{
+    id: string;
+    full: string;
+    len: number;
+  } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const animRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const rolarParaFim = useCallback(() => {
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+  }, []);
+
+  // Efeito "digitando em tempo real": revela a resposta da Cluby aos poucos.
+  const animarResposta = useCallback(
+    (msg: MensagemAssistente) => {
+      if (animRef.current) {
+        clearInterval(animRef.current);
+      }
+      const full = msg.conteudo;
+      const passo = Math.max(2, Math.ceil(full.length / 160));
+      setAnimando({ id: msg.id, full, len: 0 });
+      animRef.current = setInterval(() => {
+        setAnimando((a) => {
+          if (!a) {
+            return a;
+          }
+          const prox = a.len + passo;
+          if (prox >= a.full.length) {
+            if (animRef.current) {
+              clearInterval(animRef.current);
+              animRef.current = null;
+            }
+            return null;
+          }
+          return { ...a, len: prox };
+        });
+        rolarParaFim();
+      }, 24);
+    },
+    [rolarParaFim],
+  );
+
+  // Limpa o timer de digitação ao desmontar.
+  useEffect(() => {
+    return () => {
+      if (animRef.current) {
+        clearInterval(animRef.current);
+      }
+    };
   }, []);
 
   // Ao abrir: carrega status + conversa das últimas 24h.
@@ -103,6 +149,7 @@ export function AssistenteFlutuante(): React.ReactElement {
     try {
       const resposta = await assistenteService.enviar(texto);
       setMensagens((m) => [...m, resposta]);
+      animarResposta(resposta);
     } catch (erro) {
       const mensagemErro =
         erro instanceof ApiError
@@ -152,7 +199,7 @@ export function AssistenteFlutuante(): React.ReactElement {
           pressed && styles.fabPressionado,
         ]}
       >
-        <Ionicons name="sparkles" size={26} color={cores.textoInverso} />
+        <Text style={styles.fabEmoji}>🤖</Text>
       </Pressable>
 
       <Modal
@@ -168,8 +215,13 @@ export function AssistenteFlutuante(): React.ReactElement {
           >
             <View style={styles.cabecalho}>
               <View style={styles.cabecalhoTitulo}>
-                <Ionicons name="sparkles" size={18} color={cores.primaria} />
-                <Text style={styles.titulo}>Assistente Check-out PRO</Text>
+                <View style={styles.avatarCabecalho}>
+                  <Text style={styles.avatarEmojiGrande}>🤖</Text>
+                </View>
+                <View>
+                  <Text style={styles.titulo}>Cluby</Text>
+                  <Text style={styles.subtitulo}>Sua assistente de caixa</Text>
+                </View>
               </View>
               <View style={styles.cabecalhoAcoes}>
                 <Pressable
@@ -208,36 +260,52 @@ export function AssistenteFlutuante(): React.ReactElement {
                 <ActivityIndicator color={cores.primaria} style={{ marginTop: espacamento.xl }} />
               ) : mensagens.length === 0 ? (
                 <View style={styles.vazio}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={40} color={cores.primaria} />
-                  <Text style={styles.vazioTitulo}>Como posso ajudar?</Text>
+                  <Text style={styles.vazioEmoji}>🤖</Text>
+                  <Text style={styles.vazioTitulo}>Oi! Eu sou a Cluby</Text>
                   <Text style={styles.vazioTexto}>
-                    Pergunte sobre rotinas de frente de caixa, fechamento, troco,
-                    cancelamentos, direitos do consumidor e mais.
+                    Sua assistente da frente de caixa. Pergunte sobre fechamento,
+                    troco, cancelamentos, códigos de erro da maquineta, direitos
+                    do consumidor e muito mais!
                   </Text>
                 </View>
               ) : (
-                mensagens.map((m) => (
-                  <View
-                    key={m.id}
-                    style={[
-                      styles.bolha,
-                      m.papel === 'user' ? styles.bolhaUsuario : styles.bolhaIA,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.bolhaTexto,
-                        m.papel === 'user' && styles.bolhaTextoUsuario,
-                      ]}
-                    >
-                      {m.conteudo}
-                    </Text>
-                  </View>
-                ))
+                mensagens.map((m) =>
+                  m.papel === 'user' ? (
+                    <View key={m.id} style={styles.linhaUsuario}>
+                      <View style={[styles.bolha, styles.bolhaUsuario]}>
+                        <Text
+                          style={[styles.bolhaTexto, styles.bolhaTextoUsuario]}
+                        >
+                          {m.conteudo}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <View key={m.id} style={styles.linhaIA}>
+                      <View style={styles.avatar}>
+                        <Text style={styles.avatarEmoji}>🤖</Text>
+                      </View>
+                      <View style={[styles.bolha, styles.bolhaIA]}>
+                        <MarkdownTexto
+                          conteudo={
+                            animando && animando.id === m.id
+                              ? animando.full.slice(0, animando.len)
+                              : m.conteudo
+                          }
+                        />
+                      </View>
+                    </View>
+                  ),
+                )
               )}
-              {enviando && (
-                <View style={[styles.bolha, styles.bolhaIA]}>
-                  <ActivityIndicator color={cores.primaria} />
+              {enviando && !animando && (
+                <View style={styles.linhaIA}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarEmoji}>🤖</Text>
+                  </View>
+                  <View style={[styles.bolha, styles.bolhaIA]}>
+                    <Text style={styles.digitando}>Cluby está digitando…</Text>
+                  </View>
                 </View>
               )}
             </ScrollView>
@@ -290,6 +358,9 @@ const styles = StyleSheet.create({
   fabPressionado: {
     opacity: 0.85,
   },
+  fabEmoji: {
+    fontSize: 28,
+  },
   fundoModal: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
@@ -316,6 +387,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: espacamento.sm,
+  },
+  avatarCabecalho: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: cores.primariaClara,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarEmojiGrande: {
+    fontSize: 20,
+  },
+  subtitulo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
   },
   cabecalhoAcoes: {
     flexDirection: 'row',
@@ -348,6 +434,9 @@ const styles = StyleSheet.create({
     paddingTop: espacamento.xxl,
     gap: espacamento.sm,
   },
+  vazioEmoji: {
+    fontSize: 44,
+  },
   vazioTitulo: {
     ...tipografia.subtitulo,
     color: cores.texto,
@@ -363,17 +452,42 @@ const styles = StyleSheet.create({
     paddingVertical: espacamento.sm,
     borderRadius: raio.lg,
   },
+  linhaUsuario: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  linhaIA: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: espacamento.sm,
+  },
+  avatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: cores.primariaClara,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  avatarEmoji: {
+    fontSize: 16,
+  },
   bolhaUsuario: {
-    alignSelf: 'flex-end',
     backgroundColor: cores.primaria,
     borderBottomRightRadius: raio.sm,
   },
   bolhaIA: {
-    alignSelf: 'flex-start',
+    flexShrink: 1,
     backgroundColor: cores.superficie,
     borderBottomLeftRadius: raio.sm,
     borderWidth: 1,
     borderColor: cores.borda,
+  },
+  digitando: {
+    ...tipografia.corpo,
+    color: cores.textoSecundario,
+    fontStyle: 'italic',
   },
   bolhaTexto: {
     ...tipografia.corpo,
