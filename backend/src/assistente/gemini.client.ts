@@ -131,16 +131,20 @@ export class GeminiClient {
         return this.extrairTexto(dados);
       }
 
-      // 429 (limite) e 503 (sobrecarga) podem ser temporários: reintenta.
-      // Guarda o motivo detalhado da API para diagnóstico (qual cota).
+      // 429 (limite) e 503 (sobrecarga) podem ser temporários: reintenta,
+      // respeitando o tempo de espera sugerido pela API (campo retryDelay).
       if (resposta.status === 429 || resposta.status === 503) {
         const corpo = await resposta.text().catch(() => '');
         ultimoErro = this.descreverErro(resposta.status, corpo);
+        const espera = Math.min(
+          this.tempoDeEsperaSugerido(corpo) ?? this.atraso(tentativa),
+          12000,
+        );
         this.logger.warn(
-          `Gemini ${resposta.status} (tentativa ${tentativa}/${MAX_TENTATIVAS}) — ${ultimoErro}`,
+          `Gemini ${resposta.status} (tentativa ${tentativa}/${MAX_TENTATIVAS}); aguardando ${espera}ms — ${ultimoErro}`,
         );
         if (tentativa < MAX_TENTATIVAS) {
-          await dormir(this.atraso(tentativa));
+          await dormir(espera);
         }
         continue;
       }
@@ -162,6 +166,21 @@ export class GeminiClient {
   /** Backoff exponencial simples: ~1s, 2s, 4s, 8s. */
   private atraso(tentativa: number): number {
     return 2 ** (tentativa - 1) * 1000;
+  }
+
+  /**
+   * Extrai do corpo de erro 429 o tempo de espera sugerido pela API (em ms),
+   * seja do campo estruturado RetryInfo (`retryDelay: "10s"`) ou do texto
+   * ("Please retry in 10.15s"). Retorna undefined se não houver.
+   */
+  private tempoDeEsperaSugerido(corpo: string): number | undefined {
+    const segundos = corpo.match(
+      /retry(?:Delay)?["':\s]*~?\s*(\d+(?:\.\d+)?)\s*s/i,
+    );
+    if (segundos) {
+      return Math.ceil(parseFloat(segundos[1]) * 1000);
+    }
+    return undefined;
   }
 
   /**
