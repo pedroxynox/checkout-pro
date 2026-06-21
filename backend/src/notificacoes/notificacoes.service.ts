@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { Notificacao, Usuario } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificacaoEventos } from './notificacoes.eventos';
 import {
   ConteudoNotificacao,
   UsuarioRef,
@@ -21,7 +22,12 @@ import {
  */
 @Injectable()
 export class NotificacoesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Opcional: nos testes o serviço é instanciado só com o Prisma. Em
+    // produção, o DI injeta o barramento para a entrega em tempo real.
+    @Optional() private readonly eventos?: NotificacaoEventos,
+  ) {}
 
   /**
    * Envia uma notificação a um conjunto de destinatários (Req 7.3.1, 7.3.2):
@@ -35,17 +41,24 @@ export class NotificacoesService {
     const entregas = montarEntregas(destinatarios, conteudo);
     const criadas: Notificacao[] = [];
     for (const e of entregas) {
-      criadas.push(
-        await this.prisma.notificacao.create({
-          data: {
-            usuarioId: e.usuarioId,
-            titulo: e.titulo,
-            mensagem: e.mensagem,
-            canalPush: e.canalPush,
-            canalInApp: e.canalInApp,
-          },
-        }),
-      );
+      const criada = await this.prisma.notificacao.create({
+        data: {
+          usuarioId: e.usuarioId,
+          titulo: e.titulo,
+          mensagem: e.mensagem,
+          canalPush: e.canalPush,
+          canalInApp: e.canalInApp,
+        },
+      });
+      criadas.push(criada);
+      // Entrega em tempo real (WebSocket) ao destinatário, se conectado.
+      this.eventos?.publicar({
+        usuarioId: criada.usuarioId,
+        id: criada.id,
+        titulo: criada.titulo,
+        mensagem: criada.mensagem,
+        criadaEm: criada.criadaEm,
+      });
     }
     return criadas;
   }

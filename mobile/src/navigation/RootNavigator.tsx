@@ -11,7 +11,8 @@ import {
 import React from 'react';
 import { View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
-import { AssistenteFlutuante, Carregando } from '../components';
+import { AssistenteFlutuante, Carregando, ToastNotificacao } from '../components';
+import { NotificacoesProvider } from '../notificacoes/NotificacoesContext';
 import { LoginScreen } from '../screens/LoginScreen';
 import { cores } from '../theme';
 import { AppNavigator } from './AppNavigator';
@@ -42,10 +43,11 @@ export function RootNavigator(): React.ReactElement {
   return (
     <NavigationContainer theme={temaNavegacao}>
       {autenticado ? (
-        <>
+        <NotificacoesProvider>
           <AppNavigator />
           <AssistenteFlutuante />
-        </>
+          <ToastNotificacao />
+        </NotificacoesProvider>
       ) : (
         <LoginScreen />
       )}

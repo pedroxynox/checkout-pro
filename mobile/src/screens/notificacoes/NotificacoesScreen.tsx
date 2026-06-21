@@ -6,6 +6,7 @@
  * provedor); aqui exibimos o histórico consultável dentro do aplicativo.
  */
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { notificacoesService } from '../../api/services';
@@ -17,11 +18,32 @@ import {
   Tela,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
+import { useNotificacoes } from '../../notificacoes/NotificacoesContext';
 import { cores, espacamento, tipografia } from '../../theme';
 import { formatarDataHora } from '../../utils/formato';
 
 export function NotificacoesScreen(): React.ReactElement {
   const notificacoes = useRequisicao(() => notificacoesService.historico(), []);
+  const { zerar, ultima } = useNotificacoes();
+
+  // Ao abrir a tela, zera o contador de não lidas (badge) e recarrega o
+  // histórico para refletir o que chegou em tempo real.
+  useFocusEffect(
+    React.useCallback(() => {
+      zerar();
+      notificacoes.recarregar();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []),
+  );
+
+  // Atualiza a lista em tempo real quando uma nova notificação chega com a
+  // tela aberta.
+  React.useEffect(() => {
+    if (ultima) {
+      notificacoes.recarregar();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ultima]);
 
   return (
     <Tela aoAtualizar={notificacoes.recarregar} atualizando={notificacoes.atualizando}>

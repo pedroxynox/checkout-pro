@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../auth/AuthContext';
 import { AREAS } from '../navigation/areas';
+import { useNotificacoes } from '../notificacoes/NotificacoesContext';
 import { PropsTela } from '../navigation/types';
 import { cores, espacamento, raio, sombra, tipografia } from '../theme';
 
@@ -19,6 +20,7 @@ export function HomeScreen({
   navigation,
 }: PropsTela<'Home'>): React.ReactElement {
   const { usuario, perfil, podeAcessar, sair } = useAuth();
+  const { naoLidas } = useNotificacoes();
   const areasVisiveis = AREAS.filter((a) => podeAcessar(a.funcionalidade));
 
   // Nome a exibir: usa o nome do usuário (quando houver); senão, deriva do
@@ -80,6 +82,13 @@ export function HomeScreen({
               <View style={styles.iconeWrapper}>
                 <Ionicons name={area.icone} size={24} color={cores.primaria} />
               </View>
+              {area.rota === 'Notificacoes' && naoLidas > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeTexto}>
+                    {naoLidas > 99 ? '99+' : naoLidas}
+                  </Text>
+                </View>
+              )}
               <Text style={styles.cartaoTitulo}>{area.titulo}</Text>
               <Text style={styles.cartaoDescricao}>{area.descricao}</Text>
             </Pressable>
@@ -148,6 +157,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: espacamento.sm,
+  },
+  badge: {
+    position: 'absolute',
+    top: espacamento.md,
+    right: espacamento.md,
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 11,
+    backgroundColor: cores.primaria,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeTexto: {
+    color: cores.textoInverso,
+    fontSize: 12,
+    fontWeight: '800',
   },
   cartaoTitulo: {
     ...tipografia.rotulo,

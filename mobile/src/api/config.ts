@@ -15,6 +15,9 @@ export const API_BASE_URL: string =
 /** Namespace do WebSocket do painel de fiscais (ver FiscaisGateway). */
 export const WS_NAMESPACE_FISCAIS = '/fiscais';
 
+/** Namespace do WebSocket de notificações em tempo real (ver NotificacoesGateway). */
+export const WS_NAMESPACE_NOTIFICACOES = '/notificacoes';
+
 /**
  * Tempo máximo (ms) de espera por uma resposta HTTP antes de abortar.
  *
