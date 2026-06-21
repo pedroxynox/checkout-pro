@@ -116,6 +116,26 @@ export function FiscaisScreen({
 
   const definir = async (status: StatusFiscal) => {
     if (enviando) return;
+
+    const mensagensConfirmacao: Record<StatusFiscal, { titulo: string; corpo: string }> = {
+      DISPONIVEL: {
+        titulo: '🟢 Iniciar jornada',
+        corpo: 'Estás lista para a jornada de hoje? Seu tempo de trabalho começará a ser contado.',
+      },
+      INTERVALO: {
+        titulo: '☕ Ir para intervalo',
+        corpo: 'Deseja fazer uma pausa? Seu tempo de intervalo será registrado.',
+      },
+      FORA_EXPEDIENTE: {
+        titulo: '🔴 Encerrar expediente',
+        corpo: 'Deseja encerrar sua jornada de hoje? O registro será finalizado.',
+      },
+    };
+
+    const { titulo, corpo } = mensagensConfirmacao[status];
+    const ok = await confirmar(titulo, corpo, 'Confirmar');
+    if (!ok) return;
+
     setEnviando(status);
     try {
       const r = await fiscaisService.definirStatus(status);
