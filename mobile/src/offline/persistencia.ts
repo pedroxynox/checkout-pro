@@ -54,7 +54,7 @@ export class PersistenciaMemoria implements PersistenciaOffline {
 }
 
 /** Nome do arquivo do banco SQLite local. */
-export const NOME_BANCO = 'stokcenter-offline.db';
+export const NOME_BANCO = 'checkoutpro-offline.db';
 
 /**
  * Implementação SQLite (produção) via `expo-sqlite`. Usa duas tabelas:

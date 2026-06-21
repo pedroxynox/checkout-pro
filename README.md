@@ -131,7 +131,7 @@ EXPO_PUBLIC_API_URL=http://localhost:3000 npm run start
 
 | Variável | Obrigatória | Descrição |
 | --- | --- | --- |
-| `EXPO_PUBLIC_API_URL` | sim | URL base da API (ex.: `https://stok-center-api.onrender.com`) |
+| `EXPO_PUBLIC_API_URL` | sim | URL base da API (ex.: `https://checkout-pro-api.onrender.com`) |
 
 ## Scripts disponíveis
 
@@ -169,12 +169,12 @@ EXPO_PUBLIC_API_URL=http://localhost:3000 npm run start
 
 São três serviços no Render, todos com deploy automático ao dar push na `main`:
 
-1. **API (`stok-center-api`)** — Web Service, root directory `backend/`.
+1. **API (`checkout-pro-api`)** — Web Service, root directory `backend/`.
    - Build: `npm install && npm run build && npm run prisma:generate`
    - Start: `npm run start:prod`
    - Variáveis: `DATABASE_URL`, `JWT_SECRET`, `GEMINI_API_KEY`, etc.
    - Migrations: aplicar via `prisma migrate deploy` no banco de produção.
-2. **Web (`stok-center-web`)** — site estático gerado com:
+2. **Web (`checkout-pro-web`)** — site estático gerado com:
    `EXPO_PUBLIC_API_URL=<url-da-api> npx expo export --platform web --output-dir dist`
    (publish directory `dist`).
 3. **PostgreSQL** — banco gerenciado do Render (fornece o `DATABASE_URL`).

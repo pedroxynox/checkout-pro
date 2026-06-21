@@ -1,5 +1,5 @@
 {
-  "name": "@stok-center/mobile",
+  "name": "@checkout-pro/mobile",
   "version": "0.1.0",
   "private": true,
   "description": "App móvel React Native + Expo (TypeScript) do Check-out PRO — gestão inteligente de supermercado.",

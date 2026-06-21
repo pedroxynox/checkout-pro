@@ -21,7 +21,7 @@ databases:
 
 services:
   - type: web
-    name: stok-center-api
+    name: checkout-pro-api
     runtime: node
     plan: free
     rootDir: backend
@@ -41,13 +41,18 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
-        value: 8h
+        value: 30d
       - key: HORARIO_FIM_DO_DIA
-        value: "18:00"
+        value: "22:50"
       # Senha inicial dos usuários criados pelo seed (gerentes e fiscais).
       # Troque este valor pelo desejado antes do primeiro deploy, se preferir.
       - key: SENHA_INICIAL
-        value: StokCenter@2025
+        value: CheckoutPro@2025
+      # Assistente de IA (Cluby): a chave é secreta — defina no painel do serviço.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
 
 
   # Site estático: versão WEB do app (Expo Web / React Native Web).
@@ -56,7 +61,7 @@ services:
   # Atualiza automaticamente a cada push na branch conectada.
   - type: web
     runtime: static
-    name: stok-center-web
+    name: checkout-pro-web
     rootDir: mobile
     buildCommand: npm install --include=dev && npx expo export --platform web --output-dir dist
     staticPublishPath: ./dist
@@ -68,4 +73,4 @@ services:
     envVars:
       # URL pública da API (mesmo backend do app móvel).
       - key: EXPO_PUBLIC_API_URL
-        value: https://stok-center-api.onrender.com
+        value: https://checkout-pro-api.onrender.com

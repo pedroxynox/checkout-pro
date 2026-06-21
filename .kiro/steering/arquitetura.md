@@ -8,8 +8,8 @@ App de gestão de frente de caixa de supermercado. Monorepo:
 - `mobile/` — React Native + Expo (roda como app Android e como **web** estática).
 
 Deploy (Render):
-- API: `https://stok-center-api.onrender.com`
-- Web: `https://stok-center-web.onrender.com`
+- API: `https://checkout-pro-api.onrender.com`
+- Web: `https://checkout-pro-web.onrender.com`
 - O `mobile` usa `EXPO_PUBLIC_API_URL` para falar com a API.
 
 ## Autenticação e perfis

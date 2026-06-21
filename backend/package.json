@@ -1,5 +1,5 @@
 {
-  "name": "@stok-center/backend",
+  "name": "@checkout-pro/backend",
   "version": "0.1.0",
   "description": "Backend NestJS do Check-out PRO — gestão inteligente de supermercado.",
   "private": true,

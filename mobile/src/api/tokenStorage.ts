@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const CHAVE_TOKEN = 'stokcenter.auth.token';
+const CHAVE_TOKEN = 'checkoutpro.auth.token';
 
 const usaSecureStore = Platform.OS !== 'web';
 

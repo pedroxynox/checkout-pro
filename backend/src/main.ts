@@ -14,7 +14,7 @@ async function bootstrap(): Promise<void> {
   app.useStaticAssets(join(__dirname, '..', 'assets'), { prefix: '/assets/' });
 
   // Habilita CORS para que a versão WEB (rodando em outro domínio, ex.:
-  // stok-center-web.onrender.com) possa chamar a API do navegador. A
+  // checkout-pro-web.onrender.com) possa chamar a API do navegador. A
   // autenticação é via token Bearer (sem cookies), então refletir a origem
   // da requisição é suficiente. No app nativo (APK) o CORS não se aplica.
   app.enableCors({

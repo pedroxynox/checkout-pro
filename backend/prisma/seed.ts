@@ -24,7 +24,7 @@ const prisma = new PrismaClient();
 // Importante: o hash é definido somente na CRIAÇÃO do usuário (upsert.create).
 // Re-execuções do seed NÃO sobrescrevem a senha de usuários já existentes,
 // preservando a idempotência e qualquer senha alterada posteriormente.
-const SENHA_INICIAL = process.env.SENHA_INICIAL || 'StokCenter@2025';
+const SENHA_INICIAL = process.env.SENHA_INICIAL || 'CheckoutPro@2025';
 let senhaHashInicial = '';
 
 /**

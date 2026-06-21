@@ -43,7 +43,7 @@ export class EnvironmentVariables {
     message: 'HORARIO_FIM_DO_DIA deve estar no formato HH:mm',
   })
   @IsOptional()
-  HORARIO_FIM_DO_DIA = '18:00';
+  HORARIO_FIM_DO_DIA = '22:50';
 
   // Segredo de assinatura dos tokens JWT (Modulo_Acessos). Opcional em
   // desenvolvimento; obrigatório definir em produção.
