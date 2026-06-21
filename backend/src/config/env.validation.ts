@@ -63,11 +63,12 @@ export class EnvironmentVariables {
   @IsOptional()
   GEMINI_API_KEY?: string;
 
-  // Modelo Gemini usado pelo assistente. Padrão: gemini-2.0-flash (rápido e
-  // com camada gratuita generosa).
+  // Modelo Gemini usado pelo assistente. Padrão: gemini-2.5-flash (rápido e
+  // com camada gratuita ativa; o gemini-2.0-flash foi descontinuado em
+  // jun/2026 e ficou sem cota gratuita).
   @IsString()
   @IsOptional()
-  GEMINI_MODEL = 'gemini-2.0-flash';
+  GEMINI_MODEL = 'gemini-2.5-flash';
 }
 
 /**

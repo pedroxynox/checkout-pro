@@ -91,7 +91,7 @@ export class GeminiClient {
       throw new GeminiNaoConfiguradoError();
     }
     const modelo =
-      this.config.get<string>('GEMINI_MODEL') ?? 'gemini-2.0-flash';
+      this.config.get<string>('GEMINI_MODEL') ?? 'gemini-2.5-flash';
     const url = `${URL_BASE}/${modelo}:generateContent?key=${chave}`;
 
     const corpo = {
