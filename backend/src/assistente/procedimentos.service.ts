@@ -12,6 +12,14 @@ export interface ProcedimentoResposta {
   blocos: BlocoProcedimento[];
 }
 
+/**
+ * Liga/desliga os procedimentos guiados (normativas) sem apagá-los. Quando
+ * `false`, a Cluby ignora as normativas e responde apenas com seu conhecimento
+ * geral de gestão de supermercados. Os dados continuam em
+ * `procedimentos.data.ts` — basta voltar para `true` para reativar.
+ */
+const PROCEDIMENTOS_ATIVOS: boolean = false;
+
 function semAcento(s: string): string {
   return s
     .normalize('NFD')
@@ -29,17 +37,20 @@ function semAcento(s: string): string {
  */
 @Injectable()
 export class ProcedimentosService {
-  /** Há procedimentos carregados? */
+  /** Há procedimentos carregados E ativos? */
   get temProcedimentos(): boolean {
-    return PROCEDIMENTOS.length > 0;
+    return PROCEDIMENTOS_ATIVOS && PROCEDIMENTOS.length > 0;
   }
 
   /**
    * Encontra o procedimento que melhor corresponde à pergunta (por
    * palavras-chave e palavras do título). Retorna undefined se nada bater com
-   * confiança suficiente.
+   * confiança suficiente — ou se os procedimentos estiverem desativados.
    */
   encontrar(pergunta: string): ProcedimentoGuiado | undefined {
+    if (!PROCEDIMENTOS_ATIVOS) {
+      return undefined;
+    }
     const q = semAcento(pergunta);
     let melhor: ProcedimentoGuiado | undefined;
     let melhorPontos = 0;
