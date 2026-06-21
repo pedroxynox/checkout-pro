@@ -102,7 +102,12 @@ export class GeminiClient {
       })),
       generationConfig: {
         temperature: 0.4,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 4096,
+        // Os modelos gemini-2.5-* "pensam" antes de responder, e esse
+        // raciocínio consome o orçamento de saída — podendo truncar a resposta
+        // no meio. Desativamos o thinking (não é necessário aqui) e ampliamos o
+        // limite para a Cluby completar respostas longas (passo a passo).
+        thinkingConfig: { thinkingBudget: 0 },
       },
     };
 
