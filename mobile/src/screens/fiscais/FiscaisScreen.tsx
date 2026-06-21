@@ -222,6 +222,7 @@ export function FiscaisScreen({
     if (!ok) return;
     try {
       await fiscaisService.informarFalta();
+      setMeu((prev) => (prev ? { ...prev, faltaHoje: true } : prev));
       notificar('Falta registrada', 'Os gestores foram avisados.');
     } catch (e) {
       notificar(
@@ -254,54 +255,75 @@ export function FiscaisScreen({
         <Cartao>
           <View style={styles.linhaTopo}>
             <Text style={styles.titulo}>Minha jornada</Text>
-            <View style={[styles.badge, { backgroundColor: corStatus(meu.status) }]}>
-              <Text style={styles.badgeTexto}>
-                {ROTULO_STATUS_FISCAL[meu.status]}
+            {meu.faltaHoje ? (
+              <View style={[styles.badge, { backgroundColor: cores.vermelho }]}>  
+                <Text style={styles.badgeTexto}>Falta informada</Text>
+              </View>
+            ) : (
+              <View style={[styles.badge, { backgroundColor: corStatus(meu.status) }]}>
+                <Text style={styles.badgeTexto}>
+                  {ROTULO_STATUS_FISCAL[meu.status]}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Se marcou falta: aviso e sem botões de status */}
+          {meu.faltaHoje ? (
+            <View style={styles.avisoFalta}>
+              <Ionicons name="information-circle" size={20} color={cores.vermelho} />
+              <Text style={styles.avisoFaltaTexto}>
+                Você informou falta hoje. Não é possível registrar ponto.
               </Text>
             </View>
-          </View>
+          ) : (
+            <>
+              <View style={styles.acoes}>
+                {ACOES.map((a) => {
+                  const ativo = meu.status === a.status;
+                  return (
+                    <Pressable
+                      key={a.status}
+                      onPress={() => void definir(a.status)}
+                      disabled={enviando !== null}
+                      style={[styles.botaoAcao, ativo && styles.botaoAcaoAtivo]}
+                    >
+                      {enviando === a.status ? (
+                        <ActivityIndicator color={ativo ? cores.textoInverso : cores.primaria} />
+                      ) : (
+                        <>
+                          <Ionicons
+                            name={a.icone}
+                            size={22}
+                            color={ativo ? cores.textoInverso : cores.primaria}
+                          />
+                          <Text
+                            style={[styles.botaoAcaoTexto, ativo && styles.botaoAcaoTextoAtivo]}
+                          >
+                            {a.rotulo}
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-          <View style={styles.acoes}>
-            {ACOES.map((a) => {
-              const ativo = meu.status === a.status;
-              return (
-                <Pressable
-                  key={a.status}
-                  onPress={() => void definir(a.status)}
-                  disabled={enviando !== null}
-                  style={[styles.botaoAcao, ativo && styles.botaoAcaoAtivo]}
-                >
-                  {enviando === a.status ? (
-                    <ActivityIndicator color={ativo ? cores.textoInverso : cores.primaria} />
-                  ) : (
-                    <>
-                      <Ionicons
-                        name={a.icone}
-                        size={22}
-                        color={ativo ? cores.textoInverso : cores.primaria}
-                      />
-                      <Text
-                        style={[styles.botaoAcaoTexto, ativo && styles.botaoAcaoTextoAtivo]}
-                      >
-                        {a.rotulo}
-                      </Text>
-                    </>
-                  )}
+              <View style={styles.tempos}>
+                <Tempo rotulo="Trabalhando" valor={formatarDuracao(meu.tempoTrabalhandoMs)} />
+                <Tempo rotulo="Intervalo" valor={formatarDuracao(meu.tempoIntervaloMs)} />
+                <Tempo rotulo="Carga do dia" valor={formatarDuracao(meu.cargaHorariaMs)} />
+              </View>
+
+              {/* Botão de falta: apenas se NÃO iniciou a jornada (status FORA_EXPEDIENTE e sem tempo) */}
+              {meu.status === 'FORA_EXPEDIENTE' && meu.tempoTrabalhandoMs === 0 && meu.tempoIntervaloMs === 0 && (
+                <Pressable onPress={() => void informarFalta()} style={styles.linkFalta}>
+                  <Ionicons name="alert-circle-outline" size={18} color={cores.primaria} />
+                  <Text style={styles.linkFaltaTexto}>Informar falta de hoje</Text>
                 </Pressable>
-              );
-            })}
-          </View>
-
-          <View style={styles.tempos}>
-            <Tempo rotulo="Trabalhando" valor={formatarDuracao(meu.tempoTrabalhandoMs)} />
-            <Tempo rotulo="Intervalo" valor={formatarDuracao(meu.tempoIntervaloMs)} />
-            <Tempo rotulo="Carga do dia" valor={formatarDuracao(meu.cargaHorariaMs)} />
-          </View>
-
-          <Pressable onPress={() => void informarFalta()} style={styles.linkFalta}>
-            <Ionicons name="alert-circle-outline" size={18} color={cores.primaria} />
-            <Text style={styles.linkFaltaTexto}>Informar falta de hoje</Text>
-          </Pressable>
+              )}
+            </>
+          )}
         </Cartao>
       )}
 
@@ -455,6 +477,20 @@ const styles = StyleSheet.create({
   linkFaltaTexto: {
     ...tipografia.rotulo,
     color: cores.primaria,
+  },
+  avisoFalta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    marginTop: espacamento.md,
+    backgroundColor: cores.vermelhoFundo,
+    borderRadius: raio.md,
+    padding: espacamento.md,
+  },
+  avisoFaltaTexto: {
+    ...tipografia.rotulo,
+    color: cores.vermelho,
+    flex: 1,
   },
   linkJornada: {
     flexDirection: 'row',

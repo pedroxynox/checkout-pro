@@ -273,6 +273,7 @@ export interface MeuResumoFiscal extends JornadaTempos {
   primeiroNome: string;
   status: StatusFiscal;
   em: string;
+  faltaHoje: boolean;
 }
 
 /** Item do log de jornada do dia (tempos por fiscal) — uso gerencial. */

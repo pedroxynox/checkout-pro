@@ -18,3 +18,19 @@ export class FiscalNaoEncontradoError extends Error {
     this.name = 'FiscalNaoEncontradoError';
   }
 }
+
+/** O fiscal já possui registros de ponto hoje — não pode marcar falta. */
+export class JaIniciouJornadaError extends Error {
+  constructor() {
+    super('Você já iniciou a jornada hoje. Não é possível informar falta.');
+    this.name = 'JaIniciouJornadaError';
+  }
+}
+
+/** O fiscal já marcou falta hoje — não pode registrar ponto. */
+export class FaltaRegistradaError extends Error {
+  constructor() {
+    super('Você já informou falta hoje. Não é possível registrar ponto.');
+    this.name = 'FaltaRegistradaError';
+  }
+}

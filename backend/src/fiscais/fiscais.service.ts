@@ -13,7 +13,7 @@ import {
   primeiroNome,
   statusAtual,
 } from './fiscais.domain';
-import { FiscalNaoEncontradoError } from './fiscais.errors';
+import { FiscalNaoEncontradoError, FaltaRegistradaError, JaIniciouJornadaError } from './fiscais.errors';
 import { FiscalStatusEventos } from './fiscais.eventos';
 
 /** Item do painel em tempo real: um fiscal e seu status atual. */
@@ -72,7 +72,7 @@ export class FiscaisService {
    * Resumo do próprio fiscal (status atual + jornada do dia). Retorna null se o
    * usuário autenticado não for um fiscal (ex.: gerente apenas visualizando).
    */
-  async meuResumo(usuarioId: string): Promise<(ResumoStatus & Jornada) | null> {
+  async meuResumo(usuarioId: string): Promise<(ResumoStatus & Jornada & { faltaHoje: boolean }) | null> {
     const fiscal = await this.prisma.fiscal.findFirst({ where: { usuarioId } });
     if (!fiscal) {
       return null;
@@ -80,11 +80,15 @@ export class FiscaisService {
     const agora = new Date();
     const registros = await this.registrosDoDia(fiscal.id, agora);
     const ultimo = registros[registros.length - 1] ?? null;
+    const faltaHoje = !!(await this.prisma.ausencia.findUnique({
+      where: { pessoaId_data: { pessoaId: fiscal.id, data: inicioDoDia(agora) } },
+    }));
     return {
       fiscalId: fiscal.id,
       primeiroNome: primeiroNome(fiscal.nome),
       status: statusAtual(registros) ?? 'FORA_EXPEDIENTE',
       em: (ultimo?.em ?? agora).toISOString(),
+      faltaHoje,
       ...calcularJornada(registros, agora),
     };
   }
@@ -110,6 +114,14 @@ export class FiscaisService {
     status: StatusFiscal,
     em: Date = new Date(),
   ): Promise<ResumoStatus & Jornada> {
+    // Validar: si ya marcó falta hoy, no puede registrar ponto.
+    const faltaHoje = await this.prisma.ausencia.findUnique({
+      where: { pessoaId_data: { pessoaId: fiscalId, data: inicioDoDia(em) } },
+    });
+    if (faltaHoje) {
+      throw new FaltaRegistradaError();
+    }
+
     const fiscal = await this.prisma.fiscal.findUnique({
       where: { id: fiscalId },
     });
@@ -196,6 +208,15 @@ export class FiscaisService {
     dia: Date = new Date(),
   ): Promise<void> {
     const data = inicioDoDia(dia);
+
+    // Validar: si ya tiene registros de ponto hoy, no puede marcar falta.
+    const registrosHoje = await this.prisma.registroPontoFiscal.findFirst({
+      where: { fiscalId, data },
+    });
+    if (registrosHoje) {
+      throw new JaIniciouJornadaError();
+    }
+
     await this.prisma.ausencia.upsert({
       where: { pessoaId_data: { pessoaId: fiscalId, data } },
       update: {},
