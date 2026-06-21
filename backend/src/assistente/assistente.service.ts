@@ -3,6 +3,10 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { montarInstrucaoSistema } from './assistente.prompt';
 import { GeminiClient, MensagemGemini, PapelGemini } from './gemini.client';
+import {
+  ProcedimentosService,
+  ProcedimentoResposta,
+} from './procedimentos.service';
 
 /** Uma mensagem da conversa exposta ao app. */
 export interface MensagemConversa {
@@ -10,6 +14,8 @@ export interface MensagemConversa {
   papel: PapelGemini;
   conteudo: string;
   criadaEm: Date;
+  /** Passo a passo ilustrado, quando a resposta corresponde a um procedimento. */
+  procedimento?: ProcedimentoResposta;
 }
 
 /** Identidade mínima do usuário para personalizar o assistente. */
@@ -41,6 +47,7 @@ export class AssistenteService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly gemini: GeminiClient,
+    private readonly procedimentos: ProcedimentosService,
   ) {}
 
   /** Data-limite de retenção (mensagens anteriores não são consideradas). */
@@ -81,13 +88,18 @@ export class AssistenteService {
     const instrucao = montarInstrucaoSistema({
       nomeUsuario: usuario.nome,
       perfil: usuario.perfil,
+      procedimentos: this.procedimentos.temProcedimentos
+        ? this.procedimentos.catalogo()
+        : undefined,
     });
     const mensagens: MensagemGemini[] = [
       ...recente.map((m) => ({ papel: m.papel, texto: m.conteudo })),
       { papel: 'user' as PapelGemini, texto },
     ];
 
-    const resposta = await this.gemini.gerarResposta(instrucao, mensagens);
+    const respostaBruta = await this.gemini.gerarResposta(instrucao, mensagens);
+    const { texto: resposta, procedimento } =
+      this.extrairProcedimento(respostaBruta);
 
     // Persiste pergunta e resposta apenas após sucesso da geração.
     await this.prisma.mensagemAssistente.create({
@@ -102,6 +114,33 @@ export class AssistenteService {
       papel: 'model',
       conteudo: salva.conteudo,
       criadaEm: salva.criadaEm,
+      procedimento,
+    };
+  }
+
+  /**
+   * Se a resposta começa com a tag [PROC:<id>], remove a tag e anexa o
+   * procedimento correspondente (passo a passo com fotos).
+   */
+  private extrairProcedimento(bruto: string): {
+    texto: string;
+    procedimento?: ProcedimentoResposta;
+  } {
+    const m = bruto.match(/^\s*\[PROC:\s*([a-zA-Z0-9_]+)\s*\]\s*/);
+    if (!m) {
+      return { texto: bruto.trim() };
+    }
+    const procedimento = this.procedimentos.buscar(m[1]);
+    const texto = bruto.slice(m[0].length).trim();
+    if (!procedimento) {
+      // Tag inválida: devolve o texto sem a tag, sem procedimento.
+      return { texto: texto || bruto.trim() };
+    }
+    return {
+      texto:
+        texto ||
+        `Claro! Aqui está o passo a passo de "${procedimento.titulo}":`,
+      procedimento,
     };
   }
 

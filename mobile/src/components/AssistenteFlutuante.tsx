@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -28,6 +29,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError } from '../api/client';
+import { API_BASE_URL } from '../api/config';
 import { assistenteService } from '../api/services';
 import { MensagemAssistente } from '../api/types';
 import { confirmar } from '../utils/dialogos';
@@ -38,6 +40,11 @@ let contadorLocal = 0;
 function idLocal(): string {
   contadorLocal += 1;
   return `local-${Date.now()}-${contadorLocal}`;
+}
+
+/** Monta a URL absoluta de uma imagem de procedimento (servida pela API). */
+function urlImagem(caminho: string): string {
+  return `${API_BASE_URL.replace(/\/$/, '')}${caminho}`;
 }
 
 export function AssistenteFlutuante(): React.ReactElement {
@@ -149,7 +156,11 @@ export function AssistenteFlutuante(): React.ReactElement {
     try {
       const resposta = await assistenteService.enviar(texto);
       setMensagens((m) => [...m, resposta]);
-      animarResposta(resposta);
+      // Procedimentos (passo a passo com fotos) aparecem na hora; o resto usa
+      // o efeito de digitação.
+      if (!resposta.procedimento) {
+        animarResposta(resposta);
+      }
     } catch (erro) {
       const mensagemErro =
         erro instanceof ApiError
@@ -285,7 +296,13 @@ export function AssistenteFlutuante(): React.ReactElement {
                       <View style={styles.avatar}>
                         <Text style={styles.avatarEmoji}>🤖</Text>
                       </View>
-                      <View style={[styles.bolha, styles.bolhaIA]}>
+                      <View
+                        style={[
+                          styles.bolha,
+                          styles.bolhaIA,
+                          m.procedimento && styles.bolhaProc,
+                        ]}
+                      >
                         <MarkdownTexto
                           conteudo={
                             animando && animando.id === m.id
@@ -293,6 +310,32 @@ export function AssistenteFlutuante(): React.ReactElement {
                               : m.conteudo
                           }
                         />
+                        {m.procedimento && (
+                          <View style={styles.proc}>
+                            <Text style={styles.procTitulo}>
+                              📋 {m.procedimento.titulo}
+                            </Text>
+                            {m.procedimento.blocos.map((b, i) =>
+                              b.tipo === 'imagem' && b.imagem ? (
+                                <Image
+                                  key={i}
+                                  source={{ uri: urlImagem(b.imagem) }}
+                                  style={[
+                                    styles.procImagem,
+                                    b.w && b.h
+                                      ? { aspectRatio: b.w / b.h }
+                                      : null,
+                                  ]}
+                                  resizeMode="contain"
+                                />
+                              ) : (
+                                <Text key={i} style={styles.procTexto}>
+                                  {b.conteudo}
+                                </Text>
+                              ),
+                            )}
+                          </View>
+                        )}
                       </View>
                     </View>
                   ),
@@ -481,6 +524,34 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     backgroundColor: cores.superficie,
     borderBottomLeftRadius: raio.sm,
+    borderWidth: 1,
+    borderColor: cores.borda,
+  },
+  bolhaProc: {
+    maxWidth: '92%',
+  },
+  proc: {
+    marginTop: espacamento.sm,
+    paddingTop: espacamento.sm,
+    borderTopWidth: 1,
+    borderTopColor: cores.borda,
+    gap: espacamento.xs,
+  },
+  procTitulo: {
+    ...tipografia.rotulo,
+    color: cores.primaria,
+    marginBottom: espacamento.xs,
+  },
+  procTexto: {
+    ...tipografia.corpo,
+    color: cores.texto,
+    marginVertical: 2,
+  },
+  procImagem: {
+    width: '100%',
+    borderRadius: raio.md,
+    marginVertical: espacamento.xs,
+    backgroundColor: cores.fundo,
     borderWidth: 1,
     borderColor: cores.borda,
   },

@@ -354,9 +354,27 @@ export interface Notificacao {
 /** Papel de uma mensagem: 'user' (pergunta) ou 'model' (resposta da IA). */
 export type PapelAssistente = 'user' | 'model';
 
+/** Um bloco do passo a passo guiado: texto OU foto (da normativa). */
+export interface BlocoProcedimento {
+  tipo: 'texto' | 'imagem';
+  conteudo?: string;
+  /** Caminho relativo da imagem (prefixar com a URL base da API). */
+  imagem?: string;
+  w?: number;
+  h?: number;
+}
+
+/** Passo a passo ilustrado anexado a uma resposta da Cluby. */
+export interface ProcedimentoResposta {
+  id: string;
+  titulo: string;
+  blocos: BlocoProcedimento[];
+}
+
 export interface MensagemAssistente {
   id: string;
   papel: PapelAssistente;
   conteudo: string;
   criadaEm: string;
+  procedimento?: ProcedimentoResposta;
 }

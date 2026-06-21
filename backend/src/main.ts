@@ -1,10 +1,17 @@
+import { join } from 'path';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Serve as imagens dos procedimentos guiados (passo a passo das normativas)
+  // como arquivos estáticos em /assets. Ficam versionadas no repositório
+  // (backend/assets), portanto persistem entre os deploys do Render.
+  app.useStaticAssets(join(__dirname, '..', 'assets'), { prefix: '/assets/' });
 
   // Habilita CORS para que a versão WEB (rodando em outro domínio, ex.:
   // stok-center-web.onrender.com) possa chamar a API do navegador. A

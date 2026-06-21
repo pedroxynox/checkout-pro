@@ -14,6 +14,12 @@ export interface OpcoesPrompt {
   /** Perfil do usuário (GERENTE, FISCAL, etc.) para ajustar o tom. */
   perfil?: string | null;
   /**
+   * Catálogo de procedimentos guiados (passo a passo ilustrado) disponíveis,
+   * no formato "- <id>: <título> (palavras-chave)". Quando presente, a Cluby
+   * pode sinalizar com a tag [PROC:<id>] para exibir o passo a passo com fotos.
+   */
+  procedimentos?: string;
+  /**
    * Conteúdo dos documentos da loja a usar como contexto (manuais, rotinas,
    * políticas). Opcional — quando vazio, o assistente usa apenas seu
    * conhecimento geral.
@@ -23,7 +29,7 @@ export interface OpcoesPrompt {
 
 /** Monta a instrução de sistema do assistente em PT-BR. */
 export function montarInstrucaoSistema(opcoes: OpcoesPrompt = {}): string {
-  const { nomeUsuario, perfil, documentos } = opcoes;
+  const { nomeUsuario, perfil, procedimentos, documentos } = opcoes;
 
   const partes: string[] = [
     `Você é a "Cluby" 🤖, a super assistente virtual do aplicativo Check-out PRO da loja Stok Center — um supermercado completo.`,
@@ -60,6 +66,16 @@ export function montarInstrucaoSistema(opcoes: OpcoesPrompt = {}): string {
       `Sobre quem está falando com você agora:` +
         (nomeUsuario ? ` nome ${nomeUsuario}.` : '') +
         (perfil ? ` Perfil: ${perfil}.` : ''),
+    );
+  }
+
+  if (procedimentos && procedimentos.trim().length > 0) {
+    partes.push(
+      ``,
+      `PROCEDIMENTOS OFICIAIS COM PASSO A PASSO ILUSTRADO (com fotos reais do manual da loja):`,
+      procedimentos.trim(),
+      ``,
+      `Se a pergunta do usuário corresponder a UM destes procedimentos, comece sua resposta com a tag [PROC:<id>] na PRIMEIRA linha (ex.: [PROC:devolucao_680]) e depois escreva só uma introdução curta (1–2 frases, ex.: "Claro! Aqui está o passo a passo:"). O passo a passo com as fotos será exibido automaticamente abaixo da sua mensagem — NÃO tente descrever as imagens nem reescrever todos os passos. Use a tag de no máximo UM procedimento, o mais relevante. Se a pergunta não corresponder a nenhum, responda normalmente, sem tag.`,
     );
   }
 
