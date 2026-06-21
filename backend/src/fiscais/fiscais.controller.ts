@@ -1,96 +1,75 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
-  Param,
   Post,
+  Query,
 } from '@nestjs/common';
-import { SessaoFiscal } from '@prisma/client';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
   UsuarioAtual,
   UsuarioAutenticado,
 } from '../common/decorators/usuario-atual.decorator';
-import { AlterarStatusDto } from './dto/fiscais.dto';
-import { FiscaisService } from './fiscais.service';
+import { DefinirStatusDto } from './dto/fiscais.dto';
+import {
+  FiscaisService,
+  ItemJornada,
+  ItemPainel,
+  ResumoStatus,
+} from './fiscais.service';
 
 /**
- * Controller do monitoramento de fiscais (Req 4.1, 4.2). A **visualização** do
- * painel/histórico é liberada por `@Funcionalidade('FISCAIS_STATUS')` (todos os
- * perfis com acesso à área). Já **alterar status / check-in / check-out** só é
- * permitido ao **próprio fiscal** (dono da sessão) ou ao **gerente
- * desenvolvedor** — nem o gerente comum nem o supervisor podem alterar o status
- * de um fiscal. A emissão em tempo real é feita pelo WebSocket Gateway.
+ * API do Modulo_Fiscais (controle de jornada).
+ *
+ * - Painel em tempo real: visível a quem acessa a área (FISCAIS_STATUS).
+ * - Ações do próprio fiscal (auto-identificado pelo login): definir status e
+ *   informar falta do dia.
+ * - Log de jornada (tempos): apenas gestores (FISCAIS_JORNADA).
  */
 @Controller('fiscais')
-@Funcionalidade('FISCAIS_STATUS')
 export class FiscaisController {
-  constructor(private readonly fiscaisService: FiscaisService) {}
+  constructor(private readonly service: FiscaisService) {}
 
-  /**
-   * Garante que quem altera o status é o próprio fiscal (dono) ou o gerente
-   * desenvolvedor; caso contrário, recusa.
-   */
-  private async exigirDonoOuDesenvolvedor(
-    fiscalId: string,
-    usuario: UsuarioAutenticado | undefined,
+  /** Painel de todos os fiscais com o status atual. */
+  @Get('painel')
+  @Funcionalidade('FISCAIS_STATUS')
+  painel(): Promise<ItemPainel[]> {
+    return this.service.painel();
+  }
+
+  /** Resumo do próprio fiscal (status + jornada); null se o usuário não for fiscal. */
+  @Get('eu')
+  meuResumo(@UsuarioAtual() usuario: UsuarioAutenticado) {
+    return this.service.meuResumo(usuario.sub);
+  }
+
+  /** O fiscal define o próprio status (Disponível / Intervalo / Fora de expediente). */
+  @Post('eu/status')
+  @HttpCode(HttpStatus.OK)
+  async definirMeuStatus(
+    @Body() dto: DefinirStatusDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<ResumoStatus> {
+    const fiscal = await this.service.meuFiscal(usuario.sub);
+    return this.service.definirStatus(fiscal.id, dto.status);
+  }
+
+  /** O fiscal informa a própria falta do dia atual. */
+  @Post('eu/falta')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async informarFalta(
+    @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<void> {
-    if (usuario?.perfil === 'GERENTE_DESENVOLVEDOR') {
-      return;
-    }
-    const dono = await this.fiscaisService.pertenceAoUsuario(
-      fiscalId,
-      usuario?.sub,
-    );
-    if (!dono) {
-      throw new ForbiddenException(
-        'Apenas o próprio fiscal pode alterar o seu status.',
-      );
-    }
+    const fiscal = await this.service.meuFiscal(usuario.sub);
+    await this.service.registrarFalta(fiscal.id);
   }
 
-  /** Altera o status atual de um fiscal (Req 4.1.1–4.1.3). */
-  @Post(':id/status')
-  @HttpCode(HttpStatus.OK)
-  async alterarStatus(
-    @Param('id') fiscalId: string,
-    @Body() dto: AlterarStatusDto,
-    @UsuarioAtual() usuario: UsuarioAutenticado,
-  ): Promise<SessaoFiscal> {
-    await this.exigirDonoOuDesenvolvedor(fiscalId, usuario);
-    return this.fiscaisService.alterarStatus(fiscalId, dto.status, new Date());
-  }
-
-  /** Realiza o check-in de um fiscal (Req 4.2.1, 4.2.3). */
-  @Post(':id/check-in')
-  @HttpCode(HttpStatus.OK)
-  async checkIn(
-    @Param('id') fiscalId: string,
-    @UsuarioAtual() usuario: UsuarioAutenticado,
-  ): Promise<SessaoFiscal> {
-    await this.exigirDonoOuDesenvolvedor(fiscalId, usuario);
-    return this.fiscaisService.checkIn(fiscalId, new Date());
-  }
-
-  /** Realiza o check-out de um fiscal (Req 4.2.2). */
-  @Post(':id/check-out')
-  @HttpCode(HttpStatus.OK)
-  async checkOut(
-    @Param('id') fiscalId: string,
-    @UsuarioAtual() usuario: UsuarioAutenticado,
-  ): Promise<SessaoFiscal> {
-    await this.exigirDonoOuDesenvolvedor(fiscalId, usuario);
-    return this.fiscaisService.checkOut(fiscalId, new Date());
-  }
-
-  /** Histórico de sessões (check-in/check-out) de um fiscal (Req 4.2.4). */
-  @Get(':id/sessoes')
-  async historicoSessoes(
-    @Param('id') fiscalId: string,
-  ): Promise<SessaoFiscal[]> {
-    return this.fiscaisService.historicoSessoes(fiscalId);
+  /** Log de jornada do dia (tempos por fiscal) — apenas gestores. */
+  @Get('jornada')
+  @Funcionalidade('FISCAIS_JORNADA')
+  jornada(@Query('data') data?: string): Promise<ItemJornada[]> {
+    return this.service.jornadaDoDia(data ? new Date(data) : new Date());
   }
 }

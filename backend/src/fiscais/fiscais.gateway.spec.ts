@@ -9,39 +9,26 @@ import { FiscalStatusEventos } from './fiscais.eventos';
 import { FiscaisService } from './fiscais.service';
 
 /**
- * Teste de integração do WebSocket Gateway do painel de fiscais (Tarefa 14.2,
- * Req 4.1.1–4.1.3). Sobe um servidor real, conecta um cliente Socket.IO ao
- * namespace `/fiscais` e valida que uma alteração de status via
- * `FiscaisService.alterarStatus` é propagada em tempo real ao cliente, com o
- * status atual e o instante em que foi definido.
+ * Teste de integração do WebSocket Gateway do painel de fiscais (Req 4.1.1–4.1.3).
+ * Sobe um servidor real, conecta um cliente ao namespace `/fiscais` e valida que
+ * `FiscaisService.definirStatus` propaga em tempo real o status atual do fiscal,
+ * com o primeiro nome e o instante da transição.
  */
 describe('FiscaisGateway (integração WebSocket)', () => {
   let app: INestApplication;
   let url: string;
   let fiscaisService: FiscaisService;
 
-  // Prisma falso: mantém uma sessão ativa e devolve a sessão atualizada.
   const definidoEm = new Date('2024-03-10T08:30:00.000Z');
   const prismaFake = {
-    sessaoFiscal: {
-      findFirst: jest.fn().mockResolvedValue({
-        id: 's1',
-        fiscalId: 'f1',
-        checkIn: new Date('2024-03-10T08:00:00.000Z'),
-        checkOut: null,
-        statusAtual: 'DISPONIVEL',
-        statusDefinidoEm: new Date('2024-03-10T08:00:00.000Z'),
-      }),
-      update: jest.fn().mockImplementation(({ data }) =>
-        Promise.resolve({
-          id: 's1',
-          fiscalId: 'f1',
-          checkIn: new Date('2024-03-10T08:00:00.000Z'),
-          checkOut: null,
-          statusAtual: data.statusAtual,
-          statusDefinidoEm: data.statusDefinidoEm,
-        }),
-      ),
+    fiscal: {
+      findUnique: jest
+        .fn()
+        .mockResolvedValue({ id: 'f1', nome: 'Karen Mendoza Barro' }),
+    },
+    registroPontoFiscal: {
+      findMany: jest.fn().mockResolvedValue([]),
+      create: jest.fn().mockResolvedValue({ id: 'r1' }),
     },
   };
 
@@ -83,13 +70,14 @@ describe('FiscaisGateway (integração WebSocket)', () => {
     });
   }
 
-  it('propaga a alteração de status a um cliente conectado', async () => {
+  it('propaga a mudança de status (com primeiro nome) ao cliente conectado', async () => {
     const cliente = await conectar();
     try {
       const recebido = new Promise<{
         fiscalId: string;
+        primeiroNome: string;
         status: string;
-        statusDefinidoEm: string;
+        em: string;
       }>((resolve, reject) => {
         const t = setTimeout(
           () => reject(new Error('timeout do evento')),
@@ -101,12 +89,13 @@ describe('FiscaisGateway (integração WebSocket)', () => {
         });
       });
 
-      await fiscaisService.alterarStatus('f1', 'EM_INTERVALO', definidoEm);
+      await fiscaisService.definirStatus('f1', 'INTERVALO', definidoEm);
 
       const evento = await recebido;
       expect(evento.fiscalId).toBe('f1');
-      expect(evento.status).toBe('EM_INTERVALO');
-      expect(evento.statusDefinidoEm).toBe(definidoEm.toISOString());
+      expect(evento.status).toBe('INTERVALO');
+      expect(evento.primeiroNome).toBe('Karen');
+      expect(evento.em).toBe(definidoEm.toISOString());
     } finally {
       cliente.close();
     }
@@ -130,11 +119,11 @@ describe('FiscaisGateway (integração WebSocket)', () => {
       const p1 = aguardar(c1);
       const p2 = aguardar(c2);
 
-      await fiscaisService.alterarStatus('f1', 'EM_ATENDIMENTO', definidoEm);
+      await fiscaisService.definirStatus('f1', 'FORA_EXPEDIENTE', definidoEm);
 
       const [e1, e2] = await Promise.all([p1, p2]);
-      expect(e1.status).toBe('EM_ATENDIMENTO');
-      expect(e2.status).toBe('EM_ATENDIMENTO');
+      expect(e1.status).toBe('FORA_EXPEDIENTE');
+      expect(e2.status).toBe('FORA_EXPEDIENTE');
     } finally {
       c1.close();
       c2.close();

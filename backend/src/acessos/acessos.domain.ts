@@ -48,6 +48,8 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
   'OPERADORES_CRUD',
   'INSUMOS_GERENCIAR',
   'FECHAMENTO',
+  // Log de jornada dos fiscais (horas trabalhadas e intervalos).
+  'FISCAIS_JORNADA',
 ]);
 
 /**
@@ -95,6 +97,8 @@ export const FUNCIONALIDADES_GERENTE: readonly string[] = Object.freeze([
   'CHECKLIST',
   'OPERADORES_AUSENCIAS',
   'FISCAIS_STATUS',
+  // Log de jornada dos fiscais (horas trabalhadas e intervalos).
+  'FISCAIS_JORNADA',
 ]);
 
 const FUNCIONALIDADES_GERENTE_SET = new Set<string>(FUNCIONALIDADES_GERENTE);

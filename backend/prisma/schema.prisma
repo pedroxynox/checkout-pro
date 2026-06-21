@@ -66,8 +66,8 @@ enum TipoChecklist {
 
 enum StatusFiscal {
   DISPONIVEL
-  EM_INTERVALO
-  EM_ATENDIMENTO
+  INTERVALO
+  FORA_EXPEDIENTE
 }
 
 enum StatusRequisicao {
@@ -121,7 +121,7 @@ model Fiscal {
   criadoEm  DateTime    @default(now())
 
   usuario   Usuario?              @relation(fields: [usuarioId], references: [id])
-  sessoes   SessaoFiscal[]
+  pontos    RegistroPontoFiscal[]
   registros RegistroOperacional[]
 
   @@map("fiscais")
@@ -297,18 +297,22 @@ model Requisicao {
   @@map("requisicoes")
 }
 
-model SessaoFiscal {
-  id              String       @id @default(uuid())
-  fiscalId        String
-  checkIn         DateTime
-  checkOut        DateTime?
-  statusAtual     StatusFiscal @default(DISPONIVEL)
-  statusDefinidoEm DateTime    @default(now())
+// Registro de ponto/jornada dos fiscais: cada transição de status (entrar =
+// DISPONIVEL, sair para INTERVALO, voltar = DISPONIVEL, encerrar =
+// FORA_EXPEDIENTE). O status atual de um fiscal é o do último registro do dia;
+// somando as durações por status calcula-se a jornada (tempo trabalhando,
+// tempo de intervalo e carga horária do dia).
+model RegistroPontoFiscal {
+  id       String       @id @default(uuid())
+  fiscalId String
+  status   StatusFiscal
+  data     DateTime
+  em       DateTime     @default(now())
 
   fiscal Fiscal @relation(fields: [fiscalId], references: [id])
 
-  @@index([fiscalId])
-  @@map("sessoes_fiscais")
+  @@index([fiscalId, data])
+  @@map("registros_ponto_fiscal")
 }
 
 model EscalaEntry {

@@ -1,105 +1,138 @@
 /**
- * Lógica de domínio **pura** do monitoramento de fiscais (Req 4.1, 4.2).
+ * Lógica pura do Modulo_Fiscais (controle de jornada).
  *
- * Concentra a regra de "última alteração vence" para o status exibido no painel
- * (Req 4.1.1, 4.1.2) e as transições de check-in/check-out, incluindo a rejeição
- * de check-in duplicado (Req 4.2.1, 4.2.2, 4.2.3).
- *
- * Por serem puras e determinísticas, podem ser exercitadas por testes de
- * propriedade (fast-check) sem qualquer infraestrutura.
+ * Três estados: DISPONIVEL (trabalhando), INTERVALO (em pausa) e
+ * FORA_EXPEDIENTE (fora do turno). A partir do log de transições calcula-se o
+ * status atual e a jornada do dia (tempo trabalhando, tempo de intervalo e
+ * carga horária). Sem efeitos colaterais — testável sem banco.
  */
 
-import { StatusInvalidoError } from './fiscais.errors';
-
-export type StatusFiscal = 'DISPONIVEL' | 'EM_INTERVALO' | 'EM_ATENDIMENTO';
-
-/** Conjunto válido de status de um fiscal (Req 4.1.1). */
-export const STATUS_FISCAIS: readonly StatusFiscal[] = Object.freeze([
+export const STATUS_FISCAIS = [
   'DISPONIVEL',
-  'EM_INTERVALO',
-  'EM_ATENDIMENTO',
-]);
+  'INTERVALO',
+  'FORA_EXPEDIENTE',
+] as const;
 
-const STATUS_SET = new Set<string>(STATUS_FISCAIS);
+export type StatusFiscal = (typeof STATUS_FISCAIS)[number];
 
-/** Indica se um valor pertence ao conjunto válido de status de fiscal. */
-export function statusValido(status: string): status is StatusFiscal {
-  return STATUS_SET.has(status);
+/** Indica se um valor é um status de fiscal válido. */
+export function statusValido(valor: string): valor is StatusFiscal {
+  return (STATUS_FISCAIS as readonly string[]).includes(valor);
 }
 
-/** Uma alteração de status com o instante em que foi definida. */
-export interface AlteracaoStatus {
+/** Primeiro nome (para exibição no painel e nas notificações). */
+export function primeiroNome(nomeCompleto: string): string {
+  const partes = nomeCompleto.trim().split(/\s+/).filter(Boolean);
+  return partes[0] ?? nomeCompleto.trim();
+}
+
+/** Uma transição de status registrada no ponto. */
+export interface RegistroPonto {
   status: StatusFiscal;
   em: Date;
 }
 
 /**
- * Resolve o status exibido no painel (Req 4.1.1, 4.1.2): a "última alteração
- * vence". Dada uma sequência de alterações, retorna o status da alteração com
- * o instante mais recente; em caso de empate de instante, a última na sequência
- * prevalece. Retorna `null` quando não há nenhuma alteração.
+ * Status atual = o do registro de maior instante (em caso de empate, o último
+ * na ordem fornecida). Retorna null se não há registros.
  */
-export function ultimoStatus(
-  alteracoes: readonly AlteracaoStatus[],
+export function statusAtual(
+  registros: readonly RegistroPonto[],
 ): StatusFiscal | null {
-  let atual: AlteracaoStatus | null = null;
-  for (const a of alteracoes) {
-    if (atual === null || a.em.getTime() >= atual.em.getTime()) {
-      atual = a;
+  if (registros.length === 0) {
+    return null;
+  }
+  const maxEm = Math.max(...registros.map((r) => r.em.getTime()));
+  let atual: StatusFiscal | null = null;
+  for (const r of registros) {
+    if (r.em.getTime() === maxEm) {
+      atual = r.status;
     }
   }
-  return atual ? atual.status : null;
+  return atual;
 }
 
 /**
- * Valida um status, lançando `StatusInvalidoError` quando fora do conjunto
- * permitido (Req 4.1.1). Retorna o próprio status quando válido.
+ * Mensagem para os gestores conforme a transição de status (ou null quando não
+ * há mudança relevante a notificar). Usa o primeiro nome.
  */
-export function validarStatus(status: string): StatusFiscal {
-  if (!statusValido(status)) {
-    throw new StatusInvalidoError(status);
+export function mensagemTransicao(
+  nome: string,
+  anterior: StatusFiscal | null,
+  novo: StatusFiscal,
+): string | null {
+  if (anterior === novo) {
+    return null;
   }
-  return status;
+  const pn = primeiroNome(nome);
+  switch (novo) {
+    case 'DISPONIVEL':
+      return anterior === 'INTERVALO'
+        ? `${pn} voltou do intervalo e está disponível.`
+        : `${pn} acabou de entrar para trabalhar e está disponível.`;
+    case 'INTERVALO':
+      return `${pn} saiu para intervalo, retorna em breve.`;
+    case 'FORA_EXPEDIENTE':
+      return `O turno de ${pn} terminou. Amanhã retorna.`;
+  }
 }
 
-/** Estado de uma sessão de fiscal (check-in/check-out). */
-export interface EstadoSessao {
-  ativa: boolean;
-  checkIn: Date;
-  checkOut: Date | null;
-  status: StatusFiscal;
+/** Jornada calculada de um dia (em milissegundos). */
+export interface Jornada {
+  /** Tempo somado em DISPONIVEL. */
+  tempoTrabalhandoMs: number;
+  /** Tempo somado em INTERVALO. */
+  tempoIntervaloMs: number;
+  /** Tempo total no expediente (trabalhando + intervalo). */
+  cargaHorariaMs: number;
 }
 
 /**
- * Indica se um fiscal pode realizar check-in (Req 4.2.3): só é permitido quando
- * não há uma sessão ativa. `null` representa a ausência de sessão.
+ * Calcula a jornada do dia a partir dos registros de ponto, até o instante
+ * `agora`. Cada segmento vai de um registro ao próximo; o último segmento, se
+ * o fiscal não estiver FORA_EXPEDIENTE, conta até `agora` (jornada em curso).
  */
-export function podeCheckIn(sessaoAtiva: EstadoSessao | null): boolean {
-  return sessaoAtiva === null || !sessaoAtiva.ativa;
-}
-
-/**
- * Cria o estado de uma sessão após o check-in (Req 4.2.1): registra o horário
- * de entrada, marca a sessão como ativa e define o status como "disponível".
- */
-export function realizarCheckIn(em: Date): EstadoSessao {
+export function calcularJornada(
+  registros: readonly RegistroPonto[],
+  agora: Date,
+): Jornada {
+  const ordenados = [...registros].sort(
+    (a, b) => a.em.getTime() - b.em.getTime(),
+  );
+  let trabalho = 0;
+  let intervalo = 0;
+  for (let i = 0; i < ordenados.length; i++) {
+    const atual = ordenados[i];
+    const proximo = ordenados[i + 1];
+    const fim = proximo
+      ? proximo.em
+      : atual.status === 'FORA_EXPEDIENTE'
+        ? atual.em
+        : agora;
+    const dur = Math.max(0, fim.getTime() - atual.em.getTime());
+    if (atual.status === 'DISPONIVEL') {
+      trabalho += dur;
+    } else if (atual.status === 'INTERVALO') {
+      intervalo += dur;
+    }
+  }
   return {
-    ativa: true,
-    checkIn: em,
-    checkOut: null,
-    status: 'DISPONIVEL',
+    tempoTrabalhandoMs: trabalho,
+    tempoIntervaloMs: intervalo,
+    cargaHorariaMs: trabalho + intervalo,
   };
 }
 
-/**
- * Aplica o check-out a uma sessão (Req 4.2.2): registra o horário de saída e
- * marca a sessão como fora de serviço. Retorna um **novo** estado sem mutar o
- * original.
- */
-export function realizarCheckOut(sessao: EstadoSessao, em: Date): EstadoSessao {
-  return {
-    ...sessao,
-    ativa: false,
-    checkOut: em,
-  };
+/** Início do dia (00:00 UTC) — agrupa os registros por dia-calendário. */
+export function inicioDoDia(data: Date): Date {
+  return new Date(
+    Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate()),
+  );
+}
+
+/** Início do dia seguinte (limite superior exclusivo). */
+export function inicioDoProximoDia(data: Date): Date {
+  const d = inicioDoDia(data);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d;
 }

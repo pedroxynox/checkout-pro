@@ -1,22 +1,20 @@
 import * as fc from 'fast-check';
 import {
-  AlteracaoStatus,
+  RegistroPonto,
   STATUS_FISCAIS,
   StatusFiscal,
-  podeCheckIn,
-  realizarCheckIn,
-  realizarCheckOut,
+  calcularJornada,
+  mensagemTransicao,
+  statusAtual,
   statusValido,
-  ultimoStatus,
 } from './fiscais.domain';
 import { EscalaEntry, resolverEscalaEfetiva } from './escala.domain';
 
 /**
- * Testes de propriedade (fast-check) do Modulo_Fiscais e da escala.
- *
- * Cada teste implementa uma única propriedade de correção do design e executa
- * no mínimo 100 iterações. As decisões puras (status, check-in/out, escala
- * efetiva) são exercitadas sem banco de dados.
+ * Testes de propriedade (fast-check) do Modulo_Fiscais (controle de jornada) e
+ * da escala. Cada teste roda ao menos 100 iterações sobre as decisões puras
+ * (status atual, mensagem de transição, cálculo de jornada e escala efetiva),
+ * sem banco de dados.
  */
 
 const NUM_RUNS = 100;
@@ -30,87 +28,76 @@ const dataArb: fc.Arbitrary<Date> = fc
   .map((ms) => new Date(Date.UTC(2024, 0, 1) + ms * 1000));
 
 describe('Fiscais e Escala — testes de propriedade', () => {
-  // Feature: gestao-frente-de-caixa, Property 17: Status do fiscal reflete a última alteração
-  // Validates: Requirements 4.1.1, 4.1.2
-  it('Property 17: status exibido = última alteração definida e pertence ao conjunto válido', () => {
+  // Property 17: status atual reflete a última transição (maior instante).
+  it('Property 17: status atual = última transição e pertence ao conjunto válido', () => {
     fc.assert(
       fc.property(
         fc.array(fc.record({ status: statusArb, em: dataArb }), {
           minLength: 1,
           maxLength: 30,
         }),
-        (alteracoes: AlteracaoStatus[]) => {
-          const exibido = ultimoStatus(alteracoes);
-          if (exibido === null) {
+        (registros: RegistroPonto[]) => {
+          const atual = statusAtual(registros);
+          if (atual === null || !statusValido(atual)) {
             return false;
           }
-          // Pertence ao conjunto válido.
-          if (!statusValido(exibido)) {
-            return false;
-          }
-          // É o status da alteração de maior instante (empate -> última na ordem).
-          const maxEm = Math.max(...alteracoes.map((a) => a.em.getTime()));
-          // Última alteração (na ordem) cujo instante é o máximo.
+          const maxEm = Math.max(...registros.map((r) => r.em.getTime()));
           let esperado: StatusFiscal | null = null;
-          for (const a of alteracoes) {
-            if (a.em.getTime() === maxEm) {
-              esperado = a.status;
+          for (const r of registros) {
+            if (r.em.getTime() === maxEm) {
+              esperado = r.status;
             }
           }
-          return exibido === esperado;
+          return atual === esperado;
         },
       ),
       { numRuns: NUM_RUNS },
     );
   });
 
-  // Feature: gestao-frente-de-caixa, Property 18: Transições de check-in e check-out
-  // Validates: Requirements 4.2.1, 4.2.2
-  it('Property 18: check-in deixa status DISPONIVEL e sessão ativa; check-out marca saída', () => {
+  // Property 18: há mensagem para os gestores em toda mudança; nenhuma quando
+  // o status não muda.
+  it('Property 18: mensagem de transição existe na mudança e é nula sem mudança', () => {
     fc.assert(
-      fc.property(dataArb, dataArb, (entrada, saida) => {
-        const sessao = realizarCheckIn(entrada);
-        const checkInOk =
-          sessao.ativa === true &&
-          sessao.status === 'DISPONIVEL' &&
-          sessao.checkIn.getTime() === entrada.getTime() &&
-          sessao.checkOut === null;
-
-        const fechada = realizarCheckOut(sessao, saida);
-        const checkOutOk =
-          fechada.ativa === false &&
-          fechada.checkOut !== null &&
-          fechada.checkOut.getTime() === saida.getTime() &&
-          // A sessão original não é mutada.
-          sessao.ativa === true &&
-          sessao.checkOut === null;
-
-        return checkInOk && checkOutOk;
-      }),
+      fc.property(
+        fc.option(statusArb, { nil: null }),
+        statusArb,
+        fc.string(),
+        (anterior: StatusFiscal | null, novo: StatusFiscal, nome: string) => {
+          const msg = mensagemTransicao(nome, anterior, novo);
+          if (anterior === novo) {
+            return msg === null;
+          }
+          return typeof msg === 'string' && msg.length > 0;
+        },
+      ),
       { numRuns: NUM_RUNS },
     );
   });
 
-  // Feature: gestao-frente-de-caixa, Property 19: Check-in duplicado é rejeitado
-  // Validates: Requirements 4.2.3
-  it('Property 19: com sessão ativa, novo check-in é rejeitado e a sessão ativa permanece inalterada', () => {
+  // Property 19: carga horária = tempo trabalhando + intervalo; tempos >= 0.
+  it('Property 19: carga horária = trabalhando + intervalo, e tempos não-negativos', () => {
     fc.assert(
-      fc.property(dataArb, (entrada) => {
-        const sessao = realizarCheckIn(entrada);
-        // Há sessão ativa -> não pode realizar novo check-in.
-        const permitido = podeCheckIn(sessao);
-        return (
-          permitido === false &&
-          sessao.ativa === true &&
-          sessao.checkIn.getTime() === entrada.getTime()
-        );
-      }),
+      fc.property(
+        fc.array(fc.record({ status: statusArb, em: dataArb }), {
+          minLength: 0,
+          maxLength: 30,
+        }),
+        dataArb,
+        (registros: RegistroPonto[], agora: Date) => {
+          const j = calcularJornada(registros, agora);
+          return (
+            j.tempoTrabalhandoMs >= 0 &&
+            j.tempoIntervaloMs >= 0 &&
+            j.cargaHorariaMs === j.tempoTrabalhandoMs + j.tempoIntervaloMs
+          );
+        },
+      ),
       { numRuns: NUM_RUNS },
     );
   });
 
-  // Feature: gestao-frente-de-caixa, Property 20: Horário especial prevalece sobre a regra geral
-  // Validates: Requirements 4.3.5
+  // Property 20: Horário especial prevalece sobre a regra geral (Req 4.3.5).
   it('Property 20: existindo horário especial no dia, a escala efetiva é o especial; senão, a regra geral (ou folga)', () => {
     const horarioArb = fc.constantFrom(
       '06:00',
@@ -137,13 +124,11 @@ describe('Fiscais e Escala — testes de propriedade', () => {
         (geral, especial) => {
           const efetiva = resolverEscalaEfetiva(geral, especial);
           if (especial && !especial.folga) {
-            // Especial (não folga) prevalece.
             return efetiva === especial;
           }
           if (especial && especial.folga) {
             return efetiva === 'FOLGA';
           }
-          // Sem especial: aplica a regra geral (ou folga).
           if (geral && !geral.folga) {
             return efetiva === geral;
           }

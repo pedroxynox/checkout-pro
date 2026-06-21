@@ -9,8 +9,9 @@ import { StatusFiscal } from './fiscais.domain';
  */
 export interface FiscalStatusEvento {
   fiscalId: string;
+  primeiroNome: string;
   status: StatusFiscal;
-  statusDefinidoEm: Date;
+  em: Date;
 }
 
 /**

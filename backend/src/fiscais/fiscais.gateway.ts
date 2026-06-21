@@ -15,9 +15,9 @@ export const EVENTO_STATUS_FISCAL = 'fiscal:status';
  * Gateway WebSocket (Socket.IO) do painel de fiscais (Tarefa 14, Req 4.1).
  *
  * Assina o barramento de eventos de status (`FiscalStatusEventos`), alimentado
- * pelo `FiscaisService.alterarStatus`/`checkIn`, e propaga em tempo real a
- * todos os clientes conectados o status atual de cada fiscal junto com o
- * instante em que ele foi definido (`statusDefinidoEm`).
+ * pelo `FiscaisService.definirStatus`, e propaga em tempo real a
+ * todos os clientes conectados o status atual de cada fiscal (com o primeiro
+ * nome) junto com o instante em que ele foi definido (`em`).
  *
  * O namespace `/fiscais` isola o canal do painel.
  */
@@ -40,8 +40,9 @@ export class FiscaisGateway implements OnGatewayInit, OnModuleDestroy {
       (evento: FiscalStatusEvento) => {
         this.server.emit(EVENTO_STATUS_FISCAL, {
           fiscalId: evento.fiscalId,
+          primeiroNome: evento.primeiroNome,
           status: evento.status,
-          statusDefinidoEm: evento.statusDefinidoEm.toISOString(),
+          em: evento.em.toISOString(),
         });
       },
     );

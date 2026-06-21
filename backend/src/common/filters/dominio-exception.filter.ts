@@ -12,7 +12,7 @@ import {
 } from '../../acessos/acessos.errors';
 import { ArquivoNaoImagemError } from '../../checklist/checklist.errors';
 import {
-  CheckInAtivoError,
+  FiscalNaoEncontradoError,
   StatusInvalidoError,
 } from '../../fiscais/fiscais.errors';
 import { ColunaAusenteError } from '../../importacoes/importacoes.errors';
@@ -51,11 +51,11 @@ const MAPA_STATUS: ReadonlyArray<readonly [ConstrutorErro, HttpStatus]> = [
   // 404 — recurso (fardo) não reconhecido pelo código de barras.
   [FardoNaoReconhecidoError, HttpStatus.NOT_FOUND],
   [UsuarioNaoEncontradoError, HttpStatus.NOT_FOUND],
+  [FiscalNaoEncontradoError, HttpStatus.NOT_FOUND],
   // 409 — conflitos de unicidade / estado.
   [NomeDuplicadoError, HttpStatus.CONFLICT],
   [MatriculaDuplicadaError, HttpStatus.CONFLICT],
   [AusenciaDuplicadaError, HttpStatus.CONFLICT],
-  [CheckInAtivoError, HttpStatus.CONFLICT],
   // 400 — entradas inválidas / regras de validação de domínio.
   [OperacaoInvalidaError, HttpStatus.BAD_REQUEST],
   [ColunaAusenteError, HttpStatus.BAD_REQUEST],

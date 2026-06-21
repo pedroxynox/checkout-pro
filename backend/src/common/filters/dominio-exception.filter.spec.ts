@@ -5,7 +5,7 @@ import {
 } from '../../acessos/acessos.errors';
 import { ArquivoNaoImagemError } from '../../checklist/checklist.errors';
 import {
-  CheckInAtivoError,
+  FiscalNaoEncontradoError,
   StatusInvalidoError,
 } from '../../fiscais/fiscais.errors';
 import { ColunaAusenteError } from '../../importacoes/importacoes.errors';
@@ -83,9 +83,9 @@ describe('DominioExceptionFilter', () => {
       HttpStatus.CONFLICT,
     ],
     [
-      'Fiscais: check-in ativo (409)',
-      new CheckInAtivoError('f1'),
-      HttpStatus.CONFLICT,
+      'Fiscais: usuário não vinculado a fiscal (404)',
+      new FiscalNaoEncontradoError(),
+      HttpStatus.NOT_FOUND,
     ],
     [
       'Fiscais: status inválido (400)',

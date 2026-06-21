@@ -1,131 +1,224 @@
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
-import { SessaoFiscal } from '@prisma/client';
+import { Injectable, Optional } from '@nestjs/common';
+import { Fiscal } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { StatusFiscal, validarStatus } from './fiscais.domain';
+import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import {
+  Jornada,
+  RegistroPonto,
+  StatusFiscal,
+  calcularJornada,
+  inicioDoDia,
+  inicioDoProximoDia,
+  mensagemTransicao,
+  primeiroNome,
+  statusAtual,
+} from './fiscais.domain';
+import { FiscalNaoEncontradoError } from './fiscais.errors';
 import { FiscalStatusEventos } from './fiscais.eventos';
-import { CheckInAtivoError } from './fiscais.errors';
+
+/** Item do painel em tempo real: um fiscal e seu status atual. */
+export interface ItemPainel {
+  fiscalId: string;
+  primeiroNome: string;
+  status: StatusFiscal;
+  /** Instante (ISO) do último registro; null se ainda não bateu ponto hoje. */
+  desde: string | null;
+}
+
+/** Item do log de jornada do dia (tempos por fiscal). */
+export interface ItemJornada extends Jornada {
+  fiscalId: string;
+  primeiroNome: string;
+  status: StatusFiscal;
+}
+
+/** Resumo do status atual de um fiscal (retornado após definir status). */
+export interface ResumoStatus {
+  fiscalId: string;
+  primeiroNome: string;
+  status: StatusFiscal;
+  em: string;
+}
 
 /**
- * Serviço do monitoramento de fiscais (Req 4.1, 4.2): alteração de status com
- * "última alteração vence", check-in/check-out registrando data/horário e
- * histórico de sessões por fiscal.
+ * Serviço do Modulo_Fiscais (controle de jornada).
  *
- * A lógica de decisão pura (validação de status, transições) é delegada a
- * `fiscais.domain`; este serviço cuida apenas dos efeitos colaterais via
- * Prisma. Uma sessão é considerada ativa enquanto `checkOut` é `null`.
+ * O fiscal define seu próprio status (auto-identificado pelo login); cada
+ * transição é registrada no ponto, propagada em tempo real (WebSocket) e, nas
+ * mudanças relevantes, notifica os gestores. Calcula a jornada do dia (tempo
+ * trabalhando, intervalo e carga horária) a partir do log.
+ *
+ * `eventos` e `notificacoes` são opcionais (injetados em produção; ausentes em
+ * testes unitários que exercitam só a persistência).
  */
 @Injectable()
 export class FiscaisService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly eventos?: FiscalStatusEventos,
+    @Optional() private readonly notificacoes?: NotificacoesService,
   ) {}
 
-  /** Localiza a sessão ativa (checkOut nulo) mais recente de um fiscal. */
-  private async sessaoAtiva(fiscalId: string): Promise<SessaoFiscal | null> {
-    return this.prisma.sessaoFiscal.findFirst({
-      where: { fiscalId, checkOut: null },
-      orderBy: { checkIn: 'desc' },
-    });
+  /** Fiscal vinculado ao usuário autenticado (erro se não houver). */
+  async meuFiscal(usuarioId: string): Promise<Fiscal> {
+    const fiscal = await this.prisma.fiscal.findFirst({ where: { usuarioId } });
+    if (!fiscal) {
+      throw new FiscalNaoEncontradoError();
+    }
+    return fiscal;
   }
 
   /**
-   * Indica se o fiscal pertence ao usuário informado (Fiscal.usuarioId). Usado
-   * para garantir que apenas o próprio fiscal (ou o desenvolvedor) altere o
-   * seu status / check-in / check-out.
+   * Resumo do próprio fiscal (status atual + jornada do dia). Retorna null se o
+   * usuário autenticado não for um fiscal (ex.: gerente apenas visualizando).
    */
-  async pertenceAoUsuario(
-    fiscalId: string,
-    usuarioId?: string,
-  ): Promise<boolean> {
-    if (!usuarioId) {
-      return false;
+  async meuResumo(usuarioId: string): Promise<(ResumoStatus & Jornada) | null> {
+    const fiscal = await this.prisma.fiscal.findFirst({ where: { usuarioId } });
+    if (!fiscal) {
+      return null;
     }
+    const agora = new Date();
+    const registros = await this.registrosDoDia(fiscal.id, agora);
+    const ultimo = registros[registros.length - 1] ?? null;
+    return {
+      fiscalId: fiscal.id,
+      primeiroNome: primeiroNome(fiscal.nome),
+      status: statusAtual(registros) ?? 'FORA_EXPEDIENTE',
+      em: (ultimo?.em ?? agora).toISOString(),
+      ...calcularJornada(registros, agora),
+    };
+  }
+
+  /** Registros de ponto de um fiscal no dia da data informada (ordenados). */
+  private async registrosDoDia(
+    fiscalId: string,
+    dia: Date,
+  ): Promise<RegistroPonto[]> {
+    const rows = await this.prisma.registroPontoFiscal.findMany({
+      where: { fiscalId, data: inicioDoDia(dia) },
+      orderBy: { em: 'asc' },
+    });
+    return rows.map((r) => ({ status: r.status as StatusFiscal, em: r.em }));
+  }
+
+  /**
+   * Define o status do fiscal: registra o ponto, propaga em tempo real e
+   * notifica os gestores na transição relevante.
+   */
+  async definirStatus(
+    fiscalId: string,
+    status: StatusFiscal,
+    em: Date = new Date(),
+  ): Promise<ResumoStatus> {
     const fiscal = await this.prisma.fiscal.findUnique({
       where: { id: fiscalId },
     });
-    return !!fiscal && fiscal.usuarioId === usuarioId;
+    const nome = fiscal?.nome ?? '';
+    const pn = primeiroNome(nome);
+
+    const anterior = statusAtual(await this.registrosDoDia(fiscalId, em));
+
+    await this.prisma.registroPontoFiscal.create({
+      data: { fiscalId, status, data: inicioDoDia(em), em },
+    });
+
+    // Tempo real (painel atualiza sem recarregar).
+    this.eventos?.publicar({ fiscalId, primeiroNome: pn, status, em });
+
+    // Notifica gestores (gerente, supervisor, gerente desenvolvedor).
+    const mensagem = mensagemTransicao(nome, anterior, status);
+    if (mensagem && this.notificacoes) {
+      const gestores = await this.notificacoes.gestores();
+      await this.notificacoes.enviar(gestores, {
+        titulo: 'Fiscais',
+        mensagem,
+      });
+    }
+
+    return { fiscalId, primeiroNome: pn, status, em: em.toISOString() };
   }
 
-  /**
-   * Altera o status de um fiscal (Req 4.1.1, 4.1.2). Valida o status e aplica a
-   * regra "última alteração vence", atualizando o status atual da sessão ativa
-   * e o horário em que ele foi definido (Req 4.1.3).
-   */
-  async alterarStatus(
+  /** Painel de todos os fiscais com o status atual (tempo real via WebSocket). */
+  async painel(): Promise<ItemPainel[]> {
+    const agora = new Date();
+    const [fiscais, registros] = await Promise.all([
+      this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
+      this.prisma.registroPontoFiscal.findMany({
+        where: { data: inicioDoDia(agora) },
+        orderBy: { em: 'asc' },
+      }),
+    ]);
+    const porFiscal = this.agrupar(registros);
+    return fiscais.map((f) => {
+      const regs = porFiscal.get(f.id) ?? [];
+      const ultimo = regs[regs.length - 1] ?? null;
+      return {
+        fiscalId: f.id,
+        primeiroNome: primeiroNome(f.nome),
+        status: statusAtual(regs) ?? 'FORA_EXPEDIENTE',
+        desde: ultimo ? ultimo.em.toISOString() : null,
+      };
+    });
+  }
+
+  /** Log de jornada do dia (tempos por fiscal) — uso gerencial. */
+  async jornadaDoDia(data: Date = new Date()): Promise<ItemJornada[]> {
+    const agora = new Date();
+    const fim = inicioDoProximoDia(data);
+    // Para dias passados, conta no máximo até o fim do dia; para hoje, até agora.
+    const limite = agora < fim ? agora : fim;
+    const [fiscais, registros] = await Promise.all([
+      this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
+      this.prisma.registroPontoFiscal.findMany({
+        where: { data: inicioDoDia(data) },
+        orderBy: { em: 'asc' },
+      }),
+    ]);
+    const porFiscal = this.agrupar(registros);
+    return fiscais.map((f) => {
+      const regs = porFiscal.get(f.id) ?? [];
+      return {
+        fiscalId: f.id,
+        primeiroNome: primeiroNome(f.nome),
+        status: statusAtual(regs) ?? 'FORA_EXPEDIENTE',
+        ...calcularJornada(regs, limite),
+      };
+    });
+  }
+
+  /** Registra a falta do fiscal no dia e avisa os gestores. */
+  async registrarFalta(
     fiscalId: string,
-    status: StatusFiscal,
-    em: Date,
-  ): Promise<SessaoFiscal> {
-    const statusValidado = validarStatus(status);
-    const sessao = await this.sessaoAtiva(fiscalId);
-    if (!sessao) {
-      throw new NotFoundException('Nenhuma sessão ativa para o fiscal.');
+    dia: Date = new Date(),
+  ): Promise<void> {
+    const data = inicioDoDia(dia);
+    await this.prisma.ausencia.upsert({
+      where: { pessoaId_data: { pessoaId: fiscalId, data } },
+      update: {},
+      create: { pessoaId: fiscalId, data },
+    });
+    const fiscal = await this.prisma.fiscal.findUnique({
+      where: { id: fiscalId },
+    });
+    if (fiscal && this.notificacoes) {
+      const gestores = await this.notificacoes.gestores();
+      await this.notificacoes.enviar(gestores, {
+        titulo: 'Falta de fiscal',
+        mensagem: `${primeiroNome(fiscal.nome)} informou falta hoje.`,
+      });
     }
-    const atualizada = await this.prisma.sessaoFiscal.update({
-      where: { id: sessao.id },
-      data: { statusAtual: statusValidado, statusDefinidoEm: em },
-    });
-    // Propaga a mudança em tempo real ao painel de fiscais (Req 4.1.1–4.1.3).
-    this.eventos?.publicar({
-      fiscalId,
-      status: statusValidado,
-      statusDefinidoEm: atualizada.statusDefinidoEm,
-    });
-    return atualizada;
   }
 
-  /**
-   * Realiza o check-in de um fiscal (Req 4.2.1): registra a entrada e define o
-   * status como "disponível". Rejeita com `CheckInAtivoError` quando já existe
-   * uma sessão ativa (Req 4.2.3), mantendo a sessão original inalterada.
-   */
-  async checkIn(fiscalId: string, em: Date): Promise<SessaoFiscal> {
-    const ativa = await this.sessaoAtiva(fiscalId);
-    if (ativa) {
-      throw new CheckInAtivoError(fiscalId);
+  /** Agrupa registros (linha do banco) por fiscalId, mantendo a ordem. */
+  private agrupar(
+    registros: { fiscalId: string; status: string; em: Date }[],
+  ): Map<string, RegistroPonto[]> {
+    const mapa = new Map<string, RegistroPonto[]>();
+    for (const r of registros) {
+      const arr = mapa.get(r.fiscalId) ?? [];
+      arr.push({ status: r.status as StatusFiscal, em: r.em });
+      mapa.set(r.fiscalId, arr);
     }
-    const sessao = await this.prisma.sessaoFiscal.create({
-      data: {
-        fiscalId,
-        checkIn: em,
-        statusAtual: 'DISPONIVEL',
-        statusDefinidoEm: em,
-      },
-    });
-    // O check-in define o status inicial "DISPONIVEL"; propaga ao painel.
-    this.eventos?.publicar({
-      fiscalId,
-      status: 'DISPONIVEL',
-      statusDefinidoEm: sessao.statusDefinidoEm,
-    });
-    return sessao;
-  }
-
-  /**
-   * Realiza o check-out de um fiscal (Req 4.2.2): registra a saída e marca a
-   * sessão como fora de serviço. Lança `NotFoundException` quando não há sessão
-   * ativa.
-   */
-  async checkOut(fiscalId: string, em: Date): Promise<SessaoFiscal> {
-    const sessao = await this.sessaoAtiva(fiscalId);
-    if (!sessao) {
-      throw new NotFoundException('Nenhuma sessão ativa para o fiscal.');
-    }
-    return this.prisma.sessaoFiscal.update({
-      where: { id: sessao.id },
-      data: { checkOut: em },
-    });
-  }
-
-  /**
-   * Histórico de check-in/check-out de um fiscal (Req 4.2.4), ordenado da
-   * sessão mais recente para a mais antiga.
-   */
-  async historicoSessoes(fiscalId: string): Promise<SessaoFiscal[]> {
-    return this.prisma.sessaoFiscal.findMany({
-      where: { fiscalId },
-      orderBy: { checkIn: 'desc' },
-    });
+    return mapa;
   }
 }

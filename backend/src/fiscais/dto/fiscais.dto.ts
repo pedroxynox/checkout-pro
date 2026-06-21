@@ -1,8 +1,8 @@
-import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
@@ -11,37 +11,38 @@ import {
 } from 'class-validator';
 import { STATUS_FISCAIS, StatusFiscal } from '../fiscais.domain';
 
-/** Alteração de status de um fiscal (Req 4.1.1–4.1.3). */
-export class AlterarStatusDto {
+/** Define o status do próprio fiscal (Disponível / Intervalo / Fora de expediente). */
+export class DefinirStatusDto {
   @IsIn(STATUS_FISCAIS as unknown as string[], {
-    message: 'O status deve ser DISPONIVEL, EM_INTERVALO ou EM_ATENDIMENTO.',
+    message: 'O status deve ser DISPONIVEL, INTERVALO ou FORA_EXPEDIENTE.',
   })
   status!: StatusFiscal;
 }
 
-/** Cadastro/edição de uma entrada de escala (Req 4.3.1–4.3.5). */
+/**
+ * Entrada de escala de um dia (sem o funcionário): usada no corpo do horário
+ * especial, onde o funcionário vem pela rota.
+ */
 export class EscalaEntryDto {
-  @Type(() => Number)
-  @IsInt({ message: 'O dia da semana deve ser um inteiro de 0 a 6.' })
+  @IsInt()
   @Min(0)
   @Max(6)
   diaSemana!: number;
 
   @IsOptional()
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
-    message: 'A entrada deve estar no formato HH:mm.',
+    message: 'entrada deve estar no formato HH:mm',
   })
-  entrada?: string | null;
+  entrada?: string;
 
   @IsOptional()
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
-    message: 'A saída deve estar no formato HH:mm.',
+    message: 'saida deve estar no formato HH:mm',
   })
-  saida?: string | null;
+  saida?: string;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt({ message: 'O intervalo deve ser um número inteiro de minutos.' })
+  @IsInt()
   @Min(0)
   intervaloMin?: number;
 
@@ -50,8 +51,9 @@ export class EscalaEntryDto {
   folga?: boolean;
 }
 
-/** Cadastro de escala geral, com o funcionário identificado (Req 4.3.1). */
+/** Cadastro da escala geral de um funcionário num dia (Req 4.3.1–4.3.4). */
 export class CadastrarEscalaDto extends EscalaEntryDto {
   @IsString()
+  @IsNotEmpty({ message: 'O funcionário é obrigatório.' })
   funcionarioId!: string;
 }

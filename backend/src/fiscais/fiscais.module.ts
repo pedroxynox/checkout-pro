@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { FiscaisController } from './fiscais.controller';
 import { FiscaisService } from './fiscais.service';
 import { EscalaController } from './escala.controller';
@@ -7,14 +8,15 @@ import { FiscaisGateway } from './fiscais.gateway';
 import { FiscalStatusEventos } from './fiscais.eventos';
 
 /**
- * Módulo do Modulo_Fiscais (Req 4.1–4.3): monitoramento de status em tempo
- * real, check-in/check-out e escala de trabalho com horários por dia, intervalo
- * variável, folga e horário especial individual.
+ * Módulo do Modulo_Fiscais (Req 4.1–4.3): controle de jornada com 3 estados
+ * (Disponível / Intervalo / Fora de expediente), painel em tempo real
+ * (WebSocket), log de jornada (tempos) e escala de trabalho.
  *
- * O `PrismaService` é provido globalmente pelo `PrismaModule`. Exporta os
- * serviços para uso pela camada de API e pelo WebSocket Gateway (Tarefas 13/14).
+ * Importa o `NotificacoesModule` para avisar os gestores nas transições de
+ * status e nas faltas. O `PrismaService` é global.
  */
 @Module({
+  imports: [NotificacoesModule],
   providers: [
     FiscaisService,
     EscalaService,
