@@ -29,7 +29,7 @@ jobs:
           echo "Pingando a API (tolera cold start de até ~120s)..."
           code=$(curl -sS -m 120 --retry 2 --retry-delay 30 \
             -o /dev/null -w "%{http_code}" \
-            https://stok-center-api.onrender.com/health)
+            https://checkout-pro-api.onrender.com/health)
           echo "Resposta HTTP: $code"
           if [ "$code" != "200" ]; then
             echo "A API não respondeu 200 (pode estar acordando). Status: $code"
