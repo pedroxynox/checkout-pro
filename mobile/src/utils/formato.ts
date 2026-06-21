@@ -33,11 +33,6 @@ function agoraEmBrasilia(): Date {
   return new Date(Date.now() + OFFSET_BRASILIA_MS);
 }
 
-/** Converte uma Date para ISO de data (yyyy-mm-dd), em UTC. */
-export function dataParaISO(data: Date): string {
-  return data.toISOString().slice(0, 10);
-}
-
 /** Hoje (dia-calendário de Brasília) em formato ISO (yyyy-mm-dd). */
 export function hojeISO(): string {
   return agoraEmBrasilia().toISOString().slice(0, 10);

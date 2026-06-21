@@ -307,8 +307,6 @@ export interface JanelaExecucao {
 }
 
 // ----- Operadores / Ausências (Req 6.x) -----
-export type Turno = 'ABERTURA' | 'INTERMEDIARIO' | 'FECHAMENTO';
-
 export interface Operador {
   id: string;
   nome: string;

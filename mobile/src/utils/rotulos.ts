@@ -2,15 +2,7 @@
  * Rótulos legíveis (pt-BR) para enums do domínio e as definições dos
  * indicadores de arrecadação usados na UI (Indicadores e Importações).
  */
-import { CategoriaInsumo, StatusFiscal, TipoArrecadacao } from '../api/types';
-
-export const ROTULO_CATEGORIA_INSUMO: Record<CategoriaInsumo, string> = {
-  SACOLA: 'Sacola',
-  BOBINA: 'Bobina',
-  PANO: 'Pano',
-  ALCOOL: 'Álcool',
-  OUTRO: 'Outro',
-};
+import { StatusFiscal, TipoArrecadacao } from '../api/types';
 
 export const ROTULO_STATUS_FISCAL: Record<StatusFiscal, string> = {
   DISPONIVEL: 'Disponível',
