@@ -14,12 +14,6 @@ export interface OpcoesPrompt {
   /** Perfil do usuário (GERENTE, FISCAL, etc.) para ajustar o tom. */
   perfil?: string | null;
   /**
-   * Catálogo de procedimentos guiados (passo a passo ilustrado) disponíveis,
-   * no formato "- <id>: <título> (palavras-chave)". Quando presente, a Cluby
-   * pode sinalizar com a tag [PROC:<id>] para exibir o passo a passo com fotos.
-   */
-  procedimentos?: string;
-  /**
    * Conteúdo dos documentos da loja a usar como contexto (manuais, rotinas,
    * políticas). Opcional — quando vazio, o assistente usa apenas seu
    * conhecimento geral.
@@ -29,7 +23,7 @@ export interface OpcoesPrompt {
 
 /** Monta a instrução de sistema do assistente em PT-BR. */
 export function montarInstrucaoSistema(opcoes: OpcoesPrompt = {}): string {
-  const { nomeUsuario, perfil, procedimentos, documentos } = opcoes;
+  const { nomeUsuario, perfil, documentos } = opcoes;
 
   const partes: string[] = [
     `Você é a "Cluby" 🤖, a super assistente virtual do aplicativo Check-out PRO da loja Stok Center — um supermercado completo.`,
@@ -69,16 +63,6 @@ export function montarInstrucaoSistema(opcoes: OpcoesPrompt = {}): string {
     );
   }
 
-  if (procedimentos && procedimentos.trim().length > 0) {
-    partes.push(
-      ``,
-      `PROCEDIMENTOS OFICIAIS COM PASSO A PASSO ILUSTRADO (com fotos reais do manual da loja):`,
-      procedimentos.trim(),
-      ``,
-      `Se a pergunta do usuário corresponder a UM destes procedimentos, comece sua resposta com a tag [PROC:<id>] na PRIMEIRA linha (ex.: [PROC:devolucao_680]) e depois escreva só uma introdução curta (1–2 frases, ex.: "Claro! Aqui está o passo a passo:"). O passo a passo com as fotos será exibido automaticamente abaixo da sua mensagem — NÃO tente descrever as imagens nem reescrever todos os passos. Use a tag de no máximo UM procedimento, o mais relevante. Se a pergunta não corresponder a nenhum, responda normalmente, sem tag.`,
-    );
-  }
-
   if (documentos && documentos.trim().length > 0) {
     partes.push(
       ``,
@@ -89,5 +73,60 @@ export function montarInstrucaoSistema(opcoes: OpcoesPrompt = {}): string {
     );
   }
 
+  return partes.join('\n');
+}
+
+/**
+ * Instrução para a Cluby RESUMIR um procedimento oficial (normativa) de forma
+ * fácil, mantendo os marcadores [FOTO:k] no lugar certo. O texto literal da
+ * normativa NÃO é exibido ao usuário — a Cluby reescreve em passos claros, e o
+ * app insere as fotos reais onde os marcadores estiverem.
+ */
+export function montarInstrucaoProcedimento(
+  opcoes: { nomeUsuario?: string | null; perfil?: string | null },
+  titulo: string,
+  documento: string,
+  totalFotos: number,
+): string {
+  const partes: string[] = [
+    `Você é a "Cluby" 🤖, a super assistente do supermercado Stok Center (app Check-out PRO). Você é mulher, simpática e explica de forma clara e prática.`,
+  ];
+  if (opcoes.nomeUsuario) {
+    partes.push(
+      `Quem está perguntando: ${opcoes.nomeUsuario}` +
+        (opcoes.perfil ? ` (${opcoes.perfil}).` : '.'),
+    );
+  }
+  partes.push(
+    `O usuário quer saber como fazer: "${titulo}".`,
+    `Abaixo está o CONTEÚDO OFICIAL dessa normativa.`,
+  );
+  if (totalFotos > 0) {
+    partes.push(
+      `Os marcadores [FOTO:1] ... [FOTO:${totalFotos}] indicam onde estão as fotos do passo a passo no documento original.`,
+    );
+  }
+  partes.push(
+    ``,
+    `Sua tarefa: EXPLICAR esse procedimento de forma RESUMIDA, organizada e fácil de entender, em português do Brasil. NÃO copie o texto literal da normativa — reescreva com suas próprias palavras, em passos claros e diretos, como se estivesse ensinando um colega.`,
+    ``,
+    `Regras:`,
+    `- Comece com uma frase curta de contexto (o que é / quando usar).`,
+    `- Apresente o "como fazer" em passos numerados, curtos e objetivos.`,
+    `- Use **negrito** para destacar códigos, nomes de telas e botões (ex.: **CGO 680**, **Selec. Itens**).`,
+    `- Ignore cabeçalhos do documento, lista de responsáveis e siglas jurídicas; foque no que a pessoa precisa FAZER.`,
+    `- Não invente nada que não esteja no conteúdo.`,
+  );
+  if (totalFotos > 0) {
+    partes.push(
+      `- MANTENHA os marcadores [FOTO:k] na resposta, cada um sozinho em uma linha, logo ANTES do passo que aquela foto ilustra, preservando a ordem (1, 2, 3...). Use cada foto uma única vez. Não descreva a foto: apenas posicione o marcador.`,
+    );
+  }
+  partes.push(
+    ``,
+    `===== CONTEÚDO DA NORMATIVA =====`,
+    documento,
+    `===== FIM =====`,
+  );
   return partes.join('\n');
 }

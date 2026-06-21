@@ -1,5 +1,5 @@
 // GERADO automaticamente a partir dos PDFs de normativas (piloto Cluby).
-// Não editar à mão: regenerar pela ingestão de documentos.
+// Nao editar a mao: regenerar pela ingestao de documentos.
 import { ProcedimentoGuiado } from './procedimentos.types';
 
 export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
@@ -8,9 +8,9 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
     titulo: 'Auditoria de CPF',
     palavrasChave: ['auditoria'],
     resumo:
-      '1. OBJETIVO\nDefinir o processo de não inserção do CPF no próprio caixa.\n2. APLICAÇÃO\n• \nNFs: Notas Fiscais;\n• \nFALTA: Mercadorias com falta de peso e falta na Nota Fiscal;\n• \nCRM: CUSTOMER RELATIONSHIP MANAGEMENT" (GESTÃO DE RELACIONAMENTO COM O\nCLIENTE)\n• \nCPF: Cadastro de pessoa física;\n4. ATRIBUIÇÕES E RESPONSABILIDADES\nAs definições a seguir visam identificar as atribuições e responsabilidades das partes envolvidas, no sentido\nde assegurar o andamento do processo de treinamento e da não inse',
+      '1. OBJETIVO\nDefinir o processo de não inserção do CPF no próprio caixa.\n2. APLICAÇÃO\n• NFs: Notas Fiscais;\n• FALTA: Mercadorias com falta de peso e falta na Nota Fiscal;\n• CRM: CUSTOMER RELATIONSHIP MANAGEMENT" (GESTÃO DE RELACIONAMENTO COM O\nCLIENTE)\n• CPF: Cadastro de pessoa física;\n4. ATRIBUIÇÕES E RESPONSABILIDADES\nAs definições a seguir visam identificar as atribuições e responsabilidades das partes envolvidas, no sentido\nde assegurar o andamento do processo de treinamento e da não inserção',
     texto:
-      '1. OBJETIVO\nDefinir o processo de não inserção do CPF no próprio caixa.\n2. APLICAÇÃO\n• \nNFs: Notas Fiscais;\n• \nFALTA: Mercadorias com falta de peso e falta na Nota Fiscal;\n• \nCRM: CUSTOMER RELATIONSHIP MANAGEMENT" (GESTÃO DE RELACIONAMENTO COM O\nCLIENTE)\n• \nCPF: Cadastro de pessoa física;\n4. ATRIBUIÇÕES E RESPONSABILIDADES\nAs definições a seguir visam identificar as atribuições e responsabilidades das partes envolvidas, no sentido\nde assegurar o andamento do processo de treinamento e da não inserção do CPF no próprio caixa.\nEXECUÇÃO DO PROCESSSO\n• \nConferência diariamente pelo sistema consinco através das Query View a inserção;\n• \nOs responsáveis pelo setor devem dar o treinamento na integração dos novos colaboradores e\nfazer reuniões (ponto de partida) semanais sobre a não inserção do CPF no próprio caixa.\n• \nO acompanhamento deve ser realizado todos os dias para afim de zerar as identificações;\n• \nA conferência deve ser realizada através do sistema consinco > modulo gerencial ou modulo\nauditoria de cadastros CRM – CPF de funcionário.;\n• \nA “INSERÇÃO DO CPF NO PROPRIO CAIXA” identificada pelo setor de Marketing e\nOperações acarretara em sanção disciplinar para o colaborador que inseriu o CPF.',
+      '1. OBJETIVO\nDefinir o processo de não inserção do CPF no próprio caixa.\n2. APLICAÇÃO\n• NFs: Notas Fiscais;\n• FALTA: Mercadorias com falta de peso e falta na Nota Fiscal;\n• CRM: CUSTOMER RELATIONSHIP MANAGEMENT" (GESTÃO DE RELACIONAMENTO COM O\nCLIENTE)\n• CPF: Cadastro de pessoa física;\n4. ATRIBUIÇÕES E RESPONSABILIDADES\nAs definições a seguir visam identificar as atribuições e responsabilidades das partes envolvidas, no sentido\nde assegurar o andamento do processo de treinamento e da não inserção do CPF no próprio caixa.\nEXECUÇÃO DO PROCESSSO\n• Conferência diariamente pelo sistema consinco através das Query View a inserção;\n• Os responsáveis pelo setor devem dar o treinamento na integração dos novos colaboradores e\nfazer reuniões (ponto de partida) semanais sobre a não inserção do CPF no próprio caixa.\n• O acompanhamento deve ser realizado todos os dias para afim de zerar as identificações;\n• A conferência deve ser realizada através do sistema consinco > modulo gerencial ou modulo\nauditoria de cadastros CRM – CPF de funcionário.;\n• A “INSERÇÃO DO CPF NO PROPRIO CAIXA” identificada pelo setor de Marketing e\nOperações acarretara em sanção disciplinar para o colaborador que inseriu o CPF.',
     blocos: [
       {
         tipo: 'imagem',
@@ -32,17 +32,17 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       },
       {
         tipo: 'texto',
-        conteudo: '• \nNFs: Notas Fiscais;',
+        conteudo: '• NFs: Notas Fiscais;',
       },
       {
         tipo: 'texto',
         conteudo:
-          '• \nFALTA: Mercadorias com falta de peso e falta na Nota Fiscal;',
+          '• FALTA: Mercadorias com falta de peso e falta na Nota Fiscal;',
       },
       {
         tipo: 'texto',
         conteudo:
-          '• \nCRM: CUSTOMER RELATIONSHIP MANAGEMENT" (GESTÃO DE RELACIONAMENTO COM O',
+          '• CRM: CUSTOMER RELATIONSHIP MANAGEMENT" (GESTÃO DE RELACIONAMENTO COM O',
       },
       {
         tipo: 'texto',
@@ -50,7 +50,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       },
       {
         tipo: 'texto',
-        conteudo: '• \nCPF: Cadastro de pessoa física;',
+        conteudo: '• CPF: Cadastro de pessoa física;',
       },
       {
         tipo: 'texto',
@@ -73,12 +73,12 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nConferência diariamente pelo sistema consinco através das Query View a inserção;',
+          '• Conferência diariamente pelo sistema consinco através das Query View a inserção;',
       },
       {
         tipo: 'texto',
         conteudo:
-          '• \nOs responsáveis pelo setor devem dar o treinamento na integração dos novos colaboradores e',
+          '• Os responsáveis pelo setor devem dar o treinamento na integração dos novos colaboradores e',
       },
       {
         tipo: 'texto',
@@ -88,12 +88,12 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nO acompanhamento deve ser realizado todos os dias para afim de zerar as identificações;',
+          '• O acompanhamento deve ser realizado todos os dias para afim de zerar as identificações;',
       },
       {
         tipo: 'texto',
         conteudo:
-          '• \nA conferência deve ser realizada através do sistema consinco > modulo gerencial ou modulo',
+          '• A conferência deve ser realizada através do sistema consinco > modulo gerencial ou modulo',
       },
       {
         tipo: 'texto',
@@ -102,7 +102,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nA “INSERÇÃO DO CPF NO PROPRIO CAIXA” identificada pelo setor de Marketing e',
+          '• A “INSERÇÃO DO CPF NO PROPRIO CAIXA” identificada pelo setor de Marketing e',
       },
       {
         tipo: 'texto',
@@ -116,9 +116,9 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
     titulo: 'Emissão de Notas Fiscais de Devolução CGO 680',
     palavrasChave: ['devolução', 'emissão', 'fiscais', 'notas'],
     resumo:
-      '1. OBJETIVO\nDefinir o procedimento de emissão das notas fiscais de devolução utilizando o CGO 680 (DEVOLUÇÃO-\nVENDAMERC ADQU DE TERCEIRO) para casos específicos.\n2. APLICAÇÃO\nA utilização deste CGO (680) aplica-se somente nos casos de:\n• \nQuando o cliente estiver alterado e se recusar a realizar o cadastro no sistema, deve ser efetuado o\nreembolso em dinheiro no momento da devolução. Após o pagamento em dinheiro, com a \nautorização do gerente, deve-se emitir a nota fiscal de devolução no CGO 680',
+      '1. OBJETIVO\nDefinir o procedimento de emissão das notas fiscais de devolução utilizando o CGO 680 (DEVOLUÇÃO-\nVENDAMERC ADQU DE TERCEIRO) para casos específicos.\n2. APLICAÇÃO\nA utilização deste CGO (680) aplica-se somente nos casos de:\n• Quando o cliente estiver alterado e se recusar a realizar o cadastro no sistema, deve ser efetuado o\nreembolso em dinheiro no momento da devolução. Após o pagamento em dinheiro, com a \nautorização do gerente, deve-se emitir a nota fiscal de devolução no CGO 680,',
     texto:
-      '1. OBJETIVO\nDefinir o procedimento de emissão das notas fiscais de devolução utilizando o CGO 680 (DEVOLUÇÃO-\nVENDAMERC ADQU DE TERCEIRO) para casos específicos.\n2. APLICAÇÃO\nA utilização deste CGO (680) aplica-se somente nos casos de:\n• \nQuando o cliente estiver alterado e se recusar a realizar o cadastro no sistema, deve ser efetuado o\nreembolso em dinheiro no momento da devolução. Após o pagamento em dinheiro, com a \nautorização do gerente, deve-se emitir a nota fiscal de devolução no CGO 680, informando o CNPJ \nda loja como “cliente”, e o documento deve ser assinado pelo gerente. \n• \n Imediatamente, deve ser aberto um chamado no GLPI, para o Setor de Prevenção de Riscos\nrealizar o backup das imagens relacionadas ao atendimento. \n• \nSituações em que, o cupom fiscal de venda não tiver a identificação do cliente, e o mesmo não\npossuir cadastro no sistema, pode ser utilizado o CGO680 para a emissão da devolução. \nEntretanto, o fiscal de caixa, deve informar o cliente que para a emissão da devolução, deve ser \ncriado o cadastro do cliente. Caso após insistir, o cliente rejeite, deve prosseguir conforme \nmencionado acima. \n \n \n3. SIGLAS E DEFINIÇÕES\n• \nNFE: Nota Fiscal Eletrônica\n• \nCGO: Códigos Gerais de Operação\n• \nDANFE: Documento Auxiliar de Nota Fiscal Eletrônica\n• \nXML: eXtensible Markup Language\n• \nSEFAZ: Secretaria da Fazenda Estadual\n• \nGLPI: Gerenciamento Livre de Parque de Informática – Ferramenta de Helpdesk utilizada pela TI.\n4. ATRIBUIÇÕES E RESPONSABILIDADES\n• \nÉ de responsabilidade da Gerência local da loja, garantir que o processo operacional deve ser\nexecutado em conformidade com as instruções documentadas nesta normativa.\n• \nÉ de responsabilidade da Frente de Caixa local, emitir e seguir o processo descrito nesta normativa.\n• \nÉ de responsabilidade do Setor de Tesouraria realizar a conciliação e controle das notas fiscais de\ndevolução e vale débitos.\n• \nÉ de responsabilidade da Tesouraria local, validar e garantir que o processo esteja sendo seguido.\n• \nÉ de responsabilidade do Setor Fiscal acompanhar as emissões de notas fiscais, identificar falhas e\nprocessos incorretos.\n• \nÉ de responsabilidade do Setor de Prevenção de Riscos realizar o backup das imagens relacionadas\nao atendimento.\nEXECUÇÃO DO PROCESSSO\n✓ Operação Frente de Caixa da Loja.\n• \nA emissão da nota deverá ser efetuada no módulo Recebimento considerando:\n✓ Código do cliente.\n✓ Nº da Loja que está sendo emitida a nota fiscal.\n✓ CGO: 680 (DEVOLUÇÃO-VENDAMERC ADQU DE TERCEIRO).\n✓ Data: Sempre deverá ser a data do dia atual.\n✓ Motivo da Devolução. (Flag).\nINFORMAÇÕES COMPLEMENTARES\n• \nEssa modalidade deve ser utilizada apenas para devolução de Cupom Fiscal de venda realizados\nno PDV normal de venda. Devoluções do E-commerce e Televendas, deve, ser realizadas\npelos respectivos setores!\n• \nA emissão das devoluções deve ser efetuada, obrigatoriamente para o CNPJ na loja.\n• \nA emissão de notas fiscais com as informações incorretas, devem ser solicitadas cancelamento via\nGLPI, respeitando os prazos de devolução previstos na normativa 120.01 (Financeiro), e\ndestacados abaixo:\n✓ Cancelamento de Nfe – Estado do RS: Até 24h após a emissão, se não vinculada a\nCTe/MDFe;\n✓ Cancelamento de NFe – Estado de SC: Até 12h após a emissão, pois o prazo final é 24h, se\nnão vinculada a CTe/MDFe\nORIENTAÇÃO PARA EMISSÃO DA DEVOLUÇÃO:\n• \nA Loja deve abrir chamado via GLPI para a liberação do CGO 680 no CNPJ, e após a\nliberação realizar a emissão. Formulário: 5 - Fiscal - Vendas/Devoluções\nLoja deve logar diretamente pela sua filial, seguir orientações abaixo:\nModulo Recebimento > Atacado/Varejo > Recebimento de Notas:\n• Realizar o preenchimento do cabeçalho:\n1° Data de saída (data do dia atual)\n2° Informar o CGO 680\n3° Selecionar o motivo da devolução\n4° Preencher no campo Forn. o código do cliente:\n5° Após o preenchimento do cabeçalho, deve referenciar o Cupom de venda:\nClicar na opção Selec. Itens:\nVai abrir a tela de Parâmetro de Cálculo, a loja deve fechar sem alterações:\nCom a tela do select aberta vamos clicar em Importar Itens Dev. Para selecionar o documento\nde referência.\nNesta opção vamos marcar o tipo de nota que será devolvida, sendo cupom fiscal NFC-e ou Nota\nFiscal NF-e:\nCupom Fiscal para os cupons emitidos no CGO 506 para lojas do RS, e CGO 207para lojas SC.\nNota fiscal para as notas emitidas no CGO 203.\nApós selecionar o tipo de documento conforme acima seguir os passos abaixo:\n1° Inserir o número da Nota que será devolvida.\n2° Preencher o cód do cliente informado no cupom de venda:\n3° Clicar na Lupa para pesquisa\n4° Selecionar o documento abaixo encontrado\n5° Selecionar o Flag dos produtos a serem devolvidos\n6° Clicar na seta retornar\nRetornando a tela anterior, devemos clicar na opção destacada abaixo, e retornar sem alterar\nas demais informações desta tela.\nAjustar o Tipo Frete para Sem Ocorrência de Transporte:\nCaso a opção inconsistência apresentar em vermelho deve clicar, e verificar as inconsistências\ne reportar aos setores responsáveis via Miranda para liberação.\n• Lista de possíveis inconsistências e responsáveis:\n✓ Custo Líquido: Setor de Controladoria.\n✓ Impostos: Setor fiscal.\n✓ Tipo de Frete FOB: Loja deve ajustar conforme mencionado acima.\n• Após a liberação das inconsistências, o sistema vai habilitar o campo Liberar\nNota, seguir os passos abaixo:\n1° Clicar em Liberar Nota\n2° Selecionar a Flag Emitir\n3° Clicar em Imprimir\n4° Clicar em CANCELAR na tela “Printer Setup” que irá abrir, como mostra abaixo\n5° Selecionar a impressora para impressão da nota fiscal de devolução\nApós a tela que irá abrir ao lado, deverá apertar em “CANCELAR”:\nPara acompanhar a autorização da nota fiscal, pode ser monitorado através do “Painel Nota\nFiscal Eletrônica”:\nEm seguida, deve somente filtrar pelas informações da nota fiscal emitida:\n• Cliente\n• Data\n• CGO\n• Número da nota\nE validar se a nota fiscal está autorizada. Caso a NF rejeite, deve verificar o motivo e realizar a\ntratativa.',
+      '1. OBJETIVO\nDefinir o procedimento de emissão das notas fiscais de devolução utilizando o CGO 680 (DEVOLUÇÃO-\nVENDAMERC ADQU DE TERCEIRO) para casos específicos.\n2. APLICAÇÃO\nA utilização deste CGO (680) aplica-se somente nos casos de:\n• Quando o cliente estiver alterado e se recusar a realizar o cadastro no sistema, deve ser efetuado o\nreembolso em dinheiro no momento da devolução. Após o pagamento em dinheiro, com a \nautorização do gerente, deve-se emitir a nota fiscal de devolução no CGO 680, informando o CNPJ \nda loja como “cliente”, e o documento deve ser assinado pelo gerente. \n• \n Imediatamente, deve ser aberto um chamado no GLPI, para o Setor de Prevenção de Riscos\nrealizar o backup das imagens relacionadas ao atendimento. \n• \nSituações em que, o cupom fiscal de venda não tiver a identificação do cliente, e o mesmo não\npossuir cadastro no sistema, pode ser utilizado o CGO680 para a emissão da devolução. \nEntretanto, o fiscal de caixa, deve informar o cliente que para a emissão da devolução, deve ser \ncriado o cadastro do cliente. Caso após insistir, o cliente rejeite, deve prosseguir conforme \nmencionado acima. \n \n \n3. SIGLAS E DEFINIÇÕES\n• NFE: Nota Fiscal Eletrônica\n• CGO: Códigos Gerais de Operação\n• DANFE: Documento Auxiliar de Nota Fiscal Eletrônica\n• XML: eXtensible Markup Language\n• SEFAZ: Secretaria da Fazenda Estadual\n• GLPI: Gerenciamento Livre de Parque de Informática – Ferramenta de Helpdesk utilizada pela TI.\n4. ATRIBUIÇÕES E RESPONSABILIDADES\n• É de responsabilidade da Gerência local da loja, garantir que o processo operacional deve ser\nexecutado em conformidade com as instruções documentadas nesta normativa.\n• É de responsabilidade da Frente de Caixa local, emitir e seguir o processo descrito nesta normativa.\n• É de responsabilidade do Setor de Tesouraria realizar a conciliação e controle das notas fiscais de\ndevolução e vale débitos.\n• É de responsabilidade da Tesouraria local, validar e garantir que o processo esteja sendo seguido.\n• É de responsabilidade do Setor Fiscal acompanhar as emissões de notas fiscais, identificar falhas e\nprocessos incorretos.\n• É de responsabilidade do Setor de Prevenção de Riscos realizar o backup das imagens relacionadas\nao atendimento.\nEXECUÇÃO DO PROCESSSO\n✓ Operação Frente de Caixa da Loja.\n• A emissão da nota deverá ser efetuada no módulo Recebimento considerando:\n✓ Código do cliente.\n✓ Nº da Loja que está sendo emitida a nota fiscal.\n✓ CGO: 680 (DEVOLUÇÃO-VENDAMERC ADQU DE TERCEIRO).\n✓ Data: Sempre deverá ser a data do dia atual.\n✓ Motivo da Devolução. (Flag).\nINFORMAÇÕES COMPLEMENTARES\n• Essa modalidade deve ser utilizada apenas para devolução de Cupom Fiscal de venda realizados\nno PDV normal de venda. Devoluções do E-commerce e Televendas, deve, ser realizadas\npelos respectivos setores!\n• A emissão das devoluções deve ser efetuada, obrigatoriamente para o CNPJ na loja.\n• A emissão de notas fiscais com as informações incorretas, devem ser solicitadas cancelamento via\nGLPI, respeitando os prazos de devolução previstos na normativa 120.01 (Financeiro), e\ndestacados abaixo:\n✓ Cancelamento de Nfe – Estado do RS: Até 24h após a emissão, se não vinculada a\nCTe/MDFe;\n✓ Cancelamento de NFe – Estado de SC: Até 12h após a emissão, pois o prazo final é 24h, se\nnão vinculada a CTe/MDFe\nORIENTAÇÃO PARA EMISSÃO DA DEVOLUÇÃO:\n• A Loja deve abrir chamado via GLPI para a liberação do CGO 680 no CNPJ, e após a\nliberação realizar a emissão. Formulário: 5 - Fiscal - Vendas/Devoluções\nLoja deve logar diretamente pela sua filial, seguir orientações abaixo:\nModulo Recebimento > Atacado/Varejo > Recebimento de Notas:\n• Realizar o preenchimento do cabeçalho:\n1° Data de saída (data do dia atual)\n2° Informar o CGO 680\n3° Selecionar o motivo da devolução\n4° Preencher no campo Forn. o código do cliente:\n5° Após o preenchimento do cabeçalho, deve referenciar o Cupom de venda:\nClicar na opção Selec. Itens:\nVai abrir a tela de Parâmetro de Cálculo, a loja deve fechar sem alterações:\nCom a tela do select aberta vamos clicar em Importar Itens Dev. Para selecionar o documento\nde referência.\nNesta opção vamos marcar o tipo de nota que será devolvida, sendo cupom fiscal NFC-e ou Nota\nFiscal NF-e:\nCupom Fiscal para os cupons emitidos no CGO 506 para lojas do RS, e CGO 207para lojas SC.\nNota fiscal para as notas emitidas no CGO 203.\nApós selecionar o tipo de documento conforme acima seguir os passos abaixo:\n1° Inserir o número da Nota que será devolvida.\n2° Preencher o cód do cliente informado no cupom de venda:\n3° Clicar na Lupa para pesquisa\n4° Selecionar o documento abaixo encontrado\n5° Selecionar o Flag dos produtos a serem devolvidos\n6° Clicar na seta retornar\nRetornando a tela anterior, devemos clicar na opção destacada abaixo, e retornar sem alterar\nas demais informações desta tela.\nAjustar o Tipo Frete para Sem Ocorrência de Transporte:\nCaso a opção inconsistência apresentar em vermelho deve clicar, e verificar as inconsistências\ne reportar aos setores responsáveis via Miranda para liberação.\n• Lista de possíveis inconsistências e responsáveis:\n✓ Custo Líquido: Setor de Controladoria.\n✓ Impostos: Setor fiscal.\n✓ Tipo de Frete FOB: Loja deve ajustar conforme mencionado acima.\n• Após a liberação das inconsistências, o sistema vai habilitar o campo Liberar\nNota, seguir os passos abaixo:\n1° Clicar em Liberar Nota\n2° Selecionar a Flag Emitir\n3° Clicar em Imprimir\n4° Clicar em CANCELAR na tela “Printer Setup” que irá abrir, como mostra abaixo\n5° Selecionar a impressora para impressão da nota fiscal de devolução\nApós a tela que irá abrir ao lado, deverá apertar em “CANCELAR”:\nPara acompanhar a autorização da nota fiscal, pode ser monitorado através do “Painel Nota\nFiscal Eletrônica”:\nEm seguida, deve somente filtrar pelas informações da nota fiscal emitida:\n• Cliente\n• Data\n• CGO\n• Número da nota\nE validar se a nota fiscal está autorizada. Caso a NF rejeite, deve verificar o motivo e realizar a\ntratativa.',
     blocos: [
       {
         tipo: 'texto',
@@ -145,7 +145,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nQuando o cliente estiver alterado e se recusar a realizar o cadastro no sistema, deve ser efetuado o',
+          '• Quando o cliente estiver alterado e se recusar a realizar o cadastro no sistema, deve ser efetuado o',
       },
       {
         tipo: 'texto',
@@ -164,28 +164,28 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       },
       {
         tipo: 'texto',
-        conteudo: '• \nNFE: Nota Fiscal Eletrônica',
+        conteudo: '• NFE: Nota Fiscal Eletrônica',
       },
       {
         tipo: 'texto',
-        conteudo: '• \nCGO: Códigos Gerais de Operação',
+        conteudo: '• CGO: Códigos Gerais de Operação',
       },
       {
         tipo: 'texto',
-        conteudo: '• \nDANFE: Documento Auxiliar de Nota Fiscal Eletrônica',
+        conteudo: '• DANFE: Documento Auxiliar de Nota Fiscal Eletrônica',
       },
       {
         tipo: 'texto',
-        conteudo: '• \nXML: eXtensible Markup Language',
+        conteudo: '• XML: eXtensible Markup Language',
       },
       {
         tipo: 'texto',
-        conteudo: '• \nSEFAZ: Secretaria da Fazenda Estadual',
+        conteudo: '• SEFAZ: Secretaria da Fazenda Estadual',
       },
       {
         tipo: 'texto',
         conteudo:
-          '• \nGLPI: Gerenciamento Livre de Parque de Informática – Ferramenta de Helpdesk utilizada pela TI.',
+          '• GLPI: Gerenciamento Livre de Parque de Informática – Ferramenta de Helpdesk utilizada pela TI.',
       },
       {
         tipo: 'texto',
@@ -194,7 +194,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nÉ de responsabilidade da Gerência local da loja, garantir que o processo operacional deve ser',
+          '• É de responsabilidade da Gerência local da loja, garantir que o processo operacional deve ser',
       },
       {
         tipo: 'texto',
@@ -204,12 +204,12 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nÉ de responsabilidade da Frente de Caixa local, emitir e seguir o processo descrito nesta normativa.',
+          '• É de responsabilidade da Frente de Caixa local, emitir e seguir o processo descrito nesta normativa.',
       },
       {
         tipo: 'texto',
         conteudo:
-          '• \nÉ de responsabilidade do Setor de Tesouraria realizar a conciliação e controle das notas fiscais de',
+          '• É de responsabilidade do Setor de Tesouraria realizar a conciliação e controle das notas fiscais de',
       },
       {
         tipo: 'texto',
@@ -218,12 +218,12 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nÉ de responsabilidade da Tesouraria local, validar e garantir que o processo esteja sendo seguido.',
+          '• É de responsabilidade da Tesouraria local, validar e garantir que o processo esteja sendo seguido.',
       },
       {
         tipo: 'texto',
         conteudo:
-          '• \nÉ de responsabilidade do Setor Fiscal acompanhar as emissões de notas fiscais, identificar falhas e',
+          '• É de responsabilidade do Setor Fiscal acompanhar as emissões de notas fiscais, identificar falhas e',
       },
       {
         tipo: 'texto',
@@ -232,7 +232,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nÉ de responsabilidade do Setor de Prevenção de Riscos realizar o backup das imagens relacionadas',
+          '• É de responsabilidade do Setor de Prevenção de Riscos realizar o backup das imagens relacionadas',
       },
       {
         tipo: 'texto',
@@ -249,7 +249,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nA emissão da nota deverá ser efetuada no módulo Recebimento considerando:',
+          '• A emissão da nota deverá ser efetuada no módulo Recebimento considerando:',
       },
       {
         tipo: 'texto',
@@ -278,7 +278,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nEssa modalidade deve ser utilizada apenas para devolução de Cupom Fiscal de venda realizados',
+          '• Essa modalidade deve ser utilizada apenas para devolução de Cupom Fiscal de venda realizados',
       },
       {
         tipo: 'texto',
@@ -292,12 +292,12 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nA emissão das devoluções deve ser efetuada, obrigatoriamente para o CNPJ na loja.',
+          '• A emissão das devoluções deve ser efetuada, obrigatoriamente para o CNPJ na loja.',
       },
       {
         tipo: 'texto',
         conteudo:
-          '• \nA emissão de notas fiscais com as informações incorretas, devem ser solicitadas cancelamento via',
+          '• A emissão de notas fiscais com as informações incorretas, devem ser solicitadas cancelamento via',
       },
       {
         tipo: 'texto',
@@ -333,7 +333,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nA Loja deve abrir chamado via GLPI para a liberação do CGO 680 no CNPJ, e após a',
+          '• A Loja deve abrir chamado via GLPI para a liberação do CGO 680 no CNPJ, e após a',
       },
       {
         tipo: 'texto',
@@ -673,7 +673,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
     resumo:
       '1. OBJETIVO\nAs definições a seguir têm o objetivo de agilizar o processo de emissão de notas fiscais e minimizar erros\nnos procedimentos de emissões de documentos fiscais nas loja. Assegurar que todos os colaboradores da\noperação das lojas tenham conhecimento e sigam as instruções contidas no manual detalhado que foi\ndesenvolvido. O manual possui a finalidade de auxiliar a loja nos processos operacionais referente a\nemissão de notas fiscais, ajuste e criação de cadastros de clientes; Evitando po',
     texto:
-      "1. OBJETIVO\nAs definições a seguir têm o objetivo de agilizar o processo de emissão de notas fiscais e minimizar erros\nnos procedimentos de emissões de documentos fiscais nas loja. Assegurar que todos os colaboradores da\noperação das lojas tenham conhecimento e sigam as instruções contidas no manual detalhado que foi\ndesenvolvido. O manual possui a finalidade de auxiliar a loja nos processos operacionais referente a\nemissão de notas fiscais, ajuste e criação de cadastros de clientes; Evitando possíveis erros nos processos\nde emissão de notas fiscais nas lojas.\n2. APLICAÇÃO\n3. SIGLAS E DEFINIÇÕES\n• \nNFE: Nota Fiscal Eletrônica\n• \nCGO: Códigos Gerais de Operação\n• \nDANFE: Documento Auxiliar de Nota Fiscal Eletrônica\n• \nSEFAZ: Secretaria da Fazenda Estadual\n• \nGLPI: Gerenciamento Livre de Parque de lnformática — Ferramenta de Helpdesk utilizada pela TI.\n4. ATRIBUIÇÕES E RESPONSABILIDADES\nTodos os colaboradores da operação responsáveis pela emissão diaria de notas fiscais de venda e pelo\ncadastro de novos clientes, nos processos de 'Televendas, E-commerce e Frente de Caixa’, devem seguir\nas instruções repassadas em treinamento e descritas no manual oficial disponibilizado, assumindo a\nresponsabilidade pelo cumprimento dessas diretrizes.\nEXECUÇÃO DO PROCESSSO\n• \nSempre no que antecede a emissão de qualquer documento fiscal eletrônico, é de\nresponsabilidade da loja, verificar se as informações do cadastro dos clientes estão de acordo e\natualizados conforme manual, para que a nota fiscal seja autorizada em conformidade.\n• \nPara a emissão de notas fiscais nos CGOs relacionados abaixo, a validação e atualização (se\nnecessario) no cadastral do cliente devera ser efetuada de forma obrigatória.\nTELEVENDAS — CGO 200, VENDA A CONTRIBUINTE PJ USO TELEV.\nTELEVENDAS — CGO 202, VENDA A PJ NFe - TELEVNDAS\nTELEVENDAS – CGO 212, VENDA A PJ ÓRGÃOS PUPLICOS TLV\nTELEVENDAS — CGO 208, VENDA PARA PESSOA FISICA NFe,NFCe.TELEVENDAS.\nE-COMMERCE — CGO 525, VENDA E-COMMERCE NFe,\nE-COMMERCE — CGO 515, VENDA E-COMMERCE NFCe\nE-COMMERCE — CGO 217, VENDA E-COM EXCLUSIVO LOJA 30\nFRENTE CAIXA — CGO 500, NFe BASEADA NO CUPOM FISCA\nVENDA SEBO — CGO 646, VENDA DE SEBO - PJ\nDEVOLUÇÕES — CGO 650, DEVOLUÇÃO VENDA MERCADORIAS\nVENDA RAPPI — CGO 201, VENDA A CONTRIBUINTE PJ (RAPPI)\nDEVOLUÇÃO — CGO 218, DEVOLUÇÃO VENDA E-COMMERCE LOJA 30\nDEVOLUÇÃO — CGO 222, DEVOLUÇÃO VENDA A CONTRIBUINTE (TELEVENDAS)\nDEVOLUÇÃO — CGO 516, DEVOLUÇÃO VENDA E-COMMERCE\nDEVOLUÇÃO – CGO 680, DEVOLUÇÃO VENDA MERC ADQU DE TERCEIRO\nINFORMAÇÕES COMPLEMENTARES:\n• \nEm possíveis casos e rejeição, inutilização e emissão de notas fiscais no CGO incorreto, cabe\naos mesmos corrigirem o processo seguindo as instruções repassadas e caso necessário\nsolicitar auxilio do suporte fiscal, através dos canais oficiais de comunicação da empresa.\n• \nÉ de extrema importância que a gerencia tenha conhecimento dos processos executados em\nloja, pois refletiram nos resultados da mesma.\n• \nOs dados para realização do cadastro do cliente CNPJ devem ser adquiridos através da\nconsulta por UF e CNPJ no site da Receita pelo link informado:\nReceita Estadual - Consultas Contribuinte\n• \nEm caso de duvidas quanto ao processo a loja deve solicitar auxilio por meio de contato via\nGAUCHINHO.\n➢ A loja deve inicialmente identidicar-se, (Colaborador-Loja-Setor).\n➢ A comunicação deve ser clara e assertiva, destacando qual é a situação/erro, e repassar as\ninformações do documento fiscal em tratativa, ontendo as informações necessárias, somente desta\nforma o Setor Fiscal irá conseguir auxiliar de forma clara.\n➢ Mantendo sempre a cordialidade e o respeito.\n• \nConsultar o manual no portal da Uniconexão.",
+      "1. OBJETIVO\nAs definições a seguir têm o objetivo de agilizar o processo de emissão de notas fiscais e minimizar erros\nnos procedimentos de emissões de documentos fiscais nas loja. Assegurar que todos os colaboradores da\noperação das lojas tenham conhecimento e sigam as instruções contidas no manual detalhado que foi\ndesenvolvido. O manual possui a finalidade de auxiliar a loja nos processos operacionais referente a\nemissão de notas fiscais, ajuste e criação de cadastros de clientes; Evitando possíveis erros nos processos\nde emissão de notas fiscais nas lojas.\n2. APLICAÇÃO\n3. SIGLAS E DEFINIÇÕES\n• NFE: Nota Fiscal Eletrônica\n• CGO: Códigos Gerais de Operação\n• DANFE: Documento Auxiliar de Nota Fiscal Eletrônica\n• SEFAZ: Secretaria da Fazenda Estadual\n• GLPI: Gerenciamento Livre de Parque de lnformática — Ferramenta de Helpdesk utilizada pela TI.\n4. ATRIBUIÇÕES E RESPONSABILIDADES\nTodos os colaboradores da operação responsáveis pela emissão diaria de notas fiscais de venda e pelo\ncadastro de novos clientes, nos processos de 'Televendas, E-commerce e Frente de Caixa’, devem seguir\nas instruções repassadas em treinamento e descritas no manual oficial disponibilizado, assumindo a\nresponsabilidade pelo cumprimento dessas diretrizes.\nEXECUÇÃO DO PROCESSSO\n• Sempre no que antecede a emissão de qualquer documento fiscal eletrônico, é de\nresponsabilidade da loja, verificar se as informações do cadastro dos clientes estão de acordo e\natualizados conforme manual, para que a nota fiscal seja autorizada em conformidade.\n• Para a emissão de notas fiscais nos CGOs relacionados abaixo, a validação e atualização (se\nnecessario) no cadastral do cliente devera ser efetuada de forma obrigatória.\nTELEVENDAS — CGO 200, VENDA A CONTRIBUINTE PJ USO TELEV.\nTELEVENDAS — CGO 202, VENDA A PJ NFe - TELEVNDAS\nTELEVENDAS – CGO 212, VENDA A PJ ÓRGÃOS PUPLICOS TLV\nTELEVENDAS — CGO 208, VENDA PARA PESSOA FISICA NFe,NFCe.TELEVENDAS.\nE-COMMERCE — CGO 525, VENDA E-COMMERCE NFe,\nE-COMMERCE — CGO 515, VENDA E-COMMERCE NFCe\nE-COMMERCE — CGO 217, VENDA E-COM EXCLUSIVO LOJA 30\nFRENTE CAIXA — CGO 500, NFe BASEADA NO CUPOM FISCA\nVENDA SEBO — CGO 646, VENDA DE SEBO - PJ\nDEVOLUÇÕES — CGO 650, DEVOLUÇÃO VENDA MERCADORIAS\nVENDA RAPPI — CGO 201, VENDA A CONTRIBUINTE PJ (RAPPI)\nDEVOLUÇÃO — CGO 218, DEVOLUÇÃO VENDA E-COMMERCE LOJA 30\nDEVOLUÇÃO — CGO 222, DEVOLUÇÃO VENDA A CONTRIBUINTE (TELEVENDAS)\nDEVOLUÇÃO — CGO 516, DEVOLUÇÃO VENDA E-COMMERCE\nDEVOLUÇÃO – CGO 680, DEVOLUÇÃO VENDA MERC ADQU DE TERCEIRO\nINFORMAÇÕES COMPLEMENTARES:\n• Em possíveis casos e rejeição, inutilização e emissão de notas fiscais no CGO incorreto, cabe\naos mesmos corrigirem o processo seguindo as instruções repassadas e caso necessário\nsolicitar auxilio do suporte fiscal, através dos canais oficiais de comunicação da empresa.\n• É de extrema importância que a gerencia tenha conhecimento dos processos executados em\nloja, pois refletiram nos resultados da mesma.\n• Os dados para realização do cadastro do cliente CNPJ devem ser adquiridos através da\nconsulta por UF e CNPJ no site da Receita pelo link informado:\nReceita Estadual - Consultas Contribuinte\n• Em caso de duvidas quanto ao processo a loja deve solicitar auxilio por meio de contato via\nGAUCHINHO.\n➢ A loja deve inicialmente identidicar-se, (Colaborador-Loja-Setor).\n➢ A comunicação deve ser clara e assertiva, destacando qual é a situação/erro, e repassar as\ninformações do documento fiscal em tratativa, ontendo as informações necessárias, somente desta\nforma o Setor Fiscal irá conseguir auxiliar de forma clara.\n➢ Mantendo sempre a cordialidade e o respeito.\n• Consultar o manual no portal da Uniconexão.",
     blocos: [
       {
         tipo: 'texto',
@@ -718,24 +718,24 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       },
       {
         tipo: 'texto',
-        conteudo: '• \nNFE: Nota Fiscal Eletrônica',
+        conteudo: '• NFE: Nota Fiscal Eletrônica',
       },
       {
         tipo: 'texto',
-        conteudo: '• \nCGO: Códigos Gerais de Operação',
+        conteudo: '• CGO: Códigos Gerais de Operação',
       },
       {
         tipo: 'texto',
-        conteudo: '• \nDANFE: Documento Auxiliar de Nota Fiscal Eletrônica',
+        conteudo: '• DANFE: Documento Auxiliar de Nota Fiscal Eletrônica',
       },
       {
         tipo: 'texto',
-        conteudo: '• \nSEFAZ: Secretaria da Fazenda Estadual',
+        conteudo: '• SEFAZ: Secretaria da Fazenda Estadual',
       },
       {
         tipo: 'texto',
         conteudo:
-          '• \nGLPI: Gerenciamento Livre de Parque de lnformática — Ferramenta de Helpdesk utilizada pela TI.',
+          '• GLPI: Gerenciamento Livre de Parque de lnformática — Ferramenta de Helpdesk utilizada pela TI.',
       },
       {
         tipo: 'texto',
@@ -767,7 +767,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nSempre no que antecede a emissão de qualquer documento fiscal eletrônico, é de',
+          '• Sempre no que antecede a emissão de qualquer documento fiscal eletrônico, é de',
       },
       {
         tipo: 'texto',
@@ -782,7 +782,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nPara a emissão de notas fiscais nos CGOs relacionados abaixo, a validação e atualização (se',
+          '• Para a emissão de notas fiscais nos CGOs relacionados abaixo, a validação e atualização (se',
       },
       {
         tipo: 'texto',
@@ -858,7 +858,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nEm possíveis casos e rejeição, inutilização e emissão de notas fiscais no CGO incorreto, cabe',
+          '• Em possíveis casos e rejeição, inutilização e emissão de notas fiscais no CGO incorreto, cabe',
       },
       {
         tipo: 'texto',
@@ -873,7 +873,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nÉ de extrema importância que a gerencia tenha conhecimento dos processos executados em',
+          '• É de extrema importância que a gerencia tenha conhecimento dos processos executados em',
       },
       {
         tipo: 'texto',
@@ -882,7 +882,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nOs dados para realização do cadastro do cliente CNPJ devem ser adquiridos através da',
+          '• Os dados para realização do cadastro do cliente CNPJ devem ser adquiridos através da',
       },
       {
         tipo: 'texto',
@@ -896,7 +896,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          '• \nEm caso de duvidas quanto ao processo a loja deve solicitar auxilio por meio de contato via',
+          '• Em caso de duvidas quanto ao processo a loja deve solicitar auxilio por meio de contato via',
       },
       {
         tipo: 'texto',
@@ -927,7 +927,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       },
       {
         tipo: 'texto',
-        conteudo: '• \nConsultar o manual no portal da Uniconexão.',
+        conteudo: '• Consultar o manual no portal da Uniconexão.',
       },
     ],
   },
@@ -936,9 +936,9 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
     titulo: 'NORMATIZAÇÃO DE UTILIZAÇÃO DE TERCEIROS EM LOJA',
     palavrasChave: ['loja', 'normatização', 'terceiros', 'utilização'],
     resumo:
-      '1. OBJETIVO\n2. APLICAÇÃO\n4. ATRIBUIÇÕES E RESPONSABILIDADES\nAs definições a seguir visam identificar as atribuições e responsabilidades das partes envolvidas, no sentido\nde assegurar o andamento do processo de gestão de custos e controle de atuação de colaboradores\nEXECUÇÃO DO PROCESSSO\n \nA utilização de mão de obra de terceiros poderá ocorrer para a gestão de folgas de domingos,\ntanto para repositores noturnos quanto para a frente de caixa. Considerando esta situação, é\nautorizado somente util',
+      '1. OBJETIVO\n2. APLICAÇÃO\n4. ATRIBUIÇÕES E RESPONSABILIDADES\nAs definições a seguir visam identificar as atribuições e responsabilidades das partes envolvidas, no sentido\nde assegurar o andamento do processo de gestão de custos e controle de atuação de colaboradores\nEXECUÇÃO DO PROCESSSO\n• A utilização de mão de obra de terceiros poderá ocorrer para a gestão de folgas de domingos,\ntanto para repositores noturnos quanto para a frente de caixa. Considerando esta situação, é\nautorizado somente utili',
     texto:
-      '1. OBJETIVO\n2. APLICAÇÃO\n4. ATRIBUIÇÕES E RESPONSABILIDADES\nAs definições a seguir visam identificar as atribuições e responsabilidades das partes envolvidas, no sentido\nde assegurar o andamento do processo de gestão de custos e controle de atuação de colaboradores\nEXECUÇÃO DO PROCESSSO\n \nA utilização de mão de obra de terceiros poderá ocorrer para a gestão de folgas de domingos,\ntanto para repositores noturnos quanto para a frente de caixa. Considerando esta situação, é\nautorizado somente utilização no noturno de sábado para domingos, vésperas de feriados e\noperação de caixa aos domingos e feriados.\n \nAlém da hipótese acima, desde que não ultrapasse o percentual de venda em 0,20% da\ndespesa total com terceirizados, poderá ser utilizado repositores noturnos em vésperas de\nFeirão/Arrastão e Operadores de Caixas em Sexta, Sábados e domingos do ultimo final de\nsemana do mês até o dia 10 do mês seguinte;\n \nA utilização que não se enquadre no item acima deve ser previamente autorizada pelo Gerente\nde Operações Regional com a devida justificativa ao RH por e-mail para a autorização de\nfaturamento por parte da empresa prestadora de serviço;\n \nA gestão sobre a contratação e destinação de colaboradores terceirizados para as unidades é\ndo Gerente de Loja e Gerente de Operações Regional.\n \nA analista de RH da unidade será responsável por acompanhar monitorar e cobrar \nque seja executada na loja o planejamento de terceiros aprovado, bem como que \nseja mantido o orçamento conforme a normativa.\n \nAo exceder o valor orçado para a despesa total do mês, quaisquer autorizações de despesas\nextras deverão partir de autorização expressa do Gerente Executivo de Operações.\n \nExclusivamente nas unidades do Stok Center, além do orçamento acima descrito há que se\ncontemplar recursos para contratação de colaboradores na quantidade igual ao quadro\naprovado de repositores a fim de atender o abastecimento noturno nos domingos e feriados.\n \nAté o dia 25 de cada mês o gerente da loja deverá mandar um planejamento dos terceiros do\npróximo mês para aprovação do Gerente Regional. (Conforme planilha padrão).\n \n A prestação de serviço de qualquer terceirizado junto a empresa contratante só poderá ocorrer\ncom a devida comprovação de vínculo empregatício do prestador de serviço junto a empresa\nterceirizada através de envio ou apresentação da ficha funcional.',
+      '1. OBJETIVO\n2. APLICAÇÃO\n4. ATRIBUIÇÕES E RESPONSABILIDADES\nAs definições a seguir visam identificar as atribuições e responsabilidades das partes envolvidas, no sentido\nde assegurar o andamento do processo de gestão de custos e controle de atuação de colaboradores\nEXECUÇÃO DO PROCESSSO\n• A utilização de mão de obra de terceiros poderá ocorrer para a gestão de folgas de domingos,\ntanto para repositores noturnos quanto para a frente de caixa. Considerando esta situação, é\nautorizado somente utilização no noturno de sábado para domingos, vésperas de feriados e\noperação de caixa aos domingos e feriados.\n• Além da hipótese acima, desde que não ultrapasse o percentual de venda em 0,20% da\ndespesa total com terceirizados, poderá ser utilizado repositores noturnos em vésperas de\nFeirão/Arrastão e Operadores de Caixas em Sexta, Sábados e domingos do ultimo final de\nsemana do mês até o dia 10 do mês seguinte;\n• A utilização que não se enquadre no item acima deve ser previamente autorizada pelo Gerente\nde Operações Regional com a devida justificativa ao RH por e-mail para a autorização de\nfaturamento por parte da empresa prestadora de serviço;\n• A gestão sobre a contratação e destinação de colaboradores terceirizados para as unidades é\ndo Gerente de Loja e Gerente de Operações Regional.\n• A analista de RH da unidade será responsável por acompanhar monitorar e cobrar \nque seja executada na loja o planejamento de terceiros aprovado, bem como que \nseja mantido o orçamento conforme a normativa.\n• Ao exceder o valor orçado para a despesa total do mês, quaisquer autorizações de despesas\nextras deverão partir de autorização expressa do Gerente Executivo de Operações.\n• Exclusivamente nas unidades do Stok Center, além do orçamento acima descrito há que se\ncontemplar recursos para contratação de colaboradores na quantidade igual ao quadro\naprovado de repositores a fim de atender o abastecimento noturno nos domingos e feriados.\n• Até o dia 25 de cada mês o gerente da loja deverá mandar um planejamento dos terceiros do\npróximo mês para aprovação do Gerente Regional. (Conforme planilha padrão).\n• A prestação de serviço de qualquer terceirizado junto a empresa contratante só poderá ocorrer\ncom a devida comprovação de vínculo empregatício do prestador de serviço junto a empresa\nterceirizada através de envio ou apresentação da ficha funcional.',
     blocos: [
       {
         tipo: 'texto',
@@ -969,7 +969,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          ' \nA utilização de mão de obra de terceiros poderá ocorrer para a gestão de folgas de domingos,',
+          '• A utilização de mão de obra de terceiros poderá ocorrer para a gestão de folgas de domingos,',
       },
       {
         tipo: 'texto',
@@ -988,7 +988,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          ' \nAlém da hipótese acima, desde que não ultrapasse o percentual de venda em 0,20% da',
+          '• Além da hipótese acima, desde que não ultrapasse o percentual de venda em 0,20% da',
       },
       {
         tipo: 'texto',
@@ -1007,7 +1007,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          ' \nA utilização que não se enquadre no item acima deve ser previamente autorizada pelo Gerente',
+          '• A utilização que não se enquadre no item acima deve ser previamente autorizada pelo Gerente',
       },
       {
         tipo: 'texto',
@@ -1021,7 +1021,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          ' \nA gestão sobre a contratação e destinação de colaboradores terceirizados para as unidades é',
+          '• A gestão sobre a contratação e destinação de colaboradores terceirizados para as unidades é',
       },
       {
         tipo: 'texto',
@@ -1030,12 +1030,12 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          ' \nA analista de RH da unidade será responsável por acompanhar monitorar e cobrar \nque seja executada na loja o planejamento de terceiros aprovado, bem como que \nseja mantido o orçamento conforme a normativa.',
+          '• A analista de RH da unidade será responsável por acompanhar monitorar e cobrar \nque seja executada na loja o planejamento de terceiros aprovado, bem como que \nseja mantido o orçamento conforme a normativa.',
       },
       {
         tipo: 'texto',
         conteudo:
-          ' \nAo exceder o valor orçado para a despesa total do mês, quaisquer autorizações de despesas',
+          '• Ao exceder o valor orçado para a despesa total do mês, quaisquer autorizações de despesas',
       },
       {
         tipo: 'texto',
@@ -1045,7 +1045,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          ' \nExclusivamente nas unidades do Stok Center, além do orçamento acima descrito há que se',
+          '• Exclusivamente nas unidades do Stok Center, além do orçamento acima descrito há que se',
       },
       {
         tipo: 'texto',
@@ -1060,7 +1060,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          ' \nAté o dia 25 de cada mês o gerente da loja deverá mandar um planejamento dos terceiros do',
+          '• Até o dia 25 de cada mês o gerente da loja deverá mandar um planejamento dos terceiros do',
       },
       {
         tipo: 'texto',
@@ -1070,7 +1070,7 @@ export const PROCEDIMENTOS: ProcedimentoGuiado[] = [
       {
         tipo: 'texto',
         conteudo:
-          ' \n A prestação de serviço de qualquer terceirizado junto a empresa contratante só poderá ocorrer',
+          '• A prestação de serviço de qualquer terceirizado junto a empresa contratante só poderá ocorrer',
       },
       {
         tipo: 'texto',

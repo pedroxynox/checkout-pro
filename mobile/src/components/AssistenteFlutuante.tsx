@@ -16,7 +16,6 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -29,22 +28,17 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError } from '../api/client';
-import { API_BASE_URL } from '../api/config';
 import { assistenteService } from '../api/services';
 import { MensagemAssistente } from '../api/types';
 import { confirmar } from '../utils/dialogos';
 import { MarkdownTexto } from './MarkdownTexto';
+import { ProcedimentoView } from './ProcedimentoView';
 import { cores, espacamento, raio, sombra, tipografia } from '../theme';
 
 let contadorLocal = 0;
 function idLocal(): string {
   contadorLocal += 1;
   return `local-${Date.now()}-${contadorLocal}`;
-}
-
-/** Monta a URL absoluta de uma imagem de procedimento (servida pela API). */
-function urlImagem(caminho: string): string {
-  return `${API_BASE_URL.replace(/\/$/, '')}${caminho}`;
 }
 
 export function AssistenteFlutuante(): React.ReactElement {
@@ -311,30 +305,10 @@ export function AssistenteFlutuante(): React.ReactElement {
                           }
                         />
                         {m.procedimento && (
-                          <View style={styles.proc}>
-                            <Text style={styles.procTitulo}>
-                              📋 {m.procedimento.titulo}
-                            </Text>
-                            {m.procedimento.blocos.map((b, i) =>
-                              b.tipo === 'imagem' && b.imagem ? (
-                                <Image
-                                  key={i}
-                                  source={{ uri: urlImagem(b.imagem) }}
-                                  style={[
-                                    styles.procImagem,
-                                    b.w && b.h
-                                      ? { aspectRatio: b.w / b.h }
-                                      : null,
-                                  ]}
-                                  resizeMode="contain"
-                                />
-                              ) : (
-                                <Text key={i} style={styles.procTexto}>
-                                  {b.conteudo}
-                                </Text>
-                              ),
-                            )}
-                          </View>
+                          <ProcedimentoView
+                            titulo={m.procedimento.titulo}
+                            blocos={m.procedimento.blocos}
+                          />
                         )}
                       </View>
                     </View>
@@ -529,31 +503,6 @@ const styles = StyleSheet.create({
   },
   bolhaProc: {
     maxWidth: '92%',
-  },
-  proc: {
-    marginTop: espacamento.sm,
-    paddingTop: espacamento.sm,
-    borderTopWidth: 1,
-    borderTopColor: cores.borda,
-    gap: espacamento.xs,
-  },
-  procTitulo: {
-    ...tipografia.rotulo,
-    color: cores.primaria,
-    marginBottom: espacamento.xs,
-  },
-  procTexto: {
-    ...tipografia.corpo,
-    color: cores.texto,
-    marginVertical: 2,
-  },
-  procImagem: {
-    width: '100%',
-    borderRadius: raio.md,
-    marginVertical: espacamento.xs,
-    backgroundColor: cores.fundo,
-    borderWidth: 1,
-    borderColor: cores.borda,
   },
   digitando: {
     ...tipografia.corpo,

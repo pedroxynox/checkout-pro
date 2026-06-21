@@ -99,7 +99,8 @@ const estilos = StyleSheet.create({
   texto: {
     ...tipografia.corpo,
     color: cores.texto,
-    marginVertical: 2,
+    lineHeight: 22,
+    marginVertical: 3,
   },
   negrito: {
     fontWeight: '700',
