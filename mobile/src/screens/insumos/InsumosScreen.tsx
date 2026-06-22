@@ -95,12 +95,12 @@ export function InsumosScreen({
 
   const buscar = useCallback(async () => {
     const [lista, cont, sugs, prox] = await Promise.all([
-      insumosService.listarProativo(),
-      requisicoesService.pendentes(),
+      insumosService.listarProativo().catch(() => insumosService.listar()),
+      requisicoesService.pendentes().catch(() => ({ total: 0 })),
       insumosService.sugestoesPendentes().catch(() => [] as SugestaoPedido[]),
       insumosService.proximoQuinzenal().catch(() => null),
     ]);
-    setInsumos(lista);
+    setInsumos(lista as InsumoProativo[]);
     setPendentes(cont.total);
     setSugestoes(sugs);
     setProximoSacolas(prox?.diasRestantes ?? null);
@@ -670,16 +670,17 @@ const styles = StyleSheet.create({
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: espacamento.xs,
+    gap: espacamento.sm,
     marginBottom: espacamento.md,
   },
   chip: {
-    paddingHorizontal: espacamento.md,
-    paddingVertical: espacamento.sm,
+    paddingHorizontal: espacamento.lg,
+    paddingVertical: espacamento.md,
     backgroundColor: cores.fundo,
     borderRadius: raio.pill,
     borderWidth: 1,
     borderColor: cores.borda,
+    minHeight: 40,
   },
   chipAtivo: {
     backgroundColor: cores.primaria,
