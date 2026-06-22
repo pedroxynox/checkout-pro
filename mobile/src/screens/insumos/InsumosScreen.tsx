@@ -1,13 +1,14 @@
 /**
- * Tela de Insumos — "Almoxarifado do Setor" (Req 3.1–3.3).
+ * Tela de Insumos — "Almoxarifado Inteligente"
  *
- * Painel vivo dos insumos do setor (Sacolas, Bobina, Pano, Álcool), medido em
- * QUANTIDADE (nunca em R$): saldo em tempo real + equivalente em embalagens,
- * semáforo, consumo da semana e previsão de ruptura. Inclui o "Controle de
- * requisição" (entradas com data — gerente/supervisor), o registro de consumo,
- * a retirada de fardo por código de barras e o acesso às Requisições.
+ * 3 zonas:
+ * 1. PAINEL VISUAL: cards com saldo, semáforo inteligente (3 níveis),
+ *    predicción de ruptura e sugestão de reposição.
+ * 2. AÇÕES RÁPIDAS: botões grandes para consumo rápido (1 fardo, 1 caixa,
+ *    1 galão) sem formulários complexos.
+ * 3. GESTÃO (gestores): entrada de estoque, requisições, histórico.
  *
- * A lista de insumos e as entradas vêm do backend, compartilhadas entre todos.
+ * O sistema é PROATIVO: mostra "vai acabar em X dias" e sugere quantidades.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -15,7 +16,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { insumosService, requisicoesService } from '../../api/services';
-import { EntradaInsumo, InsumoResumo } from '../../api/types';
+import { InsumoProativo, NivelEstoque } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import {
   Botao,
@@ -23,81 +24,51 @@ import {
   Carregando,
   Cartao,
   EstadoVazio,
-  LeitorCodigoBarras,
   MensagemErro,
-  Selo,
   SeletorData,
   Tela,
 } from '../../components';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { notificar } from '../../utils/dialogos';
-import { formatarDataHora, formatarNumero, hojeISO } from '../../utils/formato';
+import { confirmar, notificar } from '../../utils/dialogos';
+import { formatarNumero, hojeISO } from '../../utils/formato';
 
-/** Pluraliza a unidade base de forma simples (sacola→sacolas, metro→metros). */
-function comUnidade(qtd: number, unidade: string): string {
-  const plural = qtd === 1 ? unidade : `${unidade}s`;
-  return `${formatarNumero(qtd)} ${plural}`;
+// ==================== Helpers ====================
+
+function corNivel(nivel: NivelEstoque): string {
+  if (nivel === 'CRITICO') return cores.vermelho;
+  if (nivel === 'ATENCAO') return cores.amarelo;
+  return cores.verde;
 }
 
-/** Primeira letra maiúscula (título/rótulo). */
+function fundoNivel(nivel: NivelEstoque): string {
+  if (nivel === 'CRITICO') return cores.vermelhoFundo;
+  if (nivel === 'ATENCAO') return cores.amareloFundo;
+  return cores.verdeFundo;
+}
+
+function iconeNivel(nivel: NivelEstoque): keyof typeof Ionicons.glyphMap {
+  if (nivel === 'CRITICO') return 'alert-circle';
+  if (nivel === 'ATENCAO') return 'warning';
+  return 'checkmark-circle';
+}
+
+function rotuloNivel(nivel: NivelEstoque): string {
+  if (nivel === 'CRITICO') return 'Crítico';
+  if (nivel === 'ATENCAO') return 'Atenção';
+  return 'OK';
+}
+
+function pluralEmbalagem(embalagem: string, qtd: number): string {
+  if (qtd === 1) return embalagem;
+  return embalagem.endsWith('ão') ? `${embalagem.slice(0, -2)}ões` : `${embalagem}s`;
+}
+
 function capitalizar(texto: string): string {
   return texto.length ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
 }
 
-/** Plural pt-BR da embalagem conforme a quantidade (1 galão / 2 galões / caixas). */
-function pluralEmbalagem(embalagem: string, qtd: number): string {
-  if (qtd === 1) {
-    return embalagem;
-  }
-  return embalagem.endsWith('ão')
-    ? `${embalagem.slice(0, -2)}ões`
-    : `${embalagem}s`;
-}
-
-/**
- * Saldo expresso na **embalagem** (ex.: "0 Caixas", "1 Galão", "1,5 Fardos"),
- * que já embute a conversão. Insumos sem embalagem (fator 1) caem na unidade base.
- */
-function comEmbalagem(qtd: number, insumo: InsumoResumo): string {
-  if (insumo.fatorEmbalagem <= 1) {
-    return comUnidade(qtd, insumo.unidade);
-  }
-  const pacotes = qtd / insumo.fatorEmbalagem;
-  return `${formatarNumero(pacotes)} ${capitalizar(pluralEmbalagem(insumo.embalagem, pacotes))}`;
-}
-
-function SeletorInsumo({
-  insumos,
-  selecionado,
-  aoSelecionar,
-}: {
-  insumos: InsumoResumo[];
-  selecionado: string | null;
-  aoSelecionar: (id: string) => void;
-}): React.ReactElement {
-  if (insumos.length === 0) {
-    return <Text style={styles.vazioInline}>Nenhum insumo disponível.</Text>;
-  }
-  return (
-    <View style={styles.chips}>
-      {insumos.map((i) => {
-        const ativo = i.id === selecionado;
-        return (
-          <Pressable
-            key={i.id}
-            onPress={() => aoSelecionar(i.id)}
-            style={[styles.chip, ativo && styles.chipAtivo]}
-          >
-            <Text style={[styles.chipTexto, ativo && styles.chipTextoAtivo]}>
-              {i.nome}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
+// ==================== Component ====================
 
 export function InsumosScreen({
   navigation,
@@ -105,37 +76,26 @@ export function InsumosScreen({
   const { podeAcessar } = useAuth();
   const podeGerenciar = podeAcessar('INSUMOS_GERENCIAR');
 
-  const [insumos, setInsumos] = useState<InsumoResumo[]>([]);
-  const [entradas, setEntradas] = useState<EntradaInsumo[]>([]);
+  const [insumos, setInsumos] = useState<InsumoProativo[]>([]);
   const [pendentes, setPendentes] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [consumindo, setConsumindo] = useState<string | null>(null);
 
-  // Controle de requisição (entrada)
+  // Gestão: entrada
+  const [entradaAberta, setEntradaAberta] = useState(false);
   const [insumoEntrada, setInsumoEntrada] = useState<string | null>(null);
   const [qtdEntrada, setQtdEntrada] = useState('');
   const [dataEntrada, setDataEntrada] = useState(hojeISO());
   const [registrandoEntrada, setRegistrandoEntrada] = useState(false);
 
-  // Retirada de fardo
-  const [insumoFardo, setInsumoFardo] = useState<string | null>(null);
-  const [scannerVisivel, setScannerVisivel] = useState(false);
-
-  // Consumo
-  const [insumoConsumo, setInsumoConsumo] = useState<string | null>(null);
-  const [pdv, setPdv] = useState('');
-  const [quantidade, setQuantidade] = useState('');
-  const [consumindo, setConsumindo] = useState(false);
-
   const buscar = useCallback(async () => {
-    const [lista, listaEntradas, cont] = await Promise.all([
-      insumosService.listar(),
-      insumosService.entradas(),
+    const [lista, cont] = await Promise.all([
+      insumosService.listarProativo(),
       requisicoesService.pendentes(),
     ]);
     setInsumos(lista);
-    setEntradas(listaEntradas);
     setPendentes(cont.total);
     setErro(null);
   }, []);
@@ -156,9 +116,6 @@ export function InsumosScreen({
     [buscar],
   );
 
-  // Recarrega ao abrir e, silenciosamente, sempre que a tela volta ao foco
-  // (ex.: depois de aprovar uma requisição em "Requisições"), mantendo o saldo,
-  // as entradas e o badge em dia.
   const primeiraCarga = useRef(true);
   useFocusEffect(
     useCallback(() => {
@@ -171,8 +128,32 @@ export function InsumosScreen({
     }, [carregar, buscar]),
   );
 
+  // ==================== Ações rápidas ====================
+
+  const consumirRapido = async (insumo: InsumoProativo) => {
+    const nomeEmb = capitalizar(insumo.embalagem);
+    const ok = await confirmar(
+      `Usar 1 ${nomeEmb}`,
+      `Registrar consumo de 1 ${nomeEmb} de ${insumo.nome}?`,
+      'Confirmar',
+    );
+    if (!ok) return;
+
+    setConsumindo(insumo.id);
+    try {
+      const { saldo } = await insumosService.consumirEmbalagem(insumo.id, 1);
+      await buscar();
+      notificar('Consumo registrado', `Novo saldo: ${formatarNumero(saldo)} ${insumo.unidade}s.`);
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar consumo.');
+    } finally {
+      setConsumindo(null);
+    }
+  };
+
+  // ==================== Gestão: entrada ====================
+
   const insumoEntradaObj = insumos.find((i) => i.id === insumoEntrada);
-  const insumoConsumoObj = insumos.find((i) => i.id === insumoConsumo);
 
   const registrarEntrada = async () => {
     if (!insumoEntradaObj) {
@@ -181,7 +162,7 @@ export function InsumosScreen({
     }
     const embalagens = Number(qtdEntrada);
     if (!Number.isInteger(embalagens) || embalagens <= 0) {
-      notificar('Quantidade inválida', 'Informe um inteiro maior que zero.');
+      notificar('Quantidade inválida', 'Informe um número inteiro.');
       return;
     }
     const base = embalagens * insumoEntradaObj.fatorEmbalagem;
@@ -194,10 +175,10 @@ export function InsumosScreen({
         `${dataEntrada}T12:00:00.000Z`,
       );
       setQtdEntrada('');
-      await carregar(true);
+      await buscar();
       notificar(
         'Entrada registrada',
-        `+ ${formatarNumero(embalagens)} ${pluralEmbalagem(insumoEntradaObj.embalagem, embalagens)} no estoque.`,
+        `+${embalagens} ${pluralEmbalagem(insumoEntradaObj.embalagem, embalagens)} no estoque.`,
       );
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar entrada.');
@@ -206,398 +187,413 @@ export function InsumosScreen({
     }
   };
 
-  const retirarFardo = async (codigoBarras: string) => {
-    setScannerVisivel(false);
-    if (!insumoFardo) {
-      notificar('Selecione o insumo', 'Escolha o insumo de sacolas do fardo.');
-      return;
-    }
-    try {
-      const { saldo } = await insumosService.retirarFardo(codigoBarras, insumoFardo);
-      await carregar(true);
-      notificar('Fardo registrado', `Novo saldo de sacolas: ${formatarNumero(saldo)}.`);
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar a retirada.');
-    }
-  };
+  // ==================== Render ====================
 
-  const registrarConsumo = async () => {
-    const insumo = insumos.find((i) => i.id === insumoConsumo);
-    if (!insumo) {
-      notificar('Selecione o insumo', 'Escolha o insumo a consumir.');
-      return;
-    }
-    const embalagens = Number(quantidade);
-    if (!Number.isInteger(embalagens) || embalagens <= 0) {
-      notificar('Quantidade inválida', 'Informe um número inteiro de embalagens.');
-      return;
-    }
-    const base = embalagens * insumo.fatorEmbalagem;
-    setConsumindo(true);
-    try {
-      if (insumo.categoria === 'BOBINA') {
-        await insumosService.consumirBobina(insumo.id, pdv.trim() || 'PDV', base);
-      } else {
-        await insumosService.consumirInsumo(insumo.id, base);
-      }
-      setQuantidade('');
-      setPdv('');
-      await carregar(true);
-      notificar(
-        'Consumo registrado',
-        `Saída de ${formatarNumero(embalagens)} ${pluralEmbalagem(insumo.embalagem, embalagens)} registrada.`,
-      );
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar consumo.');
-    } finally {
-      setConsumindo(false);
-    }
-  };
-
-  const sacolas = insumos.filter((i) => i.categoria === 'SACOLA');
+  if (carregando) {
+    return (
+      <Tela>
+        <Carregando />
+      </Tela>
+    );
+  }
 
   return (
     <Tela aoAtualizar={() => void carregar(true)} atualizando={atualizando}>
-      {/* Acesso às requisições com badge de pendentes */}
-      <Pressable onPress={() => navigation.navigate('Requisicoes')}>
-        <Cartao>
-          <View style={styles.linkRequisicoes}>
-            <Ionicons name="file-tray-full-outline" size={22} color={cores.primaria} />
-            <View style={styles.flex1}>
-              <Text style={styles.linkTitulo}>Requisições</Text>
-              <Text style={styles.linkSub}>Solicitar insumos e aprovar pedidos</Text>
-            </View>
-            {pendentes > 0 ? (
-              <View style={styles.badge}>
-                <Text style={styles.badgeTexto}>{pendentes}</Text>
-              </View>
-            ) : null}
-            <Ionicons name="chevron-forward" size={18} color={cores.textoSecundario} />
-          </View>
-        </Cartao>
-      </Pressable>
+      {erro && <MensagemErro mensagem={erro} aoTentarNovamente={() => void carregar()} />}
 
-      {carregando ? (
-        <Carregando />
-      ) : erro ? (
-        <MensagemErro mensagem={erro} aoTentarNovamente={() => void carregar()} />
-      ) : insumos.length === 0 ? (
+      {/* ===== ZONA 1: PAINEL VISUAL ===== */}
+      <Text style={styles.secaoTitulo}>Estoque</Text>
+
+      {insumos.length === 0 ? (
         <EstadoVazio
           icone="cube-outline"
           titulo="Nenhum insumo"
           descricao="Os insumos do setor aparecerão aqui."
         />
       ) : (
-        insumos.map((i) => {
-          return (
-            <Pressable
-              key={i.id}
-              onPress={() =>
-                navigation.navigate('InsumoDetalhe', { insumoId: i.id, nome: i.nome })
-              }
-            >
-              <Cartao>
-                <View style={styles.cabecalho}>
-                  <Text style={[styles.nome, styles.flex1]}>{capitalizar(i.nome)}</Text>
-                  {i.estoqueBaixo ? (
-                    <Selo texto="Baixo" cor={cores.vermelho} fundo={cores.vermelhoFundo} />
-                  ) : (
-                    <Selo texto="OK" cor={cores.verde} fundo={cores.verdeFundo} />
-                  )}
-                </View>
+        insumos.map((i) => (
+          <Pressable
+            key={i.id}
+            onPress={() => navigation.navigate('InsumoDetalhe', { insumoId: i.id, nome: i.nome })}
+          >
+            <Cartao style={styles.cardInsumo}>
+              {/* Borda lateral colorida pelo nível */}
+              <View style={[styles.bordaNivel, { backgroundColor: corNivel(i.nivel) }]} />
 
-                <View style={styles.saldoLinha}>
-                  <Text style={styles.saldo}>{comEmbalagem(i.saldo, i)}</Text>
+              {/* Cabeçalho: nome + badge nível */}
+              <View style={styles.cardTopo}>
+                <View style={[styles.iconeNivel, { backgroundColor: fundoNivel(i.nivel) }]}>
+                  <Ionicons name={iconeNivel(i.nivel)} size={20} color={corNivel(i.nivel)} />
                 </View>
-
-                <View style={styles.metricas}>
-                  <View style={styles.metrica}>
-                    <Text style={styles.metricaRotulo}>Consumo (7 dias)</Text>
-                    <Text style={styles.metricaValor}>
-                      {formatarNumero(i.consumoSemana)}
-                    </Text>
-                  </View>
-                  <View style={styles.metrica}>
-                    <Text style={styles.metricaRotulo}>Entrada (7 dias)</Text>
-                    <Text style={styles.metricaValor}>
-                      {formatarNumero(i.entradaSemana)}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.rodape}>
-                  <Text style={styles.previsao}>
-                    {i.semanasRestantes != null
-                      ? `Dura ~${formatarNumero(
-                          Math.round(i.semanasRestantes * 7),
-                        )} dia(s) no ritmo atual`
-                      : 'Sem consumo na semana'}
+                <View style={styles.cardNomeArea}>
+                  <Text style={styles.cardNome}>{capitalizar(i.nome)}</Text>
+                  <Text style={[styles.cardNivel, { color: corNivel(i.nivel) }]}>
+                    {rotuloNivel(i.nivel)}
                   </Text>
-                  <Ionicons name="chevron-forward" size={18} color={cores.textoSecundario} />
                 </View>
-              </Cartao>
-            </Pressable>
-          );
-        })
+                <View style={[styles.badgeNivel, { backgroundColor: fundoNivel(i.nivel) }]}>
+                  <Text style={[styles.badgeNivelTexto, { color: corNivel(i.nivel) }]}>
+                    {formatarNumero(Math.round(i.saldo / i.fatorEmbalagem))} {pluralEmbalagem(i.embalagem, Math.round(i.saldo / i.fatorEmbalagem))}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Métricas proativas */}
+              <View style={styles.metricas}>
+                <View style={styles.metrica}>
+                  <Text style={styles.metricaValor}>
+                    {i.diasAteRuptura != null ? `${i.diasAteRuptura}d` : '—'}
+                  </Text>
+                  <Text style={styles.metricaRotulo}>até acabar</Text>
+                </View>
+                <View style={styles.metrica}>
+                  <Text style={styles.metricaValor}>
+                    {formatarNumero(Math.round(i.consumoSemana / i.fatorEmbalagem))}
+                  </Text>
+                  <Text style={styles.metricaRotulo}>consumo/sem</Text>
+                </View>
+                <View style={styles.metrica}>
+                  <Text style={styles.metricaValor}>
+                    {formatarNumero(Math.round(i.entradaSemana / i.fatorEmbalagem))}
+                  </Text>
+                  <Text style={styles.metricaRotulo}>entrada/sem</Text>
+                </View>
+              </View>
+
+              {/* Sugestão de reposição (se necessário) */}
+              {i.sugestaoReposicao > 0 && (
+                <View style={styles.sugestao}>
+                  <Ionicons name="bulb-outline" size={14} color={cores.primaria} />
+                  <Text style={styles.sugestaoTexto}>
+                    Sugestão: repor {i.sugestaoReposicao} {pluralEmbalagem(i.embalagem, i.sugestaoReposicao)}
+                  </Text>
+                </View>
+              )}
+            </Cartao>
+          </Pressable>
+        ))
       )}
 
-      {/* Controle de requisição: registro de entradas (gerente/supervisor) */}
-      {podeGerenciar ? (
-        <Cartao titulo="Controle de requisição (entrada)">
-          <Text style={styles.rotulo}>Insumo</Text>
-          <SeletorInsumo
-            insumos={insumos}
-            selecionado={insumoEntrada}
-            aoSelecionar={setInsumoEntrada}
-          />
-          <SeletorData rotulo="Data da entrada" valor={dataEntrada} aoMudar={setDataEntrada} />
-          <CampoTexto
-            rotulo={
-              insumoEntradaObj
-                ? `Quantidade (em ${insumoEntradaObj.embalagem}s)`
-                : 'Quantidade (em embalagens)'
-            }
-            keyboardType="number-pad"
-            value={qtdEntrada}
-            onChangeText={setQtdEntrada}
-            placeholder="0"
-          />
-          {insumoEntradaObj && Number(qtdEntrada) > 0 ? (
-            <Text style={styles.preview}>
-              = {comUnidade(Number(qtdEntrada) * insumoEntradaObj.fatorEmbalagem, insumoEntradaObj.unidade)}
-            </Text>
-          ) : null}
-          <Botao
-            titulo="Registrar entrada"
-            aoPressionar={registrarEntrada}
-            carregando={registrandoEntrada}
-          />
-        </Cartao>
-      ) : null}
+      {/* ===== ZONA 2: AÇÕES RÁPIDAS ===== */}
+      {insumos.length > 0 && (
+        <>
+          <Text style={styles.secaoTitulo}>Ações rápidas</Text>
+          <Text style={styles.secaoSubtitulo}>Registrar consumo de 1 embalagem</Text>
 
-      {/* Lista de entradas recentes (todos veem) */}
-      <Cartao titulo="Entradas recentes">
-        {entradas.length === 0 ? (
-          <Text style={styles.vazioInline}>Nenhuma entrada registrada ainda.</Text>
-        ) : (
-          entradas.slice(0, 10).map((e) => (
-            <View key={e.id} style={styles.entradaLinha}>
-              <View style={styles.flex1}>
-                <Text style={styles.entradaNome}>{e.insumoNome}</Text>
-                <Text style={styles.entradaMeta}>
-                  {formatarDataHora(e.dataHora)}
-                  {e.origem ? ` · ${e.origem === 'REQUISICAO' ? 'requisição' : 'entrada'}` : ''}
-                </Text>
-              </View>
-              <Text style={styles.entradaQtd}>
-                + {formatarNumero(e.quantidade / e.fatorEmbalagem)}{' '}
-                {pluralEmbalagem(e.embalagem, e.quantidade / e.fatorEmbalagem)}
-              </Text>
+          <View style={styles.acoesGrid}>
+            {insumos.map((i) => {
+              const loading = consumindo === i.id;
+              return (
+                <Pressable
+                  key={i.id}
+                  onPress={() => void consumirRapido(i)}
+                  disabled={consumindo !== null}
+                  style={[styles.acaoBtn, loading && styles.acaoBtnLoading]}
+                >
+                  <Ionicons
+                    name={
+                      i.categoria === 'SACOLA'
+                        ? 'bag-outline'
+                        : i.categoria === 'BOBINA'
+                          ? 'receipt-outline'
+                          : i.categoria === 'ALCOOL'
+                            ? 'flask-outline'
+                            : 'cube-outline'
+                    }
+                    size={28}
+                    color={loading ? cores.textoSecundario : cores.primaria}
+                  />
+                  <Text style={[styles.acaoBtnTexto, loading && { color: cores.textoSecundario }]}>
+                    1 {capitalizar(i.embalagem)}
+                  </Text>
+                  <Text style={styles.acaoBtnSub}>{capitalizar(i.nome)}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </>
+      )}
+
+      {/* ===== ZONA 3: GESTÃO ===== */}
+      <Text style={styles.secaoTitulo}>Gestão</Text>
+
+      {/* Link para requisições */}
+      <Pressable onPress={() => navigation.navigate('Requisicoes')}>
+        <Cartao>
+          <View style={styles.linkRow}>
+            <Ionicons name="file-tray-full-outline" size={22} color={cores.primaria} />
+            <View style={styles.flex1}>
+              <Text style={styles.linkTitulo}>Requisições</Text>
+              <Text style={styles.linkSub}>Solicitar e aprovar pedidos</Text>
             </View>
-          ))
-        )}
-      </Cartao>
+            {pendentes > 0 && (
+              <View style={styles.badgePendentes}>
+                <Text style={styles.badgePendentesTexto}>{pendentes}</Text>
+              </View>
+            )}
+            <Ionicons name="chevron-forward" size={18} color={cores.textoSecundario} />
+          </View>
+        </Cartao>
+      </Pressable>
 
-      <Cartao titulo="Registrar consumo (saída)">
-        <Text style={styles.rotulo}>Insumo</Text>
-        <SeletorInsumo
-          insumos={insumos}
-          selecionado={insumoConsumo}
-          aoSelecionar={setInsumoConsumo}
-        />
-        {insumoConsumoObj?.categoria === 'BOBINA' ? (
-          <CampoTexto rotulo="PDV" value={pdv} onChangeText={setPdv} placeholder="Ex.: PDV 12" />
-        ) : null}
-        <CampoTexto
-          rotulo={
-            insumoConsumoObj
-              ? `Quantidade (em ${pluralEmbalagem(insumoConsumoObj.embalagem, 2)})`
-              : 'Quantidade (em embalagens)'
-          }
-          keyboardType="number-pad"
-          value={quantidade}
-          onChangeText={setQuantidade}
-          placeholder="0"
-        />
-        {insumoConsumoObj && Number(quantidade) > 0 ? (
-          <Text style={styles.preview}>
-            = {comUnidade(Number(quantidade) * insumoConsumoObj.fatorEmbalagem, insumoConsumoObj.unidade)}
-          </Text>
-        ) : null}
-        <Botao titulo="Registrar consumo" aoPressionar={registrarConsumo} carregando={consumindo} />
-      </Cartao>
+      {/* Registrar entrada (gestores) */}
+      {podeGerenciar && (
+        <Cartao>
+          <Pressable
+            onPress={() => setEntradaAberta(!entradaAberta)}
+            style={styles.linkRow}
+          >
+            <Ionicons name="add-circle-outline" size={22} color={cores.verde} />
+            <View style={styles.flex1}>
+              <Text style={styles.linkTitulo}>Registrar entrada</Text>
+              <Text style={styles.linkSub}>Mercadoria recebida do depósito</Text>
+            </View>
+            <Ionicons
+              name={entradaAberta ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={cores.textoSecundario}
+            />
+          </Pressable>
 
-      <Cartao titulo="Retirada de fardo (sacolas)">
-        <Text style={styles.rotulo}>Insumo de sacolas</Text>
-        <SeletorInsumo insumos={sacolas} selecionado={insumoFardo} aoSelecionar={setInsumoFardo} />
-        <Botao
-          titulo="Ler código de barras"
-          aoPressionar={() => {
-            if (!insumoFardo) {
-              notificar('Selecione o insumo', 'Escolha o insumo de sacolas primeiro.');
-              return;
-            }
-            setScannerVisivel(true);
-          }}
-          estilo={{ marginTop: espacamento.sm }}
-        />
-      </Cartao>
-
-      <LeitorCodigoBarras
-        visivel={scannerVisivel}
-        aoLer={retirarFardo}
-        aoFechar={() => setScannerVisivel(false)}
-      />
+          {entradaAberta && (
+            <View style={styles.formEntrada}>
+              <Text style={styles.rotulo}>Insumo</Text>
+              <View style={styles.chips}>
+                {insumos.map((i) => {
+                  const ativo = i.id === insumoEntrada;
+                  return (
+                    <Pressable
+                      key={i.id}
+                      onPress={() => setInsumoEntrada(i.id)}
+                      style={[styles.chip, ativo && styles.chipAtivo]}
+                    >
+                      <Text style={[styles.chipTexto, ativo && styles.chipTextoAtivo]}>
+                        {i.nome}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <CampoTexto
+                rotulo={
+                  insumoEntradaObj
+                    ? `Quantidade (em ${pluralEmbalagem(insumoEntradaObj.embalagem, 2)})`
+                    : 'Quantidade (em embalagens)'
+                }
+                keyboardType="number-pad"
+                value={qtdEntrada}
+                onChangeText={setQtdEntrada}
+                placeholder="0"
+              />
+              <SeletorData
+                rotulo="Data da entrada"
+                value={dataEntrada}
+                onChange={setDataEntrada}
+              />
+              <Botao
+                titulo="Registrar entrada"
+                aoPressionar={registrarEntrada}
+                carregando={registrandoEntrada}
+              />
+            </View>
+          )}
+        </Cartao>
+      )}
     </Tela>
   );
 }
 
+// ==================== Styles ====================
+
 const styles = StyleSheet.create({
-  rotulo: {
-    ...tipografia.rotulo,
-    color: cores.textoSecundario,
+  secaoTitulo: {
+    ...tipografia.secao,
+    color: cores.texto,
+    marginTop: espacamento.lg,
     marginBottom: espacamento.xs,
   },
-  vazioInline: {
+  secaoSubtitulo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginBottom: espacamento.sm,
+  },
+  cardInsumo: {
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  bordaNivel: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: raio.lg,
+    borderBottomLeftRadius: raio.lg,
+  },
+  cardTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+  },
+  iconeNivel: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardNomeArea: {
+    flex: 1,
+  },
+  cardNome: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+  },
+  cardNivel: {
+    ...tipografia.legenda,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  badgeNivel: {
+    paddingHorizontal: espacamento.sm,
+    paddingVertical: 4,
+    borderRadius: raio.pill,
+  },
+  badgeNivelTexto: {
+    ...tipografia.legenda,
+    fontWeight: '700',
+  },
+  metricas: {
+    flexDirection: 'row',
+    gap: espacamento.sm,
+    marginTop: espacamento.md,
+  },
+  metrica: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: cores.fundo,
+    borderRadius: raio.md,
+    paddingVertical: espacamento.sm,
+  },
+  metricaValor: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    fontWeight: '700',
+  },
+  metricaRotulo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+  },
+  sugestao: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+    marginTop: espacamento.sm,
+    paddingTop: espacamento.sm,
+    borderTopWidth: 1,
+    borderTopColor: cores.divisor,
+  },
+  sugestaoTexto: {
+    ...tipografia.legenda,
+    color: cores.primaria,
+    fontWeight: '600',
+  },
+  acoesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espacamento.sm,
+  },
+  acaoBtn: {
+    flex: 1,
+    minWidth: '45%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: cores.superficie,
+    borderRadius: raio.lg,
+    paddingVertical: espacamento.lg,
+    paddingHorizontal: espacamento.md,
+    borderWidth: 1,
+    borderColor: cores.borda,
+  },
+  acaoBtnLoading: {
+    opacity: 0.5,
+  },
+  acaoBtnTexto: {
+    ...tipografia.rotulo,
+    color: cores.primaria,
+    fontWeight: '700',
+  },
+  acaoBtnSub: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
   },
-  preview: {
-    ...tipografia.legenda,
-    color: cores.primaria,
-    fontWeight: '700',
-    marginBottom: espacamento.sm,
-  },
-  linkRequisicoes: {
+  linkRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.md,
+    gap: espacamento.sm,
+  },
+  flex1: {
+    flex: 1,
   },
   linkTitulo: {
-    ...tipografia.corpo,
-    fontWeight: '700',
+    ...tipografia.rotulo,
     color: cores.texto,
   },
   linkSub: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
-    marginTop: 2,
+    marginTop: 1,
   },
-  badge: {
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
-    paddingHorizontal: 6,
+  badgePendentes: {
     backgroundColor: cores.primaria,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: raio.pill,
+    paddingHorizontal: espacamento.sm,
+    paddingVertical: 2,
+    marginRight: espacamento.xs,
   },
-  badgeTexto: {
+  badgePendentesTexto: {
     color: cores.textoInverso,
+    fontSize: 11,
     fontWeight: '700',
-    fontSize: 12,
   },
-  cabecalho: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  flex1: { flex: 1 },
-  nome: {
-    ...tipografia.subtitulo,
-    color: cores.texto,
-  },
-  saldoLinha: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: espacamento.sm,
-    marginTop: espacamento.sm,
-  },
-  saldo: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: cores.texto,
-  },
-  metricas: {
-    flexDirection: 'row',
+  formEntrada: {
     marginTop: espacamento.md,
-    gap: espacamento.md,
-  },
-  metrica: {
-    flex: 1,
-  },
-  metricaRotulo: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-  },
-  metricaValor: {
-    ...tipografia.corpo,
-    fontWeight: '600',
-    color: cores.texto,
-    marginTop: 2,
-  },
-  rodape: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: espacamento.md,
-    paddingTop: espacamento.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: espacamento.md,
+    borderTopWidth: 1,
     borderTopColor: cores.divisor,
   },
-  previsao: {
-    ...tipografia.legenda,
+  rotulo: {
+    ...tipografia.rotulo,
     color: cores.textoSecundario,
-    flex: 1,
-  },
-  entradaLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: espacamento.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: cores.divisor,
-  },
-  entradaNome: {
-    ...tipografia.corpo,
-    fontWeight: '600',
-    color: cores.texto,
-  },
-  entradaMeta: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    marginTop: 2,
-  },
-  entradaQtd: {
-    ...tipografia.corpo,
-    fontWeight: '700',
-    color: cores.verde,
+    marginBottom: espacamento.xs,
   },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: espacamento.sm,
-    marginBottom: espacamento.sm,
+    gap: espacamento.xs,
+    marginBottom: espacamento.md,
   },
   chip: {
-    paddingVertical: espacamento.xs,
     paddingHorizontal: espacamento.md,
+    paddingVertical: espacamento.sm,
+    backgroundColor: cores.fundo,
     borderRadius: raio.pill,
-    backgroundColor: cores.superficieAlternativa,
     borderWidth: 1,
     borderColor: cores.borda,
   },
   chipAtivo: {
-    backgroundColor: cores.primariaClara,
+    backgroundColor: cores.primaria,
     borderColor: cores.primaria,
   },
   chipTexto: {
     ...tipografia.legenda,
-    color: cores.textoSecundario,
+    color: cores.texto,
+    fontWeight: '600',
   },
   chipTextoAtivo: {
-    color: cores.primaria,
-    fontWeight: '700',
+    color: cores.textoInverso,
   },
 });
 

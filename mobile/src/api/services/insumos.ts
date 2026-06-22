@@ -4,6 +4,7 @@ import {
   CategoriaInsumo,
   EntradaInsumo,
   Insumo,
+  InsumoProativo,
   InsumoResumo,
   MovimentoEstoque,
 } from '../types';
@@ -14,9 +15,22 @@ export const insumosService = {
     return apiClient.get<InsumoResumo[]>('/insumos');
   },
 
+  /** Painel proativo: insumos com predicción, nível, sugestão de reposição. */
+  listarProativo(): Promise<InsumoProativo[]> {
+    return apiClient.get<InsumoProativo[]>('/insumos/proativo');
+  },
+
   /** Lista as entradas recentes de estoque (Controle de requisição). */
   entradas(): Promise<EntradaInsumo[]> {
     return apiClient.get<EntradaInsumo[]>('/insumos/entradas');
+  },
+
+  /** Consumo simplificado em embalagens inteiras (1 fardo, 1 caixa, 1 galão). */
+  consumirEmbalagem(insumoId: string, embalagens: number): Promise<{ saldo: number }> {
+    return apiClient.post<{ saldo: number }>('/insumos/consumo-embalagem', {
+      insumoId,
+      embalagens,
+    });
   },
 
   /**

@@ -153,3 +153,165 @@ export function resumoEstoque(
     semanasRestantes,
   };
 }
+
+
+// ==================== SISTEMA PROATIVO ====================
+
+/**
+ * Consumo por dia da semana (0=Dom..6=Sáb).
+ * Usado para predicción ponderada y auto-reposição.
+ */
+export interface ConsumoPorDiaSemana {
+  /** Dia da semana (0-6). */
+  dia: number;
+  /** Consumo médio nesse dia (unidade base). */
+  media: number;
+  /** Quantidade de amostras usadas na média. */
+  amostras: number;
+}
+
+/**
+ * Calcula o consumo médio por dia da semana, baseado nos últimos N dias de
+ * movimentos. Retorna um array de 7 posições (Dom..Sáb).
+ */
+export function consumoPorDiaSemana(
+  movimentos: readonly MovimentoComData[],
+  diasHistorico = 28,
+  agora: Date = new Date(),
+): ConsumoPorDiaSemana[] {
+  const limite = agora.getTime() - diasHistorico * 24 * 60 * 60 * 1000;
+  const porDia: { total: number; count: number }[] = Array.from({ length: 7 }, () => ({
+    total: 0,
+    count: 0,
+  }));
+
+  // Agrupar consumos por dia do calendário.
+  const diasVisto = new Map<string, { dia: number; consumo: number }>();
+  for (const m of movimentos) {
+    if (m.dataHora.getTime() < limite || m.delta >= 0) continue;
+    const key = m.dataHora.toISOString().slice(0, 10);
+    const existing = diasVisto.get(key);
+    if (existing) {
+      existing.consumo += -m.delta;
+    } else {
+      diasVisto.set(key, { dia: m.dataHora.getUTCDay(), consumo: -m.delta });
+    }
+  }
+
+  for (const { dia, consumo } of diasVisto.values()) {
+    porDia[dia].total += consumo;
+    porDia[dia].count += 1;
+  }
+
+  return porDia.map((d, i) => ({
+    dia: i,
+    media: d.count > 0 ? Math.round(d.total / d.count) : 0,
+    amostras: d.count,
+  }));
+}
+
+/**
+ * Predicción ponderada de ruptura: calcula cuántos días faltan para que el
+ * saldo llegue a cero, usando el consumo medio por día de la semana.
+ * Más preciso que la división lineal simple.
+ *
+ * Retorna null si no hay datos de consumo.
+ */
+export function predicaoRuptura(
+  saldo: number,
+  consumoDiaSemana: ConsumoPorDiaSemana[],
+  agora: Date = new Date(),
+): number | null {
+  const consumoMedioGeral =
+    consumoDiaSemana.reduce((acc, d) => acc + d.media, 0) / 7;
+  if (consumoMedioGeral <= 0) return null;
+
+  let restante = saldo;
+  let dias = 0;
+  const maxDias = 365; // Limite para evitar loop infinito.
+
+  while (restante > 0 && dias < maxDias) {
+    const diaFuturo = new Date(agora.getTime() + dias * 24 * 60 * 60 * 1000);
+    const diaSem = diaFuturo.getUTCDay();
+    const consumoHoje = consumoDiaSemana[diaSem].media || consumoMedioGeral;
+    restante -= consumoHoje;
+    dias++;
+  }
+
+  return dias;
+}
+
+/**
+ * Calcula a quantidade ideal de reposição (auto-reposição):
+ * - Objetivo: manter estoque para N semanas de operação.
+ * - Fórmula: (consumo semanal médio × semanas) - saldo atual.
+ * - Arredondado para cima em embalagens inteiras.
+ */
+export function quantidadeReposicao(
+  saldoAtual: number,
+  consumoSemanal: number,
+  semanasCobertura = 2,
+  fatorEmbalagem = 1,
+): number {
+  if (consumoSemanal <= 0) return 0;
+  const necessario = consumoSemanal * semanasCobertura;
+  const deficit = necessario - saldoAtual;
+  if (deficit <= 0) return 0;
+  // Arredondar para cima em embalagens inteiras.
+  return Math.ceil(deficit / fatorEmbalagem);
+}
+
+/**
+ * Nível de urgência do estoque para UI (semáforo inteligente).
+ * - CRITICO: saldo <= limiteMinimo (vai faltar muito em breve)
+ * - ATENCAO: saldo <= 2× limiteMinimo (precisa repor em breve)
+ * - OK: saldo está confortável
+ */
+export type NivelEstoque = 'CRITICO' | 'ATENCAO' | 'OK';
+
+export function nivelEstoque(saldo: number, limiteMinimo: number): NivelEstoque {
+  if (saldo <= limiteMinimo) return 'CRITICO';
+  if (saldo <= limiteMinimo * 2) return 'ATENCAO';
+  return 'OK';
+}
+
+/**
+ * Resumo proativo de estoque (evolução do ResumoEstoque original).
+ * Adiciona: predicción ponderada, nivel de urgencia, sugestão de reposição.
+ */
+export interface ResumoProativo extends ResumoEstoque {
+  /** Dias estimados até ruptura (predicción ponderada por dia de semana). */
+  diasAteRuptura: number | null;
+  /** Nível de urgência: CRITICO, ATENCAO, OK. */
+  nivel: NivelEstoque;
+  /** Quantidade sugerida de reposição (em embalagens). */
+  sugestaoReposicao: number;
+  /** Consumo médio por dia da semana (últimos 28 dias). */
+  consumoDiaSemana: ConsumoPorDiaSemana[];
+}
+
+export function resumoProativo(
+  movimentos: readonly MovimentoComData[],
+  limiteMinimo: number,
+  fatorEmbalagem: number,
+  agora: Date = new Date(),
+): ResumoProativo {
+  const base = resumoEstoque(movimentos, limiteMinimo, agora);
+  const consumoDiaSemana = consumoPorDiaSemana(movimentos, 28, agora);
+  const diasAteRuptura = predicaoRuptura(base.saldo, consumoDiaSemana, agora);
+  const nivel = nivelEstoque(base.saldo, limiteMinimo);
+  const sugestaoReposicao = quantidadeReposicao(
+    base.saldo,
+    base.consumoSemana,
+    2,
+    fatorEmbalagem,
+  );
+
+  return {
+    ...base,
+    diasAteRuptura,
+    nivel,
+    sugestaoReposicao,
+    consumoDiaSemana,
+  };
+}

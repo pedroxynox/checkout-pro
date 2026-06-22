@@ -8,6 +8,9 @@ import {
   estoqueBaixo,
   resolverFardo,
   resumoEstoque,
+  resumoProativo,
+  ResumoProativo,
+  NivelEstoque,
 } from './insumos.domain';
 import { FardoNaoReconhecidoError } from './insumos.errors';
 import { QuantidadeInvalidaError } from './insumos.errors';
@@ -27,6 +30,17 @@ export interface InsumoComResumo extends Insumo {
   consumoSemana: number;
   entradaSemana: number;
   semanasRestantes: number | null;
+}
+
+/** Insumo com resumo proativo (predicción ponderada, nivel, sugestão). */
+export interface InsumoProativo extends Insumo {
+  estoqueBaixo: boolean;
+  consumoSemana: number;
+  entradaSemana: number;
+  semanasRestantes: number | null;
+  diasAteRuptura: number | null;
+  nivel: NivelEstoque;
+  sugestaoReposicao: number;
 }
 
 /** Uma entrada de estoque (movimento com delta > 0) para o "Controle de requisição". */
@@ -263,5 +277,75 @@ export class InsumosService {
       origem: m.origem,
       dataHora: m.dataHora,
     }));
+  }
+
+  /**
+   * Painel proativo: lista insumos com predicción ponderada, nível de urgência
+   * e sugestão de reposição. Substitui o `listarInsumos` como endpoint principal.
+   */
+  async listarProativo(): Promise<InsumoProativo[]> {
+    const insumos = await this.prisma.insumo.findMany({
+      where: { ativo: true },
+      orderBy: { nome: 'asc' },
+    });
+    const agora = new Date();
+    const resultado: InsumoProativo[] = [];
+    for (const insumo of insumos) {
+      const movimentos = await this.prisma.movimentoEstoque.findMany({
+        where: { insumoId: insumo.id },
+        select: { delta: true, dataHora: true },
+      });
+      const resumo = resumoProativo(
+        movimentos,
+        insumo.limiteMinimo,
+        insumo.fatorEmbalagem,
+        agora,
+      );
+      resultado.push({
+        ...insumo,
+        estoqueBaixo: resumo.estoqueBaixo,
+        consumoSemana: resumo.consumoSemana,
+        entradaSemana: resumo.entradaSemana,
+        semanasRestantes: resumo.semanasRestantes,
+        diasAteRuptura: resumo.diasAteRuptura,
+        nivel: resumo.nivel,
+        sugestaoReposicao: resumo.sugestaoReposicao,
+      });
+    }
+    return resultado;
+  }
+
+  /**
+   * Insumos que precisam de reposição (nível CRITICO ou ATENCAO com sugestão > 0).
+   * Usado pelo cron de auto-reposição.
+   */
+  async insumosParaRepor(): Promise<InsumoProativo[]> {
+    const todos = await this.listarProativo();
+    return todos.filter(
+      (i) => i.sugestaoReposicao > 0 && (i.nivel === 'CRITICO' || i.nivel === 'ATENCAO'),
+    );
+  }
+
+  /**
+   * Registra consumo simplificado em embalagens inteiras.
+   * Converte embalagens → unidade base internamente.
+   */
+  async registrarConsumoEmbalagem(
+    insumoId: string,
+    embalagens: number,
+    responsavelId?: string,
+  ): Promise<{ saldo: number }> {
+    const insumo = await this.prisma.insumo.findUnique({ where: { id: insumoId } });
+    if (!insumo) throw new NotFoundException('Insumo não encontrado.');
+    const base = embalagens * insumo.fatorEmbalagem;
+    await this.prisma.movimentoEstoque.create({
+      data: {
+        insumoId,
+        delta: deltaConsumo(base),
+        origem: 'CONSUMO',
+        responsavelId,
+      },
+    });
+    return { saldo: await this.saldo(insumoId) };
   }
 }

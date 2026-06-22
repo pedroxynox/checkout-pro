@@ -205,6 +205,20 @@ export interface InsumoResumo extends Insumo {
   semanasRestantes: number | null;
 }
 
+/** Nível de urgência do estoque. */
+export type NivelEstoque = 'CRITICO' | 'ATENCAO' | 'OK';
+
+/** Insumo com resumo proativo (predicción, nível, sugestão de reposição). */
+export interface InsumoProativo extends Insumo {
+  estoqueBaixo: boolean;
+  consumoSemana: number;
+  entradaSemana: number;
+  semanasRestantes: number | null;
+  diasAteRuptura: number | null;
+  nivel: NivelEstoque;
+  sugestaoReposicao: number;
+}
+
 export interface MovimentoEstoque {
   id: string;
   insumoId: string;

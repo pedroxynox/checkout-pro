@@ -24,6 +24,7 @@ import {
 import {
   InsumosService,
   InsumoComResumo,
+  InsumoProativo,
   EntradaResumo,
 } from './insumos.service';
 
@@ -42,6 +43,26 @@ export class InsumosController {
   @Get()
   async listar(): Promise<InsumoComResumo[]> {
     return this.insumosService.listarInsumos();
+  }
+
+  /** Painel proativo: insumos com predicción, nível, sugestão de reposição. */
+  @Get('proativo')
+  async proativo(): Promise<InsumoProativo[]> {
+    return this.insumosService.listarProativo();
+  }
+
+  /** Registra consumo em embalagens inteiras (simplificado). */
+  @Post('consumo-embalagem')
+  @HttpCode(HttpStatus.OK)
+  async consumoEmbalagem(
+    @Body() dto: { insumoId: string; embalagens: number },
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<{ saldo: number }> {
+    return this.insumosService.registrarConsumoEmbalagem(
+      dto.insumoId,
+      dto.embalagens,
+      usuario?.sub,
+    );
   }
 
   /** Lista as entradas recentes de estoque (Controle de requisição). */
