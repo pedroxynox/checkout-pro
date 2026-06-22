@@ -485,8 +485,8 @@ export function InsumosScreen({
               />
               <SeletorData
                 rotulo="Data da entrada"
-                value={dataEntrada}
-                onChange={setDataEntrada}
+                valor={dataEntrada}
+                aoMudar={setDataEntrada}
               />
               <Botao
                 titulo="Registrar entrada"
