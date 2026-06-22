@@ -90,6 +90,26 @@ export interface AnaliticaFaltas {
   porDiaSemana: FaltasPorDiaSemana[];
 }
 
+/** Um colaborador no roster de um dia. */
+export interface ColaboradorDia {
+  id: string;
+  nome: string;
+  status: StatusCelula;
+  entrada: string | null;
+  saida: string | null;
+  ausenciaId: string | null;
+}
+
+/** Roster de um dia: colaboradores ordenados por entrada (folga ao fim). */
+export interface DiaOperadores {
+  dataISO: string;
+  diaSemana: number;
+  trabalhando: number;
+  folgas: number;
+  faltas: number;
+  colaboradores: ColaboradorDia[];
+}
+
 const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 /** Cobertura mínima desejada por dia (abaixo disso, alerta). */
@@ -312,6 +332,76 @@ export class OperadorTurnoService {
       dias,
       operadores: gradeOperadores,
       cobertura,
+    };
+  }
+
+  /**
+   * Roster de um único dia: cada colaborador com o horário do dia (Sex/Sáb usam
+   * o de fim de semana), o status (trabalha/folga/falta) e a ausência (se
+   * houver). Ordenado por hora de ENTRADA (folga ao fim). Padrão: hoje.
+   */
+  async diaOperadores(dataRef?: Date): Promise<DiaOperadores> {
+    const dataISO = dataRef
+      ? dataRef.toISOString().slice(0, 10)
+      : agoraBrasilia().dataISO;
+    const diaInicio = new Date(`${dataISO}T00:00:00.000Z`);
+    const diaSemana = diaInicio.getUTCDay();
+    const diaFim = addDias(diaInicio, 1);
+
+    const operadores = await this.listar();
+    const ids = operadores.map((o) => o.id);
+    const ausencias =
+      ids.length > 0
+        ? await this.prisma.ausencia.findMany({
+            where: { pessoaId: { in: ids }, data: { gte: diaInicio, lt: diaFim } },
+            select: { id: true, pessoaId: true },
+          })
+        : [];
+    const mapaAus = new Map(ausencias.map((a) => [a.pessoaId, a.id]));
+    const fds = diaSemana === 5 || diaSemana === 6;
+
+    const colaboradores: ColaboradorDia[] = operadores.map((op): ColaboradorDia => {
+      if (op.folgaDiaSemana === diaSemana) {
+        return {
+          id: op.id,
+          nome: op.nome,
+          status: 'FOLGA',
+          entrada: null,
+          saida: null,
+          ausenciaId: null,
+        };
+      }
+      const entrada = fds ? op.entradaFds : op.entradaSemana;
+      const saida = fds ? op.saidaFds : op.saidaSemana;
+      const ausenciaId = mapaAus.get(op.id) ?? null;
+      return {
+        id: op.id,
+        nome: op.nome,
+        status: ausenciaId ? 'FALTA' : 'TRABALHA',
+        entrada,
+        saida,
+        ausenciaId,
+      };
+    });
+
+    // Trabalha/falta primeiro, por hora de entrada; folga ao fim (por nome).
+    colaboradores.sort((a, b) => {
+      const af = a.status === 'FOLGA';
+      const bf = b.status === 'FOLGA';
+      if (af !== bf) return af ? 1 : -1;
+      if (af && bf) return a.nome.localeCompare(b.nome);
+      const ea = horaMin(a.entrada ?? '') ?? 0;
+      const eb = horaMin(b.entrada ?? '') ?? 0;
+      return ea - eb || a.nome.localeCompare(b.nome);
+    });
+
+    return {
+      dataISO,
+      diaSemana,
+      trabalhando: colaboradores.filter((c) => c.status === 'TRABALHA').length,
+      folgas: colaboradores.filter((c) => c.status === 'FOLGA').length,
+      faltas: colaboradores.filter((c) => c.status === 'FALTA').length,
+      colaboradores,
     };
   }
 

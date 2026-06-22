@@ -733,6 +733,26 @@ export interface AnaliticaFaltas {
   porDiaSemana: FaltasPorDiaSemana[];
 }
 
+/** Um colaborador no roster de um dia. */
+export interface ColaboradorDia {
+  id: string;
+  nome: string;
+  status: StatusCelula;
+  entrada: string | null;
+  saida: string | null;
+  ausenciaId: string | null;
+}
+
+/** Roster de um dia (ordenado por entrada, folga ao fim). */
+export interface DiaOperadores {
+  dataISO: string;
+  diaSemana: number;
+  trabalhando: number;
+  folgas: number;
+  faltas: number;
+  colaboradores: ColaboradorDia[];
+}
+
 // ----- Notificações (Req 7.3) -----
 export interface Notificacao {
   id: string;

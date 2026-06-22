@@ -5,6 +5,7 @@ import {
   ContagemTurno,
   AnaliticaFaltas,
   AoVivoOperadores,
+  DiaOperadores,
   GradeOperadores,
   ItemRelatorioAusencia,
   Operador,
@@ -75,6 +76,14 @@ export const operadoresService = {
   grade(data?: string): Promise<GradeOperadores> {
     return apiClient.get<GradeOperadores>(
       '/quadro-operadores/grade',
+      data ? { data } : undefined,
+    );
+  },
+
+  /** Roster de um único dia (ordenado por entrada, folga ao fim). */
+  dia(data?: string): Promise<DiaOperadores> {
+    return apiClient.get<DiaOperadores>(
+      '/quadro-operadores/dia',
       data ? { data } : undefined,
     );
   },

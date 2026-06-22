@@ -20,6 +20,7 @@ import {
 import {
   AnaliticaFaltas,
   AoVivoOperadores,
+  DiaOperadores,
   GradeSemana,
   OperadorTurnoService,
 } from './operador-turno.service';
@@ -38,6 +39,12 @@ export class OperadorTurnoController {
   @Get('grade')
   grade(@Query() dto: GradeOperadoresDto): Promise<GradeSemana> {
     return this.service.grade(dto.data ? new Date(dto.data) : new Date());
+  }
+
+  /** Roster de um único dia (ordenado por entrada, folga ao fim). Padrão: hoje. */
+  @Get('dia')
+  dia(@Query() dto: GradeOperadoresDto): Promise<DiaOperadores> {
+    return this.service.diaOperadores(dto.data ? new Date(dto.data) : undefined);
   }
 
   /** Tablero "ao vivo": quem deveria estar no caixa agora. */

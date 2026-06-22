@@ -1,22 +1,22 @@
 /**
- * Quadro de Operadores (escala fixa visual).
+ * Quadro de Operadores (escala fixa, foco no dia).
  *
- * Os operadores não têm cadastro de login/perfil: o quadro é visual e mostra,
- * para a semana selecionada (Seg–Sáb), o status de cada operador por dia —
- * 🟢 trabalha (com horário) · ⚪ folga (dia fixo) · 🔴 falta (ausência pontual).
- * Tocar numa célula que trabalha marca uma falta; tocar numa falta a remove.
- * Embaixo, a cobertura por dia (quantos trabalham) destaca dias fracos. O
- * gestor pode adicionar/atualizar um operador. Domingo entra depois.
+ * Mostra o roster do DIA selecionado (padrão: hoje): cada colaborador com o
+ * horário do dia, ordenados por hora de ENTRADA e com os de folga ao fim.
+ * 🟢 trabalha · 🔴 falta · ⚪ folga. Tocar numa linha que trabalha marca falta;
+ * tocar numa falta a remove (com o impacto na cobertura do dia). Em cima, o
+ * "Agora no caixa" (ao vivo). Embaixo, as faltas do mês e (gestor) o cadastro
+ * de operador. Domingo entra depois.
  */
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { operadoresService } from '../../api/services';
 import {
   AnaliticaFaltas,
   AoVivoOperadores,
-  GradeCelula,
-  GradeOperadores,
+  ColaboradorDia,
+  DiaOperadores,
 } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import {
@@ -36,31 +36,29 @@ import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, hojeISO } from '../../utils/formato';
 
 const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const NOMES_DIA_LONGO = [
+  'Domingo',
+  'Segunda',
+  'Terça',
+  'Quarta',
+  'Quinta',
+  'Sexta',
+  'Sábado',
+];
 
 /** Cobertura mínima desejada por dia (abaixo disso, alerta). */
 const COBERTURA_MINIMA = 20;
 
-/** Largura de cada coluna de dia na grade. */
-const COL_DIA = 46;
-
-function corStatus(status: GradeCelula['status']): {
-  fundo: string;
-  texto: string;
-} {
-  if (status === 'TRABALHA') {
-    return { fundo: 'rgba(30,158,90,0.14)', texto: cores.verde };
-  }
-  if (status === 'FALTA') {
-    return { fundo: 'rgba(210,59,59,0.16)', texto: cores.vermelho };
-  }
+function corStatus(status: ColaboradorDia['status']): { fundo: string; texto: string } {
+  if (status === 'TRABALHA') return { fundo: 'rgba(30,158,90,0.14)', texto: cores.verde };
+  if (status === 'FALTA') return { fundo: 'rgba(210,59,59,0.16)', texto: cores.vermelho };
   return { fundo: cores.divisor, texto: cores.textoSecundario };
 }
 
-/** Primeiro nome + inicial do sobrenome, para caber na grade. */
-function nomeCurto(nome: string): string {
-  const partes = nome.trim().split(/\s+/);
-  if (partes.length === 1) return partes[0];
-  return `${partes[0]} ${partes[1][0]}.`;
+function rotuloStatus(status: ColaboradorDia['status']): string {
+  if (status === 'TRABALHA') return 'Trabalha';
+  if (status === 'FALTA') return 'Falta';
+  return 'Folga';
 }
 
 /** Primeiro e último dia do mês atual (ISO). */
@@ -75,17 +73,14 @@ export function OperadoresScreen(): React.ReactElement {
   const { podeAcessar } = useAuth();
   const podeGerenciar = podeAcessar('OPERADORES_CRUD');
 
-  const [semana, setSemana] = useState(hojeISO());
-  const grade = useRequisicao<GradeOperadores>(
-    () => operadoresService.grade(semana),
-    [semana],
+  const [diaSel, setDiaSel] = useState(hojeISO());
+  const dia = useRequisicao<DiaOperadores>(
+    () => operadoresService.dia(diaSel),
+    [diaSel],
   );
-  const dados = grade.dados;
+  const dados = dia.dados;
 
-  const aoVivo = useRequisicao<AoVivoOperadores>(
-    () => operadoresService.aoVivo(),
-    [],
-  );
+  const aoVivo = useRequisicao<AoVivoOperadores>(() => operadoresService.aoVivo(), []);
 
   const mes = mesAtualISO();
   const analitica = useRequisicao<AnaliticaFaltas>(
@@ -105,27 +100,26 @@ export function OperadoresScreen(): React.ReactElement {
   const [folga, setFolga] = useState(1);
   const [salvando, setSalvando] = useState(false);
 
-  const aoTocarCelula = async (
-    operadorId: string,
-    nomeOperador: string,
-    celula: GradeCelula,
-  ) => {
-    if (celula.status === 'FOLGA' || ocupado) {
-      return;
-    }
-    if (celula.status === 'FALTA' && celula.ausenciaId) {
+  const recarregarTudo = () => {
+    dia.recarregar();
+    aoVivo.recarregar();
+    analitica.recarregar();
+  };
+
+  const aoTocarColaborador = async (c: ColaboradorDia) => {
+    if (c.status === 'FOLGA' || ocupado) return;
+
+    if (c.status === 'FALTA' && c.ausenciaId) {
       const ok = await confirmar(
         'Remover falta',
-        `Remover a falta de ${nomeOperador} em ${formatarData(celula.data)}?`,
+        `Remover a falta de ${c.nome} em ${formatarData(diaSel)}?`,
         'Remover',
       );
       if (!ok) return;
       setOcupado(true);
       try {
-        await operadoresService.removerAusencia(celula.ausenciaId);
-        grade.recarregar();
-        aoVivo.recarregar();
-        analitica.recarregar();
+        await operadoresService.removerAusencia(c.ausenciaId);
+        recarregarTudo();
       } catch (e) {
         notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao remover.');
       } finally {
@@ -133,27 +127,24 @@ export function OperadoresScreen(): React.ReactElement {
       }
       return;
     }
+
     // TRABALHA -> marcar falta
     const ok = await confirmar(
       'Marcar falta',
-      `Marcar falta de ${nomeOperador} em ${formatarData(celula.data)}?`,
+      `Marcar falta de ${c.nome} em ${formatarData(diaSel)}?`,
       'Marcar',
     );
     if (!ok) return;
     setOcupado(true);
     try {
-      await operadoresService.registrarAusencia(operadorId, celula.data);
-      // Impacto: cobertura do dia depois desta falta.
-      const cob = dados?.cobertura.find((c) => c.data === celula.data);
-      const restante = cob ? cob.trabalhando - 1 : null;
-      grade.recarregar();
-      aoVivo.recarregar();
-      analitica.recarregar();
+      await operadoresService.registrarAusencia(c.id, diaSel);
+      const restante = dados ? dados.trabalhando - 1 : null;
+      recarregarTudo();
       if (restante != null) {
         const abaixo = restante < COBERTURA_MINIMA;
         notificar(
           'Falta marcada',
-          `${nomeOperador} em ${NOMES_DIA[celula.diaSemana]}. Ficam ${restante} operadores no caixa nesse dia${
+          `${c.nome}. Ficam ${restante} operadores no caixa nesse dia${
             abaixo ? ` — abaixo do mínimo (${COBERTURA_MINIMA})!` : '.'
           }`,
         );
@@ -199,7 +190,7 @@ export function OperadoresScreen(): React.ReactElement {
       setSaiFds('');
       setFolga(1);
       setNovoAberto(false);
-      grade.recarregar();
+      dia.recarregar();
       notificar('Salvo', 'Operador adicionado/atualizado no quadro.');
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
@@ -208,15 +199,11 @@ export function OperadoresScreen(): React.ReactElement {
     }
   };
 
+  const ehHoje = diaSel === hojeISO();
+  const coberturaBaixa = dados ? dados.trabalhando < COBERTURA_MINIMA : false;
+
   return (
-    <Tela
-      aoAtualizar={() => {
-        grade.recarregar();
-        aoVivo.recarregar();
-        analitica.recarregar();
-      }}
-      atualizando={grade.atualizando}
-    >
+    <Tela aoAtualizar={recarregarTudo} atualizando={dia.atualizando}>
       {/* Tablero "ao vivo": quem deveria estar agora */}
       {aoVivo.dados ? (
         <Cartao titulo="Agora no caixa">
@@ -241,13 +228,13 @@ export function OperadoresScreen(): React.ReactElement {
         </Cartao>
       ) : null}
 
-      <SeletorData valor={semana} aoMudar={setSemana} rotulo="Semana (qualquer dia dela)" />
+      <SeletorData valor={diaSel} aoMudar={setDiaSel} rotulo="Dia" />
 
-      {grade.carregando ? (
+      {dia.carregando ? (
         <Carregando />
-      ) : grade.erro ? (
-        <MensagemErro mensagem={grade.erro} aoTentarNovamente={grade.recarregar} />
-      ) : !dados || dados.operadores.length === 0 ? (
+      ) : dia.erro ? (
+        <MensagemErro mensagem={dia.erro} aoTentarNovamente={dia.recarregar} />
+      ) : !dados || dados.colaboradores.length === 0 ? (
         <EstadoVazio
           icone="people-outline"
           titulo="Sem operadores"
@@ -255,107 +242,63 @@ export function OperadoresScreen(): React.ReactElement {
         />
       ) : (
         <>
-          {/* Legenda */}
-          <View style={styles.legenda}>
-            <Legenda cor={cores.verde} texto="Trabalha" />
-            <Legenda cor={cores.textoSecundario} texto="Folga" />
-            <Legenda cor={cores.vermelho} texto="Falta" />
-          </View>
-          <Text style={styles.dica}>
-            Toque numa célula para marcar/remover uma falta.
-          </Text>
-
-          {/* Grade semanal */}
+          {/* Cabeçalho do dia + resumo */}
           <Cartao>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View>
-                {/* Cabeçalho de dias */}
-                <View style={styles.linha}>
-                  <View style={styles.colNome} />
-                  {dados.dias.map((d) => {
-                    const hoje = d.data === dados.hojeISO;
-                    return (
-                      <View key={d.data} style={styles.colDia}>
-                        <Text style={[styles.diaCabecalho, hoje && styles.diaHoje]}>
-                          {NOMES_DIA[d.diaSemana]}
-                        </Text>
-                        <Text style={styles.diaData}>{formatarData(d.data).slice(0, 5)}</Text>
-                      </View>
-                    );
-                  })}
-                </View>
-
-                {/* Linhas de operadores */}
-                {dados.operadores.map((op) => (
-                  <View key={op.id} style={styles.linha}>
-                    <Text style={styles.nomeOperador} numberOfLines={1}>
-                      {nomeCurto(op.nome)}
-                    </Text>
-                    {op.celulas.map((c) => {
-                      const cor = corStatus(c.status);
-                      return (
-                        <TouchableOpacity
-                          key={c.data}
-                          style={[styles.celula, { backgroundColor: cor.fundo }]}
-                          activeOpacity={c.status === 'FOLGA' ? 1 : 0.6}
-                          onPress={() => void aoTocarCelula(op.id, op.nome, c)}
-                        >
-                          {c.status === 'TRABALHA' ? (
-                            <Text style={[styles.celulaTexto, { color: cor.texto }]}>
-                              {c.entrada}
-                            </Text>
-                          ) : (
-                            <Text style={[styles.celulaTexto, { color: cor.texto }]}>
-                              {c.status === 'FOLGA' ? 'Folga' : 'Falta'}
-                            </Text>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                ))}
-
-                {/* Cobertura por dia */}
-                <View style={[styles.linha, styles.linhaCobertura]}>
-                  <Text style={styles.colNomeRotulo}>No caixa</Text>
-                  {dados.cobertura.map((c) => {
-                    const baixa = c.trabalhando < COBERTURA_MINIMA;
-                    return (
-                      <View key={c.data} style={styles.colDia}>
-                        <Text
-                          style={[
-                            styles.coberturaValor,
-                            { color: baixa ? cores.vermelho : cores.verde },
-                          ]}
-                        >
-                          {c.trabalhando}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            </ScrollView>
+            <Text style={styles.diaTitulo}>
+              {ehHoje ? 'Hoje · ' : ''}
+              {NOMES_DIA_LONGO[dados.diaSemana]}, {formatarData(dados.dataISO)}
+            </Text>
+            <View style={styles.resumoLinha}>
+              <Resumo valor={dados.trabalhando} rotulo="Trabalham" cor={cores.verde} />
+              <Resumo valor={dados.faltas} rotulo="Faltas" cor={cores.vermelho} />
+              <Resumo valor={dados.folgas} rotulo="Folgas" cor={cores.textoSecundario} />
+            </View>
+            {coberturaBaixa ? (
+              <Aviso
+                texto={`Cobertura baixa: ${dados.trabalhando} no caixa (mínimo ${COBERTURA_MINIMA}).`}
+              />
+            ) : null}
+            <Text style={styles.dica}>
+              Ordenados por hora de entrada · folgas ao fim. Toque para marcar/remover falta.
+            </Text>
           </Cartao>
 
-          {/* Resumo de cobertura abaixo do mínimo */}
-          {dados.cobertura.some((c) => c.trabalhando < COBERTURA_MINIMA) ? (
-            <Aviso
-              texto={`Atenção: ${dados.cobertura
-                .filter((c) => c.trabalhando < COBERTURA_MINIMA)
-                .map((c) => `${NOMES_DIA[c.diaSemana]} (${c.trabalhando})`)
-                .join(', ')} abaixo da cobertura mínima (${COBERTURA_MINIMA}).`}
-            />
-          ) : (
-            <Aviso texto={`Cobertura ok em todos os dias (mínimo ${COBERTURA_MINIMA}).`} />
-          )}
+          {/* Lista de colaboradores do dia */}
+          {dados.colaboradores.map((c) => {
+            const cor = corStatus(c.status);
+            return (
+              <TouchableOpacity
+                key={c.id}
+                activeOpacity={c.status === 'FOLGA' ? 1 : 0.6}
+                onPress={() => void aoTocarColaborador(c)}
+                style={styles.linha}
+              >
+                <View style={styles.horaBox}>
+                  {c.status === 'FOLGA' ? (
+                    <Text style={styles.horaFolga}>—</Text>
+                  ) : (
+                    <>
+                      <Text style={styles.horaEntrada}>{c.entrada}</Text>
+                      <Text style={styles.horaSaida}>{c.saida}</Text>
+                    </>
+                  )}
+                </View>
+                <Text style={styles.nomeColaborador} numberOfLines={1}>
+                  {c.nome}
+                </Text>
+                <View style={[styles.chip, { backgroundColor: cor.fundo }]}>
+                  <Text style={[styles.chipTexto, { color: cor.texto }]}>
+                    {rotuloStatus(c.status)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
 
           {/* Análise de faltas do mês */}
           {analitica.dados && analitica.dados.total > 0 ? (
             <Cartao titulo="Faltas do mês">
-              <Text style={styles.faltasTotal}>
-                {analitica.dados.total} falta(s) no mês
-              </Text>
+              <Text style={styles.faltasTotal}>{analitica.dados.total} falta(s) no mês</Text>
               {(() => {
                 const pior = [...analitica.dados.porDiaSemana].sort(
                   (a, b) => b.quantidade - a.quantidade,
@@ -458,41 +401,24 @@ export function OperadoresScreen(): React.ReactElement {
   );
 }
 
-function Legenda({ cor, texto }: { cor: string; texto: string }): React.ReactElement {
+function Resumo({
+  valor,
+  rotulo,
+  cor,
+}: {
+  valor: number;
+  rotulo: string;
+  cor: string;
+}): React.ReactElement {
   return (
-    <View style={styles.legendaItem}>
-      <View style={[styles.legendaPonto, { backgroundColor: cor }]} />
-      <Text style={styles.legendaTexto}>{texto}</Text>
+    <View style={styles.resumoBox}>
+      <Text style={[styles.resumoValor, { color: cor }]}>{valor}</Text>
+      <Text style={styles.resumoRotulo}>{rotulo}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  legenda: {
-    flexDirection: 'row',
-    gap: espacamento.md,
-    marginBottom: espacamento.xs,
-  },
-  legendaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: espacamento.xs,
-  },
-  legendaPonto: {
-    width: 12,
-    height: 12,
-    borderRadius: 3,
-  },
-  legendaTexto: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-  },
-  dica: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    fontStyle: 'italic',
-    marginBottom: espacamento.sm,
-  },
   // Ao vivo
   aoVivoTopo: {
     flexDirection: 'row',
@@ -521,6 +447,77 @@ const styles = StyleSheet.create({
     ...tipografia.corpo,
     color: cores.verde,
     fontWeight: '600',
+  },
+  // Cabeçalho do dia
+  diaTitulo: {
+    ...tipografia.secao,
+    color: cores.texto,
+    marginBottom: espacamento.sm,
+  },
+  resumoLinha: {
+    flexDirection: 'row',
+    marginBottom: espacamento.sm,
+  },
+  resumoBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  resumoValor: {
+    ...tipografia.titulo,
+    fontWeight: '700',
+  },
+  resumoRotulo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  dica: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    fontStyle: 'italic',
+  },
+  // Linha de colaborador
+  linha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: cores.superficie,
+    borderRadius: raio.md,
+    paddingVertical: espacamento.sm,
+    paddingHorizontal: espacamento.md,
+    marginBottom: espacamento.xs,
+  },
+  horaBox: {
+    width: 56,
+    alignItems: 'center',
+  },
+  horaEntrada: {
+    ...tipografia.rotulo,
+    fontWeight: '700',
+    color: cores.texto,
+  },
+  horaSaida: {
+    fontSize: 11,
+    color: cores.textoSecundario,
+  },
+  horaFolga: {
+    ...tipografia.rotulo,
+    color: cores.textoSecundario,
+  },
+  nomeColaborador: {
+    flex: 1,
+    ...tipografia.corpo,
+    color: cores.texto,
+    paddingHorizontal: espacamento.sm,
+  },
+  chip: {
+    paddingHorizontal: espacamento.sm,
+    paddingVertical: 3,
+    borderRadius: raio.pill,
+    minWidth: 64,
+    alignItems: 'center',
+  },
+  chipTexto: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   // Faltas
   faltasTotal: {
@@ -558,64 +555,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: cores.vermelho,
   },
-  linha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 3,
-  },
-  linhaCobertura: {
-    marginTop: espacamento.sm,
-    paddingTop: espacamento.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: cores.divisor,
-  },
-  colNome: {
-    width: 96,
-  },
-  colNomeRotulo: {
-    width: 96,
-    ...tipografia.legenda,
-    fontWeight: '700',
-    color: cores.textoSecundario,
-  },
-  colDia: {
-    width: COL_DIA,
-    alignItems: 'center',
-  },
-  diaCabecalho: {
-    ...tipografia.legenda,
-    fontWeight: '700',
-    color: cores.texto,
-  },
-  diaHoje: {
-    color: cores.primaria,
-  },
-  diaData: {
-    fontSize: 9,
-    color: cores.textoSecundario,
-  },
-  nomeOperador: {
-    width: 96,
-    ...tipografia.legenda,
-    color: cores.texto,
-    paddingRight: 4,
-  },
-  celula: {
-    width: COL_DIA - 4,
-    height: 30,
-    marginHorizontal: 2,
-    borderRadius: raio.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  celulaTexto: {
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  coberturaValor: {
-    ...tipografia.rotulo,
-    fontWeight: '700',
-  },
+  // Gestão
   linhaHorarios: {
     flexDirection: 'row',
     gap: espacamento.sm,
