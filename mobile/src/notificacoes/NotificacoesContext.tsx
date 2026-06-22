@@ -18,6 +18,7 @@ import React, {
 } from 'react';
 import { conectarNotificacoes, EventoNotificacao } from '../api/socket';
 import { useAuth } from '../auth/AuthContext';
+import { tocarSomNotificacao } from '../utils/som';
 
 interface NotificacoesContextValor {
   /** Quantidade de notificações não lidas (desde o último "zerar"). */
@@ -62,6 +63,7 @@ export function NotificacoesProvider({
       aoReceber: (n) => {
         setNaoLidas((c) => c + 1);
         setUltima(n);
+        tocarSomNotificacao();
       },
     }).then((c) => {
       if (ativo) {

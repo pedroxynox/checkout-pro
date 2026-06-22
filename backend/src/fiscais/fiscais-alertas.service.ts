@@ -75,7 +75,7 @@ export class FiscaisAlertasService {
       porFiscal.set(r.fiscalId, arr);
     }
 
-    const LIMITE_INTERVALO_MS = 121 * 60 * 1000; // 2h01min
+    const LIMITE_INTERVALO_MS = 135 * 60 * 1000; // 2h15min
 
     for (const [fiscalId, regs] of porFiscal.entries()) {
       if (this.alertasIntervaloEnviados.has(fiscalId)) continue;
@@ -113,7 +113,7 @@ export class FiscaisAlertasService {
       const gestores = await this.notificacoes.gestores();
       await this.notificacoes.enviar(gestores, {
         titulo: '⚠️ Intervalo excedido',
-        mensagem: `${nome} está em intervalo há ${tempoStr} (limite: 2h).`,
+        mensagem: `${nome} está em intervalo há ${tempoStr} (limite: 2h15min).`,
       });
 
       this.alertasIntervaloEnviados.add(fiscalId);

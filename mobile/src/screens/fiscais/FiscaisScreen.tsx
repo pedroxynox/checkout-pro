@@ -13,7 +13,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from 'react-native';
 import { useAuth } from '../../auth/AuthContext';
 import { ApiError } from '../../api/client';
 import { fiscaisService } from '../../api/services';
@@ -34,6 +34,11 @@ import { cores, espacamento, raio, tipografia } from '../../theme';
 const VERDE = cores.sucesso ?? '#1FA463';
 const AMARELO = cores.amarelo ?? '#B7791F';
 const CINZA = cores.textoSecundario;
+
+// Habilitar LayoutAnimation no Android.
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const ACOES: {
   status: StatusFiscal;
@@ -88,7 +93,7 @@ function formatarDataHoje(): string {
   return `${diaSemana}, ${dia} de ${mes} de ${ano}`;
 }
 
-/** Formata duração viva desde um timestamp ISO até agora (usa tick para forçar re-render). */
+/** Formata duración viva desde un timestamp ISO hasta agora (usa tick para forçar re-render). */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function formatarDuracaoViva(emIso: string, _tick: number): string {
   const desde = new Date(emIso).getTime();
@@ -102,6 +107,26 @@ function formatarDuracaoViva(emIso: string, _tick: number): string {
     return `${horas}h ${min.toString().padStart(2, '0')}min ${seg.toString().padStart(2, '0')}s`;
   }
   return `${min}min ${seg.toString().padStart(2, '0')}s`;
+}
+
+/** Timer do card: desde 'em' do fiscal (zerrado se FORA_EXPEDIENTE). */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function timerCard(desde: string | null, status: StatusFiscal, _tick: number): string {
+  if (status === 'FORA_EXPEDIENTE' || !desde) return '00:00';
+  const ms = Math.max(0, Date.now() - new Date(desde).getTime());
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  const s = Math.floor((ms % 60000) / 1000);
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+/** Obtiene las iniciales de un nombre (máx 2 letras). */
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/);
+  if (partes.length >= 2) return (partes[0][0] + partes[1][0]).toUpperCase();
+  return nome.slice(0, 2).toUpperCase();
 }
 
 export function FiscaisScreen({
@@ -145,6 +170,7 @@ export function FiscaisScreen({
     let ativo = true;
     void conectarPainelFiscais({
       aoAtualizarStatus: (ev) => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setPainel((lista) =>
           lista.map((p) =>
             p.fiscalId === ev.fiscalId
@@ -153,7 +179,7 @@ export function FiscaisScreen({
           ),
         );
         setMeu((m) =>
-          m && m.fiscalId === ev.fiscalId ? { ...m, status: ev.status } : m,
+          m && m.fiscalId === ev.fiscalId ? { ...m, status: ev.status, em: ev.em } : m,
         );
       },
     }).then((c) => {
@@ -222,6 +248,7 @@ export function FiscaisScreen({
     setEnviando(status);
     try {
       const r = await fiscaisService.definirStatus(status);
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setMeu((prev) => (prev ? { ...prev, ...r } : prev));
       setPainel((lista) =>
         lista.map((p) =>
@@ -445,12 +472,11 @@ export function FiscaisScreen({
           key={f.fiscalId}
           style={[styles.cardFiscal, { borderLeftColor: corStatus(f.status) }]}
         >
-          <View style={[styles.cardIconeContainer, { backgroundColor: corFundoStatus(f.status) }]}>
-            <Ionicons
-              name={iconeStatus(f.status)}
-              size={20}
-              color={corStatus(f.status)}
-            />
+          {/* Avatar com iniciais */}
+          <View style={[styles.avatar, { backgroundColor: corFundoStatus(f.status) }]}>
+            <Text style={[styles.avatarTexto, { color: corStatus(f.status) }]}>
+              {iniciais(f.primeiroNome)}
+            </Text>
           </View>
           <View style={styles.cardInfo}>
             <Text style={styles.cardNome}>{f.primeiroNome}</Text>
@@ -458,8 +484,19 @@ export function FiscaisScreen({
               {ROTULO_STATUS_FISCAL[f.status]}
             </Text>
           </View>
-          <View style={[styles.cardBadge, { backgroundColor: corFundoStatus(f.status) }]}>
-            <View style={[styles.pontinho, { backgroundColor: corStatus(f.status) }]} />
+          {/* Timer del card (reloj corriendo o zerrado) */}
+          <View style={styles.cardTimerContainer}>
+            <Ionicons
+              name="time-outline"
+              size={14}
+              color={f.status === 'FORA_EXPEDIENTE' ? cores.textoSecundario : corStatus(f.status)}
+            />
+            <Text style={[
+              styles.cardTimerTexto,
+              { color: f.status === 'FORA_EXPEDIENTE' ? cores.textoSecundario : corStatus(f.status) },
+            ]}>
+              {timerCard(f.desde, f.status, tick)}
+            </Text>
           </View>
         </View>
       ))}
@@ -693,12 +730,16 @@ const styles = StyleSheet.create({
     marginBottom: espacamento.sm,
     borderLeftWidth: 4,
   },
-  cardIconeContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarTexto: {
+    fontSize: 14,
+    fontWeight: '800',
   },
   cardInfo: {
     flex: 1,
@@ -712,17 +753,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 2,
   },
-  cardBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  cardTimerContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: cores.fundo,
+    paddingHorizontal: espacamento.sm,
+    paddingVertical: 4,
+    borderRadius: raio.pill,
   },
-  pontinho: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  cardTimerTexto: {
+    ...tipografia.legenda,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
 });
 
