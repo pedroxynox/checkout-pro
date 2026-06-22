@@ -7,6 +7,7 @@ import {
   InsumoProativo,
   InsumoResumo,
   MovimentoEstoque,
+  SugestaoPedido,
 } from '../types';
 
 export const insumosService = {
@@ -31,6 +32,28 @@ export const insumosService = {
       insumoId,
       embalagens,
     });
+  },
+
+  // ----- Pedidos Recorrentes -----
+
+  /** Sugestões de pedido pendentes (card "Pedido da semana"). */
+  sugestoesPendentes(): Promise<SugestaoPedido[]> {
+    return apiClient.get<SugestaoPedido[]>('/insumos/pedidos-recorrentes/sugestoes');
+  },
+
+  /** Próximo pedido quinzenal (sacolas): dias restantes. */
+  proximoQuinzenal(): Promise<{ diasRestantes: number } | null> {
+    return apiClient.get<{ diasRestantes: number } | null>('/insumos/pedidos-recorrentes/proximo-quinzenal');
+  },
+
+  /** Confirmar sugestões de pedido (dá entrada no estoque). */
+  confirmarSugestoes(ids: string[], ajustes?: Record<string, number>): Promise<{ confirmadas: number }> {
+    return apiClient.post<{ confirmadas: number }>('/insumos/pedidos-recorrentes/confirmar', { ids, ajustes });
+  },
+
+  /** Ignorar sugestões de pedido. */
+  ignorarSugestoes(ids: string[]): Promise<void> {
+    return apiClient.post<void>('/insumos/pedidos-recorrentes/ignorar', { ids });
   },
 
   /**

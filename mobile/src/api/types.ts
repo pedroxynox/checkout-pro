@@ -246,6 +246,32 @@ export interface EntradaInsumo {
 // ----- Requisições de insumos -----
 export type StatusRequisicao = 'PENDENTE' | 'APROVADA' | 'NEGADA';
 
+// ----- Pedidos Recorrentes -----
+export type StatusSugestao = 'PENDENTE' | 'CONFIRMADA' | 'IGNORADA';
+
+export interface SugestaoPedido {
+  id: string;
+  insumoId: string;
+  insumoNome: string;
+  embalagem: string;
+  fatorEmbalagem: number;
+  unidade: string;
+  quantidade: number;
+  quantidadeAjustada: number | null;
+  lote: string | null;
+  criadaEm: string;
+}
+
+export interface PedidoRecorrente {
+  id: string;
+  insumoId: string;
+  quantidade: number;
+  frequenciaDias: number;
+  diaSugestao: number;
+  ativo: boolean;
+  insumo: { nome: string; embalagem: string };
+}
+
 export interface Requisicao {
   id: string;
   insumoId: string;

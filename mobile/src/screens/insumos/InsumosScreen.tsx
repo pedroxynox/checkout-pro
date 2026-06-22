@@ -16,7 +16,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { insumosService, requisicoesService } from '../../api/services';
-import { InsumoProativo, NivelEstoque } from '../../api/types';
+import { InsumoProativo, NivelEstoque, SugestaoPedido } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import {
   Botao,
@@ -78,10 +78,13 @@ export function InsumosScreen({
 
   const [insumos, setInsumos] = useState<InsumoProativo[]>([]);
   const [pendentes, setPendentes] = useState(0);
+  const [sugestoes, setSugestoes] = useState<SugestaoPedido[]>([]);
+  const [proximoSacolas, setProximoSacolas] = useState<number | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [consumindo, setConsumindo] = useState<string | null>(null);
+  const [confirmandoPedido, setConfirmandoPedido] = useState(false);
 
   // Gestão: entrada
   const [entradaAberta, setEntradaAberta] = useState(false);
@@ -91,12 +94,16 @@ export function InsumosScreen({
   const [registrandoEntrada, setRegistrandoEntrada] = useState(false);
 
   const buscar = useCallback(async () => {
-    const [lista, cont] = await Promise.all([
+    const [lista, cont, sugs, prox] = await Promise.all([
       insumosService.listarProativo(),
       requisicoesService.pendentes(),
+      insumosService.sugestoesPendentes().catch(() => [] as SugestaoPedido[]),
+      insumosService.proximoQuinzenal().catch(() => null),
     ]);
     setInsumos(lista);
     setPendentes(cont.total);
+    setSugestoes(sugs);
+    setProximoSacolas(prox?.diasRestantes ?? null);
     setErro(null);
   }, []);
 
@@ -151,6 +158,47 @@ export function InsumosScreen({
     }
   };
 
+  // ==================== Pedido da semana ====================
+
+  const confirmarPedido = async () => {
+    if (sugestoes.length === 0) return;
+    const ok = await confirmar(
+      '✅ Confirmar pedido',
+      `Confirmar entrada de ${sugestoes.length} item(ns) no estoque?`,
+      'Confirmar',
+    );
+    if (!ok) return;
+
+    setConfirmandoPedido(true);
+    try {
+      const ids = sugestoes.map((s) => s.id);
+      await insumosService.confirmarSugestoes(ids);
+      await buscar();
+      notificar('Pedido confirmado', 'Entrada registrada no estoque.');
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao confirmar.');
+    } finally {
+      setConfirmandoPedido(false);
+    }
+  };
+
+  const ignorarPedido = async () => {
+    if (sugestoes.length === 0) return;
+    const ok = await confirmar(
+      'Ignorar pedido',
+      'Descartar as sugestões sem dar entrada?',
+      'Ignorar',
+    );
+    if (!ok) return;
+    try {
+      const ids = sugestoes.map((s) => s.id);
+      await insumosService.ignorarSugestoes(ids);
+      await buscar();
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha.');
+    }
+  };
+
   // ==================== Gestão: entrada ====================
 
   const insumoEntradaObj = insumos.find((i) => i.id === insumoEntrada);
@@ -200,6 +248,56 @@ export function InsumosScreen({
   return (
     <Tela aoAtualizar={() => void carregar(true)} atualizando={atualizando}>
       {erro && <MensagemErro mensagem={erro} aoTentarNovamente={() => void carregar()} />}
+
+      {/* ===== PEDIDO DA SEMANA (sugestões pendentes) ===== */}
+      {sugestoes.length > 0 && (
+        <Cartao style={styles.cardPedido}>
+          <View style={styles.pedidoTopo}>
+            <Ionicons name="clipboard-outline" size={22} color={cores.primaria} />
+            <View style={styles.flex1}>
+              <Text style={styles.pedidoTitulo}>Pedido da semana</Text>
+              <Text style={styles.pedidoSub}>Gerado automaticamente</Text>
+            </View>
+          </View>
+
+          {sugestoes.map((s) => (
+            <View key={s.id} style={styles.pedidoItem}>
+              <Ionicons name="checkmark-circle" size={18} color={cores.verde} />
+              <Text style={styles.pedidoItemTexto}>
+                {s.quantidade} {s.quantidade === 1 ? s.embalagem : `${s.embalagem}s`} de {s.insumoNome}
+              </Text>
+            </View>
+          ))}
+
+          {proximoSacolas !== null && proximoSacolas > 0 && (
+            <View style={styles.pedidoQuinzenal}>
+              <Ionicons name="time-outline" size={14} color={cores.textoSecundario} />
+              <Text style={styles.pedidoQuinzenalTexto}>
+                Sacolas (quinzenal): próximo pedido em {proximoSacolas} dia{proximoSacolas !== 1 ? 's' : ''}
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.pedidoBotoes}>
+            <Pressable
+              onPress={() => void ignorarPedido()}
+              style={styles.pedidoBtnIgnorar}
+            >
+              <Text style={styles.pedidoBtnIgnorarTexto}>Ignorar</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void confirmarPedido()}
+              disabled={confirmandoPedido}
+              style={styles.pedidoBtnConfirmar}
+            >
+              <Ionicons name="checkmark" size={18} color={cores.textoInverso} />
+              <Text style={styles.pedidoBtnConfirmarTexto}>
+                {confirmandoPedido ? 'Confirmando...' : 'Confirmar pedido'}
+              </Text>
+            </Pressable>
+          </View>
+        </Cartao>
+      )}
 
       {/* ===== ZONA 1: PAINEL VISUAL ===== */}
       <Text style={styles.secaoTitulo}>Estoque</Text>
@@ -593,6 +691,79 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   chipTextoAtivo: {
+    color: cores.textoInverso,
+  },
+  cardPedido: {
+    borderWidth: 1,
+    borderColor: cores.primaria,
+    borderStyle: 'dashed',
+  },
+  pedidoTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    marginBottom: espacamento.md,
+  },
+  pedidoTitulo: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+  },
+  pedidoSub: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  pedidoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    paddingVertical: espacamento.xs,
+  },
+  pedidoItemTexto: {
+    ...tipografia.corpo,
+    color: cores.texto,
+  },
+  pedidoQuinzenal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+    marginTop: espacamento.sm,
+    paddingTop: espacamento.sm,
+    borderTopWidth: 1,
+    borderTopColor: cores.divisor,
+  },
+  pedidoQuinzenalTexto: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  pedidoBotoes: {
+    flexDirection: 'row',
+    gap: espacamento.sm,
+    marginTop: espacamento.lg,
+  },
+  pedidoBtnIgnorar: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: espacamento.md,
+    borderRadius: raio.md,
+    borderWidth: 1,
+    borderColor: cores.borda,
+  },
+  pedidoBtnIgnorarTexto: {
+    ...tipografia.rotulo,
+    color: cores.textoSecundario,
+  },
+  pedidoBtnConfirmar: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: espacamento.xs,
+    paddingVertical: espacamento.md,
+    borderRadius: raio.md,
+    backgroundColor: cores.primaria,
+  },
+  pedidoBtnConfirmarTexto: {
+    ...tipografia.rotulo,
     color: cores.textoInverso,
   },
 });

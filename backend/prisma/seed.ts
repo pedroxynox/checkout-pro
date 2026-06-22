@@ -389,6 +389,44 @@ async function seedEscalas(): Promise<void> {
   }
 }
 
+async function seedPedidosRecorrentes(): Promise<void> {
+  // Configuración por defecto de pedidos recurrentes.
+  // Álcool: 4 galões, semanal (lunes)
+  // Bobina: 6 caixas, semanal (lunes)
+  // Pano: 2 rolos, semanal (lunes)
+  // Sacolas: 200 fardos, quinzenal (lunes)
+  const configs: { nome: string; quantidade: number; frequenciaDias: number }[] = [
+    { nome: 'Álcool', quantidade: 4, frequenciaDias: 7 },
+    { nome: 'Bobina', quantidade: 6, frequenciaDias: 7 },
+    { nome: 'Pano', quantidade: 2, frequenciaDias: 7 },
+    { nome: 'Sacolas', quantidade: 200, frequenciaDias: 15 },
+  ];
+
+  for (const cfg of configs) {
+    const insumo = await prisma.insumo.findFirst({ where: { nome: cfg.nome } });
+    if (!insumo) continue;
+
+    const existente = await prisma.pedidoRecorrente.findFirst({
+      where: { insumoId: insumo.id, ativo: true },
+    });
+    if (existente) {
+      await prisma.pedidoRecorrente.update({
+        where: { id: existente.id },
+        data: { quantidade: cfg.quantidade, frequenciaDias: cfg.frequenciaDias, diaSugestao: 1 },
+      });
+    } else {
+      await prisma.pedidoRecorrente.create({
+        data: {
+          insumoId: insumo.id,
+          quantidade: cfg.quantidade,
+          frequenciaDias: cfg.frequenciaDias,
+          diaSugestao: 1, // Segunda-feira
+        },
+      });
+    }
+  }
+}
+
 async function main(): Promise<void> {
   // Gera o hash da senha inicial uma única vez antes de criar os usuários.
   senhaHashInicial = await bcrypt.hash(SENHA_INICIAL, 10);
@@ -398,6 +436,7 @@ async function main(): Promise<void> {
   await seedOperadores();
   await seedInsumos();
   await seedEscalas();
+  await seedPedidosRecorrentes();
 
   const totalUsuarios = await prisma.usuario.count();
   const totalFiscais = await prisma.fiscal.count();

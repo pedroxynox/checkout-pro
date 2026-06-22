@@ -244,6 +244,8 @@ model Insumo {
 
   movimentos  MovimentoEstoque[]
   requisicoes Requisicao[]
+  pedidosRecorrentes PedidoRecorrente[]
+  sugestoes   SugestaoPedido[]
 
   @@map("insumos")
 }
@@ -381,4 +383,50 @@ model MensagemAssistente {
 
   @@index([usuarioId, criadaEm])
   @@map("mensagens_assistente")
+}
+
+// Pedido recorrente de insumos: padrão configurável (semanal/quinzenal) com
+// quantidades habituais. O cron gera sugestões automaticamente e o gestor
+// confirma ou ajusta antes de virar requisição/entrada.
+model PedidoRecorrente {
+  id            String   @id @default(uuid())
+  insumoId      String
+  quantidade    Int
+  /// Frequência em dias (7 = semanal, 15 = quinzenal).
+  frequenciaDias Int     @default(7)
+  /// Dia da semana preferencial para sugestão (1=Seg..6=Sáb, 0=Dom).
+  diaSugestao   Int      @default(1)
+  ativo         Boolean  @default(true)
+  criadoEm      DateTime @default(now())
+
+  insumo Insumo @relation(fields: [insumoId], references: [id])
+
+  @@map("pedidos_recorrentes")
+}
+
+// Sugestão de pedido gerada pelo sistema (cron). Fica PENDENTE até o gestor
+// confirmar (vira entrada) ou ignorar.
+model SugestaoPedido {
+  id            String   @id @default(uuid())
+  insumoId      String
+  quantidade    Int
+  /// Quantidade ajustada pelo gestor (se diferente da sugestão).
+  quantidadeAjustada Int?
+  status        StatusSugestao @default(PENDENTE)
+  /// Lote: agrupa sugestões geradas juntas (ex.: "pedido semanal 2026-06-23").
+  lote          String?
+  criadaEm      DateTime @default(now())
+  confirmadaEm  DateTime?
+  confirmadaPor String?
+
+  insumo Insumo @relation(fields: [insumoId], references: [id])
+
+  @@index([status])
+  @@map("sugestoes_pedido")
+}
+
+enum StatusSugestao {
+  PENDENTE
+  CONFIRMADA
+  IGNORADA
 }
