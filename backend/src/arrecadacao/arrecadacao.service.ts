@@ -191,6 +191,57 @@ export class ArrecadacaoService {
     });
   }
 
+  /**
+   * Resolve a meta de um indicador: lê de `metas_indicador` (configurável pelo
+   * gestor) e, na ausência, usa o default de CONFIG_ARRECADACAO. Fonte única
+   * de verdade das metas.
+   */
+  async metaDe(tipo: TipoArrecadacao): Promise<number> {
+    try {
+      const registro = await this.prisma.metaIndicador.findUnique({
+        where: { tipo },
+      });
+      if (registro) {
+        return Number(registro.meta);
+      }
+    } catch {
+      // Tabela ainda não migrada: usa o default.
+    }
+    return CONFIG_ARRECADACAO[tipo].meta;
+  }
+
+  /** Lista todas as metas configuradas (com fallback ao default). */
+  async listarMetas(): Promise<
+    { tipo: TipoArrecadacao; titulo: string; meta: number; base: string; sentido: string }[]
+  > {
+    return Promise.all(
+      TIPOS_ARRECADACAO.map(async (tipo) => {
+        const config = CONFIG_ARRECADACAO[tipo];
+        return {
+          tipo,
+          titulo: config.titulo,
+          meta: await this.metaDe(tipo),
+          base: config.base,
+          sentido: config.sentido,
+        };
+      }),
+    );
+  }
+
+  /** Atualiza (ou cria) a meta de um indicador. */
+  async definirMeta(
+    tipo: TipoArrecadacao,
+    meta: number,
+    atualizadoPor?: string,
+  ): Promise<{ tipo: TipoArrecadacao; meta: number }> {
+    await this.prisma.metaIndicador.upsert({
+      where: { tipo },
+      update: { meta, atualizadoPor },
+      create: { tipo, meta, atualizadoPor },
+    });
+    return { tipo, meta };
+  }
+
   private async somar(
     tipo: TipoArrecadacao,
     gte: Date,
@@ -269,7 +320,7 @@ export class ArrecadacaoService {
       tipo,
       titulo: config.titulo,
       base: config.base,
-      meta: config.meta,
+      meta: await this.metaDe(tipo),
       sentido: config.sentido,
       totalDia,
       totalSemana,

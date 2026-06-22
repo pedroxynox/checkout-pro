@@ -21,11 +21,13 @@ export interface OpcoesPrompt {
   documentos?: string;
   /** Contexto de escala dos fiscais (horários, folgas, turnos). */
   escala?: string;
+  /** Contexto dos indicadores de arrecadação (totais do mês, metas, status). */
+  indicadores?: string;
 }
 
 /** Monta a instrução de sistema do assistente em PT-BR. */
 export function montarInstrucaoSistema(opcoes: OpcoesPrompt = {}): string {
-  const { nomeUsuario, perfil, documentos, escala } = opcoes;
+  const { nomeUsuario, perfil, documentos, escala, indicadores } = opcoes;
 
   const partes: string[] = [
     `Você é a "Cluby" 🤖, a super assistente virtual do Check-out PRO, um aplicativo de gestão inteligente para supermercados.`,
@@ -85,6 +87,16 @@ export function montarInstrucaoSistema(opcoes: OpcoesPrompt = {}): string {
       `===== ESCALA DOS FISCAIS =====`,
       escala.trim(),
       `===== FIM DA ESCALA =====`,
+    );
+  }
+
+  if (indicadores && indicadores.trim().length > 0) {
+    partes.push(
+      ``,
+      `Você tem acesso aos indicadores de arrecadação da loja no mês atual (troco solidário, recargas, cancelamentos e devoluções), com os totais, as metas e o status (🟢 dentro / 🟡 atenção / 🔴 fora). Use isso para responder perguntas como "como está o troco este mês?", "estamos batendo a meta?", "quais indicadores estão em alerta?". Sempre cite os números reais abaixo; não invente. Se perguntarem algo fora desses dados, oriente a abrir a tela de Indicadores.`,
+      `===== INDICADORES DO MÊS =====`,
+      indicadores.trim(),
+      `===== FIM DOS INDICADORES =====`,
     );
   }
 

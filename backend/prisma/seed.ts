@@ -462,6 +462,25 @@ async function seedPedidosRecorrentes(): Promise<void> {
   }
 }
 
+async function seedMetasIndicador(): Promise<void> {
+  // Metas padrão dos indicadores (fonte única de verdade configurável).
+  const metas: { tipo: string; meta: number }[] = [
+    { tipo: 'TROCO_SOLIDARIO', meta: 2000 },
+    { tipo: 'RECARGAS_CELULAR', meta: 2000 },
+    { tipo: 'CANCELAMENTO_ITENS', meta: 0.75 },
+    { tipo: 'CANCELAMENTO_CUPOM', meta: 0.5 },
+    { tipo: 'DEVOLUCOES', meta: 0.05 },
+  ];
+  for (const m of metas) {
+    const existente = await prisma.metaIndicador.findUnique({
+      where: { tipo: m.tipo },
+    });
+    if (!existente) {
+      await prisma.metaIndicador.create({ data: { tipo: m.tipo, meta: m.meta } });
+    }
+  }
+}
+
 async function main(): Promise<void> {
   // Gera o hash da senha inicial uma única vez antes de criar os usuários.
   senhaHashInicial = await bcrypt.hash(SENHA_INICIAL, 10);
@@ -472,6 +491,7 @@ async function main(): Promise<void> {
   await seedInsumos();
   await seedEscalas();
   await seedPedidosRecorrentes();
+  await seedMetasIndicador();
 
   const totalUsuarios = await prisma.usuario.count();
   const totalFiscais = await prisma.fiscal.count();

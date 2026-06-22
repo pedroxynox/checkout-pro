@@ -9,8 +9,14 @@
 import { Platform } from 'react-native';
 import { apiClient } from '../client';
 import {
+  AnomaliaIndicador,
+  ComparativoIndicador,
   DetalheArrecadacao,
   ItemRankingArrecadacao,
+  MetaIndicador,
+  OperadorDoMes,
+  PontoTendencia,
+  ProjecaoMes,
   ResultadoUploadArrecadacao,
   ResumoArrecadacao,
   StatusArrecadacao,
@@ -116,5 +122,54 @@ export const arrecadacaoService = {
       inicio,
       fim,
     });
+  },
+
+  // ----- Inteligência de indicadores -----
+
+  /** Lista as metas configuradas (com fallback aos defaults). */
+  metas(): Promise<MetaIndicador[]> {
+    return apiClient.get<MetaIndicador[]>('/arrecadacao/metas');
+  },
+
+  /** Define (cria/atualiza) a meta de um indicador — apenas gestor. */
+  definirMeta(tipo: TipoArrecadacao, meta: number): Promise<{ tipo: TipoArrecadacao; meta: number }> {
+    return apiClient.post<{ tipo: TipoArrecadacao; meta: number }>(
+      '/arrecadacao/metas',
+      { tipo, meta },
+    );
+  },
+
+  /** Série temporal (tendência) dos últimos N dias. */
+  tendencia(tipo: TipoArrecadacao, data: string, dias = 30): Promise<PontoTendencia[]> {
+    return apiClient.get<PontoTendencia[]>('/arrecadacao/tendencia', {
+      tipo,
+      data,
+      dias: String(dias),
+    });
+  },
+
+  /** Comparativo do mês/semana atual vs período anterior. */
+  comparativo(tipo: TipoArrecadacao, data: string): Promise<ComparativoIndicador> {
+    return apiClient.get<ComparativoIndicador>('/arrecadacao/comparativo', {
+      tipo,
+      data,
+    });
+  },
+
+  /** Projeção de fechamento de mês + meta diária. */
+  projecao(tipo: TipoArrecadacao, data: string): Promise<ProjecaoMes> {
+    return apiClient.get<ProjecaoMes>('/arrecadacao/projecao', { tipo, data });
+  },
+
+  /** Operador do mês (troco + recargas). */
+  operadorDoMes(data: string): Promise<OperadorDoMes | null> {
+    return apiClient.get<OperadorDoMes | null>('/arrecadacao/operador-do-mes', {
+      data,
+    });
+  },
+
+  /** Operadores com cancelamentos/devoluções acima da média (mês). */
+  anomalias(data: string): Promise<AnomaliaIndicador[]> {
+    return apiClient.get<AnomaliaIndicador[]>('/arrecadacao/anomalias', { data });
   },
 };

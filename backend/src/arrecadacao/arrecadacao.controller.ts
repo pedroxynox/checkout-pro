@@ -34,6 +34,13 @@ import {
   ResumoArrecadacao,
   StatusArrecadacao,
 } from './arrecadacao.service';
+import {
+  Comparativo,
+  IndicadoresInteligenteService,
+  PontoTendencia,
+  ProjecaoMes,
+} from './indicadores-inteligente.service';
+import { TipoArrecadacao } from './arrecadacao.domain';
 
 /**
  * Controller da arrecadação por operador (indicadores). Visualização liberada
@@ -43,7 +50,10 @@ import {
 @Controller('arrecadacao')
 @Funcionalidade('INDICADORES_VISUALIZAR')
 export class ArrecadacaoController {
-  constructor(private readonly arrecadacaoService: ArrecadacaoService) {}
+  constructor(
+    private readonly arrecadacaoService: ArrecadacaoService,
+    private readonly inteligente: IndicadoresInteligenteService,
+  ) {}
 
   /** Recebe o arquivo .txt de um tipo e importa as linhas do dia. */
   @Post('upload')
@@ -122,5 +132,70 @@ export class ArrecadacaoController {
       new Date(dto.inicio),
       new Date(dto.fim),
     );
+  }
+
+  // ===== Inteligência de indicadores =====
+
+  /** Lista as metas configuradas (com fallback aos defaults). */
+  @Get('metas')
+  metas() {
+    return this.arrecadacaoService.listarMetas();
+  }
+
+  /** Define (cria/atualiza) a meta de um indicador — apenas gestor. */
+  @Post('metas')
+  @HttpCode(HttpStatus.OK)
+  @Funcionalidade('ADMIN_DADOS')
+  definirMeta(
+    @Body() dto: { tipo: TipoArrecadacao; meta: number },
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<{ tipo: TipoArrecadacao; meta: number }> {
+    return this.arrecadacaoService.definirMeta(dto.tipo, dto.meta, usuario?.sub);
+  }
+
+  /** Série temporal (tendência) dos últimos N dias de um indicador. */
+  @Get('tendencia')
+  tendencia(
+    @Query('tipo') tipo: TipoArrecadacao,
+    @Query('data') data: string,
+    @Query('dias') dias?: string,
+  ): Promise<PontoTendencia[]> {
+    return this.inteligente.tendencia(
+      tipo,
+      new Date(data),
+      dias ? Number(dias) : 30,
+    );
+  }
+
+  /** Comparativo do mês/semana atual vs o período anterior. */
+  @Get('comparativo')
+  comparativo(
+    @Query('tipo') tipo: TipoArrecadacao,
+    @Query('data') data: string,
+  ): Promise<{ mes: Comparativo; semana: Comparativo }> {
+    return this.inteligente.comparativo(tipo, new Date(data));
+  }
+
+  /** Projeção de fechamento de mês + meta diária derivada. */
+  @Get('projecao')
+  projecao(
+    @Query('tipo') tipo: TipoArrecadacao,
+    @Query('data') data: string,
+  ): Promise<ProjecaoMes> {
+    return this.inteligente.projecaoMes(tipo, new Date(data));
+  }
+
+  /** Operador do mês (melhor contribuição: troco + recargas). */
+  @Get('operador-do-mes')
+  operadorDoMes(
+    @Query('data') data: string,
+  ): Promise<{ nome: string; total: number } | null> {
+    return this.inteligente.operadorDoMes(new Date(data));
+  }
+
+  /** Operadores com cancelamentos/devoluções muito acima da média (mês). */
+  @Get('anomalias')
+  anomalias(@Query('data') data: string) {
+    return this.inteligente.anomalias(new Date(data));
   }
 }

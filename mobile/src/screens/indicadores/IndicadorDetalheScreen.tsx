@@ -11,9 +11,12 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { arrecadacaoService } from '../../api/services';
 import {
+  ComparativoIndicador,
   DetalheArrecadacao,
   ItemRankingArrecadacao,
   Periodo,
+  PontoTendencia,
+  ProjecaoMes,
   ResumoArrecadacao,
 } from '../../api/types';
 import {
@@ -249,6 +252,126 @@ function GraficoMeta({
   );
 }
 
+/** Card de projeção de fechamento de mês + meta diária. */
+function CardProjecao({
+  def,
+  projecao,
+}: {
+  def: DefinicaoArrecadacao;
+  projecao: ProjecaoMes;
+}): React.ReactElement {
+  const cor = projecao.vaiCumprir ? cores.verde : cores.vermelho;
+  const fundo = projecao.vaiCumprir ? cores.verdeFundo : cores.vermelhoFundo;
+  return (
+    <Cartao titulo="Projeção do mês">
+      <View style={styles.projLinha}>
+        <Text style={styles.projRotulo}>
+          {def.base === 'FIXA' ? 'Projeção ao ritmo atual' : '% acumulado do mês'}
+        </Text>
+        <View style={[styles.projBadge, { backgroundColor: fundo }]}>
+          <Text style={[styles.projBadgeTexto, { color: cor }]}>
+            {def.base === 'FIXA'
+              ? formatarMoeda(projecao.projecao)
+              : formatarPercentual(projecao.projecao)}
+          </Text>
+        </View>
+      </View>
+      <Text style={[styles.projStatus, { color: cor }]}>
+        {projecao.vaiCumprir
+          ? def.base === 'FIXA'
+            ? '✅ No ritmo de bater a meta'
+            : '✅ Dentro da meta'
+          : def.base === 'FIXA'
+            ? `⚠️ Faltam ${formatarMoeda(Math.max(0, projecao.meta - projecao.acumuladoMes))} para a meta`
+            : '⚠️ Acima da meta de %'}
+      </Text>
+      {def.base === 'FIXA' && (
+        <View style={styles.projDetalhes}>
+          <Text style={styles.projDetalheItem}>
+            Meta diária: {formatarMoeda(projecao.metaDiaria)}
+          </Text>
+          <Text style={styles.projDetalheItem}>
+            Ritmo ideal até hoje: {formatarMoeda(projecao.metaAcumuladaHoje)} · Real:{' '}
+            {formatarMoeda(projecao.acumuladoMes)}
+          </Text>
+        </View>
+      )}
+    </Cartao>
+  );
+}
+
+/** Card comparativo: mês e semana atual vs período anterior. */
+function CardComparativo({
+  comparativo,
+}: {
+  comparativo: ComparativoIndicador;
+}): React.ReactElement {
+  const linha = (rotulo: string, atual: number, anterior: number, variacao: number | null) => {
+    const subiu = variacao != null && variacao >= 0;
+    const corVar = variacao == null ? cores.textoSecundario : subiu ? cores.verde : cores.vermelho;
+    const seta = variacao == null ? '–' : subiu ? '↑' : '↓';
+    return (
+      <View style={styles.compLinha}>
+        <Text style={styles.compRotulo}>{rotulo}</Text>
+        <Text style={styles.compValor}>{formatarMoeda(atual)}</Text>
+        <Text style={[styles.compVar, { color: corVar }]}>
+          {seta} {variacao == null ? '—' : `${Math.abs(variacao)}%`}
+        </Text>
+      </View>
+    );
+  };
+  return (
+    <Cartao titulo="Comparativo com período anterior">
+      <View style={styles.compCabecalho}>
+        <Text style={[styles.compRotulo, styles.compCab]}>Período</Text>
+        <Text style={[styles.compValor, styles.compCab]}>Atual</Text>
+        <Text style={[styles.compVar, styles.compCab]}>vs anterior</Text>
+      </View>
+      {linha('Este mês', comparativo.mes.atual, comparativo.mes.anterior, comparativo.mes.variacao)}
+      {linha(
+        'Esta semana',
+        comparativo.semana.atual,
+        comparativo.semana.anterior,
+        comparativo.semana.variacao,
+      )}
+    </Cartao>
+  );
+}
+
+/** Mini gráfico de barras verticais da tendência (últimos dias). */
+function CardTendencia({
+  def,
+  pontos,
+}: {
+  def: DefinicaoArrecadacao;
+  pontos: PontoTendencia[];
+}): React.ReactElement {
+  const valores = pontos.map((p) =>
+    def.base === 'VENDAS' ? p.percentual ?? 0 : p.total,
+  );
+  const max = Math.max(...valores, 0.0001);
+  return (
+    <Cartao titulo="Tendência (últimos 14 dias)">
+      <View style={styles.sparkRow}>
+        {pontos.map((p, i) => {
+          const v = valores[i];
+          const altura = Math.max(2, (v / max) * 60);
+          const dia = p.data.slice(8, 10);
+          return (
+            <View key={p.data} style={styles.sparkCol}>
+              <View style={[styles.sparkBar, { height: altura, backgroundColor: cores.primaria }]} />
+              <Text style={styles.sparkDia}>{dia}</Text>
+            </View>
+          );
+        })}
+      </View>
+      {pontos.length === 0 && (
+        <Text style={styles.semDetalhe}>Sem dados no período.</Text>
+      )}
+    </Cartao>
+  );
+}
+
 export function IndicadorDetalheScreen({
   route,
 }: PropsTela<'IndicadorDetalhe'>): React.ReactElement {
@@ -261,19 +384,26 @@ export function IndicadorDetalheScreen({
 
   const req = useRequisicao(async () => {
     const { inicio, fim } = intervaloDoPeriodo(periodo, data);
-    const [resumo, ranking, detalhes] = await Promise.all([
-      arrecadacaoService.resumo(def.tipo, data),
-      arrecadacaoService.ranking(def.tipo, inicio, fim),
-      def.mostraDetalhe
-        ? arrecadacaoService.detalhes(def.tipo, inicio, fim)
-        : Promise.resolve([] as DetalheArrecadacao[]),
-    ]);
-    return { resumo, ranking, detalhes };
+    const [resumo, ranking, detalhes, tendencia, comparativo, projecao] =
+      await Promise.all([
+        arrecadacaoService.resumo(def.tipo, data),
+        arrecadacaoService.ranking(def.tipo, inicio, fim),
+        def.mostraDetalhe
+          ? arrecadacaoService.detalhes(def.tipo, inicio, fim)
+          : Promise.resolve([] as DetalheArrecadacao[]),
+        arrecadacaoService.tendencia(def.tipo, data, 14).catch(() => [] as PontoTendencia[]),
+        arrecadacaoService.comparativo(def.tipo, data).catch(() => null),
+        arrecadacaoService.projecao(def.tipo, data).catch(() => null),
+      ]);
+    return { resumo, ranking, detalhes, tendencia, comparativo, projecao };
   }, [def.tipo, data, periodo]);
 
   const resumo = req.dados?.resumo;
   const ranking: ItemRankingArrecadacao[] = req.dados?.ranking ?? [];
   const detalhes: DetalheArrecadacao[] = req.dados?.detalhes ?? [];
+  const tendencia: PontoTendencia[] = req.dados?.tendencia ?? [];
+  const comparativo: ComparativoIndicador | null = req.dados?.comparativo ?? null;
+  const projecao: ProjecaoMes | null = req.dados?.projecao ?? null;
   const maxRanking = ranking.length > 0 ? ranking[0].total : 0;
 
   const metaTexto =
@@ -318,6 +448,9 @@ export function IndicadorDetalheScreen({
       ) : resumo ? (
         <>
           <GraficoMeta def={def} resumo={resumo} periodo={periodo} />
+          {projecao ? <CardProjecao def={def} projecao={projecao} /> : null}
+          {comparativo ? <CardComparativo comparativo={comparativo} /> : null}
+          <CardTendencia def={def} pontos={tendencia} />
           <GraficoPeriodos resumo={resumo} base={def.base} />
 
           <Cartao
@@ -498,6 +631,96 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     paddingVertical: espacamento.sm,
+  },
+  projLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  projRotulo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    flex: 1,
+  },
+  projBadge: {
+    paddingHorizontal: espacamento.sm,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  projBadgeTexto: {
+    ...tipografia.rotulo,
+    fontWeight: '700',
+  },
+  projStatus: {
+    ...tipografia.legenda,
+    fontWeight: '600',
+    marginTop: espacamento.sm,
+  },
+  projDetalhes: {
+    marginTop: espacamento.sm,
+    paddingTop: espacamento.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: cores.divisor,
+  },
+  projDetalheItem: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    paddingVertical: 1,
+  },
+  compCabecalho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    marginBottom: espacamento.xs,
+  },
+  compCab: {
+    color: cores.textoSecundario,
+    fontWeight: '700',
+  },
+  compLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    paddingVertical: espacamento.xs,
+  },
+  compRotulo: {
+    ...tipografia.legenda,
+    color: cores.texto,
+    flex: 1,
+  },
+  compValor: {
+    ...tipografia.legenda,
+    color: cores.texto,
+    fontWeight: '700',
+    width: 100,
+    textAlign: 'right',
+  },
+  compVar: {
+    ...tipografia.legenda,
+    fontWeight: '700',
+    width: 80,
+    textAlign: 'right',
+  },
+  sparkRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: 80,
+    gap: 2,
+  },
+  sparkCol: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 2,
+  },
+  sparkBar: {
+    width: '70%',
+    borderRadius: 2,
+  },
+  sparkDia: {
+    fontSize: 9,
+    color: cores.textoSecundario,
   },
 });
 

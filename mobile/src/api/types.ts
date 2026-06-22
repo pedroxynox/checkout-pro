@@ -123,6 +123,65 @@ export interface ItemRankingArrecadacao {
   quantidade: number | null;
 }
 
+// ----- Inteligência de indicadores -----
+
+/** Um ponto da série temporal (um dia). */
+export interface PontoTendencia {
+  data: string;
+  total: number;
+  percentual?: number;
+}
+
+/** Comparação de um período atual vs o anterior. */
+export interface Comparativo {
+  atual: number;
+  anterior: number;
+  variacao: number | null;
+}
+
+/** Comparativo de mês e semana. */
+export interface ComparativoIndicador {
+  mes: Comparativo;
+  semana: Comparativo;
+}
+
+/** Projeção de fechamento de mês. */
+export interface ProjecaoMes {
+  tipo: TipoArrecadacao;
+  base: 'FIXA' | 'VENDAS';
+  meta: number;
+  acumuladoMes: number;
+  diasTranscorridos: number;
+  diasDoMes: number;
+  projecao: number;
+  metaDiaria: number;
+  metaAcumuladaHoje: number;
+  vaiCumprir: boolean;
+}
+
+/** Meta configurável de um indicador. */
+export interface MetaIndicador {
+  tipo: TipoArrecadacao;
+  titulo: string;
+  meta: number;
+  base: 'FIXA' | 'VENDAS';
+  sentido: 'MAIOR_MELHOR' | 'MENOR_MELHOR';
+}
+
+/** Operador do mês. */
+export interface OperadorDoMes {
+  nome: string;
+  total: number;
+}
+
+/** Anomalia detectada (operador acima da média). */
+export interface AnomaliaIndicador {
+  tipo: TipoArrecadacao;
+  nome: string;
+  total: number;
+  media: number;
+}
+
 /** Estado de um arquivo de arrecadação no dia. */
 export type StatusArquivoArrecadacao = 'ENVIADO' | 'SEM_MOVIMENTO' | 'PENDENTE';
 

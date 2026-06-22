@@ -14,6 +14,10 @@ import {
   BlocoProcedimento,
   ProcedimentoGuiado,
 } from './procedimentos/procedimentos.types';
+import {
+  CONFIG_ARRECADACAO,
+  TIPOS_ARRECADACAO,
+} from '../arrecadacao/arrecadacao.domain';
 
 /** Uma mensagem da conversa exposta ao app. */
 export interface MensagemConversa {
@@ -101,11 +105,15 @@ export class AssistenteService {
 
     const conversa = await this.obterConversa(usuario.id);
     const recente = conversa.slice(-MAX_HISTORICO);
-    const escala = await this.montarContextoEscala();
+    const [escala, indicadores] = await Promise.all([
+      this.montarContextoEscala(),
+      this.montarContextoIndicadores(),
+    ]);
     const instrucao = montarInstrucaoSistema({
       nomeUsuario: usuario.nome,
       perfil: usuario.perfil,
       escala,
+      indicadores,
     });
     const mensagens: MensagemGemini[] = [
       ...recente.map((m) => ({ papel: m.papel, texto: m.conteudo })),
@@ -177,6 +185,97 @@ export class AssistenteService {
     } catch (erro) {
       this.logger.warn(
         `Não foi possível montar o contexto de escala: ${String(erro)}`,
+      );
+      return undefined;
+    }
+  }
+
+  /**
+   * Monta o contexto dos indicadores de arrecadação do mês atual para a Cluby
+   * — lê direto via Prisma (registroArrecadacao + vendaDiaria + metaIndicador),
+   * desacoplado do ArrecadacaoModule. Importa apenas a config pura (domínio).
+   * Retorna texto com total do mês, meta e semáforo de cada indicador.
+   */
+  private async montarContextoIndicadores(): Promise<string | undefined> {
+    try {
+      const agora = new Date();
+      const inicioMes = new Date(
+        Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1),
+      );
+      const inicioProximoMes = new Date(
+        Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 1),
+      );
+
+      // Metas configuradas (fallback ao default da config).
+      const metasDb = await this.prisma.metaIndicador.findMany();
+      const metaPorTipo = new Map(metasDb.map((m) => [m.tipo, Number(m.meta)]));
+
+      // Vendas do mês (para indicadores base VENDAS).
+      const vendasAgg = await this.prisma.vendaDiaria.aggregate({
+        where: { data: { gte: inicioMes, lt: inicioProximoMes } },
+        _sum: { valor: true },
+      });
+      const vendasMes = Number(vendasAgg._sum.valor ?? 0);
+
+      const arred = (n: number): number => Math.round(n * 100) / 100;
+      const linhas: string[] = [];
+      let temDados = false;
+
+      for (const tipo of TIPOS_ARRECADACAO) {
+        const config = CONFIG_ARRECADACAO[tipo];
+        const meta = metaPorTipo.get(tipo) ?? config.meta;
+        const agg = await this.prisma.registroArrecadacao.aggregate({
+          where: { tipo, data: { gte: inicioMes, lt: inicioProximoMes } },
+          _sum: { valor: true },
+        });
+        const totalMes = arred(Number(agg._sum.valor ?? 0));
+        if (totalMes > 0) temDados = true;
+
+        if (config.base === 'VENDAS') {
+          const pct = vendasMes > 0 ? arred((totalMes / vendasMes) * 100) : 0;
+          const emoji = pct <= meta ? '🟢' : pct <= meta * 1.5 ? '🟡' : '🔴';
+          linhas.push(
+            `${emoji} ${config.titulo}: ${pct}% das vendas no mês (meta ≤ ${meta}%).`,
+          );
+        } else {
+          const emoji =
+            totalMes >= meta ? '🟢' : totalMes >= meta * 0.75 ? '🟡' : '🔴';
+          linhas.push(
+            `${emoji} ${config.titulo}: R$${totalMes} arrecadado no mês (meta R$${meta}).`,
+          );
+        }
+      }
+
+      if (!temDados) return undefined;
+
+      // Operador do mês (troco + recargas).
+      const registrosOp = await this.prisma.registroArrecadacao.findMany({
+        where: {
+          tipo: { in: ['TROCO_SOLIDARIO', 'RECARGAS_CELULAR'] },
+          data: { gte: inicioMes, lt: inicioProximoMes },
+        },
+        select: { nome: true, valor: true },
+      });
+      if (registrosOp.length > 0) {
+        const totais = new Map<string, number>();
+        for (const r of registrosOp) {
+          totais.set(r.nome, (totais.get(r.nome) ?? 0) + Number(r.valor));
+        }
+        let melhor: { nome: string; total: number } | null = null;
+        for (const [nome, total] of totais.entries()) {
+          if (!melhor || total > melhor.total) melhor = { nome, total };
+        }
+        if (melhor) {
+          linhas.push(
+            `\n🏆 Operador do mês (troco + recargas): ${melhor.nome} (R$${arred(melhor.total)}).`,
+          );
+        }
+      }
+
+      return linhas.join('\n');
+    } catch (erro) {
+      this.logger.warn(
+        `Não foi possível montar o contexto de indicadores: ${String(erro)}`,
       );
       return undefined;
     }

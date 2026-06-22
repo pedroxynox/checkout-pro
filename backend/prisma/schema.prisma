@@ -430,3 +430,21 @@ enum StatusSugestao {
   CONFIRMADA
   IGNORADA
 }
+
+
+// Meta configurável de um indicador de arrecadação. Substitui as metas
+// hardcoded (CONFIG_ARRECADACAO) como fonte única de verdade — o gestor pode
+// editar via app sem redeploy. Quando não existe registro, usa-se o default.
+model MetaIndicador {
+  id            String   @id @default(uuid())
+  /// Tipo do indicador (ex.: TROCO_SOLIDARIO, CANCELAMENTO_ITENS).
+  tipo          String   @unique
+  /// Valor da meta: R$ (base FIXA) ou % sobre vendas (base VENDAS).
+  meta          Float
+  /// Limite do amarelo (opcional); se ausente, derivado automaticamente.
+  limiteAmarelo Float?
+  atualizadoEm  DateTime @default(now()) @updatedAt
+  atualizadoPor String?
+
+  @@map("metas_indicador")
+}
