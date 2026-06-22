@@ -1,20 +1,36 @@
 /**
- * Tela de Importações (carga dos arquivos do dia).
+ * Tela de Importacoes (carga dos arquivos do dia).
  *
- * Seção dedicada ao usuário de carga (perfil IMPORTADOR), deixado no computador
- * da loja. Aqui se **enviam** todos os arquivos .txt do dia: as 5 arrecadações
- * (Troco Solidário, Recargas, Cancelamentos e Devoluções) e as Vendas por hora.
- * O status consolidado (enviado/pendente) é visto na seção "Fechamento".
+ * Secao dedicada ao usuario de carga (perfil IMPORTADOR), deixado no computador
+ * da loja. Aqui se enviam todos os arquivos .txt do dia: as 5 arrecadacoes
+ * (Troco Solidario, Recargas, Cancelamentos e Devolucoes) e as Vendas por hora.
+ *
+ * Os arquivos seguem uma sequencia (1 a 6). Cada um, ao ser carregado, fica
+ * marcado como "Carregado" de forma persistente (status real do servidor), e a
+ * tela mostra o progresso (X de N) e qual e o proximo a carregar.
  */
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { arrecadacaoService, vendasService } from '../../api/services';
-import { TipoArrecadacao } from '../../api/types';
-import { Botao, Cartao, Selo, SeletorData, Tela } from '../../components';
-import { cores, espacamento, tipografia } from '../../theme';
+import {
+  StatusArquivoArrecadacao,
+  StatusArrecadacao,
+  TipoArrecadacao,
+} from '../../api/types';
+import {
+  Botao,
+  Carregando,
+  Cartao,
+  MensagemErro,
+  Selo,
+  SeletorData,
+  Tela,
+} from '../../components';
+import { useRequisicao } from '../../hooks/useRequisicao';
+import { cores, espacamento, raio, tipografia } from '../../theme';
 import { notificar } from '../../utils/dialogos';
 import { formatarMoeda, hojeISO } from '../../utils/formato';
 import { ARRECADACAO } from '../../utils/rotulos';
@@ -24,7 +40,7 @@ interface Aviso {
   texto: string;
 }
 
-/** Itens carregáveis: as 5 arrecadações + as vendas por hora. */
+/** Itens carregaveis: as 5 arrecadacoes + as vendas por hora. */
 type ItemCarga = { id: TipoArrecadacao | 'VENDAS'; titulo: string; icone: string };
 
 const ITENS: ItemCarga[] = [
@@ -51,14 +67,29 @@ export function ImportacoesScreen(): React.ReactElement {
   const [data, setData] = useState(hojeISO());
   const [enviando, setEnviando] = useState<string | null>(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
-  // Estado local da sessão por item: o que foi feito hoje nesta tela.
-  const [estado, setEstado] = useState<Record<string, 'carregado' | 'sem_movimento'>>({});
 
-  // Ao trocar o dia, zera o estado local (refere-se ao dia anterior).
-  useEffect(() => {
-    setEstado({});
-    setAviso(null);
+  // Status real do servidor (persistente): o que ja foi carregado no dia.
+  const req = useRequisicao(async () => {
+    const [arrecadacao, vendas] = await Promise.all([
+      arrecadacaoService.status(data),
+      vendasService.status(data),
+    ]);
+    return { arrecadacao, vendas };
   }, [data]);
+
+  const arrecadacao: StatusArrecadacao | undefined = req.dados?.arrecadacao;
+
+  const statusDe = (item: ItemCarga): StatusArquivoArrecadacao => {
+    if (item.id === 'VENDAS') {
+      return req.dados?.vendas?.enviado ? 'ENVIADO' : 'PENDENTE';
+    }
+    return (arrecadacao?.[item.id] ?? 'PENDENTE') as StatusArquivoArrecadacao;
+  };
+
+  // Progresso (a sequencia): quantos dos N ja estao resolvidos.
+  const resolvidos = ITENS.filter((i) => statusDe(i) !== 'PENDENTE').length;
+  // Primeiro pendente = o proximo da sequencia.
+  const proximoId = ITENS.find((i) => statusDe(i) === 'PENDENTE')?.id ?? null;
 
   const enviar = async (item: ItemCarga) => {
     setAviso(null);
@@ -84,7 +115,8 @@ export function ImportacoesScreen(): React.ReactElement {
         msg = `${item.titulo}: ${r.quantidade} pessoa(s), total ${formatarMoeda(r.total)}.`;
         fechou = r.fechamentoConcluido;
       }
-      setEstado((s) => ({ ...s, [item.id]: 'carregado' }));
+      // Recarrega o status real (mantem a marca de "Carregado" persistente).
+      req.recarregar();
       if (fechou) {
         setAviso({ tom: 'ok', texto: 'Fechamento realizado com sucesso!' });
         notificar(
@@ -111,7 +143,7 @@ export function ImportacoesScreen(): React.ReactElement {
     setEnviando(item.id);
     try {
       const r = await arrecadacaoService.marcarSemMovimento(item.id, data);
-      setEstado((s) => ({ ...s, [item.id]: 'sem_movimento' }));
+      req.recarregar();
       if (r.fechamentoConcluido) {
         setAviso({ tom: 'ok', texto: 'Fechamento realizado com sucesso!' });
         notificar(
@@ -128,14 +160,56 @@ export function ImportacoesScreen(): React.ReactElement {
     }
   };
 
+  function seloDe(status: StatusArquivoArrecadacao): React.ReactElement | null {
+    if (status === 'ENVIADO') {
+      return <Selo texto="Carregado" cor={cores.verde} fundo={cores.verdeFundo} />;
+    }
+    if (status === 'SEM_MOVIMENTO') {
+      return (
+        <Selo
+          texto="Sem movimento"
+          cor={cores.textoSecundario}
+          fundo={cores.superficieAlternativa}
+        />
+      );
+    }
+    return <Selo texto="Pendente" cor={cores.amarelo} fundo={cores.amareloFundo} />;
+  }
+
   return (
-    <Tela>
+    <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
       <SeletorData valor={data} aoMudar={setData} rotulo="Dia de referência" />
+
+      {/* Progresso da sequência */}
+      <View style={styles.progressoCard}>
+        <View style={styles.progressoTopo}>
+          <Ionicons
+            name={resolvidos === ITENS.length ? 'checkmark-done-circle' : 'documents-outline'}
+            size={22}
+            color={resolvidos === ITENS.length ? cores.verde : cores.primaria}
+          />
+          <Text style={styles.progressoTexto}>
+            {resolvidos} de {ITENS.length} arquivos carregados
+          </Text>
+        </View>
+        <View style={styles.barraTrilho}>
+          <View
+            style={[
+              styles.barraPreenchida,
+              {
+                width: `${(resolvidos / ITENS.length) * 100}%`,
+                backgroundColor: resolvidos === ITENS.length ? cores.verde : cores.primaria,
+              },
+            ]}
+          />
+        </View>
+      </View>
 
       <Cartao titulo="Carregar arquivos do dia">
         <Text style={styles.ajuda}>
-          Envie o bloc de notas de cada arquivo do dia. Se um indicador não teve
-          movimento (ex.: nenhum cancelamento), toque em &quot;Sem movimento&quot;.
+          Envie o bloco de notas de cada arquivo, na sequência. Se um indicador
+          não teve movimento (ex.: nenhum cancelamento), toque em &quot;Sem
+          movimento&quot;.
         </Text>
         {aviso ? (
           <View
@@ -157,52 +231,102 @@ export function ImportacoesScreen(): React.ReactElement {
             </Text>
           </View>
         ) : null}
-        {ITENS.map((item) => {
-          const st = estado[item.id];
-          return (
-            <View key={item.id} style={styles.item}>
-              <View style={styles.tituloLinha}>
-                <Ionicons
-                  name={item.icone as keyof typeof Ionicons.glyphMap}
-                  size={18}
-                  color={cores.primaria}
-                />
-                <Text style={styles.nome}>{item.titulo}</Text>
-                {st === 'carregado' ? (
-                  <Selo texto="Carregado" cor={cores.verde} fundo={cores.verdeFundo} />
-                ) : st === 'sem_movimento' ? (
-                  <Selo
-                    texto="Sem movimento"
-                    cor={cores.textoSecundario}
-                    fundo={cores.superficieAlternativa}
+
+        {req.carregando ? (
+          <Carregando />
+        ) : req.erro ? (
+          <MensagemErro mensagem={req.erro} aoTentarNovamente={req.recarregar} />
+        ) : (
+          ITENS.map((item, indice) => {
+            const status = statusDe(item);
+            const resolvido = status !== 'PENDENTE';
+            const ehProximo = item.id === proximoId;
+            return (
+              <View
+                key={item.id}
+                style={[styles.item, ehProximo && styles.itemProximo]}
+              >
+                <View style={styles.tituloLinha}>
+                  {/* Numero da sequencia */}
+                  <View
+                    style={[
+                      styles.seq,
+                      {
+                        backgroundColor: resolvido ? cores.verde : cores.superficieAlternativa,
+                      },
+                    ]}
+                  >
+                    {resolvido ? (
+                      <Ionicons name="checkmark" size={14} color={cores.textoInverso} />
+                    ) : (
+                      <Text style={styles.seqTexto}>{indice + 1}</Text>
+                    )}
+                  </View>
+                  <Ionicons
+                    name={item.icone as keyof typeof Ionicons.glyphMap}
+                    size={18}
+                    color={cores.primaria}
                   />
-                ) : null}
-              </View>
-              <View style={styles.acoes}>
-                <Botao
-                  titulo="Carregar"
-                  variante="secundario"
-                  carregando={enviando === item.id}
-                  aoPressionar={() => void enviar(item)}
-                  estilo={styles.botao}
-                />
-                {item.id !== 'VENDAS' ? (
+                  <Text style={styles.nome}>{item.titulo}</Text>
+                  {ehProximo ? (
+                    <Selo texto="Próximo" cor={cores.primaria} fundo={cores.primariaClara} />
+                  ) : (
+                    seloDe(status)
+                  )}
+                </View>
+                <View style={styles.acoes}>
                   <Botao
-                    titulo="Sem movimento"
-                    variante="texto"
-                    aoPressionar={() => void marcarSemMovimento(item)}
+                    titulo={status === 'ENVIADO' ? 'Recarregar' : 'Carregar'}
+                    variante="secundario"
+                    carregando={enviando === item.id}
+                    aoPressionar={() => void enviar(item)}
+                    estilo={styles.botao}
                   />
-                ) : null}
+                  {item.id !== 'VENDAS' && status !== 'ENVIADO' ? (
+                    <Botao
+                      titulo="Sem movimento"
+                      variante="texto"
+                      aoPressionar={() => void marcarSemMovimento(item)}
+                    />
+                  ) : null}
+                </View>
               </View>
-            </View>
-          );
-        })}
+            );
+          })
+        )}
       </Cartao>
     </Tela>
   );
 }
 
 const styles = StyleSheet.create({
+  progressoCard: {
+    backgroundColor: cores.superficie,
+    borderRadius: raio.lg,
+    padding: espacamento.lg,
+    marginBottom: espacamento.md,
+  },
+  progressoTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    marginBottom: espacamento.sm,
+  },
+  progressoTexto: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    fontWeight: '700',
+  },
+  barraTrilho: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: cores.superficieAlternativa,
+    overflow: 'hidden',
+  },
+  barraPreenchida: {
+    height: 8,
+    borderRadius: 4,
+  },
   ajuda: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
@@ -219,14 +343,33 @@ const styles = StyleSheet.create({
   },
   item: {
     paddingVertical: espacamento.sm,
+    paddingHorizontal: espacamento.sm,
+    borderRadius: raio.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: cores.divisor,
+  },
+  itemProximo: {
+    backgroundColor: cores.primariaClara,
+    borderBottomWidth: 0,
   },
   tituloLinha: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: espacamento.xs,
     marginBottom: espacamento.xs,
+  },
+  seq: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  seqTexto: {
+    ...tipografia.legenda,
+    fontWeight: '800',
+    color: cores.textoSecundario,
+    fontSize: 11,
   },
   nome: {
     ...tipografia.corpo,
