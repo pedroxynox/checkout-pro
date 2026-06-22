@@ -10,6 +10,10 @@ import {
 import { LoteApae } from '@prisma/client';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
+  UsuarioAtual,
+  UsuarioAutenticado,
+} from '../common/decorators/usuario-atual.decorator';
+import {
   AtualizarSaldoDto,
   RegistrarLoteDto,
   ReiniciarLoteDto,
@@ -43,8 +47,9 @@ export class LoteApaeController {
   async atualizarSaldo(
     @Param('id') id: string,
     @Body() dto: AtualizarSaldoDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<LoteApae> {
-    return this.loteApaeService.atualizarSaldo(id, dto.saldoAtual);
+    return this.loteApaeService.atualizarSaldo(id, dto.saldoAtual, usuario?.sub);
   }
 
   /**
@@ -84,5 +89,27 @@ export class LoteApaeController {
   @Get('ativo')
   async ativo(): Promise<LoteApae | null> {
     return this.loteApaeService.loteAtivo();
+  }
+
+  /** Configuração (preço da sacola + meta mensal). Liberado ao fiscal (leitura). */
+  @Get('config')
+  async config(): Promise<{ precoSacola: number; metaMensal: number }> {
+    return this.loteApaeService.obterConfig();
+  }
+
+  /** Atualiza preço e/ou meta mensal. Apenas GERENTE. */
+  @Put('config')
+  @Funcionalidade('LOTE_APAE_GERENCIAR')
+  async definirConfig(
+    @Body() dto: { precoSacola?: number; metaMensal?: number },
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<{ precoSacola: number; metaMensal: number }> {
+    return this.loteApaeService.definirConfig(dto, usuario?.sub);
+  }
+
+  /** Painel inteligente: arrecadação, meta, tendência, velocidade e previsão. */
+  @Get('painel')
+  async painel() {
+    return this.loteApaeService.painel();
   }
 }

@@ -1,6 +1,6 @@
 /** Serviço do Lote de Sacolas APAE (Req 2.6). */
 import { apiClient } from '../client';
-import { LoteApae } from '../types';
+import { LoteApae, ConfigApae, PainelApae } from '../types';
 
 export const loteApaeService = {
   /** Registra um novo lote inicial (Req 2.6.1). */
@@ -37,5 +37,23 @@ export const loteApaeService = {
   /** Remove todos os lotes encerrados do histórico (apenas gerente). */
   limparHistorico(): Promise<{ removidos: number }> {
     return apiClient.delete<{ removidos: number }>('/lote-apae/historico');
+  },
+
+  /** Configuração atual (preço da sacola e meta mensal). */
+  config(): Promise<ConfigApae> {
+    return apiClient.get<ConfigApae>('/lote-apae/config');
+  },
+
+  /** Atualiza preço e/ou meta mensal (apenas gestor). */
+  definirConfig(dados: {
+    precoSacola?: number;
+    metaMensal?: number;
+  }): Promise<ConfigApae> {
+    return apiClient.put<ConfigApae>('/lote-apae/config', dados);
+  },
+
+  /** Painel inteligente consolidado (arrecadação, tendência, previsão). */
+  painel(): Promise<PainelApae> {
+    return apiClient.get<PainelApae>('/lote-apae/painel');
   },
 };

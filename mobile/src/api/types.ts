@@ -278,6 +278,45 @@ export interface LoteApae {
   status: StatusLote;
 }
 
+/** Configuração das Sacolas APAE (preço unitário e meta mensal em R$). */
+export interface ConfigApae {
+  precoSacola: number;
+  metaMensal: number;
+}
+
+/** Um ponto da tendência diária de vendas de sacolas (últimos 30 dias). */
+export interface PontoTendenciaApae {
+  data: string;
+  vendidas: number;
+  valor: number;
+}
+
+/** Painel inteligente consolidado das Sacolas APAE. */
+export interface PainelApae {
+  precoSacola: number;
+  metaMensal: number;
+  /** Arrecadado no mês atual (R$). */
+  arrecadadoMes: number;
+  /** Arrecadado no mês anterior (R$). */
+  arrecadadoMesAnterior: number;
+  /** Variação % vs mês anterior (`null` se não houver base de comparação). */
+  variacaoMes: number | null;
+  /** Total histórico arrecadado em todos os lotes (R$). */
+  totalHistorico: number;
+  /** Sacolas vendidas no mês atual (unidades). */
+  sacolasVendidasMes: number;
+  /** Velocidade média de venda (sacolas/dia, janela de 14 dias). */
+  velocidadeDia: number;
+  /** Previsão de dias até o fim do lote ativo (`null` se sem dados). */
+  previsaoDiasFimLote: number | null;
+  /** Saldo do lote ativo (`null` se não houver lote aberto). */
+  saldoLoteAtivo: number | null;
+  /** Progresso da meta mensal em [0, 1]. */
+  metaProgresso: number;
+  /** Série diária dos últimos 30 dias. */
+  tendencia: PontoTendenciaApae[];
+}
+
 // ----- Insumos (Req 3.x) -----
 export type CategoriaInsumo = 'SACOLA' | 'BOBINA' | 'PANO' | 'ALCOOL' | 'OUTRO';
 

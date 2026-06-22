@@ -225,7 +225,40 @@ model LoteApae {
   dataEncerramento  DateTime?
   status            StatusLote @default(ABERTO)
 
+  movimentos MovimentoLoteApae[]
+
   @@map("lotes_apae")
+}
+
+// Movimento de venda de sacolas APAE: cada atualização de saldo gera um
+// registro com quantas foram vendidas desde a contagem anterior, com data.
+// Permite tendência, velocidade de venda, previsão de fim de lote e
+// arrecadação por período (sem exigir contagem por venda — só pelo saldo).
+model MovimentoLoteApae {
+  id            String   @id @default(uuid())
+  loteId        String
+  vendidas      Int
+  saldoApos     Int
+  em            DateTime @default(now())
+  responsavelId String?
+
+  lote LoteApae @relation(fields: [loteId], references: [id], onDelete: Cascade)
+
+  @@index([em])
+  @@index([loteId])
+  @@map("movimentos_lote_apae")
+}
+
+// Configuração (singleton) das Sacolas APAE: preço unitário e meta mensal de
+// arrecadação. Editável pelo gestor sem redeploy.
+model ConfigApae {
+  id            String   @id @default("apae")
+  precoSacola   Float    @default(0.49)
+  metaMensal    Float    @default(500)
+  atualizadoEm  DateTime @default(now()) @updatedAt
+  atualizadoPor String?
+
+  @@map("config_apae")
 }
 
 model Insumo {
