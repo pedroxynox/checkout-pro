@@ -5,6 +5,7 @@
  */
 import {
   DefaultTheme,
+  LinkingOptions,
   NavigationContainer,
   Theme,
 } from '@react-navigation/native';
@@ -16,6 +17,7 @@ import { NotificacoesProvider } from '../notificacoes/NotificacoesContext';
 import { LoginScreen } from '../screens/LoginScreen';
 import { cores } from '../theme';
 import { AppNavigator } from './AppNavigator';
+import { RootStackParamList } from './types';
 
 const temaNavegacao: Theme = {
   ...DefaultTheme,
@@ -26,6 +28,41 @@ const temaNavegacao: Theme = {
     card: cores.superficie,
     text: cores.texto,
     border: cores.borda,
+  },
+};
+
+/**
+ * Configuração de links/URLs. Na web, faz a pilha de navegação sincronizar com
+ * o histórico do navegador: assim, o botão "voltar" do navegador (e o gesto de
+ * voltar) retorna à aba anterior do app em vez de sair do site. Cada tela tem
+ * sua própria URL.
+ */
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: [],
+  config: {
+    screens: {
+      Home: '',
+      Importacoes: 'importacoes',
+      Fechamento: 'fechamento',
+      Indicadores: 'indicadores',
+      IndicadorDetalhe: 'indicadores/detalhe/:tipo',
+      PainelVendas: 'painel-vendas',
+      LoteApae: 'lote-apae',
+      Insumos: 'insumos',
+      InsumoDetalhe: 'insumos/detalhe/:insumoId',
+      Requisicoes: 'requisicoes',
+      Fiscais: 'fiscais',
+      JornadaFiscais: 'fiscais/jornada',
+      Escala: 'escala',
+      Checklist: 'checklist',
+      Operadores: 'operadores',
+      Usuarios: 'usuarios',
+      AlertasFila: 'alertas-fila',
+      Normativas: 'normativas',
+      IndicadorQuebra: 'quebra',
+      Notificacoes: 'notificacoes',
+      GerenciarDados: 'gerenciar-dados',
+    },
   },
 };
 
@@ -41,7 +78,7 @@ export function RootNavigator(): React.ReactElement {
   }
 
   return (
-    <NavigationContainer theme={temaNavegacao}>
+    <NavigationContainer theme={temaNavegacao} linking={linking}>
       {autenticado ? (
         <NotificacoesProvider>
           <AppNavigator />
