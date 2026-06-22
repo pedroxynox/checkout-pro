@@ -1,0 +1,476 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 8 /Kids [6 0 R 8 0 R 10 0 R 12 0 R 14 0 R 16 0 R 18 0 R 20 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Length 1038 >>
+stream
+0.78 0.06 0.18 rg 0 621.89 595.28 220 re f
+BT /F2 46 Tf 1 1 1 rg 56 721.89 Td (Check-out PRO) Tj ET
+BT /F1 13 Tf 1 0.85 0.88 rg 56 691.89 Td (Gestão inteligente da frente de caixa) Tj ET
+BT /F2 17 Tf 0.1 0.1 0.12 rg 56 521.89 Td (A operação do supermercado, finalmente sob controle:) Tj ET
+BT /F2 17 Tf 0.1 0.1 0.12 rg 56 497.89 Td (tempo real, automação e inteligência em um só app.) Tj ET
+BT /F1 11.5 Tf 0.36 0.36 0.42 rg 56 457.89 Td (Documento de apresentação do projeto. Este material explica, em detalhe, o que o sistema) Tj ET
+BT /F1 11.5 Tf 0.36 0.36 0.42 rg 56 440.89 Td (faz, o tamanho do que foi construído e por que ele importa para a operação do dia a dia.) Tj ET
+0.97 0.95 0.96 rg 56 150 483.28 96 re f
+0.86 0.86 0.9 RG 0.8 w 56 150 483.28 96 re S
+BT /F2 11 Tf 0.78 0.06 0.18 rg 76 216 Td (EM UMA FRASE) Tj ET
+BT /F1 12 Tf 0.1 0.1 0.12 rg 76 196 Td (Substitui planilhas soltas, grupos de WhatsApp e a memória das pessoas por um) Tj ET
+BT /F1 12 Tf 0.1 0.1 0.12 rg 76 179 Td (único lugar que mede, avisa e age sozinho.) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 5432 >>
+stream
+BT /F1 8 Tf 0.62 0.62 0.68 rg 56 36 Td (Check-out PRO  -  Documento de apresentacao  -  uso interno e confidencial) Tj ET
+BT /F1 8 Tf 0.62 0.62 0.68 rg 519.28 36 Td (2) Tj ET
+0.86 0.86 0.9 RG 0.5 w 56 46 m 539.28 46 l S
+BT /F2 19 Tf 0.78 0.06 0.18 rg 56 752.89 Td (1. A história por trás do projeto) Tj ET
+0.78 0.06 0.18 RG 2.5 w 56 745.89 m 102 745.89 l S
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 721.39 Td (Todo supermercado vive a mesma rotina invisível: fiscais que entram e saem de turno, operadores que) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 706.48 Td (cancelam itens e cupons, troco solidário e recargas que precisam ser somados, sacolas e bobinas que) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 691.57 Td (acabam no pior momento, arquivos que chegam todo dia e precisam ser conferidos. Durante anos,) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 676.66 Td (tudo isso foi controlado de cabeça, em cadernos, em planilhas espalhadas e em mensagens de) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 661.75 Td (WhatsApp que se perdiam.) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 641.84 Td (O Check-out PRO nasceu para acabar com essa bagunça. A ideia central é simples e poderosa ao) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 626.93 Td (mesmo tempo: em vez de a pessoa lembrar de tudo, o sistema pensa, mede, antecipa e avisa. Ele) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 612.02 Td (transforma a operação da frente de caixa em informação clara, em tempo real, na palma da mão - e faz) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 597.11 Td (isso tanto no aplicativo quanto no navegador.) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 577.2 Td (Este documento mostra, área por área, função por função, o que foi construído. E, acima de tudo,) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 562.29 Td (dimensiona cada parte: não basta dizer que existe, é preciso mostrar o tamanho e o valor do que cada) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 547.38 Td (função entrega.) Tj ET
+BT /F2 19 Tf 0.78 0.06 0.18 rg 56 512.97 Td (2. O tamanho do que foi construído) Tj ET
+0.78 0.06 0.18 RG 2.5 w 56 505.97 m 102 505.97 l S
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 481.47 Td (Antes de entrar nos detalhes, vale enxergar a dimensão do projeto. Estes números não são enfeite:) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 466.56 Td (cada linha de código representa uma regra de negócio, uma validação, uma tela ou uma automação) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 451.65 Td (que hoje funciona sozinha.) Tj ET
+0.97 0.95 0.96 rg 56 386.24 154.43 56 re f
+0.86 0.86 0.9 RG 0.7 w 56 386.24 154.43 56 re S
+BT /F2 20 Tf 0.78 0.06 0.18 rg 102.63 414.24 Td (31.582) Tj ET
+BT /F1 8 Tf 0.36 0.36 0.42 rg 89.42 402.24 Td (linhas de código escritas) Tj ET
+0.97 0.95 0.96 rg 220.43 386.24 154.43 56 re f
+0.86 0.86 0.9 RG 0.7 w 220.43 386.24 154.43 56 re S
+BT /F2 20 Tf 0.78 0.06 0.18 rg 280.96 414.24 Td (247) Tj ET
+BT /F1 8 Tf 0.36 0.36 0.42 rg 264.07 402.24 Td (arquivos de código) Tj ET
+0.97 0.95 0.96 rg 384.85 386.24 154.43 56 re f
+0.86 0.86 0.9 RG 0.7 w 384.85 386.24 154.43 56 re S
+BT /F2 20 Tf 0.78 0.06 0.18 rg 450.95 414.24 Td (23) Tj ET
+BT /F1 8 Tf 0.36 0.36 0.42 rg 429.38 402.24 Td (modelos de dados) Tj ET
+0.97 0.95 0.96 rg 56 320.24 154.43 56 re f
+0.86 0.86 0.9 RG 0.7 w 56 320.24 154.43 56 re S
+BT /F2 20 Tf 0.78 0.06 0.18 rg 122.09 348.24 Td (20) Tj ET
+BT /F1 8 Tf 0.36 0.36 0.42 rg 97.2 336.24 Td (módulos no servidor) Tj ET
+0.97 0.95 0.96 rg 220.43 320.24 154.43 56 re f
+0.86 0.86 0.9 RG 0.7 w 220.43 320.24 154.43 56 re S
+BT /F2 20 Tf 0.78 0.06 0.18 rg 286.52 348.24 Td (16) Tj ET
+BT /F1 8 Tf 0.36 0.36 0.42 rg 264.29 336.24 Td (áreas no aplicativo) Tj ET
+0.97 0.95 0.96 rg 384.85 320.24 154.43 56 re f
+0.86 0.86 0.9 RG 0.7 w 384.85 320.24 154.43 56 re S
+BT /F2 20 Tf 0.78 0.06 0.18 rg 450.95 348.24 Td (21) Tj ET
+BT /F1 8 Tf 0.36 0.36 0.42 rg 408.27 336.24 Td (versões de banco \(migrações\)) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 299.74 Td (São quase 18 mil linhas no servidor \(a inteligência e as regras\) e mais de 13 mil no aplicativo \(a) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 284.83 Td (experiência de quem usa\). Tudo isso sustentado por um banco de dados com 23 modelos, que) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 269.92 Td (guardam desde o ponto de cada fiscal até cada centavo de arrecadação. Para efeito de comparação,) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 255.01 Td (um projeto desse porte costuma representar meses de trabalho de uma equipe inteira - aqui, está) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 240.1 Td (entregue, funcionando e no ar.) Tj ET
+0.97 0.95 0.96 rg 56 181.69 483.28 49 re f
+0.78 0.06 0.18 rg 56 181.69 4 49 re f
+BT /F1 11 Tf 0.1 0.1 0.12 rg 72 203.69 Td (Não é um aplicativo de telas bonitas. É um sistema de gestão completo, com regras reais,) Tj ET
+BT /F1 11 Tf 0.1 0.1 0.12 rg 72 187.19 Td (automações que rodam sozinhas e uma camada de inteligência artificial integrada.) Tj ET
+BT /F2 19 Tf 0.78 0.06 0.18 rg 56 144.69 Td (3. A fundação: o que sustenta o app) Tj ET
+0.78 0.06 0.18 RG 2.5 w 56 137.69 m 102 137.69 l S
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 113.19 Td (Toda a casa foi construída sobre tecnologias sólidas e modernas, as mesmas usadas por empresas de) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 98.28 Td (grande porte:) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 78.37 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 78.37 Td (Servidor \(o cérebro\): NestJS com Prisma e banco PostgreSQL. É onde vivem as regras, os cálculos) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 5837 >>
+stream
+BT /F1 8 Tf 0.62 0.62 0.68 rg 56 36 Td (Check-out PRO  -  Documento de apresentacao  -  uso interno e confidencial) Tj ET
+BT /F1 8 Tf 0.62 0.62 0.68 rg 519.28 36 Td (3) Tj ET
+0.86 0.86 0.9 RG 0.5 w 56 46 m 539.28 46 l S
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 767.39 Td (e as automações. Robusto, testado e organizado em 20 módulos independentes.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 749.48 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 749.48 Td (Aplicativo e Web \(a experiência\): Expo com React Native. Um único código que vira, ao mesmo) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 734.57 Td (tempo, aplicativo de celular e site no navegador - uma economia enorme de tempo e manutenção.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 716.66 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 716.66 Td (Tempo real: WebSocket. O painel de fiscais, as notificações e os status mudam na tela na hora,) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 701.75 Td (sem precisar atualizar.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 683.84 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 683.84 Td (Inteligência artificial: integração com o Google Gemini, que dá vida à assistente Cluby.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 665.93 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 665.93 Td (No ar 24 horas: hospedado na Render, com atualização automática a cada melhoria publicada.) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 648.02 Td (Na prática, isso significa estabilidade, velocidade e a capacidade de crescer sem reescrever tudo. A) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 633.11 Td (base está pronta para receber novas áreas sem comprometer o que já existe.) Tj ET
+BT /F2 19 Tf 0.78 0.06 0.18 rg 56 598.7 Td (4. As áreas do app, uma a uma) Tj ET
+0.78 0.06 0.18 RG 2.5 w 56 591.7 m 102 591.7 l S
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 567.2 Td (O app se organiza em áreas \(abas\), e cada perfil de usuário vê apenas aquilo que lhe diz respeito: o) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 552.29 Td (gerente vê tudo; o fiscal vê apenas o operacional. A seguir, cada área, o que ela faz e a sua) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 537.38 Td (mensuração - o valor concreto que entrega.) Tj ET
+BT /F2 13.5 Tf 0.1 0.1 0.12 rg 56 510.47 Td (4.1  Indicadores) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 492.47 Td (O painel de saúde da frente de caixa. Reúne os cinco indicadores oficiais \(troco solidário, recargas de) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 477.56 Td (celular, cancelamento de itens, cancelamento de cupom e devoluções\) com metas, cores e leitura) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 462.65 Td (imediata.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 444.74 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 444.74 Td (Painel de saúde: semáforo verde/amarelo/vermelho de cada indicador no mês, com uma leitura de) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 429.83 Td (360 graus em segundos.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 411.92 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 411.92 Td (Destaques do mês: quem mais arrecadou em troco e recargas, quem mais cancelou itens \(por valor\)) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 397.01 Td (e - como premiação - quem menos cancelou. Fiscais ficam de fora, pois operam caixa raramente.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 379.1 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 379.1 Td (Painel 'Precisa de atenção': metas em risco com o quanto falta ou o quanto passou, tendência) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 364.19 Td (\(piorando ou melhorando\), projeção de fechamento do mês e operadores fora da média \(com ticket) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 349.28 Td (médio e quem autorizou\).) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 331.37 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 331.37 Td (Detalhe de cada indicador: tendência dos últimos 14 dias, comparativo com o período anterior,) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 316.46 Td (projeção do mês, meta diária e ranking por pessoa.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 298.55 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 298.55 Td (Metas configuráveis: o gestor muda a meta pelo próprio app, sem depender de programador.) Tj ET
+0.97 0.95 0.96 rg 56 235.24 483.28 53.9 re f
+0.78 0.06 0.18 rg 56 235.24 3 53.9 re f
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 266.64 Td (Mensuracao: Transforma cinco números soltos em decisão. O gestor descobre em segundos se a loja está) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 253.34 Td (dentro ou fora da meta, quem precisa de atenção e para onde o mês está caminhando - antes era preciso) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 240.04 Td (abrir várias planilhas e somar à mão.) Tj ET
+BT /F2 13.5 Tf 0.1 0.1 0.12 rg 56 205.74 Td (4.2  Painel de Vendas) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 187.74 Td (Informa e acompanha o acumulado de vendas do dia, da semana e do mês, com as vendas por hora) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 172.83 Td (vindas do arquivo diário.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 154.92 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 154.92 Td (Acompanhamento de vendas por dia, semana e mês em um só lugar.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 137.01 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 137.01 Td (Vendas por hora em gráfico, mostrando os picos do movimento.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 119.1 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 119.1 Td (Base de cálculo dos percentuais dos indicadores \(cancelamentos e devoluções sobre as vendas\).) Tj ET
+0.97 0.95 0.96 rg 56 69.09 483.28 40.6 re f
+0.78 0.06 0.18 rg 56 69.09 3 40.6 re f
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 87.19 Td (Mensuracao: Dá o denominador de tudo: sem vendas confiáveis, nenhum indicador faz sentido. Centraliza) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 73.89 Td (um dado que costumava ficar preso no sistema do caixa.) Tj ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 5347 >>
+stream
+BT /F1 8 Tf 0.62 0.62 0.68 rg 56 36 Td (Check-out PRO  -  Documento de apresentacao  -  uso interno e confidencial) Tj ET
+BT /F1 8 Tf 0.62 0.62 0.68 rg 519.28 36 Td (4) Tj ET
+0.86 0.86 0.9 RG 0.5 w 56 46 m 539.28 46 l S
+BT /F2 13.5 Tf 0.1 0.1 0.12 rg 56 760.39 Td (4.3  Fiscais) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 742.39 Td (O controle de jornada em tempo real da equipe de fiscais, com três estados: Disponível, Intervalo e) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 727.48 Td (Fora de expediente.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 709.57 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 709.57 Td (Painel ao vivo: cada fiscal em um cartão com avatar, estado colorido e relógio próprio, reordenado) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 694.66 Td (automaticamente \(disponíveis primeiro\). Contador de quantos estão disponíveis agora.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 676.75 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 676.75 Td (Cronômetro em tempo real do tempo no estado atual e cálculo de horas \(trabalhando, intervalo e) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 661.84 Td (carga do dia\).) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 643.93 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 643.93 Td (Regras inteligentes: não deixa registrar em dia de folga; quem inicia o dia não pode marcar falta e) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 629.02 Td (vice-versa; aviso de intervalo acima de 2h15.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 611.11 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 611.11 Td (Acumulado de horas extras do mês, com regra real por dia da semana \(7h, 8h e o domingo que não) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 596.2 Td (conta\).) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 578.29 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 578.29 Td (Lembrete automático 10 minutos antes da entrada de cada fiscal.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 560.38 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 560.38 Td (Alerta de cobertura mínima: se sobra só 1 fiscal disponível, os gestores são avisados na hora.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 542.47 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 542.47 Td (Folga automática sugerida quando o fiscal passa de 7h extras no mês.) Tj ET
+0.97 0.95 0.96 rg 56 479.16 483.28 53.9 re f
+0.78 0.06 0.18 rg 56 479.16 3 53.9 re f
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 510.56 Td (Mensuracao: Acaba com o caderno de ponto e o 'cada um anota o seu'. O gestor enxerga a equipe inteira) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 497.26 Td (ao vivo, e o sistema cobra, avisa e calcula sozinho - reduzindo furos de cobertura e horas extras) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 483.96 Td (descontroladas.) Tj ET
+BT /F2 13.5 Tf 0.1 0.1 0.12 rg 56 449.66 Td (4.4  Escala) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 431.66 Td (A escala de trabalho consolidada por dia da semana, com horários de entrada e saída e as folgas de) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 416.75 Td (cada fiscal.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 398.84 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 398.84 Td (Visão por dia da semana de quem trabalha, em que horário e quem está de folga.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 380.93 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 380.93 Td (Base das regras de folga, dos lembretes de horário e do cálculo de horas extras.) Tj ET
+0.97 0.95 0.96 rg 56 330.92 483.28 40.6 re f
+0.78 0.06 0.18 rg 56 330.92 3 40.6 re f
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 349.02 Td (Mensuracao: Tira a escala da cabeça de uma pessoa só e coloca no sistema. Todos consultam a mesma) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 335.72 Td (fonte, sem ruído nem achismo.) Tj ET
+BT /F2 13.5 Tf 0.1 0.1 0.12 rg 56 301.42 Td (4.5  Insumos \(Almoxarifado inteligente\)) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 283.42 Td (O controle de sacolas, bobinas, pano e álcool - mas com um cérebro que antecipa a falta e pede) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 268.51 Td (sozinho.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 250.6 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 250.6 Td (Painel proativo: cada insumo com semáforo de 3 níveis, saldo em embalagens, previsão de ruptura) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 235.69 Td (ponderada \(sábado gasta mais que terça\) e sugestão de quanto repor.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 217.78 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 217.78 Td (Ações rápidas: registrar o consumo de 1 embalagem inteira \(1 fardo, 1 caixa, 1 galão\) em um único) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 202.87 Td (toque.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 184.96 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 184.96 Td (Auto-reposição em tempo real: quando um insumo fica crítico, o sistema cria a requisição) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 170.05 Td (automaticamente e avisa o gestor.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 152.14 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 152.14 Td (Pedidos recorrentes: todo domingo gera o pedido habitual \(4 galões, 6 caixas, 2 rolos\) e, a cada 15) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 137.23 Td (dias, o pedido de sacolas. O gestor só confirma.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 119.32 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 119.32 Td (Alertas: ruptura iminente \(3 dias\) e relatório semanal de consumo.) Tj ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 11 0 R >>
+endobj
+13 0 obj
+<< /Length 4948 >>
+stream
+BT /F1 8 Tf 0.62 0.62 0.68 rg 56 36 Td (Check-out PRO  -  Documento de apresentacao  -  uso interno e confidencial) Tj ET
+BT /F1 8 Tf 0.62 0.62 0.68 rg 519.28 36 Td (5) Tj ET
+0.86 0.86 0.9 RG 0.5 w 56 46 m 539.28 46 l S
+0.97 0.95 0.96 rg 56 723.99 483.28 53.9 re f
+0.78 0.06 0.18 rg 56 723.99 3 53.9 re f
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 755.39 Td (Mensuracao: Acaba com o 'descobri que acabou na hora do aperto'. Mede o consumo real, prevê a falta) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 742.09 Td (com dias de antecedência e já deixa o pedido pronto - menos rupturas, menos desperdício e zero) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 728.79 Td (esquecimento.) Tj ET
+BT /F2 13.5 Tf 0.1 0.1 0.12 rg 56 694.49 Td (4.6  Fechamento e Importações) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 676.49 Td (O coração operacional do dia: o gestor sobe os arquivos \(.txt\) de cada tipo e o sistema confere o que) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 661.58 Td (foi enviado e o que ainda falta.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 643.67 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 643.67 Td (Importações: a carga dos arquivos do dia \(cancelamentos, devoluções, troco, recargas e vendas\).) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 625.76 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 625.76 Td (Fechamento: status claro de enviado / pendente / sem movimento por tipo.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 607.85 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 607.85 Td (Conclui o dia e avisa os gestores quando tudo está resolvido.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 589.94 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 589.94 Td (Alimenta automaticamente todos os indicadores e rankings.) Tj ET
+0.97 0.95 0.96 rg 56 539.93 483.28 40.6 re f
+0.78 0.06 0.18 rg 56 539.93 3 40.6 re f
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 558.03 Td (Mensuracao: Garante que nenhum arquivo seja esquecido. O que antes era uma conferência manual e) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 544.73 Td (sujeita a falha vira um checklist automático que fecha o dia com segurança.) Tj ET
+BT /F2 13.5 Tf 0.1 0.1 0.12 rg 56 510.43 Td (4.7  Checklist) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 492.43 Td (O checklist de abertura e fechamento da loja, comprovado por foto.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 474.52 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 474.52 Td (Registro com upload de imagem \(a prova de que foi feito\).) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 456.61 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 456.61 Td (Janelas fixas de execução e alerta quando o horário-limite chega e ainda está pendente.) Tj ET
+0.97 0.95 0.96 rg 56 406.6 483.28 40.6 re f
+0.78 0.06 0.18 rg 56 406.6 3 40.6 re f
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 424.7 Td (Mensuracao: Transforma o 'eu fiz' em prova com foto e horário. Cria responsabilidade e histórico para a) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 411.4 Td (abertura e o fechamento.) Tj ET
+BT /F2 13.5 Tf 0.1 0.1 0.12 rg 56 377.1 Td (4.8  Operadores) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 359.1 Td (O cadastro dos operadores de caixa e o controle de ausências.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 341.19 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 341.19 Td (Registro de ausências por pessoa e por dia.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 323.28 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 323.28 Td (Cadastro de operadores \(gerência\).) Tj ET
+0.97 0.95 0.96 rg 56 273.27 483.28 40.6 re f
+0.78 0.06 0.18 rg 56 273.27 3 40.6 re f
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 291.37 Td (Mensuracao: Mantém a base de quem opera caixa sempre limpa e atualizada - fundamental para que os) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 278.07 Td (rankings de indicadores façam sentido.) Tj ET
+BT /F2 13.5 Tf 0.1 0.1 0.12 rg 56 243.77 Td (4.9  Sacolas APAE) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 225.77 Td (O controle da venda de sacolas por lote em prol da APAE, com o valor arrecadado.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 207.86 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 207.86 Td (Venda por lote, saldo do lote e total arrecadado.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 189.95 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 189.95 Td (Acompanhamento do andamento de cada lote \(aberto ou encerrado\).) Tj ET
+0.97 0.95 0.96 rg 56 139.94 483.28 40.6 re f
+0.78 0.06 0.18 rg 56 139.94 3 40.6 re f
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 158.04 Td (Mensuracao: Dá transparência total a uma ação social: cada sacola e cada centavo arrecadado ficam) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 144.74 Td (registrados e auditáveis.) Tj ET
+BT /F2 13.5 Tf 0.1 0.1 0.12 rg 56 110.44 Td (4.10  Pessoas e Acessos) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 92.44 Td (O cadastro de pessoas e a definição do que cada uma pode ver e fazer.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 74.53 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 74.53 Td (Cadastro de usuários com login individual.) Tj ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 13 0 R >>
+endobj
+15 0 obj
+<< /Length 5037 >>
+stream
+BT /F1 8 Tf 0.62 0.62 0.68 rg 56 36 Td (Check-out PRO  -  Documento de apresentacao  -  uso interno e confidencial) Tj ET
+BT /F1 8 Tf 0.62 0.62 0.68 rg 519.28 36 Td (6) Tj ET
+0.86 0.86 0.9 RG 0.5 w 56 46 m 539.28 46 l S
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 767.39 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 767.39 Td (Perfis \(gerente, gerente desenvolvedor, supervisor, fiscal, importador\) com permissões por área.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 749.48 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 749.48 Td (Cada perfil enxerga apenas as áreas que lhe competem.) Tj ET
+0.97 0.95 0.96 rg 56 699.47 483.28 40.6 re f
+0.78 0.06 0.18 rg 56 699.47 3 40.6 re f
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 717.57 Td (Mensuracao: Segurança e organização: a informação certa para a pessoa certa. Ninguém vê o que não) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 704.27 Td (deve, e cada ação tem um dono.) Tj ET
+BT /F2 13.5 Tf 0.1 0.1 0.12 rg 56 669.97 Td (4.11  Notificações) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 651.97 Td (A central de avisos do app, em tempo real e com som.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 634.06 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 634.06 Td (Avisos in-app instantâneos \(WebSocket\) com contador de não lidas.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 616.15 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 616.15 Td (Som sutil ao receber um aviso de horário.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 598.24 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 598.24 Td (Histórico por usuário de tudo que foi avisado.) Tj ET
+0.97 0.95 0.96 rg 56 548.23 483.28 40.6 re f
+0.78 0.06 0.18 rg 56 548.23 3 40.6 re f
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 566.33 Td (Mensuracao: Garante que o aviso certo chegue na hora certa - do lembrete de ponto ao alerta de estoque) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 553.03 Td (crítico - sem depender de alguém mandar mensagem.) Tj ET
+BT /F2 13.5 Tf 0.1 0.1 0.12 rg 56 518.73 Td (4.12  Cluby \(assistente de IA\)) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 500.73 Td (A super assistente virtual do app, integrada ao Google Gemini, disponível em um chat flutuante em) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 485.82 Td (qualquer tela.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 467.91 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 467.91 Td (Especialista em frente de caixa, Código de Defesa do Consumidor, documentos fiscais e rotinas de) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 453 Td (supermercado.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 435.09 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 435.09 Td (Conhece a escala dos fiscais: responde quem está de folga, horários e turnos.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 417.18 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 417.18 Td (Conhece os indicadores do mês: responde como está o troco, se a meta está sendo batida e quem) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 402.27 Td (são os destaques.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 384.36 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 384.36 Td (Guia passo a passo de procedimentos, com fotos.) Tj ET
+0.97 0.95 0.96 rg 56 334.35 483.28 40.6 re f
+0.78 0.06 0.18 rg 56 334.35 3 40.6 re f
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 352.45 Td (Mensuracao: Coloca um especialista 24 horas no bolso de cada colaborador. Reduz dúvidas, padroniza) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 339.15 Td (procedimentos e responde sobre os dados reais da loja na hora.) Tj ET
+BT /F2 13.5 Tf 0.1 0.1 0.12 rg 56 304.85 Td (4.13  Áreas em evolução) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 286.85 Td (Áreas já previstas e com lugar reservado na navegação, prontas para ganhar corpo:) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 268.94 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 268.94 Td (Alertas de Fila: avisos de filas e caixas.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 251.03 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 251.03 Td (Normativas: normas e procedimentos com busca inteligente.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 233.12 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 233.12 Td (Indicador de Quebra: controle de quebras e perdas.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 215.21 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 215.21 Td (Gerenciar dados: ferramentas administrativas \(limpeza e reset\).) Tj ET
+0.97 0.95 0.96 rg 56 165.2 483.28 40.6 re f
+0.78 0.06 0.18 rg 56 165.2 3 40.6 re f
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 183.3 Td (Mensuracao: Mostra que o sistema foi pensado para crescer: a estrutura já existe, e cada nova área entra) Tj ET
+BT /F1 9.5 Tf 0.36 0.36 0.42 rg 70 170 Td (sem retrabalho.) Tj ET
+BT /F2 19 Tf 0.78 0.06 0.18 rg 56 128.2 Td (5. A camada que trabalha sozinha) Tj ET
+0.78 0.06 0.18 RG 2.5 w 56 121.2 m 102 121.2 l S
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 96.7 Td (O que diferencia o Check-out PRO de um sistema comum é a automação. Enquanto a loja funciona,) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 81.79 Td (rotinas rodam em segundo plano e fazem o trabalho que ninguém deveria precisar lembrar de fazer:) Tj ET
+endstream
+endobj
+16 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 15 0 R >>
+endobj
+17 0 obj
+<< /Length 5051 >>
+stream
+BT /F1 8 Tf 0.62 0.62 0.68 rg 56 36 Td (Check-out PRO  -  Documento de apresentacao  -  uso interno e confidencial) Tj ET
+BT /F1 8 Tf 0.62 0.62 0.68 rg 519.28 36 Td (7) Tj ET
+0.86 0.86 0.9 RG 0.5 w 56 46 m 539.28 46 l S
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 767.39 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 767.39 Td (Reposição automática de insumos quando o estoque fica crítico \(em tempo real e também na rotina) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 752.48 Td (das 7h\).) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 734.57 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 734.57 Td (Pedido da semana gerado todo domingo à noite, pronto para o gestor confirmar.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 716.66 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 716.66 Td (Lembrete de entrada para cada fiscal, 10 minutos antes do horário.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 698.75 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 698.75 Td (Alerta de intervalo longo, de cobertura mínima e de folga por excesso de horas extras.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 680.84 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 680.84 Td (Resumo diário dos indicadores enviado aos gestores toda manhã, com semáforos, destaques e) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 665.93 Td (quem está fora da média.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 648.02 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 648.02 Td (Análise semanal de padrões: atrasos e intervalos longos recorrentes.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 630.11 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 630.11 Td (Previsão de ruptura de estoque com dias de antecedência.) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 612.2 Td (Cada uma dessas rotinas substitui uma tarefa manual que dependia da memória e da boa vontade de) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 597.29 Td (alguém. Somadas, elas devolvem horas de atenção da gestão para o que realmente importa.) Tj ET
+BT /F2 19 Tf 0.78 0.06 0.18 rg 56 562.88 Td (6. Segurança e confidencialidade) Tj ET
+0.78 0.06 0.18 RG 2.5 w 56 555.88 m 102 555.88 l S
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 531.38 Td (Os dados da operação são sensíveis, e o sistema trata isso com seriedade:) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 511.47 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 511.47 Td (Login individual por pessoa e sessão segura, com permissões por perfil - cada um vê apenas o que) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 496.56 Td (lhe compete.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 478.65 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 478.65 Td (Proteção contra captura de tela: bloqueio real no aplicativo Android e dissuasores no navegador,) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 463.74 Td (com aviso de conteúdo confidencial em todas as telas.) Tj ET
+BT /F2 10.5 Tf 0.78 0.06 0.18 rg 56 445.83 Td (-) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 445.83 Td (Histórico e rastreabilidade: cada movimento de estoque, ponto e arrecadação fica registrado e) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 70 430.92 Td (auditável.) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 413.01 Td (A informação é tratada como ativo da empresa: protegida, rastreável e acessível apenas a quem) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 398.1 Td (precisa.) Tj ET
+BT /F2 19 Tf 0.78 0.06 0.18 rg 56 363.69 Td (7. Por que isso importa) Tj ET
+0.78 0.06 0.18 RG 2.5 w 56 356.69 m 102 356.69 l S
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 332.19 Td (No fim, todo sistema precisa responder a uma pergunta: que diferença ele faz? O Check-out PRO) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 317.28 Td (responde em quatro frentes concretas.) Tj ET
+BT /F2 11.5 Tf 0.78 0.06 0.18 rg 56 296.37 Td (Menos erros e menos perdas) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 280.37 Td (Conferência automática dos arquivos do dia, alerta de estoque antes de faltar, controle de) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 265.46 Td (cancelamentos e devoluções por pessoa. O sistema enxerga o problema antes que ele vire prejuízo.) Tj ET
+BT /F2 11.5 Tf 0.78 0.06 0.18 rg 56 244.55 Td (Menos tempo perdido) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 228.55 Td (As automações fazem sozinhas o que tomava horas: somar arrecadações, montar pedidos, cobrar) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 213.64 Td (ponto, gerar resumos. A gestão deixa de apagar incêndio e passa a decidir com dados.) Tj ET
+BT /F2 11.5 Tf 0.78 0.06 0.18 rg 56 192.73 Td (Mais justiça e motivação) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 176.73 Td (Rankings e destaques que premiam quem aporta e quem cuida, com critérios claros e visíveis no app.) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 161.82 Td (A equipe enxerga o próprio desempenho, e o reconhecimento é justo.) Tj ET
+BT /F2 11.5 Tf 0.78 0.06 0.18 rg 56 140.91 Td (Decisão com dados, não com achismo) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 124.91 Td (Tendências, comparativos com o mês anterior e projeção de fechamento colocam o futuro na tela. O) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 110 Td (gestor para de reagir ao passado e passa a antecipar o que vem.) Tj ET
+endstream
+endobj
+18 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 17 0 R >>
+endobj
+19 0 obj
+<< /Length 1679 >>
+stream
+BT /F1 8 Tf 0.62 0.62 0.68 rg 56 36 Td (Check-out PRO  -  Documento de apresentacao  -  uso interno e confidencial) Tj ET
+BT /F1 8 Tf 0.62 0.62 0.68 rg 519.28 36 Td (8) Tj ET
+0.86 0.86 0.9 RG 0.5 w 56 46 m 539.28 46 l S
+0.97 0.95 0.96 rg 56 728.89 483.28 49 re f
+0.78 0.06 0.18 rg 56 728.89 4 49 re f
+BT /F1 11 Tf 0.1 0.1 0.12 rg 72 750.89 Td (Em resumo: o Check-out PRO não é um custo, é uma alavanca. Ele paga a si mesmo em) Tj ET
+BT /F1 11 Tf 0.1 0.1 0.12 rg 72 734.39 Td (horas economizadas, perdas evitadas e decisões melhores - todos os dias.) Tj ET
+BT /F2 19 Tf 0.78 0.06 0.18 rg 56 691.89 Td (8. Para fechar) Tj ET
+0.78 0.06 0.18 RG 2.5 w 56 684.89 m 102 684.89 l S
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 660.39 Td (O que começou como uma forma de organizar a frente de caixa virou um sistema de gestão completo:) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 645.48 Td (mais de 31 mil linhas de código, 16 áreas, 23 modelos de dados, automações que rodam sozinhas e) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 630.57 Td (uma assistente de inteligência artificial que conhece a loja. Tudo no ar, funcionando, no aplicativo e no) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 615.66 Td (navegador.) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 595.75 Td (Mais importante que o tamanho é a filosofia: um sistema que não espera a pessoa lembrar. Ele mede,) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 580.84 Td (antecipa, avisa e age. Essa é a diferença entre administrar a correria do dia e, finalmente, comandar a) Tj ET
+BT /F1 10.5 Tf 0.1 0.1 0.12 rg 56 565.93 Td (operação.) Tj ET
+BT /F2 11.5 Tf 0.78 0.06 0.18 rg 56 539.02 Td (Check-out PRO - a frente de caixa do supermercado, sob controle.) Tj ET
+endstream
+endobj
+20 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 19 0 R >>
+endobj
+xref
+0 21
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000163 00000 n 
+0000000260 00000 n 
+0000000362 00000 n 
+0000001452 00000 n 
+0000001594 00000 n 
+0000007078 00000 n 
+0000007220 00000 n 
+0000013109 00000 n 
+0000013252 00000 n 
+0000018652 00000 n 
+0000018796 00000 n 
+0000023797 00000 n 
+0000023941 00000 n 
+0000029031 00000 n 
+0000029175 00000 n 
+0000034279 00000 n 
+0000034423 00000 n 
+0000036155 00000 n 
+trailer
+<< /Size 21 /Root 1 0 R >>
+startxref
+36299
+%%EOF
