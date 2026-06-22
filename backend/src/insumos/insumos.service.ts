@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { CategoriaInsumo, Insumo, MovimentoEstoque } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import {
   calcularSaldo,
   deltaConsumo,
@@ -66,7 +67,10 @@ export interface EntradaResumo {
  */
 @Injectable()
 export class InsumosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly notificacoes?: NotificacoesService,
+  ) {}
 
   /**
    * Lista os insumos ativos com o resumo de estoque calculado (saldo em tempo
@@ -346,6 +350,72 @@ export class InsumosService {
         responsavelId,
       },
     });
+    // Auto-reposição em tempo real: se o consumo deixou o insumo crítico,
+    // cria requisição automática na hora (não espera o cron das 07:00).
+    await this.verificarEReporAutomatico(insumoId);
     return { saldo: await this.saldo(insumoId) };
+  }
+
+  /**
+   * Verifica se um insumo está em nível CRÍTICO e, em caso afirmativo, cria
+   * uma requisição automática (se ainda não houver uma pendente). Em tempo
+   * real — chamado após cada consumo.
+   *
+   * Quantidade sugerida: usa a sugestão calculada; se for 0 (sem histórico
+   * de consumo), recorre ao padrão de pedido recorrente; em último caso,
+   * usa o limite mínimo convertido em embalagens.
+   */
+  async verificarEReporAutomatico(insumoId: string): Promise<void> {
+    const insumo = await this.prisma.insumo.findUnique({ where: { id: insumoId } });
+    if (!insumo) return;
+
+    const movimentos = await this.prisma.movimentoEstoque.findMany({
+      where: { insumoId },
+      select: { delta: true, dataHora: true },
+    });
+    const resumo = resumoProativo(
+      movimentos,
+      insumo.limiteMinimo,
+      insumo.fatorEmbalagem,
+    );
+
+    // Só age em nível crítico.
+    if (resumo.nivel !== 'CRITICO') return;
+
+    // Não duplicar: se já há requisição pendente para esse insumo, sai.
+    const pendente = await this.prisma.requisicao.findFirst({
+      where: { insumoId, status: 'PENDENTE' },
+    });
+    if (pendente) return;
+
+    // Determinar quantidade: sugestão → pedido recorrente → mínimo.
+    let quantidade = resumo.sugestaoReposicao;
+    if (quantidade <= 0) {
+      const recorrente = await this.prisma.pedidoRecorrente.findFirst({
+        where: { insumoId, ativo: true },
+      });
+      quantidade =
+        recorrente?.quantidade ??
+        Math.max(1, Math.ceil(insumo.limiteMinimo / insumo.fatorEmbalagem));
+    }
+
+    await this.prisma.requisicao.create({
+      data: {
+        insumoId,
+        quantidade,
+        status: 'PENDENTE',
+        observacao: `[Auto] Reposição automática — estoque crítico (${resumo.saldo} ${insumo.unidade}s).`,
+        solicitanteNome: 'Sistema (auto-reposição)',
+      },
+    });
+
+    if (this.notificacoes) {
+      const gestores = await this.notificacoes.gestores();
+      const plural = quantidade === 1 ? insumo.embalagem : `${insumo.embalagem}s`;
+      await this.notificacoes.enviar(gestores, {
+        titulo: '📦 Reposição automática',
+        mensagem: `${insumo.nome} atingiu nível crítico. Requisição automática de ${quantidade} ${plural} criada — aprove para dar entrada.`,
+      });
+    }
   }
 }
