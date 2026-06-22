@@ -26,10 +26,12 @@ import {
   Cartao,
   EstadoVazio,
   GraficoBarrasVerticais,
+  GraficoPizza,
   MensagemErro,
   Segmentado,
   SeletorData,
   Tela,
+  montarFatias,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
@@ -285,7 +287,10 @@ export function PainelVendasScreen(): React.ReactElement {
   const dadosBarras = horas.map((h) => ({ rotulo: `${h.hora}h`, valor: h.valor }));
 
   const horasDia = porHoraDia?.horas ?? [];
-  const dadosDia = horasDia.map((h) => ({ rotulo: `${h.hora}h`, valor: h.valor }));
+  const fatiasDia = montarFatias(
+    horasDia.map((h) => ({ rotulo: `${h.hora}h às ${h.hora + 1}h`, valor: h.valor })),
+    24,
+  );
 
   return (
     <Tela
@@ -409,8 +414,8 @@ export function PainelVendasScreen(): React.ReactElement {
             </Cartao>
           )}
 
-          {/* ----- Vendas por hora do dia (valor líquido) ----- */}
-          <Cartao titulo="Vendas por hora (dia)">
+          {/* ----- Horas que mais venderam (dia) ----- */}
+          <Cartao titulo="Horas que mais venderam">
             <Text style={styles.periodoTexto}>{formatarData(data)}</Text>
             {diaReq.carregando ? (
               <Carregando />
@@ -421,7 +426,11 @@ export function PainelVendasScreen(): React.ReactElement {
                 <Text style={styles.totalPeriodo}>
                   Total do dia: {formatarMoeda(porHoraDia?.total ?? 0)}
                 </Text>
-                <GraficoBarrasVerticais dados={dadosDia} />
+                <GraficoPizza
+                  fatias={fatiasDia}
+                  mostrarValor
+                  formatarValor={formatarMoeda}
+                />
               </>
             ) : (
               <EstadoVazio
