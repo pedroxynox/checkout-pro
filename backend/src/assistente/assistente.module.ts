@@ -3,6 +3,7 @@ import { AssistenteController } from './assistente.controller';
 import { AssistenteService } from './assistente.service';
 import { GeminiClient } from './gemini.client';
 import { ProcedimentosService } from './procedimentos.service';
+import { FiscaisModule } from '../fiscais/fiscais.module';
 
 /**
  * Módulo do assistente de IA (chat flutuante). Disponível a qualquer usuário
@@ -12,6 +13,7 @@ import { ProcedimentosService } from './procedimentos.service';
  * fornece o passo a passo ilustrado das normativas.
  */
 @Module({
+  imports: [FiscaisModule],
   providers: [AssistenteService, GeminiClient, ProcedimentosService],
   controllers: [AssistenteController],
   exports: [AssistenteService],

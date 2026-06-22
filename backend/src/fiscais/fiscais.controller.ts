@@ -89,4 +89,32 @@ export class FiscaisController {
   folgaHoje(): Promise<ItemFolga[]> {
     return this.service.folgaHoje();
   }
+
+  /** Histórico semanal do próprio fiscal (últimos 7 dias). */
+  @Get('eu/historico-semanal')
+  async historicoSemanal(
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ) {
+    return this.service.historicoSemanal(usuario.sub);
+  }
+
+  /** Ranking do mês (puntualidade) — apenas gestores. */
+  @Get('ranking-mes')
+  @Funcionalidade('FISCAIS_JORNADA')
+  rankingMes() {
+    return this.service.rankingMes();
+  }
+
+  /** Previsão de horas extras do mês — apenas gestores. */
+  @Get('previsao-extras')
+  @Funcionalidade('FISCAIS_JORNADA')
+  previsaoExtras() {
+    return this.service.previsaoExtras();
+  }
+
+  /** Contexto de escala para integração com Cluby. */
+  @Get('contexto-escala')
+  async contextoEscala() {
+    return this.service.contextoEscala();
+  }
 }

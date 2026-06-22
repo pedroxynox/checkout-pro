@@ -7,6 +7,9 @@ import {
   ItemHorasExtrasFiscal,
   ItemJornadaFiscal,
   ItemPainelFiscal,
+  ItemPrevisaoExtras,
+  ItemRankingFiscal,
+  HistoricoSemanalFiscal,
   MeuResumoFiscal,
   StatusFiscal,
 } from '../types';
@@ -45,6 +48,21 @@ export const fiscaisService = {
   /** Lista de fiscais de folga hoje. */
   folgaHoje(): Promise<ItemFolgaFiscal[]> {
     return apiClient.get<ItemFolgaFiscal[]>('/fiscais/folga-hoje');
+  },
+
+  /** Histórico semanal do próprio fiscal (últimos 7 dias). */
+  historicoSemanal(): Promise<HistoricoSemanalFiscal | null> {
+    return apiClient.get<HistoricoSemanalFiscal | null>('/fiscais/eu/historico-semanal');
+  },
+
+  /** Ranking do mês (puntualidade) — apenas gestores. */
+  rankingMes(): Promise<ItemRankingFiscal[]> {
+    return apiClient.get<ItemRankingFiscal[]>('/fiscais/ranking-mes');
+  },
+
+  /** Previsão de horas extras do mês — apenas gestores. */
+  previsaoExtras(): Promise<ItemPrevisaoExtras[]> {
+    return apiClient.get<ItemPrevisaoExtras[]>('/fiscais/previsao-extras');
   },
 };
 

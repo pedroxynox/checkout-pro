@@ -88,6 +88,22 @@ function formatarDataHoje(): string {
   return `${diaSemana}, ${dia} de ${mes} de ${ano}`;
 }
 
+/** Formata duração viva desde um timestamp ISO até agora (usa tick para forçar re-render). */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function formatarDuracaoViva(emIso: string, _tick: number): string {
+  const desde = new Date(emIso).getTime();
+  const agora = Date.now();
+  const diffMs = Math.max(0, agora - desde);
+  const totalSeg = Math.floor(diffMs / 1000);
+  const horas = Math.floor(totalSeg / 3600);
+  const min = Math.floor((totalSeg % 3600) / 60);
+  const seg = totalSeg % 60;
+  if (horas > 0) {
+    return `${horas}h ${min.toString().padStart(2, '0')}min ${seg.toString().padStart(2, '0')}s`;
+  }
+  return `${min}min ${seg.toString().padStart(2, '0')}s`;
+}
+
 export function FiscaisScreen({
   navigation,
 }: PropsTela<'Fiscais'>): React.ReactElement {
@@ -99,7 +115,14 @@ export function FiscaisScreen({
   const [atualizando, setAtualizando] = useState(false);
   const [enviando, setEnviando] = useState<StatusFiscal | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [tick, setTick] = useState(0); // Live timer tick
   const conexaoRef = useRef<ConexaoFiscais | null>(null);
+
+  // Live timer: atualiza a cada segundo para cronômetro visual.
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const carregar = useCallback(async () => {
     const [p, m, f] = await Promise.all([
@@ -207,6 +230,16 @@ export function FiscaisScreen({
             : p,
         ),
       );
+
+      // Resumen del día al encerrar expediente.
+      if (status === 'FORA_EXPEDIENTE' && r.cargaHorariaMs !== undefined) {
+        const trabalhado = formatarDuracao(r.cargaHorariaMs);
+        const intervalo = formatarDuracao(r.tempoIntervaloMs);
+        notificar(
+          '🏁 Jornada encerrada!',
+          `Hoje você trabalhou ${trabalhado} (intervalo: ${intervalo}). Bom descanso!`,
+        );
+      }
     } catch (e) {
       notificar(
         'Erro',
@@ -330,6 +363,21 @@ export function FiscaisScreen({
                 <Tempo rotulo="Carga do dia" valor={formatarDuracao(meu.cargaHorariaMs)} />
               </View>
 
+              {/* Timer em vivo: tempo no status atual */}
+              {meu.status !== 'FORA_EXPEDIENTE' && (
+                <View style={styles.timerVivo}>
+                  <Ionicons
+                    name={meu.status === 'DISPONIVEL' ? 'timer-outline' : 'cafe-outline'}
+                    size={16}
+                    color={corStatus(meu.status)}
+                  />
+                  <Text style={[styles.timerVivoTexto, { color: corStatus(meu.status) }]}>
+                    {formatarDuracaoViva(meu.em, tick)}
+                    {' '}no status atual
+                  </Text>
+                </View>
+              )}
+
               {/* Botão de falta: apenas se NÃO iniciou a jornada (status FORA_EXPEDIENTE e sem tempo) */}
               {meu.status === 'FORA_EXPEDIENTE' && meu.tempoTrabalhandoMs === 0 && meu.tempoIntervaloMs === 0 && (
                 <Pressable onPress={() => void informarFalta()} style={styles.linkFalta}>
@@ -357,10 +405,21 @@ export function FiscaisScreen({
       {/* Contador de disponíveis + título da seção */}
       <View style={styles.secaoCabecalho}>
         <Text style={styles.secao}>Equipe</Text>
-        <View style={styles.contadorDisponivel}>
-          <Ionicons name="people" size={16} color={VERDE} />
-          <Text style={styles.contadorTexto}>
+        <View style={[
+          styles.contadorDisponivel,
+          totalDisponivel < 2 && { backgroundColor: cores.vermelhoFundo },
+        ]}>
+          <Ionicons
+            name={totalDisponivel < 2 ? 'warning' : 'people'}
+            size={16}
+            color={totalDisponivel < 2 ? cores.vermelho : VERDE}
+          />
+          <Text style={[
+            styles.contadorTexto,
+            totalDisponivel < 2 && { color: cores.vermelho },
+          ]}>
             {totalDisponivel} disponíve{totalDisponivel === 1 ? 'l' : 'is'}
+            {totalDisponivel < 2 ? ' ⚠️' : ''}
           </Text>
         </View>
       </View>
@@ -496,6 +555,22 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginTop: 2,
+  },
+  timerVivo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+    marginTop: espacamento.sm,
+    paddingVertical: espacamento.xs,
+    paddingHorizontal: espacamento.sm,
+    backgroundColor: cores.fundo,
+    borderRadius: raio.pill,
+    alignSelf: 'center',
+  },
+  timerVivoTexto: {
+    ...tipografia.legenda,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
   linkFalta: {
     flexDirection: 'row',

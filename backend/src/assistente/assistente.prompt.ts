@@ -19,11 +19,13 @@ export interface OpcoesPrompt {
    * conhecimento geral.
    */
   documentos?: string;
+  /** Contexto de escala dos fiscais (horários, folgas, turnos). */
+  escala?: string;
 }
 
 /** Monta a instrução de sistema do assistente em PT-BR. */
 export function montarInstrucaoSistema(opcoes: OpcoesPrompt = {}): string {
-  const { nomeUsuario, perfil, documentos } = opcoes;
+  const { nomeUsuario, perfil, documentos, escala } = opcoes;
 
   const partes: string[] = [
     `Você é a "Cluby" 🤖, a super assistente virtual do Check-out PRO, um aplicativo de gestão inteligente para supermercados.`,
@@ -73,6 +75,16 @@ export function montarInstrucaoSistema(opcoes: OpcoesPrompt = {}): string {
       `===== DOCUMENTOS DA LOJA =====`,
       documentos.trim(),
       `===== FIM DOS DOCUMENTOS =====`,
+    );
+  }
+
+  if (escala && escala.trim().length > 0) {
+    partes.push(
+      ``,
+      `Você tem acesso à escala de trabalho dos fiscais da loja. Use essas informações para responder perguntas sobre horários, folgas, turnos e escalas. Responda com segurança sobre quem trabalha quando, quem está de folga em cada dia, e os horários de entrada e saída.`,
+      `===== ESCALA DOS FISCAIS =====`,
+      escala.trim(),
+      `===== FIM DA ESCALA =====`,
     );
   }
 

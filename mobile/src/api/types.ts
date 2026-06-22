@@ -297,6 +297,36 @@ export interface ItemFolgaFiscal {
   primeiroNome: string;
 }
 
+/** Histórico semanal do fiscal (últimos 7 dias). */
+export interface HistoricoSemanalFiscal {
+  fiscalId: string;
+  primeiroNome: string;
+  dias: {
+    data: string;
+    diaSemana: number;
+    trabalhadoMs: number;
+    esperadoMs: number;
+  }[];
+}
+
+/** Item do ranking mensal (puntualidade). */
+export interface ItemRankingFiscal {
+  fiscalId: string;
+  primeiroNome: string;
+  diasContados: number;
+  desvioMedioMin: number;
+  pontuacao: number;
+}
+
+/** Item da previsão de horas extras do mês. */
+export interface ItemPrevisaoExtras {
+  fiscalId: string;
+  primeiroNome: string;
+  extrasAtualMs: number;
+  projecaoMesMs: number;
+  critico: boolean;
+}
+
 export interface EscalaEntry {
   funcionarioId: string;
   diaSemana: number;
