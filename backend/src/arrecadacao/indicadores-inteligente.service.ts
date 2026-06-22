@@ -47,6 +47,44 @@ export interface ProjecaoMes {
   vaiCumprir: boolean;
 }
 
+/** Severidade de um alerta do painel de atenção. */
+export type Severidade = 'CRITICO' | 'ATENCAO';
+
+/** Tendência de um alerta vs a semana anterior. */
+export type TendenciaAlerta = 'PIORANDO' | 'MELHORANDO' | 'ESTAVEL';
+
+/** Um alerta do painel "Precisa de atenção". */
+export interface AlertaAtencao {
+  /** META = indicador fora/em risco; OPERADOR = pessoa acima da média. */
+  categoria: 'META' | 'OPERADOR';
+  severidade: Severidade;
+  tipo: TipoArrecadacao;
+  titulo: string;
+  /** Mensagem principal (gap quantificado). */
+  mensagem: string;
+  /** Ação sugerida ao gestor. */
+  acaoSugerida: string;
+  /** Tendência vs semana anterior (apenas alertas de META). */
+  tendencia?: TendenciaAlerta;
+  detalheTendencia?: string;
+  /** Texto da projeção de fechamento (apenas META base FIXA). */
+  projecaoTexto?: string;
+  /** Dados do operador (apenas alertas de OPERADOR). */
+  operadorNome?: string;
+  operadorValor?: number;
+  operadorItens?: number;
+  ticketMedio?: number;
+  autorizadoPor?: string;
+}
+
+/** Resposta do painel "Precisa de atenção". */
+export interface PainelAtencao {
+  criticos: number;
+  emAtencao: number;
+  tudoCerto: boolean;
+  alertas: AlertaAtencao[];
+}
+
 function arredondar(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -302,5 +340,222 @@ export class IndicadoresInteligenteService {
       }
     }
     return resultado;
+  }
+
+  /** Ação sugerida por tipo de indicador. */
+  private acaoSugerida(tipo: TipoArrecadacao): string {
+    switch (tipo) {
+      case 'TROCO_SOLIDARIO':
+        return 'Incentivar a arrecadação de troco solidário nos caixas.';
+      case 'RECARGAS_CELULAR':
+        return 'Estimular a oferta de recargas de celular aos clientes.';
+      case 'CANCELAMENTO_ITENS':
+        return 'Revisar os itens cancelados de maior valor com os operadores.';
+      case 'CANCELAMENTO_CUPOM':
+        return 'Revisar as autorizações de cancelamento de cupom.';
+      case 'DEVOLUCOES':
+        return 'Verificar os motivos das devoluções com os fiscais.';
+      default:
+        return 'Revisar o indicador.';
+    }
+  }
+
+  /**
+   * Painel "Precisa de atenção" completo: metas em risco (com gap quantificado,
+   * tendência vs semana anterior e projeção) e operadores acima da média
+   * (por VALOR, com itens, ticket médio e quem autorizou). Ordenado por
+   * severidade (críticos primeiro).
+   */
+  async painelAtencao(data: Date): Promise<PainelAtencao> {
+    const alertas: AlertaAtencao[] = [];
+
+    for (const tipo of Object.keys(CONFIG_ARRECADACAO) as TipoArrecadacao[]) {
+      const config = CONFIG_ARRECADACAO[tipo];
+      const [resumo, comparativo, projecao] = await Promise.all([
+        this.arrecadacao.resumo(tipo, data),
+        this.comparativo(tipo, data),
+        this.projecaoMes(tipo, data),
+      ]);
+      const meta = resumo.meta;
+
+      // Tendência (semana vs semana anterior).
+      const v = comparativo.semana.variacao;
+      let tendencia: TendenciaAlerta | undefined;
+      let detalheTendencia: string | undefined;
+      if (v !== null) {
+        const piora =
+          config.sentido === 'MENOR_MELHOR' ? v > 10 : v < -10;
+        const melhora =
+          config.sentido === 'MENOR_MELHOR' ? v < -10 : v > 10;
+        tendencia = piora ? 'PIORANDO' : melhora ? 'MELHORANDO' : 'ESTAVEL';
+        detalheTendencia = `${v >= 0 ? '+' : ''}${v}% vs semana passada`;
+      }
+
+      if (config.sentido === 'MENOR_MELHOR') {
+        const pct = resumo.percentualMes ?? 0;
+        let severidade: Severidade | null = null;
+        if (pct > meta * 1.5) severidade = 'CRITICO';
+        else if (pct > meta) severidade = 'ATENCAO';
+        if (severidade) {
+          const vendasMes = resumo.vendasMes ?? 0;
+          const limiteR$ = (meta / 100) * vendasMes;
+          const excedente = arredondar(Math.max(0, resumo.totalMes - limiteR$));
+          alertas.push({
+            categoria: 'META',
+            severidade,
+            tipo,
+            titulo: config.titulo,
+            mensagem: `${pct}% das vendas no mês — R$${excedente} acima do limite de ${meta}%.`,
+            acaoSugerida: this.acaoSugerida(tipo),
+            tendencia,
+            detalheTendencia,
+          });
+        }
+      } else {
+        // MAIOR_MELHOR: julga pelo RITMO (ritmo ideal até hoje).
+        const ritmoIdeal = projecao.metaAcumuladaHoje;
+        let severidade: Severidade | null = null;
+        if (resumo.totalMes < ritmoIdeal * 0.6) severidade = 'CRITICO';
+        else if (resumo.totalMes < ritmoIdeal * 0.9) severidade = 'ATENCAO';
+        if (severidade) {
+          const falta = arredondar(Math.max(0, meta - resumo.totalMes));
+          alertas.push({
+            categoria: 'META',
+            severidade,
+            tipo,
+            titulo: config.titulo,
+            mensagem: `R$${resumo.totalMes} de R$${meta} no mês — faltam R$${falta}.`,
+            acaoSugerida: this.acaoSugerida(tipo),
+            tendencia,
+            detalheTendencia,
+            projecaoTexto: projecao.vaiCumprir
+              ? `Projeção: R$${projecao.projecao} ✅ no ritmo da meta`
+              : `Projeção: R$${projecao.projecao} ⚠️ abaixo da meta`,
+          });
+        }
+      }
+    }
+
+    // Operadores acima da média (por VALOR) nos cancelamentos/devoluções.
+    const ofensores = await this.topOfensores(data);
+    for (const o of ofensores) {
+      alertas.push({
+        categoria: 'OPERADOR',
+        severidade: o.total >= o.media * 3 ? 'CRITICO' : 'ATENCAO',
+        tipo: o.tipo,
+        titulo: CONFIG_ARRECADACAO[o.tipo].titulo,
+        mensagem: `${o.nome} — R$${o.total}${o.itens > 0 ? ` em ${o.itens} ${o.itens === 1 ? 'item' : 'itens'}` : ''} (média da equipe R$${o.media}).`,
+        acaoSugerida: this.acaoSugerida(o.tipo),
+        operadorNome: o.nome,
+        operadorValor: o.total,
+        operadorItens: o.itens,
+        ticketMedio: o.ticketMedio,
+        autorizadoPor: o.autorizadoPor ?? undefined,
+      });
+    }
+
+    // Ordena: críticos primeiro, depois por categoria (META antes de OPERADOR).
+    const peso = (a: AlertaAtencao): number =>
+      (a.severidade === 'CRITICO' ? 0 : 10) + (a.categoria === 'META' ? 0 : 1);
+    alertas.sort((a, b) => peso(a) - peso(b));
+
+    const criticos = alertas.filter((a) => a.severidade === 'CRITICO').length;
+    const emAtencao = alertas.filter((a) => a.severidade === 'ATENCAO').length;
+
+    return {
+      criticos,
+      emAtencao,
+      tudoCerto: alertas.length === 0,
+      alertas,
+    };
+  }
+
+  /**
+   * Top operadores acima da média (≥2×) por VALOR nos cancelamentos e
+   * devoluções do mês, enriquecidos com itens, ticket médio e autorizador.
+   */
+  private async topOfensores(data: Date): Promise<
+    {
+      tipo: TipoArrecadacao;
+      nome: string;
+      total: number;
+      media: number;
+      itens: number;
+      ticketMedio: number;
+      autorizadoPor: string | null;
+    }[]
+  > {
+    const gte = inicioDoMes(data);
+    const lt = inicioDoProximoMes(data);
+    const tipos: TipoArrecadacao[] = [
+      'CANCELAMENTO_ITENS',
+      'CANCELAMENTO_CUPOM',
+      'DEVOLUCOES',
+    ];
+    const resultado: {
+      tipo: TipoArrecadacao;
+      nome: string;
+      total: number;
+      media: number;
+      itens: number;
+      ticketMedio: number;
+      autorizadoPor: string | null;
+    }[] = [];
+
+    for (const tipo of tipos) {
+      const registros = await this.prisma.registroArrecadacao.findMany({
+        where: { tipo, data: { gte, lt } },
+        select: {
+          nome: true,
+          valor: true,
+          quantidade: true,
+          autorizadoPor: true,
+        },
+      });
+      if (registros.length === 0) continue;
+
+      // Agrega por operador (por VALOR).
+      const agg = new Map<
+        string,
+        { total: number; itens: number; maiorValor: number; autorizadoPor: string | null }
+      >();
+      for (const r of registros) {
+        const atual = agg.get(r.nome) ?? {
+          total: 0,
+          itens: 0,
+          maiorValor: 0,
+          autorizadoPor: null,
+        };
+        const valor = Number(r.valor);
+        atual.total += valor;
+        atual.itens += r.quantidade ?? 0;
+        if (valor > atual.maiorValor) {
+          atual.maiorValor = valor;
+          atual.autorizadoPor = r.autorizadoPor ?? null;
+        }
+        agg.set(r.nome, atual);
+      }
+
+      const valores = [...agg.values()].map((a) => a.total);
+      const media = valores.reduce((a, b) => a + b, 0) / valores.length;
+      if (media <= 0 || valores.length < 3) continue;
+
+      for (const [nome, a] of agg.entries()) {
+        if (a.total >= media * 2) {
+          resultado.push({
+            tipo,
+            nome,
+            total: arredondar(a.total),
+            media: arredondar(media),
+            itens: a.itens,
+            ticketMedio: a.itens > 0 ? arredondar(a.total / a.itens) : arredondar(a.total),
+            autorizadoPor: a.autorizadoPor,
+          });
+        }
+      }
+    }
+
+    // Ordena por valor desc.
+    return resultado.sort((a, b) => b.total - a.total);
   }
 }

@@ -15,6 +15,7 @@ import {
   ItemRankingArrecadacao,
   MetaIndicador,
   OperadorDoMes,
+  PainelAtencao,
   PontoTendencia,
   ProjecaoMes,
   ResultadoUploadArrecadacao,
@@ -171,5 +172,10 @@ export const arrecadacaoService = {
   /** Operadores com cancelamentos/devoluções acima da média (mês). */
   anomalias(data: string): Promise<AnomaliaIndicador[]> {
     return apiClient.get<AnomaliaIndicador[]>('/arrecadacao/anomalias', { data });
+  },
+
+  /** Painel "Precisa de atenção" completo (metas em risco + operadores). */
+  painelAtencao(data: string): Promise<PainelAtencao> {
+    return apiClient.get<PainelAtencao>('/arrecadacao/painel-atencao', { data });
   },
 };

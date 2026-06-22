@@ -11,8 +11,8 @@ import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { arrecadacaoService, vendasService } from '../../api/services';
 import {
-  AnomaliaIndicador,
   OperadorDoMes,
+  PainelAtencao,
   ResumoArrecadacao,
   ResumoVendas,
 } from '../../api/types';
@@ -84,10 +84,10 @@ export function IndicadoresScreen({
     const resumos = await Promise.all(
       ARRECADACAO.map((def) => arrecadacaoService.resumo(def.tipo, data)),
     );
-    const [vendas, operador, anomalias] = await Promise.all([
+    const [vendas, operador, painel] = await Promise.all([
       vendasService.resumo(data).catch(() => null),
       arrecadacaoService.operadorDoMes(data).catch(() => null),
-      arrecadacaoService.anomalias(data).catch(() => [] as AnomaliaIndicador[]),
+      arrecadacaoService.painelAtencao(data).catch(() => null),
     ]);
     const saude: SaudeIndicador[] = ARRECADACAO.map((def, i) => ({
       def,
@@ -95,18 +95,13 @@ export function IndicadoresScreen({
       nivel: nivelMes(def, resumos[i]),
       valorTexto: valorMesTexto(def, resumos[i]),
     }));
-    return { saude, vendas, operador, anomalias };
+    return { saude, vendas, operador, painel };
   }, [data]);
 
   const saude = req.dados?.saude ?? [];
   const vendas: ResumoVendas | null = req.dados?.vendas ?? null;
   const operador: OperadorDoMes | null = req.dados?.operador ?? null;
-  const anomalias: AnomaliaIndicador[] = req.dados?.anomalias ?? [];
-
-  // "Atenção hoje": indicadores fora da meta + anomalias.
-  const fora = saude.filter((s) => s.nivel === 'FORA');
-  const atencao = saude.filter((s) => s.nivel === 'ATENCAO');
-  const temAlerta = fora.length > 0 || atencao.length > 0 || anomalias.length > 0;
+  const painel: PainelAtencao | null = req.dados?.painel ?? null;
 
   const irParaDetalhe = useCallback(
     (tipo: DefinicaoArrecadacao['tipo']) =>
@@ -142,29 +137,97 @@ export function IndicadoresScreen({
             </Pressable>
           )}
 
-          {/* Card "Atenção hoje" */}
-          {temAlerta && (
+          {/* Card "Precisa de atenção" — detalhado */}
+          {painel && !painel.tudoCerto && (
             <View style={styles.atencaoCard}>
               <View style={styles.atencaoTopo}>
                 <Ionicons name="alert-circle" size={20} color={cores.vermelho} />
                 <Text style={styles.atencaoTitulo}>Precisa de atenção</Text>
+                <View style={styles.atencaoContadores}>
+                  {painel.criticos > 0 && (
+                    <View style={[styles.contadorPill, { backgroundColor: cores.vermelho }]}>
+                      <Text style={styles.contadorPillTexto}>{painel.criticos} crítico{painel.criticos > 1 ? 's' : ''}</Text>
+                    </View>
+                  )}
+                  {painel.emAtencao > 0 && (
+                    <View style={[styles.contadorPill, { backgroundColor: cores.amarelo }]}>
+                      <Text style={styles.contadorPillTexto}>{painel.emAtencao} atenção</Text>
+                    </View>
+                  )}
+                </View>
               </View>
-              {fora.map((s) => (
-                <Text key={`f-${s.def.tipo}`} style={styles.atencaoItem}>
-                  🔴 {s.def.titulo}: {s.valorTexto}
-                </Text>
+
+              {painel.alertas.map((a, i) => (
+                <Pressable
+                  key={`${a.categoria}-${a.tipo}-${i}`}
+                  onPress={() => irParaDetalhe(a.tipo)}
+                  style={[
+                    styles.alertaItem,
+                    { borderLeftColor: a.severidade === 'CRITICO' ? cores.vermelho : cores.amarelo },
+                  ]}
+                >
+                  <View style={styles.alertaLinhaTopo}>
+                    <Text style={styles.alertaEmoji}>
+                      {a.severidade === 'CRITICO' ? '🔴' : '🟡'}
+                      {a.categoria === 'OPERADOR' ? ' 👤' : ''}
+                    </Text>
+                    <Text style={styles.alertaTitulo} numberOfLines={1}>
+                      {a.titulo}
+                    </Text>
+                    {a.tendencia && (
+                      <Text
+                        style={[
+                          styles.alertaTendencia,
+                          {
+                            color:
+                              a.tendencia === 'PIORANDO'
+                                ? cores.vermelho
+                                : a.tendencia === 'MELHORANDO'
+                                  ? cores.verde
+                                  : cores.textoSecundario,
+                          },
+                        ]}
+                      >
+                        {a.tendencia === 'PIORANDO' ? '↑ piorando' : a.tendencia === 'MELHORANDO' ? '↓ melhorando' : '→ estável'}
+                      </Text>
+                    )}
+                  </View>
+
+                  <Text style={styles.alertaMensagem}>{a.mensagem}</Text>
+
+                  {a.categoria === 'OPERADOR' && a.ticketMedio != null && a.operadorItens != null && a.operadorItens > 0 && (
+                    <Text style={styles.alertaSub}>
+                      Ticket médio do cancelamento: {formatarMoeda(a.ticketMedio)}
+                    </Text>
+                  )}
+                  {a.autorizadoPor && (
+                    <Text style={styles.alertaSub}>
+                      Maior valor autorizado por: {a.autorizadoPor}
+                    </Text>
+                  )}
+                  {a.projecaoTexto && (
+                    <Text style={styles.alertaSub}>{a.projecaoTexto}</Text>
+                  )}
+                  {a.detalheTendencia && (
+                    <Text style={styles.alertaSub}>{a.detalheTendencia}</Text>
+                  )}
+
+                  <View style={styles.alertaAcao}>
+                    <Ionicons name="bulb-outline" size={13} color={cores.primaria} />
+                    <Text style={styles.alertaAcaoTexto}>{a.acaoSugerida}</Text>
+                  </View>
+                </Pressable>
               ))}
-              {atencao.map((s) => (
-                <Text key={`a-${s.def.tipo}`} style={styles.atencaoItem}>
-                  🟡 {s.def.titulo}: {s.valorTexto}
-                </Text>
-              ))}
-              {anomalias.map((a, i) => (
-                <Text key={`an-${i}`} style={styles.atencaoItem}>
-                  ⚠️ {a.nome} está acima da média em{' '}
-                  {ARRECADACAO.find((d) => d.tipo === a.tipo)?.titulo ?? a.tipo}
-                </Text>
-              ))}
+            </View>
+          )}
+
+          {/* Estado "tudo certo" */}
+          {painel && painel.tudoCerto && (
+            <View style={styles.tudoCertoCard}>
+              <Ionicons name="checkmark-circle" size={22} color={cores.verde} />
+              <Text style={styles.tudoCertoTexto}>
+                Tudo dentro das metas hoje. Continue assim! 🎉
+              </Text>
             </View>
           )}
 
@@ -253,11 +316,88 @@ const styles = StyleSheet.create({
     ...tipografia.rotulo,
     color: cores.vermelho,
     fontWeight: '700',
+    flex: 1,
   },
-  atencaoItem: {
+  atencaoContadores: {
+    flexDirection: 'row',
+    gap: espacamento.xs,
+  },
+  contadorPill: {
+    paddingHorizontal: espacamento.sm,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  contadorPillTexto: {
+    color: cores.textoInverso,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  alertaItem: {
+    backgroundColor: cores.superficie,
+    borderRadius: raio.md,
+    padding: espacamento.md,
+    marginTop: espacamento.sm,
+    borderLeftWidth: 4,
+  },
+  alertaLinhaTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+  },
+  alertaEmoji: {
+    fontSize: 13,
+  },
+  alertaTitulo: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    fontWeight: '700',
+    flex: 1,
+  },
+  alertaTendencia: {
+    ...tipografia.legenda,
+    fontWeight: '700',
+    fontSize: 11,
+  },
+  alertaMensagem: {
     ...tipografia.legenda,
     color: cores.texto,
-    paddingVertical: 2,
+    marginTop: 4,
+  },
+  alertaSub: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  alertaAcao: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: espacamento.sm,
+    paddingTop: espacamento.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: cores.divisor,
+  },
+  alertaAcaoTexto: {
+    ...tipografia.legenda,
+    color: cores.primaria,
+    fontSize: 11,
+    flex: 1,
+  },
+  tudoCertoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    backgroundColor: cores.verdeFundo,
+    borderRadius: raio.lg,
+    padding: espacamento.lg,
+    marginBottom: espacamento.md,
+  },
+  tudoCertoTexto: {
+    ...tipografia.rotulo,
+    color: cores.verde,
+    fontWeight: '600',
+    flex: 1,
   },
   operadorCard: {
     flexDirection: 'row',

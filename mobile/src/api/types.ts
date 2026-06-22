@@ -182,6 +182,38 @@ export interface AnomaliaIndicador {
   media: number;
 }
 
+/** Severidade de um alerta do painel de atenção. */
+export type Severidade = 'CRITICO' | 'ATENCAO';
+
+/** Tendência de um alerta vs a semana anterior. */
+export type TendenciaAlerta = 'PIORANDO' | 'MELHORANDO' | 'ESTAVEL';
+
+/** Um alerta do painel "Precisa de atenção". */
+export interface AlertaAtencao {
+  categoria: 'META' | 'OPERADOR';
+  severidade: Severidade;
+  tipo: TipoArrecadacao;
+  titulo: string;
+  mensagem: string;
+  acaoSugerida: string;
+  tendencia?: TendenciaAlerta;
+  detalheTendencia?: string;
+  projecaoTexto?: string;
+  operadorNome?: string;
+  operadorValor?: number;
+  operadorItens?: number;
+  ticketMedio?: number;
+  autorizadoPor?: string;
+}
+
+/** Resposta do painel "Precisa de atenção". */
+export interface PainelAtencao {
+  criticos: number;
+  emAtencao: number;
+  tudoCerto: boolean;
+  alertas: AlertaAtencao[];
+}
+
 /** Estado de um arquivo de arrecadação no dia. */
 export type StatusArquivoArrecadacao = 'ENVIADO' | 'SEM_MOVIMENTO' | 'PENDENTE';
 

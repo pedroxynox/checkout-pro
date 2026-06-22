@@ -198,4 +198,10 @@ export class ArrecadacaoController {
   anomalias(@Query('data') data: string) {
     return this.inteligente.anomalias(new Date(data));
   }
+
+  /** Painel "Precisa de atenção" completo (metas em risco + operadores). */
+  @Get('painel-atencao')
+  painelAtencao(@Query('data') data: string) {
+    return this.inteligente.painelAtencao(new Date(data));
+  }
 }
