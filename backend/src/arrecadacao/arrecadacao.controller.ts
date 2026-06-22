@@ -185,12 +185,10 @@ export class ArrecadacaoController {
     return this.inteligente.projecaoMes(tipo, new Date(data));
   }
 
-  /** Operador do mês (melhor contribuição: troco + recargas). */
-  @Get('operador-do-mes')
-  operadorDoMes(
-    @Query('data') data: string,
-  ): Promise<{ nome: string; total: number } | null> {
-    return this.inteligente.operadorDoMes(new Date(data));
+  /** Destaques do mês (Top 3: troco, recargas, cancelamento de itens). */
+  @Get('destaques-mes')
+  destaquesMes(@Query('data') data: string) {
+    return this.inteligente.destaquesMes(new Date(data));
   }
 
   /** Operadores com cancelamentos/devoluções muito acima da média (mês). */

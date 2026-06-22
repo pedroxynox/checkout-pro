@@ -85,6 +85,22 @@ export interface PainelAtencao {
   alertas: AlertaAtencao[];
 }
 
+/** Um destaque (top operador) de uma categoria. */
+export interface DestaqueOperador {
+  nome: string;
+  total: number;
+}
+
+/** Destaques do mês: top operador por categoria. */
+export interface DestaquesMes {
+  /** Quem mais arrecadou em troco solidário. */
+  trocoSolidario: DestaqueOperador | null;
+  /** Quem mais vendeu recargas. */
+  recargas: DestaqueOperador | null;
+  /** Quem mais cancelou itens (por VALOR) — para acompanhar. */
+  cancelamentoItens: DestaqueOperador | null;
+}
+
 function arredondar(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -264,36 +280,39 @@ export class IndicadoresInteligenteService {
   }
 
   /**
-   * Colaborador do mês: melhor SCORE LÍQUIDO no mês —
-   * contribuição (troco solidário + recargas) menos os erros (cancelamento
-   * de itens). O cancelamento de CUPOM não entra (costuma ser autorizado
-   * pela gestão, não é falha do operador) e as devoluções são dos fiscais.
+   * Destaques do mês: top operador por categoria (Top 3).
+   * - Troco Solidário: maior arrecadação (positivo).
+   * - Recargas: maior arrecadação (positivo).
+   * - Cancelamento de Itens: maior VALOR cancelado — destaque de atenção.
+   * Cada categoria só retorna alguém se houver valor > 0.
    */
-  async operadorDoMes(data: Date): Promise<{ nome: string; total: number } | null> {
+  async destaquesMes(data: Date): Promise<DestaquesMes> {
     const gte = inicioDoMes(data);
     const lt = inicioDoProximoMes(data);
-    const registros = await this.prisma.registroArrecadacao.findMany({
-      where: {
-        tipo: { in: ['TROCO_SOLIDARIO', 'RECARGAS_CELULAR', 'CANCELAMENTO_ITENS'] },
-        data: { gte, lt },
-      },
-      select: { nome: true, valor: true, tipo: true },
-    });
-    if (registros.length === 0) return null;
 
-    const score = new Map<string, number>();
-    for (const r of registros) {
-      const v = Number(r.valor);
-      const delta = r.tipo === 'CANCELAMENTO_ITENS' ? -v : v;
-      score.set(r.nome, (score.get(r.nome) ?? 0) + delta);
-    }
-    let melhor: { nome: string; total: number } | null = null;
-    for (const [nome, total] of score.entries()) {
-      if (!melhor || total > melhor.total) {
-        melhor = { nome, total: arredondar(total) };
-      }
-    }
-    return melhor;
+    const topPorTipo = async (
+      tipo: TipoArrecadacao,
+    ): Promise<DestaqueOperador | null> => {
+      const grupos = await this.prisma.registroArrecadacao.groupBy({
+        by: ['nome'],
+        where: { tipo, data: { gte, lt } },
+        _sum: { valor: true },
+        orderBy: { _sum: { valor: 'desc' } },
+        take: 1,
+      });
+      if (grupos.length === 0) return null;
+      const total = arredondar(Number(grupos[0]._sum.valor ?? 0));
+      if (total <= 0) return null;
+      return { nome: grupos[0].nome, total };
+    };
+
+    const [trocoSolidario, recargas, cancelamentoItens] = await Promise.all([
+      topPorTipo('TROCO_SOLIDARIO'),
+      topPorTipo('RECARGAS_CELULAR'),
+      topPorTipo('CANCELAMENTO_ITENS'),
+    ]);
+
+    return { trocoSolidario, recargas, cancelamentoItens };
   }
 
   /**

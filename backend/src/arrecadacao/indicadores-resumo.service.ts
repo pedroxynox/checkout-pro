@@ -71,10 +71,22 @@ export class IndicadoresResumoService {
         }
       }
 
-      // Operador do mês.
-      const opMes = await this.inteligente.operadorDoMes(ontem);
-      if (opMes) {
-        linhas.push(`\n🏆 Operador do mês: ${opMes.nome} (R$${opMes.total})`);
+      // Destaques do mês (Top 3 por categoria).
+      const destaques = await this.inteligente.destaquesMes(ontem);
+      if (destaques.trocoSolidario) {
+        linhas.push(
+          `\n🏆 Troco solidário: ${destaques.trocoSolidario.nome} (R$${destaques.trocoSolidario.total})`,
+        );
+      }
+      if (destaques.recargas) {
+        linhas.push(
+          `🏆 Recargas: ${destaques.recargas.nome} (R$${destaques.recargas.total})`,
+        );
+      }
+      if (destaques.cancelamentoItens) {
+        linhas.push(
+          `⚠️ Mais cancelou itens: ${destaques.cancelamentoItens.nome} (R$${destaques.cancelamentoItens.total})`,
+        );
       }
 
       // Anomalias.

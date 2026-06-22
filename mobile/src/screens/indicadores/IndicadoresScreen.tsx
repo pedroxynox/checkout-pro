@@ -1,17 +1,17 @@
 /**
- * Tela de Indicadores — Painel de Saúde + menu.
+ * Tela de Indicadores — Painel de Saúde.
  *
- * Topo: visão 360° (semáforo de cada indicador no mês, operador do mês e o
- * card "Atenção hoje" com o que precisa de revisão). Abaixo, o menu para
- * abrir o detalhe de cada indicador (totais, meta, gráficos, tendência e
- * ranking).
+ * Topo: vendas do mês, destaques do mês (Top 3: troco, recargas e maior
+ * cancelamento de itens) e os semáforos de saúde de cada indicador. Abaixo,
+ * o painel "Precisa de atenção" com o que precisa de revisão. Tocar num
+ * indicador abre o detalhe (totais, meta, gráficos, tendência e ranking).
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { arrecadacaoService, vendasService } from '../../api/services';
 import {
-  OperadorDoMes,
+  DestaquesMes,
   PainelAtencao,
   ResumoArrecadacao,
   ResumoVendas,
@@ -84,9 +84,9 @@ export function IndicadoresScreen({
     const resumos = await Promise.all(
       ARRECADACAO.map((def) => arrecadacaoService.resumo(def.tipo, data)),
     );
-    const [vendas, operador, painel] = await Promise.all([
+    const [vendas, destaques, painel] = await Promise.all([
       vendasService.resumo(data).catch(() => null),
-      arrecadacaoService.operadorDoMes(data).catch(() => null),
+      arrecadacaoService.destaquesMes(data).catch(() => null),
       arrecadacaoService.painelAtencao(data).catch(() => null),
     ]);
     const saude: SaudeIndicador[] = ARRECADACAO.map((def, i) => ({
@@ -95,12 +95,12 @@ export function IndicadoresScreen({
       nivel: nivelMes(def, resumos[i]),
       valorTexto: valorMesTexto(def, resumos[i]),
     }));
-    return { saude, vendas, operador, painel };
+    return { saude, vendas, destaques, painel };
   }, [data]);
 
   const saude = req.dados?.saude ?? [];
   const vendas: ResumoVendas | null = req.dados?.vendas ?? null;
-  const operador: OperadorDoMes | null = req.dados?.operador ?? null;
+  const destaques: DestaquesMes | null = req.dados?.destaques ?? null;
   const painel: PainelAtencao | null = req.dados?.painel ?? null;
 
   const irParaDetalhe = useCallback(
@@ -137,20 +137,56 @@ export function IndicadoresScreen({
             </Pressable>
           )}
 
-          {/* Colaborador do mês */}
-          {operador && (
-            <View style={styles.operadorCard}>
-              <Ionicons name="trophy" size={22} color="#B7791F" />
-              <View style={styles.flex1}>
-                <Text style={styles.operadorRotulo}>Colaborador do mês</Text>
-                <Text style={styles.operadorNome}>{operador.nome}</Text>
-                <Text style={styles.operadorSub}>
-                  Mais arrecadação (troco + recargas) menos cancelamento de itens no mês
+          {/* Destaques do mês — Top 3 por categoria */}
+          {destaques &&
+            (destaques.trocoSolidario || destaques.recargas || destaques.cancelamentoItens) && (
+              <View style={styles.destaquesCard}>
+                <Text style={styles.destaquesTitulo}>🏅 Destaques do mês</Text>
+
+                {destaques.trocoSolidario && (
+                  <View style={styles.destaqueLinha}>
+                    <Ionicons name="heart" size={18} color={cores.verde} />
+                    <View style={styles.flex1}>
+                      <Text style={styles.destaqueCategoria}>Troco solidário</Text>
+                      <Text style={styles.destaqueNome}>{destaques.trocoSolidario.nome}</Text>
+                    </View>
+                    <Text style={[styles.destaqueValor, { color: cores.verde }]}>
+                      {formatarMoeda(destaques.trocoSolidario.total)}
+                    </Text>
+                  </View>
+                )}
+
+                {destaques.recargas && (
+                  <View style={styles.destaqueLinha}>
+                    <Ionicons name="phone-portrait" size={18} color={cores.primaria} />
+                    <View style={styles.flex1}>
+                      <Text style={styles.destaqueCategoria}>Recargas</Text>
+                      <Text style={styles.destaqueNome}>{destaques.recargas.nome}</Text>
+                    </View>
+                    <Text style={[styles.destaqueValor, { color: cores.primaria }]}>
+                      {formatarMoeda(destaques.recargas.total)}
+                    </Text>
+                  </View>
+                )}
+
+                {destaques.cancelamentoItens && (
+                  <View style={styles.destaqueLinha}>
+                    <Ionicons name="alert-circle" size={18} color={cores.vermelho} />
+                    <View style={styles.flex1}>
+                      <Text style={styles.destaqueCategoria}>Mais cancelou itens</Text>
+                      <Text style={styles.destaqueNome}>{destaques.cancelamentoItens.nome}</Text>
+                    </View>
+                    <Text style={[styles.destaqueValor, { color: cores.vermelho }]}>
+                      {formatarMoeda(destaques.cancelamentoItens.total)}
+                    </Text>
+                  </View>
+                )}
+
+                <Text style={styles.destaquesNota}>
+                  Troco e recargas: maior arrecadação. Cancelamento: maior valor — para acompanhar.
                 </Text>
               </View>
-              <Text style={styles.operadorValor}>{formatarMoeda(operador.total)}</Text>
-            </View>
-          )}
+            )}
 
           {/* Painel de saúde: semáforos */}
           <Text style={styles.secaoTitulo}>Saúde dos indicadores (mês)</Text>
@@ -388,35 +424,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
   },
-  operadorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: espacamento.md,
+  destaquesCard: {
     backgroundColor: '#FDF6E3',
     borderRadius: raio.lg,
     padding: espacamento.lg,
     marginBottom: espacamento.md,
   },
-  operadorRotulo: {
-    ...tipografia.legenda,
+  destaquesTitulo: {
+    ...tipografia.rotulo,
     color: '#92710A',
+    fontWeight: '700',
+    marginBottom: espacamento.sm,
   },
-  operadorNome: {
+  destaqueLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    paddingVertical: espacamento.xs,
+  },
+  destaqueCategoria: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    fontSize: 11,
+  },
+  destaqueNome: {
     ...tipografia.rotulo,
     color: cores.texto,
     fontWeight: '700',
-    marginTop: 2,
   },
-  operadorSub: {
-    ...tipografia.legenda,
-    color: '#92710A',
-    fontSize: 11,
-    marginTop: 2,
-  },
-  operadorValor: {
+  destaqueValor: {
     ...tipografia.rotulo,
-    color: '#B7791F',
     fontWeight: '700',
+  },
+  destaquesNota: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    fontSize: 10,
+    marginTop: espacamento.sm,
+    fontStyle: 'italic',
   },
   secaoTitulo: {
     ...tipografia.secao,

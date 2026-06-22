@@ -168,10 +168,17 @@ export interface MetaIndicador {
   sentido: 'MAIOR_MELHOR' | 'MENOR_MELHOR';
 }
 
-/** Operador do mês. */
-export interface OperadorDoMes {
+/** Um destaque (top operador) de uma categoria. */
+export interface DestaqueOperador {
   nome: string;
   total: number;
+}
+
+/** Destaques do mês: top operador por categoria. */
+export interface DestaquesMes {
+  trocoSolidario: DestaqueOperador | null;
+  recargas: DestaqueOperador | null;
+  cancelamentoItens: DestaqueOperador | null;
 }
 
 /** Anomalia detectada (operador acima da média). */

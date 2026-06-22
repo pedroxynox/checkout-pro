@@ -248,30 +248,30 @@ export class AssistenteService {
 
       if (!temDados) return undefined;
 
-      // Colaborador do mês: score líquido (troco + recargas − cancelamento de itens).
-      const registrosOp = await this.prisma.registroArrecadacao.findMany({
-        where: {
-          tipo: { in: ['TROCO_SOLIDARIO', 'RECARGAS_CELULAR', 'CANCELAMENTO_ITENS'] },
-          data: { gte: inicioMes, lt: inicioProximoMes },
-        },
-        select: { nome: true, valor: true, tipo: true },
-      });
-      if (registrosOp.length > 0) {
-        const totais = new Map<string, number>();
-        for (const r of registrosOp) {
-          const v = Number(r.valor);
-          const delta = r.tipo === 'CANCELAMENTO_ITENS' ? -v : v;
-          totais.set(r.nome, (totais.get(r.nome) ?? 0) + delta);
-        }
-        let melhor: { nome: string; total: number } | null = null;
-        for (const [nome, total] of totais.entries()) {
-          if (!melhor || total > melhor.total) melhor = { nome, total };
-        }
-        if (melhor) {
-          linhas.push(
-            `\n🏆 Colaborador do mês (troco + recargas − cancelamento de itens): ${melhor.nome} (R$${arred(melhor.total)}).`,
-          );
-        }
+      // Destaques do mês (Top 3 por categoria).
+      const topPorTipo = async (tipo: string): Promise<{ nome: string; total: number } | null> => {
+        const grupos = await this.prisma.registroArrecadacao.groupBy({
+          by: ['nome'],
+          where: { tipo, data: { gte: inicioMes, lt: inicioProximoMes } },
+          _sum: { valor: true },
+          orderBy: { _sum: { valor: 'desc' } },
+          take: 1,
+        });
+        if (grupos.length === 0) return null;
+        const total = arred(Number(grupos[0]._sum.valor ?? 0));
+        if (total <= 0) return null;
+        return { nome: grupos[0].nome, total };
+      };
+      const [topTroco, topRecargas, topCancel] = await Promise.all([
+        topPorTipo('TROCO_SOLIDARIO'),
+        topPorTipo('RECARGAS_CELULAR'),
+        topPorTipo('CANCELAMENTO_ITENS'),
+      ]);
+      if (topTroco || topRecargas || topCancel) {
+        linhas.push('\nDestaques do mês:');
+        if (topTroco) linhas.push(`🏆 Troco solidário: ${topTroco.nome} (R$${topTroco.total}).`);
+        if (topRecargas) linhas.push(`🏆 Recargas: ${topRecargas.nome} (R$${topRecargas.total}).`);
+        if (topCancel) linhas.push(`⚠️ Mais cancelou itens: ${topCancel.nome} (R$${topCancel.total}).`);
       }
 
       return linhas.join('\n');

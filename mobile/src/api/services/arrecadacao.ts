@@ -14,7 +14,7 @@ import {
   DetalheArrecadacao,
   ItemRankingArrecadacao,
   MetaIndicador,
-  OperadorDoMes,
+  DestaquesMes,
   PainelAtencao,
   PontoTendencia,
   ProjecaoMes,
@@ -162,11 +162,9 @@ export const arrecadacaoService = {
     return apiClient.get<ProjecaoMes>('/arrecadacao/projecao', { tipo, data });
   },
 
-  /** Operador do mês (troco + recargas). */
-  operadorDoMes(data: string): Promise<OperadorDoMes | null> {
-    return apiClient.get<OperadorDoMes | null>('/arrecadacao/operador-do-mes', {
-      data,
-    });
+  /** Destaques do mês (Top 3: troco, recargas, cancelamento de itens). */
+  destaquesMes(data: string): Promise<DestaquesMes> {
+    return apiClient.get<DestaquesMes>('/arrecadacao/destaques-mes', { data });
   },
 
   /** Operadores com cancelamentos/devoluções acima da média (mês). */
