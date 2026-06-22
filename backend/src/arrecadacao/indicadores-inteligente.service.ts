@@ -107,6 +107,16 @@ function arredondar(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/** Normaliza um nome para comparação (sem acentos, maiúsculas, sem espaços extras). */
+function normalizarNome(nome: string): string {
+  return nome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /**
  * Serviço de inteligência dos indicadores: tendência histórica, comparativo
  * com período anterior, projeção de fechamento de mês, meta diária, operador
@@ -292,20 +302,33 @@ export class IndicadoresInteligenteService {
     const gte = inicioDoMes(data);
     const lt = inicioDoProximoMes(data);
 
+    // Excluir fiscais dos rankings de destaque — eles operam caixa raramente
+    // e não devem disputar com os operadores. Comparação por nome normalizado
+    // (sem acentos, maiúsculas, sem espaços extras) para casar com os .txt.
+    const fiscais = await this.prisma.fiscal.findMany({ select: { nome: true } });
+    const nomesFiscais = new Set(fiscais.map((f) => normalizarNome(f.nome)));
+    const ehFiscal = (nome: string): boolean =>
+      nomesFiscais.has(normalizarNome(nome));
+
     const topPorTipo = async (
       tipo: TipoArrecadacao,
     ): Promise<DestaqueOperador | null> => {
-      const grupos = await this.prisma.registroArrecadacao.groupBy({
-        by: ['nome'],
+      const regs = await this.prisma.registroArrecadacao.findMany({
         where: { tipo, data: { gte, lt } },
-        _sum: { valor: true },
-        orderBy: { _sum: { valor: 'desc' } },
-        take: 1,
+        select: { nome: true, valor: true },
       });
-      if (grupos.length === 0) return null;
-      const total = arredondar(Number(grupos[0]._sum.valor ?? 0));
-      if (total <= 0) return null;
-      return { nome: grupos[0].nome, total };
+      const totais = new Map<string, number>();
+      for (const r of regs) {
+        if (ehFiscal(r.nome)) continue;
+        totais.set(r.nome, (totais.get(r.nome) ?? 0) + Number(r.valor));
+      }
+      let melhorTipo: DestaqueOperador | null = null;
+      for (const [nome, total] of totais.entries()) {
+        if (total > 0 && (melhorTipo === null || total > melhorTipo.total)) {
+          melhorTipo = { nome, total: arredondar(total) };
+        }
+      }
+      return melhorTipo;
     };
 
     const [trocoSolidario, recargas, cancelamentoItens] = await Promise.all([
@@ -314,9 +337,9 @@ export class IndicadoresInteligenteService {
       topPorTipo('CANCELAMENTO_ITENS'),
     ]);
 
-    // "Menos cancelou": entre os operadores ATIVOS (com troco/recargas no mês),
+    // "Menos cancelou": entre os OPERADORES ativos (com troco/recargas no mês),
     // o que teve o menor valor de cancelamento de itens (0 é o ideal).
-    // Desempate: maior contribuição (troco + recargas).
+    // Fiscais são excluídos. Desempate: maior contribuição (troco + recargas).
     const [contribRegs, cancelRegs] = await Promise.all([
       this.prisma.registroArrecadacao.findMany({
         where: {
@@ -333,10 +356,12 @@ export class IndicadoresInteligenteService {
 
     const contrib = new Map<string, number>();
     for (const r of contribRegs) {
+      if (ehFiscal(r.nome)) continue;
       contrib.set(r.nome, (contrib.get(r.nome) ?? 0) + Number(r.valor));
     }
     const cancel = new Map<string, number>();
     for (const r of cancelRegs) {
+      if (ehFiscal(r.nome)) continue;
       cancel.set(r.nome, (cancel.get(r.nome) ?? 0) + Number(r.valor));
     }
 

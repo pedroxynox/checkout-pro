@@ -248,19 +248,31 @@ export class AssistenteService {
 
       if (!temDados) return undefined;
 
-      // Destaques do mês (Top 3 por categoria).
+      // Fiscais não entram nos rankings de destaque (operam caixa raramente).
+      const fiscaisDb = await this.prisma.fiscal.findMany({ select: { nome: true } });
+      const norm = (n: string): string =>
+        n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+      const nomesFiscais = new Set(fiscaisDb.map((f) => norm(f.nome)));
+      const ehFiscal = (nome: string): boolean => nomesFiscais.has(norm(nome));
+
+      // Destaques do mês (Top por categoria, excluindo fiscais).
       const topPorTipo = async (tipo: string): Promise<{ nome: string; total: number } | null> => {
-        const grupos = await this.prisma.registroArrecadacao.groupBy({
-          by: ['nome'],
+        const regs = await this.prisma.registroArrecadacao.findMany({
           where: { tipo, data: { gte: inicioMes, lt: inicioProximoMes } },
-          _sum: { valor: true },
-          orderBy: { _sum: { valor: 'desc' } },
-          take: 1,
+          select: { nome: true, valor: true },
         });
-        if (grupos.length === 0) return null;
-        const total = arred(Number(grupos[0]._sum.valor ?? 0));
-        if (total <= 0) return null;
-        return { nome: grupos[0].nome, total };
+        const totais = new Map<string, number>();
+        for (const r of regs) {
+          if (ehFiscal(r.nome)) continue;
+          totais.set(r.nome, (totais.get(r.nome) ?? 0) + Number(r.valor));
+        }
+        let melhorTipo: { nome: string; total: number } | null = null;
+        for (const [nome, total] of totais.entries()) {
+          if (total > 0 && (melhorTipo === null || total > melhorTipo.total)) {
+            melhorTipo = { nome, total: arred(total) };
+          }
+        }
+        return melhorTipo;
       };
       const [topTroco, topRecargas, topCancel] = await Promise.all([
         topPorTipo('TROCO_SOLIDARIO'),
@@ -268,7 +280,7 @@ export class AssistenteService {
         topPorTipo('CANCELAMENTO_ITENS'),
       ]);
       if (topTroco || topRecargas || topCancel) {
-        linhas.push('\nDestaques do mês:');
+        linhas.push('\nDestaques do mês (somente operadores; fiscais não entram):');
         if (topTroco) linhas.push(`🏆 Troco solidário: ${topTroco.nome} (R$${topTroco.total}).`);
         if (topRecargas) linhas.push(`🏆 Recargas: ${topRecargas.nome} (R$${topRecargas.total}).`);
         if (topCancel) linhas.push(`⚠️ Mais cancelou itens: ${topCancel.nome} (R$${topCancel.total}).`);
@@ -288,9 +300,15 @@ export class AssistenteService {
           }),
         ]);
         const contrib = new Map<string, number>();
-        for (const r of contribRegs) contrib.set(r.nome, (contrib.get(r.nome) ?? 0) + Number(r.valor));
+        for (const r of contribRegs) {
+          if (ehFiscal(r.nome)) continue;
+          contrib.set(r.nome, (contrib.get(r.nome) ?? 0) + Number(r.valor));
+        }
         const cancel = new Map<string, number>();
-        for (const r of cancelRegs) cancel.set(r.nome, (cancel.get(r.nome) ?? 0) + Number(r.valor));
+        for (const r of cancelRegs) {
+          if (ehFiscal(r.nome)) continue;
+          cancel.set(r.nome, (cancel.get(r.nome) ?? 0) + Number(r.valor));
+        }
         let melhorMenos: { nome: string; cancel: number; contrib: number } | null = null;
         for (const [nome, contribTotal] of contrib.entries()) {
           if (contribTotal <= 0) continue;
