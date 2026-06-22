@@ -211,11 +211,11 @@ export function consumoPorDiaSemana(
 }
 
 /**
- * Predicción ponderada de ruptura: calcula cuántos días faltan para que el
- * saldo llegue a cero, usando el consumo medio por día de la semana.
- * Más preciso que la división lineal simple.
+ * Predição ponderada de ruptura: calcula quantos dias faltam para que o
+ * saldo chegue a zero, usando o consumo médio por dia da semana.
+ * Mais preciso que a divisão linear simples.
  *
- * Retorna null si no hay datos de consumo.
+ * Retorna null se não houver dados de consumo.
  */
 export function predicaoRuptura(
   saldo: number,

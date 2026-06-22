@@ -93,7 +93,7 @@ function formatarDataHoje(): string {
   return `${diaSemana}, ${dia} de ${mes} de ${ano}`;
 }
 
-/** Formata duración viva desde un timestamp ISO hasta agora (usa tick para forçar re-render). */
+/** Formata duração viva desde um timestamp ISO até agora (usa tick para forçar re-render). */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function formatarDuracaoViva(emIso: string, _tick: number): string {
   const desde = new Date(emIso).getTime();
@@ -109,7 +109,7 @@ function formatarDuracaoViva(emIso: string, _tick: number): string {
   return `${min}min ${seg.toString().padStart(2, '0')}s`;
 }
 
-/** Timer do card: desde 'em' do fiscal (zerrado se FORA_EXPEDIENTE). */
+/** Timer do card: desde o 'em' do fiscal (zerado se FORA_EXPEDIENTE). */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function timerCard(desde: string | null, status: StatusFiscal, _tick: number): string {
   if (status === 'FORA_EXPEDIENTE' || !desde) return '00:00';
@@ -122,7 +122,7 @@ function timerCard(desde: string | null, status: StatusFiscal, _tick: number): s
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-/** Avatar fijo femenino para todas las fiscales. */
+/** Avatar fixo feminino para todas as fiscais. */
 function avatarIcone(): keyof typeof Ionicons.glyphMap {
   return 'person-circle';
 }
@@ -203,7 +203,7 @@ export function FiscaisScreen({
     [painel],
   );
 
-  /** Contador de fiscais disponíveis en tiempo real */
+  /** Contador de fiscais disponíveis em tempo real */
   const totalDisponivel = useMemo(
     () => painel.filter((f) => f.status === 'DISPONIVEL').length,
     [painel],
@@ -256,7 +256,7 @@ export function FiscaisScreen({
         ),
       );
 
-      // Resumen del día al encerrar expediente.
+      // Resumo do dia ao encerrar expediente.
       if (status === 'FORA_EXPEDIENTE' && r.cargaHorariaMs !== undefined) {
         const trabalhado = formatarDuracao(r.cargaHorariaMs);
         const intervalo = formatarDuracao(r.tempoIntervaloMs);
@@ -484,7 +484,7 @@ export function FiscaisScreen({
               {ROTULO_STATUS_FISCAL[f.status]}
             </Text>
           </View>
-          {/* Timer del card (reloj corriendo o zerrado) */}
+          {/* Timer do card (relógio correndo ou zerado) */}
           <View style={styles.cardTimerContainer}>
             <Ionicons
               name="time-outline"

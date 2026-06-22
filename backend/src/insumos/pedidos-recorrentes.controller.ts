@@ -28,7 +28,7 @@ export class PedidosRecorrentesController {
     return this.service.listarPendentes();
   }
 
-  /** Próximo pedido quinzenal (sacolas): cuántos días faltan. */
+  /** Próximo pedido quinzenal (sacolas): quantos dias faltam. */
   @Get('proximo-quinzenal')
   async proximoQuinzenal() {
     return this.service.proximoPedidoQuinzenal();

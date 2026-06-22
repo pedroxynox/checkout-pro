@@ -131,12 +131,12 @@ export class FiscaisService {
     status: StatusFiscal,
     em: Date = new Date(),
   ): Promise<ResumoStatus & Jornada> {
-    // Validar: si está de folga hoy, no puede registrar ponto.
+    // Valida: se está de folga hoje, não pode registrar ponto.
     if (await this.isFolgaHoje(fiscalId, em)) {
       throw new FiscalDeFolgaError();
     }
 
-    // Validar: si ya marcó falta hoy, no puede registrar ponto.
+    // Valida: se já marcou falta hoje, não pode registrar ponto.
     const faltaHoje = await this.prisma.ausencia.findUnique({
       where: { pessoaId_data: { pessoaId: fiscalId, data: inicioDoDia(em) } },
     });
@@ -231,12 +231,12 @@ export class FiscaisService {
   ): Promise<void> {
     const data = inicioDoDia(dia);
 
-    // Validar: si está de folga hoy, no puede marcar falta.
+    // Valida: se está de folga hoje, não pode marcar falta.
     if (await this.isFolgaHoje(fiscalId, dia)) {
       throw new FiscalDeFolgaError();
     }
 
-    // Validar: si ya tiene registros de ponto hoy, no puede marcar falta.
+    // Valida: se já tem registros de ponto hoje, não pode marcar falta.
     const registrosHoje = await this.prisma.registroPontoFiscal.findFirst({
       where: { fiscalId, data },
     });
@@ -388,7 +388,7 @@ export class FiscaisService {
       escalaMap.get(e.funcionarioId)!.set(e.diaSemana, e.entrada);
     }
 
-    // Agrupar primeiro DISPONIVEL por fiscal por día.
+    // Agrupar primeiro DISPONIVEL por fiscal por dia.
     const primeiroDisponivel = new Map<string, { desvioTotalMin: number; diasContados: number }>();
 
     for (const fiscal of fiscais) {

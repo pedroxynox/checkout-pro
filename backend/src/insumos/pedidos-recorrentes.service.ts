@@ -91,13 +91,13 @@ export class PedidosRecorrentesService {
           insumoProativo.consumoSemana / insumoProativo.fatorEmbalagem,
         );
 
-        // Se el saldo ya cubre más de 2 semanas, reducir la sugestión.
+        // Se o saldo já cobre mais de 2 semanas, reduzir a sugestão.
         if (saldoEmEmbalagens >= consumoSemanalEmb * 2 && pedido.frequenciaDias <= 7) {
           const reducao = Math.floor(saldoEmEmbalagens / 2);
           quantidadeSugerida = Math.max(1, pedido.quantidade - reducao);
         }
 
-        // Se el consumo reciente fue mayor al habitual, aumentar.
+        // Se o consumo recente foi maior que o habitual, aumentar.
         if (consumoSemanalEmb > pedido.quantidade && pedido.frequenciaDias <= 7) {
           quantidadeSugerida = Math.max(quantidadeSugerida, consumoSemanalEmb);
         }
@@ -149,7 +149,7 @@ export class PedidosRecorrentesService {
     }));
   }
 
-  /** Próximo pedido de sacolas (quinzenal): cuántos días faltan. */
+  /** Próximo pedido de sacolas (quinzenal): quantos dias faltam. */
   async proximoPedidoQuinzenal(): Promise<{ diasRestantes: number } | null> {
     const pedidoQuinzenal = await this.prisma.pedidoRecorrente.findFirst({
       where: { ativo: true, frequenciaDias: { gt: 7 } },

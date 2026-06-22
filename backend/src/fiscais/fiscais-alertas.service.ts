@@ -275,7 +275,7 @@ export class FiscaisAlertasService {
       escalaMap.get(e.funcionarioId)!.set(e.diaSemana, e.entrada);
     }
 
-    // Agrupar registros por fiscal y día.
+    // Agrupar registros por fiscal e dia.
     const porFiscalDia = new Map<string, Map<string, { status: StatusFiscal; em: Date }[]>>();
     for (const r of registros) {
       const diaKey = r.data.toISOString();
