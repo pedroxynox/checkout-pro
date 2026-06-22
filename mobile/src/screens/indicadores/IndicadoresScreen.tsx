@@ -137,6 +137,44 @@ export function IndicadoresScreen({
             </Pressable>
           )}
 
+          {/* Colaborador do mês */}
+          {operador && (
+            <View style={styles.operadorCard}>
+              <Ionicons name="trophy" size={22} color="#B7791F" />
+              <View style={styles.flex1}>
+                <Text style={styles.operadorRotulo}>Colaborador do mês</Text>
+                <Text style={styles.operadorNome}>{operador.nome}</Text>
+                <Text style={styles.operadorSub}>
+                  Quem mais arrecadou em troco solidário + recargas no mês
+                </Text>
+              </View>
+              <Text style={styles.operadorValor}>{formatarMoeda(operador.total)}</Text>
+            </View>
+          )}
+
+          {/* Painel de saúde: semáforos */}
+          <Text style={styles.secaoTitulo}>Saúde dos indicadores (mês)</Text>
+          {saude.map((s) => (
+            <Pressable key={s.def.tipo} onPress={() => irParaDetalhe(s.def.tipo)}>
+              <View style={[styles.saudeCard, { borderLeftColor: corNivel(s.nivel) }]}>
+                <View style={[styles.saudeIcone, { backgroundColor: fundoNivel(s.nivel) }]}>
+                  <Ionicons
+                    name={s.def.icone as keyof typeof Ionicons.glyphMap}
+                    size={20}
+                    color={corNivel(s.nivel)}
+                  />
+                </View>
+                <View style={styles.flex1}>
+                  <Text style={styles.saudeNome}>{s.def.titulo}</Text>
+                  <Text style={styles.saudeValor}>{s.valorTexto}</Text>
+                </View>
+                <View style={[styles.saudeBadge, { backgroundColor: fundoNivel(s.nivel) }]}>
+                  <Ionicons name={iconeNivel(s.nivel)} size={18} color={corNivel(s.nivel)} />
+                </View>
+              </View>
+            </Pressable>
+          ))}
+
           {/* Card "Precisa de atenção" — detalhado */}
           {painel && !painel.tudoCerto && (
             <View style={styles.atencaoCard}>
@@ -230,41 +268,6 @@ export function IndicadoresScreen({
               </Text>
             </View>
           )}
-
-          {/* Operador do mês */}
-          {operador && (
-            <View style={styles.operadorCard}>
-              <Ionicons name="trophy" size={22} color="#B7791F" />
-              <View style={styles.flex1}>
-                <Text style={styles.operadorRotulo}>Operador do mês</Text>
-                <Text style={styles.operadorNome}>{operador.nome}</Text>
-              </View>
-              <Text style={styles.operadorValor}>{formatarMoeda(operador.total)}</Text>
-            </View>
-          )}
-
-          {/* Painel de saúde: semáforos */}
-          <Text style={styles.secaoTitulo}>Saúde dos indicadores (mês)</Text>
-          {saude.map((s) => (
-            <Pressable key={s.def.tipo} onPress={() => irParaDetalhe(s.def.tipo)}>
-              <View style={[styles.saudeCard, { borderLeftColor: corNivel(s.nivel) }]}>
-                <View style={[styles.saudeIcone, { backgroundColor: fundoNivel(s.nivel) }]}>
-                  <Ionicons
-                    name={s.def.icone as keyof typeof Ionicons.glyphMap}
-                    size={20}
-                    color={corNivel(s.nivel)}
-                  />
-                </View>
-                <View style={styles.flex1}>
-                  <Text style={styles.saudeNome}>{s.def.titulo}</Text>
-                  <Text style={styles.saudeValor}>{s.valorTexto}</Text>
-                </View>
-                <View style={[styles.saudeBadge, { backgroundColor: fundoNivel(s.nivel) }]}>
-                  <Ionicons name={iconeNivel(s.nivel)} size={18} color={corNivel(s.nivel)} />
-                </View>
-              </View>
-            </Pressable>
-          ))}
 
           <Text style={styles.dica}>
             Toque em um indicador para ver tendência, comparativo, projeção e
@@ -402,6 +405,12 @@ const styles = StyleSheet.create({
     ...tipografia.rotulo,
     color: cores.texto,
     fontWeight: '700',
+    marginTop: 2,
+  },
+  operadorSub: {
+    ...tipografia.legenda,
+    color: '#92710A',
+    fontSize: 11,
     marginTop: 2,
   },
   operadorValor: {
