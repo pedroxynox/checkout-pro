@@ -248,18 +248,20 @@ export class AssistenteService {
 
       if (!temDados) return undefined;
 
-      // Operador do mês (troco + recargas).
+      // Colaborador do mês: score líquido (troco + recargas − cancelamento de itens).
       const registrosOp = await this.prisma.registroArrecadacao.findMany({
         where: {
-          tipo: { in: ['TROCO_SOLIDARIO', 'RECARGAS_CELULAR'] },
+          tipo: { in: ['TROCO_SOLIDARIO', 'RECARGAS_CELULAR', 'CANCELAMENTO_ITENS'] },
           data: { gte: inicioMes, lt: inicioProximoMes },
         },
-        select: { nome: true, valor: true },
+        select: { nome: true, valor: true, tipo: true },
       });
       if (registrosOp.length > 0) {
         const totais = new Map<string, number>();
         for (const r of registrosOp) {
-          totais.set(r.nome, (totais.get(r.nome) ?? 0) + Number(r.valor));
+          const v = Number(r.valor);
+          const delta = r.tipo === 'CANCELAMENTO_ITENS' ? -v : v;
+          totais.set(r.nome, (totais.get(r.nome) ?? 0) + delta);
         }
         let melhor: { nome: string; total: number } | null = null;
         for (const [nome, total] of totais.entries()) {
@@ -267,7 +269,7 @@ export class AssistenteService {
         }
         if (melhor) {
           linhas.push(
-            `\n🏆 Operador do mês (troco + recargas): ${melhor.nome} (R$${arred(melhor.total)}).`,
+            `\n🏆 Colaborador do mês (troco + recargas − cancelamento de itens): ${melhor.nome} (R$${arred(melhor.total)}).`,
           );
         }
       }

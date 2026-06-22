@@ -145,7 +145,7 @@ export function IndicadoresScreen({
                 <Text style={styles.operadorRotulo}>Colaborador do mês</Text>
                 <Text style={styles.operadorNome}>{operador.nome}</Text>
                 <Text style={styles.operadorSub}>
-                  Quem mais arrecadou em troco solidário + recargas no mês
+                  Mais arrecadação (troco + recargas) menos cancelamento de itens no mês
                 </Text>
               </View>
               <Text style={styles.operadorValor}>{formatarMoeda(operador.total)}</Text>

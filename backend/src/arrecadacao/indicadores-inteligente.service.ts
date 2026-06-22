@@ -264,27 +264,31 @@ export class IndicadoresInteligenteService {
   }
 
   /**
-   * Operador do mês: melhor desempenho combinando contribuição positiva
-   * (troco solidário + recargas) no mês. Retorna o top operador.
+   * Colaborador do mês: melhor SCORE LÍQUIDO no mês —
+   * contribuição (troco solidário + recargas) menos os erros (cancelamento
+   * de itens). O cancelamento de CUPOM não entra (costuma ser autorizado
+   * pela gestão, não é falha do operador) e as devoluções são dos fiscais.
    */
   async operadorDoMes(data: Date): Promise<{ nome: string; total: number } | null> {
     const gte = inicioDoMes(data);
     const lt = inicioDoProximoMes(data);
     const registros = await this.prisma.registroArrecadacao.findMany({
       where: {
-        tipo: { in: ['TROCO_SOLIDARIO', 'RECARGAS_CELULAR'] },
+        tipo: { in: ['TROCO_SOLIDARIO', 'RECARGAS_CELULAR', 'CANCELAMENTO_ITENS'] },
         data: { gte, lt },
       },
-      select: { nome: true, valor: true },
+      select: { nome: true, valor: true, tipo: true },
     });
     if (registros.length === 0) return null;
 
-    const totais = new Map<string, number>();
+    const score = new Map<string, number>();
     for (const r of registros) {
-      totais.set(r.nome, (totais.get(r.nome) ?? 0) + Number(r.valor));
+      const v = Number(r.valor);
+      const delta = r.tipo === 'CANCELAMENTO_ITENS' ? -v : v;
+      score.set(r.nome, (score.get(r.nome) ?? 0) + delta);
     }
     let melhor: { nome: string; total: number } | null = null;
-    for (const [nome, total] of totais.entries()) {
+    for (const [nome, total] of score.entries()) {
       if (!melhor || total > melhor.total) {
         melhor = { nome, total: arredondar(total) };
       }
