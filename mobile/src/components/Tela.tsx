@@ -7,11 +7,12 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Text,
   View,
   ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { cores, espacamento } from '../theme';
+import { cores, espacamento, tipografia } from '../theme';
 
 interface TelaProps {
   children: React.ReactNode;
@@ -20,6 +21,15 @@ interface TelaProps {
   atualizando?: boolean;
   estilo?: ViewStyle;
   semPadding?: boolean;
+}
+
+/** Rodapé discreto de confidencialidade (uso interno). */
+function Rodape(): React.ReactElement {
+  return (
+    <Text style={styles.rodape} numberOfLines={1}>
+      Uso interno · Conteúdo confidencial
+    </Text>
+  );
 }
 
 export function Tela({
@@ -41,7 +51,10 @@ export function Tela({
 
   if (!rolavel) {
     return (
-      <View style={[styles.container, conteudoBase, estilo]}>{children}</View>
+      <View style={[styles.container, conteudoBase, estilo]}>
+        {children}
+        <Rodape />
+      </View>
     );
   }
 
@@ -62,6 +75,7 @@ export function Tela({
       }
     >
       {children}
+      <Rodape />
     </ScrollView>
   );
 }
@@ -70,6 +84,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: cores.fundo,
+  },
+  rodape: {
+    ...tipografia.legenda,
+    fontSize: 9,
+    color: cores.textoSecundario,
+    opacity: 0.45,
+    textAlign: 'center',
+    marginTop: espacamento.xl,
   },
 });
 
