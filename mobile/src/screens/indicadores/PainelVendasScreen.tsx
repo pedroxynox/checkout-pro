@@ -229,6 +229,13 @@ export function PainelVendasScreen(): React.ReactElement {
   );
   const porHora: VendasPorHora | undefined = detalheReq.dados;
 
+  // Vendas por hora do dia de referência (valor líquido de cada hora).
+  const diaReq = useRequisicao(
+    () => vendasService.porHora(data, data),
+    [data],
+  );
+  const porHoraDia: VendasPorHora | undefined = diaReq.dados;
+
   // Preenche o campo de meta quando o painel carrega.
   React.useEffect(() => {
     if (painel) {
@@ -277,11 +284,15 @@ export function PainelVendasScreen(): React.ReactElement {
   const horas = porHora?.horas ?? [];
   const dadosBarras = horas.map((h) => ({ rotulo: `${h.hora}h`, valor: h.valor }));
 
+  const horasDia = porHoraDia?.horas ?? [];
+  const dadosDia = horasDia.map((h) => ({ rotulo: `${h.hora}h`, valor: h.valor }));
+
   return (
     <Tela
       aoAtualizar={() => {
         painelReq.recarregar();
         detalheReq.recarregar();
+        diaReq.recarregar();
       }}
       atualizando={painelReq.atualizando || detalheReq.atualizando}
     >
@@ -397,6 +408,29 @@ export function PainelVendasScreen(): React.ReactElement {
               <Text style={styles.metaNota}>Média do faturamento por dia da semana.</Text>
             </Cartao>
           )}
+
+          {/* ----- Vendas por hora do dia (valor líquido) ----- */}
+          <Cartao titulo="Vendas por hora (dia)">
+            <Text style={styles.periodoTexto}>{formatarData(data)}</Text>
+            {diaReq.carregando ? (
+              <Carregando />
+            ) : diaReq.erro ? (
+              <MensagemErro mensagem={diaReq.erro} aoTentarNovamente={diaReq.recarregar} />
+            ) : horasDia.length > 0 ? (
+              <>
+                <Text style={styles.totalPeriodo}>
+                  Total do dia: {formatarMoeda(porHoraDia?.total ?? 0)}
+                </Text>
+                <GraficoBarrasVerticais dados={dadosDia} />
+              </>
+            ) : (
+              <EstadoVazio
+                icone="bar-chart-outline"
+                titulo="Sem vendas no dia"
+                descricao="As vendas são carregadas na seção Importações."
+              />
+            )}
+          </Cartao>
 
           {/* ----- Gestão: meta mensal ----- */}
           {podeEditar && (
