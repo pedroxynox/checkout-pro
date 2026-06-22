@@ -4,7 +4,6 @@ import { ArrecadacaoService } from './arrecadacao.service';
 import {
   CONFIG_ARRECADACAO,
   TipoArrecadacao,
-  inicioDoDia,
   inicioDoMes,
   inicioDoProximoDia,
   inicioDoProximoMes,
