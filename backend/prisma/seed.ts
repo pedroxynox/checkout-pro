@@ -213,8 +213,8 @@ interface SeedInsumo {
 // em R$. A entrada é registrada por embalagem (multiplicada pelo fator) e o
 // saldo/consumo são contados na unidade base.
 const INSUMOS_PADRAO: SeedInsumo[] = [
-  { nome: 'Sacolas', categoria: CategoriaInsumo.SACOLA, unidade: 'sacola', embalagem: 'fardo', fatorEmbalagem: 1000, limiteMinimo: 1000 },
-  { nome: 'Bobina', categoria: CategoriaInsumo.BOBINA, unidade: 'bobina', embalagem: 'caixa', fatorEmbalagem: 20, limiteMinimo: 20 },
+  { nome: 'Sacolas', categoria: CategoriaInsumo.SACOLA, unidade: 'sacola', embalagem: 'fardo', fatorEmbalagem: 1000, limiteMinimo: 50000 },
+  { nome: 'Bobina', categoria: CategoriaInsumo.BOBINA, unidade: 'bobina', embalagem: 'caixa', fatorEmbalagem: 16, limiteMinimo: 16 },
   { nome: 'Pano', categoria: CategoriaInsumo.PANO, unidade: 'metro', embalagem: 'rolo', fatorEmbalagem: 100, limiteMinimo: 100 },
   { nome: 'Álcool', categoria: CategoriaInsumo.ALCOOL, unidade: 'litro', embalagem: 'galão', fatorEmbalagem: 5, limiteMinimo: 5 },
 ];
