@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -14,7 +14,6 @@ import {
   BlocoProcedimento,
   ProcedimentoGuiado,
 } from './procedimentos/procedimentos.types';
-import { FiscaisService } from '../fiscais/fiscais.service';
 
 /** Uma mensagem da conversa exposta ao app. */
 export interface MensagemConversa {
@@ -56,7 +55,6 @@ export class AssistenteService {
     private readonly prisma: PrismaService,
     private readonly gemini: GeminiClient,
     private readonly procedimentos: ProcedimentosService,
-    @Optional() private readonly fiscaisService?: FiscaisService,
   ) {}
 
   /** Data-limite de retenção (mensagens anteriores não são consideradas). */
@@ -103,13 +101,9 @@ export class AssistenteService {
 
     const conversa = await this.obterConversa(usuario.id);
     const recente = conversa.slice(-MAX_HISTORICO);
-    const escalaCtx = this.fiscaisService
-      ? (await this.fiscaisService.contextoEscala()).contexto
-      : undefined;
     const instrucao = montarInstrucaoSistema({
       nomeUsuario: usuario.nome,
       perfil: usuario.perfil,
-      escala: escalaCtx,
     });
     const mensagens: MensagemGemini[] = [
       ...recente.map((m) => ({ papel: m.papel, texto: m.conteudo })),
