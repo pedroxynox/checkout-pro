@@ -210,7 +210,7 @@ export class PedidosRecorrentesService {
           status: 'CONFIRMADA',
           quantidadeAjustada: ajustes?.[id] != null ? ajustes[id] : undefined,
           confirmadaEm: agora,
-          confirmadaPor,
+          confirmadaPor: confirmadoPor,
         },
       });
 

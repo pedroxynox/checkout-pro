@@ -32,7 +32,6 @@ export class FiscaisAlertasService {
   private ultimoAlertaCobertura = 0;
   /** Evita alertar folga automática mais de uma vez por fiscal por mês. */
   private alertasFolgaAutomatica = new Set<string>();
-  private diaAtual = '';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -43,7 +42,6 @@ export class FiscaisAlertasService {
   @Cron('0 0 * * *', { timeZone: 'America/Sao_Paulo' })
   resetarDiario(): void {
     this.alertasIntervaloEnviados.clear();
-    this.diaAtual = new Date().toDateString();
   }
 
   /** Reseta caches mensais no primeiro dia do mês. */

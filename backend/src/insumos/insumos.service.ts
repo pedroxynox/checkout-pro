@@ -9,7 +9,6 @@ import {
   resolverFardo,
   resumoEstoque,
   resumoProativo,
-  ResumoProativo,
   NivelEstoque,
 } from './insumos.domain';
 import { FardoNaoReconhecidoError } from './insumos.errors';
