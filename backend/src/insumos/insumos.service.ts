@@ -302,6 +302,7 @@ export class InsumosService {
       );
       resultado.push({
         ...insumo,
+        saldo: resumo.saldo,
         estoqueBaixo: resumo.estoqueBaixo,
         consumoSemana: resumo.consumoSemana,
         entradaSemana: resumo.entradaSemana,

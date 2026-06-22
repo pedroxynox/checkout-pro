@@ -25,13 +25,12 @@ import {
   Cartao,
   EstadoVazio,
   MensagemErro,
-  SeletorData,
   Tela,
 } from '../../components';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
-import { formatarNumero, hojeISO } from '../../utils/formato';
+import { formatarNumero } from '../../utils/formato';
 
 // ==================== Helpers ====================
 
@@ -101,7 +100,6 @@ export function InsumosScreen({
   const [entradaAberta, setEntradaAberta] = useState(false);
   const [insumoEntrada, setInsumoEntrada] = useState<string | null>(null);
   const [qtdEntrada, setQtdEntrada] = useState('');
-  const [dataEntrada, setDataEntrada] = useState(hojeISO());
   const [registrandoEntrada, setRegistrandoEntrada] = useState(false);
 
   const buscar = useCallback(async () => {
@@ -231,7 +229,6 @@ export function InsumosScreen({
         insumoEntradaObj.id,
         base,
         'ENTRADA',
-        `${dataEntrada}T12:00:00.000Z`,
       );
       setQtdEntrada('');
       await buscar();
@@ -496,11 +493,6 @@ export function InsumosScreen({
                 value={qtdEntrada}
                 onChangeText={setQtdEntrada}
                 placeholder="0"
-              />
-              <SeletorData
-                rotulo="Data da entrada"
-                valor={dataEntrada}
-                aoMudar={setDataEntrada}
               />
               <Botao
                 titulo="Registrar entrada"
