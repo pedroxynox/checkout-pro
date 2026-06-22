@@ -292,17 +292,6 @@ export interface PadraoDiaSemana {
   media: number;
 }
 
-export interface LotacaoHora {
-  hora: number;
-  pctVendas: number;
-  pctEscala: number;
-  /** Média de pessoas escaladas nessa hora num dia típico. */
-  escalados: number;
-  /** Pessoas recomendadas (equipe redistribuída conforme as vendas). */
-  recomendado: number;
-  status: 'OK' | 'FALTA' | 'SOBRA';
-}
-
 /** Painel inteligente consolidado de vendas. */
 export interface PainelVendas {
   metaMensal: number;
@@ -327,7 +316,6 @@ export interface PainelVendas {
   /** Matriz 7x24 (dia da semana x hora) com a média de venda. */
   heatmap: number[][];
   padraoDiaSemana: PadraoDiaSemana[];
-  lotacao: LotacaoHora[];
 }
 
 export interface DetalheArrecadacao {
@@ -706,6 +694,43 @@ export interface GradeOperadores {
   dias: { diaSemana: number; data: string }[];
   operadores: GradeOperador[];
   cobertura: GradeCobertura[];
+}
+
+export interface OperadorAgora {
+  nome: string;
+  entrada: string;
+  saida: string;
+}
+
+/** Tablero "ao vivo": quem deveria estar no caixa agora. */
+export interface AoVivoOperadores {
+  horaLocal: string;
+  dataISO: string;
+  diaSemana: number;
+  disponiveis: number;
+  faltas: number;
+  esperados: number;
+  listaDisponiveis: OperadorAgora[];
+  listaFaltantes: OperadorAgora[];
+}
+
+export interface FaltasPorOperador {
+  id: string;
+  nome: string;
+  quantidade: number;
+}
+
+export interface FaltasPorDiaSemana {
+  diaSemana: number;
+  nome: string;
+  quantidade: number;
+}
+
+/** Analítica de faltas num período. */
+export interface AnaliticaFaltas {
+  total: number;
+  porOperador: FaltasPorOperador[];
+  porDiaSemana: FaltasPorDiaSemana[];
 }
 
 // ----- Notificações (Req 7.3) -----

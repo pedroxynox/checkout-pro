@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { OperadorTurno } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificacoesService } from '../notificacoes/notificacoes.service';
 
 /** Dados para criar/atualizar um turno de operador. */
 export interface TurnoInput {
@@ -47,6 +49,88 @@ export interface GradeSemana {
   cobertura: GradeCobertura[];
 }
 
+/** Operador presente/ausente na franja atual. */
+export interface OperadorAgora {
+  nome: string;
+  entrada: string;
+  saida: string;
+}
+
+/** Tablero "ao vivo": quem deveria estar no caixa agora. */
+export interface AoVivoOperadores {
+  horaLocal: string;
+  dataISO: string;
+  diaSemana: number;
+  /** Quantos deveriam estar agora e não faltaram. */
+  disponiveis: number;
+  /** Quantos deveriam estar agora mas faltaram. */
+  faltas: number;
+  /** Total escalado para esta franja (disponíveis + faltas). */
+  esperados: number;
+  listaDisponiveis: OperadorAgora[];
+  listaFaltantes: OperadorAgora[];
+}
+
+export interface FaltasPorOperador {
+  id: string;
+  nome: string;
+  quantidade: number;
+}
+
+export interface FaltasPorDiaSemana {
+  diaSemana: number;
+  nome: string;
+  quantidade: number;
+}
+
+/** Analítica de faltas num período. */
+export interface AnaliticaFaltas {
+  total: number;
+  porOperador: FaltasPorOperador[];
+  porDiaSemana: FaltasPorDiaSemana[];
+}
+
+const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+/** Cobertura mínima desejada por dia (abaixo disso, alerta). */
+const COBERTURA_MINIMA = 20;
+
+/** "HH:mm" -> minutos desde a meia-noite; null se inválido. */
+function horaMin(hhmm: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
+/** Data/hora atuais no fuso de Brasília (America/Sao_Paulo). */
+function agoraBrasilia(): {
+  dataISO: string;
+  hora: number;
+  minuto: number;
+  diaSemana: number;
+} {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (t: string): string =>
+    partes.find((p) => p.type === t)?.value ?? '00';
+  const ano = get('year');
+  const mes = get('month');
+  const dia = get('day');
+  let hora = parseInt(get('hour'), 10);
+  if (hora === 24) hora = 0;
+  const minuto = parseInt(get('minute'), 10);
+  const dataISO = `${ano}-${mes}-${dia}`;
+  const diaSemana = new Date(`${dataISO}T00:00:00.000Z`).getUTCDay();
+  return { dataISO, hora, minuto, diaSemana };
+}
+
 /** Início da semana (segunda-feira, 00:00 UTC) que contém a data. */
 function inicioDaSemana(data: Date): Date {
   const d = new Date(
@@ -76,7 +160,12 @@ function iso(data: Date): string {
  */
 @Injectable()
 export class OperadorTurnoService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(OperadorTurnoService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly notificacoes?: NotificacoesService,
+  ) {}
 
   /** Lista os operadores ativos, ordenados por folga e horário. */
   listar(): Promise<OperadorTurno[]> {
@@ -224,5 +313,166 @@ export class OperadorTurnoService {
       operadores: gradeOperadores,
       cobertura,
     };
+  }
+
+  /**
+   * Tablero "ao vivo": quem deveria estar no caixa AGORA (turno cobre a hora
+   * local, não é folga hoje). Os marcados como falta não contam em
+   * `disponiveis` — aparecem em `faltas`.
+   */
+  async aoVivo(): Promise<AoVivoOperadores> {
+    const { dataISO, hora, minuto, diaSemana } = agoraBrasilia();
+    const nowMin = hora * 60 + minuto;
+    const operadores = await this.listar();
+    const ids = operadores.map((o) => o.id);
+
+    const diaInicio = new Date(`${dataISO}T00:00:00.000Z`);
+    const diaFim = addDias(diaInicio, 1);
+    const ausencias =
+      ids.length > 0
+        ? await this.prisma.ausencia.findMany({
+            where: { pessoaId: { in: ids }, data: { gte: diaInicio, lt: diaFim } },
+            select: { pessoaId: true },
+          })
+        : [];
+    const faltou = new Set(ausencias.map((a) => a.pessoaId));
+
+    const fds = diaSemana === 5 || diaSemana === 6;
+    const listaDisponiveis: OperadorAgora[] = [];
+    const listaFaltantes: OperadorAgora[] = [];
+
+    for (const op of operadores) {
+      if (op.folgaDiaSemana === diaSemana) continue; // folga hoje
+      const entrada = fds ? op.entradaFds : op.entradaSemana;
+      const saida = fds ? op.saidaFds : op.saidaSemana;
+      const ent = horaMin(entrada);
+      const sai = horaMin(saida);
+      if (ent == null || sai == null) continue;
+      const cobreAgora = nowMin >= ent && nowMin < sai;
+      if (!cobreAgora) continue;
+      if (faltou.has(op.id)) listaFaltantes.push({ nome: op.nome, entrada, saida });
+      else listaDisponiveis.push({ nome: op.nome, entrada, saida });
+    }
+
+    return {
+      horaLocal: `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`,
+      dataISO,
+      diaSemana,
+      disponiveis: listaDisponiveis.length,
+      faltas: listaFaltantes.length,
+      esperados: listaDisponiveis.length + listaFaltantes.length,
+      listaDisponiveis,
+      listaFaltantes,
+    };
+  }
+
+  /**
+   * Analítica de faltas num período: total, ranking por operador e distribuição
+   * por dia da semana (qual dia mais se falta). Resolve nomes dos operadores.
+   */
+  async analiticaFaltas(inicio: Date, fim: Date): Promise<AnaliticaFaltas> {
+    const operadores = await this.prisma.operadorTurno.findMany({
+      select: { id: true, nome: true },
+    });
+    const mapaNome = new Map(operadores.map((o) => [o.id, o.nome]));
+    const ids = operadores.map((o) => o.id);
+    const ausencias =
+      ids.length > 0
+        ? await this.prisma.ausencia.findMany({
+            where: { pessoaId: { in: ids }, data: { gte: inicio, lte: fim } },
+            select: { pessoaId: true, data: true },
+          })
+        : [];
+
+    const porOp = new Map<string, number>();
+    const porDow = new Array<number>(7).fill(0);
+    for (const a of ausencias) {
+      porOp.set(a.pessoaId, (porOp.get(a.pessoaId) ?? 0) + 1);
+      porDow[a.data.getUTCDay()] += 1;
+    }
+
+    const porOperador: FaltasPorOperador[] = Array.from(porOp.entries())
+      .map(([id, quantidade]) => ({
+        id,
+        nome: mapaNome.get(id) ?? id,
+        quantidade,
+      }))
+      .sort((a, b) => b.quantidade - a.quantidade || a.nome.localeCompare(b.nome));
+
+    const porDiaSemana: FaltasPorDiaSemana[] = porDow.map((quantidade, dow) => ({
+      diaSemana: dow,
+      nome: NOMES_DIA[dow],
+      quantidade,
+    }));
+
+    return { total: ausencias.length, porOperador, porDiaSemana };
+  }
+
+  /** Operadores que deveriam trabalhar num dia da semana (não estão de folga). */
+  private async escaladosNoDia(diaSemana: number): Promise<OperadorTurno[]> {
+    const operadores = await this.listar();
+    return operadores.filter((o) => o.folgaDiaSemana !== diaSemana);
+  }
+
+  /**
+   * Alerta semanal de faltas (segunda-feira 08:00 Brasília): envia aos gestores
+   * o resumo das faltas dos últimos 7 dias (ranking e dia com mais faltas).
+   */
+  @Cron('0 8 * * 1', { timeZone: 'America/Sao_Paulo' })
+  async alertaFaltasSemanal(): Promise<void> {
+    if (!this.notificacoes) return;
+    try {
+      const fim = new Date();
+      const inicio = new Date(fim.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const analitica = await this.analiticaFaltas(inicio, fim);
+      if (analitica.total === 0) return;
+      const gestores = await this.notificacoes.gestores();
+      if (gestores.length === 0) return;
+
+      const topo = analitica.porOperador
+        .slice(0, 3)
+        .map((o) => `${o.nome} (${o.quantidade})`)
+        .join(', ');
+      const diaPior = [...analitica.porDiaSemana].sort(
+        (a, b) => b.quantidade - a.quantidade,
+      )[0];
+      await this.notificacoes.enviar(gestores, {
+        titulo: '📋 Faltas da semana',
+        mensagem: `${analitica.total} falta(s) nos últimos 7 dias. Mais faltas: ${topo}. Dia com mais faltas: ${diaPior.nome}.`,
+      });
+    } catch (erro) {
+      this.logger.warn(`Falha no alerta semanal de faltas: ${String(erro)}`);
+    }
+  }
+
+  /**
+   * Aviso proativo de cobertura crítica (todo dia 07:00 Brasília): se hoje a
+   * cobertura (escalados − faltas) ficar abaixo do mínimo, avisa os gestores.
+   */
+  @Cron('0 7 * * *', { timeZone: 'America/Sao_Paulo' })
+  async avisoCoberturaCritica(): Promise<void> {
+    if (!this.notificacoes) return;
+    try {
+      const { dataISO, diaSemana } = agoraBrasilia();
+      const escalados = await this.escaladosNoDia(diaSemana);
+      const ids = escalados.map((o) => o.id);
+      if (ids.length === 0) return;
+      const diaInicio = new Date(`${dataISO}T00:00:00.000Z`);
+      const diaFim = addDias(diaInicio, 1);
+      const faltas = await this.prisma.ausencia.count({
+        where: { pessoaId: { in: ids }, data: { gte: diaInicio, lt: diaFim } },
+      });
+      const disponiveis = escalados.length - faltas;
+      if (disponiveis < COBERTURA_MINIMA) {
+        const gestores = await this.notificacoes.gestores();
+        if (gestores.length === 0) return;
+        await this.notificacoes.enviar(gestores, {
+          titulo: '⚠️ Cobertura baixa hoje',
+          mensagem: `Hoje (${NOMES_DIA[diaSemana]}) há ${disponiveis} operadores no caixa — abaixo do mínimo de ${COBERTURA_MINIMA}${faltas > 0 ? ` (${faltas} falta(s))` : ''}.`,
+        });
+      }
+    } catch (erro) {
+      this.logger.warn(`Falha no aviso de cobertura: ${String(erro)}`);
+    }
   }
 }

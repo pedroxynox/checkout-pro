@@ -14,9 +14,12 @@ import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
   GradeOperadoresDto,
   ImportarTurnosDto,
+  PeriodoAusenciasDto,
   TurnoOperadorDto,
 } from './dto/operadores.dto';
 import {
+  AnaliticaFaltas,
+  AoVivoOperadores,
   GradeSemana,
   OperadorTurnoService,
 } from './operador-turno.service';
@@ -35,6 +38,21 @@ export class OperadorTurnoController {
   @Get('grade')
   grade(@Query() dto: GradeOperadoresDto): Promise<GradeSemana> {
     return this.service.grade(dto.data ? new Date(dto.data) : new Date());
+  }
+
+  /** Tablero "ao vivo": quem deveria estar no caixa agora. */
+  @Get('ao-vivo')
+  aoVivo(): Promise<AoVivoOperadores> {
+    return this.service.aoVivo();
+  }
+
+  /** Analítica de faltas num período (ranking + dia que mais se falta). */
+  @Get('faltas/analitica')
+  analiticaFaltas(@Query() periodo: PeriodoAusenciasDto): Promise<AnaliticaFaltas> {
+    return this.service.analiticaFaltas(
+      new Date(periodo.inicio),
+      new Date(periodo.fim),
+    );
   }
 
   /** Lista os operadores (turno fixo). */

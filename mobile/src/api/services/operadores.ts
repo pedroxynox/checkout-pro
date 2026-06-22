@@ -3,6 +3,8 @@ import { apiClient } from '../client';
 import {
   Ausencia,
   ContagemTurno,
+  AnaliticaFaltas,
+  AoVivoOperadores,
   GradeOperadores,
   ItemRelatorioAusencia,
   Operador,
@@ -75,6 +77,19 @@ export const operadoresService = {
       '/quadro-operadores/grade',
       data ? { data } : undefined,
     );
+  },
+
+  /** Tablero "ao vivo": quem deveria estar no caixa agora. */
+  aoVivo(): Promise<AoVivoOperadores> {
+    return apiClient.get<AoVivoOperadores>('/quadro-operadores/ao-vivo');
+  },
+
+  /** Analítica de faltas num período (ranking + dia que mais se falta). */
+  analiticaFaltas(inicio: string, fim: string): Promise<AnaliticaFaltas> {
+    return apiClient.get<AnaliticaFaltas>('/quadro-operadores/faltas/analitica', {
+      inicio,
+      fim,
+    });
   },
 
   /** Lista os turnos fixos dos operadores. */

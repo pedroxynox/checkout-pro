@@ -60,16 +60,6 @@ const PAINEL = {
     nome: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][dow],
     media: 10000,
   })),
-  lotacao: [
-    {
-      hora: 9,
-      pctVendas: 0.7,
-      pctEscala: 0.3,
-      escalados: 1,
-      recomendado: 2,
-      status: 'FALTA' as const,
-    },
-  ],
 };
 
 describe('PainelVendasScreen', () => {

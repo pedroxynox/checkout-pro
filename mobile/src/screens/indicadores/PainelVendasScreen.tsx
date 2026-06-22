@@ -8,17 +8,15 @@
  *  - Tendência dos últimos 30 dias.
  *  - Análise: curva horária típica, heatmap hora x dia da semana e padrão por
  *    dia da semana.
- *  - Lotação: recomendação de equipe por hora, cruzando a curva de vendas com
- *    a escala consolidada (sinaliza horas com falta/sobra de gente).
  *  - Gestão: edição da meta mensal (perfis com PAINEL_VENDAS_EDITAR).
  *
- * O detalhe livre por hora/período continua disponível embaixo.
+ * O detalhe livre por hora/período (valor líquido de cada hora) fica embaixo.
  */
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { vendasService } from '../../api/services';
-import { LotacaoHora, PainelVendas, VendasPorHora } from '../../api/types';
+import { PainelVendas, VendasPorHora } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import {
   Aviso,
@@ -208,48 +206,6 @@ function Heatmap({
   );
 }
 
-/** Item da recomendação de lotação por hora. */
-function LinhaLotacao({ item }: { item: LotacaoHora }): React.ReactElement {
-  const cor =
-    item.status === 'FALTA'
-      ? cores.vermelho
-      : item.status === 'SOBRA'
-        ? cores.amarelo
-        : cores.verde;
-  const texto =
-    item.status === 'FALTA' ? 'Falta' : item.status === 'SOBRA' ? 'Sobra' : 'OK';
-  return (
-    <View style={styles.lotLinha}>
-      <Text style={styles.lotHora}>
-        {item.hora}h–{item.hora + 1}h
-      </Text>
-      <View style={styles.lotBarras}>
-        <Text style={styles.lotInfo}>
-          vendas {formatarPercentual(item.pctVendas * 100, 0)} · equipe{' '}
-          {formatarPercentual(item.pctEscala * 100, 0)} ({item.escalados})
-        </Text>
-        <View style={styles.lotComparaBarra}>
-          <View
-            style={[
-              styles.lotBarraVendas,
-              { width: `${Math.min(100, item.pctVendas * 100)}%` as `${number}%` },
-            ]}
-          />
-          <View
-            style={[
-              styles.lotBarraEquipe,
-              { width: `${Math.min(100, item.pctEscala * 100)}%` as `${number}%` },
-            ]}
-          />
-        </View>
-      </View>
-      <View style={[styles.lotChip, { backgroundColor: cor }]}>
-        <Text style={styles.lotChipTexto}>{texto}</Text>
-      </View>
-    </View>
-  );
-}
-
 export function PainelVendasScreen(): React.ReactElement {
   const { podeAcessar } = useAuth();
   const podeEditar = podeAcessar('PAINEL_VENDAS_EDITAR');
@@ -317,11 +273,6 @@ export function PainelVendasScreen(): React.ReactElement {
         return { rotulo: NOMES_SEMANA[dow], valor: p?.media ?? 0 };
       }).filter((d) => d.valor > 0)
     : [];
-
-  const lotacaoFalta = (painel?.lotacao ?? []).filter((l) => l.status === 'FALTA');
-  const lotacaoOperacional = (painel?.lotacao ?? []).filter(
-    (l) => l.pctVendas > 0 || l.escalados > 0,
-  );
 
   const horas = porHora?.horas ?? [];
   const dadosBarras = horas.map((h) => ({ rotulo: `${h.hora}h`, valor: h.valor }));
@@ -444,28 +395,6 @@ export function PainelVendasScreen(): React.ReactElement {
             <Cartao titulo="Padrão por dia da semana">
               <GraficoBarrasVerticais dados={dadosPadrao} />
               <Text style={styles.metaNota}>Média do faturamento por dia da semana.</Text>
-            </Cartao>
-          )}
-
-          {/* ----- Recomendação de lotação por hora ----- */}
-          {lotacaoOperacional.length > 0 && (
-            <Cartao titulo="Lotação recomendada por hora">
-              {lotacaoFalta.length > 0 ? (
-                <Aviso
-                  texto={`Atenção: ${lotacaoFalta
-                    .map((l) => `${l.hora}h`)
-                    .join(', ')} concentram vendas mas têm pouca equipe escalada.`}
-                />
-              ) : (
-                <Aviso texto="A escala está bem distribuída em relação às vendas por hora." />
-              )}
-              {lotacaoOperacional.map((l) => (
-                <LinhaLotacao key={l.hora} item={l} />
-              ))}
-              <Text style={styles.metaNota}>
-                Compara a participação de vendas de cada hora com a participação da equipe na
-                escala. Barra verde = vendas, azul = equipe.
-              </Text>
             </Cartao>
           )}
 
@@ -650,51 +579,6 @@ const styles = StyleSheet.create({
     height: 16,
     marginHorizontal: 1,
     borderRadius: 3,
-  },
-  // Lotação
-  lotLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: espacamento.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: cores.divisor,
-  },
-  lotHora: {
-    ...tipografia.rotulo,
-    color: cores.texto,
-    width: 72,
-  },
-  lotBarras: {
-    flex: 1,
-    paddingRight: espacamento.sm,
-  },
-  lotInfo: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    marginBottom: 4,
-  },
-  lotComparaBarra: {
-    gap: 2,
-  },
-  lotBarraVendas: {
-    height: 5,
-    borderRadius: raio.pill,
-    backgroundColor: cores.verde,
-  },
-  lotBarraEquipe: {
-    height: 5,
-    borderRadius: raio.pill,
-    backgroundColor: cores.primaria,
-  },
-  lotChip: {
-    paddingHorizontal: espacamento.sm,
-    paddingVertical: 2,
-    borderRadius: raio.pill,
-  },
-  lotChipTexto: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
   // Detalhe
   totalPeriodo: {

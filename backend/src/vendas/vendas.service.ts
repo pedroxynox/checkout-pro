@@ -2,16 +2,11 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FechamentoService } from '../fechamento/fechamento.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
-import {
-  EscalaEntry as EscalaEntryDom,
-  escalaConsolidada,
-} from '../fiscais/escala.domain';
 import { LinhaVendaHora } from './vendas.parser';
 import {
   NOMES_DIA_SEMANA,
   deslocarMeses,
   diasNoMes,
-  horaParaMinutos,
   inicioDaProximaSemana,
   inicioDaSemana,
   inicioDoDia,
@@ -77,19 +72,6 @@ export interface PadraoDiaSemana {
   media: number;
 }
 
-export interface LotacaoHora {
-  hora: number;
-  /** Participação da hora nas vendas [0, 1]. */
-  pctVendas: number;
-  /** Participação da hora na escala [0, 1]. */
-  pctEscala: number;
-  /** Média de pessoas escaladas nessa hora num dia típico. */
-  escalados: number;
-  /** Pessoas recomendadas (redistribuindo a equipe conforme as vendas). */
-  recomendado: number;
-  status: 'OK' | 'FALTA' | 'SOBRA';
-}
-
 export interface PainelVendas {
   metaMensal: number;
   /** Faturamento do mês até a data de referência. */
@@ -114,7 +96,6 @@ export interface PainelVendas {
   /** Matriz 7x24 (dia da semana x hora) com a média de venda. */
   heatmap: number[][];
   padraoDiaSemana: PadraoDiaSemana[];
-  lotacao: LotacaoHora[];
 }
 
 function arredondar(n: number): number {
@@ -136,8 +117,8 @@ const JANELA_PERFIL_DIAS = 90;
  * (substituindo o dia), mantém o total diário em `VendaDiaria` (que alimenta
  * os percentuais dos indicadores) e fornece análises inteligentes: totais por
  * período, distribuição por hora, projeção de fechamento, comparativos por
- * data, tendência, curva horária típica, heatmap hora x dia da semana, padrão
- * por dia da semana e recomendação de lotação cruzando com a escala.
+ * data, tendência, curva horária típica, heatmap hora x dia da semana e padrão
+ * por dia da semana.
  */
 @Injectable()
 export class VendasService {
@@ -286,8 +267,7 @@ export class VendasService {
   /**
    * Painel inteligente consolidado de vendas para a data de referência
    * (padrão: hoje): meta e projeção de fechamento, comparativos por data,
-   * tendência, curva horária típica, heatmap, padrão por dia da semana e
-   * recomendação de lotação por hora.
+   * tendência, curva horária típica, heatmap e padrão por dia da semana.
    */
   async painel(dataRef: Date = new Date()): Promise<PainelVendas> {
     const ref = inicioDoDia(dataRef);
@@ -382,9 +362,6 @@ export class VendasService {
       this.calcularPerfilHorario(horasPerfil);
     const padraoDiaSemana = this.calcularPadraoDiaSemana(diariosPerfil);
 
-    // --- Recomendação de lotação por hora (cruza com a escala) ---
-    const lotacao = await this.calcularLotacao(curvaHoraria);
-
     return {
       metaMensal,
       arrecadadoMes,
@@ -400,7 +377,6 @@ export class VendasService {
       horaPico,
       heatmap,
       padraoDiaSemana,
-      lotacao,
     };
   }
 
@@ -476,61 +452,6 @@ export class VendasService {
       nome: NOMES_DIA_SEMANA[dow],
       media: arredondar(cont[dow] > 0 ? s / cont[dow] : 0),
     }));
-  }
-
-  /**
-   * Recomendação de lotação por hora: cruza a participação de vendas de cada
-   * hora (curva típica) com a média de pessoas escaladas naquela hora (escala
-   * consolidada de todos os dias da semana). Sinaliza FALTA (hora com muita
-   * venda e pouca gente) ou SOBRA (o oposto).
-   */
-  private async calcularLotacao(
-    curvaHoraria: PontoCurvaHora[],
-  ): Promise<LotacaoHora[]> {
-    const entries = (await this.prisma.escalaEntry.findMany()) as unknown as EscalaEntryDom[];
-
-    // Média de pessoas cobrindo cada hora num dia típico (média entre os 7 dias).
-    const coberturaHora = new Array<number>(24).fill(0);
-    for (let dow = 0; dow < 7; dow++) {
-      const itens = escalaConsolidada(entries, dow);
-      for (const item of itens) {
-        const ef = item.efetiva;
-        if (ef === 'FOLGA') continue;
-        const ent = horaParaMinutos(ef.entrada);
-        const sai = horaParaMinutos(ef.saida);
-        if (ent == null || sai == null || sai <= ent) continue;
-        for (let h = 0; h < 24; h++) {
-          // A pessoa cobre a hora h se o turno se sobrepõe ao intervalo [h, h+1).
-          if (ent < (h + 1) * 60 && sai > h * 60) {
-            coberturaHora[h] += 1;
-          }
-        }
-      }
-    }
-    const escaladosHora = coberturaHora.map((c) => c / 7);
-    const totalEscalados = escaladosHora.reduce((s, v) => s + v, 0);
-
-    const lotacao: LotacaoHora[] = [];
-    for (let h = 0; h < 24; h++) {
-      const pctVendas = curvaHoraria[h]?.pct ?? 0;
-      const escalados = escaladosHora[h];
-      // Inclui apenas horas operacionais (com venda ou com gente escalada).
-      if (pctVendas <= 0 && escalados <= 0) continue;
-      const pctEscala = totalEscalados > 0 ? escalados / totalEscalados : 0;
-      const recomendado = arredondar(totalEscalados * pctVendas);
-      const diff = pctVendas - pctEscala;
-      const status: LotacaoHora['status'] =
-        diff > 0.03 ? 'FALTA' : diff < -0.03 ? 'SOBRA' : 'OK';
-      lotacao.push({
-        hora: h,
-        pctVendas,
-        pctEscala,
-        escalados: arredondar(escalados),
-        recomendado,
-        status,
-      });
-    }
-    return lotacao;
   }
 
   // --------------------------- Notificações -------------------------------
