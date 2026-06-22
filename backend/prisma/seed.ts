@@ -220,6 +220,14 @@ const INSUMOS_PADRAO: SeedInsumo[] = [
 ];
 
 async function seedInsumos(): Promise<void> {
+  // Estoque inicial em embalagens.
+  const ESTOQUE_INICIAL: Record<string, number> = {
+    'Sacolas': 200,    // 200 fardos = 200.000 sacolas
+    'Bobina': 6,       // 6 caixas = 96 bobinas
+    'Pano': 2,         // 2 rolos = 200 metros
+    'Álcool': 4,       // 4 galões = 20 litros
+  };
+
   for (const i of INSUMOS_PADRAO) {
     const existente = await prisma.insumo.findFirst({ where: { nome: i.nome } });
     if (existente) {
@@ -234,8 +242,24 @@ async function seedInsumos(): Promise<void> {
           ativo: true,
         },
       });
+      // Inserir movimento inicial se não existe nenhum.
+      const temMovimento = await prisma.movimentoEstoque.findFirst({
+        where: { insumoId: existente.id },
+      });
+      if (!temMovimento) {
+        const embalagens = ESTOQUE_INICIAL[i.nome] ?? 0;
+        if (embalagens > 0) {
+          await prisma.movimentoEstoque.create({
+            data: {
+              insumoId: existente.id,
+              delta: embalagens * i.fatorEmbalagem,
+              origem: 'ESTOQUE_INICIAL',
+            },
+          });
+        }
+      }
     } else {
-      await prisma.insumo.create({
+      const insumo = await prisma.insumo.create({
         data: {
           nome: i.nome,
           categoria: i.categoria,
@@ -246,6 +270,17 @@ async function seedInsumos(): Promise<void> {
           saldo: 0,
         },
       });
+      // Inserir movimento inicial.
+      const embalagens = ESTOQUE_INICIAL[i.nome] ?? 0;
+      if (embalagens > 0) {
+        await prisma.movimentoEstoque.create({
+          data: {
+            insumoId: insumo.id,
+            delta: embalagens * i.fatorEmbalagem,
+            origem: 'ESTOQUE_INICIAL',
+          },
+        });
+      }
     }
   }
 }

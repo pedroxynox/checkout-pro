@@ -53,6 +53,17 @@ function iconeNivel(nivel: NivelEstoque): keyof typeof Ionicons.glyphMap {
   return 'checkmark-circle';
 }
 
+/** Ícone representativo de cada categoria de insumo. */
+function iconeCategoria(categoria: string): keyof typeof Ionicons.glyphMap {
+  switch (categoria) {
+    case 'SACOLA': return 'bag-handle';
+    case 'BOBINA': return 'receipt';
+    case 'PANO': return 'shirt';
+    case 'ALCOOL': return 'flask';
+    default: return 'cube';
+  }
+}
+
 function rotuloNivel(nivel: NivelEstoque): string {
   if (nivel === 'CRITICO') return 'Crítico';
   if (nivel === 'ATENCAO') return 'Atenção';
@@ -321,13 +332,16 @@ export function InsumosScreen({
               {/* Cabeçalho: nome + badge nível */}
               <View style={styles.cardTopo}>
                 <View style={[styles.iconeNivel, { backgroundColor: fundoNivel(i.nivel) }]}>
-                  <Ionicons name={iconeNivel(i.nivel)} size={20} color={corNivel(i.nivel)} />
+                  <Ionicons name={iconeCategoria(i.categoria)} size={20} color={corNivel(i.nivel)} />
                 </View>
                 <View style={styles.cardNomeArea}>
                   <Text style={styles.cardNome}>{capitalizar(i.nome)}</Text>
-                  <Text style={[styles.cardNivel, { color: corNivel(i.nivel) }]}>
-                    {rotuloNivel(i.nivel)}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name={iconeNivel(i.nivel)} size={12} color={corNivel(i.nivel)} />
+                    <Text style={[styles.cardNivel, { color: corNivel(i.nivel) }]}>
+                      {rotuloNivel(i.nivel)}
+                    </Text>
+                  </View>
                 </View>
                 <View style={[styles.badgeNivel, { backgroundColor: fundoNivel(i.nivel) }]}>
                   <Text style={[styles.badgeNivelTexto, { color: corNivel(i.nivel) }]}>
