@@ -157,67 +157,67 @@ export function IndicadoresScreen({
                 </View>
               </View>
 
-              {painel.alertas.map((a, i) => (
-                <Pressable
-                  key={`${a.categoria}-${a.tipo}-${i}`}
-                  onPress={() => irParaDetalhe(a.tipo)}
-                  style={[
-                    styles.alertaItem,
-                    { borderLeftColor: a.severidade === 'CRITICO' ? cores.vermelho : cores.amarelo },
-                  ]}
-                >
-                  <View style={styles.alertaLinhaTopo}>
-                    <Text style={styles.alertaEmoji}>
-                      {a.severidade === 'CRITICO' ? '🔴' : '🟡'}
-                      {a.categoria === 'OPERADOR' ? ' 👤' : ''}
-                    </Text>
-                    <Text style={styles.alertaTitulo} numberOfLines={1}>
-                      {a.titulo}
-                    </Text>
-                    {a.tendencia && (
-                      <Text
-                        style={[
-                          styles.alertaTendencia,
-                          {
-                            color:
-                              a.tendencia === 'PIORANDO'
-                                ? cores.vermelho
-                                : a.tendencia === 'MELHORANDO'
-                                  ? cores.verde
-                                  : cores.textoSecundario,
-                          },
-                        ]}
-                      >
-                        {a.tendencia === 'PIORANDO' ? '↑ piorando' : a.tendencia === 'MELHORANDO' ? '↓ melhorando' : '→ estável'}
+              {painel.alertas.map((a, i) => {
+                const extras = [
+                  a.categoria === 'OPERADOR' &&
+                  a.ticketMedio != null &&
+                  a.operadorItens != null &&
+                  a.operadorItens > 0
+                    ? `ticket ${formatarMoeda(a.ticketMedio)}`
+                    : null,
+                  a.autorizadoPor ? `autoriz.: ${a.autorizadoPor}` : null,
+                  a.projecaoTexto ?? null,
+                  a.detalheTendencia ?? null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ');
+                return (
+                  <Pressable
+                    key={`${a.categoria}-${a.tipo}-${i}`}
+                    onPress={() => irParaDetalhe(a.tipo)}
+                    style={[
+                      styles.alertaItem,
+                      { borderLeftColor: a.severidade === 'CRITICO' ? cores.vermelho : cores.amarelo },
+                    ]}
+                  >
+                    <View style={styles.alertaLinhaTopo}>
+                      <Text style={styles.alertaEmoji}>
+                        {a.severidade === 'CRITICO' ? '🔴' : '🟡'}
+                        {a.categoria === 'OPERADOR' ? ' 👤' : ''}
                       </Text>
-                    )}
-                  </View>
+                      <Text style={styles.alertaTitulo} numberOfLines={1}>
+                        {a.titulo}
+                      </Text>
+                      {a.tendencia && (
+                        <Text
+                          style={[
+                            styles.alertaTendencia,
+                            {
+                              color:
+                                a.tendencia === 'PIORANDO'
+                                  ? cores.vermelho
+                                  : a.tendencia === 'MELHORANDO'
+                                    ? cores.verde
+                                    : cores.textoSecundario,
+                            },
+                          ]}
+                        >
+                          {a.tendencia === 'PIORANDO' ? '↑' : a.tendencia === 'MELHORANDO' ? '↓' : '→'}
+                        </Text>
+                      )}
+                    </View>
 
-                  <Text style={styles.alertaMensagem}>{a.mensagem}</Text>
-
-                  {a.categoria === 'OPERADOR' && a.ticketMedio != null && a.operadorItens != null && a.operadorItens > 0 && (
-                    <Text style={styles.alertaSub}>
-                      Ticket médio do cancelamento: {formatarMoeda(a.ticketMedio)}
+                    <Text style={styles.alertaMensagem} numberOfLines={2}>
+                      {a.mensagem}
                     </Text>
-                  )}
-                  {a.autorizadoPor && (
-                    <Text style={styles.alertaSub}>
-                      Maior valor autorizado por: {a.autorizadoPor}
-                    </Text>
-                  )}
-                  {a.projecaoTexto && (
-                    <Text style={styles.alertaSub}>{a.projecaoTexto}</Text>
-                  )}
-                  {a.detalheTendencia && (
-                    <Text style={styles.alertaSub}>{a.detalheTendencia}</Text>
-                  )}
-
-                  <View style={styles.alertaAcao}>
-                    <Ionicons name="bulb-outline" size={13} color={cores.primaria} />
-                    <Text style={styles.alertaAcaoTexto}>{a.acaoSugerida}</Text>
-                  </View>
-                </Pressable>
-              ))}
+                    {extras ? (
+                      <Text style={styles.alertaSub} numberOfLines={1}>
+                        {extras}
+                      </Text>
+                    ) : null}
+                  </Pressable>
+                );
+              })}
             </View>
           )}
 
@@ -303,14 +303,14 @@ const styles = StyleSheet.create({
   atencaoCard: {
     backgroundColor: cores.vermelhoFundo,
     borderRadius: raio.lg,
-    padding: espacamento.lg,
+    padding: espacamento.md,
     marginBottom: espacamento.md,
   },
   atencaoTopo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: espacamento.xs,
-    marginBottom: espacamento.sm,
+    marginBottom: espacamento.xs,
   },
   atencaoTitulo: {
     ...tipografia.rotulo,
@@ -334,10 +334,11 @@ const styles = StyleSheet.create({
   },
   alertaItem: {
     backgroundColor: cores.superficie,
-    borderRadius: raio.md,
-    padding: espacamento.md,
-    marginTop: espacamento.sm,
-    borderLeftWidth: 4,
+    borderRadius: raio.sm,
+    paddingHorizontal: espacamento.md,
+    paddingVertical: espacamento.sm,
+    marginTop: espacamento.xs,
+    borderLeftWidth: 3,
   },
   alertaLinhaTopo: {
     flexDirection: 'row',
@@ -345,44 +346,29 @@ const styles = StyleSheet.create({
     gap: espacamento.xs,
   },
   alertaEmoji: {
-    fontSize: 13,
+    fontSize: 11,
   },
   alertaTitulo: {
-    ...tipografia.rotulo,
+    ...tipografia.legenda,
     color: cores.texto,
     fontWeight: '700',
     flex: 1,
   },
   alertaTendencia: {
-    ...tipografia.legenda,
     fontWeight: '700',
-    fontSize: 11,
+    fontSize: 13,
   },
   alertaMensagem: {
     ...tipografia.legenda,
     color: cores.texto,
-    marginTop: 4,
+    fontSize: 11,
+    marginTop: 2,
   },
   alertaSub: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  alertaAcao: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: espacamento.sm,
-    paddingTop: espacamento.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: cores.divisor,
-  },
-  alertaAcaoTexto: {
-    ...tipografia.legenda,
-    color: cores.primaria,
-    fontSize: 11,
-    flex: 1,
+    fontSize: 10,
+    marginTop: 1,
   },
   tudoCertoCard: {
     flexDirection: 'row',
