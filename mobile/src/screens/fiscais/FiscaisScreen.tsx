@@ -122,11 +122,25 @@ function timerCard(desde: string | null, status: StatusFiscal, _tick: number): s
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-/** Obtiene las iniciales de un nombre (máx 2 letras). */
-function iniciais(nome: string): string {
-  const partes = nome.trim().split(/\s+/);
-  if (partes.length >= 2) return (partes[0][0] + partes[1][0]).toUpperCase();
-  return nome.slice(0, 2).toUpperCase();
+/** Obtiene un ícono de avatar femenino aleatorio (pero estable por nombre). */
+function avatarFemenino(nome: string): keyof typeof Ionicons.glyphMap {
+  const opcoes: (keyof typeof Ionicons.glyphMap)[] = [
+    'person-circle',
+    'person-circle-outline',
+    'happy',
+    'happy-outline',
+    'flower',
+    'flower-outline',
+    'heart-circle',
+    'heart-circle-outline',
+    'star-circle' as unknown as keyof typeof Ionicons.glyphMap,
+  ];
+  // Hash simple del nombre para selección estable.
+  let hash = 0;
+  for (let i = 0; i < nome.length; i++) {
+    hash = ((hash << 5) - hash + nome.charCodeAt(i)) | 0;
+  }
+  return opcoes[Math.abs(hash) % opcoes.length];
 }
 
 export function FiscaisScreen({
@@ -472,11 +486,13 @@ export function FiscaisScreen({
           key={f.fiscalId}
           style={[styles.cardFiscal, { borderLeftColor: corStatus(f.status) }]}
         >
-          {/* Avatar com iniciais */}
+          {/* Avatar femenino */}
           <View style={[styles.avatar, { backgroundColor: corFundoStatus(f.status) }]}>
-            <Text style={[styles.avatarTexto, { color: corStatus(f.status) }]}>
-              {iniciais(f.primeiroNome)}
-            </Text>
+            <Ionicons
+              name={avatarFemenino(f.primeiroNome)}
+              size={24}
+              color={corStatus(f.status)}
+            />
           </View>
           <View style={styles.cardInfo}>
             <Text style={styles.cardNome}>{f.primeiroNome}</Text>
@@ -736,10 +752,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarTexto: {
-    fontSize: 14,
-    fontWeight: '800',
   },
   cardInfo: {
     flex: 1,
