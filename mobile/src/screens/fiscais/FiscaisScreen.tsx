@@ -122,25 +122,9 @@ function timerCard(desde: string | null, status: StatusFiscal, _tick: number): s
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-/** Obtiene un ícono de avatar femenino aleatorio (pero estable por nombre). */
-function avatarFemenino(nome: string): keyof typeof Ionicons.glyphMap {
-  const opcoes: (keyof typeof Ionicons.glyphMap)[] = [
-    'person-circle',
-    'person-circle-outline',
-    'happy',
-    'happy-outline',
-    'flower',
-    'flower-outline',
-    'heart-circle',
-    'heart-circle-outline',
-    'star-circle' as unknown as keyof typeof Ionicons.glyphMap,
-  ];
-  // Hash simple del nombre para selección estable.
-  let hash = 0;
-  for (let i = 0; i < nome.length; i++) {
-    hash = ((hash << 5) - hash + nome.charCodeAt(i)) | 0;
-  }
-  return opcoes[Math.abs(hash) % opcoes.length];
+/** Avatar fijo femenino para todas las fiscales. */
+function avatarIcone(): keyof typeof Ionicons.glyphMap {
+  return 'person-circle';
 }
 
 export function FiscaisScreen({
@@ -489,7 +473,7 @@ export function FiscaisScreen({
           {/* Avatar femenino */}
           <View style={[styles.avatar, { backgroundColor: corFundoStatus(f.status) }]}>
             <Ionicons
-              name={avatarFemenino(f.primeiroNome)}
+              name={avatarIcone()}
               size={24}
               color={corStatus(f.status)}
             />

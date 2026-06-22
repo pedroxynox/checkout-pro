@@ -546,7 +546,7 @@ export class FiscaisService {
 
   /** Verifica se o fiscal está de folga num dia (baseado na escala). */
   private async isFolgaHoje(fiscalId: string, dia: Date = new Date()): Promise<boolean> {
-    const diaSemana = dia.getDay();
+    const diaSemana = this.diaSemanaEmBrasilia(dia);
     const escala = await this.prisma.escalaEntry.findFirst({
       where: { funcionarioId: fiscalId, diaSemana, folga: true },
     });
@@ -555,7 +555,7 @@ export class FiscaisService {
 
   /** Lista de fiscais que estão de folga hoje. */
   async folgaHoje(dia: Date = new Date()): Promise<ItemFolga[]> {
-    const diaSemana = dia.getDay();
+    const diaSemana = this.diaSemanaEmBrasilia(dia);
     const escalas = await this.prisma.escalaEntry.findMany({
       where: { diaSemana, folga: true },
     });
@@ -570,6 +570,13 @@ export class FiscaisService {
       fiscalId: f.id,
       primeiroNome: primeiroNome(f.nome),
     }));
+  }
+
+  /** Retorna o dia da semana (0=Dom..6=Sáb) no fuso de Brasília (UTC-3). */
+  private diaSemanaEmBrasilia(data: Date = new Date()): number {
+    // Brasília = UTC-3. Subtrai 3 horas para obter a data/hora local.
+    const emBrasilia = new Date(data.getTime() - 3 * 60 * 60 * 1000);
+    return emBrasilia.getUTCDay();
   }
 
   /** Agrupa registros (linha do banco) por fiscalId, mantendo a ordem. */

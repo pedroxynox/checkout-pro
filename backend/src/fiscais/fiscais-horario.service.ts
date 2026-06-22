@@ -49,7 +49,9 @@ export class FiscaisHorarioService {
     }
 
     const agora = new Date();
-    const diaSemana = agora.getDay();
+    // Dia da semana em Brasília (UTC-3).
+    const emBrasilia = new Date(agora.getTime() - 3 * 60 * 60 * 1000);
+    const diaSemana = emBrasilia.getUTCDay();
 
     // Buscar escalas do dia atual (apenas quem não está de folga).
     const escalas = await this.prisma.escalaEntry.findMany({
