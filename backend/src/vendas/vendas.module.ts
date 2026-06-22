@@ -1,19 +1,22 @@
 import { Module } from '@nestjs/common';
 import { FechamentoModule } from '../fechamento/fechamento.module';
+import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { VendasController } from './vendas.controller';
 import { VendasService } from './vendas.service';
 
 /**
  * Módulo de Vendas por hora (Painel de Vendas): importa o arquivo .txt diário,
  * mantém o total em VendaDiaria (usado pelos indicadores) e fornece os totais
- * por período e a distribuição por hora para os gráficos. PrismaService é
- * global.
+ * por período, a distribuição por hora e o painel inteligente (projeção,
+ * comparativos, tendência, curva típica, heatmap, padrão e lotação).
  *
  * Importa o FechamentoModule para concluir e avisar os gestores quando todos
- * os arquivos do dia são resolvidos.
+ * os arquivos do dia são resolvidos, e o NotificacoesModule para os avisos
+ * inteligentes de vendas (recorde, queda, meta em risco). PrismaService é
+ * global.
  */
 @Module({
-  imports: [FechamentoModule],
+  imports: [FechamentoModule, NotificacoesModule],
   providers: [VendasService],
   controllers: [VendasController],
   exports: [VendasService],

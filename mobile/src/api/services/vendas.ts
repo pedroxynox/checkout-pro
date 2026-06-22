@@ -8,6 +8,8 @@
 import { Platform } from 'react-native';
 import { apiClient } from '../client';
 import {
+  ConfigVendas,
+  PainelVendas,
   ResultadoUploadVendas,
   ResumoVendas,
   StatusVendas,
@@ -62,5 +64,20 @@ export const vendasService = {
   /** Status (enviado/pendente) das vendas no dia. */
   status(data: string): Promise<StatusVendas> {
     return apiClient.get<StatusVendas>('/vendas/status', { data });
+  },
+
+  /** Painel inteligente (projeção, comparativos, tendência, curva, lotação). */
+  painel(data?: string): Promise<PainelVendas> {
+    return apiClient.get<PainelVendas>('/vendas/painel', data ? { data } : undefined);
+  },
+
+  /** Configuração do painel (meta mensal). */
+  config(): Promise<ConfigVendas> {
+    return apiClient.get<ConfigVendas>('/vendas/config');
+  },
+
+  /** Atualiza a meta mensal de faturamento. */
+  definirConfig(dados: { metaMensal?: number }): Promise<ConfigVendas> {
+    return apiClient.put<ConfigVendas>('/vendas/config', dados);
   },
 };

@@ -261,6 +261,18 @@ model ConfigApae {
   @@map("config_apae")
 }
 
+// Configuração (singleton) do Painel de Vendas: meta mensal de faturamento.
+// Editável pelo gestor sem redeploy. Quando metaMensal = 0, considera-se
+// "sem meta definida" (a projeção é exibida sem comparação).
+model ConfigVendas {
+  id            String   @id @default("vendas")
+  metaMensal    Float    @default(0)
+  atualizadoEm  DateTime @default(now()) @updatedAt
+  atualizadoPor String?
+
+  @@map("config_vendas")
+}
+
 model Insumo {
   id           String          @id @default(uuid())
   nome         String

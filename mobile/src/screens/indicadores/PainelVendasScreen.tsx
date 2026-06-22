@@ -1,30 +1,47 @@
 /**
- * Painel de Vendas (somente informativo).
+ * Painel de Vendas inteligente.
  *
  * As vendas por hora são carregadas na seção Importações (pelo usuário de
- * carga) e o status do dia é visto no Fechamento. Aqui mostramos apenas os
- * informativos: totais do dia/semana/mês e gráficos por hora (barras e pizza)
- * do período escolhido (dia, semana, mês ou intervalo personalizado).
+ * carga). Aqui consolidamos a inteligência do faturamento:
+ *  - Panorama: meta mensal + progresso, projeção de fechamento (run-rate) e
+ *    comparativos automáticos por data (dia/semana/mês vs período anterior).
+ *  - Tendência dos últimos 30 dias.
+ *  - Análise: curva horária típica, heatmap hora x dia da semana e padrão por
+ *    dia da semana.
+ *  - Lotação: recomendação de equipe por hora, cruzando a curva de vendas com
+ *    a escala consolidada (sinaliza horas com falta/sobra de gente).
+ *  - Gestão: edição da meta mensal (perfis com PAINEL_VENDAS_EDITAR).
+ *
+ * O detalhe livre por hora/período continua disponível embaixo.
  */
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ApiError } from '../../api/client';
 import { vendasService } from '../../api/services';
-import { ResumoVendas, VendasPorHora } from '../../api/types';
+import { LotacaoHora, PainelVendas, VendasPorHora } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
 import {
+  Aviso,
+  Botao,
+  CampoTexto,
   Carregando,
   Cartao,
   EstadoVazio,
   GraficoBarrasVerticais,
-  GraficoPizza,
   MensagemErro,
-  montarFatias,
   Segmentado,
   SeletorData,
   Tela,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
-import { cores, espacamento, tipografia } from '../../theme';
-import { formatarData, formatarMoeda, hojeISO } from '../../utils/formato';
+import { cores, espacamento, raio, tipografia } from '../../theme';
+import { notificar } from '../../utils/dialogos';
+import {
+  formatarData,
+  formatarMoeda,
+  formatarPercentual,
+  hojeISO,
+} from '../../utils/formato';
 
 type PeriodoGrafico = 'DIA' | 'SEMANA' | 'MES' | 'PERSONALIZADO';
 
@@ -35,11 +52,14 @@ const OPCOES_PERIODO: { valor: PeriodoGrafico; rotulo: string }[] = [
   { valor: 'PERSONALIZADO', rotulo: 'Período' },
 ];
 
+/** Ordem de exibição dos dias da semana (Seg..Sáb, Dom no fim). */
+const ORDEM_SEMANA = [1, 2, 3, 4, 5, 6, 0];
+const NOMES_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
 function iso(data: Date): string {
   return data.toISOString().slice(0, 10);
 }
 
-/** Intervalo [início, fim] (ISO) do período relativo à data de referência. */
 function intervaloDoPeriodo(
   periodo: PeriodoGrafico,
   dataISO: string,
@@ -69,70 +89,410 @@ function intervaloDoPeriodo(
   return { inicio: iso(ini), fim: iso(fim) };
 }
 
+/** Barra de progresso horizontal (0–100%). */
+function BarraProgresso({
+  percentual,
+  cor = cores.verde,
+}: {
+  percentual: number;
+  cor?: string;
+}): React.ReactElement {
+  const largura = `${Math.max(0, Math.min(100, percentual))}%` as `${number}%`;
+  return (
+    <View style={styles.barraTrilha}>
+      <View style={[styles.barraPreenchida, { width: largura, backgroundColor: cor }]} />
+    </View>
+  );
+}
+
+/** Mini-gráfico de tendência (sparkline) em barras finas. */
+function Sparkline({ valores }: { valores: number[] }): React.ReactElement | null {
+  if (valores.length === 0) return null;
+  const max = Math.max(1, ...valores);
+  return (
+    <View style={styles.sparkline}>
+      {valores.map((v, i) => {
+        const altura = `${Math.max(4, (v / max) * 100)}%` as `${number}%`;
+        return (
+          <View key={i} style={styles.sparkColuna}>
+            <View
+              style={[
+                styles.sparkBarra,
+                { height: altura, backgroundColor: v > 0 ? cores.verde : cores.divisor },
+              ]}
+            />
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Linha de comparativo (atual vs anterior + variação). */
+function LinhaComparativo({
+  rotulo,
+  atual,
+  anterior,
+  variacao,
+}: {
+  rotulo: string;
+  atual: number;
+  anterior: number;
+  variacao: number | null;
+}): React.ReactElement {
+  const cor =
+    variacao == null ? cores.textoSecundario : variacao >= 0 ? cores.verde : cores.vermelho;
+  return (
+    <View style={styles.compLinha}>
+      <Text style={styles.compRotulo}>{rotulo}</Text>
+      <View style={styles.compValores}>
+        <Text style={styles.compAtual}>{formatarMoeda(atual)}</Text>
+        <Text style={styles.compAnterior}>antes {formatarMoeda(anterior)}</Text>
+      </View>
+      <Text style={[styles.compVariacao, { color: cor }]}>
+        {variacao == null
+          ? '—'
+          : `${variacao >= 0 ? '↑' : '↓'} ${formatarPercentual(Math.abs(variacao), 0)}`}
+      </Text>
+    </View>
+  );
+}
+
+/** Heatmap hora x dia da semana (intensidade pela média de venda). */
+function Heatmap({
+  matriz,
+  horas,
+}: {
+  matriz: number[][];
+  horas: number[];
+}): React.ReactElement {
+  const max = Math.max(
+    1,
+    ...matriz.flatMap((linha) => horas.map((h) => linha[h] ?? 0)),
+  );
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View>
+        {/* Cabeçalho de horas */}
+        <View style={styles.heatLinha}>
+          <View style={styles.heatRotuloDia} />
+          {horas.map((h) => (
+            <Text key={h} style={styles.heatRotuloHora}>
+              {h}
+            </Text>
+          ))}
+        </View>
+        {ORDEM_SEMANA.map((dow) => (
+          <View key={dow} style={styles.heatLinha}>
+            <Text style={styles.heatRotuloDia}>{NOMES_SEMANA[dow]}</Text>
+            {horas.map((h) => {
+              const v = matriz[dow]?.[h] ?? 0;
+              const intensidade = v > 0 ? 0.15 + 0.85 * (v / max) : 0;
+              return (
+                <View
+                  key={h}
+                  style={[
+                    styles.heatCelula,
+                    {
+                      backgroundColor:
+                        v > 0 ? `rgba(30,158,90,${intensidade})` : cores.divisor,
+                    },
+                  ]}
+                />
+              );
+            })}
+          </View>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
+/** Item da recomendação de lotação por hora. */
+function LinhaLotacao({ item }: { item: LotacaoHora }): React.ReactElement {
+  const cor =
+    item.status === 'FALTA'
+      ? cores.vermelho
+      : item.status === 'SOBRA'
+        ? cores.amarelo
+        : cores.verde;
+  const texto =
+    item.status === 'FALTA' ? 'Falta' : item.status === 'SOBRA' ? 'Sobra' : 'OK';
+  return (
+    <View style={styles.lotLinha}>
+      <Text style={styles.lotHora}>
+        {item.hora}h–{item.hora + 1}h
+      </Text>
+      <View style={styles.lotBarras}>
+        <Text style={styles.lotInfo}>
+          vendas {formatarPercentual(item.pctVendas * 100, 0)} · equipe{' '}
+          {formatarPercentual(item.pctEscala * 100, 0)} ({item.escalados})
+        </Text>
+        <View style={styles.lotComparaBarra}>
+          <View
+            style={[
+              styles.lotBarraVendas,
+              { width: `${Math.min(100, item.pctVendas * 100)}%` as `${number}%` },
+            ]}
+          />
+          <View
+            style={[
+              styles.lotBarraEquipe,
+              { width: `${Math.min(100, item.pctEscala * 100)}%` as `${number}%` },
+            ]}
+          />
+        </View>
+      </View>
+      <View style={[styles.lotChip, { backgroundColor: cor }]}>
+        <Text style={styles.lotChipTexto}>{texto}</Text>
+      </View>
+    </View>
+  );
+}
+
 export function PainelVendasScreen(): React.ReactElement {
+  const { podeAcessar } = useAuth();
+  const podeEditar = podeAcessar('PAINEL_VENDAS_EDITAR');
+
   const [data, setData] = useState(hojeISO());
   const [periodo, setPeriodo] = useState<PeriodoGrafico>('DIA');
   const [inicioPers, setInicioPers] = useState(hojeISO());
   const [fimPers, setFimPers] = useState(hojeISO());
 
+  const [metaInput, setMetaInput] = useState('');
+  const [salvandoMeta, setSalvandoMeta] = useState(false);
+
   const { inicio, fim } = intervaloDoPeriodo(periodo, data, inicioPers, fimPers);
 
-  const req = useRequisicao(async () => {
-    const [resumo, porHora] = await Promise.all([
-      vendasService.resumo(data),
-      vendasService.porHora(inicio, fim),
-    ]);
-    return { resumo, porHora };
-  }, [data, periodo, inicio, fim]);
+  const painelReq = useRequisicao(() => vendasService.painel(data), [data]);
+  const painel: PainelVendas | null = painelReq.dados ?? null;
 
-  const resumo: ResumoVendas | undefined = req.dados?.resumo;
-  const porHora: VendasPorHora | undefined = req.dados?.porHora;
+  const detalheReq = useRequisicao(
+    () => vendasService.porHora(inicio, fim),
+    [periodo, inicio, fim],
+  );
+  const porHora: VendasPorHora | undefined = detalheReq.dados;
+
+  // Preenche o campo de meta quando o painel carrega.
+  React.useEffect(() => {
+    if (painel) {
+      setMetaInput(painel.metaMensal > 0 ? String(painel.metaMensal).replace('.', ',') : '');
+    }
+  }, [painel]);
+
+  const salvarMeta = async () => {
+    const metaNum = Number(metaInput.replace(',', '.'));
+    if (!Number.isFinite(metaNum) || metaNum < 0) {
+      notificar('Meta inválida', 'Informe um valor em reais maior ou igual a zero.');
+      return;
+    }
+    setSalvandoMeta(true);
+    try {
+      await vendasService.definirConfig({ metaMensal: metaNum });
+      painelReq.recarregar();
+      notificar('Meta salva', 'A meta mensal de faturamento foi atualizada.');
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar a meta.');
+    } finally {
+      setSalvandoMeta(false);
+    }
+  };
+
+  // Horas operacionais (com venda na curva típica) para gráficos e heatmap.
+  const horasOperacionais = (painel?.curvaHoraria ?? [])
+    .filter((c) => c.valor > 0)
+    .map((c) => c.hora);
+
+  const metaPct = painel ? painel.metaProgresso * 100 : 0;
+  const corMeta = metaPct >= 100 ? cores.verde : metaPct >= 60 ? cores.amarelo : cores.vermelho;
+  const projVar = painel?.projecaoVsMeta ?? null;
+
+  const dadosCurva = (painel?.curvaHoraria ?? [])
+    .filter((c) => c.valor > 0)
+    .map((c) => ({ rotulo: `${c.hora}h`, valor: c.valor }));
+
+  const dadosPadrao = painel
+    ? ORDEM_SEMANA.map((dow) => {
+        const p = painel.padraoDiaSemana.find((x) => x.diaSemana === dow);
+        return { rotulo: NOMES_SEMANA[dow], valor: p?.media ?? 0 };
+      }).filter((d) => d.valor > 0)
+    : [];
+
+  const lotacaoFalta = (painel?.lotacao ?? []).filter((l) => l.status === 'FALTA');
+  const lotacaoOperacional = (painel?.lotacao ?? []).filter(
+    (l) => l.pctVendas > 0 || l.escalados > 0,
+  );
 
   const horas = porHora?.horas ?? [];
   const dadosBarras = horas.map((h) => ({ rotulo: `${h.hora}h`, valor: h.valor }));
-  const fatiasPizza = montarFatias(
-    horas.map((h) => ({ rotulo: `${h.hora}h às ${h.hora + 1}h`, valor: h.valor })),
-    24,
-  );
-  const pizzaMostraValor = periodo === 'DIA';
 
   return (
-    <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
-      <SeletorData valor={data} aoMudar={setData} rotulo="Dia de referência" />
+    <Tela
+      aoAtualizar={() => {
+        painelReq.recarregar();
+        detalheReq.recarregar();
+      }}
+      atualizando={painelReq.atualizando || detalheReq.atualizando}
+    >
+      <SeletorData valor={data} aoMudar={setData} rotulo="Data de referência" />
 
-      <Cartao titulo="Totais de vendas">
-        {req.carregando ? (
-          <Carregando />
-        ) : req.erro ? (
-          <MensagemErro mensagem={req.erro} aoTentarNovamente={req.recarregar} />
-        ) : (
-          <View>
-            {[
-              { rotulo: 'Dia', valor: resumo?.totalDia ?? 0 },
-              { rotulo: 'Semana', valor: resumo?.totalSemana ?? 0 },
-              { rotulo: 'Mês', valor: resumo?.totalMes ?? 0 },
-            ].map((t) => (
-              <View key={t.rotulo} style={styles.totalLinha}>
-                <Text style={styles.totalLinhaRotulo}>{t.rotulo}</Text>
-                <Text
-                  style={styles.totalLinhaValor}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                >
-                  {formatarMoeda(t.valor)}
+      {painelReq.carregando ? (
+        <Carregando />
+      ) : painelReq.erro ? (
+        <MensagemErro mensagem={painelReq.erro} aoTentarNovamente={painelReq.recarregar} />
+      ) : painel ? (
+        <>
+          {/* ----- Panorama: meta + projeção ----- */}
+          <Cartao titulo="Meta do mês">
+            {painel.metaMensal > 0 ? (
+              <>
+                <View style={styles.metaTopo}>
+                  <Text style={styles.metaArrecadado}>{formatarMoeda(painel.arrecadadoMes)}</Text>
+                  <Text style={styles.metaAlvo}>de {formatarMoeda(painel.metaMensal)}</Text>
+                </View>
+                <BarraProgresso percentual={metaPct} cor={corMeta} />
+                <View style={styles.metaRodape}>
+                  <Text style={[styles.metaPct, { color: corMeta }]}>
+                    {formatarPercentual(metaPct, 0)} da meta
+                  </Text>
+                  <Text style={styles.metaProj}>
+                    Projeção: {formatarMoeda(painel.projecaoFechamento)}
+                    {projVar != null && (
+                      <Text style={{ color: projVar >= 0 ? cores.verde : cores.vermelho }}>
+                        {'  '}
+                        {projVar >= 0 ? '↑' : '↓'} {formatarPercentual(Math.abs(projVar), 0)}
+                      </Text>
+                    )}
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.metaArrecadado}>{formatarMoeda(painel.arrecadadoMes)}</Text>
+                <Text style={styles.metaSub}>faturamento do mês</Text>
+                <Text style={styles.metaProj}>
+                  Projeção de fechamento: {formatarMoeda(painel.projecaoFechamento)}
                 </Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </Cartao>
+                {podeEditar && (
+                  <Aviso texto="Defina uma meta mensal abaixo para acompanhar o progresso." />
+                )}
+              </>
+            )}
+            <Text style={styles.metaNota}>
+              {painel.diasComVenda} de {painel.diasNoMes} dias com venda · média{' '}
+              {formatarMoeda(painel.mediaDiaria)}/dia
+            </Text>
+          </Cartao>
 
-      <Cartao titulo="Vendas por hora">
-        <Segmentado
-          opcoes={OPCOES_PERIODO}
-          selecionado={periodo}
-          aoSelecionar={setPeriodo}
-        />
+          {/* ----- Comparativos por data ----- */}
+          <Cartao titulo="Comparativos">
+            <LinhaComparativo
+              rotulo="Dia"
+              atual={painel.comparativos.dia.atual}
+              anterior={painel.comparativos.dia.anterior}
+              variacao={painel.comparativos.dia.variacao}
+            />
+            <LinhaComparativo
+              rotulo="Semana"
+              atual={painel.comparativos.semana.atual}
+              anterior={painel.comparativos.semana.anterior}
+              variacao={painel.comparativos.semana.variacao}
+            />
+            <LinhaComparativo
+              rotulo="Mês"
+              atual={painel.comparativos.mes.atual}
+              anterior={painel.comparativos.mes.anterior}
+              variacao={painel.comparativos.mes.variacao}
+            />
+            <Text style={styles.metaNota}>
+              Dia e mês comparam com o mesmo período do mês anterior; semana, com os 7 dias
+              anteriores.
+            </Text>
+          </Cartao>
+
+          {/* ----- Tendência ----- */}
+          {painel.tendencia.some((t) => t.valor > 0) && (
+            <Cartao titulo="Tendência (30 dias)">
+              <Sparkline valores={painel.tendencia.map((t) => t.valor)} />
+            </Cartao>
+          )}
+
+          {/* ----- Curva horária típica ----- */}
+          {dadosCurva.length > 0 && (
+            <Cartao titulo="Curva horária típica">
+              {painel.horaPico != null && (
+                <Text style={styles.destaqueTexto}>
+                  Hora de pico: {painel.horaPico}h às {painel.horaPico + 1}h
+                </Text>
+              )}
+              <GraficoBarrasVerticais dados={dadosCurva} />
+            </Cartao>
+          )}
+
+          {/* ----- Heatmap hora x dia da semana ----- */}
+          {horasOperacionais.length > 0 && (
+            <Cartao titulo="Mapa de calor (dia × hora)">
+              <Heatmap matriz={painel.heatmap} horas={horasOperacionais} />
+              <Text style={styles.metaNota}>
+                Mais escuro = mais vendas, em média, naquele dia e hora.
+              </Text>
+            </Cartao>
+          )}
+
+          {/* ----- Padrão por dia da semana ----- */}
+          {dadosPadrao.length > 0 && (
+            <Cartao titulo="Padrão por dia da semana">
+              <GraficoBarrasVerticais dados={dadosPadrao} />
+              <Text style={styles.metaNota}>Média do faturamento por dia da semana.</Text>
+            </Cartao>
+          )}
+
+          {/* ----- Recomendação de lotação por hora ----- */}
+          {lotacaoOperacional.length > 0 && (
+            <Cartao titulo="Lotação recomendada por hora">
+              {lotacaoFalta.length > 0 ? (
+                <Aviso
+                  texto={`Atenção: ${lotacaoFalta
+                    .map((l) => `${l.hora}h`)
+                    .join(', ')} concentram vendas mas têm pouca equipe escalada.`}
+                />
+              ) : (
+                <Aviso texto="A escala está bem distribuída em relação às vendas por hora." />
+              )}
+              {lotacaoOperacional.map((l) => (
+                <LinhaLotacao key={l.hora} item={l} />
+              ))}
+              <Text style={styles.metaNota}>
+                Compara a participação de vendas de cada hora com a participação da equipe na
+                escala. Barra verde = vendas, azul = equipe.
+              </Text>
+            </Cartao>
+          )}
+
+          {/* ----- Gestão: meta mensal ----- */}
+          {podeEditar && (
+            <Cartao titulo="Configuração">
+              <CampoTexto
+                rotulo="Meta mensal de faturamento (R$)"
+                keyboardType="decimal-pad"
+                value={metaInput}
+                onChangeText={setMetaInput}
+                placeholder="0"
+              />
+              <Botao
+                titulo="Salvar meta"
+                variante="secundario"
+                aoPressionar={salvarMeta}
+                carregando={salvandoMeta}
+              />
+            </Cartao>
+          )}
+        </>
+      ) : null}
+
+      {/* ----- Detalhe livre por hora/período ----- */}
+      <Cartao titulo="Vendas por hora (detalhe)">
+        <Segmentado opcoes={OPCOES_PERIODO} selecionado={periodo} aoSelecionar={setPeriodo} />
         {periodo === 'PERSONALIZADO' ? (
           <>
             <SeletorData valor={inicioPers} aoMudar={setInicioPers} rotulo="Início" />
@@ -146,10 +506,10 @@ export function PainelVendasScreen(): React.ReactElement {
             : `Período: ${formatarData(inicio)} a ${formatarData(fim)}`}
         </Text>
 
-        {req.carregando ? (
+        {detalheReq.carregando ? (
           <Carregando />
-        ) : req.erro ? (
-          <MensagemErro mensagem={req.erro} aoTentarNovamente={req.recarregar} />
+        ) : detalheReq.erro ? (
+          <MensagemErro mensagem={detalheReq.erro} aoTentarNovamente={detalheReq.recarregar} />
         ) : horas.length > 0 ? (
           <>
             <Text style={styles.totalPeriodo}>
@@ -165,22 +525,61 @@ export function PainelVendasScreen(): React.ReactElement {
           />
         )}
       </Cartao>
-
-      {horas.length > 0 ? (
-        <Cartao titulo="Horas que mais venderam">
-          <GraficoPizza
-            fatias={fatiasPizza}
-            mostrarValor={pizzaMostraValor}
-            formatarValor={formatarMoeda}
-          />
-        </Cartao>
-      ) : null}
     </Tela>
   );
 }
 
 const styles = StyleSheet.create({
-  totalLinha: {
+  metaTopo: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: espacamento.xs,
+    marginBottom: espacamento.sm,
+  },
+  metaArrecadado: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: cores.texto,
+  },
+  metaAlvo: {
+    ...tipografia.rotulo,
+    color: cores.textoSecundario,
+  },
+  metaSub: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginBottom: espacamento.sm,
+  },
+  metaRodape: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: espacamento.xs,
+    flexWrap: 'wrap',
+  },
+  metaPct: {
+    ...tipografia.rotulo,
+    fontWeight: '700',
+  },
+  metaProj: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    fontWeight: '600',
+    marginTop: espacamento.xs,
+  },
+  metaNota: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: espacamento.sm,
+    fontStyle: 'italic',
+  },
+  destaqueTexto: {
+    ...tipografia.rotulo,
+    color: cores.primaria,
+    marginBottom: espacamento.sm,
+  },
+  // Comparativos
+  compLinha: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -188,17 +587,116 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: cores.divisor,
   },
-  totalLinhaRotulo: {
-    ...tipografia.corpo,
+  compRotulo: {
+    ...tipografia.rotulo,
     color: cores.textoSecundario,
+    width: 64,
   },
-  totalLinhaValor: {
-    ...tipografia.subtitulo,
+  compValores: {
+    flex: 1,
+    alignItems: 'flex-end',
+    paddingRight: espacamento.sm,
+  },
+  compAtual: {
+    ...tipografia.corpo,
     fontWeight: '700',
     color: cores.texto,
-    maxWidth: '65%',
+  },
+  compAnterior: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  compVariacao: {
+    ...tipografia.rotulo,
+    fontWeight: '700',
+    width: 72,
     textAlign: 'right',
   },
+  // Sparkline
+  sparkline: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    height: 48,
+    gap: 2,
+  },
+  sparkColuna: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  sparkBarra: {
+    width: '100%',
+    borderRadius: 2,
+  },
+  // Heatmap
+  heatLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  heatRotuloDia: {
+    width: 34,
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  heatRotuloHora: {
+    width: 18,
+    textAlign: 'center',
+    fontSize: 9,
+    color: cores.textoSecundario,
+  },
+  heatCelula: {
+    width: 16,
+    height: 16,
+    marginHorizontal: 1,
+    borderRadius: 3,
+  },
+  // Lotação
+  lotLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: espacamento.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: cores.divisor,
+  },
+  lotHora: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    width: 72,
+  },
+  lotBarras: {
+    flex: 1,
+    paddingRight: espacamento.sm,
+  },
+  lotInfo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginBottom: 4,
+  },
+  lotComparaBarra: {
+    gap: 2,
+  },
+  lotBarraVendas: {
+    height: 5,
+    borderRadius: raio.pill,
+    backgroundColor: cores.verde,
+  },
+  lotBarraEquipe: {
+    height: 5,
+    borderRadius: raio.pill,
+    backgroundColor: cores.primaria,
+  },
+  lotChip: {
+    paddingHorizontal: espacamento.sm,
+    paddingVertical: 2,
+    borderRadius: raio.pill,
+  },
+  lotChipTexto: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  // Detalhe
   totalPeriodo: {
     ...tipografia.corpo,
     fontWeight: '700',
@@ -208,7 +706,18 @@ const styles = StyleSheet.create({
   periodoTexto: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
-    marginBottom: espacamento.sm,
+    marginVertical: espacamento.sm,
+  },
+  barraTrilha: {
+    width: '100%',
+    height: 12,
+    borderRadius: raio.pill,
+    backgroundColor: cores.divisor,
+    overflow: 'hidden',
+  },
+  barraPreenchida: {
+    height: '100%',
+    borderRadius: raio.pill,
   },
 });
 

@@ -105,12 +105,13 @@ export class AssistenteService {
 
     const conversa = await this.obterConversa(usuario.id);
     const recente = conversa.slice(-MAX_HISTORICO);
-    const [escala, indicadoresBase, apae] = await Promise.all([
+    const [escala, indicadoresBase, apae, vendas] = await Promise.all([
       this.montarContextoEscala(),
       this.montarContextoIndicadores(),
       this.montarContextoApae(),
+      this.montarContextoVendas(),
     ]);
-    const indicadores = [indicadoresBase, apae]
+    const indicadores = [indicadoresBase, apae, vendas]
       .filter((s): s is string => !!s)
       .join('\n\n') || undefined;
     const instrucao = montarInstrucaoSistema({
@@ -381,6 +382,96 @@ export class AssistenteService {
     } catch (erro) {
       this.logger.warn(
         `Não foi possível montar o contexto da APAE: ${String(erro)}`,
+      );
+      return undefined;
+    }
+  }
+
+  /**
+   * Contexto de vendas para a Cluby — lê via Prisma (config + totais diários +
+   * vendas por hora). Permite responder "como estão as vendas hoje/este mês?",
+   * "qual a hora de pico?", "vamos bater a meta?". Desacoplado do módulo.
+   */
+  private async montarContextoVendas(): Promise<string | undefined> {
+    try {
+      const agora = new Date();
+      const ano = agora.getUTCFullYear();
+      const mes = agora.getUTCMonth();
+      const inicioMes = new Date(Date.UTC(ano, mes, 1));
+      const inicioProxMes = new Date(Date.UTC(ano, mes + 1, 1));
+      const hoje = new Date(Date.UTC(ano, mes, agora.getUTCDate()));
+      const amanha = new Date(Date.UTC(ano, mes, agora.getUTCDate() + 1));
+      const diasDoMes = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate();
+      const arred = (n: number): number => Math.round(n * 100) / 100;
+
+      const cfg = await this.prisma.configVendas.findUnique({
+        where: { id: 'vendas' },
+      });
+      const meta = cfg ? Number(cfg.metaMensal) : 0;
+
+      const [aggMes, diasComVenda, aggHoje, horas] = await Promise.all([
+        this.prisma.vendaDiaria.aggregate({
+          where: { data: { gte: inicioMes, lt: inicioProxMes } },
+          _sum: { valor: true },
+        }),
+        this.prisma.vendaDiaria.count({
+          where: { data: { gte: inicioMes, lt: amanha }, valor: { gt: 0 } },
+        }),
+        this.prisma.vendaDiaria.aggregate({
+          where: { data: { gte: hoje, lt: amanha } },
+          _sum: { valor: true },
+        }),
+        this.prisma.vendaHora.groupBy({
+          by: ['hora'],
+          where: { data: { gte: inicioMes, lt: inicioProxMes } },
+          _sum: { valor: true },
+        }),
+      ]);
+
+      const arrecadadoMes = arred(Number(aggMes._sum.valor ?? 0));
+      const vendaHoje = arred(Number(aggHoje._sum.valor ?? 0));
+
+      // Sem dados de vendas: não inclui (evita ruído no prompt).
+      if (arrecadadoMes <= 0 && vendaHoje <= 0) return undefined;
+
+      const projecao =
+        diasComVenda > 0
+          ? arred((arrecadadoMes / diasComVenda) * diasDoMes)
+          : 0;
+
+      let horaPico: number | null = null;
+      let maxHora = 0;
+      for (const h of horas) {
+        const v = Number(h._sum.valor ?? 0);
+        if (v > maxHora) {
+          maxHora = v;
+          horaPico = h.hora;
+        }
+      }
+
+      const linhas = ['=== VENDAS (faturamento) ==='];
+      linhas.push(`Vendas de hoje: R$${vendaHoje}.`);
+      if (meta > 0) {
+        const pct = Math.round((arrecadadoMes / meta) * 100);
+        linhas.push(
+          `Faturamento do mês: R$${arrecadadoMes} — meta de R$${arred(meta)} (${pct}% da meta).`,
+        );
+        linhas.push(
+          `Projeção de fechamento (no ritmo atual): R$${projecao}.`,
+        );
+      } else {
+        linhas.push(`Faturamento do mês: R$${arrecadadoMes}.`);
+        linhas.push(`Projeção de fechamento (no ritmo atual): R$${projecao}.`);
+      }
+      if (horaPico != null) {
+        linhas.push(
+          `Hora de pico do mês: ${horaPico}h às ${horaPico + 1}h (R$${arred(maxHora)}).`,
+        );
+      }
+      return linhas.join('\n');
+    } catch (erro) {
+      this.logger.warn(
+        `Não foi possível montar o contexto de vendas: ${String(erro)}`,
       );
       return undefined;
     }

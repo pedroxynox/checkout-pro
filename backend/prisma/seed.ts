@@ -490,6 +490,17 @@ async function seedConfigApae(): Promise<void> {
   }
 }
 
+async function seedConfigVendas(): Promise<void> {
+  const existente = await prisma.configVendas.findUnique({
+    where: { id: 'vendas' },
+  });
+  if (!existente) {
+    await prisma.configVendas.create({
+      data: { id: 'vendas', metaMensal: 0 },
+    });
+  }
+}
+
 async function main(): Promise<void> {
   // Gera o hash da senha inicial uma única vez antes de criar os usuários.
   senhaHashInicial = await bcrypt.hash(SENHA_INICIAL, 10);
@@ -502,6 +513,7 @@ async function main(): Promise<void> {
   await seedPedidosRecorrentes();
   await seedMetasIndicador();
   await seedConfigApae();
+  await seedConfigVendas();
 
   const totalUsuarios = await prisma.usuario.count();
   const totalFiscais = await prisma.fiscal.count();

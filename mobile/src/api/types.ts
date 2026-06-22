@@ -257,6 +257,79 @@ export interface StatusVendas {
   enviado: boolean;
 }
 
+// ----- Painel de Vendas inteligente -----
+
+/** Configuração do Painel de Vendas (meta mensal de faturamento). */
+export interface ConfigVendas {
+  metaMensal: number;
+}
+
+/** Comparativo entre o período atual e o equivalente anterior. */
+export interface ComparativoVendas {
+  atual: number;
+  anterior: number;
+  /** Variação % (null quando não há base anterior). */
+  variacao: number | null;
+}
+
+export interface PontoTendenciaVendas {
+  data: string;
+  valor: number;
+}
+
+export interface PontoCurvaHora {
+  hora: number;
+  /** Média de venda nessa hora num dia com movimento. */
+  valor: number;
+  /** Participação da hora no total do dia típico [0, 1]. */
+  pct: number;
+}
+
+export interface PadraoDiaSemana {
+  diaSemana: number;
+  nome: string;
+  /** Média do total diário nesse dia da semana. */
+  media: number;
+}
+
+export interface LotacaoHora {
+  hora: number;
+  pctVendas: number;
+  pctEscala: number;
+  /** Média de pessoas escaladas nessa hora num dia típico. */
+  escalados: number;
+  /** Pessoas recomendadas (equipe redistribuída conforme as vendas). */
+  recomendado: number;
+  status: 'OK' | 'FALTA' | 'SOBRA';
+}
+
+/** Painel inteligente consolidado de vendas. */
+export interface PainelVendas {
+  metaMensal: number;
+  /** Faturamento do mês até a data de referência. */
+  arrecadadoMes: number;
+  diasComVenda: number;
+  diasNoMes: number;
+  mediaDiaria: number;
+  /** Projeção de fechamento do mês (run-rate). */
+  projecaoFechamento: number;
+  metaProgresso: number;
+  /** Projeção vs meta em % (null sem meta). */
+  projecaoVsMeta: number | null;
+  comparativos: {
+    dia: ComparativoVendas;
+    semana: ComparativoVendas;
+    mes: ComparativoVendas;
+  };
+  tendencia: PontoTendenciaVendas[];
+  curvaHoraria: PontoCurvaHora[];
+  horaPico: number | null;
+  /** Matriz 7x24 (dia da semana x hora) com a média de venda. */
+  heatmap: number[][];
+  padraoDiaSemana: PadraoDiaSemana[];
+  lotacao: LotacaoHora[];
+}
+
 export interface DetalheArrecadacao {
   nome: string;
   autorizadoPor: string | null;

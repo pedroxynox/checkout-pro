@@ -1,9 +1,11 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   ForbiddenException,
   Get,
   Post,
+  Put,
   Query,
   UploadedFile,
   UseInterceptors,
@@ -16,12 +18,16 @@ import {
   UsuarioAutenticado,
 } from '../common/decorators/usuario-atual.decorator';
 import {
+  ConfigVendasDto,
   DataVendasDto,
   IntervaloVendasDto,
+  PainelVendasDto,
   UploadVendasDto,
 } from './dto/vendas.dto';
 import { parseVendasHora } from './vendas.parser';
 import {
+  ConfigVendasResultado,
+  PainelVendas,
   ResultadoUploadVendas,
   ResumoVendas,
   VendasPorHora,
@@ -90,6 +96,32 @@ export class VendasController {
   @Funcionalidade('FECHAMENTO')
   status(@Query() dto: DataVendasDto): Promise<{ enviado: boolean }> {
     return this.vendasService.status(new Date(dto.data));
+  }
+
+  /**
+   * Painel inteligente: meta e projeção de fechamento, comparativos por data,
+   * tendência, curva horária típica, heatmap, padrão por dia da semana e
+   * recomendação de lotação por hora.
+   */
+  @Get('painel')
+  painel(@Query() dto: PainelVendasDto): Promise<PainelVendas> {
+    return this.vendasService.painel(dto.data ? new Date(dto.data) : new Date());
+  }
+
+  /** Configuração do painel (meta mensal). Visível a quem vê o painel. */
+  @Get('config')
+  config(): Promise<ConfigVendasResultado> {
+    return this.vendasService.obterConfig();
+  }
+
+  /** Atualiza a meta mensal de faturamento. */
+  @Put('config')
+  @Funcionalidade('PAINEL_VENDAS_EDITAR')
+  definirConfig(
+    @Body() dto: ConfigVendasDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<ConfigVendasResultado> {
+    return this.vendasService.definirConfig(dto, usuario?.sub);
   }
 
   /**
