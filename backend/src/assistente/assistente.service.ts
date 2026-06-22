@@ -101,9 +101,11 @@ export class AssistenteService {
 
     const conversa = await this.obterConversa(usuario.id);
     const recente = conversa.slice(-MAX_HISTORICO);
+    const escala = await this.montarContextoEscala();
     const instrucao = montarInstrucaoSistema({
       nomeUsuario: usuario.nome,
       perfil: usuario.perfil,
+      escala,
     });
     const mensagens: MensagemGemini[] = [
       ...recente.map((m) => ({ papel: m.papel, texto: m.conteudo })),
@@ -125,6 +127,59 @@ export class AssistenteService {
       conteudo: salva.conteudo,
       criadaEm: salva.criadaEm,
     };
+  }
+
+  /**
+   * Monta o contexto de escala dos fiscais para a Cluby — lê direto via
+   * Prisma (desacoplado do FiscaisModule para evitar dependência circular).
+   * Retorna texto formatado com turno, horários e folgas de cada fiscal.
+   * Em caso de erro (ex.: tabelas ainda não migradas), retorna undefined para
+   * não quebrar o chat.
+   */
+  private async montarContextoEscala(): Promise<string | undefined> {
+    try {
+      const [fiscais, escalas] = await Promise.all([
+        this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
+        this.prisma.escalaEntry.findMany(),
+      ]);
+      if (fiscais.length === 0 || escalas.length === 0) {
+        return undefined;
+      }
+
+      const DIAS = [
+        'Domingo',
+        'Segunda',
+        'Terça',
+        'Quarta',
+        'Quinta',
+        'Sexta',
+        'Sábado',
+      ];
+      const linhas: string[] = [];
+
+      for (const fiscal of fiscais) {
+        const escFiscal = escalas.filter((e) => e.funcionarioId === fiscal.id);
+        if (escFiscal.length === 0) continue;
+        const especial = fiscal.especial ? ' - horário especial' : '';
+        linhas.push(`\n${fiscal.nome} (${fiscal.turno}${especial}):`);
+        for (let dia = 0; dia <= 6; dia++) {
+          const esc = escFiscal.find((e) => e.diaSemana === dia);
+          if (!esc) continue;
+          if (esc.folga) {
+            linhas.push(`  ${DIAS[dia]}: FOLGA`);
+          } else {
+            linhas.push(`  ${DIAS[dia]}: ${esc.entrada} - ${esc.saida}`);
+          }
+        }
+      }
+
+      return linhas.length > 0 ? linhas.join('\n') : undefined;
+    } catch (erro) {
+      this.logger.warn(
+        `Não foi possível montar o contexto de escala: ${String(erro)}`,
+      );
+      return undefined;
+    }
   }
 
   /**
