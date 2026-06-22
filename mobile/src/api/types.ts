@@ -614,6 +614,56 @@ export interface JanelaExecucao {
   fim: string;
 }
 
+/** Status visual (derivado) do checklist para a UI. */
+export type StatusVisualChecklist =
+  | 'FEITO_NO_PRAZO'
+  | 'ATRASADO'
+  | 'PENDENTE'
+  | 'NAO_FEITO';
+
+/** Estado rico de um checklist (auditoria/pontualidade). */
+export interface ChecklistEstado {
+  tipo: TipoChecklist;
+  status: StatusChecklist;
+  statusVisual: StatusVisualChecklist;
+  janela: { inicio: string; fim: string };
+  enviadoPor: string | null;
+  enviadoEm: string | null;
+  imagemUrl: string | null;
+  noPrazo: boolean | null;
+  duplicado: boolean;
+}
+
+export interface EstadoChecklists {
+  dataISO: string;
+  abertura: ChecklistEstado;
+  fechamento: ChecklistEstado;
+}
+
+export interface ChecklistMetricas {
+  mes: string;
+  diasOperacao: number;
+  totalEsperado: number;
+  feitos: number;
+  noPrazo: number;
+  percentualNoPrazo: number;
+  rachaDias: number;
+}
+
+export interface ChecklistHistoricoTipo {
+  statusVisual: StatusVisualChecklist;
+  imagemUrl: string | null;
+  enviadoPor: string | null;
+  enviadoEm: string | null;
+}
+
+export interface ChecklistHistoricoDia {
+  dataISO: string;
+  diaSemana: number;
+  abertura: ChecklistHistoricoTipo | null;
+  fechamento: ChecklistHistoricoTipo | null;
+}
+
 // ----- Operadores / Ausências (Req 6.x) -----
 export interface Operador {
   id: string;

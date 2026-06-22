@@ -406,6 +406,10 @@ model Checklist {
   imagemUrl  String?
   enviadoPor String?
   enviadoEm  DateTime?
+  // Verdadeiro se a imagem foi enviada dentro da janela (pontual).
+  noPrazo    Boolean?
+  // Hash (sha256) da imagem enviada, para detectar foto repetida (anti-fraude).
+  imagemHash String?
 
   @@unique([tipo, data])
   @@map("checklists")

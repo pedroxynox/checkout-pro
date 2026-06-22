@@ -12,6 +12,7 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Checklist } from '@prisma/client';
 import { ArquivoUpload } from '../common/arquivo-upload';
@@ -23,7 +24,12 @@ import {
 import { OBJECT_STORAGE, ObjectStorage } from '../storage/object-storage';
 import { ArquivoNaoImagemError } from './checklist.errors';
 import { JanelaExecucao, StatusChecklist, ehImagem } from './checklist.domain';
-import { ChecklistService } from './checklist.service';
+import {
+  ChecklistHistoricoDia,
+  ChecklistMetricas,
+  ChecklistService,
+  EstadoChecklists,
+} from './checklist.service';
 import { ChecklistDataDto, TipoChecklistParamDto } from './dto/checklist.dto';
 
 /**
@@ -77,6 +83,7 @@ export class ChecklistController {
     }
 
     const data = dto.data ? new Date(dto.data) : new Date();
+    const hash = createHash('sha256').update(arquivo.buffer).digest('hex');
     const salvo = await this.storage.salvar({
       conteudo: arquivo.buffer,
       nomeOriginal: arquivo.originalname,
@@ -87,9 +94,28 @@ export class ChecklistController {
     return this.checklistService.enviarImagem(
       params.tipo,
       data,
-      { ...ref, url: salvo.url },
+      { ...ref, url: salvo.url, hash },
       usuario?.sub ?? 'desconhecido',
     );
+  }
+
+  /** Estado rico dos dois checklists do dia (auditoria/pontualidade). */
+  @Get('estado')
+  estado(@Query() dto: ChecklistDataDto): Promise<EstadoChecklists> {
+    return this.checklistService.estado(dto.data ? new Date(dto.data) : new Date());
+  }
+
+  /** Métricas de cumprimento do mês (% no prazo, racha). */
+  @Get('metricas')
+  metricas(@Query() dto: ChecklistDataDto): Promise<ChecklistMetricas> {
+    return this.checklistService.metricas(dto.data ? new Date(dto.data) : new Date());
+  }
+
+  /** Histórico dos últimos N dias (padrão 14). */
+  @Get('historico')
+  historico(@Query('dias') dias?: string): Promise<ChecklistHistoricoDia[]> {
+    const n = dias ? Math.min(60, Math.max(1, Number(dias) || 14)) : 14;
+    return this.checklistService.historico(n);
   }
 
   /** Status atual do checklist do dia (Req 5.1.5). */

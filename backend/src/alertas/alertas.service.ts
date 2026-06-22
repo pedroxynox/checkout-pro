@@ -84,8 +84,26 @@ export class AlertasService implements OnModuleInit {
     );
   }
 
-  /** Job de alerta do checklist de abertura no horário-limite (08:55). */
-  @Cron('55 8 * * *', {
+  /** Lembrete de início do checklist de abertura (08:10 — 5 min antes). */
+  @Cron('10 8 * * *', {
+    name: 'lembrete-checklist-abertura',
+    timeZone: FUSO_BRASILIA,
+  })
+  async lembreteChecklistAbertura(): Promise<boolean> {
+    return this.dispararLembreteInicio('ABERTURA');
+  }
+
+  /** Lembrete de início do checklist de fechamento (13:10 — 5 min antes). */
+  @Cron('10 13 * * *', {
+    name: 'lembrete-checklist-fechamento',
+    timeZone: FUSO_BRASILIA,
+  })
+  async lembreteChecklistFechamento(): Promise<boolean> {
+    return this.dispararLembreteInicio('FECHAMENTO');
+  }
+
+  /** Alerta do checklist de abertura pendente (09:00 — 15 min antes do limite). */
+  @Cron('0 9 * * *', {
     name: 'alerta-checklist-abertura',
     timeZone: FUSO_BRASILIA,
   })
@@ -93,8 +111,8 @@ export class AlertasService implements OnModuleInit {
     return this.dispararAlertaChecklist('ABERTURA');
   }
 
-  /** Job de alerta do checklist de fechamento no horário-limite (13:55). */
-  @Cron('55 13 * * *', {
+  /** Alerta do checklist de fechamento pendente (14:00 — 15 min antes do limite). */
+  @Cron('0 14 * * *', {
     name: 'alerta-checklist-fechamento',
     timeZone: FUSO_BRASILIA,
   })
@@ -103,10 +121,32 @@ export class AlertasService implements OnModuleInit {
   }
 
   /**
-   * Dispara o alerta de checklist pendente (Req 5.3.1–5.3.4): se, no instante
-   * atual (relógio injetável), o horário-limite foi atingido e o checklist do
-   * dia ainda está pendente, notifica a união dos fiscais online com o login
-   * gerencial. Retorna `true` quando o alerta foi disparado.
+   * Lembrete de início (Req: 5 min antes da janela abrir): se o checklist ainda
+   * está pendente, avisa para realizá-lo. Retorna `true` quando disparado.
+   */
+  async dispararLembreteInicio(tipo: TipoChecklist): Promise<boolean> {
+    const agora = this.relogio.agora();
+    const deveLembrar = await this.checklistService.verificarLembreteInicio(
+      tipo,
+      agora,
+    );
+    if (!deveLembrar) {
+      return false;
+    }
+    const rotulo = tipo === 'ABERTURA' ? 'abertura' : 'fechamento';
+    const janelaIni = tipo === 'ABERTURA' ? '08:15' : '13:15';
+    await this.notificacoesService.notificarAlertaChecklist({
+      titulo: `Checklist de ${rotulo} em breve`,
+      mensagem: `O checklist de ${rotulo} começa às ${janelaIni} (em ~5 min). Não esqueça de enviar o print.`,
+    });
+    this.logger.log(`Lembrete de início do checklist de ${rotulo} disparado.`);
+    return true;
+  }
+
+  /**
+   * Dispara o alerta de checklist pendente (15 min antes do limite): se ainda
+   * está pendente, notifica a união dos fiscais online com o login gerencial.
+   * Retorna `true` quando o alerta foi disparado.
    */
   async dispararAlertaChecklist(tipo: TipoChecklist): Promise<boolean> {
     const agora = this.relogio.agora();
@@ -118,9 +158,10 @@ export class AlertasService implements OnModuleInit {
       return false;
     }
     const rotulo = tipo === 'ABERTURA' ? 'abertura' : 'fechamento';
+    const limite = tipo === 'ABERTURA' ? '09:15' : '14:15';
     await this.notificacoesService.notificarAlertaChecklist({
       titulo: `Checklist de ${rotulo} pendente`,
-      mensagem: `O checklist de ${rotulo} ainda não foi concluído. Conclua-o o quanto antes.`,
+      mensagem: `O checklist de ${rotulo} ainda não foi concluído. Faltam ~15 min para o limite (${limite}). Envie o print o quanto antes.`,
     });
     this.logger.warn(`Alerta de checklist de ${rotulo} disparado.`);
     return true;

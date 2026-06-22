@@ -69,6 +69,62 @@ function mesAtualISO(): { inicio: string; fim: string } {
   return { inicio: ini.toISOString().slice(0, 10), fim: fim.toISOString().slice(0, 10) };
 }
 
+/** Turnos para agrupar o roster do dia. */
+const TURNOS: { chave: string; titulo: string }[] = [
+  { chave: 'MANHA', titulo: 'Manhã' },
+  { chave: 'TARDE', titulo: 'Tarde' },
+  { chave: 'NOITE', titulo: 'Noite' },
+  { chave: 'FOLGA', titulo: 'Folga' },
+];
+
+function turnoDe(c: ColaboradorDia): string {
+  if (c.status === 'FOLGA') return 'FOLGA';
+  const h = c.entrada ? parseInt(c.entrada.slice(0, 2), 10) : 0;
+  if (h < 12) return 'MANHA';
+  if (h < 18) return 'TARDE';
+  return 'NOITE';
+}
+
+/** Inicial(is) do nome para o avatar (até 2 letras). */
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/);
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[1][0]).toUpperCase();
+}
+
+/** Linha de um colaborador no roster do dia. */
+function ColaboradorRow({
+  c,
+  onPress,
+}: {
+  c: ColaboradorDia;
+  onPress: (c: ColaboradorDia) => void;
+}): React.ReactElement {
+  const cor = corStatus(c.status);
+  return (
+    <TouchableOpacity
+      activeOpacity={c.status === 'FOLGA' ? 1 : 0.6}
+      onPress={() => onPress(c)}
+      style={[styles.linha, { borderLeftColor: cor.texto }]}
+    >
+      <View style={[styles.avatar, { backgroundColor: cor.fundo }]}>
+        <Text style={[styles.avatarTexto, { color: cor.texto }]}>{iniciais(c.nome)}</Text>
+      </View>
+      <View style={styles.linhaInfo}>
+        <Text style={styles.nomeColaborador} numberOfLines={1}>
+          {c.nome}
+        </Text>
+        <Text style={styles.horarioInline}>
+          {c.status === 'FOLGA' ? 'Dia de folga' : `${c.entrada} – ${c.saida}`}
+        </Text>
+      </View>
+      <View style={[styles.chip, { backgroundColor: cor.fundo }]}>
+        <Text style={[styles.chipTexto, { color: cor.texto }]}>{rotuloStatus(c.status)}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 export function OperadoresScreen(): React.ReactElement {
   const { podeAcessar } = useAuth();
   const podeGerenciar = podeAcessar('OPERADORES_CRUD');
@@ -208,12 +264,37 @@ export function OperadoresScreen(): React.ReactElement {
       {aoVivo.dados ? (
         <Cartao titulo="Agora no caixa">
           <View style={styles.aoVivoTopo}>
-            <Text style={styles.aoVivoHora}>{aoVivo.dados.horaLocal}</Text>
+            <View style={styles.aoVivoRelogio}>
+              <Text style={styles.aoVivoHora}>{aoVivo.dados.horaLocal}</Text>
+              <Text style={styles.aoVivoLegenda}>agora</Text>
+            </View>
             <View style={styles.aoVivoNumeros}>
-              <Text style={styles.aoVivoDisponiveis}>{aoVivo.dados.disponiveis}</Text>
-              <Text style={styles.aoVivoLegenda}>deveriam estar disponíveis</Text>
+              <Text style={styles.aoVivoDisponiveis}>
+                {aoVivo.dados.disponiveis}
+                <Text style={styles.aoVivoEsperados}>
+                  {' '}
+                  / {aoVivo.dados.esperados}
+                </Text>
+              </Text>
+              <Text style={styles.aoVivoLegenda}>disponíveis no caixa</Text>
             </View>
           </View>
+          {aoVivo.dados.esperados > 0 ? (
+            <View style={styles.barraTrilha}>
+              <View
+                style={[
+                  styles.barraPreenchida,
+                  {
+                    width: `${Math.round(
+                      (aoVivo.dados.disponiveis / aoVivo.dados.esperados) * 100,
+                    )}%` as `${number}%`,
+                    backgroundColor:
+                      aoVivo.dados.faltas > 0 ? cores.amarelo : cores.verde,
+                  },
+                ]}
+              />
+            </View>
+          ) : null}
           {aoVivo.dados.faltas > 0 ? (
             <Aviso
               texto={`${aoVivo.dados.faltas} de ${aoVivo.dados.esperados} faltaram nesta franja: ${aoVivo.dados.listaFaltantes
@@ -263,35 +344,22 @@ export function OperadoresScreen(): React.ReactElement {
             </Text>
           </Cartao>
 
-          {/* Lista de colaboradores do dia */}
-          {dados.colaboradores.map((c) => {
-            const cor = corStatus(c.status);
+          {/* Lista de colaboradores agrupada por turno */}
+          {TURNOS.map((t) => {
+            const itens = dados.colaboradores.filter((c) => turnoDe(c) === t.chave);
+            if (itens.length === 0) return null;
             return (
-              <TouchableOpacity
-                key={c.id}
-                activeOpacity={c.status === 'FOLGA' ? 1 : 0.6}
-                onPress={() => void aoTocarColaborador(c)}
-                style={styles.linha}
-              >
-                <View style={styles.horaBox}>
-                  {c.status === 'FOLGA' ? (
-                    <Text style={styles.horaFolga}>—</Text>
-                  ) : (
-                    <>
-                      <Text style={styles.horaEntrada}>{c.entrada}</Text>
-                      <Text style={styles.horaSaida}>{c.saida}</Text>
-                    </>
-                  )}
+              <View key={t.chave}>
+                <View style={styles.secaoHeader}>
+                  <Text style={styles.secaoTitulo}>{t.titulo}</Text>
+                  <View style={styles.secaoBadge}>
+                    <Text style={styles.secaoBadgeTexto}>{itens.length}</Text>
+                  </View>
                 </View>
-                <Text style={styles.nomeColaborador} numberOfLines={1}>
-                  {c.nome}
-                </Text>
-                <View style={[styles.chip, { backgroundColor: cor.fundo }]}>
-                  <Text style={[styles.chipTexto, { color: cor.texto }]}>
-                    {rotuloStatus(c.status)}
-                  </Text>
-                </View>
-              </TouchableOpacity>
+                {itens.map((c) => (
+                  <ColaboradorRow key={c.id} c={c} onPress={aoTocarColaborador} />
+                ))}
+              </View>
             );
           })}
 
@@ -423,8 +491,11 @@ const styles = StyleSheet.create({
   aoVivoTopo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.md,
+    gap: espacamento.lg,
     marginBottom: espacamento.sm,
+  },
+  aoVivoRelogio: {
+    alignItems: 'center',
   },
   aoVivoHora: {
     fontSize: 30,
@@ -435,9 +506,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   aoVivoDisponiveis: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '700',
     color: cores.verde,
+  },
+  aoVivoEsperados: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: cores.textoSecundario,
   },
   aoVivoLegenda: {
     ...tipografia.legenda,
@@ -448,19 +524,35 @@ const styles = StyleSheet.create({
     color: cores.verde,
     fontWeight: '600',
   },
+  barraTrilha: {
+    width: '100%',
+    height: 8,
+    borderRadius: raio.pill,
+    backgroundColor: cores.divisor,
+    overflow: 'hidden',
+    marginBottom: espacamento.sm,
+  },
+  barraPreenchida: {
+    height: '100%',
+    borderRadius: raio.pill,
+  },
   // Cabeçalho do dia
   diaTitulo: {
     ...tipografia.secao,
     color: cores.texto,
-    marginBottom: espacamento.sm,
+    marginBottom: espacamento.md,
   },
   resumoLinha: {
     flexDirection: 'row',
+    gap: espacamento.sm,
     marginBottom: espacamento.sm,
   },
   resumoBox: {
     flex: 1,
     alignItems: 'center',
+    backgroundColor: cores.superficieAlternativa,
+    borderRadius: raio.md,
+    paddingVertical: espacamento.sm,
   },
   resumoValor: {
     ...tipografia.titulo,
@@ -475,38 +567,67 @@ const styles = StyleSheet.create({
     color: cores.textoSecundario,
     fontStyle: 'italic',
   },
+  // Seção (turno)
+  secaoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    marginTop: espacamento.md,
+    marginBottom: espacamento.xs,
+  },
+  secaoTitulo: {
+    ...tipografia.rotulo,
+    fontWeight: '700',
+    color: cores.texto,
+  },
+  secaoBadge: {
+    minWidth: 22,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: raio.pill,
+    backgroundColor: cores.divisor,
+    alignItems: 'center',
+  },
+  secaoBadgeTexto: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: cores.textoSecundario,
+  },
   // Linha de colaborador
   linha: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: cores.superficie,
     borderRadius: raio.md,
+    borderLeftWidth: 3,
     paddingVertical: espacamento.sm,
     paddingHorizontal: espacamento.md,
     marginBottom: espacamento.xs,
   },
-  horaBox: {
-    width: 56,
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  horaEntrada: {
-    ...tipografia.rotulo,
+  avatarTexto: {
+    fontSize: 13,
     fontWeight: '700',
-    color: cores.texto,
   },
-  horaSaida: {
-    fontSize: 11,
-    color: cores.textoSecundario,
-  },
-  horaFolga: {
-    ...tipografia.rotulo,
-    color: cores.textoSecundario,
+  linhaInfo: {
+    flex: 1,
+    paddingHorizontal: espacamento.sm,
   },
   nomeColaborador: {
-    flex: 1,
     ...tipografia.corpo,
+    fontWeight: '600',
     color: cores.texto,
-    paddingHorizontal: espacamento.sm,
+  },
+  horarioInline: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 1,
   },
   chip: {
     paddingHorizontal: espacamento.sm,

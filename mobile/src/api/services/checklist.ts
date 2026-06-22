@@ -2,6 +2,9 @@
 import { apiClient } from '../client';
 import {
   Checklist,
+  ChecklistHistoricoDia,
+  ChecklistMetricas,
+  EstadoChecklists,
   JanelaExecucao,
   StatusChecklist,
   TipoChecklist,
@@ -50,5 +53,22 @@ export const checklistService = {
   /** Janela fixa de execução do checklist (Req 5.2). */
   janela(tipo: TipoChecklist): Promise<JanelaExecucao> {
     return apiClient.get<JanelaExecucao>(`/checklist/${tipo}/janela`);
+  },
+
+  /** Estado rico dos dois checklists do dia (auditoria/pontualidade). */
+  estado(data?: string): Promise<EstadoChecklists> {
+    return apiClient.get<EstadoChecklists>('/checklist/estado', data ? { data } : undefined);
+  },
+
+  /** Métricas de cumprimento do mês (% no prazo, racha). */
+  metricas(data?: string): Promise<ChecklistMetricas> {
+    return apiClient.get<ChecklistMetricas>('/checklist/metricas', data ? { data } : undefined);
+  },
+
+  /** Histórico dos últimos N dias. */
+  historico(dias = 14): Promise<ChecklistHistoricoDia[]> {
+    return apiClient.get<ChecklistHistoricoDia[]>('/checklist/historico', {
+      dias: String(dias),
+    });
   },
 };
