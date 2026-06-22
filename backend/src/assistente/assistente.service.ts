@@ -272,6 +272,41 @@ export class AssistenteService {
         if (topTroco) linhas.push(`🏆 Troco solidário: ${topTroco.nome} (R$${topTroco.total}).`);
         if (topRecargas) linhas.push(`🏆 Recargas: ${topRecargas.nome} (R$${topRecargas.total}).`);
         if (topCancel) linhas.push(`⚠️ Mais cancelou itens: ${topCancel.nome} (R$${topCancel.total}).`);
+
+        // Menos cancelou: entre operadores ativos (troco/recargas), o menor cancelamento.
+        const [contribRegs, cancelRegs] = await Promise.all([
+          this.prisma.registroArrecadacao.findMany({
+            where: {
+              tipo: { in: ['TROCO_SOLIDARIO', 'RECARGAS_CELULAR'] },
+              data: { gte: inicioMes, lt: inicioProximoMes },
+            },
+            select: { nome: true, valor: true },
+          }),
+          this.prisma.registroArrecadacao.findMany({
+            where: { tipo: 'CANCELAMENTO_ITENS', data: { gte: inicioMes, lt: inicioProximoMes } },
+            select: { nome: true, valor: true },
+          }),
+        ]);
+        const contrib = new Map<string, number>();
+        for (const r of contribRegs) contrib.set(r.nome, (contrib.get(r.nome) ?? 0) + Number(r.valor));
+        const cancel = new Map<string, number>();
+        for (const r of cancelRegs) cancel.set(r.nome, (cancel.get(r.nome) ?? 0) + Number(r.valor));
+        let melhorMenos: { nome: string; cancel: number; contrib: number } | null = null;
+        for (const [nome, contribTotal] of contrib.entries()) {
+          if (contribTotal <= 0) continue;
+          const cancelTotal = cancel.get(nome) ?? 0;
+          if (
+            melhorMenos === null ||
+            cancelTotal < melhorMenos.cancel ||
+            (cancelTotal === melhorMenos.cancel && contribTotal > melhorMenos.contrib)
+          ) {
+            melhorMenos = { nome, cancel: cancelTotal, contrib: contribTotal };
+          }
+        }
+        if (melhorMenos) {
+          const txt = melhorMenos.cancel > 0 ? `R$${arred(melhorMenos.cancel)}` : 'sem cancelamentos';
+          linhas.push(`🏆 Menos cancelou itens: ${melhorMenos.nome} (${txt}).`);
+        }
       }
 
       return linhas.join('\n');

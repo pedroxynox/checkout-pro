@@ -139,7 +139,10 @@ export function IndicadoresScreen({
 
           {/* Destaques do mês — Top 3 por categoria */}
           {destaques &&
-            (destaques.trocoSolidario || destaques.recargas || destaques.cancelamentoItens) && (
+            (destaques.trocoSolidario ||
+              destaques.recargas ||
+              destaques.cancelamentoItens ||
+              destaques.menosCancelou) && (
               <View style={styles.destaquesCard}>
                 <Text style={styles.destaquesTitulo}>🏅 Destaques do mês</Text>
 
@@ -182,8 +185,24 @@ export function IndicadoresScreen({
                   </View>
                 )}
 
+                {destaques.menosCancelou && (
+                  <View style={styles.destaqueLinha}>
+                    <Ionicons name="shield-checkmark" size={18} color={cores.verde} />
+                    <View style={styles.flex1}>
+                      <Text style={styles.destaqueCategoria}>Menos cancelou itens 🏆</Text>
+                      <Text style={styles.destaqueNome}>{destaques.menosCancelou.nome}</Text>
+                    </View>
+                    <Text style={[styles.destaqueValor, { color: cores.verde }]}>
+                      {destaques.menosCancelou.total > 0
+                        ? formatarMoeda(destaques.menosCancelou.total)
+                        : 'Zero'}
+                    </Text>
+                  </View>
+                )}
+
                 <Text style={styles.destaquesNota}>
-                  Troco e recargas: maior arrecadação. Cancelamento: maior valor — para acompanhar.
+                  Troco e recargas: maior arrecadação. Cancelamento: maior valor —
+                  para acompanhar. "Menos cancelou": destaque positivo entre os ativos.
                 </Text>
               </View>
             )}

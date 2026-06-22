@@ -99,6 +99,8 @@ export interface DestaquesMes {
   recargas: DestaqueOperador | null;
   /** Quem mais cancelou itens (por VALOR) — para acompanhar. */
   cancelamentoItens: DestaqueOperador | null;
+  /** Operador ativo que MENOS cancelou itens (premiação). total = valor cancelado. */
+  menosCancelou: DestaqueOperador | null;
 }
 
 function arredondar(n: number): number {
@@ -312,7 +314,49 @@ export class IndicadoresInteligenteService {
       topPorTipo('CANCELAMENTO_ITENS'),
     ]);
 
-    return { trocoSolidario, recargas, cancelamentoItens };
+    // "Menos cancelou": entre os operadores ATIVOS (com troco/recargas no mês),
+    // o que teve o menor valor de cancelamento de itens (0 é o ideal).
+    // Desempate: maior contribuição (troco + recargas).
+    const [contribRegs, cancelRegs] = await Promise.all([
+      this.prisma.registroArrecadacao.findMany({
+        where: {
+          tipo: { in: ['TROCO_SOLIDARIO', 'RECARGAS_CELULAR'] },
+          data: { gte, lt },
+        },
+        select: { nome: true, valor: true },
+      }),
+      this.prisma.registroArrecadacao.findMany({
+        where: { tipo: 'CANCELAMENTO_ITENS', data: { gte, lt } },
+        select: { nome: true, valor: true },
+      }),
+    ]);
+
+    const contrib = new Map<string, number>();
+    for (const r of contribRegs) {
+      contrib.set(r.nome, (contrib.get(r.nome) ?? 0) + Number(r.valor));
+    }
+    const cancel = new Map<string, number>();
+    for (const r of cancelRegs) {
+      cancel.set(r.nome, (cancel.get(r.nome) ?? 0) + Number(r.valor));
+    }
+
+    let melhor: { nome: string; cancelTotal: number; contribTotal: number } | null = null;
+    for (const [nome, contribTotal] of contrib.entries()) {
+      if (contribTotal <= 0) continue;
+      const cancelTotal = cancel.get(nome) ?? 0;
+      if (
+        melhor === null ||
+        cancelTotal < melhor.cancelTotal ||
+        (cancelTotal === melhor.cancelTotal && contribTotal > melhor.contribTotal)
+      ) {
+        melhor = { nome, cancelTotal, contribTotal };
+      }
+    }
+    const menosCancelou: DestaqueOperador | null = melhor
+      ? { nome: melhor.nome, total: arredondar(melhor.cancelTotal) }
+      : null;
+
+    return { trocoSolidario, recargas, cancelamentoItens, menosCancelou };
   }
 
   /**

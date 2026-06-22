@@ -179,6 +179,7 @@ export interface DestaquesMes {
   trocoSolidario: DestaqueOperador | null;
   recargas: DestaqueOperador | null;
   cancelamentoItens: DestaqueOperador | null;
+  menosCancelou: DestaqueOperador | null;
 }
 
 /** Anomalia detectada (operador acima da média). */

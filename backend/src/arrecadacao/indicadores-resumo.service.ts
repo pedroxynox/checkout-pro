@@ -88,6 +88,15 @@ export class IndicadoresResumoService {
           `⚠️ Mais cancelou itens: ${destaques.cancelamentoItens.nome} (R$${destaques.cancelamentoItens.total})`,
         );
       }
+      if (destaques.menosCancelou) {
+        const txt =
+          destaques.menosCancelou.total > 0
+            ? `R$${destaques.menosCancelou.total}`
+            : 'sem cancelamentos';
+        linhas.push(
+          `✅ Menos cancelou: ${destaques.menosCancelou.nome} (${txt})`,
+        );
+      }
 
       // Anomalias.
       const anomalias = await this.inteligente.anomalias(ontem);
