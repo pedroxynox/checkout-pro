@@ -376,6 +376,28 @@ model EscalaEntry {
   @@map("escala_entries")
 }
 
+// Turno fixo de um operador (Quadro de Operadores). Cada operador tem horário
+// fixo de entrada/saída (com variação Seg–Qui x Sex–Sáb, pois a loja abre mais
+// tarde no fim de semana) e um dia de folga fixo na semana. Não há cadastro de
+// login/perfil: é só o quadro visual de escala + faltas. As faltas pontuais
+// ficam em `Ausencia` (pessoaId = id do OperadorTurno).
+model OperadorTurno {
+  id             String   @id @default(uuid())
+  nome           String   @unique
+  // Horário Seg–Qui ("HH:mm").
+  entradaSemana  String
+  saidaSemana    String
+  // Horário Sex–Sáb ("HH:mm"); a loja abre ~1h a mais.
+  entradaFds     String
+  saidaFds       String
+  // Dia de folga fixo: 0=Dom, 1=Seg, ..., 6=Sáb.
+  folgaDiaSemana Int
+  ativo          Boolean  @default(true)
+  criadoEm       DateTime @default(now())
+
+  @@map("operador_turnos")
+}
+
 model Checklist {
   id         String          @id @default(uuid())
   tipo       TipoChecklist

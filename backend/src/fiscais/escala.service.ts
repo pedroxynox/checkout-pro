@@ -19,6 +19,11 @@ export interface EscalaEntryInput {
   folga?: boolean;
 }
 
+/** Item da escala consolidada com o nome resolvido do funcionário. */
+export interface ItemEscalaConsolidadaComNome extends ItemEscalaConsolidada {
+  nome: string;
+}
+
 /**
  * Serviço da escala de trabalho (Req 4.3): cadastro de escala por dia da semana
  * com intervalo variável e folga, cadastro de horário especial individual e
@@ -93,12 +98,31 @@ export class EscalaService {
   /**
    * Escala consolidada por dia da semana (Req 4.3.6), com entrada, saída,
    * intervalo e folga de cada funcionário, aplicando a prevalência do horário
-   * especial.
+   * especial. Resolve o **nome** do funcionário (fiscal/operador/usuário) para
+   * exibição, com fallback para o próprio id.
    */
-  async escalaConsolidada(diaSemana: number): Promise<ItemEscalaConsolidada[]> {
+  async escalaConsolidada(
+    diaSemana: number,
+  ): Promise<ItemEscalaConsolidadaComNome[]> {
     const entries = await this.prisma.escalaEntry.findMany({
       where: { diaSemana },
     });
-    return escalaConsolidada(entries as unknown as EscalaEntry[], diaSemana);
+    const itens = escalaConsolidada(entries as unknown as EscalaEntry[], diaSemana);
+
+    // Resolve nomes (fiscais, operadores e usuários) num único mapa id -> nome.
+    const [fiscais, operadores, usuarios] = await Promise.all([
+      this.prisma.fiscal.findMany({ select: { id: true, nome: true } }),
+      this.prisma.operador.findMany({ select: { id: true, nome: true } }),
+      this.prisma.usuario.findMany({ select: { id: true, nome: true } }),
+    ]);
+    const mapa = new Map<string, string>();
+    for (const f of fiscais) mapa.set(f.id, f.nome);
+    for (const o of operadores) mapa.set(o.id, o.nome);
+    for (const u of usuarios) if (u.nome) mapa.set(u.id, u.nome);
+
+    return itens.map((it) => ({
+      ...it,
+      nome: mapa.get(it.funcionarioId) ?? it.funcionarioId,
+    }));
   }
 }

@@ -1,17 +1,19 @@
 /**
- * Tela de Operadores e Ausências (Req 6.1, 6.2, 6.3, 6.6).
+ * Quadro de Operadores (escala fixa visual).
  *
- * Permite cadastrar/editar operadores, registrar/remover ausências e gerar o
- * relatório de ausências por período. Exibe também a contagem de operadores por
- * turno (abertura, intermediário, fechamento) e o total do dia selecionado,
- * derivada do horário de entrada informado para cada operador trabalhando.
+ * Os operadores não têm cadastro de login/perfil: o quadro é visual e mostra,
+ * para a semana selecionada (Seg–Sáb), o status de cada operador por dia —
+ * 🟢 trabalha (com horário) · ⚪ folga (dia fixo) · 🔴 falta (ausência pontual).
+ * Tocar numa célula que trabalha marca uma falta; tocar numa falta a remove.
+ * Embaixo, a cobertura por dia (quantos trabalham) destaca dias fracos. O
+ * gestor pode adicionar/atualizar um operador. Domingo entra depois.
  */
-import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { operadoresService } from '../../api/services';
-import { ContagemTurno, OperadorEscalaDia } from '../../api/types';
+import { GradeCelula, GradeOperadores } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
 import {
   Aviso,
   Botao,
@@ -19,375 +21,468 @@ import {
   Carregando,
   Cartao,
   EstadoVazio,
-  LinhaInfo,
   MensagemErro,
   SeletorData,
   Tela,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
-import { useAuth } from '../../auth/AuthContext';
-import { cores, espacamento, tipografia } from '../../theme';
+import { cores, espacamento, raio, tipografia } from '../../theme';
+import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, hojeISO } from '../../utils/formato';
 
-interface EscalaLinha {
-  entrada: string;
-  folga: boolean;
-  ferias: boolean;
-  desligado: boolean;
+const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+/** Cobertura mínima desejada por dia (abaixo disso, alerta). */
+const COBERTURA_MINIMA = 20;
+
+/** Largura de cada coluna de dia na grade. */
+const COL_DIA = 46;
+
+function corStatus(status: GradeCelula['status']): {
+  fundo: string;
+  texto: string;
+} {
+  if (status === 'TRABALHA') {
+    return { fundo: 'rgba(30,158,90,0.14)', texto: cores.verde };
+  }
+  if (status === 'FALTA') {
+    return { fundo: 'rgba(210,59,59,0.16)', texto: cores.vermelho };
+  }
+  return { fundo: cores.divisor, texto: cores.textoSecundario };
 }
 
-function inicioDoMesISO(): string {
-  const d = new Date();
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1))
-    .toISOString()
-    .slice(0, 10);
+/** Primeiro nome + inicial do sobrenome, para caber na grade. */
+function nomeCurto(nome: string): string {
+  const partes = nome.trim().split(/\s+/);
+  if (partes.length === 1) return partes[0];
+  return `${partes[0]} ${partes[1][0]}.`;
 }
 
 export function OperadoresScreen(): React.ReactElement {
-  const operadores = useRequisicao(() => operadoresService.listar(), []);
   const { podeAcessar } = useAuth();
-  // Cadastro/edição de operadores é restrito a supervisor/gerente; o fiscal
-  // pode lançar ausências e ver a lista.
-  const podeCadastrar = podeAcessar('OPERADORES_CRUD');
+  const podeGerenciar = podeAcessar('OPERADORES_CRUD');
 
-  const [dia, setDia] = useState(hojeISO());
-  const [novoNome, setNovoNome] = useState('');
+  const [semana, setSemana] = useState(hojeISO());
+  const grade = useRequisicao<GradeOperadores>(
+    () => operadoresService.grade(semana),
+    [semana],
+  );
+  const dados = grade.dados;
+
+  const [ocupado, setOcupado] = useState(false);
+
+  // Formulário de novo/atualizar operador (gestor).
+  const [novoAberto, setNovoAberto] = useState(false);
+  const [nome, setNome] = useState('');
+  const [entSem, setEntSem] = useState('');
+  const [saiSem, setSaiSem] = useState('');
+  const [entFds, setEntFds] = useState('');
+  const [saiFds, setSaiFds] = useState('');
+  const [folga, setFolga] = useState(1);
   const [salvando, setSalvando] = useState(false);
 
-  // Edição de nome
-  const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [nomeEditado, setNomeEditado] = useState('');
-
-  // Escala do dia (para contagem por turno) por operador
-  const [escala, setEscala] = useState<Record<string, EscalaLinha>>({});
-  const [contagem, setContagem] = useState<ContagemTurno | null>(null);
-  const [calculando, setCalculando] = useState(false);
-
-  // Ausências registradas nesta sessão (para permitir remoção por id)
-  const [ausencias, setAusencias] = useState<
-    { id: string; pessoaId: string; data: string }[]
-  >([]);
-
-  // Relatório
-  const [inicio, setInicio] = useState(inicioDoMesISO());
-  const [fim, setFim] = useState(hojeISO());
-  const relatorio = useRequisicao(
-    () => operadoresService.relatorioAusencias(inicio, fim),
-    [inicio, fim],
-  );
-
-  const nomePorId = useMemo(() => {
-    const mapa = new Map<string, string>();
-    (operadores.dados ?? []).forEach((o) => mapa.set(o.id, o.nome));
-    return mapa;
-  }, [operadores.dados]);
-
-  const linha = (id: string): EscalaLinha =>
-    escala[id] ?? { entrada: '', folga: false, ferias: false, desligado: false };
-
-  const atualizarLinha = (id: string, parcial: Partial<EscalaLinha>) =>
-    setEscala((atual) => ({ ...atual, [id]: { ...linha(id), ...parcial } }));
-
-  const cadastrar = async () => {
-    if (!novoNome.trim()) {
-      Alert.alert('Nome obrigatório', 'Informe o nome do operador.');
+  const aoTocarCelula = async (
+    operadorId: string,
+    nomeOperador: string,
+    celula: GradeCelula,
+  ) => {
+    if (celula.status === 'FOLGA' || ocupado) {
       return;
+    }
+    if (celula.status === 'FALTA' && celula.ausenciaId) {
+      const ok = await confirmar(
+        'Remover falta',
+        `Remover a falta de ${nomeOperador} em ${formatarData(celula.data)}?`,
+        'Remover',
+      );
+      if (!ok) return;
+      setOcupado(true);
+      try {
+        await operadoresService.removerAusencia(celula.ausenciaId);
+        grade.recarregar();
+      } catch (e) {
+        notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao remover.');
+      } finally {
+        setOcupado(false);
+      }
+      return;
+    }
+    // TRABALHA -> marcar falta
+    const ok = await confirmar(
+      'Marcar falta',
+      `Marcar falta de ${nomeOperador} em ${formatarData(celula.data)}?`,
+      'Marcar',
+    );
+    if (!ok) return;
+    setOcupado(true);
+    try {
+      await operadoresService.registrarAusencia(operadorId, celula.data);
+      grade.recarregar();
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao marcar falta.');
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  const salvarOperador = async () => {
+    const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/;
+    if (!nome.trim()) {
+      notificar('Nome obrigatório', 'Informe o nome do operador.');
+      return;
+    }
+    for (const [rotulo, valor] of [
+      ['Entrada Seg–Qui', entSem],
+      ['Saída Seg–Qui', saiSem],
+      ['Entrada Sex–Sáb', entFds],
+      ['Saída Sex–Sáb', saiFds],
+    ] as const) {
+      if (!hhmm.test(valor.trim())) {
+        notificar('Horário inválido', `${rotulo} deve ser HH:mm (ex.: 08:00).`);
+        return;
+      }
     }
     setSalvando(true);
     try {
-      await operadoresService.cadastrar(novoNome.trim());
-      setNovoNome('');
-      operadores.recarregar();
+      await operadoresService.salvarTurno({
+        nome: nome.trim(),
+        entradaSemana: entSem.trim(),
+        saidaSemana: saiSem.trim(),
+        entradaFds: entFds.trim(),
+        saidaFds: saiFds.trim(),
+        folgaDiaSemana: folga,
+      });
+      setNome('');
+      setEntSem('');
+      setSaiSem('');
+      setEntFds('');
+      setSaiFds('');
+      setFolga(1);
+      setNovoAberto(false);
+      grade.recarregar();
+      notificar('Salvo', 'Operador adicionado/atualizado no quadro.');
     } catch (e) {
-      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao cadastrar.');
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
     } finally {
       setSalvando(false);
     }
   };
 
-  const salvarEdicao = async () => {
-    if (!editandoId || !nomeEditado.trim()) return;
-    try {
-      await operadoresService.editarNome(editandoId, nomeEditado.trim());
-      setEditandoId(null);
-      setNomeEditado('');
-      operadores.recarregar();
-    } catch (e) {
-      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao editar.');
-    }
-  };
-
-  const registrarAusencia = async (pessoaId: string) => {
-    try {
-      const a = await operadoresService.registrarAusencia(pessoaId, dia);
-      setAusencias((atual) => [
-        { id: a.id, pessoaId, data: dia },
-        ...atual,
-      ]);
-      relatorio.recarregar();
-      Alert.alert('Ausência registrada', `${nomePorId.get(pessoaId) ?? pessoaId} em ${formatarData(dia)}.`);
-    } catch (e) {
-      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar ausência.');
-    }
-  };
-
-  const removerAusencia = async (id: string) => {
-    try {
-      await operadoresService.removerAusencia(id);
-      setAusencias((atual) => atual.filter((a) => a.id !== id));
-      relatorio.recarregar();
-    } catch (e) {
-      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao remover ausência.');
-    }
-  };
-
-  const calcularContagem = async () => {
-    const lista: OperadorEscalaDia[] = (operadores.dados ?? []).map((o) => {
-      const l = linha(o.id);
-      return {
-        operadorId: o.id,
-        entrada: l.entrada.trim() || null,
-        folga: l.folga,
-        ferias: l.ferias,
-        desligado: l.desligado,
-      };
-    });
-    setCalculando(true);
-    try {
-      const resultado = await operadoresService.contagemPorTurno(lista);
-      setContagem(resultado);
-    } catch (e) {
-      Alert.alert('Erro', e instanceof ApiError ? e.message : 'Falha ao calcular contagem.');
-    } finally {
-      setCalculando(false);
-    }
-  };
-
   return (
-    <Tela aoAtualizar={operadores.recarregar} atualizando={operadores.atualizando}>
-      <SeletorData valor={dia} aoMudar={setDia} rotulo="Dia selecionado" />
+    <Tela aoAtualizar={grade.recarregar} atualizando={grade.atualizando}>
+      <SeletorData valor={semana} aoMudar={setSemana} rotulo="Semana (qualquer dia dela)" />
 
-      <Cartao titulo="Contagem por turno">
-        {contagem ? (
-          <>
-            <LinhaInfo rotulo="Abertura" valor={contagem.abertura} />
-            <LinhaInfo rotulo="Intermediário" valor={contagem.intermediario} />
-            <LinhaInfo rotulo="Fechamento" valor={contagem.fechamento} />
-            <LinhaInfo rotulo="Total trabalhando" valor={contagem.total} />
-          </>
-        ) : (
-          <Aviso texto="Informe o horário de entrada (HH:mm) de cada operador trabalhando abaixo e calcule a contagem do dia." />
-        )}
-        <Botao
-          titulo="Calcular contagem do dia"
-          aoPressionar={calcularContagem}
-          carregando={calculando}
-          estilo={{ marginTop: espacamento.sm }}
-        />
-      </Cartao>
-
-      {podeCadastrar ? (
-        <Cartao titulo="Cadastrar operador">
-          <CampoTexto
-            rotulo="Nome"
-            value={novoNome}
-            onChangeText={setNovoNome}
-            placeholder="Nome do operador"
-          />
-          <Botao titulo="Cadastrar" aoPressionar={cadastrar} carregando={salvando} />
-        </Cartao>
-      ) : null}
-
-      <Text style={styles.tituloSecao}>Operadores</Text>
-      {operadores.carregando ? (
+      {grade.carregando ? (
         <Carregando />
-      ) : operadores.erro ? (
-        <MensagemErro mensagem={operadores.erro} aoTentarNovamente={operadores.recarregar} />
-      ) : !operadores.dados || operadores.dados.length === 0 ? (
-        <EstadoVazio icone="id-card-outline" titulo="Nenhum operador cadastrado" />
+      ) : grade.erro ? (
+        <MensagemErro mensagem={grade.erro} aoTentarNovamente={grade.recarregar} />
+      ) : !dados || dados.operadores.length === 0 ? (
+        <EstadoVazio
+          icone="people-outline"
+          titulo="Sem operadores"
+          descricao="Nenhum operador no quadro ainda."
+        />
       ) : (
-        operadores.dados.map((op) => {
-          const l = linha(op.id);
-          const editando = editandoId === op.id;
-          return (
-            <Cartao key={op.id}>
-              {editando ? (
-                <View style={styles.edicao}>
-                  <CampoTexto rotulo="Nome" value={nomeEditado} onChangeText={setNomeEditado} />
-                  <View style={styles.botoesLinha}>
-                    <Botao titulo="Salvar" aoPressionar={salvarEdicao} estilo={styles.botaoFlex} />
-                    <Botao
-                      titulo="Cancelar"
-                      variante="texto"
-                      aoPressionar={() => setEditandoId(null)}
-                      estilo={styles.botaoFlex}
-                    />
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.opCabecalho}>
-                  <Text style={styles.opNome} numberOfLines={1}>
-                    {op.nome}
-                  </Text>
-                  <View style={styles.opAcoes}>
-                    {podeCadastrar ? (
-                      <Ionicons
-                        name="create-outline"
-                        size={20}
-                        color={cores.primaria}
-                        onPress={() => {
-                          setEditandoId(op.id);
-                          setNomeEditado(op.nome);
-                        }}
-                      />
-                    ) : null}
-                    <Ionicons
-                      name="calendar-clear-outline"
-                      size={20}
-                      color={cores.amarelo}
-                      onPress={() => void registrarAusencia(op.id)}
-                    />
-                  </View>
-                </View>
-              )}
+        <>
+          {/* Legenda */}
+          <View style={styles.legenda}>
+            <Legenda cor={cores.verde} texto="Trabalha" />
+            <Legenda cor={cores.textoSecundario} texto="Folga" />
+            <Legenda cor={cores.vermelho} texto="Falta" />
+          </View>
+          <Text style={styles.dica}>
+            Toque numa célula para marcar/remover uma falta.
+          </Text>
 
-              <View style={styles.escalaLinha}>
-                <CampoTexto
-                  rotulo="Entrada (HH:mm)"
-                  value={l.entrada}
-                  onChangeText={(t) => atualizarLinha(op.id, { entrada: t })}
-                  placeholder="08:00"
-                  style={styles.entradaInput}
-                />
-              </View>
-              <View style={styles.toggles}>
-                {(['folga', 'ferias', 'desligado'] as const).map((flag) => (
-                  <View key={flag} style={styles.toggle}>
-                    <Text style={styles.toggleRotulo}>
-                      {flag === 'folga' ? 'Folga' : flag === 'ferias' ? 'Férias' : 'Deslig.'}
+          {/* Grade semanal */}
+          <Cartao>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View>
+                {/* Cabeçalho de dias */}
+                <View style={styles.linha}>
+                  <View style={styles.colNome} />
+                  {dados.dias.map((d) => {
+                    const hoje = d.data === dados.hojeISO;
+                    return (
+                      <View key={d.data} style={styles.colDia}>
+                        <Text style={[styles.diaCabecalho, hoje && styles.diaHoje]}>
+                          {NOMES_DIA[d.diaSemana]}
+                        </Text>
+                        <Text style={styles.diaData}>{formatarData(d.data).slice(0, 5)}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* Linhas de operadores */}
+                {dados.operadores.map((op) => (
+                  <View key={op.id} style={styles.linha}>
+                    <Text style={styles.nomeOperador} numberOfLines={1}>
+                      {nomeCurto(op.nome)}
                     </Text>
-                    <Switch
-                      value={l[flag]}
-                      onValueChange={(v) => atualizarLinha(op.id, { [flag]: v })}
-                      trackColor={{ true: cores.primaria }}
-                    />
+                    {op.celulas.map((c) => {
+                      const cor = corStatus(c.status);
+                      return (
+                        <TouchableOpacity
+                          key={c.data}
+                          style={[styles.celula, { backgroundColor: cor.fundo }]}
+                          activeOpacity={c.status === 'FOLGA' ? 1 : 0.6}
+                          onPress={() => void aoTocarCelula(op.id, op.nome, c)}
+                        >
+                          {c.status === 'TRABALHA' ? (
+                            <Text style={[styles.celulaTexto, { color: cor.texto }]}>
+                              {c.entrada}
+                            </Text>
+                          ) : (
+                            <Text style={[styles.celulaTexto, { color: cor.texto }]}>
+                              {c.status === 'FOLGA' ? 'Folga' : 'Falta'}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 ))}
+
+                {/* Cobertura por dia */}
+                <View style={[styles.linha, styles.linhaCobertura]}>
+                  <Text style={styles.colNomeRotulo}>No caixa</Text>
+                  {dados.cobertura.map((c) => {
+                    const baixa = c.trabalhando < COBERTURA_MINIMA;
+                    return (
+                      <View key={c.data} style={styles.colDia}>
+                        <Text
+                          style={[
+                            styles.coberturaValor,
+                            { color: baixa ? cores.vermelho : cores.verde },
+                          ]}
+                        >
+                          {c.trabalhando}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
-            </Cartao>
-          );
-        })
-      )}
+            </ScrollView>
+          </Cartao>
 
-      {ausencias.length > 0 ? (
-        <Cartao titulo="Ausências registradas (nesta sessão)">
-          {ausencias.map((a) => (
-            <View key={a.id} style={styles.ausenciaLinha}>
-              <Text style={styles.ausenciaTexto}>
-                {nomePorId.get(a.pessoaId) ?? a.pessoaId} · {formatarData(a.data)}
-              </Text>
-              <Ionicons
-                name="trash-outline"
-                size={20}
-                color={cores.erro}
-                onPress={() => void removerAusencia(a.id)}
-              />
-            </View>
-          ))}
-        </Cartao>
-      ) : null}
-
-      <Cartao titulo="Relatório de ausências">
-        <SeletorData valor={inicio} aoMudar={setInicio} rotulo="Início" />
-        <SeletorData valor={fim} aoMudar={setFim} rotulo="Fim" />
-        {relatorio.carregando ? (
-          <Carregando />
-        ) : relatorio.erro ? (
-          <MensagemErro mensagem={relatorio.erro} aoTentarNovamente={relatorio.recarregar} />
-        ) : !relatorio.dados || relatorio.dados.length === 0 ? (
-          <EstadoVazio
-            icone="checkmark-done-outline"
-            titulo="Sem ausências"
-            descricao="Nenhuma ausência no período."
-          />
-        ) : (
-          relatorio.dados.map((item) => (
-            <LinhaInfo
-              key={item.pessoaId}
-              rotulo={nomePorId.get(item.pessoaId) ?? item.pessoaId}
-              valor={`${item.quantidade} ausência(s)`}
+          {/* Resumo de cobertura abaixo do mínimo */}
+          {dados.cobertura.some((c) => c.trabalhando < COBERTURA_MINIMA) ? (
+            <Aviso
+              texto={`Atenção: ${dados.cobertura
+                .filter((c) => c.trabalhando < COBERTURA_MINIMA)
+                .map((c) => `${NOMES_DIA[c.diaSemana]} (${c.trabalhando})`)
+                .join(', ')} abaixo da cobertura mínima (${COBERTURA_MINIMA}).`}
             />
-          ))
-        )}
-      </Cartao>
+          ) : (
+            <Aviso texto={`Cobertura ok em todos os dias (mínimo ${COBERTURA_MINIMA}).`} />
+          )}
+
+          {/* Gestão: adicionar/atualizar operador */}
+          {podeGerenciar ? (
+            <Cartao titulo="Adicionar / atualizar operador">
+              {novoAberto ? (
+                <>
+                  <CampoTexto
+                    rotulo="Nome"
+                    value={nome}
+                    onChangeText={setNome}
+                    placeholder="Nome do operador"
+                  />
+                  <View style={styles.linhaHorarios}>
+                    <CampoTexto
+                      rotulo="Entrada Seg–Qui"
+                      value={entSem}
+                      onChangeText={setEntSem}
+                      placeholder="08:00"
+                      style={styles.horarioInput}
+                    />
+                    <CampoTexto
+                      rotulo="Saída Seg–Qui"
+                      value={saiSem}
+                      onChangeText={setSaiSem}
+                      placeholder="17:00"
+                      style={styles.horarioInput}
+                    />
+                  </View>
+                  <View style={styles.linhaHorarios}>
+                    <CampoTexto
+                      rotulo="Entrada Sex–Sáb"
+                      value={entFds}
+                      onChangeText={setEntFds}
+                      placeholder="08:00"
+                      style={styles.horarioInput}
+                    />
+                    <CampoTexto
+                      rotulo="Saída Sex–Sáb"
+                      value={saiFds}
+                      onChangeText={setSaiFds}
+                      placeholder="18:00"
+                      style={styles.horarioInput}
+                    />
+                  </View>
+                  <Text style={styles.rotuloFolga}>Dia de folga</Text>
+                  <View style={styles.chipsFolga}>
+                    {[1, 2, 3, 4, 5, 6, 0].map((d) => {
+                      const ativo = d === folga;
+                      return (
+                        <Text
+                          key={d}
+                          onPress={() => setFolga(d)}
+                          style={[styles.chipFolga, ativo && styles.chipFolgaAtivo]}
+                        >
+                          {NOMES_DIA[d]}
+                        </Text>
+                      );
+                    })}
+                  </View>
+                  <Botao titulo="Salvar" aoPressionar={salvarOperador} carregando={salvando} />
+                  <Botao
+                    titulo="Cancelar"
+                    variante="texto"
+                    aoPressionar={() => setNovoAberto(false)}
+                  />
+                </>
+              ) : (
+                <Botao
+                  titulo="Adicionar operador"
+                  variante="secundario"
+                  aoPressionar={() => setNovoAberto(true)}
+                />
+              )}
+            </Cartao>
+          ) : null}
+        </>
+      )}
     </Tela>
   );
 }
 
+function Legenda({ cor, texto }: { cor: string; texto: string }): React.ReactElement {
+  return (
+    <View style={styles.legendaItem}>
+      <View style={[styles.legendaPonto, { backgroundColor: cor }]} />
+      <Text style={styles.legendaTexto}>{texto}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  tituloSecao: {
-    ...tipografia.secao,
-    color: cores.texto,
-    marginTop: espacamento.sm,
-    marginBottom: espacamento.md,
-  },
-  opCabecalho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  opNome: {
-    ...tipografia.corpo,
-    fontWeight: '700',
-    color: cores.texto,
-    flex: 1,
-    paddingRight: espacamento.sm,
-  },
-  opAcoes: {
+  legenda: {
     flexDirection: 'row',
     gap: espacamento.md,
-    alignItems: 'center',
-  },
-  escalaLinha: {
-    marginTop: espacamento.sm,
-  },
-  entradaInput: {
-    maxWidth: 140,
-  },
-  toggles: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  toggle: {
-    alignItems: 'center',
-  },
-  toggleRotulo: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
     marginBottom: espacamento.xs,
   },
-  edicao: {
+  legendaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+  },
+  legendaPonto: {
+    width: 12,
+    height: 12,
+    borderRadius: 3,
+  },
+  legendaTexto: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  dica: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    fontStyle: 'italic',
     marginBottom: espacamento.sm,
   },
-  botoesLinha: {
+  linha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 3,
+  },
+  linhaCobertura: {
+    marginTop: espacamento.sm,
+    paddingTop: espacamento.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: cores.divisor,
+  },
+  colNome: {
+    width: 96,
+  },
+  colNomeRotulo: {
+    width: 96,
+    ...tipografia.legenda,
+    fontWeight: '700',
+    color: cores.textoSecundario,
+  },
+  colDia: {
+    width: COL_DIA,
+    alignItems: 'center',
+  },
+  diaCabecalho: {
+    ...tipografia.legenda,
+    fontWeight: '700',
+    color: cores.texto,
+  },
+  diaHoje: {
+    color: cores.primaria,
+  },
+  diaData: {
+    fontSize: 9,
+    color: cores.textoSecundario,
+  },
+  nomeOperador: {
+    width: 96,
+    ...tipografia.legenda,
+    color: cores.texto,
+    paddingRight: 4,
+  },
+  celula: {
+    width: COL_DIA - 4,
+    height: 30,
+    marginHorizontal: 2,
+    borderRadius: raio.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  celulaTexto: {
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  coberturaValor: {
+    ...tipografia.rotulo,
+    fontWeight: '700',
+  },
+  linhaHorarios: {
     flexDirection: 'row',
     gap: espacamento.sm,
   },
-  botaoFlex: {
+  horarioInput: {
     flex: 1,
   },
-  ausenciaLinha: {
+  rotuloFolga: {
+    ...tipografia.rotulo,
+    color: cores.textoSecundario,
+    marginTop: espacamento.sm,
+    marginBottom: espacamento.xs,
+  },
+  chipsFolga: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: espacamento.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: cores.divisor,
+    flexWrap: 'wrap',
+    gap: espacamento.xs,
+    marginBottom: espacamento.sm,
   },
-  ausenciaTexto: {
-    ...tipografia.corpo,
-    color: cores.texto,
-    flex: 1,
+  chipFolga: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    paddingVertical: espacamento.xs,
+    paddingHorizontal: espacamento.sm,
+    borderRadius: raio.pill,
+    backgroundColor: cores.divisor,
+    overflow: 'hidden',
+  },
+  chipFolgaAtivo: {
+    backgroundColor: cores.primaria,
+    color: cores.textoInverso,
   },
 });
 

@@ -103,7 +103,7 @@ export const AREAS: Area[] = [
   {
     rota: 'Operadores',
     titulo: 'Operadores',
-    descricao: 'Ausências e (gerência) cadastro de operadores',
+    descricao: 'Escala visual: folgas, faltas e cobertura',
     icone: 'id-card-outline',
     funcionalidade: 'OPERADORES_AUSENCIAS',
   },

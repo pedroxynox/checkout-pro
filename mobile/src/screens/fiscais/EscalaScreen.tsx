@@ -67,7 +67,7 @@ export function EscalaScreen(): React.ReactElement {
             <Cartao key={item.funcionarioId}>
               <View style={styles.linhaCabecalho}>
                 <Text style={styles.func} numberOfLines={1}>
-                  {item.funcionarioId}
+                  {item.nome ?? item.funcionarioId}
                 </Text>
                 {folga ? (
                   <Selo texto="Folga" cor={cores.textoSecundario} fundo={cores.superficieAlternativa} />

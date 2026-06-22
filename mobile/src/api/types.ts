@@ -594,6 +594,8 @@ export type EscalaEfetiva = EscalaEntry | 'FOLGA';
 /** Item da escala consolidada por funcionário (ver escala.domain do backend). */
 export interface ItemEscalaConsolidada {
   funcionarioId: string;
+  /** Nome resolvido do funcionário (fallback para o id). */
+  nome?: string;
   efetiva: EscalaEfetiva;
 }
 
@@ -654,6 +656,56 @@ export interface OperadorEscalaDia {
   folga?: boolean;
   ferias?: boolean;
   desligado?: boolean;
+}
+
+// ----- Quadro de Operadores (escala fixa visual) -----
+
+/** Turno fixo de um operador. */
+export interface OperadorTurno {
+  id: string;
+  nome: string;
+  entradaSemana: string;
+  saidaSemana: string;
+  entradaFds: string;
+  saidaFds: string;
+  /** 0=Dom..6=Sáb. */
+  folgaDiaSemana: number;
+  ativo: boolean;
+}
+
+export type StatusCelula = 'TRABALHA' | 'FOLGA' | 'FALTA';
+
+export interface GradeCelula {
+  diaSemana: number;
+  data: string;
+  status: StatusCelula;
+  entrada: string | null;
+  saida: string | null;
+  ausenciaId: string | null;
+}
+
+export interface GradeOperador {
+  id: string;
+  nome: string;
+  folgaDiaSemana: number;
+  celulas: GradeCelula[];
+}
+
+export interface GradeCobertura {
+  diaSemana: number;
+  data: string;
+  trabalhando: number;
+  folgas: number;
+  faltas: number;
+}
+
+/** Grade semanal (Seg–Sáb) do Quadro de Operadores. */
+export interface GradeOperadores {
+  inicio: string;
+  hojeISO: string;
+  dias: { diaSemana: number; data: string }[];
+  operadores: GradeOperador[];
+  cobertura: GradeCobertura[];
 }
 
 // ----- Notificações (Req 7.3) -----
