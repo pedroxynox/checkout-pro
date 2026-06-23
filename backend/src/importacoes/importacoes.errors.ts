@@ -1,4 +1,10 @@
 /**
+ * NOTA DE MANUTENÇÃO (limpeza de código morto): o fluxo ANTIGO de importação
+ * CSV/XLSX (controller/service/module/dto) foi removido por não ser mais usado
+ * pelo app. Este arquivo de erros é **mantido de propósito** porque a classe
+ * `ColunaAusenteError` ainda é referenciada pelo filtro global de exceções
+ * (`common/filters/dominio-exception.filter.ts`).
+ *
  * Erros de domínio tipados do Modulo_Importacoes.
  *
  * São erros puros (sem dependência do Nest ou do banco) para que a lógica de

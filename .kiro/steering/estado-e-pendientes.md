@@ -25,7 +25,7 @@
   - Backend: `npx prisma generate` + `DATABASE_URL=postgresql://u:p@localhost:5432/db npx prisma validate` + `npm run build` + `npm run lint` + `npx jest`.
   - Mobile: `npm run type-check` + `npm run lint` + `npx jest` + `EXPO_PUBLIC_API_URL=https://checkout-pro-api.onrender.com npx expo export --platform web --output-dir dist`.
 - Commits descriptivos en portugués. Migraciones Prisma: nombrar para que ordenen
-  DESPUÉS de la última (van por `9a`..`9g`; la próxima sería `9h`).
+  DESPUÉS de la última (ya van por `9a`..`9o`; la próxima debe ordenar después de `9o`).
 - Diálogos: usar `confirmar`/`notificar` de `mobile/src/utils/dialogos.ts` (la web
   no soporta `Alert`).
 - TypeScript en `strict` total (backend y mobile). 0 `any`.
@@ -47,6 +47,28 @@
   SEFAZ-RS, KPIs).
 - **Notificaciones in-app en tiempo real** vía WebSocket (toast + badge).
 - **Sesión de 30 días** + `JWT_SECRET` seguro.
+
+### Actualización — limpieza, permisos y áreas (ver `REGISTRO_DE_MUDANCAS.md`)
+
+- **Permisos unificados:** catálogo único `TODAS_FUNCIONALIDADES` (+ tipo
+  `Funcionalidade`) en backend (`acessos.domain.ts`, fuente de verdad) y su
+  espejo en mobile (`auth/funcionalidades.ts`). `GERENTE_DESENVOLVEDOR` ve
+  **absolutamente todo** (regla explícita; cubre funcionalidades futuras). Test
+  guarda: `acessos.permissoes.spec.ts`.
+- **Código muerto eliminado:** servicios mobile `importacoes`/`indicadores` y
+  tipos órfãos; superficie HTTP backend de `IndicadoresModule`/`ImportacoesModule`
+  (controllers/services/modules/dtos/specs). Se MANTUVIERON, por estar en uso por
+  código vivo: `importacoes.parser` (`parseValor` lo usan arrecadacao/vendas),
+  `importacoes.domain` (tipo `LinhaImportada`) y los `*.errors.ts` (usados por el
+  filtro global). No se tocó la BD (sin migraciones destructivas).
+- **Bug corregido:** el alerta de "importaciones pendientes" leía la tabla del
+  flujo viejo (ya sin datos); ahora `AlertasService` usa `ArrecadacaoService.status`.
+- **Áreas "em breve" ocultas:** Alertas de Fila, Normativas e Indicador de Quebra
+  marcadas con `emBreve: true` en `areas.ts` y filtradas en la Home hasta
+  terminarlas.
+- ⚠️ Pendiente de verificación: no se pudo correr `build`/`lint`/`jest` en el
+  entorno de edición (sin dependencias / red restringida). Correr la verificación
+  completa antes del deploy.
 
 ## Pendientes / próximos pasos (en orden sugerido)
 

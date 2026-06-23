@@ -2,7 +2,11 @@ import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { ChecklistService } from '../checklist/checklist.service';
 import { Relogio } from '../common/relogio';
-import { ImportacoesService } from '../importacoes/importacoes.service';
+import { ArrecadacaoService } from '../arrecadacao/arrecadacao.service';
+import {
+  StatusArrecadacao,
+  TIPOS_ARRECADACAO,
+} from '../arrecadacao/arrecadacao.domain';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { AlertasService, expressaoCronDiaria } from './alertas.service';
 
@@ -14,7 +18,7 @@ import { AlertasService, expressaoCronDiaria } from './alertas.service';
  *
  * Os serviços de checklist e notificações são reais (com um Prisma falso em
  * memória), exercitando a lógica de alerta e a entrega em duplo canal; o
- * serviço de importações é simulado para controlar os pendentes.
+ * serviço de arrecadação é simulado para controlar os tipos pendentes do dia.
  */
 describe('AlertasService (cron com relógio injetável)', () => {
   interface UsuarioFake {
@@ -74,11 +78,18 @@ describe('AlertasService (cron com relógio injetável)', () => {
 
     const checklistService = new ChecklistService(prismaFake as never);
     const notificacoesService = new NotificacoesService(prismaFake as never);
-    const importacoesServiceFake = {
-      verificarPendentesFimDoDia: jest.fn(() =>
-        Promise.resolve(opts.pendentesImportacao ?? []),
-      ),
-    } as unknown as ImportacoesService;
+    // Simula o status de arrecadação do dia: os tipos informados em
+    // `pendentesImportacao` ficam PENDENTE; os demais, ENVIADO.
+    const arrecadacaoServiceFake = {
+      status: jest.fn(() => {
+        const pendentes = new Set(opts.pendentesImportacao ?? []);
+        const status = {} as StatusArrecadacao;
+        for (const tipo of TIPOS_ARRECADACAO) {
+          status[tipo] = pendentes.has(tipo) ? 'PENDENTE' : 'ENVIADO';
+        }
+        return Promise.resolve(status);
+      }),
+    } as unknown as ArrecadacaoService;
     const relogio: Relogio = { agora: () => opts.agora };
     const config = {
       get: (chave: string) =>
@@ -91,14 +102,14 @@ describe('AlertasService (cron com relógio injetável)', () => {
 
     const service = new AlertasService(
       checklistService,
-      importacoesServiceFake,
+      arrecadacaoServiceFake,
       notificacoesService,
       config,
       scheduler,
       relogio,
     );
 
-    return { service, criadas, importacoesServiceFake, scheduler };
+    return { service, criadas, arrecadacaoServiceFake, scheduler };
   }
 
   describe('alerta de checklist', () => {

@@ -33,34 +33,12 @@ export interface UsuarioConta {
   criadoEm?: string;
 }
 
-// ----- Importações (Req 1.x) -----
-export type TipoArquivo =
-  | 'CANCELAMENTO_ITENS'
-  | 'TROCO_SOLIDARIO'
-  | 'RECARGAS_CELULAR'
-  | 'DEVOLUCOES';
-
-export type StatusImportacao = 'importado' | 'pendente';
-
-export type StatusDia = Record<TipoArquivo, StatusImportacao>;
-
-export interface RegistroImportacao {
-  id: string;
-  tipo: TipoArquivo;
-  dataReferencia: string;
-  importadoEm: string;
-  importadoPor: string | null;
-  nomesNaoReconhecidos: string[];
-}
-
-export interface ResultadoImportacao {
-  tipo: TipoArquivo;
-  dataReferencia: string;
-  registrosVinculados: unknown[];
-  nomesNaoReconhecidos: string[];
-  importadoPor: string | null;
-  importadoEm: string;
-}
+// ----- Importações (fluxo ANTIGO, removido) -----
+// Os tipos de importação CSV/XLSX (TipoArquivo, StatusDia, RegistroImportacao,
+// ResultadoImportacao) foram removidos junto com o serviço `importacoesService`,
+// que não era mais usado por nenhuma tela. O fluxo atual de carga de arquivos
+// usa `arrecadacaoService`/`vendasService` (arquivos .txt) com os tipos de
+// `TipoArrecadacao`/vendas.
 
 // ----- Indicadores / Painel de Vendas (Req 2.x) -----
 export type Periodo = 'DIA' | 'SEMANA' | 'MES';

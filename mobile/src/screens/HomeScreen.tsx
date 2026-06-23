@@ -21,7 +21,12 @@ export function HomeScreen({
 }: PropsTela<'Home'>): React.ReactElement {
   const { usuario, perfil, podeAcessar, sair } = useAuth();
   const { naoLidas } = useNotificacoes();
-  const areasVisiveis = AREAS.filter((a) => podeAcessar(a.funcionalidade));
+  // Áreas visíveis no menu: precisa ter acesso pela funcionalidade E não estar
+  // marcada como "em breve" (em construção). Áreas `emBreve` ficam ocultas até
+  // serem concluídas, inclusive para o gerente desenvolvedor.
+  const areasVisiveis = AREAS.filter(
+    (a) => !a.emBreve && podeAcessar(a.funcionalidade),
+  );
 
   // Nome a exibir: usa o nome do usuário (quando houver); senão, deriva do
   // login. Exibe apenas o PRIMEIRO nome.

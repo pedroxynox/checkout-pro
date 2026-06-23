@@ -1,4 +1,10 @@
 /**
+ * NOTA DE MANUTENÇÃO (limpeza de código morto): o fluxo ANTIGO de indicadores
+ * manuais (controller/service/module/dto/domain) foi removido por não ser mais
+ * usado pelo app. Este arquivo de erros é **mantido de propósito** porque a
+ * classe `ValorVendaInvalidoError` ainda é referenciada pelo filtro global de
+ * exceções (`common/filters/dominio-exception.filter.ts`).
+ *
  * Erros de domínio tipados do Modulo_Indicadores (Painel de Vendas e
  * indicadores). São erros puros (sem dependência do Nest ou do banco) para
  * que a lógica de domínio permaneça testável de forma isolada.

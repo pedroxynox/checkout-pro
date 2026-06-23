@@ -1,20 +1,66 @@
 /**
- * Espelho, no app, do conjunto de funcionalidades operacionais liberadas ao
- * perfil FISCAL (Req 7.2.3) e da regra de autorização por perfil (Req 7.2).
+ * Permissões por perfil no app — ESPELHO da fonte de verdade do backend.
  *
- * Mantém o **mesmo conceito** do backend (`FUNCIONALIDADES_FISCAL` e
- * `decidirAutorizacao`): o gerente tem acesso total; o fiscal só acessa o que
- * pertence à lista operacional. Isto governa quais áreas aparecem na navegação
- * (Req 7.2.2–7.2.4). A autorização definitiva continua no backend (guards); a
- * verificação no app apenas evita exibir áreas indisponíveis.
+ * A regra que vale de verdade é sempre a do backend
+ * (`backend/src/acessos/acessos.domain.ts`, função `decidirAutorizacao` +
+ * `PerfilGuard`). Este arquivo apenas decide **o que aparece na tela** para
+ * cada perfil (Req 7.2.2–7.2.4), reaproveitando exatamente o mesmo catálogo e
+ * a mesma regra.
+ *
+ * IMPORTANTE (manutenção): backend e app são pacotes compilados separadamente e
+ * não compartilham código. Ao mudar uma permissão no backend, reflita a MESMA
+ * mudança aqui (e vice-versa). O catálogo `TODAS_FUNCIONALIDADES` abaixo deve
+ * ser idêntico ao do backend.
  */
 import { Perfil } from '../api/types';
+
+/**
+ * Catálogo completo de funcionalidades do sistema (igual ao backend). O perfil
+ * GERENTE_DESENVOLVEDOR enxerga todas elas; o tipo `Funcionalidade` garante que
+ * as listas de cada perfil só usem funcionalidades existentes.
+ */
+export const TODAS_FUNCIONALIDADES = [
+  // Carga e fechamento do dia
+  'IMPORTACOES',
+  'FECHAMENTO',
+  // Indicadores e vendas
+  'INDICADORES_VISUALIZAR',
+  'PAINEL_VENDAS_VISUALIZAR',
+  'PAINEL_VENDAS_EDITAR',
+  // Sacolas APAE
+  'LOTE_APAE',
+  'LOTE_APAE_GERENCIAR',
+  // Insumos / almoxarifado
+  'INSUMOS',
+  'INSUMOS_GERENCIAR',
+  // Fiscais
+  'FISCAIS_STATUS',
+  'FISCAIS_JORNADA',
+  'ESCALA_VISUALIZAR',
+  'ESCALA_EDITAR',
+  // Operação diária
+  'CHECKLIST',
+  'OPERADORES_AUSENCIAS',
+  'OPERADORES_CRUD',
+  // Pessoas e avisos
+  'USUARIOS_CRUD',
+  'NOTIFICACOES',
+  // Áreas ainda em construção (mantidas no catálogo para o controle de acesso)
+  'ALERTAS_FILA',
+  'NORMATIVAS',
+  'INDICADOR_QUEBRA',
+  // Administração de dados (zerar/limpar) — só desenvolvedor
+  'ADMIN_DADOS',
+] as const;
+
+/** Uma funcionalidade válida do sistema (qualquer item do catálogo acima). */
+export type Funcionalidade = (typeof TODAS_FUNCIONALIDADES)[number];
 
 /**
  * Funcionalidades operacionais liberadas ao perfil FISCAL (rotina diária +
  * comunicação + seções gerais). Idêntico ao backend (acessos.domain.ts).
  */
-export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
+export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
   'LOTE_APAE',
   'INSUMOS',
   'FISCAIS_STATUS',
@@ -31,7 +77,7 @@ export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
 ]);
 
 /** Funcionalidades do SUPERVISOR: tudo do fiscal + operadores + requisições + fechamento. */
-export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
+export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] = Object.freeze([
   ...FUNCIONALIDADES_FISCAL,
   'OPERADORES_CRUD',
   'INSUMOS_GERENCIAR',
@@ -40,7 +86,7 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
 ]);
 
 /** Funcionalidades do IMPORTADOR: usuário dedicado só carrega arquivos (Importações). */
-export const FUNCIONALIDADES_IMPORTADOR: readonly string[] = Object.freeze([
+export const FUNCIONALIDADES_IMPORTADOR: readonly Funcionalidade[] = Object.freeze([
   'IMPORTACOES',
 ]);
 
@@ -59,7 +105,7 @@ const FUNCIONALIDADES_IMPORTADOR_SET = new Set<string>(
  * GERENTE_DESENVOLVEDOR. Alterar status de fiscal não é por funcionalidade
  * (só o próprio fiscal ou o desenvolvedor).
  */
-export const FUNCIONALIDADES_GERENTE: readonly string[] = Object.freeze([
+export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze([
   'INDICADORES_VISUALIZAR',
   'PAINEL_VENDAS_VISUALIZAR',
   'PAINEL_VENDAS_EDITAR',
@@ -82,7 +128,8 @@ const FUNCIONALIDADES_GERENTE_SET = new Set<string>(FUNCIONALIDADES_GERENTE);
 
 /**
  * Decide se um perfil pode acessar uma funcionalidade (Req 7.2):
- * - GERENTE_DESENVOLVEDOR: acesso total.
+ * - GERENTE_DESENVOLVEDOR: acesso total (vê absolutamente tudo, inclusive
+ *   qualquer funcionalidade futura do catálogo).
  * - GERENTE: apenas o conjunto de gerente (ver tudo + operação do dia a dia).
  * - SUPERVISOR: conjunto do supervisor.
  * - IMPORTADOR: apenas carregar arquivos (Importações).
@@ -90,6 +137,8 @@ const FUNCIONALIDADES_GERENTE_SET = new Set<string>(FUNCIONALIDADES_GERENTE);
  */
 export function podeAcessar(perfil: Perfil, funcionalidade: string): boolean {
   if (perfil === 'GERENTE_DESENVOLVEDOR') {
+    // Acesso TOTAL: libera sem consultar lista para garantir que o
+    // desenvolvedor sempre veja tudo (Req: "ver absolutamente tudo").
     return true;
   }
   if (perfil === 'GERENTE') {

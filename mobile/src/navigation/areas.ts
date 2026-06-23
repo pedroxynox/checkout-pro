@@ -6,6 +6,11 @@
  * para exibir **todas** as áreas ao gerente e **apenas as operacionais** ao
  * fiscal (Req 7.2.2–7.2.4), reaproveitando o mesmo conceito de allowlist do
  * backend (`FUNCIONALIDADES_FISCAL`).
+ *
+ * Além da permissão por perfil, áreas marcadas com `emBreve: true` (em
+ * construção) ficam **ocultas do menu** até serem concluídas — ver o filtro na
+ * HomeScreen e a marca nas áreas Alertas de Fila, Normativas e Indicador de
+ * Quebra.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { RotaApp } from './types';
@@ -34,6 +39,12 @@ export interface Area {
   descricao: string;
   icone: keyof typeof Ionicons.glyphMap;
   funcionalidade: string;
+  /**
+   * Área ainda EM CONSTRUÇÃO. Quando `true`, a área fica **oculta do menu**
+   * (Home) até a funcionalidade ser concluída — mesmo para o gerente
+   * desenvolvedor. Basta remover esta marca para voltar a exibi-la.
+   */
+  emBreve?: boolean;
 }
 
 export const AREAS: Area[] = [
@@ -127,6 +138,7 @@ export const AREAS: Area[] = [
     descricao: 'Avisos de filas/caixas (em breve)',
     icone: 'alert-circle-outline',
     funcionalidade: 'ALERTAS_FILA',
+    emBreve: true,
   },
   {
     rota: 'Normativas',
@@ -134,6 +146,7 @@ export const AREAS: Area[] = [
     descricao: 'Normas e procedimentos (em breve)',
     icone: 'document-text-outline',
     funcionalidade: 'NORMATIVAS',
+    emBreve: true,
   },
   {
     rota: 'IndicadorQuebra',
@@ -141,6 +154,7 @@ export const AREAS: Area[] = [
     descricao: 'Quebras e perdas (em breve)',
     icone: 'trending-down-outline',
     funcionalidade: 'INDICADOR_QUEBRA',
+    emBreve: true,
   },
   {
     rota: 'GerenciarDados',

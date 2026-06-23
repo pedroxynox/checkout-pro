@@ -38,16 +38,23 @@ function navegacaoFake() {
 describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('o gerente desenvolvedor vê todas as áreas', () => {
+  it('o gerente desenvolvedor vê todas as áreas disponíveis (menos as "em breve")', () => {
     montarAuth('GERENTE_DESENVOLVEDOR');
     render(<HomeScreen navigation={navegacaoFake()} route={{} as never} />);
 
-    for (const area of AREAS) {
+    // Vê todas as áreas que já estão prontas.
+    for (const area of AREAS.filter((a) => !a.emBreve)) {
       expect(screen.getByText(area.titulo)).toBeTruthy();
     }
     // Inclui as áreas administrativas exclusivas do desenvolvedor.
     expect(screen.getByText('Pessoas e Acessos')).toBeTruthy();
     expect(screen.getByText('Gerenciar dados')).toBeTruthy();
+
+    // As áreas EM CONSTRUÇÃO ("em breve") ficam ocultas até serem concluídas,
+    // mesmo para o desenvolvedor.
+    for (const area of AREAS.filter((a) => a.emBreve)) {
+      expect(screen.queryByText(area.titulo)).toBeNull();
+    }
   });
 
   it('o gerente comum vê a operação, mas não a gestão de dados', () => {
