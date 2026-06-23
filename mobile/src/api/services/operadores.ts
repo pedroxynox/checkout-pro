@@ -16,6 +16,7 @@ import {
 /** Dados de um turno fixo de operador (criar/editar). */
 export interface TurnoOperadorInput {
   nome: string;
+  genero?: 'M' | 'F';
   entradaSemana: string;
   saidaSemana: string;
   entradaFds: string;

@@ -384,6 +384,8 @@ model EscalaEntry {
 model OperadorTurno {
   id             String   @id @default(uuid())
   nome           String   @unique
+  // Gênero ('M' ou 'F') para o avatar representativo.
+  genero         String?
   // Horário Seg–Qui ("HH:mm").
   entradaSemana  String
   saidaSemana    String

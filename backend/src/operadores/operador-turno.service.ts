@@ -7,6 +7,7 @@ import { NotificacoesService } from '../notificacoes/notificacoes.service';
 /** Dados para criar/atualizar um turno de operador. */
 export interface TurnoInput {
   nome: string;
+  genero?: string | null;
   entradaSemana: string;
   saidaSemana: string;
   entradaFds: string;
@@ -94,6 +95,7 @@ export interface AnaliticaFaltas {
 export interface ColaboradorDia {
   id: string;
   nome: string;
+  genero: string | null;
   status: StatusCelula;
   entrada: string | null;
   saida: string | null;
@@ -204,6 +206,7 @@ export class OperadorTurnoService {
     return this.prisma.operadorTurno.upsert({
       where: { nome: dados.nome.trim() },
       update: {
+        genero: dados.genero ?? null,
         entradaSemana: dados.entradaSemana,
         saidaSemana: dados.saidaSemana,
         entradaFds: dados.entradaFds,
@@ -213,6 +216,7 @@ export class OperadorTurnoService {
       },
       create: {
         nome: dados.nome.trim(),
+        genero: dados.genero ?? null,
         entradaSemana: dados.entradaSemana,
         saidaSemana: dados.saidaSemana,
         entradaFds: dados.entradaFds,
@@ -365,6 +369,7 @@ export class OperadorTurnoService {
         return {
           id: op.id,
           nome: op.nome,
+          genero: op.genero ?? null,
           status: 'FOLGA',
           entrada: null,
           saida: null,
@@ -377,6 +382,7 @@ export class OperadorTurnoService {
       return {
         id: op.id,
         nome: op.nome,
+        genero: op.genero ?? null,
         status: ausenciaId ? 'FALTA' : 'TRABALHA',
         entrada,
         saida,

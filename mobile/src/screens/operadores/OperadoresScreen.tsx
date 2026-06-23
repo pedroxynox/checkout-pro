@@ -8,7 +8,8 @@
  * "Agora no caixa" (ao vivo). Embaixo, as faltas do mês e (gestor) o cadastro
  * de operador. Domingo entra depois.
  */
-import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { operadoresService } from '../../api/services';
@@ -85,11 +86,23 @@ function turnoDe(c: ColaboradorDia): string {
   return 'NOITE';
 }
 
-/** Inicial(is) do nome para o avatar (até 2 letras). */
-function iniciais(nome: string): string {
-  const partes = nome.trim().split(/\s+/);
-  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
-  return (partes[0][0] + partes[1][0]).toUpperCase();
+/** Ícone de avatar por gênero ('M'/'F'); fallback simples pelo nome. */
+function iconeGenero(genero: string | null, nome: string): 'man' | 'woman' {
+  if (genero === 'M') return 'man';
+  if (genero === 'F') return 'woman';
+  const primeiro = nome.trim().split(/\s+/)[0].toLowerCase();
+  return primeiro.endsWith('a') ? 'woman' : 'man';
+}
+
+/** Relógio "HH:MM:SS" no fuso de Brasília. */
+function relogioBrasilia(): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(new Date());
 }
 
 /** Linha de um colaborador no roster do dia. */
@@ -108,7 +121,7 @@ function ColaboradorRow({
       style={[styles.linha, { borderLeftColor: cor.texto }]}
     >
       <View style={[styles.avatar, { backgroundColor: cor.fundo }]}>
-        <Text style={[styles.avatarTexto, { color: cor.texto }]}>{iniciais(c.nome)}</Text>
+        <Ionicons name={iconeGenero(c.genero, c.nome)} size={20} color={cor.texto} />
       </View>
       <View style={styles.linhaInfo}>
         <Text style={styles.nomeColaborador} numberOfLines={1}>
@@ -126,8 +139,18 @@ function ColaboradorRow({
 }
 
 export function OperadoresScreen(): React.ReactElement {
-  const { podeAcessar } = useAuth();
+  const { podeAcessar, perfil } = useAuth();
   const podeGerenciar = podeAcessar('OPERADORES_CRUD');
+  const podeProgramarFuturo = perfil
+    ? ['GERENTE', 'GERENTE_DESENVOLVEDOR', 'SUPERVISOR'].includes(perfil)
+    : false;
+
+  // Relógio em tempo real (HH:MM:SS, Brasília).
+  const [relogio, setRelogio] = useState(relogioBrasilia());
+  useEffect(() => {
+    const id = setInterval(() => setRelogio(relogioBrasilia()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const [diaSel, setDiaSel] = useState(hojeISO());
   const dia = useRequisicao<DiaOperadores>(
@@ -154,6 +177,7 @@ export function OperadoresScreen(): React.ReactElement {
   const [entFds, setEntFds] = useState('');
   const [saiFds, setSaiFds] = useState('');
   const [folga, setFolga] = useState(1);
+  const [genero, setGenero] = useState<'M' | 'F'>('F');
   const [salvando, setSalvando] = useState(false);
 
   const recarregarTudo = () => {
@@ -184,11 +208,21 @@ export function OperadoresScreen(): React.ReactElement {
       return;
     }
 
-    // TRABALHA -> marcar falta
+    // TRABALHA -> marcar falta (hoje/passado) ou programar ausência (futuro)
+    const futura = diaSel > hojeISO();
+    if (futura && !podeProgramarFuturo) {
+      notificar(
+        'Sem permissão',
+        'Apenas gerente ou supervisor pode programar uma ausência futura.',
+      );
+      return;
+    }
     const ok = await confirmar(
-      'Marcar falta',
-      `Marcar falta de ${c.nome} em ${formatarData(diaSel)}?`,
-      'Marcar',
+      futura ? 'Programar ausência' : 'Marcar falta',
+      futura
+        ? `Programar ausência de ${c.nome} em ${formatarData(diaSel)}? (ausência futura)`
+        : `Marcar falta de ${c.nome} em ${formatarData(diaSel)}?`,
+      futura ? 'Programar' : 'Marcar',
     );
     if (!ok) return;
     setOcupado(true);
@@ -199,7 +233,7 @@ export function OperadoresScreen(): React.ReactElement {
       if (restante != null) {
         const abaixo = restante < COBERTURA_MINIMA;
         notificar(
-          'Falta marcada',
+          futura ? 'Ausência programada' : 'Falta marcada',
           `${c.nome}. Ficam ${restante} operadores no caixa nesse dia${
             abaixo ? ` — abaixo do mínimo (${COBERTURA_MINIMA})!` : '.'
           }`,
@@ -233,6 +267,7 @@ export function OperadoresScreen(): React.ReactElement {
     try {
       await operadoresService.salvarTurno({
         nome: nome.trim(),
+        genero,
         entradaSemana: entSem.trim(),
         saidaSemana: saiSem.trim(),
         entradaFds: entFds.trim(),
@@ -245,6 +280,7 @@ export function OperadoresScreen(): React.ReactElement {
       setEntFds('');
       setSaiFds('');
       setFolga(1);
+      setGenero('F');
       setNovoAberto(false);
       dia.recarregar();
       notificar('Salvo', 'Operador adicionado/atualizado no quadro.');
@@ -265,7 +301,7 @@ export function OperadoresScreen(): React.ReactElement {
         <Cartao titulo="Agora no caixa">
           <View style={styles.aoVivoTopo}>
             <View style={styles.aoVivoRelogio}>
-              <Text style={styles.aoVivoHora}>{aoVivo.dados.horaLocal}</Text>
+              <Text style={styles.aoVivoHora}>{relogio}</Text>
               <Text style={styles.aoVivoLegenda}>agora</Text>
             </View>
             <View style={styles.aoVivoNumeros}>
@@ -400,6 +436,18 @@ export function OperadoresScreen(): React.ReactElement {
                     onChangeText={setNome}
                     placeholder="Nome do operador"
                   />
+                  <Text style={styles.rotuloFolga}>Gênero (avatar)</Text>
+                  <View style={styles.chipsFolga}>
+                    {(['F', 'M'] as const).map((g) => (
+                      <Text
+                        key={g}
+                        onPress={() => setGenero(g)}
+                        style={[styles.chipFolga, genero === g && styles.chipFolgaAtivo]}
+                      >
+                        {g === 'F' ? 'Mulher' : 'Homem'}
+                      </Text>
+                    ))}
+                  </View>
                   <View style={styles.linhaHorarios}>
                     <CampoTexto
                       rotulo="Entrada Seg–Qui"
@@ -498,9 +546,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   aoVivoHora: {
-    fontSize: 30,
+    fontSize: 24,
     fontWeight: '700',
     color: cores.primaria,
+    fontVariant: ['tabular-nums'],
   },
   aoVivoNumeros: {
     flex: 1,
@@ -610,10 +659,6 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarTexto: {
-    fontSize: 13,
-    fontWeight: '700',
   },
   linhaInfo: {
     flex: 1,

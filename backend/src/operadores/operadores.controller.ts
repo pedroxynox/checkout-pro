@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -13,6 +14,10 @@ import {
 import { Ausencia, Operador } from '@prisma/client';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
+  UsuarioAtual,
+  UsuarioAutenticado,
+} from '../common/decorators/usuario-atual.decorator';
+import {
   CadastrarOperadorDto,
   ContagemTurnoDto,
   PeriodoAusenciasDto,
@@ -20,6 +25,21 @@ import {
 } from './dto/operadores.dto';
 import { ContagemTurno, ItemRelatorioAusencia } from './operadores.domain';
 import { OperadoresService } from './operadores.service';
+
+/** Hoje (ISO yyyy-mm-dd) no fuso de Brasília. */
+function hojeBrasiliaISO(): string {
+  const p = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const g = (t: string): string => p.find((x) => x.type === t)?.value ?? '';
+  return `${g('year')}-${g('month')}-${g('day')}`;
+}
+
+/** Perfis autorizados a programar ausência futura. */
+const PERFIS_AUTORIZA_FUTURO = ['GERENTE', 'GERENTE_DESENVOLVEDOR', 'SUPERVISOR'];
 
 /**
  * Controller do Modulo_Operadores (Req 6.1, 6.2, 6.3, 6.6). A gestão de
@@ -54,12 +74,28 @@ export class OperadoresController {
     return this.operadoresService.editarNome(id, dto.nome);
   }
 
-  /** Registra uma ausência de uma pessoa numa data (Req 6.2.1–6.2.3). */
+  /**
+   * Registra uma ausência de uma pessoa numa data (Req 6.2.1–6.2.3). Marcar
+   * uma ausência **futura** (programada) exige perfil gerente ou supervisor;
+   * ausências de hoje/passado (registro de falta) são liberadas a quem lança
+   * ausências.
+   */
   @Post('ausencias')
   @Funcionalidade('OPERADORES_AUSENCIAS')
   async registrarAusencia(
     @Body() dto: RegistrarAusenciaDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<Ausencia> {
+    const dataISO = dto.data.slice(0, 10);
+    const ehFutura = dataISO > hojeBrasiliaISO();
+    if (
+      ehFutura &&
+      !PERFIS_AUTORIZA_FUTURO.includes(usuario?.perfil as string)
+    ) {
+      throw new ForbiddenException(
+        'Apenas gerente ou supervisor pode programar uma ausência futura.',
+      );
+    }
     return this.operadoresService.registrarAusencia(
       dto.pessoaId,
       new Date(dto.data),

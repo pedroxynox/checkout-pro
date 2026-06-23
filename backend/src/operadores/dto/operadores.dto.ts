@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsDateString,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -70,6 +71,10 @@ export class TurnoOperadorDto {
   @IsString()
   @IsNotEmpty({ message: 'O nome é obrigatório.' })
   nome!: string;
+
+  @IsOptional()
+  @IsIn(['M', 'F'], { message: 'genero deve ser M ou F' })
+  genero?: string;
 
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'entradaSemana deve ser HH:mm' })
   entradaSemana!: string;

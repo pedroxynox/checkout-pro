@@ -204,6 +204,7 @@ async function seedOperadores(): Promise<void> {
 // domingo (0), ainda sem horário de domingo.
 interface SeedTurno {
   nome: string;
+  genero: 'M' | 'F';
   sem: [string, string]; // [entrada, saída] Seg–Qui
   fds: [string, string]; // [entrada, saída] Sex–Sáb
   folga: number; // 0=Dom..6=Sáb
@@ -211,51 +212,51 @@ interface SeedTurno {
 
 const OPERADOR_TURNOS: SeedTurno[] = [
   // Folga SEGUNDA (1)
-  { nome: 'FELIPE GUSTAVO DOS SANTOS VICENTE', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 1 },
-  { nome: 'AILIN OCHOA', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 1 },
-  { nome: 'ENEIDA JOMARA SILVA RODRIGUES', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 1 },
-  { nome: 'MATHEUS HENRIQUE DA SILVA GIACOMO', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 1 },
-  { nome: 'YESENIA DEVERA', sem: ['08:00', '17:00'], fds: ['08:00', '18:00'], folga: 1 },
-  { nome: 'ORLIANNYS DEL CARMEN ROMERO AGUILERA', sem: ['11:00', '20:00'], fds: ['11:00', '21:00'], folga: 1 },
-  { nome: 'MARYOLIS ALEXANDRA LANZA LAMAR', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 1 },
-  { nome: 'DAVID ENRIQUE GARCIA RAMIREZ', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 1 },
-  { nome: 'ERICK LEONARDO BRITO ZAPATA', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 1 },
-  { nome: 'SONIA MARIA RODRIGUES JUSTINO', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 1 },
-  { nome: 'YUDISBEL MERINO TROCHE', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 1 },
+  { nome: 'FELIPE GUSTAVO DOS SANTOS VICENTE', genero: 'M', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 1 },
+  { nome: 'AILIN OCHOA', genero: 'F', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 1 },
+  { nome: 'ENEIDA JOMARA SILVA RODRIGUES', genero: 'F', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 1 },
+  { nome: 'MATHEUS HENRIQUE DA SILVA GIACOMO', genero: 'M', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 1 },
+  { nome: 'YESENIA DEVERA', genero: 'F', sem: ['08:00', '17:00'], fds: ['08:00', '18:00'], folga: 1 },
+  { nome: 'ORLIANNYS DEL CARMEN ROMERO AGUILERA', genero: 'F', sem: ['11:00', '20:00'], fds: ['11:00', '21:00'], folga: 1 },
+  { nome: 'MARYOLIS ALEXANDRA LANZA LAMAR', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 1 },
+  { nome: 'DAVID ENRIQUE GARCIA RAMIREZ', genero: 'M', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 1 },
+  { nome: 'ERICK LEONARDO BRITO ZAPATA', genero: 'M', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 1 },
+  { nome: 'SONIA MARIA RODRIGUES JUSTINO', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 1 },
+  { nome: 'YUDISBEL MERINO TROCHE', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 1 },
   // Folga TERÇA (2)
-  { nome: 'FRANCILEUDA MARQUES', sem: ['09:00', '18:00'], fds: ['09:00', '19:00'], folga: 2 },
-  { nome: 'MARIA DE LOURDES CORREA CASTILLA', sem: ['10:00', '19:00'], fds: ['10:00', '20:00'], folga: 2 },
-  { nome: 'MARIANGEL ANDREINA SOTILLO CEDENO', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 2 },
-  { nome: 'SILVANA DE FREITAS SANTOS', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 2 },
-  { nome: 'TAINA IARA DENOVAC BITENCOURT', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 2 },
-  { nome: 'MARLENIS CAROLINA PERDOMO GUZMAN', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 2 },
+  { nome: 'FRANCILEUDA MARQUES', genero: 'F', sem: ['09:00', '18:00'], fds: ['09:00', '19:00'], folga: 2 },
+  { nome: 'MARIA DE LOURDES CORREA CASTILLA', genero: 'F', sem: ['10:00', '19:00'], fds: ['10:00', '20:00'], folga: 2 },
+  { nome: 'MARIANGEL ANDREINA SOTILLO CEDENO', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 2 },
+  { nome: 'SILVANA DE FREITAS SANTOS', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 2 },
+  { nome: 'TAINA IARA DENOVAC BITENCOURT', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 2 },
+  { nome: 'MARLENIS CAROLINA PERDOMO GUZMAN', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 2 },
   // Folga QUARTA (3)
-  { nome: 'NAIROBI LUYANDO', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 3 },
-  { nome: 'LAURISMAR DEL CARMEN SOJO GUEVARA', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 3 },
-  { nome: 'NARIA PIRES', sem: ['09:00', '18:00'], fds: ['09:00', '19:00'], folga: 3 },
-  { nome: 'PATRICIA DE OLIVEIRA', sem: ['10:00', '19:00'], fds: ['10:00', '20:00'], folga: 3 },
-  { nome: 'STEFANIE DRUZIAN WALTRICK', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 3 },
-  { nome: 'ROSMELY DE LA COROMOTO GUZMAN VIERA', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 3 },
-  { nome: 'YANNELIT SUBERO', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 3 },
-  { nome: 'ALEJANDRA SARAHY PINO BORROME', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 3 },
-  { nome: 'ELIZIANE SALGADO CASTURIAGA', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 3 },
-  { nome: 'OLGA MARIA CHIRINOS CADENA', sem: ['16:00', '22:00'], fds: ['16:00', '22:00'], folga: 3 },
+  { nome: 'NAIROBI LUYANDO', genero: 'F', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 3 },
+  { nome: 'LAURISMAR DEL CARMEN SOJO GUEVARA', genero: 'F', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 3 },
+  { nome: 'NARIA PIRES', genero: 'F', sem: ['09:00', '18:00'], fds: ['09:00', '19:00'], folga: 3 },
+  { nome: 'PATRICIA DE OLIVEIRA', genero: 'F', sem: ['10:00', '19:00'], fds: ['10:00', '20:00'], folga: 3 },
+  { nome: 'STEFANIE DRUZIAN WALTRICK', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 3 },
+  { nome: 'ROSMELY DE LA COROMOTO GUZMAN VIERA', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 3 },
+  { nome: 'YANNELIT SUBERO', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 3 },
+  { nome: 'ALEJANDRA SARAHY PINO BORROME', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 3 },
+  { nome: 'ELIZIANE SALGADO CASTURIAGA', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 3 },
+  { nome: 'OLGA MARIA CHIRINOS CADENA', genero: 'F', sem: ['16:00', '22:00'], fds: ['16:00', '22:00'], folga: 3 },
   // Folga QUINTA (4)
-  { nome: 'VALDIR JOSE', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 4 },
-  { nome: 'EDECI SANTA LUCIA', sem: ['09:00', '18:00'], fds: ['09:00', '19:00'], folga: 4 },
-  { nome: 'JAIRO RODRIGUES MOURA', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 4 },
-  { nome: 'MARIA ANGELES YNOJOSA TOVAR', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 4 },
-  { nome: 'CARMEN MARIA ASTUDILLO LOPEZ', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 4 },
-  { nome: 'ARLENIS BATISTA GARLOBO', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 4 },
-  { nome: 'GLORIA MARIA TOVAR BETHERMY', sem: ['16:50', '22:50'], fds: ['16:50', '22:50'], folga: 4 },
+  { nome: 'VALDIR JOSE', genero: 'M', sem: ['06:50', '15:50'], fds: ['06:50', '16:50'], folga: 4 },
+  { nome: 'EDECI SANTA LUCIA', genero: 'F', sem: ['09:00', '18:00'], fds: ['09:00', '19:00'], folga: 4 },
+  { nome: 'JAIRO RODRIGUES MOURA', genero: 'M', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 4 },
+  { nome: 'MARIA ANGELES YNOJOSA TOVAR', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 4 },
+  { nome: 'CARMEN MARIA ASTUDILLO LOPEZ', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 4 },
+  { nome: 'ARLENIS BATISTA GARLOBO', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 4 },
+  { nome: 'GLORIA MARIA TOVAR BETHERMY', genero: 'F', sem: ['16:50', '22:50'], fds: ['16:50', '22:50'], folga: 4 },
   // Folga SEXTA (5)
-  { nome: 'HIAGO FERNANDO VIEIRA', sem: ['10:00', '19:00'], fds: ['10:00', '20:00'], folga: 5 },
+  { nome: 'HIAGO FERNANDO VIEIRA', genero: 'M', sem: ['10:00', '19:00'], fds: ['10:00', '20:00'], folga: 5 },
   // Trabalham os 6 dias — folga DOMINGO (0)
-  { nome: 'TAINA MARTINELLI TERRES', sem: ['12:00', '18:00'], fds: ['12:00', '18:00'], folga: 0 },
-  { nome: 'JOANA PONTES', sem: ['13:00', '19:00'], fds: ['13:00', '19:00'], folga: 0 },
-  { nome: 'FRANCIELE SILVEIRA DOS SANTOS', sem: ['16:50', '22:50'], fds: ['16:50', '22:50'], folga: 0 },
-  { nome: 'ELIAS DOS SANTOS CAMARGO', sem: ['16:50', '22:50'], fds: ['16:50', '22:50'], folga: 0 },
-  { nome: 'CAMILA RIBEIRO DA COSTA', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 0 },
+  { nome: 'TAINA MARTINELLI TERRES', genero: 'F', sem: ['12:00', '18:00'], fds: ['12:00', '18:00'], folga: 0 },
+  { nome: 'JOANA PONTES', genero: 'F', sem: ['13:00', '19:00'], fds: ['13:00', '19:00'], folga: 0 },
+  { nome: 'FRANCIELE SILVEIRA DOS SANTOS', genero: 'F', sem: ['16:50', '22:50'], fds: ['16:50', '22:50'], folga: 0 },
+  { nome: 'ELIAS DOS SANTOS CAMARGO', genero: 'M', sem: ['16:50', '22:50'], fds: ['16:50', '22:50'], folga: 0 },
+  { nome: 'CAMILA RIBEIRO DA COSTA', genero: 'F', sem: ['13:50', '22:50'], fds: ['12:50', '22:50'], folga: 0 },
 ];
 
 async function seedOperadorTurnos(): Promise<void> {
@@ -263,6 +264,7 @@ async function seedOperadorTurnos(): Promise<void> {
     await prisma.operadorTurno.upsert({
       where: { nome: t.nome },
       update: {
+        genero: t.genero,
         entradaSemana: t.sem[0],
         saidaSemana: t.sem[1],
         entradaFds: t.fds[0],
@@ -272,6 +274,7 @@ async function seedOperadorTurnos(): Promise<void> {
       },
       create: {
         nome: t.nome,
+        genero: t.genero,
         entradaSemana: t.sem[0],
         saidaSemana: t.sem[1],
         entradaFds: t.fds[0],

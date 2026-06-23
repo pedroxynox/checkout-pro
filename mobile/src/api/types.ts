@@ -787,6 +787,7 @@ export interface AnaliticaFaltas {
 export interface ColaboradorDia {
   id: string;
   nome: string;
+  genero: string | null;
   status: StatusCelula;
   entrada: string | null;
   saida: string | null;
