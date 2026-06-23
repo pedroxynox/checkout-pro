@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="430" height="820" viewBox="0 0 430 820" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <clipPath id="screen"><rect x="15" y="15" width="400" height="790" rx="34"/></clipPath>
+  </defs>
+
+  <!-- moldura -->
+  <rect x="0" y="0" width="430" height="820" rx="44" fill="#000"/>
+  <rect x="15" y="15" width="400" height="790" rx="34" fill="#F1F2F5"/>
+
+  <g clip-path="url(#screen)">
+    <!-- cabeçalho -->
+    <rect x="15" y="15" width="400" height="96" fill="#C8102E"/>
+    <text x="34" y="58" fill="#fff" font-size="19" font-weight="700">Check-out PRO</text>
+    <text x="360" y="58" fill="#fff" font-size="18">🔔</text>
+    <circle cx="377" cy="44" r="8" fill="#fff"/><text x="377" y="48" fill="#C8102E" font-size="10" font-weight="700" text-anchor="middle">3</text>
+    <text x="393" y="58" fill="#fff" font-size="18">👤</text>
+    <text x="34" y="88" fill="#ffffff" opacity="0.92" font-size="13">Terça-feira, 23 de junho · Bom dia, Gerente 👋</text>
+
+    <!-- CARD: Saúde do negócio -->
+    <rect x="30" y="128" width="370" height="150" rx="18" fill="#fff" stroke="#E5E7EB"/>
+    <text x="50" y="156" fill="#6B7280" font-size="11" font-weight="700" letter-spacing="1">SAÚDE DO NEGÓCIO</text>
+    <!-- gauge -->
+    <g transform="translate(108,210)">
+      <circle r="46" fill="none" stroke="#ECEDF0" stroke-width="12"/>
+      <circle r="46" fill="none" stroke="#B7791F" stroke-width="12" stroke-linecap="round"
+              stroke-dasharray="225 289" transform="rotate(-90)"/>
+      <text y="-2" text-anchor="middle" font-size="26" font-weight="800" fill="#B7791F">78</text>
+      <text y="18" text-anchor="middle" font-size="11" fill="#6B7280">/ 100</text>
+    </g>
+    <text x="180" y="200" fill="#1A1A1A" font-size="15" font-weight="700">Bom, com 2 pontos</text>
+    <text x="180" y="220" fill="#1A1A1A" font-size="15" font-weight="700">de atenção</text>
+    <rect x="180" y="236" width="178" height="26" rx="13" fill="#FBF3DA"/>
+    <text x="192" y="253" fill="#B7791F" font-size="12" font-weight="700">⚠️ Atenção em 2 áreas</text>
+
+    <!-- CARD: As 3 coisas de hoje -->
+    <rect x="30" y="292" width="370" height="234" rx="18" fill="#fff" stroke="#E5E7EB"/>
+    <text x="50" y="320" fill="#6B7280" font-size="11" font-weight="700" letter-spacing="1">🎯 AS 3 COISAS DE HOJE</text>
+
+    <circle cx="55" cy="350" r="5" fill="#C8102E"/>
+    <text x="72" y="348" fill="#1A1A1A" font-size="14" font-weight="700">Falta carregar “Devoluções”</text>
+    <text x="72" y="366" fill="#6B7280" font-size="12">Os outros 5 arquivos já entraram hoje.</text>
+    <rect x="300" y="338" width="84" height="24" rx="12" fill="#FBE7EA"/><text x="342" y="354" fill="#C8102E" font-size="12" font-weight="700" text-anchor="middle">Carregar</text>
+
+    <line x1="50" y1="386" x2="380" y2="386" stroke="#E5E7EB"/>
+    <circle cx="55" cy="412" r="5" fill="#B7791F"/>
+    <text x="72" y="410" fill="#1A1A1A" font-size="14" font-weight="700">Bobinas acabam em 3 dias</text>
+    <text x="72" y="428" fill="#6B7280" font-size="12">Sugestão: pedir 2 fardos agora.</text>
+    <rect x="318" y="400" width="66" height="24" rx="12" fill="#FBE7EA"/><text x="351" y="416" fill="#C8102E" font-size="12" font-weight="700" text-anchor="middle">Pedir</text>
+
+    <line x1="50" y1="448" x2="380" y2="448" stroke="#E5E7EB"/>
+    <circle cx="55" cy="474" r="5" fill="#B7791F"/>
+    <text x="72" y="472" fill="#1A1A1A" font-size="14" font-weight="700">Vendas 12% abaixo da meta</text>
+    <text x="72" y="490" fill="#6B7280" font-size="12">Precisa de +R$ 6,4 mil/dia p/ fechar.</text>
+    <rect x="305" y="462" width="79" height="24" rx="12" fill="#FBE7EA"/><text x="344" y="478" fill="#C8102E" font-size="12" font-weight="700" text-anchor="middle">Ver painel</text>
+
+    <!-- CARD: Briefing da Cluby -->
+    <rect x="30" y="540" width="370" height="140" rx="18" fill="#FFF6F7" stroke="#F3D6DB"/>
+    <circle cx="56" cy="568" r="15" fill="#C8102E"/><text x="56" y="573" fill="#fff" font-size="13" font-weight="800" text-anchor="middle">C</text>
+    <text x="80" y="573" fill="#1A1A1A" font-size="14" font-weight="700">Briefing da Cluby</text>
+    <text x="50" y="600" fill="#1A1A1A" font-size="13">“Ontem fecharam R$ 142 mil (+8%) vs. a</text>
+    <text x="50" y="619" fill="#1A1A1A" font-size="13">segunda passada. Cancelamentos ok e a</text>
+    <text x="50" y="638" fill="#1A1A1A" font-size="13">equipe cumpriu a jornada. Hoje, foque em</text>
+    <text x="50" y="657" fill="#1A1A1A" font-size="13">repor bobinas e recuperar a tarde.”</text>
+
+    <!-- chat -->
+    <rect x="30" y="694" width="370" height="50" rx="25" fill="#fff" stroke="#E5E7EB"/>
+    <text x="52" y="725" fill="#9AA0A6" font-size="13">Pergunte à Cluby: “Como vamos hoje?”</text>
+    <circle cx="375" cy="719" r="17" fill="#C8102E"/><text x="375" y="724" fill="#fff" font-size="14" text-anchor="middle">🎤</text>
+
+    <text x="215" y="772" fill="#9AA0A6" font-size="11" text-anchor="middle">Uso interno · Conteúdo confidencial</text>
+  </g>
+</svg>
