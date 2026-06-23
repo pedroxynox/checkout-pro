@@ -112,7 +112,7 @@ function relogioBrasilia(): string {
   }).format(new Date());
 }
 
-/** Conta os escalados (não-folga) por turno de entrada. */
+/** Conta apenas os presentes (TRABALHA) por turno de entrada — exclui faltas. */
 function contarTurnos(cols: ColaboradorDia[]): {
   ABERTURA: number;
   INTERMEDIARIO: number;
@@ -120,6 +120,7 @@ function contarTurnos(cols: ColaboradorDia[]): {
 } {
   const c = { ABERTURA: 0, INTERMEDIARIO: 0, FECHAMENTO: 0 };
   for (const x of cols) {
+    if (x.status !== 'TRABALHA') continue; // exclui folgas e faltas
     const t = turnoDe(x);
     if (t === 'ABERTURA' || t === 'INTERMEDIARIO' || t === 'FECHAMENTO') {
       c[t] += 1;
@@ -401,13 +402,13 @@ export function OperadoresScreen(): React.ReactElement {
                 const ct = contarTurnos(dados.colaboradores);
                 return (
                   <>
-                    <Resumo valor={ct.ABERTURA} rotulo="Abertura" cor={cores.primaria} />
+                    <Resumo valor={ct.ABERTURA} rotulo="Abertura" cor={cores.verde} />
                     <Resumo
                       valor={ct.INTERMEDIARIO}
                       rotulo="Intermediário"
-                      cor={cores.primaria}
+                      cor={cores.verde}
                     />
-                    <Resumo valor={ct.FECHAMENTO} rotulo="Fechamento" cor={cores.primaria} />
+                    <Resumo valor={ct.FECHAMENTO} rotulo="Fechamento" cor={cores.verde} />
                   </>
                 );
               })()}
