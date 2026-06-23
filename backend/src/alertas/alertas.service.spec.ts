@@ -3,10 +3,8 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { ChecklistService } from '../checklist/checklist.service';
 import { Relogio } from '../common/relogio';
 import { ArrecadacaoService } from '../arrecadacao/arrecadacao.service';
-import {
-  StatusArrecadacao,
-  TIPOS_ARRECADACAO,
-} from '../arrecadacao/arrecadacao.domain';
+import type { StatusArrecadacao } from '../arrecadacao/arrecadacao.service';
+import { TIPOS_ARRECADACAO } from '../arrecadacao/arrecadacao.domain';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { AlertasService, expressaoCronDiaria } from './alertas.service';
 

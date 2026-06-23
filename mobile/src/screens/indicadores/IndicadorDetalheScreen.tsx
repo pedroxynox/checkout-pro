@@ -306,7 +306,7 @@ function CardComparativo({
 }: {
   comparativo: ComparativoIndicador;
 }): React.ReactElement {
-  const linha = (rotulo: string, atual: number, anterior: number, variacao: number | null) => {
+  const linha = (rotulo: string, atual: number, variacao: number | null) => {
     const subiu = variacao != null && variacao >= 0;
     const corVar = variacao == null ? cores.textoSecundario : subiu ? cores.verde : cores.vermelho;
     const seta = variacao == null ? '–' : subiu ? '↑' : '↓';
@@ -327,11 +327,10 @@ function CardComparativo({
         <Text style={[styles.compValor, styles.compCab]}>Atual</Text>
         <Text style={[styles.compVar, styles.compCab]}>vs anterior</Text>
       </View>
-      {linha('Este mês', comparativo.mes.atual, comparativo.mes.anterior, comparativo.mes.variacao)}
+      {linha('Este mês', comparativo.mes.atual, comparativo.mes.variacao)}
       {linha(
         'Esta semana',
         comparativo.semana.atual,
-        comparativo.semana.anterior,
         comparativo.semana.variacao,
       )}
     </Cartao>

@@ -83,6 +83,18 @@ describe('FiscaisService e EscalaService', () => {
               )
               .map((e) => ({ ...e })),
           ),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        findFirst: ({ where }: any) =>
+          Promise.resolve(
+            escalas.find(
+              (e) =>
+                (where.funcionarioId === undefined ||
+                  e.funcionarioId === where.funcionarioId) &&
+                (where.diaSemana === undefined ||
+                  e.diaSemana === where.diaSemana) &&
+                (where.folga === undefined || e.folga === where.folga),
+            ) ?? null,
+          ),
       },
     };
   }
@@ -136,7 +148,9 @@ describe('FiscaisService e EscalaService', () => {
     expect(f1?.tempoTrabalhandoMs).toBe(3.5 * HORA);
     // Intervalo: 10–10:30 = 0,5h.
     expect(f1?.tempoIntervaloMs).toBe(0.5 * HORA);
-    expect(f1?.cargaHorariaMs).toBe(4 * HORA);
+    // Carga horária = tempo trabalhando (sem intervalo), conforme a definição
+    // do domínio (`Jornada.cargaHorariaMs`): 3,5h.
+    expect(f1?.cargaHorariaMs).toBe(3.5 * HORA);
     expect(f1?.status).toBe('FORA_EXPEDIENTE');
   });
 

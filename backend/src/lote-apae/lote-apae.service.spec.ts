@@ -105,10 +105,29 @@ describe('LoteApaeService', () => {
       },
     };
 
+    // Fakes adicionais usados pelo cálculo de arrecadação do mês (preço/meta e
+    // soma de movimentos) e pelo registro do movimento de venda. Retornam
+    // valores neutros: não afetam as asserções (quantidade vendida vem do
+    // próprio lote), apenas evitam o acesso a tabelas inexistentes no fake.
+    const movimentoLoteApae = {
+      aggregate: () => Promise.resolve({ _sum: { vendidas: 0 } }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      create: ({ data }: any) => Promise.resolve({ id: `mov${++seq}`, ...data }),
+      findMany: () => Promise.resolve([]),
+    };
+    const configApae = {
+      findUnique: () => Promise.resolve(null),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      create: ({ data }: any) => Promise.resolve(data),
+    };
+
     const prismaFake = {
       loteApae,
+      movimentoLoteApae,
+      configApae,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      $transaction: async (fn: (tx: any) => Promise<any>) => fn({ loteApae }),
+      $transaction: async (fn: (tx: any) => Promise<any>) =>
+        fn({ loteApae, movimentoLoteApae }),
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

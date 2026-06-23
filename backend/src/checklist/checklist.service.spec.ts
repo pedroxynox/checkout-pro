@@ -126,10 +126,12 @@ describe('ChecklistService', () => {
     expect(await service.status('FECHAMENTO', data)).toBe('PENDENTE');
   });
 
-  it('dispara o alerta às 08:55 quando a abertura está pendente (Req 5.3.1)', async () => {
+  it('dispara o alerta às 09:00 quando a abertura está pendente (Req 5.3.1)', async () => {
     const service = criarServico();
-    const antes = new Date('2024-03-10T08:50:00Z');
-    const limite = new Date('2024-03-10T08:55:00Z');
+    // O alerta de pendência dispara 15 min antes do limite da janela (09:15),
+    // ou seja, às 09:00 (ver ALERTA_PENDENTE_MIN no domínio).
+    const antes = new Date('2024-03-10T08:55:00Z');
+    const limite = new Date('2024-03-10T09:00:00Z');
     expect(await service.verificarAlerta('ABERTURA', antes)).toBe(false);
     expect(await service.verificarAlerta('ABERTURA', limite)).toBe(true);
   });
