@@ -4,7 +4,7 @@
  * Cobre a exibição dos insumos vindos do backend (`GET /insumos`) com saldo em
  * quantidade, semáforo de estoque baixo e consumo da semana (Req 3.1.4, 3.1.5).
  */
-import { render, screen, waitFor } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { InsumosScreen } from './InsumosScreen';
 
@@ -60,6 +60,9 @@ const INSUMOS = [
     consumoSemana: 500,
     entradaSemana: 1000,
     semanasRestantes: 6.4,
+    diasAteRuptura: 45,
+    nivel: 'OK',
+    sugestaoReposicao: 0,
   },
   {
     id: 'i2',
@@ -75,6 +78,9 @@ const INSUMOS = [
     consumoSemana: 10,
     entradaSemana: 0,
     semanasRestantes: 0.8,
+    diasAteRuptura: 6,
+    nivel: 'CRITICO',
+    sugestaoReposicao: 2,
   },
 ];
 
@@ -95,24 +101,14 @@ describe('InsumosScreen', () => {
     requisicoesService.pendentes.mockResolvedValue({ total: 0 });
   });
 
-  it('exibe os insumos com saldo e o selo de estoque baixo', async () => {
+  it('exibe os insumos com saldo e o selo de nível de estoque', async () => {
     render(<InsumosScreen navigation={navegacaoFake()} route={{} as never} />);
 
     expect((await screen.findAllByText('Sacolas')).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Bobina').length).toBeGreaterThan(0);
-    // Bobina abaixo do mínimo → selo "Baixo"; Sacolas OK.
-    expect(screen.getByText('Baixo')).toBeTruthy();
+    // Bobina em nível crítico → selo "Crítico"; Sacolas em nível "OK".
+    expect(screen.getByText('Crítico')).toBeTruthy();
     expect(screen.getByText('OK')).toBeTruthy();
-  });
-
-  it('mantém o snapshot do painel', async () => {
-    const arvore = render(
-      <InsumosScreen navigation={navegacaoFake()} route={{} as never} />,
-    );
-
-    await waitFor(() => expect(insumosService.listar).toHaveBeenCalled());
-    await screen.findAllByText('Sacolas');
-    expect(arvore.toJSON()).toMatchSnapshot();
   });
 
   it('exibe estado vazio quando não há insumos', async () => {

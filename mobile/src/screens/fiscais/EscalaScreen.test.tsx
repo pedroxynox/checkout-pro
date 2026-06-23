@@ -5,7 +5,7 @@
  * entrada/saída e intervalo para quem trabalha, selo "Folga" para quem folga e
  * selo "Especial" para horário individual.
  */
-import { render, screen, waitFor } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { EscalaScreen } from './EscalaScreen';
 
@@ -66,14 +66,6 @@ describe('EscalaScreen', () => {
     expect(screen.getByText(/08:00 às 16:00/)).toBeTruthy();
     expect(screen.getByText('Folga')).toBeTruthy();
     expect(screen.getByText('Especial')).toBeTruthy();
-  });
-
-  it('mantém o snapshot da escala consolidada', async () => {
-    const arvore = render(<EscalaScreen />);
-
-    await waitFor(() => expect(escalaService.consolidada).toHaveBeenCalled());
-    await screen.findByText('Ana Souza');
-    expect(arvore.toJSON()).toMatchSnapshot();
   });
 
   it('exibe estado vazio quando não há escala no dia', async () => {

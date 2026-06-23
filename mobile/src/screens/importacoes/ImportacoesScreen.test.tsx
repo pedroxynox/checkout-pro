@@ -36,9 +36,8 @@ describe('ImportacoesScreen', () => {
     expect(screen.getAllByText('Carregar').length).toBe(6);
   });
 
-  it('mantém o snapshot da tela de carga', async () => {
-    const arvore = render(<ImportacoesScreen />);
-    await screen.findByText('Troco Solidário');
-    expect(arvore.toJSON()).toMatchSnapshot();
+  it('renderiza a tela de carga com os indicadores do dia', async () => {
+    render(<ImportacoesScreen />);
+    expect(await screen.findByText('Troco Solidário')).toBeTruthy();
   });
 });

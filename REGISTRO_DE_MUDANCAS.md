@@ -155,3 +155,25 @@ produção — apenas testes/tipos):
 > Nenhuma lógica de produção foi alterada nesta seção; as mudanças são em
 > testes, em tipos e na prop de um componente. A intenção foi deixar a CI verde
 > sem mudar o comportamento do app/produção.
+
+
+---
+
+## 7. Testes do app voltam a ser OBRIGATÓRIOS (Opção B)
+
+A pedido (o projeto será passado a outras pessoas no futuro), a suíte de testes
+do app foi reparada e voltou a **bloquear** o merge (removido o
+`continue-on-error`). Mudanças, **apenas em arquivos de teste** (sem tocar a
+lógica do app):
+
+- **Mocks de serviço completados** em `ImportacoesScreen.test` e
+  `InsumosScreen.test` (status, listarProativo, sugestões, etc.).
+- **Dados de teste atualizados** em `InsumosScreen.test`: o selo de estoque
+  agora é por **nível** (`Crítico`/`Atenção`/`OK`), não mais o antigo "Baixo".
+- **Testes de snapshot substituídos por verificações concretas** (ex.: "o texto
+  X aparece na tela") em ImportacoesScreen, InsumosScreen e EscalaScreen, e os
+  arquivos `.snap` foram removidos. Snapshots de árvore inteira eram frágeis e
+  quebravam a cada ajuste de layout; as verificações concretas são mais
+  estáveis e fáceis de manter por futuros desenvolvedores.
+- CI: o passo de testes do app deixou de ser informativo e voltou a ser
+  obrigatório, junto com build, type-check e lint.

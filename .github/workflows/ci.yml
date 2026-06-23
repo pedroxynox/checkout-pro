@@ -61,12 +61,5 @@ jobs:
       - name: Lint
         run: npm run lint --workspace=@checkout-pro/mobile
 
-      # Os testes do app RODAM, mas NÃO bloqueiam o merge: a suíte tinha falhas
-      # PRÉ-EXISTENTES (mocks de serviço desatualizados e snapshots) sem relação
-      # com esta mudança. O build, o type-check e o lint (acima) seguem
-      # obrigatórios e garantem a integridade do app; os testes do backend
-      # também continuam bloqueando. Assim que o time reparar a suíte do app,
-      # remover o `continue-on-error` abaixo para voltar a bloquear.
-      - name: Testes (jest) — informativo, não bloqueia
+      - name: Testes (jest)
         run: npm run test --workspace=@checkout-pro/mobile
-        continue-on-error: true
