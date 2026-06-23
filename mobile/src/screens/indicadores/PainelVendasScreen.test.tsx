@@ -78,7 +78,9 @@ describe('PainelVendasScreen', () => {
   it('exibe o faturamento do mês e a projeção de fechamento', async () => {
     render(<PainelVendasScreen />);
 
-    expect(await screen.findByText(/120\.000,00/)).toBeTruthy();
+    // O faturamento do mês (R$ 120.000,00) aparece em mais de um lugar (cartão
+    // "Meta do mês" e comparativo "Mês"), por isso usamos findAllByText.
+    expect((await screen.findAllByText(/120\.000,00/)).length).toBeGreaterThan(0);
     expect(vendasService.painel).toHaveBeenCalled();
     expect(vendasService.porHora).toHaveBeenCalled();
   });
