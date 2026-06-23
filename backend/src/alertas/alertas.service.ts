@@ -6,8 +6,12 @@ import { Notificacao } from '@prisma/client';
 import { RELOGIO, Relogio } from '../common/relogio';
 import { ChecklistService } from '../checklist/checklist.service';
 import { TipoChecklist } from '../checklist/checklist.domain';
-import { ImportacoesService } from '../importacoes/importacoes.service';
-import { TipoArquivo } from '../importacoes/importacoes.domain';
+import { ArrecadacaoService } from '../arrecadacao/arrecadacao.service';
+import {
+  CONFIG_ARRECADACAO,
+  TIPOS_ARRECADACAO,
+  TipoArrecadacao,
+} from '../arrecadacao/arrecadacao.domain';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 
 /** Nome do job dinâmico de importações pendentes (registrado no scheduler). */
@@ -49,7 +53,7 @@ export class AlertasService implements OnModuleInit {
 
   constructor(
     private readonly checklistService: ChecklistService,
-    private readonly importacoesService: ImportacoesService,
+    private readonly arrecadacaoService: ArrecadacaoService,
     private readonly notificacoesService: NotificacoesService,
     private readonly config: ConfigService,
     private readonly scheduler: SchedulerRegistry,
@@ -168,22 +172,30 @@ export class AlertasService implements OnModuleInit {
   }
 
   /**
-   * Dispara o alerta de arquivos de importação pendentes no fim do dia
-   * (Req 1.4.1): se houver tipos pendentes no dia atual, notifica o login
-   * gerencial. Retorna a lista de tipos pendentes que originou a notificação
-   * (vazia quando nada está pendente).
+   * Dispara o alerta de arquivos pendentes no fim do dia (Req 1.4.1).
+   *
+   * MIGRAÇÃO (manutenção): antes este alerta lia a tabela do fluxo ANTIGO de
+   * importação (CSV/XLSX), que hoje não é mais alimentada — o que tornava o
+   * alerta obsoleto. Agora ele usa o fluxo ATUAL de arrecadação
+   * (`ArrecadacaoService.status`): pendente = tipo que ainda não foi enviado
+   * nem marcado como "sem movimento" no dia. Se houver pendentes, notifica o
+   * login gerencial. Retorna a lista de tipos pendentes (vazia quando nada
+   * está pendente).
    */
-  async dispararAlertaImportacoesPendentes(): Promise<TipoArquivo[]> {
+  async dispararAlertaImportacoesPendentes(): Promise<TipoArrecadacao[]> {
     const agora = this.relogio.agora();
-    const pendentes =
-      await this.importacoesService.verificarPendentesFimDoDia(agora);
+    const status = await this.arrecadacaoService.status(agora);
+    const pendentes = TIPOS_ARRECADACAO.filter(
+      (tipo) => status[tipo] === 'PENDENTE',
+    );
     if (pendentes.length === 0) {
       return [];
     }
     const gerenciais = await this.notificacoesService.loginGerencial();
+    const titulos = pendentes.map((tipo) => CONFIG_ARRECADACAO[tipo].titulo);
     await this.notificacoesService.enviar(gerenciais, {
       titulo: 'Importações pendentes',
-      mensagem: `Há arquivos pendentes de importação hoje: ${pendentes.join(
+      mensagem: `Há indicadores pendentes de importação hoje: ${titulos.join(
         ', ',
       )}.`,
     });

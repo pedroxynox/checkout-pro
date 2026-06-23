@@ -85,8 +85,8 @@ describe('Checklist — testes de propriedade', () => {
   // Validates: Requirements 5.3.1, 5.3.2
   it('Property 23: alerta dispara se e somente se o horário-limite foi atingido e o checklist está pendente', () => {
     const limites: Record<TipoChecklist, number> = {
-      ABERTURA: 8 * 60 + 55,
-      FECHAMENTO: 13 * 60 + 55,
+      ABERTURA: 9 * 60,
+      FECHAMENTO: 14 * 60,
     };
     fc.assert(
       fc.property(

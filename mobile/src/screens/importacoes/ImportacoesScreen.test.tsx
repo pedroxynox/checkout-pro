@@ -9,8 +9,15 @@ import React from 'react';
 import { ImportacoesScreen } from './ImportacoesScreen';
 
 jest.mock('../../api/services', () => ({
-  arrecadacaoService: { upload: jest.fn() },
-  vendasService: { upload: jest.fn() },
+  arrecadacaoService: {
+    upload: jest.fn(),
+    status: jest.fn(() => Promise.resolve({})),
+    marcarSemMovimento: jest.fn(() => Promise.resolve({ fechamentoConcluido: false })),
+  },
+  vendasService: {
+    upload: jest.fn(),
+    status: jest.fn(() => Promise.resolve({})),
+  },
 }));
 
 // "Hoje" determinístico para o snapshot do seletor de data.

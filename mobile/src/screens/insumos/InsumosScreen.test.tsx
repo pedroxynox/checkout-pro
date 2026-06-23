@@ -11,10 +11,14 @@ import { InsumosScreen } from './InsumosScreen';
 jest.mock('../../api/services', () => ({
   insumosService: {
     listar: jest.fn(),
+    listarProativo: jest.fn(),
+    sugestoesPendentes: jest.fn(),
+    proximoQuinzenal: jest.fn(),
     entradas: jest.fn(),
     retirarFardo: jest.fn(),
     consumirBobina: jest.fn(),
     consumirInsumo: jest.fn(),
+    consumirEmbalagem: jest.fn(),
   },
   requisicoesService: {
     pendentes: jest.fn(),
@@ -82,6 +86,11 @@ describe('InsumosScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     insumosService.listar.mockResolvedValue(INSUMOS);
+    // A tela usa `listarProativo` com fallback para `listar`. Forçamos a
+    // rejeição para cair no fallback controlado pelos testes (`listar`).
+    insumosService.listarProativo.mockRejectedValue(new Error('usar fallback'));
+    insumosService.sugestoesPendentes.mockResolvedValue([]);
+    insumosService.proximoQuinzenal.mockResolvedValue(null);
     insumosService.entradas.mockResolvedValue([]);
     requisicoesService.pendentes.mockResolvedValue({ total: 0 });
   });

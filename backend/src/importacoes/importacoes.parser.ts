@@ -1,4 +1,10 @@
 /**
+ * NOTA DE MANUTENÇÃO (limpeza de código morto): o fluxo ANTIGO de importação
+ * CSV/XLSX foi removido. Deste parser, hoje só o `parseValor` é usado por
+ * código vivo (os parsers ATUAIS de arrecadação e de vendas reaproveitam essa
+ * conversão de valores em R$). As funções `parseCsv`/`parseXlsx` permanecem
+ * apenas por histórico e não têm chamador na aplicação.
+ *
  * Parsing de arquivos de importação (CSV/XLSX) do Modulo_Importacoes.
  *
  * Lê os arquivos linha a linha (Req 1.1.2–1.1.5) usando `papaparse` (CSV) e

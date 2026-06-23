@@ -1,4 +1,15 @@
 /**
+ * NOTA DE MANUTENÇÃO (limpeza de código morto): o fluxo ANTIGO de importação
+ * CSV/XLSX foi removido (controller/service/module/dto). Este arquivo é
+ * **mantido de propósito** porque o tipo `LinhaImportada` ainda é usado pelo
+ * parser (`importacoes.parser.ts`), e o `parseValor` desse parser é reutilizado
+ * pelos parsers ATUAIS de arrecadação e vendas. As demais funções puras de
+ * validação/vinculação aqui (validarColunas, vincularPorNome, statusDoDia,
+ * tiposPendentes, etc.) hoje não têm chamador na aplicação — permanecem apenas
+ * cobertas por `importacoes.properties.spec.ts`. Uma limpeza completa (mover o
+ * `parseValor` para um utilitário comum e remover o restante) é recomendada,
+ * mas exige rodar build/testes para validar.
+ *
  * Lógica de domínio **pura** do Modulo_Importacoes.
  *
  * Estas funções não dependem do Nest nem do banco de dados. Elas concentram as

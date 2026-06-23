@@ -229,14 +229,14 @@ export function PainelVendasScreen(): React.ReactElement {
     () => vendasService.porHora(inicio, fim),
     [periodo, inicio, fim],
   );
-  const porHora: VendasPorHora | undefined = detalheReq.dados;
+  const porHora: VendasPorHora | undefined = detalheReq.dados ?? undefined;
 
   // Vendas por hora do dia de referência (valor líquido de cada hora).
   const diaReq = useRequisicao(
     () => vendasService.porHora(data, data),
     [data],
   );
-  const porHoraDia: VendasPorHora | undefined = diaReq.dados;
+  const porHoraDia: VendasPorHora | undefined = diaReq.dados ?? undefined;
 
   // Preenche o campo de meta quando o painel carrega.
   React.useEffect(() => {

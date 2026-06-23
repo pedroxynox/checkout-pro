@@ -30,6 +30,14 @@ describe('FiscaisGateway (integração WebSocket)', () => {
       findMany: jest.fn().mockResolvedValue([]),
       create: jest.fn().mockResolvedValue({ id: 'r1' }),
     },
+    // Usado por `isFolgaHoje` (definirStatus): por padrão, ninguém está de folga.
+    escalaEntry: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    // Usado por definirStatus para checar falta do dia: por padrão, sem falta.
+    ausencia: {
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
   };
 
   beforeAll(async () => {

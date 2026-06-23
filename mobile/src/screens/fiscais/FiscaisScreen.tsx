@@ -69,12 +69,6 @@ function corFundoStatus(status: StatusFiscal): string {
   return cores.fundo;
 }
 
-function iconeStatus(status: StatusFiscal): keyof typeof Ionicons.glyphMap {
-  if (status === 'DISPONIVEL') return 'checkmark-circle';
-  if (status === 'INTERVALO') return 'cafe';
-  return 'exit-outline';
-}
-
 /** Formata a data de hoje em português: "Segunda-feira, 21 de junho de 2026" */
 function formatarDataHoje(): string {
   const dias = [

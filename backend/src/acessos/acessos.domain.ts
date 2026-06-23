@@ -17,12 +17,70 @@ export type Perfil =
   | 'IMPORTADOR';
 
 /**
+ * ============================================================================
+ * FONTE ÚNICA DE VERDADE das permissões do sistema.
+ * ============================================================================
+ *
+ * `TODAS_FUNCIONALIDADES` é o catálogo completo de funcionalidades existentes.
+ * Toda a regra de acesso (abaixo) e o app móvel derivam deste catálogo, de modo
+ * que:
+ *  - o perfil GERENTE_DESENVOLVEDOR enxerga **absolutamente tudo** — inclusive
+ *    qualquer funcionalidade nova que for adicionada aqui no futuro, sem
+ *    precisar mexer na regra (ver `decidirAutorizacao`);
+ *  - o tipo `Funcionalidade` garante, em tempo de compilação, que as listas de
+ *    cada perfil só contenham funcionalidades que realmente existem.
+ *
+ * IMPORTANTE (manutenção): o app móvel mantém um **espelho** deste arquivo em
+ * `mobile/src/auth/funcionalidades.ts`. Os dois pacotes (backend NestJS e app
+ * Expo) são compilados separadamente e não compartilham código, então ao
+ * alterar qualquer permissão aqui é preciso refletir a mesma mudança lá. A
+ * autorização que vale de verdade é sempre a do backend (guards); a do app
+ * apenas decide o que aparece na tela.
+ */
+export const TODAS_FUNCIONALIDADES = [
+  // Carga e fechamento do dia
+  'IMPORTACOES',
+  'FECHAMENTO',
+  // Indicadores e vendas
+  'INDICADORES_VISUALIZAR',
+  'PAINEL_VENDAS_VISUALIZAR',
+  'PAINEL_VENDAS_EDITAR',
+  // Sacolas APAE
+  'LOTE_APAE',
+  'LOTE_APAE_GERENCIAR',
+  // Insumos / almoxarifado
+  'INSUMOS',
+  'INSUMOS_GERENCIAR',
+  // Fiscais
+  'FISCAIS_STATUS',
+  'FISCAIS_JORNADA',
+  'ESCALA_VISUALIZAR',
+  'ESCALA_EDITAR',
+  // Operação diária
+  'CHECKLIST',
+  'OPERADORES_AUSENCIAS',
+  'OPERADORES_CRUD',
+  // Pessoas e avisos
+  'USUARIOS_CRUD',
+  'NOTIFICACOES',
+  // Áreas ainda em construção (mantidas no catálogo para o controle de acesso)
+  'ALERTAS_FILA',
+  'NORMATIVAS',
+  'INDICADOR_QUEBRA',
+  // Administração de dados (zerar/limpar) — só desenvolvedor
+  'ADMIN_DADOS',
+] as const;
+
+/** Uma funcionalidade válida do sistema (qualquer item do catálogo acima). */
+export type Funcionalidade = (typeof TODAS_FUNCIONALIDADES)[number];
+
+/**
  * Conjunto de funcionalidades **operacionais** liberadas ao perfil FISCAL
  * (Requisito 7.2.3): rotina diária + comunicação + seções gerais. O fiscal NÃO
  * acessa relatórios de vendas/indicadores/importações (isso é do supervisor)
  * nem cadastros administrativos (gerente).
  */
-export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
+export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
   'LOTE_APAE',
   'INSUMOS',
   'FISCAIS_STATUS',
@@ -43,7 +101,7 @@ export const FUNCIONALIDADES_FISCAL: readonly string[] = Object.freeze([
  * operadores, gestão de requisições e o **Fechamento** (status dos arquivos do
  * dia). Permanece exclusiva do gerente a gestão de pessoas/acessos.
  */
-export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
+export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] = Object.freeze([
   ...FUNCIONALIDADES_FISCAL,
   'OPERADORES_CRUD',
   'INSUMOS_GERENCIAR',
@@ -57,7 +115,7 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly string[] = Object.freeze([
  * da loja, cuja única função é **carregar os arquivos do dia** (Importações).
  * Não enxerga nenhuma outra área.
  */
-export const FUNCIONALIDADES_IMPORTADOR: readonly string[] = Object.freeze([
+export const FUNCIONALIDADES_IMPORTADOR: readonly Funcionalidade[] = Object.freeze([
   'IMPORTACOES',
 ]);
 
@@ -79,7 +137,7 @@ const FUNCIONALIDADES_IMPORTADOR_SET = new Set<string>(
  * - A alteração de status de fiscal não é por funcionalidade: só o próprio
  *   fiscal (do seu status) ou o desenvolvedor podem alterar (ver FiscaisController).
  */
-export const FUNCIONALIDADES_GERENTE: readonly string[] = Object.freeze([
+export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze([
   // Visualização / relatórios
   'INDICADORES_VISUALIZAR',
   'PAINEL_VENDAS_VISUALIZAR',
@@ -121,6 +179,9 @@ export function decidirAutorizacao(
   funcionalidade: string,
 ): boolean {
   if (perfil === 'GERENTE_DESENVOLVEDOR') {
+    // Acesso TOTAL: o desenvolvedor enxerga e executa todas as funcionalidades
+    // do catálogo (`TODAS_FUNCIONALIDADES`), inclusive as administrativas e
+    // qualquer funcionalidade futura. Por isso liberamos sem consultar lista.
     return true;
   }
   if (perfil === 'GERENTE') {

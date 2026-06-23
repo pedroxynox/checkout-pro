@@ -75,8 +75,10 @@ describe('Fiscais e Escala — testes de propriedade', () => {
     );
   });
 
-  // Property 19: carga horária = tempo trabalhando + intervalo; tempos >= 0.
-  it('Property 19: carga horária = trabalhando + intervalo, e tempos não-negativos', () => {
+  // Property 19: carga horária = tempo trabalhando (sem intervalo); tempos >= 0.
+  // Ver a definição de `Jornada.cargaHorariaMs` no domínio: a carga horária é o
+  // tempo somado em DISPONIVEL, sem contar o intervalo.
+  it('Property 19: carga horária = tempo trabalhando (sem intervalo), e tempos não-negativos', () => {
     fc.assert(
       fc.property(
         fc.array(fc.record({ status: statusArb, em: dataArb }), {
@@ -89,7 +91,7 @@ describe('Fiscais e Escala — testes de propriedade', () => {
           return (
             j.tempoTrabalhandoMs >= 0 &&
             j.tempoIntervaloMs >= 0 &&
-            j.cargaHorariaMs === j.tempoTrabalhandoMs + j.tempoIntervaloMs
+            j.cargaHorariaMs === j.tempoTrabalhandoMs
           );
         },
       ),
