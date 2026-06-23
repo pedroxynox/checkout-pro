@@ -70,20 +70,27 @@ function mesAtualISO(): { inicio: string; fim: string } {
   return { inicio: ini.toISOString().slice(0, 10), fim: fim.toISOString().slice(0, 10) };
 }
 
-/** Turnos para agrupar o roster do dia. */
+/** Turnos (por hora de entrada) para agrupar e contar o roster do dia. */
 const TURNOS: { chave: string; titulo: string }[] = [
-  { chave: 'MANHA', titulo: 'Manhã' },
-  { chave: 'TARDE', titulo: 'Tarde' },
-  { chave: 'NOITE', titulo: 'Noite' },
+  { chave: 'ABERTURA', titulo: 'Abertura' },
+  { chave: 'INTERMEDIARIO', titulo: 'Intermediário' },
+  { chave: 'FECHAMENTO', titulo: 'Fechamento' },
   { chave: 'FOLGA', titulo: 'Folga' },
 ];
 
+/**
+ * Classifica o turno pela hora de ENTRADA:
+ *  - Abertura: entrada antes das 10:00 (06:50–09:00);
+ *  - Intermediário: das 10:00 às 12:59 (10:00–12:00);
+ *  - Fechamento: das 13:00 em diante (13:00–17:00).
+ */
 function turnoDe(c: ColaboradorDia): string {
-  if (c.status === 'FOLGA') return 'FOLGA';
-  const h = c.entrada ? parseInt(c.entrada.slice(0, 2), 10) : 0;
-  if (h < 12) return 'MANHA';
-  if (h < 18) return 'TARDE';
-  return 'NOITE';
+  if (c.status === 'FOLGA' || !c.entrada) return 'FOLGA';
+  const [h, m] = c.entrada.split(':');
+  const min = parseInt(h, 10) * 60 + parseInt(m, 10);
+  if (min < 10 * 60) return 'ABERTURA';
+  if (min < 13 * 60) return 'INTERMEDIARIO';
+  return 'FECHAMENTO';
 }
 
 /** Ícone de avatar por gênero ('M'/'F'); fallback simples pelo nome. */
@@ -103,6 +110,22 @@ function relogioBrasilia(): string {
     second: '2-digit',
     hour12: false,
   }).format(new Date());
+}
+
+/** Conta os escalados (não-folga) por turno de entrada. */
+function contarTurnos(cols: ColaboradorDia[]): {
+  ABERTURA: number;
+  INTERMEDIARIO: number;
+  FECHAMENTO: number;
+} {
+  const c = { ABERTURA: 0, INTERMEDIARIO: 0, FECHAMENTO: 0 };
+  for (const x of cols) {
+    const t = turnoDe(x);
+    if (t === 'ABERTURA' || t === 'INTERMEDIARIO' || t === 'FECHAMENTO') {
+      c[t] += 1;
+    }
+  }
+  return c;
 }
 
 /** Linha de um colaborador no roster do dia. */
@@ -370,6 +393,25 @@ export function OperadoresScreen(): React.ReactElement {
               <Resumo valor={dados.faltas} rotulo="Faltas" cor={cores.vermelho} />
               <Resumo valor={dados.folgas} rotulo="Folgas" cor={cores.textoSecundario} />
             </View>
+
+            {/* Conteo por turno (pela hora de entrada) */}
+            <Text style={styles.turnoLabel}>Por turno</Text>
+            <View style={styles.resumoLinha}>
+              {(() => {
+                const ct = contarTurnos(dados.colaboradores);
+                return (
+                  <>
+                    <Resumo valor={ct.ABERTURA} rotulo="Abertura" cor={cores.primaria} />
+                    <Resumo
+                      valor={ct.INTERMEDIARIO}
+                      rotulo="Intermediário"
+                      cor={cores.primaria}
+                    />
+                    <Resumo valor={ct.FECHAMENTO} rotulo="Fechamento" cor={cores.primaria} />
+                  </>
+                );
+              })()}
+            </View>
             {coberturaBaixa ? (
               <Aviso
                 texto={`Cobertura baixa: ${dados.trabalhando} no caixa (mínimo ${COBERTURA_MINIMA}).`}
@@ -595,6 +637,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: espacamento.sm,
     marginBottom: espacamento.sm,
+  },
+  turnoLabel: {
+    ...tipografia.legenda,
+    fontWeight: '700',
+    color: cores.textoSecundario,
+    marginBottom: espacamento.xs,
   },
   resumoBox: {
     flex: 1,
