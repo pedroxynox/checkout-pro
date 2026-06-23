@@ -111,9 +111,9 @@ describe('AlertasService (cron com relógio injetável)', () => {
   }
 
   describe('alerta de checklist', () => {
-    it('dispara no horário-limite (08:55) com checklist pendente', async () => {
+    it('dispara no horário-limite (09:00) com checklist pendente', async () => {
       const { service, criadas } = montar({
-        agora: new Date('2024-03-10T08:55:00.000Z'),
+        agora: new Date('2024-03-10T09:00:00.000Z'),
         statusChecklist: 'PENDENTE',
       });
 

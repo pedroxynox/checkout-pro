@@ -34,6 +34,10 @@ describe('FiscaisGateway (integração WebSocket)', () => {
     escalaEntry: {
       findFirst: jest.fn().mockResolvedValue(null),
     },
+    // Usado por definirStatus para checar falta do dia: por padrão, sem falta.
+    ausencia: {
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
   };
 
   beforeAll(async () => {

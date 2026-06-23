@@ -55,8 +55,29 @@ describe('FiscaisService e EscalaService', () => {
               )
               .map((r) => ({ ...r })),
           ),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        findFirst: ({ where }: any) =>
+          Promise.resolve(
+            registros.find(
+              (r) =>
+                (where.fiscalId === undefined ||
+                  r.fiscalId === where.fiscalId) &&
+                (where.data === undefined ||
+                  r.data.getTime() === where.data.getTime()),
+            ) ?? null,
+          ),
       },
       ausencia: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        findUnique: ({ where }: any) => {
+          const { pessoaId, data } = where.pessoaId_data;
+          return Promise.resolve(
+            ausencias.find(
+              (a) =>
+                a.pessoaId === pessoaId && a.data.getTime() === data.getTime(),
+            ) ?? null,
+          );
+        },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         upsert: ({ create }: any) => {
           ausencias.push({ ...create });
