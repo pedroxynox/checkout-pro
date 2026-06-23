@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Check-out PRO — Centro de Mando (maquete)</title>
+<style>
+  :root{
+    --vermelho:#C8102E; --vermelho-fundo:#FBE7EA;
+    --verde:#1B873F; --verde-fundo:#E4F6EC;
+    --amarelo:#B7791F; --amarelo-fundo:#FBF3DA;
+    --texto:#1A1A1A; --texto2:#6B7280; --superficie:#FFFFFF; --fundo:#F1F2F5;
+    --borda:#E5E7EB; --raio:18px;
+  }
+  *{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  body{margin:0;background:linear-gradient(160deg,#2a2d34,#0f1115);min-height:100vh;display:flex;
+       align-items:center;justify-content:center;padding:28px;color:var(--texto);}
+  .legenda{position:fixed;top:14px;left:0;right:0;text-align:center;color:#cfd2d8;font-size:13px;letter-spacing:.3px}
+  /* moldura de celular */
+  .phone{width:390px;max-width:100%;background:#000;border-radius:46px;padding:12px;
+         box-shadow:0 30px 80px rgba(0,0,0,.55);}
+  .screen{background:var(--fundo);border-radius:36px;overflow:hidden;height:780px;display:flex;flex-direction:column;}
+  /* cabeçalho */
+  .top{background:var(--vermelho);color:#fff;padding:18px 18px 16px;}
+  .top .row{display:flex;align-items:center;justify-content:space-between;}
+  .brand{font-weight:800;font-size:18px;letter-spacing:.3px;}
+  .icons{display:flex;gap:14px;font-size:18px;}
+  .badge{position:relative}
+  .badge::after{content:"3";position:absolute;top:-6px;right:-9px;background:#fff;color:var(--vermelho);
+    font-size:10px;font-weight:800;border-radius:10px;padding:0 5px;}
+  .data{opacity:.92;font-size:13px;margin-top:6px;}
+  /* corpo rolável */
+  .body{padding:16px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:14px;}
+  .card{background:var(--superficie);border-radius:var(--raio);padding:16px;border:1px solid var(--borda);
+        box-shadow:0 6px 18px rgba(0,0,0,.04);}
+  .card h3{margin:0 0 12px;font-size:12px;letter-spacing:.8px;color:var(--texto2);text-transform:uppercase;}
+  /* saúde */
+  .saude{display:flex;align-items:center;gap:18px;}
+  .gauge{--p:78;width:96px;height:96px;border-radius:50%;flex:0 0 auto;
+    background:conic-gradient(var(--amarelo) calc(var(--p)*1%), #ECEDF0 0);
+    display:flex;align-items:center;justify-content:center;}
+  .gauge .inner{width:74px;height:74px;border-radius:50%;background:#fff;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;}
+  .gauge .num{font-size:24px;font-weight:800;color:var(--amarelo);line-height:1;}
+  .gauge .den{font-size:11px;color:var(--texto2);}
+  .saude .txt b{font-size:16px;}
+  .saude .txt p{margin:4px 0 0;color:var(--texto2);font-size:13px;}
+  .pill{display:inline-block;margin-top:8px;background:var(--amarelo-fundo);color:var(--amarelo);
+    font-weight:700;font-size:12px;padding:4px 10px;border-radius:20px;}
+  /* 3 coisas */
+  .acao{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-top:1px solid var(--borda);}
+  .acao:first-of-type{border-top:0;}
+  .dot{width:10px;height:10px;border-radius:50%;margin-top:5px;flex:0 0 auto;}
+  .dot.r{background:var(--vermelho)} .dot.y{background:var(--amarelo)}
+  .acao .info{flex:1;}
+  .acao .info b{font-size:14px;}
+  .acao .info p{margin:2px 0 0;color:var(--texto2);font-size:12.5px;}
+  .cta{align-self:center;font-size:12px;font-weight:700;color:var(--vermelho);
+    background:var(--vermelho-fundo);padding:6px 12px;border-radius:20px;white-space:nowrap;}
+  /* briefing */
+  .brief{background:linear-gradient(135deg,#fff,#FFF6F7);border:1px solid #F3D6DB;}
+  .brief .cluby{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--vermelho);color:#fff;display:flex;
+    align-items:center;justify-content:center;font-weight:800;font-size:13px;}
+  .brief p{margin:0;font-size:14px;line-height:1.5;}
+  .brief .firma{color:var(--texto2);font-size:12px;margin-top:8px;}
+  /* chat */
+  .chat{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--borda);
+    border-radius:26px;padding:12px 16px;box-shadow:0 6px 18px rgba(0,0,0,.05);}
+  .chat input{border:0;flex:1;font-size:14px;outline:none;color:var(--texto);}
+  .chat .mic{width:34px;height:34px;border-radius:50%;background:var(--vermelho);color:#fff;display:flex;
+    align-items:center;justify-content:center;}
+  .rodape{text-align:center;color:#9AA0A6;font-size:11px;padding:6px 0 2px;}
+</style>
+</head>
+<body>
+  <div class="legenda">Maquete — Check-out PRO · “Centro de Mando” (Cluby Copiloto)</div>
+  <div class="phone">
+    <div class="screen">
+
+      <!-- Cabeçalho -->
+      <div class="top">
+        <div class="row">
+          <div class="brand">Check-out PRO</div>
+          <div class="icons"><span class="badge">🔔</span><span>👤</span></div>
+        </div>
+        <div class="data">Terça-feira, 23 de junho de 2026 · Bom dia, Gerente 👋</div>
+      </div>
+
+      <div class="body">
+
+        <!-- Saúde do negócio -->
+        <div class="card">
+          <h3>Saúde do negócio</h3>
+          <div class="saude">
+            <div class="gauge"><div class="inner"><div class="num">78</div><div class="den">/ 100</div></div></div>
+            <div class="txt">
+              <b>Bom, com 2 pontos de atenção</b>
+              <p>Vendas e equipe ok. Estoque e carga do dia precisam de você.</p>
+              <span class="pill">⚠️ Atenção em 2 áreas</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- As 3 coisas de hoje -->
+        <div class="card">
+          <h3>🎯 As 3 coisas de hoje</h3>
+          <div class="acao">
+            <div class="dot r"></div>
+            <div class="info"><b>Falta carregar “Devoluções”</b><p>Os outros 5 arquivos já entraram hoje.</p></div>
+            <div class="cta">Carregar</div>
+          </div>
+          <div class="acao">
+            <div class="dot y"></div>
+            <div class="info"><b>Bobinas acabam em 3 dias</b><p>Sugestão: pedir 2 fardos agora.</p></div>
+            <div class="cta">Pedir</div>
+          </div>
+          <div class="acao">
+            <div class="dot y"></div>
+            <div class="info"><b>Vendas 12% abaixo da meta do mês</b><p>Precisa de +R$ 6,4 mil/dia para fechar a meta.</p></div>
+            <div class="cta">Ver painel</div>
+          </div>
+        </div>
+
+        <!-- Briefing da Cluby -->
+        <div class="card brief">
+          <div class="cluby"><div class="avatar">C</div><b>Briefing da Cluby</b></div>
+          <p>“Ontem fecharam <b>R$ 142 mil (+8%)</b> vs. a segunda passada. Cancelamentos dentro do esperado e a equipe cumpriu a jornada. Hoje, o foco é repor <b>bobinas</b> e recuperar o ritmo de vendas da tarde.”</p>
+          <div class="firma">Cluby · assistente de gestão · 07:30</div>
+        </div>
+
+        <!-- Pergunte à Cluby -->
+        <div class="chat">
+          <input placeholder="Pergunte à Cluby: “Como vamos hoje?”" />
+          <div class="mic">🎤</div>
+        </div>
+
+        <div class="rodape">Uso interno · Conteúdo confidencial</div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
