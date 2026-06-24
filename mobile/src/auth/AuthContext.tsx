@@ -30,6 +30,8 @@ interface EstadoAuth {
   perfil: Perfil | null;
   autenticado: boolean;
   entrar: (login: string, senha: string) => Promise<void>;
+  /** Restaura a sessão a partir de um token já existente (login biométrico). */
+  entrarComToken: (token: string) => Promise<void>;
   sair: () => Promise<void>;
   podeAcessar: (funcionalidade: string) => boolean;
 }
@@ -93,6 +95,14 @@ export function AuthProvider({
     setUsuario(eu);
   }, []);
 
+  // Login por biometria: usa um token previamente salvo (validado no backend
+  // ao buscar o usuário; se estiver expirado, o erro 401 é propagado).
+  const entrarComToken = useCallback(async (token: string) => {
+    await tokenStorage.salvarToken(token);
+    const eu = await acessosService.eu();
+    setUsuario(eu);
+  }, []);
+
   const valor = useMemo<EstadoAuth>(
     () => ({
       carregando,
@@ -100,11 +110,12 @@ export function AuthProvider({
       perfil: usuario?.perfil ?? null,
       autenticado: usuario !== null,
       entrar,
+      entrarComToken,
       sair,
       podeAcessar: (funcionalidade: string) =>
         usuario ? podeAcessar(usuario.perfil, funcionalidade) : false,
     }),
-    [carregando, usuario, entrar, sair],
+    [carregando, usuario, entrar, entrarComToken, sair],
   );
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;
