@@ -39,6 +39,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../auth/AuthContext';
 import { AREAS } from '../navigation/areas';
 import { ResumoDoDia } from './centroDeMando/ResumoDoDia';
+import { usePulsoDoDia } from './centroDeMando/usePulsoDoDia';
 import { useNotificacoes } from '../notificacoes/NotificacoesContext';
 import { PropsTela } from '../navigation/types';
 import {
@@ -86,11 +87,20 @@ export function HomeScreen({
 }: PropsTela<'Home'>): React.ReactElement {
   const { usuario, perfil, podeAcessar, sair } = useAuth();
   const { naoLidas } = useNotificacoes();
+  // Pulso do dia: pendências por módulo (para ordenar por relevância e marcar
+  // um selo). Defensivo e por regras; não muda nenhuma lógica de negócio.
+  const { pendenciasPorModulo } = usePulsoDoDia(perfil, podeAcessar);
   // Áreas visíveis no menu: precisa ter acesso pela funcionalidade E não estar
   // marcada como "em breve" (em construção). Áreas `emBreve` ficam ocultas até
   // serem concluídas, inclusive para o gerente desenvolvedor.
   const areasVisiveis = AREAS.filter(
     (a) => !a.emBreve && podeAcessar(a.funcionalidade),
+  );
+  // Ordena por relevância: módulos com mais pendências primeiro; em empate,
+  // mantém a ordem original (sort estável). Apenas reordena a exibição.
+  const areasOrdenadas = [...areasVisiveis].sort(
+    (a, b) =>
+      (pendenciasPorModulo[b.rota] ?? 0) - (pendenciasPorModulo[a.rota] ?? 0),
   );
 
   // Nome a exibir: usa o nome do usuário (quando houver); senão, deriva do
@@ -183,9 +193,10 @@ export function HomeScreen({
         <ResumoDoDia aoNavegar={(rota) => navigation.navigate(rota as never)} />
         <Text style={styles.secao}>Áreas</Text>
         <View style={styles.lista}>
-          {areasVisiveis.map((area) => {
+          {areasOrdenadas.map((area) => {
             const corModulo = coresModulos[area.rota] ?? cores.primaria;
             const Icone = ICONES_MODULO[area.rota] ?? LayoutGrid;
+            const pendencias = pendenciasPorModulo[area.rota] ?? 0;
             return (
               <Pressable
                 key={area.rota}
@@ -199,6 +210,11 @@ export function HomeScreen({
                   style={[styles.moduloIcone, { backgroundColor: `${corModulo}1A` }]}
                 >
                   <Icone size={22} color={corModulo} />
+                  {pendencias > 0 && (
+                    <View style={styles.moduloBadge}>
+                      <Text style={styles.moduloBadgeTexto}>{pendencias}</Text>
+                    </View>
+                  )}
                 </View>
                 <View style={styles.moduloTexto}>
                   <Text style={styles.moduloTitulo}>{area.titulo}</Text>
@@ -351,6 +367,27 @@ const styles = StyleSheet.create({
     borderRadius: raio.md,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  moduloBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    borderRadius: 10,
+    backgroundColor: cores.vermelho,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: cores.superficie,
+  },
+  moduloBadgeTexto: {
+    fontFamily: 'Inter_800ExtraBold',
+    color: cores.textoInverso,
+    fontSize: 11,
+    fontWeight: '800',
   },
   moduloTexto: {
     flex: 1,
