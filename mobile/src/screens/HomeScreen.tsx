@@ -32,15 +32,7 @@ import {
   Users,
 } from 'lucide-react-native';
 import React from 'react';
-import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  type ViewStyle,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../auth/AuthContext';
@@ -125,13 +117,8 @@ export function HomeScreen({
   const nome = primeiroNome;
   const inicial = (nome.charAt(0) || 'U').toUpperCase();
 
-  // Na WEB (notebook/PC), fixa a altura à viewport para o scroll ser INTERNO
-  // ao conteúdo — assim o header não rola junto. No app nativo não se aplica.
-  const estiloWeb =
-    Platform.OS === 'web' ? ({ height: '100vh' } as unknown as ViewStyle) : null;
-
   return (
-    <View style={[styles.container, estiloWeb]}>
+    <View style={styles.container}>
       <StatusBar style="light" />
 
       {/* Header premium com degradê */}
@@ -307,6 +294,10 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flex: 1,
+    // Essencial na web: permite que o ScrollView ENCOLHA e role internamente
+    // (sem isto, ele cresce com o conteúdo e a página inteira rola, levando o
+    // header junto).
+    minHeight: 0,
   },
   conteudo: {
     backgroundColor: cores.fundo,
