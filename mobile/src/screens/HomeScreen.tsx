@@ -49,7 +49,7 @@ import { AREAS } from '../navigation/areas';
 import { ResumoDoDia } from './centroDeMando/ResumoDoDia';
 import { usePulsoDoDia } from './centroDeMando/usePulsoDoDia';
 import { useNotificacoes } from '../notificacoes/NotificacoesContext';
-import { PropsTela } from '../navigation/types';
+import { PropsTabInicio } from '../navigation/types';
 import { cores, coresModulos, gradientes, raio, sombra, tipografia } from '../theme';
 
 /** Saudação inteligente conforme o horário do dispositivo. */
@@ -84,7 +84,7 @@ const ICONES_MODULO: Record<string, LucideIcon> = {
 
 export function HomeScreen({
   navigation,
-}: PropsTela<'Home'>): React.ReactElement {
+}: PropsTabInicio): React.ReactElement {
   const { usuario, perfil, podeAcessar, sair } = useAuth();
   const { naoLidas } = useNotificacoes();
   // Pulso do dia: pendências por módulo (para ordenar por relevância e marcar
