@@ -149,8 +149,8 @@ function MedidorCircular({
   nota: number;
   cor: string;
 }): React.ReactElement {
-  const tamanho = 68;
-  const traco = 7;
+  const tamanho = 74;
+  const traco = 8;
   const r = (tamanho - traco) / 2;
   const circunferencia = 2 * Math.PI * r;
   const preenchido = circunferencia * (1 - Math.max(0, Math.min(100, nota)) / 100);
@@ -488,7 +488,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           </View>
           <Text style={styles.briefingTitulo}>Resumo de hoje</Text>
           <View style={styles.iaBadge}>
-            <Sparkles size={8} color={cores.textoInverso} />
+            <Sparkles size={9} color={cores.textoInverso} />
             <Text style={styles.iaBadgeTexto}>IA</Text>
           </View>
         </View>
@@ -500,7 +500,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           accessibilityLabel="Conversar com a Cluby sobre o resumo"
         >
           <Text style={styles.briefingAcaoTexto}>Conversar com a Cluby</Text>
-          <ChevronRight size={12} color={cores.primaria} />
+          <ChevronRight size={13} color={cores.primaria} />
         </Pressable>
       </View>
 
@@ -520,9 +520,9 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
                 ]}
               >
                 {subiu ? (
-                  <TrendingUp size={12} color={corVar} />
+                  <TrendingUp size={13} color={corVar} />
                 ) : (
-                  <TrendingDown size={12} color={corVar} />
+                  <TrendingDown size={13} color={corVar} />
                 )}
                 <Text style={[styles.vendasPillTexto, { color: corVar }]}>
                   {subiu ? '+' : ''}
@@ -542,9 +542,9 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           {ritmoMeta ? (
             <View style={styles.ritmoBox}>
               {ritmoMeta.batida ? (
-                <Flag size={12} color={cores.verde} />
+                <Flag size={13} color={cores.verde} />
               ) : (
-                <Gauge size={12} color={cores.primaria} />
+                <Gauge size={13} color={cores.primaria} />
               )}
               <Text style={styles.ritmoTexto}>
                 {ritmoMeta.batida
@@ -556,7 +556,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           {podeAcessar('PAINEL_VENDAS_VISUALIZAR') ? (
             <Pressable onPress={() => aoNavegar('PainelVendas')} style={styles.vendasLink}>
               <Text style={styles.vendasLinkTexto}>Ver Painel de Vendas</Text>
-              <ChevronRight size={12} color={cores.primaria} />
+              <ChevronRight size={13} color={cores.primaria} />
             </Pressable>
           ) : null}
         </Cartao>
@@ -599,7 +599,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           {podeAcessar('OPERADORES_AUSENCIAS') ? (
             <Pressable onPress={() => aoNavegar('Operadores')} style={styles.vendasLink}>
               <Text style={styles.vendasLinkTexto}>Ver Operadores</Text>
-              <ChevronRight size={12} color={cores.primaria} />
+              <ChevronRight size={13} color={cores.primaria} />
             </Pressable>
           ) : null}
         </Cartao>
@@ -609,7 +609,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
       <Cartao estilo={styles.cartaoCompacto} titulo="As 3 coisas de hoje">
         {top3.length === 0 ? (
           <View style={styles.tudoOk}>
-            <CheckCircle2 size={14} color={cores.verde} />
+            <CheckCircle2 size={15} color={cores.verde} />
             <Text style={styles.tudoOkTexto}>
               Tudo em ordem. Sem pendências para hoje. 🎉
             </Text>
@@ -645,22 +645,22 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
 
 const styles = StyleSheet.create({
   bloco: {
-    marginBottom: 6,
+    marginBottom: 7,
   },
   cartaoCompacto: {
-    padding: 14,
-    marginBottom: 10,
+    padding: 15,
+    marginBottom: 11,
   },
   secao: {
     ...tipografia.secao,
-    fontSize: 13,
+    fontSize: 14,
     color: cores.texto,
-    marginBottom: 8,
+    marginBottom: 9,
   },
   saudeLinha: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 9,
   },
   medidorCentro: {
     ...StyleSheet.absoluteFillObject,
@@ -669,14 +669,14 @@ const styles = StyleSheet.create({
   },
   medidorNota: {
     fontFamily: 'Inter_800ExtraBold',
-    fontSize: 21,
+    fontSize: 23,
     fontWeight: '800',
-    lineHeight: 23,
+    lineHeight: 25,
     letterSpacing: -0.5,
   },
   medidorDe: {
     ...tipografia.legenda,
-    fontSize: 9,
+    fontSize: 10,
     color: cores.textoSecundario,
   },
   saudeTexto: {
@@ -684,53 +684,53 @@ const styles = StyleSheet.create({
   },
   saudeMini: {
     ...tipografia.legenda,
-    fontSize: 10,
+    fontSize: 11,
     color: cores.textoSecundario,
     letterSpacing: 0.6,
   },
   saudeRotulo: {
     ...tipografia.secao,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
     marginTop: 2,
   },
   saudeDica: {
     ...tipografia.legenda,
-    fontSize: 10,
+    fontSize: 11,
     color: cores.textoSecundario,
     marginTop: 2,
   },
   briefingCard: {
     backgroundColor: cores.primariaClara,
     borderRadius: raio.lg,
-    padding: 11,
-    marginBottom: 10,
+    padding: 12,
+    marginBottom: 11,
     borderWidth: 1,
     borderColor: '#D6E3F2',
   },
   briefingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
   },
   briefingPress: {
     opacity: 0.7,
   },
   briefingIcone: {
-    width: 26,
-    height: 26,
-    borderRadius: 9,
+    width: 28,
+    height: 28,
+    borderRadius: 10,
     backgroundColor: cores.superficie,
     alignItems: 'center',
     justifyContent: 'center',
     ...sombra.cartao,
   },
   briefingEmoji: {
-    fontSize: 13,
+    fontSize: 14,
   },
   briefingTitulo: {
     ...tipografia.corpo,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
     color: cores.primariaEscura,
     flex: 1,
@@ -747,59 +747,59 @@ const styles = StyleSheet.create({
   iaBadgeTexto: {
     fontFamily: 'Inter_800ExtraBold',
     color: cores.textoInverso,
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   briefingNarrativa: {
     ...tipografia.corpo,
-    fontSize: 11,
+    fontSize: 12,
     color: cores.primariaEscura,
-    marginTop: 8,
-    lineHeight: 16,
+    marginTop: 9,
+    lineHeight: 18,
   },
   briefingAcao: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    marginTop: 8,
+    marginTop: 9,
     alignSelf: 'flex-start',
   },
   briefingAcaoTexto: {
     ...tipografia.rotulo,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
     color: cores.primaria,
   },
   coberturaLinha: {
     flexDirection: 'row',
-    gap: 6,
-    marginTop: 8,
+    gap: 7,
+    marginTop: 9,
   },
   coberturaItem: {
     flex: 1,
     alignItems: 'center',
     backgroundColor: cores.superficieAlternativa,
-    borderRadius: 10,
-    paddingVertical: 8,
+    borderRadius: 11,
+    paddingVertical: 9,
   },
   coberturaNum: {
     fontFamily: 'Inter_800ExtraBold',
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
   coberturaRot: {
     ...tipografia.legenda,
-    fontSize: 10,
+    fontSize: 11,
     color: cores.textoSecundario,
     marginTop: 2,
   },
   coberturaAlerta: {
     ...tipografia.legenda,
-    fontSize: 10,
+    fontSize: 11,
     color: cores.vermelho,
-    marginTop: 6,
+    marginTop: 7,
   },
   vendasTopo: {
     flexDirection: 'row',
@@ -808,7 +808,7 @@ const styles = StyleSheet.create({
   },
   vendasValor: {
     fontFamily: 'Inter_800ExtraBold',
-    fontSize: 21,
+    fontSize: 23,
     fontWeight: '800',
     color: cores.texto,
     marginTop: 2,
@@ -818,30 +818,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: raio.lg,
   },
   vendasPillTexto: {
     ...tipografia.legenda,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
   },
   vendasNota: {
     ...tipografia.legenda,
-    fontSize: 10,
+    fontSize: 11,
     color: cores.textoSecundario,
-    marginTop: 6,
+    marginTop: 7,
   },
   ritmoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 6,
+    gap: 5,
+    marginTop: 7,
   },
   ritmoTexto: {
     ...tipografia.legenda,
-    fontSize: 10,
+    fontSize: 11,
     color: cores.texto,
     fontWeight: '600',
     flex: 1,
@@ -850,23 +850,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    marginTop: 6,
+    marginTop: 7,
   },
   vendasLinkTexto: {
     ...tipografia.legenda,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: cores.primaria,
   },
   acao: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 6,
+    gap: 9,
+    paddingVertical: 7,
   },
   bolinha: {
     width: 3,
-    height: 26,
+    height: 28,
     borderRadius: 2,
   },
   acaoInfo: {
@@ -874,36 +874,36 @@ const styles = StyleSheet.create({
   },
   acaoTitulo: {
     ...tipografia.corpo,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: cores.texto,
   },
   acaoDetalhe: {
     ...tipografia.legenda,
-    fontSize: 10,
+    fontSize: 11,
     color: cores.textoSecundario,
     marginTop: 2,
   },
   botaoVer: {
     backgroundColor: cores.primariaClara,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
     borderRadius: raio.pill,
   },
   botaoVerTexto: {
     ...tipografia.legenda,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: cores.primaria,
   },
   tudoOk: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
   },
   tudoOkTexto: {
     ...tipografia.corpo,
-    fontSize: 11,
+    fontSize: 12,
     color: cores.texto,
     flex: 1,
   },

@@ -33,7 +33,15 @@ import {
   Users,
 } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../auth/AuthContext';
@@ -120,8 +128,13 @@ export function HomeScreen({
   const nome = primeiroNome;
   const inicial = (nome.charAt(0) || 'U').toUpperCase();
 
+  // Na WEB (notebook/PC), fixa a altura à viewport para o scroll ser INTERNO
+  // ao conteúdo — assim o header não rola junto. No app nativo não se aplica.
+  const estiloWeb =
+    Platform.OS === 'web' ? ({ height: '100vh' } as unknown as ViewStyle) : null;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, estiloWeb]}>
       <StatusBar style="light" />
 
       {/* Header premium com degradê */}
@@ -133,7 +146,6 @@ export function HomeScreen({
       >
         <SafeAreaView edges={['top']}>
           <Text style={styles.marca}>Check-out Pro</Text>
-          <Text style={styles.tagline}>Legado de Gestão Inteligente</Text>
 
           <View style={styles.headerRow}>
             <View style={styles.usuarioBox}>
@@ -157,7 +169,7 @@ export function HomeScreen({
                   accessibilityLabel="Notificações"
                   style={styles.iconeAcao}
                 >
-                  <Bell size={14} color={cores.textoInverso} />
+                  <Bell size={15} color={cores.textoInverso} />
                   {naoLidas > 0 && (
                     <View style={styles.sinoBadge}>
                       <Text style={styles.sinoBadgeTexto}>
@@ -174,7 +186,7 @@ export function HomeScreen({
                 accessibilityLabel="Sair"
                 style={styles.iconeAcao}
               >
-                <LogOut size={14} color={cores.textoInverso} />
+                <LogOut size={15} color={cores.textoInverso} />
               </Pressable>
             </View>
           </View>
@@ -204,7 +216,7 @@ export function HomeScreen({
                 <View
                   style={[styles.tileIcone, { backgroundColor: `${corModulo}1A` }]}
                 >
-                  <Icone size={24} color={corModulo} />
+                  <Icone size={26} color={corModulo} />
                   {pendencias > 0 && (
                     <View style={styles.tileBadge}>
                       <Text style={styles.tileBadgeTexto}>{pendencias}</Text>
@@ -229,39 +241,32 @@ const styles = StyleSheet.create({
     backgroundColor: cores.primaria,
   },
   header: {
-    paddingHorizontal: 12,
-    paddingBottom: 18,
+    paddingHorizontal: 13,
+    paddingBottom: 19,
   },
   marca: {
     fontFamily: 'Inter_800ExtraBold',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
     color: cores.textoInverso,
     letterSpacing: -0.3,
-  },
-  tagline: {
-    ...tipografia.legenda,
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.75)',
-    marginTop: 2,
-    letterSpacing: 0.2,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 13,
   },
   usuarioBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
+    gap: 10,
     flex: 1,
   },
   avatar: {
-    width: 33,
-    height: 33,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.16)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.28)',
@@ -271,7 +276,7 @@ const styles = StyleSheet.create({
   avatarTexto: {
     fontFamily: 'Inter_800ExtraBold',
     color: cores.textoInverso,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
   },
   usuarioInfo: {
@@ -279,26 +284,26 @@ const styles = StyleSheet.create({
   },
   saudacao: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: cores.textoInverso,
     letterSpacing: -0.2,
   },
   cargo: {
     ...tipografia.legenda,
-    fontSize: 11,
+    fontSize: 12,
     color: 'rgba(255,255,255,0.75)',
     marginTop: 1,
   },
   acoesTopo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 8,
   },
   iconeAcao: {
-    width: 30,
-    height: 30,
-    borderRadius: 11,
+    width: 32,
+    height: 32,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -308,8 +313,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 1,
     right: 1,
-    minWidth: 13,
-    height: 13,
+    minWidth: 14,
+    height: 14,
     paddingHorizontal: 2,
     borderRadius: 7,
     backgroundColor: cores.vermelho,
@@ -318,7 +323,7 @@ const styles = StyleSheet.create({
   },
   sinoBadgeTexto: {
     color: cores.textoInverso,
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '800',
   },
   scroll: {
@@ -326,30 +331,30 @@ const styles = StyleSheet.create({
   },
   conteudo: {
     backgroundColor: cores.fundo,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    paddingHorizontal: 12,
-    paddingTop: 18,
-    paddingBottom: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 13,
+    paddingTop: 19,
+    paddingBottom: 26,
     minHeight: '100%',
   },
   secao: {
     ...tipografia.subtitulo,
-    fontSize: 14,
+    fontSize: 15,
     color: cores.texto,
-    marginBottom: 10,
+    marginBottom: 11,
   },
   grade: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 9,
   },
   tile: {
     width: '31%',
     backgroundColor: cores.superficie,
     borderRadius: raio.lg,
-    paddingVertical: 14,
-    paddingHorizontal: 6,
+    paddingVertical: 15,
+    paddingHorizontal: 7,
     alignItems: 'center',
     justifyContent: 'flex-start',
     borderWidth: 1,
@@ -361,22 +366,22 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   tileIcone: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
+    width: 50,
+    height: 50,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 9,
     position: 'relative',
   },
   tileBadge: {
     position: 'absolute',
     top: -5,
     right: -5,
-    minWidth: 18,
-    height: 18,
+    minWidth: 19,
+    height: 19,
     paddingHorizontal: 4,
-    borderRadius: 9,
+    borderRadius: 10,
     backgroundColor: cores.vermelho,
     alignItems: 'center',
     justifyContent: 'center',
@@ -386,12 +391,12 @@ const styles = StyleSheet.create({
   tileBadgeTexto: {
     fontFamily: 'Inter_800ExtraBold',
     color: cores.textoInverso,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
   },
   tileTitulo: {
     ...tipografia.rotulo,
-    fontSize: 12,
+    fontSize: 13,
     color: cores.texto,
     textAlign: 'center',
   },
