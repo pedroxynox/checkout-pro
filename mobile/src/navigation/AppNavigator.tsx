@@ -11,6 +11,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { HomeScreen } from '../screens/HomeScreen';
+import { CentroDeMandoScreen } from '../screens/centroDeMando/CentroDeMandoScreen';
 import { ImportacoesScreen } from '../screens/importacoes/ImportacoesScreen';
 import { FechamentoScreen } from '../screens/fechamento/FechamentoScreen';
 import { IndicadoresScreen } from '../screens/indicadores/IndicadoresScreen';
@@ -55,6 +56,14 @@ export function AppNavigator(): React.ReactElement {
         component={HomeScreen}
         options={{ headerShown: false }}
       />
+
+      {podeAcessar('INDICADORES_VISUALIZAR') && (
+        <Stack.Screen
+          name="CentroDeMando"
+          component={CentroDeMandoScreen}
+          options={{ title: 'Centro de Mando' }}
+        />
+      )}
 
       {podeAcessar('IMPORTACOES') && (
         <Stack.Screen

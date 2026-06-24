@@ -18,6 +18,7 @@ import { RotaApp } from './types';
 export interface Area {
   rota: Extract<
     RotaApp,
+    | 'CentroDeMando'
     | 'Importacoes'
     | 'Fechamento'
     | 'Indicadores'
@@ -48,6 +49,13 @@ export interface Area {
 }
 
 export const AREAS: Area[] = [
+  {
+    rota: 'CentroDeMando',
+    titulo: 'Centro de Mando',
+    descricao: 'Saúde do negócio e as prioridades de hoje',
+    icone: 'speedometer-outline',
+    funcionalidade: 'INDICADORES_VISUALIZAR',
+  },
   {
     rota: 'Fechamento',
     titulo: 'Fechamento',
