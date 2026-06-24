@@ -50,7 +50,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { useAssistente } from '../../assistente/AssistenteContext';
 import { Cartao } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
-import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
+import { cores, raio, sombra, tipografia } from '../../theme';
 import { formatarMoeda, hojeISO } from '../../utils/formato';
 import { ROTULO_TIPO_ARRECADACAO } from '../../utils/rotulos';
 
@@ -149,8 +149,8 @@ function MedidorCircular({
   nota: number;
   cor: string;
 }): React.ReactElement {
-  const tamanho = 96;
-  const traco = 10;
+  const tamanho = 68;
+  const traco = 7;
   const r = (tamanho - traco) / 2;
   const circunferencia = 2 * Math.PI * r;
   const preenchido = circunferencia * (1 - Math.max(0, Math.min(100, nota)) / 100);
@@ -469,7 +469,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
       <Text style={styles.secao}>Hoje</Text>
 
       {/* Saúde do negócio com medidor circular */}
-      <Cartao>
+      <Cartao estilo={styles.cartaoCompacto}>
         <View style={styles.saudeLinha}>
           <MedidorCircular nota={saude.nota} cor={saude.cor} />
           <View style={styles.saudeTexto}>
@@ -488,7 +488,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           </View>
           <Text style={styles.briefingTitulo}>Resumo de hoje</Text>
           <View style={styles.iaBadge}>
-            <Sparkles size={10} color={cores.textoInverso} />
+            <Sparkles size={8} color={cores.textoInverso} />
             <Text style={styles.iaBadgeTexto}>IA</Text>
           </View>
         </View>
@@ -500,13 +500,13 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           accessibilityLabel="Conversar com a Cluby sobre o resumo"
         >
           <Text style={styles.briefingAcaoTexto}>Conversar com a Cluby</Text>
-          <ChevronRight size={16} color={cores.primaria} />
+          <ChevronRight size={12} color={cores.primaria} />
         </Pressable>
       </View>
 
       {/* Vendas de ontem — destaque para perfis de gestão */}
       {temas.has('ventas') && vendasOntem ? (
-        <Cartao>
+        <Cartao estilo={styles.cartaoCompacto}>
           <View style={styles.vendasTopo}>
             <View>
               <Text style={styles.saudeMini}>VENDAS DE ONTEM</Text>
@@ -520,9 +520,9 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
                 ]}
               >
                 {subiu ? (
-                  <TrendingUp size={16} color={corVar} />
+                  <TrendingUp size={12} color={corVar} />
                 ) : (
-                  <TrendingDown size={16} color={corVar} />
+                  <TrendingDown size={12} color={corVar} />
                 )}
                 <Text style={[styles.vendasPillTexto, { color: corVar }]}>
                   {subiu ? '+' : ''}
@@ -542,9 +542,9 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           {ritmoMeta ? (
             <View style={styles.ritmoBox}>
               {ritmoMeta.batida ? (
-                <Flag size={16} color={cores.verde} />
+                <Flag size={12} color={cores.verde} />
               ) : (
-                <Gauge size={16} color={cores.primaria} />
+                <Gauge size={12} color={cores.primaria} />
               )}
               <Text style={styles.ritmoTexto}>
                 {ritmoMeta.batida
@@ -556,7 +556,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           {podeAcessar('PAINEL_VENDAS_VISUALIZAR') ? (
             <Pressable onPress={() => aoNavegar('PainelVendas')} style={styles.vendasLink}>
               <Text style={styles.vendasLinkTexto}>Ver Painel de Vendas</Text>
-              <ChevronRight size={16} color={cores.primaria} />
+              <ChevronRight size={12} color={cores.primaria} />
             </Pressable>
           ) : null}
         </Cartao>
@@ -564,7 +564,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
 
       {/* Cobertura do turno de hoje (operadores trabalhando vs faltas/folgas) */}
       {temCobertura ? (
-        <Cartao>
+        <Cartao estilo={styles.cartaoCompacto}>
           <Text style={styles.saudeMini}>COBERTURA DE HOJE</Text>
           <View style={styles.coberturaLinha}>
             <View style={styles.coberturaItem}>
@@ -599,17 +599,17 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           {podeAcessar('OPERADORES_AUSENCIAS') ? (
             <Pressable onPress={() => aoNavegar('Operadores')} style={styles.vendasLink}>
               <Text style={styles.vendasLinkTexto}>Ver Operadores</Text>
-              <ChevronRight size={16} color={cores.primaria} />
+              <ChevronRight size={12} color={cores.primaria} />
             </Pressable>
           ) : null}
         </Cartao>
       ) : null}
 
       {/* As 3 coisas de hoje */}
-      <Cartao titulo="As 3 coisas de hoje">
+      <Cartao estilo={styles.cartaoCompacto} titulo="As 3 coisas de hoje">
         {top3.length === 0 ? (
           <View style={styles.tudoOk}>
-            <CheckCircle2 size={20} color={cores.verde} />
+            <CheckCircle2 size={14} color={cores.verde} />
             <Text style={styles.tudoOkTexto}>
               Tudo em ordem. Sem pendências para hoje. 🎉
             </Text>
@@ -645,17 +645,22 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
 
 const styles = StyleSheet.create({
   bloco: {
-    marginBottom: espacamento.sm,
+    marginBottom: 6,
+  },
+  cartaoCompacto: {
+    padding: 14,
+    marginBottom: 10,
   },
   secao: {
     ...tipografia.secao,
+    fontSize: 13,
     color: cores.texto,
-    marginBottom: espacamento.md,
+    marginBottom: 8,
   },
   saudeLinha: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.md,
+    gap: 8,
   },
   medidorCentro: {
     ...StyleSheet.absoluteFillObject,
@@ -664,13 +669,14 @@ const styles = StyleSheet.create({
   },
   medidorNota: {
     fontFamily: 'Inter_800ExtraBold',
-    fontSize: 30,
+    fontSize: 21,
     fontWeight: '800',
-    lineHeight: 32,
+    lineHeight: 23,
     letterSpacing: -0.5,
   },
   medidorDe: {
     ...tipografia.legenda,
+    fontSize: 9,
     color: cores.textoSecundario,
   },
   saudeTexto: {
@@ -678,49 +684,53 @@ const styles = StyleSheet.create({
   },
   saudeMini: {
     ...tipografia.legenda,
+    fontSize: 10,
     color: cores.textoSecundario,
     letterSpacing: 0.6,
   },
   saudeRotulo: {
     ...tipografia.secao,
+    fontSize: 12,
     fontWeight: '800',
     marginTop: 2,
   },
   saudeDica: {
     ...tipografia.legenda,
+    fontSize: 10,
     color: cores.textoSecundario,
     marginTop: 2,
   },
   briefingCard: {
     backgroundColor: cores.primariaClara,
     borderRadius: raio.lg,
-    padding: espacamento.lg,
-    marginBottom: espacamento.md,
+    padding: 11,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#D6E3F2',
   },
   briefingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.sm,
+    gap: 6,
   },
   briefingPress: {
     opacity: 0.7,
   },
   briefingIcone: {
-    width: 36,
-    height: 36,
-    borderRadius: raio.md,
+    width: 26,
+    height: 26,
+    borderRadius: 9,
     backgroundColor: cores.superficie,
     alignItems: 'center',
     justifyContent: 'center',
     ...sombra.cartao,
   },
   briefingEmoji: {
-    fontSize: 18,
+    fontSize: 13,
   },
   briefingTitulo: {
     ...tipografia.corpo,
+    fontSize: 11,
     fontWeight: '800',
     color: cores.primariaEscura,
     flex: 1,
@@ -730,62 +740,66 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     backgroundColor: cores.primaria,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
     borderRadius: raio.pill,
   },
   iaBadgeTexto: {
     fontFamily: 'Inter_800ExtraBold',
     color: cores.textoInverso,
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   briefingNarrativa: {
     ...tipografia.corpo,
+    fontSize: 11,
     color: cores.primariaEscura,
-    marginTop: espacamento.md,
-    lineHeight: 21,
+    marginTop: 8,
+    lineHeight: 16,
   },
   briefingAcao: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    marginTop: espacamento.md,
+    marginTop: 8,
     alignSelf: 'flex-start',
   },
   briefingAcaoTexto: {
     ...tipografia.rotulo,
+    fontSize: 10,
     fontWeight: '800',
     color: cores.primaria,
   },
   coberturaLinha: {
     flexDirection: 'row',
-    gap: espacamento.sm,
-    marginTop: espacamento.md,
+    gap: 6,
+    marginTop: 8,
   },
   coberturaItem: {
     flex: 1,
     alignItems: 'center',
     backgroundColor: cores.superficieAlternativa,
-    borderRadius: raio.md,
-    paddingVertical: espacamento.md,
+    borderRadius: 10,
+    paddingVertical: 8,
   },
   coberturaNum: {
     fontFamily: 'Inter_800ExtraBold',
-    fontSize: 24,
+    fontSize: 17,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
   coberturaRot: {
     ...tipografia.legenda,
+    fontSize: 10,
     color: cores.textoSecundario,
     marginTop: 2,
   },
   coberturaAlerta: {
     ...tipografia.legenda,
+    fontSize: 10,
     color: cores.vermelho,
-    marginTop: espacamento.sm,
+    marginTop: 6,
   },
   vendasTopo: {
     flexDirection: 'row',
@@ -794,7 +808,7 @@ const styles = StyleSheet.create({
   },
   vendasValor: {
     fontFamily: 'Inter_800ExtraBold',
-    fontSize: 30,
+    fontSize: 21,
     fontWeight: '800',
     color: cores.texto,
     marginTop: 2,
@@ -803,28 +817,31 @@ const styles = StyleSheet.create({
   vendasPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: espacamento.sm,
-    paddingVertical: 4,
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
     borderRadius: raio.lg,
   },
   vendasPillTexto: {
     ...tipografia.legenda,
+    fontSize: 10,
     fontWeight: '800',
   },
   vendasNota: {
     ...tipografia.legenda,
+    fontSize: 10,
     color: cores.textoSecundario,
-    marginTop: espacamento.sm,
+    marginTop: 6,
   },
   ritmoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: espacamento.sm,
+    gap: 4,
+    marginTop: 6,
   },
   ritmoTexto: {
     ...tipografia.legenda,
+    fontSize: 10,
     color: cores.texto,
     fontWeight: '600',
     flex: 1,
@@ -833,22 +850,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    marginTop: espacamento.sm,
+    marginTop: 6,
   },
   vendasLinkTexto: {
     ...tipografia.legenda,
+    fontSize: 10,
     fontWeight: '700',
     color: cores.primaria,
   },
   acao: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.md,
-    paddingVertical: espacamento.sm,
+    gap: 8,
+    paddingVertical: 6,
   },
   bolinha: {
-    width: 4,
-    height: 38,
+    width: 3,
+    height: 26,
     borderRadius: 2,
   },
   acaoInfo: {
@@ -856,32 +874,36 @@ const styles = StyleSheet.create({
   },
   acaoTitulo: {
     ...tipografia.corpo,
+    fontSize: 11,
     fontWeight: '700',
     color: cores.texto,
   },
   acaoDetalhe: {
     ...tipografia.legenda,
+    fontSize: 10,
     color: cores.textoSecundario,
     marginTop: 2,
   },
   botaoVer: {
     backgroundColor: cores.primariaClara,
-    paddingHorizontal: espacamento.md,
-    paddingVertical: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     borderRadius: raio.pill,
   },
   botaoVerTexto: {
     ...tipografia.legenda,
+    fontSize: 10,
     fontWeight: '700',
     color: cores.primaria,
   },
   tudoOk: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.sm,
+    gap: 6,
   },
   tudoOkTexto: {
     ...tipografia.corpo,
+    fontSize: 11,
     color: cores.texto,
     flex: 1,
   },
