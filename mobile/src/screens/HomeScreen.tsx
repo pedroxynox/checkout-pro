@@ -82,6 +82,32 @@ const ICONES_MODULO: Record<string, LucideIcon> = {
   GerenciarDados: Settings,
 };
 
+/**
+ * Catálogo de ações rápidas (atalhos de 1 toque). Cada uma só aparece quando
+ * o módulo correspondente TEM pendência hoje e o usuário pode acessá-lo. O
+ * texto é orientado à ação (verbo).
+ */
+const ACOES_RAPIDAS_INFO: Array<{
+  rota: 'Importacoes' | 'Checklist' | 'Insumos' | 'Operadores' | 'Indicadores' | 'PainelVendas';
+  label: string;
+  funcionalidade: string;
+}> = [
+  { rota: 'Importacoes', label: 'Carregar arquivos', funcionalidade: 'IMPORTACOES' },
+  { rota: 'Checklist', label: 'Fazer checklist', funcionalidade: 'CHECKLIST' },
+  { rota: 'Insumos', label: 'Ver insumos', funcionalidade: 'INSUMOS' },
+  { rota: 'Operadores', label: 'Ver faltas', funcionalidade: 'OPERADORES_AUSENCIAS' },
+  {
+    rota: 'Indicadores',
+    label: 'Ver indicadores',
+    funcionalidade: 'INDICADORES_VISUALIZAR',
+  },
+  {
+    rota: 'PainelVendas',
+    label: 'Ver vendas',
+    funcionalidade: 'PAINEL_VENDAS_VISUALIZAR',
+  },
+];
+
 export function HomeScreen({
   navigation,
 }: PropsTela<'Home'>): React.ReactElement {
@@ -99,6 +125,15 @@ export function HomeScreen({
   // Ordena por relevância: módulos com mais pendências primeiro; em empate,
   // mantém a ordem original (sort estável). Apenas reordena a exibição.
   const areasOrdenadas = [...areasVisiveis].sort(
+    (a, b) =>
+      (pendenciasPorModulo[b.rota] ?? 0) - (pendenciasPorModulo[a.rota] ?? 0),
+  );
+
+  // Ações rápidas (atalhos de 1 toque): só as que TÊM pendência hoje e que o
+  // perfil pode acessar, ordenadas pela quantidade de pendências.
+  const acoesRapidas = ACOES_RAPIDAS_INFO.filter(
+    (a) => (pendenciasPorModulo[a.rota] ?? 0) > 0 && podeAcessar(a.funcionalidade),
+  ).sort(
     (a, b) =>
       (pendenciasPorModulo[b.rota] ?? 0) - (pendenciasPorModulo[a.rota] ?? 0),
   );
@@ -191,6 +226,35 @@ export function HomeScreen({
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.conteudo}>
         <ResumoDoDia aoNavegar={(rota) => navigation.navigate(rota as never)} />
+
+        {acoesRapidas.length > 0 && (
+          <View style={styles.acoesWrap}>
+            <Text style={styles.secao}>Ações rápidas</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.acoesLista}
+            >
+              {acoesRapidas.map((acao) => {
+                const Icone = ICONES_MODULO[acao.rota] ?? LayoutGrid;
+                const cor = coresModulos[acao.rota] ?? cores.primaria;
+                return (
+                  <Pressable
+                    key={acao.rota}
+                    style={({ pressed }) => [styles.chip, pressed && styles.chipPress]}
+                    onPress={() => navigation.navigate(acao.rota)}
+                  >
+                    <View style={[styles.chipIcone, { backgroundColor: `${cor}1A` }]}>
+                      <Icone size={16} color={cor} />
+                    </View>
+                    <Text style={styles.chipTexto}>{acao.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
         <Text style={styles.secao}>Áreas</Text>
         <View style={styles.lista}>
           {areasOrdenadas.map((area) => {
@@ -345,6 +409,39 @@ const styles = StyleSheet.create({
   },
   lista: {
     gap: espacamento.md,
+  },
+  acoesWrap: {
+    marginBottom: espacamento.lg,
+  },
+  acoesLista: {
+    gap: espacamento.sm,
+    paddingVertical: 2,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    backgroundColor: cores.superficie,
+    borderRadius: raio.pill,
+    paddingVertical: espacamento.sm,
+    paddingHorizontal: espacamento.md,
+    borderWidth: 1,
+    borderColor: cores.divisor,
+    ...sombra.cartao,
+  },
+  chipPress: {
+    opacity: 0.85,
+  },
+  chipIcone: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipTexto: {
+    ...tipografia.rotulo,
+    color: cores.texto,
   },
   modulo: {
     flexDirection: 'row',
