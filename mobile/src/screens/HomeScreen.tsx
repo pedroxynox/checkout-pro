@@ -16,7 +16,6 @@ import {
   AlertCircle,
   BadgeCheck,
   BarChart3,
-  Bell,
   Calendar,
   ClipboardCheck,
   DollarSign,
@@ -48,7 +47,6 @@ import { useAuth } from '../auth/AuthContext';
 import { AREAS } from '../navigation/areas';
 import { ResumoDoDia } from './centroDeMando/ResumoDoDia';
 import { usePulsoDoDia } from './centroDeMando/usePulsoDoDia';
-import { useNotificacoes } from '../notificacoes/NotificacoesContext';
 import { PropsTabInicio } from '../navigation/types';
 import { cores, coresModulos, gradientes, raio, sombra, tipografia } from '../theme';
 
@@ -86,7 +84,6 @@ export function HomeScreen({
   navigation,
 }: PropsTabInicio): React.ReactElement {
   const { usuario, perfil, podeAcessar, sair } = useAuth();
-  const { naoLidas } = useNotificacoes();
   // Pulso do dia: pendências por módulo (para ordenar por relevância e marcar
   // um selo). Defensivo e por regras; não muda nenhuma lógica de negócio.
   const { pendenciasPorModulo } = usePulsoDoDia(perfil, podeAcessar);
@@ -161,24 +158,6 @@ export function HomeScreen({
             </View>
 
             <View style={styles.acoesTopo}>
-              {podeAcessar('NOTIFICACOES') && (
-                <Pressable
-                  onPress={() => navigation.navigate('Notificacoes')}
-                  hitSlop={10}
-                  accessibilityRole="button"
-                  accessibilityLabel="Notificações"
-                  style={styles.iconeAcao}
-                >
-                  <Bell size={15} color={cores.textoInverso} />
-                  {naoLidas > 0 && (
-                    <View style={styles.sinoBadge}>
-                      <Text style={styles.sinoBadgeTexto}>
-                        {naoLidas > 99 ? '99+' : naoLidas}
-                      </Text>
-                    </View>
-                  )}
-                </Pressable>
-              )}
               <Pressable
                 onPress={() => void sair()}
                 hitSlop={10}
