@@ -3,7 +3,7 @@
  *
  * Permite que qualquer tela peça à Cluby um resumo/briefing com uma pergunta
  * já pronta — por exemplo, o botão "Pedir um briefing à Cluby" no Resumo do
- * Dia (topo da Home). O `AssistenteFlutuante` (chat) observa o `pedido` e, ao
+ * Dia (topo da Home). O chat da Cluby (aba Mensagens) observa o `pedido` e, ao
  * receber um, abre o chat e envia a pergunta automaticamente.
  *
  * O valor padrão é "no-op" (não faz nada) para que telas usadas em testes —

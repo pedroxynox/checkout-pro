@@ -10,7 +10,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { HomeScreen } from '../screens/HomeScreen';
+import { MainTabs } from './MainTabs';
 import { ImportacoesScreen } from '../screens/importacoes/ImportacoesScreen';
 import { FechamentoScreen } from '../screens/fechamento/FechamentoScreen';
 import { IndicadoresScreen } from '../screens/indicadores/IndicadoresScreen';
@@ -41,7 +41,7 @@ export function AppNavigator(): React.ReactElement {
 
   return (
     <Stack.Navigator
-      initialRouteName="Home"
+      initialRouteName="Tabs"
       screenOptions={{
         headerStyle: { backgroundColor: cores.primaria },
         headerTintColor: cores.textoInverso,
@@ -50,8 +50,8 @@ export function AppNavigator(): React.ReactElement {
       }}
     >
       <Stack.Screen
-        name="Home"
-        component={HomeScreen}
+        name="Tabs"
+        component={MainTabs}
         options={{ headerShown: false }}
       />
 

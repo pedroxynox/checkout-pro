@@ -1,8 +1,20 @@
 /** Tipos das rotas do app (pilha principal autenticada). */
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { TipoArrecadacao } from '../api/types';
 
+/** Abas da barra inferior (área autenticada). */
+export type MainTabParamList = {
+  Inicio: undefined;
+  Tarefas: undefined;
+  Mensagens: undefined;
+  Perfil: undefined;
+};
+
 export type RootStackParamList = {
+  /** Contêiner das abas (Início/Tarefas/Mensagens/Perfil). */
+  Tabs: undefined;
   Home: undefined;
   Importacoes: undefined;
   Fechamento: undefined;
@@ -31,4 +43,13 @@ export type RotaApp = keyof RootStackParamList;
 export type PropsTela<T extends RotaApp> = NativeStackScreenProps<
   RootStackParamList,
   T
+>;
+
+/**
+ * Props da aba Início (Home): compõe a navegação da aba com a da pilha, para
+ * que a Home possa navegar tanto para as abas quanto para as telas de módulo.
+ */
+export type PropsTabInicio = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'Inicio'>,
+  NativeStackScreenProps<RootStackParamList>
 >;

@@ -12,7 +12,7 @@ import {
 import React from 'react';
 import { View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
-import { AssistenteFlutuante, Carregando, ToastNotificacao } from '../components';
+import { Carregando, ToastNotificacao } from '../components';
 import { AssistenteProvider } from '../assistente/AssistenteContext';
 import { NotificacoesProvider } from '../notificacoes/NotificacoesContext';
 import { LoginScreen } from '../screens/LoginScreen';
@@ -42,7 +42,14 @@ const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [],
   config: {
     screens: {
-      Home: '',
+      Tabs: {
+        screens: {
+          Inicio: '',
+          Tarefas: 'tarefas',
+          Mensagens: 'mensagens',
+          Perfil: 'perfil',
+        },
+      },
       Importacoes: 'importacoes',
       Fechamento: 'fechamento',
       Indicadores: 'indicadores',
@@ -83,7 +90,6 @@ export function RootNavigator(): React.ReactElement {
         <NotificacoesProvider>
           <AssistenteProvider>
             <AppNavigator />
-            <AssistenteFlutuante />
             <ToastNotificacao />
           </AssistenteProvider>
         </NotificacoesProvider>

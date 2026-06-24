@@ -61,7 +61,8 @@ type RotaAtalho =
   | 'PainelVendas'
   | 'Checklist'
   | 'Indicadores'
-  | 'Operadores';
+  | 'Operadores'
+  | 'Mensagens';
 
 /** Temas que compõem a saúde; quais aparecem depende do perfil. */
 type Tema =
@@ -494,7 +495,10 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
         </View>
         <Text style={styles.briefingNarrativa}>{resumoNarrativo}</Text>
         <Pressable
-          onPress={() => pedirBriefing(perguntaBriefing)}
+          onPress={() => {
+            pedirBriefing(perguntaBriefing);
+            aoNavegar('Mensagens');
+          }}
           style={({ pressed }) => [styles.briefingAcao, pressed && styles.briefingPress]}
           accessibilityRole="button"
           accessibilityLabel="Conversar com a Cluby sobre o resumo"
