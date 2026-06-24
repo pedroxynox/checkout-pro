@@ -28,7 +28,6 @@ import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
 import { AlertasFilaScreen } from '../screens/alertasFila/AlertasFilaScreen';
 import { NormativasScreen } from '../screens/normativas/NormativasScreen';
 import { IndicadorQuebraScreen } from '../screens/quebra/IndicadorQuebraScreen';
-import { NotificacoesScreen } from '../screens/notificacoes/NotificacoesScreen';
 import { GerenciarDadosScreen } from '../screens/admin/GerenciarDadosScreen';
 import { cores } from '../theme';
 import { ROTULO_TIPO_ARRECADACAO } from '../utils/rotulos';
@@ -151,13 +150,6 @@ export function AppNavigator(): React.ReactElement {
           name="Usuarios"
           component={UsuariosScreen}
           options={{ title: 'Pessoas e Acessos' }}
-        />
-      )}
-      {podeAcessar('NOTIFICACOES') && (
-        <Stack.Screen
-          name="Notificacoes"
-          component={NotificacoesScreen}
-          options={{ title: 'Notificações' }}
         />
       )}
       {podeAcessar('ALERTAS_FILA') && (
