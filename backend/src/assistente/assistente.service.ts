@@ -401,6 +401,10 @@ export class AssistenteService {
       const inicioProxMes = new Date(Date.UTC(ano, mes + 1, 1));
       const hoje = new Date(Date.UTC(ano, mes, agora.getUTCDate()));
       const amanha = new Date(Date.UTC(ano, mes, agora.getUTCDate() + 1));
+      // Ontem e o mesmo dia da semana passada (comparação justa no varejo).
+      const ontemIni = new Date(Date.UTC(ano, mes, agora.getUTCDate() - 1));
+      const spIni = new Date(Date.UTC(ano, mes, agora.getUTCDate() - 8));
+      const spFim = new Date(Date.UTC(ano, mes, agora.getUTCDate() - 7));
       const diasDoMes = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate();
       const arred = (n: number): number => Math.round(n * 100) / 100;
 
@@ -409,30 +413,41 @@ export class AssistenteService {
       });
       const meta = cfg ? Number(cfg.metaMensal) : 0;
 
-      const [aggMes, diasComVenda, aggHoje, horas] = await Promise.all([
-        this.prisma.vendaDiaria.aggregate({
-          where: { data: { gte: inicioMes, lt: inicioProxMes } },
-          _sum: { valor: true },
-        }),
-        this.prisma.vendaDiaria.count({
-          where: { data: { gte: inicioMes, lt: amanha }, valor: { gt: 0 } },
-        }),
-        this.prisma.vendaDiaria.aggregate({
-          where: { data: { gte: hoje, lt: amanha } },
-          _sum: { valor: true },
-        }),
-        this.prisma.vendaHora.groupBy({
-          by: ['hora'],
-          where: { data: { gte: inicioMes, lt: inicioProxMes } },
-          _sum: { valor: true },
-        }),
-      ]);
+      const [aggMes, diasComVenda, aggHoje, horas, aggOntem, aggOntemSP] =
+        await Promise.all([
+          this.prisma.vendaDiaria.aggregate({
+            where: { data: { gte: inicioMes, lt: inicioProxMes } },
+            _sum: { valor: true },
+          }),
+          this.prisma.vendaDiaria.count({
+            where: { data: { gte: inicioMes, lt: amanha }, valor: { gt: 0 } },
+          }),
+          this.prisma.vendaDiaria.aggregate({
+            where: { data: { gte: hoje, lt: amanha } },
+            _sum: { valor: true },
+          }),
+          this.prisma.vendaHora.groupBy({
+            by: ['hora'],
+            where: { data: { gte: inicioMes, lt: inicioProxMes } },
+            _sum: { valor: true },
+          }),
+          this.prisma.vendaDiaria.aggregate({
+            where: { data: { gte: ontemIni, lt: hoje } },
+            _sum: { valor: true },
+          }),
+          this.prisma.vendaDiaria.aggregate({
+            where: { data: { gte: spIni, lt: spFim } },
+            _sum: { valor: true },
+          }),
+        ]);
 
       const arrecadadoMes = arred(Number(aggMes._sum.valor ?? 0));
       const vendaHoje = arred(Number(aggHoje._sum.valor ?? 0));
+      const vendaOntem = arred(Number(aggOntem._sum.valor ?? 0));
+      const vendaOntemSP = arred(Number(aggOntemSP._sum.valor ?? 0));
 
       // Sem dados de vendas: não inclui (evita ruído no prompt).
-      if (arrecadadoMes <= 0 && vendaHoje <= 0) return undefined;
+      if (arrecadadoMes <= 0 && vendaHoje <= 0 && vendaOntem <= 0) return undefined;
 
       const projecao =
         diasComVenda > 0
@@ -450,7 +465,20 @@ export class AssistenteService {
       }
 
       const linhas = ['=== VENDAS (faturamento) ==='];
-      linhas.push(`Vendas de hoje: R$${vendaHoje}.`);
+      linhas.push(`Vendas de hoje (parcial): R$${vendaHoje}.`);
+      if (vendaOntem > 0) {
+        if (vendaOntemSP > 0) {
+          const varPct = Math.round(
+            ((vendaOntem - vendaOntemSP) / vendaOntemSP) * 100,
+          );
+          const sinal = varPct >= 0 ? '+' : '';
+          linhas.push(
+            `Vendas de ONTEM: R$${vendaOntem} (${sinal}${varPct}% vs. o mesmo dia da semana passada, que foi R$${vendaOntemSP}).`,
+          );
+        } else {
+          linhas.push(`Vendas de ONTEM: R$${vendaOntem}.`);
+        }
+      }
       if (meta > 0) {
         const pct = Math.round((arrecadadoMes / meta) * 100);
         linhas.push(
