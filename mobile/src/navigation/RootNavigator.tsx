@@ -54,7 +54,6 @@ const linking: LinkingOptions<RootStackParamList> = {
       Requisicoes: 'requisicoes',
       Fiscais: 'fiscais',
       JornadaFiscais: 'fiscais/jornada',
-      Escala: 'escala',
       Checklist: 'checklist',
       Operadores: 'operadores',
       Usuarios: 'usuarios',

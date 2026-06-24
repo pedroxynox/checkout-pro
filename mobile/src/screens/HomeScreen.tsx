@@ -29,7 +29,6 @@ import {
   ShoppingBag,
   TrendingDown,
   UploadCloud,
-  UserCog,
   UserPlus,
   Users,
 } from 'lucide-react-native';
@@ -67,7 +66,7 @@ const ICONES_MODULO: Record<string, LucideIcon> = {
   Fiscais: Users,
   Escala: Calendar,
   Checklist: ClipboardCheck,
-  Operadores: UserCog,
+  Operadores: Calendar,
   Usuarios: UserPlus,
   AlertasFila: AlertCircle,
   Normativas: FileText,

@@ -12,12 +12,13 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
-import { operadoresService } from '../../api/services';
+import { escalaService, operadoresService } from '../../api/services';
 import {
   AnaliticaFaltas,
   AoVivoOperadores,
   ColaboradorDia,
   DiaOperadores,
+  ItemEscalaConsolidada,
 } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import {
@@ -183,6 +184,17 @@ export function OperadoresScreen(): React.ReactElement {
   );
   const dados = dia.dados;
 
+  // Escala de FISCAIS do mesmo dia (exibida ACIMA dos operadores). Defensivo:
+  // só busca se o perfil pode ver a escala; em erro, a seção simplesmente some.
+  const diaSemanaSel = new Date(`${diaSel}T12:00:00Z`).getUTCDay();
+  const escalaFiscais = useRequisicao<ItemEscalaConsolidada[]>(
+    () =>
+      podeAcessar('ESCALA_VISUALIZAR')
+        ? escalaService.consolidada(diaSemanaSel).catch(() => [])
+        : Promise.resolve([] as ItemEscalaConsolidada[]),
+    [diaSel],
+  );
+
   const aoVivo = useRequisicao<AoVivoOperadores>(() => operadoresService.aoVivo(), []);
 
   const mes = mesAtualISO();
@@ -208,6 +220,7 @@ export function OperadoresScreen(): React.ReactElement {
     dia.recarregar();
     aoVivo.recarregar();
     analitica.recarregar();
+    escalaFiscais.recarregar();
   };
 
   const aoTocarColaborador = async (c: ColaboradorDia) => {
@@ -370,6 +383,51 @@ export function OperadoresScreen(): React.ReactElement {
       ) : null}
 
       <SeletorData valor={diaSel} aoMudar={setDiaSel} rotulo="Dia" />
+
+      {/* Fiscais do dia (escala) — sempre acima dos operadores */}
+      {escalaFiscais.dados && escalaFiscais.dados.length > 0 ? (
+        <View>
+          <View style={styles.secaoHeader}>
+            <Text style={styles.secaoTitulo}>Fiscais</Text>
+            <View style={styles.secaoBadge}>
+              <Text style={styles.secaoBadgeTexto}>
+                {escalaFiscais.dados.filter((f) => f.efetiva !== 'FOLGA').length}
+              </Text>
+            </View>
+          </View>
+          {escalaFiscais.dados.map((f) => {
+            const ef = f.efetiva;
+            const folga = ef === 'FOLGA';
+            const cor = folga ? cores.textoSecundario : cores.primaria;
+            const fundo = folga ? cores.divisor : cores.primariaClara;
+            return (
+              <View
+                key={f.funcionarioId}
+                style={[styles.linha, { borderLeftColor: cor }]}
+              >
+                <View style={[styles.avatar, { backgroundColor: fundo }]}>
+                  <Ionicons name="shield-checkmark" size={20} color={cor} />
+                </View>
+                <View style={styles.linhaInfo}>
+                  <Text style={styles.nomeColaborador} numberOfLines={1}>
+                    {f.nome ?? f.funcionarioId}
+                  </Text>
+                  <Text style={styles.horarioInline}>
+                    {ef === 'FOLGA'
+                      ? 'Dia de folga'
+                      : `${ef.entrada ?? '--'} – ${ef.saida ?? '--'}`}
+                  </Text>
+                </View>
+                <View style={[styles.chip, { backgroundColor: fundo }]}>
+                  <Text style={[styles.chipTexto, { color: cor }]}>
+                    {folga ? 'Folga' : 'Fiscal'}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
 
       {dia.carregando ? (
         <Carregando />

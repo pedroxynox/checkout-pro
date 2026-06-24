@@ -98,13 +98,6 @@ export const AREAS: Area[] = [
     funcionalidade: 'FISCAIS_STATUS',
   },
   {
-    rota: 'Escala',
-    titulo: 'Escala',
-    descricao: 'Escala consolidada por dia',
-    icone: 'calendar-outline',
-    funcionalidade: 'ESCALA_VISUALIZAR',
-  },
-  {
     rota: 'Checklist',
     titulo: 'Checklist',
     descricao: 'Abertura e fechamento com imagem',
@@ -113,9 +106,9 @@ export const AREAS: Area[] = [
   },
   {
     rota: 'Operadores',
-    titulo: 'Operadores',
-    descricao: 'Escala visual: folgas, faltas e cobertura',
-    icone: 'id-card-outline',
+    titulo: 'Escalas',
+    descricao: 'Fiscais e operadores por dia: folgas, faltas e cobertura',
+    icone: 'calendar-outline',
     funcionalidade: 'OPERADORES_AUSENCIAS',
   },
   {
