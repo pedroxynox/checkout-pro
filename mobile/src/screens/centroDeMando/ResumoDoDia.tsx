@@ -630,6 +630,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   medidorNota: {
+    fontFamily: 'Inter_800ExtraBold',
     fontSize: 30,
     fontWeight: '800',
     lineHeight: 32,
@@ -707,6 +708,7 @@ const styles = StyleSheet.create({
     borderRadius: raio.pill,
   },
   iaBadgeTexto: {
+    fontFamily: 'Inter_800ExtraBold',
     color: cores.textoInverso,
     fontSize: 10,
     fontWeight: '800',
@@ -731,6 +733,7 @@ const styles = StyleSheet.create({
     paddingVertical: espacamento.md,
   },
   coberturaNum: {
+    fontFamily: 'Inter_800ExtraBold',
     fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.5,
@@ -751,6 +754,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   vendasValor: {
+    fontFamily: 'Inter_800ExtraBold',
     fontSize: 30,
     fontWeight: '800',
     color: cores.texto,

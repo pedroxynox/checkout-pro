@@ -103,12 +103,27 @@ export const raio = {
 } as const;
 
 export const tipografia = {
-  titulo: { fontSize: 24, fontWeight: '800' as const, letterSpacing: -0.4 },
-  subtitulo: { fontSize: 18, fontWeight: '700' as const, letterSpacing: -0.2 },
-  secao: { fontSize: 15, fontWeight: '700' as const, letterSpacing: -0.1 },
-  corpo: { fontSize: 15, fontWeight: '400' as const },
-  rotulo: { fontSize: 13, fontWeight: '600' as const },
-  legenda: { fontSize: 12, fontWeight: '400' as const },
+  titulo: {
+    fontFamily: 'Inter_800ExtraBold',
+    fontSize: 24,
+    fontWeight: '800' as const,
+    letterSpacing: -0.4,
+  },
+  subtitulo: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 18,
+    fontWeight: '700' as const,
+    letterSpacing: -0.2,
+  },
+  secao: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 15,
+    fontWeight: '700' as const,
+    letterSpacing: -0.1,
+  },
+  corpo: { fontFamily: 'Inter_400Regular', fontSize: 15, fontWeight: '400' as const },
+  rotulo: { fontFamily: 'Inter_600SemiBold', fontSize: 13, fontWeight: '600' as const },
+  legenda: { fontFamily: 'Inter_400Regular', fontSize: 12, fontWeight: '400' as const },
 } as const;
 
 /**
