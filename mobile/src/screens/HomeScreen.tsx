@@ -63,14 +63,38 @@ export function HomeScreen({
             {nome} · {rotuloPerfil}
           </Text>
         </View>
-        <Pressable
-          onPress={() => void sair()}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Sair"
-        >
-          <Ionicons name="log-out-outline" size={24} color={cores.textoInverso} />
-        </Pressable>
+        <View style={styles.acoesTopo}>
+          {podeAcessar('NOTIFICACOES') && (
+            <Pressable
+              onPress={() => navigation.navigate('Notificacoes')}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Notificações"
+              style={styles.sinoWrapper}
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={24}
+                color={cores.textoInverso}
+              />
+              {naoLidas > 0 && (
+                <View style={styles.sinoBadge}>
+                  <Text style={styles.sinoBadgeTexto}>
+                    {naoLidas > 99 ? '99+' : naoLidas}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+          )}
+          <Pressable
+            onPress={() => void sair()}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Sair"
+          >
+            <Ionicons name="log-out-outline" size={24} color={cores.textoInverso} />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.conteudo}>
@@ -89,13 +113,6 @@ export function HomeScreen({
               <View style={styles.iconeWrapper}>
                 <Ionicons name={area.icone} size={24} color={cores.primaria} />
               </View>
-              {area.rota === 'Notificacoes' && naoLidas > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeTexto}>
-                    {naoLidas > 99 ? '99+' : naoLidas}
-                  </Text>
-                </View>
-              )}
               <Text style={styles.cartaoTitulo}>{area.titulo}</Text>
               <Text style={styles.cartaoDescricao}>{area.descricao}</Text>
             </Pressable>
@@ -127,6 +144,31 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.primariaClara,
     marginTop: 2,
+  },
+  acoesTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.lg,
+  },
+  sinoWrapper: {
+    position: 'relative',
+  },
+  sinoBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -7,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    borderRadius: 8,
+    backgroundColor: cores.textoInverso,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sinoBadgeTexto: {
+    color: cores.primaria,
+    fontSize: 10,
+    fontWeight: '800',
   },
   conteudo: {
     backgroundColor: cores.fundo,
@@ -164,23 +206,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: espacamento.sm,
-  },
-  badge: {
-    position: 'absolute',
-    top: espacamento.md,
-    right: espacamento.md,
-    minWidth: 22,
-    height: 22,
-    paddingHorizontal: 6,
-    borderRadius: 11,
-    backgroundColor: cores.primaria,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeTexto: {
-    color: cores.textoInverso,
-    fontSize: 12,
-    fontWeight: '800',
   },
   cartaoTitulo: {
     ...tipografia.rotulo,
