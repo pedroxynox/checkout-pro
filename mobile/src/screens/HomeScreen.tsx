@@ -192,6 +192,7 @@ const styles = StyleSheet.create({
     paddingBottom: espacamento.xl,
   },
   marca: {
+    fontFamily: 'Inter_800ExtraBold',
     fontSize: 20,
     fontWeight: '800',
     color: cores.textoInverso,
@@ -226,6 +227,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarTexto: {
+    fontFamily: 'Inter_800ExtraBold',
     color: cores.textoInverso,
     fontSize: 18,
     fontWeight: '800',
@@ -234,6 +236,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   saudacao: {
+    fontFamily: 'Inter_700Bold',
     fontSize: 16,
     fontWeight: '700',
     color: cores.textoInverso,
