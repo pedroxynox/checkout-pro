@@ -18,13 +18,21 @@ import {
 } from '@expo-google-fonts/inter';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { View } from 'react-native';
+import { Platform, View, type ViewStyle } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/auth/AuthContext';
 import { OfflineProvider } from './src/offline/OfflineContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { cores } from './src/theme';
 import { useProtecaoTela } from './src/utils/protecaoTela';
+
+/**
+ * Na WEB (notebook/PC), fixa a RAIZ do app à altura da janela (100vh). Assim o
+ * scroll fica INTERNO ao conteúdo e o header não rola junto com a página. No
+ * app nativo isso não se aplica.
+ */
+const estiloRaizWeb: ViewStyle | undefined =
+  Platform.OS === 'web' ? ({ height: '100vh' } as unknown as ViewStyle) : undefined;
 
 export default function App(): React.ReactElement {
   // Bloqueia/dissuade capturas de tela (conteúdo interno e confidencial).
@@ -42,11 +50,13 @@ export default function App(): React.ReactElement {
   // Enquanto carrega (e sem erro), mostra um fundo na cor da marca. Em caso de
   // erro, segue em frente com a fonte do sistema (não bloqueia o app).
   if (!fontesCarregadas && !erroFontes) {
-    return <View style={{ flex: 1, backgroundColor: cores.primaria }} />;
+    return (
+      <View style={[{ flex: 1, backgroundColor: cores.primaria }, estiloRaizWeb]} />
+    );
   }
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={estiloRaizWeb}>
       <StatusBar style="light" />
       <AuthProvider>
         <OfflineProvider>
