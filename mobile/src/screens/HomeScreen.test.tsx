@@ -96,7 +96,7 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     // Operação do dia a dia visível.
     expect(screen.getByText('Insumos')).toBeTruthy();
     expect(screen.getByText('Checklist')).toBeTruthy();
-    expect(screen.getByText('Operadores')).toBeTruthy();
+    expect(screen.getByText('Escalas')).toBeTruthy();
 
     // Gestão estrutural de dados NÃO aparece para o gerente comum.
     expect(screen.queryByText('Pessoas e Acessos')).toBeNull();
@@ -107,11 +107,11 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     montarAuth('FISCAL');
     render(<HomeScreen navigation={navegacaoFake()} route={{} as never} />);
 
-    // Áreas operacionais visíveis (inclui Operadores para lançar ausências).
+    // Áreas operacionais visíveis (inclui Escalas para fiscais e operadores).
     expect(screen.getByText('Insumos')).toBeTruthy();
     expect(screen.getByText('Checklist')).toBeTruthy();
     expect(screen.getByText('Fiscais')).toBeTruthy();
-    expect(screen.getByText('Operadores')).toBeTruthy();
+    expect(screen.getByText('Escalas')).toBeTruthy();
 
     // Área restrita ao gerente (gestão de pessoas/acessos) não aparece.
     expect(screen.queryByText('Pessoas e Acessos')).toBeNull();

@@ -22,7 +22,6 @@ import { InsumoDetalheScreen } from '../screens/insumos/InsumoDetalheScreen';
 import { RequisicoesScreen } from '../screens/insumos/RequisicoesScreen';
 import { FiscaisScreen } from '../screens/fiscais/FiscaisScreen';
 import { JornadaFiscaisScreen } from '../screens/fiscais/JornadaFiscaisScreen';
-import { EscalaScreen } from '../screens/fiscais/EscalaScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
 import { OperadoresScreen } from '../screens/operadores/OperadoresScreen';
 import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
@@ -133,13 +132,6 @@ export function AppNavigator(): React.ReactElement {
           options={{ title: 'Jornada da equipe' }}
         />
       )}
-      {podeAcessar('ESCALA_VISUALIZAR') && (
-        <Stack.Screen
-          name="Escala"
-          component={EscalaScreen}
-          options={{ title: 'Escala' }}
-        />
-      )}
       {podeAcessar('CHECKLIST') && (
         <Stack.Screen
           name="Checklist"
@@ -151,7 +143,7 @@ export function AppNavigator(): React.ReactElement {
         <Stack.Screen
           name="Operadores"
           component={OperadoresScreen}
-          options={{ title: 'Operadores e Ausências' }}
+          options={{ title: 'Escalas' }}
         />
       )}
       {podeAcessar('USUARIOS_CRUD') && (
