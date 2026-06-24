@@ -438,6 +438,32 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
     );
   })();
 
+  // Briefing automático (por REGRAS, sem IA e sem custo): um resumo curto que
+  // aparece sozinho no topo. O botão abaixo abre a Cluby para aprofundar.
+  const horaSaudacao =
+    horaAgora < 12 ? 'Bom dia' : horaAgora < 18 ? 'Boa tarde' : 'Boa noite';
+  const resumoNarrativo = (() => {
+    const fatos: string[] = [];
+    if (vendasOntem) {
+      const base = `Ontem: ${formatarMoeda(vendasOntem.atual)}`;
+      fatos.push(
+        variacaoOntem != null
+          ? `${base} (${variacaoOntem >= 0 ? '+' : ''}${Math.round(variacaoOntem)}% vs. semana passada)`
+          : base,
+      );
+    }
+    if (ritmoMeta && !ritmoMeta.batida) {
+      fatos.push(`meta do mês pede ~${formatarMoeda(ritmoMeta.porDia)}/dia`);
+    }
+    const focos = top3.slice(0, 2).map((a) => a.titulo);
+    const prioridade =
+      top3.length === 0
+        ? 'Sem pendências para hoje. 🎉'
+        : `Foque em: ${focos.join('; ')}.`;
+    const partes = fatos.length > 0 ? [fatos.join('  ·  '), prioridade] : [prioridade];
+    return `${horaSaudacao}! ${partes.join('. ')}`;
+  })();
+
   return (
     <View style={styles.bloco}>
       <Text style={styles.secao}>Hoje</Text>
@@ -454,30 +480,29 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
         </View>
       </Cartao>
 
-      {/* Briefing da Cluby (IA): abre o chat já com o resumo do dia */}
-      <Pressable
-        onPress={() => pedirBriefing(perguntaBriefing)}
-        style={({ pressed }) => [styles.briefing, pressed && styles.briefingPress]}
-        accessibilityRole="button"
-        accessibilityLabel="Pedir um briefing à Cluby"
-      >
-        <View style={styles.briefingIcone}>
-          <Text style={styles.briefingEmoji}>🤖</Text>
-        </View>
-        <View style={styles.briefingTexto}>
-          <View style={styles.briefingTituloLinha}>
-            <Text style={styles.briefingTitulo}>Pedir um briefing à Cluby</Text>
-            <View style={styles.iaBadge}>
-              <Sparkles size={10} color={cores.textoInverso} />
-              <Text style={styles.iaBadgeTexto}>IA</Text>
-            </View>
+      {/* Briefing automático da Cluby (resumo por regras, sem custo de IA) */}
+      <View style={styles.briefingCard}>
+        <View style={styles.briefingHeader}>
+          <View style={styles.briefingIcone}>
+            <Text style={styles.briefingEmoji}>🤖</Text>
           </View>
-          <Text style={styles.briefingSub}>
-            Resumo do dia e o que priorizar, em segundos.
-          </Text>
+          <Text style={styles.briefingTitulo}>Resumo de hoje</Text>
+          <View style={styles.iaBadge}>
+            <Sparkles size={10} color={cores.textoInverso} />
+            <Text style={styles.iaBadgeTexto}>IA</Text>
+          </View>
         </View>
-        <ChevronRight size={18} color={cores.primaria} />
-      </Pressable>
+        <Text style={styles.briefingNarrativa}>{resumoNarrativo}</Text>
+        <Pressable
+          onPress={() => pedirBriefing(perguntaBriefing)}
+          style={({ pressed }) => [styles.briefingAcao, pressed && styles.briefingPress]}
+          accessibilityRole="button"
+          accessibilityLabel="Conversar com a Cluby sobre o resumo"
+        >
+          <Text style={styles.briefingAcaoTexto}>Conversar com a Cluby</Text>
+          <ChevronRight size={16} color={cores.primaria} />
+        </Pressable>
+      </View>
 
       {/* Vendas de ontem — destaque para perfis de gestão */}
       {temas.has('ventas') && vendasOntem ? (
@@ -666,10 +691,7 @@ const styles = StyleSheet.create({
     color: cores.textoSecundario,
     marginTop: 2,
   },
-  briefing: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: espacamento.md,
+  briefingCard: {
     backgroundColor: cores.primariaClara,
     borderRadius: raio.lg,
     padding: espacamento.lg,
@@ -677,13 +699,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D6E3F2',
   },
+  briefingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+  },
   briefingPress: {
-    opacity: 0.9,
-    transform: [{ scale: 0.99 }],
+    opacity: 0.7,
   },
   briefingIcone: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: raio.md,
     backgroundColor: cores.superficie,
     alignItems: 'center',
@@ -691,20 +717,13 @@ const styles = StyleSheet.create({
     ...sombra.cartao,
   },
   briefingEmoji: {
-    fontSize: 20,
-  },
-  briefingTexto: {
-    flex: 1,
-  },
-  briefingTituloLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: espacamento.sm,
+    fontSize: 18,
   },
   briefingTitulo: {
     ...tipografia.corpo,
     fontWeight: '800',
     color: cores.primariaEscura,
+    flex: 1,
   },
   iaBadge: {
     flexDirection: 'row',
@@ -722,11 +741,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-  briefingSub: {
-    ...tipografia.legenda,
+  briefingNarrativa: {
+    ...tipografia.corpo,
     color: cores.primariaEscura,
-    marginTop: 2,
-    opacity: 0.85,
+    marginTop: espacamento.md,
+    lineHeight: 21,
+  },
+  briefingAcao: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: espacamento.md,
+    alignSelf: 'flex-start',
+  },
+  briefingAcaoTexto: {
+    ...tipografia.rotulo,
+    fontWeight: '800',
+    color: cores.primaria,
   },
   coberturaLinha: {
     flexDirection: 'row',
