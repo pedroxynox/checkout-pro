@@ -18,15 +18,36 @@ jest.mock('../auth/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
-// O Resumo do Dia (topo da Home) consulta serviços; mockamos com respostas
-// neutras para a Home renderizar de forma determinística nos testes.
+// O Resumo do Dia (topo da Home) consulta vários serviços conforme o perfil;
+// mockamos todos com respostas neutras para a Home renderizar de forma
+// determinística (sem pendências) nos testes.
 jest.mock('../api/services', () => ({
-  arrecadacaoService: { status: jest.fn(() => Promise.resolve({})) },
+  arrecadacaoService: {
+    status: jest.fn(() => Promise.resolve({})),
+    painelAtencao: jest.fn(() =>
+      Promise.resolve({ criticos: 0, emAtencao: 0, tudoCerto: true, alertas: [] }),
+    ),
+  },
   vendasService: {
     status: jest.fn(() => Promise.resolve({ enviado: true })),
     painel: jest.fn(() => Promise.resolve(null)),
   },
   insumosService: { listarProativo: jest.fn(() => Promise.resolve([])) },
+  checklistService: {
+    status: jest.fn(() => Promise.resolve({ status: 'FEITO' })),
+  },
+  operadoresService: {
+    dia: jest.fn(() =>
+      Promise.resolve({
+        dataISO: '',
+        diaSemana: 0,
+        trabalhando: 0,
+        folgas: 0,
+        faltas: 0,
+        colaboradores: [],
+      }),
+    ),
+  },
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires

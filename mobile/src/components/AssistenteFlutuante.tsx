@@ -30,6 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError } from '../api/client';
 import { assistenteService } from '../api/services';
 import { MensagemAssistente } from '../api/types';
+import { useAssistente } from '../assistente/AssistenteContext';
 import { confirmar } from '../utils/dialogos';
 import { MarkdownTexto } from './MarkdownTexto';
 import { ProcedimentoView } from './ProcedimentoView';
@@ -56,6 +57,10 @@ export function AssistenteFlutuante(): React.ReactElement {
   } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const animRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Pedido de "briefing" vindo de outra tela (ex.: botão no Resumo do Dia).
+  const { pedido, limparPedido } = useAssistente();
+  const perguntaPendenteRef = useRef<string | null>(null);
 
   const rolarParaFim = useCallback(() => {
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
@@ -100,55 +105,23 @@ export function AssistenteFlutuante(): React.ReactElement {
     };
   }, []);
 
-  // Ao abrir: carrega status + conversa das últimas 24h.
-  useEffect(() => {
-    if (!aberto) {
+  /** Envia um texto qualquer à Cluby (usado pelo input e pelos briefings). */
+  const enviarTexto = async (texto: string) => {
+    const limpo = texto.trim();
+    if (!limpo || enviando) {
       return;
     }
-    let ativo = true;
-    setCarregando(true);
-    (async () => {
-      try {
-        const [status, conversa] = await Promise.all([
-          assistenteService.status(),
-          assistenteService.conversa(),
-        ]);
-        if (!ativo) {
-          return;
-        }
-        setConfigurado(status.configurado);
-        setMensagens(conversa);
-        rolarParaFim();
-      } catch {
-        // Silencioso: o usuário pode tentar enviar mesmo assim.
-      } finally {
-        if (ativo) {
-          setCarregando(false);
-        }
-      }
-    })();
-    return () => {
-      ativo = false;
-    };
-  }, [aberto, rolarParaFim]);
-
-  const enviar = async () => {
-    const texto = entrada.trim();
-    if (!texto || enviando) {
-      return;
-    }
-    setEntrada('');
     const pergunta: MensagemAssistente = {
       id: idLocal(),
       papel: 'user',
-      conteudo: texto,
+      conteudo: limpo,
       criadaEm: new Date().toISOString(),
     };
     setMensagens((m) => [...m, pergunta]);
     rolarParaFim();
     setEnviando(true);
     try {
-      const resposta = await assistenteService.enviar(texto);
+      const resposta = await assistenteService.enviar(limpo);
       setMensagens((m) => [...m, resposta]);
       // Procedimentos (passo a passo com fotos) aparecem na hora; o resto usa
       // o efeito de digitação.
@@ -174,6 +147,72 @@ export function AssistenteFlutuante(): React.ReactElement {
       rolarParaFim();
     }
   };
+
+  const enviar = async () => {
+    const texto = entrada.trim();
+    if (!texto || enviando) {
+      return;
+    }
+    setEntrada('');
+    await enviarTexto(texto);
+  };
+
+  // Ao abrir: carrega status + conversa das últimas 24h.
+  useEffect(() => {
+    if (!aberto) {
+      return;
+    }
+    let ativo = true;
+    setCarregando(true);
+    (async () => {
+      try {
+        const [status, conversa] = await Promise.all([
+          assistenteService.status(),
+          assistenteService.conversa(),
+        ]);
+        if (!ativo) {
+          return;
+        }
+        setConfigurado(status.configurado);
+        setMensagens(conversa);
+        rolarParaFim();
+        // Se veio um "briefing" pedido por outra tela, envia agora (depois de
+        // carregar a conversa, para não sobrescrever a pergunta/resposta).
+        const pendente = perguntaPendenteRef.current;
+        if (pendente) {
+          perguntaPendenteRef.current = null;
+          void enviarTexto(pendente);
+        }
+      } catch {
+        // Silencioso: o usuário pode tentar enviar mesmo assim.
+      } finally {
+        if (ativo) {
+          setCarregando(false);
+        }
+      }
+    })();
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aberto, rolarParaFim]);
+
+  // Recebe pedidos de "briefing" de outras telas (Resumo do Dia).
+  useEffect(() => {
+    if (!pedido) {
+      return;
+    }
+    if (aberto) {
+      // Chat já aberto: envia direto.
+      void enviarTexto(pedido.pergunta);
+    } else {
+      // Guarda a pergunta e abre; o efeito acima a envia após carregar.
+      perguntaPendenteRef.current = pedido.pergunta;
+      setAberto(true);
+    }
+    limparPedido();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedido, aberto, limparPedido]);
 
   const limpar = async () => {
     const ok = await confirmar(
