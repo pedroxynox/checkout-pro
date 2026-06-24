@@ -1,11 +1,16 @@
 /**
  * Tela inicial (dashboard) após o login.
  *
- * Exibe, em forma de grade, **apenas** as áreas que o perfil do usuário pode
+ * Exibe, em forma de lista, **apenas** as áreas que o perfil do usuário pode
  * acessar (Req 7.2.2–7.2.4): o gerente vê todas; o fiscal vê apenas as áreas
  * operacionais. Mostra também a identidade do usuário e a ação de sair.
+ *
+ * Visual: identidade SaaS executiva — header com degradê, saudação inteligente
+ * por horário, e módulos premium (ícone circular colorido + chevron). A LÓGICA
+ * (áreas visíveis, permissões, navegação) permanece exatamente a mesma.
  */
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,7 +20,23 @@ import { AREAS } from '../navigation/areas';
 import { ResumoDoDia } from './centroDeMando/ResumoDoDia';
 import { useNotificacoes } from '../notificacoes/NotificacoesContext';
 import { PropsTela } from '../navigation/types';
-import { cores, espacamento, raio, sombra, tipografia } from '../theme';
+import {
+  cores,
+  coresModulos,
+  espacamento,
+  gradientes,
+  raio,
+  sombra,
+  tipografia,
+} from '../theme';
+
+/** Saudação inteligente conforme o horário do dispositivo. */
+function saudacaoPorHora(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
 
 export function HomeScreen({
   navigation,
@@ -52,74 +73,112 @@ export function HomeScreen({
             ? 'Importador'
             : 'Fiscal';
   const nome = primeiroNome;
+  const inicial = (nome.charAt(0) || 'U').toUpperCase();
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
       <StatusBar style="light" />
-      <View style={styles.topo}>
-        <View>
+
+      {/* Header premium com degradê */}
+      <LinearGradient
+        colors={gradientes.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <SafeAreaView edges={['top']}>
           <Text style={styles.marca}>Check-out Pro</Text>
-          <Text style={styles.saudacao}>
-            {nome} · {rotuloPerfil}
-          </Text>
-        </View>
-        <View style={styles.acoesTopo}>
-          {podeAcessar('NOTIFICACOES') && (
-            <Pressable
-              onPress={() => navigation.navigate('Notificacoes')}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel="Notificações"
-              style={styles.sinoWrapper}
-            >
-              <Ionicons
-                name="notifications-outline"
-                size={24}
-                color={cores.textoInverso}
-              />
-              {naoLidas > 0 && (
-                <View style={styles.sinoBadge}>
-                  <Text style={styles.sinoBadgeTexto}>
-                    {naoLidas > 99 ? '99+' : naoLidas}
-                  </Text>
-                </View>
+          <Text style={styles.tagline}>Legado de Gestão Inteligente</Text>
+
+          <View style={styles.headerRow}>
+            <View style={styles.usuarioBox}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarTexto}>{inicial}</Text>
+              </View>
+              <View style={styles.usuarioInfo}>
+                <Text style={styles.saudacao} numberOfLines={1}>
+                  {saudacaoPorHora()}, {nome}
+                </Text>
+                <Text style={styles.cargo}>{rotuloPerfil}</Text>
+              </View>
+            </View>
+
+            <View style={styles.acoesTopo}>
+              {podeAcessar('NOTIFICACOES') && (
+                <Pressable
+                  onPress={() => navigation.navigate('Notificacoes')}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Notificações"
+                  style={styles.iconeAcao}
+                >
+                  <Ionicons
+                    name="notifications-outline"
+                    size={20}
+                    color={cores.textoInverso}
+                  />
+                  {naoLidas > 0 && (
+                    <View style={styles.sinoBadge}>
+                      <Text style={styles.sinoBadgeTexto}>
+                        {naoLidas > 99 ? '99+' : naoLidas}
+                      </Text>
+                    </View>
+                  )}
+                </Pressable>
               )}
-            </Pressable>
-          )}
-          <Pressable
-            onPress={() => void sair()}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Sair"
-          >
-            <Ionicons name="log-out-outline" size={24} color={cores.textoInverso} />
-          </Pressable>
-        </View>
-      </View>
+              <Pressable
+                onPress={() => void sair()}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Sair"
+                style={styles.iconeAcao}
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={20}
+                  color={cores.textoInverso}
+                />
+              </Pressable>
+            </View>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.conteudo}>
         <ResumoDoDia aoNavegar={(rota) => navigation.navigate(rota as never)} />
         <Text style={styles.secao}>Áreas</Text>
-        <View style={styles.grade}>
-          {areasVisiveis.map((area) => (
-            <Pressable
-              key={area.rota}
-              style={({ pressed }) => [
-                styles.cartao,
-                pressed && styles.cartaoPressionado,
-              ]}
-              onPress={() => navigation.navigate(area.rota)}
-            >
-              <View style={styles.iconeWrapper}>
-                <Ionicons name={area.icone} size={24} color={cores.primaria} />
-              </View>
-              <Text style={styles.cartaoTitulo}>{area.titulo}</Text>
-              <Text style={styles.cartaoDescricao}>{area.descricao}</Text>
-            </Pressable>
-          ))}
+        <View style={styles.lista}>
+          {areasVisiveis.map((area) => {
+            const corModulo = coresModulos[area.rota] ?? cores.primaria;
+            return (
+              <Pressable
+                key={area.rota}
+                style={({ pressed }) => [
+                  styles.modulo,
+                  pressed && styles.moduloPressionado,
+                ]}
+                onPress={() => navigation.navigate(area.rota)}
+              >
+                <View
+                  style={[styles.moduloIcone, { backgroundColor: `${corModulo}1A` }]}
+                >
+                  <Ionicons name={area.icone} size={22} color={corModulo} />
+                </View>
+                <View style={styles.moduloTexto}>
+                  <Text style={styles.moduloTitulo}>{area.titulo}</Text>
+                  <Text style={styles.moduloDescricao}>{area.descricao}</Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={cores.textoSecundario}
+                />
+              </Pressable>
+            );
+          })}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -128,98 +187,145 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: cores.primaria,
   },
-  topo: {
+  header: {
+    paddingHorizontal: espacamento.lg,
+    paddingBottom: espacamento.xl,
+  },
+  marca: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: cores.textoInverso,
+    letterSpacing: -0.3,
+  },
+  tagline: {
+    ...tipografia.legenda,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 2,
+    letterSpacing: 0.2,
+  },
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: espacamento.lg,
-    paddingBottom: espacamento.lg,
-    // Garante que o header (vermelho) fique acima do conteúdo rolável.
-    zIndex: 1,
+    marginTop: espacamento.lg,
   },
-  scroll: {
-    // Limita o ScrollView ao espaço disponível (essencial na web): assim o
-    // scroll é interno e o header fica fixo, em vez de a página inteira rolar.
+  usuarioBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.md,
     flex: 1,
   },
-  marca: {
-    fontSize: 22,
-    fontWeight: '800',
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarTexto: {
     color: cores.textoInverso,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  usuarioInfo: {
+    flex: 1,
   },
   saudacao: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: cores.textoInverso,
+    letterSpacing: -0.2,
+  },
+  cargo: {
     ...tipografia.legenda,
-    color: cores.primariaClara,
-    marginTop: 2,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 1,
   },
   acoesTopo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.lg,
+    gap: espacamento.sm,
   },
-  sinoWrapper: {
+  iconeAcao: {
+    width: 38,
+    height: 38,
+    borderRadius: raio.md,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
   },
   sinoBadge: {
     position: 'absolute',
-    top: -5,
-    right: -7,
+    top: 2,
+    right: 2,
     minWidth: 16,
     height: 16,
     paddingHorizontal: 3,
     borderRadius: 8,
-    backgroundColor: cores.textoInverso,
+    backgroundColor: cores.vermelho,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sinoBadgeTexto: {
-    color: cores.primaria,
+    color: cores.textoInverso,
     fontSize: 10,
     fontWeight: '800',
   },
+  scroll: {
+    flex: 1,
+  },
   conteudo: {
     backgroundColor: cores.fundo,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: espacamento.lg,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: espacamento.lg,
+    paddingTop: espacamento.xl,
+    paddingBottom: espacamento.xxl,
     minHeight: '100%',
   },
   secao: {
-    ...tipografia.secao,
+    ...tipografia.subtitulo,
     color: cores.texto,
     marginBottom: espacamento.md,
   },
-  grade: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+  lista: {
+    gap: espacamento.md,
   },
-  cartao: {
-    width: '48%',
+  modulo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.md,
     backgroundColor: cores.superficie,
     borderRadius: raio.lg,
     padding: espacamento.lg,
-    marginBottom: espacamento.md,
+    borderWidth: 1,
+    borderColor: cores.divisor,
     ...sombra.cartao,
   },
-  cartaoPressionado: {
-    opacity: 0.7,
+  moduloPressionado: {
+    opacity: 0.85,
+    transform: [{ scale: 0.99 }],
   },
-  iconeWrapper: {
-    width: 44,
-    height: 44,
+  moduloIcone: {
+    width: 48,
+    height: 48,
     borderRadius: raio.md,
-    backgroundColor: cores.primariaClara,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: espacamento.sm,
   },
-  cartaoTitulo: {
+  moduloTexto: {
+    flex: 1,
+  },
+  moduloTitulo: {
     ...tipografia.rotulo,
     fontSize: 15,
     color: cores.texto,
   },
-  cartaoDescricao: {
+  moduloDescricao: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginTop: 2,

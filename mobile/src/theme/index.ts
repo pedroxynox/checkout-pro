@@ -1,47 +1,90 @@
 /**
  * Tema visual do app Check-out PRO.
  *
- * Centraliza cores, espaçamentos, tipografia e raios de borda para manter as
- * telas consistentes. As cores de status (verde/amarelo/vermelho) refletem a
- * classificação dos indicadores do backend (`StatusCor`).
+ * Centraliza cores, espaçamentos, tipografia, raios e sombras para manter as
+ * telas consistentes — agora com uma identidade SaaS/executiva (azul corporativo
+ * #0F4C81 → #0A2540), inspirada em dashboards como Stripe, Linear e Power BI.
+ *
+ * IMPORTANTE: as CHAVES deste arquivo são usadas em todo o app. Aqui mudamos
+ * apenas os VALORES (cores/tamanhos) e adicionamos chaves novas — sem renomear
+ * nem remover nenhuma chave existente, para não quebrar nenhuma tela.
+ *
+ * As cores de status (verde/amarelo/vermelho) refletem a classificação dos
+ * indicadores do backend (`StatusCor`).
  */
 
 export const cores = {
-  // Identidade Check-out PRO (vermelho/branco — tema do mercado)
-  primaria: '#C8102E',
-  primariaEscura: '#9E0C24',
-  primariaClara: '#FCE6EA',
+  // Identidade SaaS executiva (azul corporativo)
+  primaria: '#0F4C81',
+  primariaEscura: '#0A2540',
+  primariaClara: '#E8EFF7',
 
-  fundo: '#F5F5F7',
+  fundo: '#F8FAFC',
   superficie: '#FFFFFF',
-  superficieAlternativa: '#F1F1F4',
+  superficieAlternativa: '#F1F5F9',
 
-  texto: '#1A1A1F',
-  textoSecundario: '#5C5C6B',
+  texto: '#111827',
+  textoSecundario: '#6B7280',
   textoInverso: '#FFFFFF',
 
-  borda: '#E3E3E9',
-  divisor: '#EDEDF2',
+  borda: '#E5E7EB',
+  divisor: '#F1F5F9',
 
   // Cores semânticas de status de indicadores (StatusCor do backend)
-  verde: '#1E9E5A',
-  verdeFundo: '#E4F6EC',
-  amarelo: '#C99700',
-  amareloFundo: '#FBF3DA',
-  vermelho: '#D23B3B',
-  vermelhoFundo: '#FBE6E6',
+  verde: '#10B981',
+  verdeFundo: '#ECFDF5',
+  amarelo: '#F59E0B',
+  amareloFundo: '#FEF3C7',
+  vermelho: '#EF4444',
+  vermelhoFundo: '#FEE2E2',
 
   // Estados auxiliares
-  sucesso: '#1E9E5A',
-  alerta: '#C99700',
-  erro: '#D23B3B',
-  info: '#C8102E',
+  sucesso: '#10B981',
+  alerta: '#F59E0B',
+  erro: '#EF4444',
+  info: '#0F4C81',
 
   // Status de fiscais
-  disponivel: '#1E9E5A',
-  emIntervalo: '#C99700',
-  emAtendimento: '#9E0C24',
+  disponivel: '#10B981',
+  emIntervalo: '#F59E0B',
+  emAtendimento: '#0A2540',
 } as const;
+
+/**
+ * Degradês usados na interface (header premium etc.).
+ * Tipados como tuplas `[string, string]` para casar com o prop `colors` do
+ * LinearGradient sem conflitos de readonly.
+ */
+export const gradientes: {
+  header: [string, string];
+  ia: [string, string];
+} = {
+  header: ['#0A2540', '#0F4C81'],
+  ia: ['#0F4C81', '#0A2540'],
+};
+
+/**
+ * Cor de destaque por módulo (usada nos ícones circulares da Home).
+ * Chaveado pela rota da área.
+ */
+export const coresModulos: Record<string, string> = {
+  Fechamento: '#2563EB',
+  Importacoes: '#22C55E',
+  Indicadores: '#9333EA',
+  PainelVendas: '#14B8A6',
+  LoteApae: '#F59E0B',
+  Insumos: '#3B82F6',
+  Fiscais: '#8B5CF6',
+  Escala: '#EC4899',
+  Checklist: '#06B6D4',
+  Operadores: '#F97316',
+  Usuarios: '#0F4C81',
+  AlertasFila: '#EF4444',
+  Normativas: '#6B7280',
+  IndicadorQuebra: '#9333EA',
+  GerenciarDados: '#0A2540',
+  Notificacoes: '#0F4C81',
+};
 
 export const espacamento = {
   xs: 4,
@@ -53,28 +96,39 @@ export const espacamento = {
 } as const;
 
 export const raio = {
-  sm: 6,
-  md: 10,
-  lg: 16,
+  sm: 10,
+  md: 14,
+  lg: 20,
   pill: 999,
 } as const;
 
 export const tipografia = {
-  titulo: { fontSize: 22, fontWeight: '700' as const },
-  subtitulo: { fontSize: 18, fontWeight: '600' as const },
-  secao: { fontSize: 15, fontWeight: '700' as const },
+  titulo: { fontSize: 24, fontWeight: '800' as const, letterSpacing: -0.4 },
+  subtitulo: { fontSize: 18, fontWeight: '700' as const, letterSpacing: -0.2 },
+  secao: { fontSize: 15, fontWeight: '700' as const, letterSpacing: -0.1 },
   corpo: { fontSize: 15, fontWeight: '400' as const },
   rotulo: { fontSize: 13, fontWeight: '600' as const },
   legenda: { fontSize: 12, fontWeight: '400' as const },
 } as const;
 
+/**
+ * Sombra suave/premium (equivalente a box-shadow: 0 10px 30px rgba(15,23,42,.08)).
+ * `cartao` é a sombra padrão; `flutuante` é mais difusa (FAB/Cluby).
+ */
 export const sombra = {
   cartao: {
-    shadowColor: '#0B1B3A',
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowRadius: 24,
+    elevation: 3,
+  },
+  flutuante: {
+    shadowColor: '#0F4C81',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 8,
   },
 } as const;
 
@@ -98,6 +152,8 @@ export function coresParaStatus(status: StatusCor): {
 
 export const tema = {
   cores,
+  gradientes,
+  coresModulos,
   espacamento,
   raio,
   tipografia,
