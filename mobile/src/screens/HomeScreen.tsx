@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../auth/AuthContext';
 import { AREAS } from '../navigation/areas';
+import { ResumoDoDia } from './centroDeMando/ResumoDoDia';
 import { useNotificacoes } from '../notificacoes/NotificacoesContext';
 import { PropsTela } from '../navigation/types';
 import { cores, espacamento, raio, sombra, tipografia } from '../theme';
@@ -73,6 +74,7 @@ export function HomeScreen({
       </View>
 
       <ScrollView contentContainerStyle={styles.conteudo}>
+        <ResumoDoDia aoNavegar={(rota) => navigation.navigate(rota as never)} />
         <Text style={styles.secao}>Áreas</Text>
         <View style={styles.grade}>
           {areasVisiveis.map((area) => (
