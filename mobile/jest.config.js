@@ -20,7 +20,7 @@ module.exports = {
   // Permite transformar os pacotes ESM do ecossistema RN/Expo distribuídos
   // sem build (necessário para o Jest interpretar `import`/`export`).
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|@react-native-async-storage/.*|socket.io-client|engine.io-client))',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|lucide-react-native|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|@react-native-async-storage/.*|socket.io-client|engine.io-client))',
   ],
   collectCoverageFrom: ['src/**/*.{ts,tsx}'],
   testMatch: ['<rootDir>/src/**/*.test.{ts,tsx}'],
