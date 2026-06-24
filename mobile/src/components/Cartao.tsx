@@ -35,8 +35,10 @@ const styles = StyleSheet.create({
   cartao: {
     backgroundColor: cores.superficie,
     borderRadius: raio.lg,
-    padding: espacamento.lg,
+    padding: espacamento.xl,
     marginBottom: espacamento.md,
+    borderWidth: 1,
+    borderColor: cores.divisor,
     ...sombra.cartao,
   },
   titulo: {

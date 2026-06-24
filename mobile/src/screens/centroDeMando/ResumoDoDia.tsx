@@ -42,7 +42,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { useAssistente } from '../../assistente/AssistenteContext';
 import { Cartao } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
-import { cores, espacamento, raio, tipografia } from '../../theme';
+import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 import { formatarMoeda, hojeISO } from '../../utils/formato';
 import { ROTULO_TIPO_ARRECADACAO } from '../../utils/rotulos';
 
@@ -141,8 +141,8 @@ function MedidorCircular({
   nota: number;
   cor: string;
 }): React.ReactElement {
-  const tamanho = 84;
-  const traco = 9;
+  const tamanho = 96;
+  const traco = 10;
   const r = (tamanho - traco) / 2;
   const circunferencia = 2 * Math.PI * r;
   const preenchido = circunferencia * (1 - Math.max(0, Math.min(100, nota)) / 100);
@@ -453,9 +453,17 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
         accessibilityRole="button"
         accessibilityLabel="Pedir um briefing à Cluby"
       >
-        <Text style={styles.briefingEmoji}>🤖</Text>
+        <View style={styles.briefingIcone}>
+          <Text style={styles.briefingEmoji}>🤖</Text>
+        </View>
         <View style={styles.briefingTexto}>
-          <Text style={styles.briefingTitulo}>Pedir um briefing à Cluby</Text>
+          <View style={styles.briefingTituloLinha}>
+            <Text style={styles.briefingTitulo}>Pedir um briefing à Cluby</Text>
+            <View style={styles.iaBadge}>
+              <Ionicons name="sparkles" size={10} color={cores.textoInverso} />
+              <Text style={styles.iaBadgeTexto}>IA</Text>
+            </View>
+          </View>
           <Text style={styles.briefingSub}>
             Resumo do dia e o que priorizar, em segundos.
           </Text>
@@ -622,9 +630,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   medidorNota: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: '800',
-    lineHeight: 26,
+    lineHeight: 32,
+    letterSpacing: -0.5,
   },
   medidorDe: {
     ...tipografia.legenda,
@@ -651,42 +660,80 @@ const styles = StyleSheet.create({
   briefing: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.sm,
+    gap: espacamento.md,
     backgroundColor: cores.primariaClara,
     borderRadius: raio.lg,
-    padding: espacamento.md,
+    padding: espacamento.lg,
     marginBottom: espacamento.md,
+    borderWidth: 1,
+    borderColor: '#D6E3F2',
   },
   briefingPress: {
-    opacity: 0.85,
+    opacity: 0.9,
+    transform: [{ scale: 0.99 }],
+  },
+  briefingIcone: {
+    width: 40,
+    height: 40,
+    borderRadius: raio.md,
+    backgroundColor: cores.superficie,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...sombra.cartao,
   },
   briefingEmoji: {
-    fontSize: 22,
+    fontSize: 20,
   },
   briefingTexto: {
     flex: 1,
+  },
+  briefingTituloLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
   },
   briefingTitulo: {
     ...tipografia.corpo,
     fontWeight: '800',
     color: cores.primariaEscura,
   },
+  iaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: cores.primaria,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: raio.pill,
+  },
+  iaBadgeTexto: {
+    color: cores.textoInverso,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
   briefingSub: {
     ...tipografia.legenda,
     color: cores.primariaEscura,
-    marginTop: 1,
+    marginTop: 2,
+    opacity: 0.85,
   },
   coberturaLinha: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: espacamento.sm,
+    gap: espacamento.sm,
+    marginTop: espacamento.md,
   },
   coberturaItem: {
+    flex: 1,
     alignItems: 'center',
+    backgroundColor: cores.superficieAlternativa,
+    borderRadius: raio.md,
+    paddingVertical: espacamento.md,
   },
   coberturaNum: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
+    letterSpacing: -0.5,
   },
   coberturaRot: {
     ...tipografia.legenda,
@@ -704,10 +751,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   vendasValor: {
-    fontSize: 26,
+    fontSize: 30,
     fontWeight: '800',
     color: cores.texto,
     marginTop: 2,
+    letterSpacing: -0.6,
   },
   vendasPill: {
     flexDirection: 'row',
@@ -752,15 +800,13 @@ const styles = StyleSheet.create({
   acao: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.sm,
+    gap: espacamento.md,
     paddingVertical: espacamento.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: cores.divisor,
   },
   bolinha: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 4,
+    height: 38,
+    borderRadius: 2,
   },
   acaoInfo: {
     flex: 1,
@@ -776,15 +822,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   botaoVer: {
-    backgroundColor: cores.vermelhoFundo,
+    backgroundColor: cores.primariaClara,
     paddingHorizontal: espacamento.md,
-    paddingVertical: 6,
-    borderRadius: raio.lg,
+    paddingVertical: 8,
+    borderRadius: raio.pill,
   },
   botaoVerTexto: {
     ...tipografia.legenda,
     fontWeight: '700',
-    color: cores.vermelho,
+    color: cores.primaria,
   },
   tudoOk: {
     flexDirection: 'row',
