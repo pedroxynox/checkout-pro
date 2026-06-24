@@ -9,8 +9,29 @@
  * por horário, e módulos premium (ícone circular colorido + chevron). A LÓGICA
  * (áreas visíveis, permissões, navegação) permanece exatamente a mesma.
  */
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import {
+  AlertCircle,
+  BadgeCheck,
+  BarChart3,
+  Bell,
+  Calendar,
+  ChevronRight,
+  ClipboardCheck,
+  DollarSign,
+  FileText,
+  LayoutGrid,
+  LogOut,
+  type LucideIcon,
+  Package,
+  Settings,
+  ShoppingBag,
+  TrendingDown,
+  UploadCloud,
+  UserCog,
+  UserPlus,
+  Users,
+} from 'lucide-react-native';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,6 +58,28 @@ function saudacaoPorHora(): string {
   if (h < 18) return 'Boa tarde';
   return 'Boa noite';
 }
+
+/**
+ * Ícone (Lucide) de cada módulo, por rota. Mantém `areas.ts` intacto: o ícone
+ * é resolvido aqui pela rota. Rotas sem mapa usam um ícone padrão.
+ */
+const ICONES_MODULO: Record<string, LucideIcon> = {
+  Fechamento: BadgeCheck,
+  Importacoes: UploadCloud,
+  Indicadores: BarChart3,
+  PainelVendas: DollarSign,
+  LoteApae: ShoppingBag,
+  Insumos: Package,
+  Fiscais: Users,
+  Escala: Calendar,
+  Checklist: ClipboardCheck,
+  Operadores: UserCog,
+  Usuarios: UserPlus,
+  AlertasFila: AlertCircle,
+  Normativas: FileText,
+  IndicadorQuebra: TrendingDown,
+  GerenciarDados: Settings,
+};
 
 export function HomeScreen({
   navigation,
@@ -112,11 +155,7 @@ export function HomeScreen({
                   accessibilityLabel="Notificações"
                   style={styles.iconeAcao}
                 >
-                  <Ionicons
-                    name="notifications-outline"
-                    size={20}
-                    color={cores.textoInverso}
-                  />
+                  <Bell size={20} color={cores.textoInverso} />
                   {naoLidas > 0 && (
                     <View style={styles.sinoBadge}>
                       <Text style={styles.sinoBadgeTexto}>
@@ -133,11 +172,7 @@ export function HomeScreen({
                 accessibilityLabel="Sair"
                 style={styles.iconeAcao}
               >
-                <Ionicons
-                  name="log-out-outline"
-                  size={20}
-                  color={cores.textoInverso}
-                />
+                <LogOut size={20} color={cores.textoInverso} />
               </Pressable>
             </View>
           </View>
@@ -150,6 +185,7 @@ export function HomeScreen({
         <View style={styles.lista}>
           {areasVisiveis.map((area) => {
             const corModulo = coresModulos[area.rota] ?? cores.primaria;
+            const Icone = ICONES_MODULO[area.rota] ?? LayoutGrid;
             return (
               <Pressable
                 key={area.rota}
@@ -162,17 +198,13 @@ export function HomeScreen({
                 <View
                   style={[styles.moduloIcone, { backgroundColor: `${corModulo}1A` }]}
                 >
-                  <Ionicons name={area.icone} size={22} color={corModulo} />
+                  <Icone size={22} color={corModulo} />
                 </View>
                 <View style={styles.moduloTexto}>
                   <Text style={styles.moduloTitulo}>{area.titulo}</Text>
                   <Text style={styles.moduloDescricao}>{area.descricao}</Text>
                 </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={cores.textoSecundario}
-                />
+                <ChevronRight size={20} color={cores.textoSecundario} />
               </Pressable>
             );
           })}

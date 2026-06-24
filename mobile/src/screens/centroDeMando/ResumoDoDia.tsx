@@ -16,7 +16,15 @@
  * Fase 1 — sem IA: tudo por REGRAS sobre dados que o backend já fornece, de
  * forma defensiva (cada chamada tem catch; só busca o que o perfil precisa).
  */
-import { Ionicons } from '@expo/vector-icons';
+import {
+  CheckCircle2,
+  ChevronRight,
+  Flag,
+  Gauge,
+  Sparkles,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react-native';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -460,7 +468,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           <View style={styles.briefingTituloLinha}>
             <Text style={styles.briefingTitulo}>Pedir um briefing à Cluby</Text>
             <View style={styles.iaBadge}>
-              <Ionicons name="sparkles" size={10} color={cores.textoInverso} />
+              <Sparkles size={10} color={cores.textoInverso} />
               <Text style={styles.iaBadgeTexto}>IA</Text>
             </View>
           </View>
@@ -468,7 +476,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
             Resumo do dia e o que priorizar, em segundos.
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={cores.primaria} />
+        <ChevronRight size={18} color={cores.primaria} />
       </Pressable>
 
       {/* Vendas de ontem — destaque para perfis de gestão */}
@@ -486,11 +494,11 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
                   { backgroundColor: subiu ? cores.verdeFundo : cores.vermelhoFundo },
                 ]}
               >
-                <Ionicons
-                  name={subiu ? 'trending-up' : 'trending-down'}
-                  size={16}
-                  color={corVar}
-                />
+                {subiu ? (
+                  <TrendingUp size={16} color={corVar} />
+                ) : (
+                  <TrendingDown size={16} color={corVar} />
+                )}
                 <Text style={[styles.vendasPillTexto, { color: corVar }]}>
                   {subiu ? '+' : ''}
                   {Math.round(variacaoOntem)}%
@@ -508,11 +516,11 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           </Text>
           {ritmoMeta ? (
             <View style={styles.ritmoBox}>
-              <Ionicons
-                name={ritmoMeta.batida ? 'flag' : 'speedometer-outline'}
-                size={16}
-                color={ritmoMeta.batida ? cores.verde : cores.primaria}
-              />
+              {ritmoMeta.batida ? (
+                <Flag size={16} color={cores.verde} />
+              ) : (
+                <Gauge size={16} color={cores.primaria} />
+              )}
               <Text style={styles.ritmoTexto}>
                 {ritmoMeta.batida
                   ? 'Meta do mês já alcançada. 🎉'
@@ -523,7 +531,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           {podeAcessar('PAINEL_VENDAS_VISUALIZAR') ? (
             <Pressable onPress={() => aoNavegar('PainelVendas')} style={styles.vendasLink}>
               <Text style={styles.vendasLinkTexto}>Ver Painel de Vendas</Text>
-              <Ionicons name="chevron-forward" size={16} color={cores.primaria} />
+              <ChevronRight size={16} color={cores.primaria} />
             </Pressable>
           ) : null}
         </Cartao>
@@ -566,7 +574,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           {podeAcessar('OPERADORES_AUSENCIAS') ? (
             <Pressable onPress={() => aoNavegar('Operadores')} style={styles.vendasLink}>
               <Text style={styles.vendasLinkTexto}>Ver Operadores</Text>
-              <Ionicons name="chevron-forward" size={16} color={cores.primaria} />
+              <ChevronRight size={16} color={cores.primaria} />
             </Pressable>
           ) : null}
         </Cartao>
@@ -576,7 +584,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
       <Cartao titulo="As 3 coisas de hoje">
         {top3.length === 0 ? (
           <View style={styles.tudoOk}>
-            <Ionicons name="checkmark-circle" size={20} color={cores.verde} />
+            <CheckCircle2 size={20} color={cores.verde} />
             <Text style={styles.tudoOkTexto}>
               Tudo em ordem. Sem pendências para hoje. 🎉
             </Text>
