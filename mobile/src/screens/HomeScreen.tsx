@@ -45,7 +45,6 @@ import { PropsTela } from '../navigation/types';
 import {
   cores,
   coresModulos,
-  espacamento,
   gradientes,
   raio,
   sombra,
@@ -200,7 +199,7 @@ export function HomeScreen({
                   accessibilityLabel="Notificações"
                   style={styles.iconeAcao}
                 >
-                  <Bell size={20} color={cores.textoInverso} />
+                  <Bell size={14} color={cores.textoInverso} />
                   {naoLidas > 0 && (
                     <View style={styles.sinoBadge}>
                       <Text style={styles.sinoBadgeTexto}>
@@ -217,7 +216,7 @@ export function HomeScreen({
                 accessibilityLabel="Sair"
                 style={styles.iconeAcao}
               >
-                <LogOut size={20} color={cores.textoInverso} />
+                <LogOut size={14} color={cores.textoInverso} />
               </Pressable>
             </View>
           </View>
@@ -245,7 +244,7 @@ export function HomeScreen({
                     onPress={() => navigation.navigate(acao.rota)}
                   >
                     <View style={[styles.chipIcone, { backgroundColor: `${cor}1A` }]}>
-                      <Icone size={16} color={cor} />
+                      <Icone size={11} color={cor} />
                     </View>
                     <Text style={styles.chipTexto}>{acao.label}</Text>
                   </Pressable>
@@ -273,7 +272,7 @@ export function HomeScreen({
                 <View
                   style={[styles.moduloIcone, { backgroundColor: `${corModulo}1A` }]}
                 >
-                  <Icone size={22} color={corModulo} />
+                  <Icone size={15} color={corModulo} />
                   {pendencias > 0 && (
                     <View style={styles.moduloBadge}>
                       <Text style={styles.moduloBadgeTexto}>{pendencias}</Text>
@@ -284,7 +283,7 @@ export function HomeScreen({
                   <Text style={styles.moduloTitulo}>{area.titulo}</Text>
                   <Text style={styles.moduloDescricao}>{area.descricao}</Text>
                 </View>
-                <ChevronRight size={20} color={cores.textoSecundario} />
+                <ChevronRight size={14} color={cores.textoSecundario} />
               </Pressable>
             );
           })}
@@ -300,18 +299,19 @@ const styles = StyleSheet.create({
     backgroundColor: cores.primaria,
   },
   header: {
-    paddingHorizontal: espacamento.lg,
-    paddingBottom: espacamento.xl,
+    paddingHorizontal: 11,
+    paddingBottom: 16,
   },
   marca: {
     fontFamily: 'Inter_800ExtraBold',
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '800',
     color: cores.textoInverso,
     letterSpacing: -0.3,
   },
   tagline: {
     ...tipografia.legenda,
+    fontSize: 10,
     color: 'rgba(255,255,255,0.75)',
     marginTop: 2,
     letterSpacing: 0.2,
@@ -320,18 +320,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: espacamento.lg,
+    marginTop: 11,
   },
   usuarioBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.md,
+    gap: 8,
     flex: 1,
   },
   avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: 'rgba(255,255,255,0.16)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.28)',
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
   avatarTexto: {
     fontFamily: 'Inter_800ExtraBold',
     color: cores.textoInverso,
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '800',
   },
   usuarioInfo: {
@@ -349,25 +349,26 @@ const styles = StyleSheet.create({
   },
   saudacao: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '700',
     color: cores.textoInverso,
     letterSpacing: -0.2,
   },
   cargo: {
     ...tipografia.legenda,
+    fontSize: 10,
     color: 'rgba(255,255,255,0.75)',
     marginTop: 1,
   },
   acoesTopo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.sm,
+    gap: 6,
   },
   iconeAcao: {
-    width: 38,
-    height: 38,
-    borderRadius: raio.md,
+    width: 28,
+    height: 28,
+    borderRadius: 10,
     backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -375,19 +376,19 @@ const styles = StyleSheet.create({
   },
   sinoBadge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    minWidth: 16,
-    height: 16,
-    paddingHorizontal: 3,
-    borderRadius: 8,
+    top: 1,
+    right: 1,
+    minWidth: 12,
+    height: 12,
+    paddingHorizontal: 2,
+    borderRadius: 6,
     backgroundColor: cores.vermelho,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sinoBadgeTexto: {
     color: cores.textoInverso,
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
   },
   scroll: {
@@ -395,36 +396,37 @@ const styles = StyleSheet.create({
   },
   conteudo: {
     backgroundColor: cores.fundo,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: espacamento.lg,
-    paddingTop: espacamento.xl,
-    paddingBottom: espacamento.xxl,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 11,
+    paddingTop: 16,
+    paddingBottom: 22,
     minHeight: '100%',
   },
   secao: {
     ...tipografia.subtitulo,
+    fontSize: 13,
     color: cores.texto,
-    marginBottom: espacamento.md,
+    marginBottom: 8,
   },
   lista: {
-    gap: espacamento.md,
+    gap: 8,
   },
   acoesWrap: {
-    marginBottom: espacamento.lg,
+    marginBottom: 11,
   },
   acoesLista: {
-    gap: espacamento.sm,
+    gap: 6,
     paddingVertical: 2,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.sm,
+    gap: 6,
     backgroundColor: cores.superficie,
     borderRadius: raio.pill,
-    paddingVertical: espacamento.sm,
-    paddingHorizontal: espacamento.md,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     borderWidth: 1,
     borderColor: cores.divisor,
     ...sombra.cartao,
@@ -433,23 +435,24 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   chipIcone: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
   },
   chipTexto: {
     ...tipografia.rotulo,
+    fontSize: 10,
     color: cores.texto,
   },
   modulo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.md,
+    gap: 8,
     backgroundColor: cores.superficie,
     borderRadius: raio.lg,
-    padding: espacamento.lg,
+    padding: 11,
     borderWidth: 1,
     borderColor: cores.divisor,
     ...sombra.cartao,
@@ -459,31 +462,31 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.99 }],
   },
   moduloIcone: {
-    width: 48,
-    height: 48,
-    borderRadius: raio.md,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   moduloBadge: {
     position: 'absolute',
-    top: -6,
-    right: -6,
-    minWidth: 20,
-    height: 20,
-    paddingHorizontal: 5,
-    borderRadius: 10,
+    top: -4,
+    right: -4,
+    minWidth: 14,
+    height: 14,
+    paddingHorizontal: 3,
+    borderRadius: 7,
     backgroundColor: cores.vermelho,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: cores.superficie,
   },
   moduloBadgeTexto: {
     fontFamily: 'Inter_800ExtraBold',
     color: cores.textoInverso,
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '800',
   },
   moduloTexto: {
@@ -491,13 +494,14 @@ const styles = StyleSheet.create({
   },
   moduloTitulo: {
     ...tipografia.rotulo,
-    fontSize: 15,
+    fontSize: 11,
     color: cores.texto,
   },
   moduloDescricao: {
     ...tipografia.legenda,
+    fontSize: 10,
     color: cores.textoSecundario,
-    marginTop: 2,
+    marginTop: 1,
   },
 });
 
