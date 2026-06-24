@@ -97,7 +97,7 @@ export function HomeScreen({
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.conteudo}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.conteudo}>
         <ResumoDoDia aoNavegar={(rota) => navigation.navigate(rota as never)} />
         <Text style={styles.secao}>Áreas</Text>
         <View style={styles.grade}>
@@ -134,6 +134,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: espacamento.lg,
     paddingBottom: espacamento.lg,
+    // Garante que o header (vermelho) fique acima do conteúdo rolável.
+    zIndex: 1,
+  },
+  scroll: {
+    // Limita o ScrollView ao espaço disponível (essencial na web): assim o
+    // scroll é interno e o header fica fixo, em vez de a página inteira rolar.
+    flex: 1,
   },
   marca: {
     fontSize: 22,
