@@ -27,12 +27,34 @@ import { cores } from './src/theme';
 import { useProtecaoTela } from './src/utils/protecaoTela';
 
 /**
- * Na WEB (notebook/PC), fixa a RAIZ do app à altura da janela (100vh). Assim o
- * scroll fica INTERNO ao conteúdo e o header não rola junto com a página. No
- * app nativo isso não se aplica.
+ * Na WEB (notebook/PC e mobile), fixa a RAIZ do app à altura VISÍVEL da janela
+ * (100dvh) e impede o `body` de rolar (overflow hidden). Assim só o conteúdo
+ * interno rola: o header (topo) e a barra de abas (base) ficam FIXOS. No app
+ * nativo nada disso se aplica.
  */
 const estiloRaizWeb: ViewStyle | undefined =
-  Platform.OS === 'web' ? ({ height: '100vh' } as unknown as ViewStyle) : undefined;
+  Platform.OS === 'web' ? ({ height: '100dvh' } as unknown as ViewStyle) : undefined;
+
+// Trava a rolagem da página (apenas web). Tipagem mínima do `document` para não
+// depender da lib DOM no tsconfig.
+type EstiloMin = Partial<{ height: string; margin: string; overflow: string }>;
+type DocumentoMin = {
+  documentElement: { style: EstiloMin };
+  body: { style: EstiloMin };
+  getElementById: (id: string) => { style: EstiloMin } | null;
+};
+const docWeb = (globalThis as { document?: DocumentoMin }).document;
+if (Platform.OS === 'web' && docWeb) {
+  docWeb.documentElement.style.height = '100%';
+  docWeb.documentElement.style.overflow = 'hidden';
+  docWeb.body.style.height = '100%';
+  docWeb.body.style.margin = '0';
+  docWeb.body.style.overflow = 'hidden';
+  const raiz = docWeb.getElementById('root');
+  if (raiz) {
+    raiz.style.height = '100%';
+  }
+}
 
 export default function App(): React.ReactElement {
   // Bloqueia/dissuade capturas de tela (conteúdo interno e confidencial).
