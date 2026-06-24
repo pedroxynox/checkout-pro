@@ -126,13 +126,6 @@ export const AREAS: Area[] = [
     funcionalidade: 'USUARIOS_CRUD',
   },
   {
-    rota: 'Notificacoes',
-    titulo: 'Notificações',
-    descricao: 'Central de avisos do app',
-    icone: 'notifications-outline',
-    funcionalidade: 'NOTIFICACOES',
-  },
-  {
     rota: 'AlertasFila',
     titulo: 'Alertas de Fila',
     descricao: 'Avisos de filas/caixas (em breve)',
