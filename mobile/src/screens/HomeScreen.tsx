@@ -1,13 +1,15 @@
 /**
  * Tela inicial (dashboard) após o login.
  *
- * Exibe, em forma de lista, **apenas** as áreas que o perfil do usuário pode
- * acessar (Req 7.2.2–7.2.4): o gerente vê todas; o fiscal vê apenas as áreas
- * operacionais. Mostra também a identidade do usuário e a ação de sair.
+ * Exibe o resumo inteligente do dia no topo e, abaixo, **apenas** as áreas que
+ * o perfil do usuário pode acessar (Req 7.2.2–7.2.4) em forma de **grade**
+ * ("Acessos rápidos"): o gerente vê todas; o fiscal vê apenas as operacionais.
+ * Mostra também a identidade do usuário e a ação de sair.
  *
  * Visual: identidade SaaS executiva — header com degradê, saudação inteligente
- * por horário, e módulos premium (ícone circular colorido + chevron). A LÓGICA
- * (áreas visíveis, permissões, navegação) permanece exatamente a mesma.
+ * por horário, e módulos em grade (ícone colorido + rótulo), ordenados por
+ * relevância (os com pendência sobem e ganham um selo). A LÓGICA (áreas
+ * visíveis, permissões, navegação) permanece exatamente a mesma.
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -16,7 +18,6 @@ import {
   BarChart3,
   Bell,
   Calendar,
-  ChevronRight,
   ClipboardCheck,
   DollarSign,
   FileText,
@@ -42,14 +43,7 @@ import { ResumoDoDia } from './centroDeMando/ResumoDoDia';
 import { usePulsoDoDia } from './centroDeMando/usePulsoDoDia';
 import { useNotificacoes } from '../notificacoes/NotificacoesContext';
 import { PropsTela } from '../navigation/types';
-import {
-  cores,
-  coresModulos,
-  gradientes,
-  raio,
-  sombra,
-  tipografia,
-} from '../theme';
+import { cores, coresModulos, gradientes, raio, sombra, tipografia } from '../theme';
 
 /** Saudação inteligente conforme o horário do dispositivo. */
 function saudacaoPorHora(): string {
@@ -81,32 +75,6 @@ const ICONES_MODULO: Record<string, LucideIcon> = {
   GerenciarDados: Settings,
 };
 
-/**
- * Catálogo de ações rápidas (atalhos de 1 toque). Cada uma só aparece quando
- * o módulo correspondente TEM pendência hoje e o usuário pode acessá-lo. O
- * texto é orientado à ação (verbo).
- */
-const ACOES_RAPIDAS_INFO: Array<{
-  rota: 'Importacoes' | 'Checklist' | 'Insumos' | 'Operadores' | 'Indicadores' | 'PainelVendas';
-  label: string;
-  funcionalidade: string;
-}> = [
-  { rota: 'Importacoes', label: 'Carregar arquivos', funcionalidade: 'IMPORTACOES' },
-  { rota: 'Checklist', label: 'Fazer checklist', funcionalidade: 'CHECKLIST' },
-  { rota: 'Insumos', label: 'Ver insumos', funcionalidade: 'INSUMOS' },
-  { rota: 'Operadores', label: 'Ver faltas', funcionalidade: 'OPERADORES_AUSENCIAS' },
-  {
-    rota: 'Indicadores',
-    label: 'Ver indicadores',
-    funcionalidade: 'INDICADORES_VISUALIZAR',
-  },
-  {
-    rota: 'PainelVendas',
-    label: 'Ver vendas',
-    funcionalidade: 'PAINEL_VENDAS_VISUALIZAR',
-  },
-];
-
 export function HomeScreen({
   navigation,
 }: PropsTela<'Home'>): React.ReactElement {
@@ -124,15 +92,6 @@ export function HomeScreen({
   // Ordena por relevância: módulos com mais pendências primeiro; em empate,
   // mantém a ordem original (sort estável). Apenas reordena a exibição.
   const areasOrdenadas = [...areasVisiveis].sort(
-    (a, b) =>
-      (pendenciasPorModulo[b.rota] ?? 0) - (pendenciasPorModulo[a.rota] ?? 0),
-  );
-
-  // Ações rápidas (atalhos de 1 toque): só as que TÊM pendência hoje e que o
-  // perfil pode acessar, ordenadas pela quantidade de pendências.
-  const acoesRapidas = ACOES_RAPIDAS_INFO.filter(
-    (a) => (pendenciasPorModulo[a.rota] ?? 0) > 0 && podeAcessar(a.funcionalidade),
-  ).sort(
     (a, b) =>
       (pendenciasPorModulo[b.rota] ?? 0) - (pendenciasPorModulo[a.rota] ?? 0),
   );
@@ -224,38 +183,12 @@ export function HomeScreen({
       </LinearGradient>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.conteudo}>
+        {/* Resumo inteligente do dia (mantido no topo) */}
         <ResumoDoDia aoNavegar={(rota) => navigation.navigate(rota as never)} />
 
-        {acoesRapidas.length > 0 && (
-          <View style={styles.acoesWrap}>
-            <Text style={styles.secao}>Ações rápidas</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.acoesLista}
-            >
-              {acoesRapidas.map((acao) => {
-                const Icone = ICONES_MODULO[acao.rota] ?? LayoutGrid;
-                const cor = coresModulos[acao.rota] ?? cores.primaria;
-                return (
-                  <Pressable
-                    key={acao.rota}
-                    style={({ pressed }) => [styles.chip, pressed && styles.chipPress]}
-                    onPress={() => navigation.navigate(acao.rota)}
-                  >
-                    <View style={[styles.chipIcone, { backgroundColor: `${cor}1A` }]}>
-                      <Icone size={11} color={cor} />
-                    </View>
-                    <Text style={styles.chipTexto}>{acao.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
-
-        <Text style={styles.secao}>Áreas</Text>
-        <View style={styles.lista}>
+        {/* Acessos rápidos (áreas) em grade */}
+        <Text style={styles.secao}>Acessos rápidos</Text>
+        <View style={styles.grade}>
           {areasOrdenadas.map((area) => {
             const corModulo = coresModulos[area.rota] ?? cores.primaria;
             const Icone = ICONES_MODULO[area.rota] ?? LayoutGrid;
@@ -264,26 +197,24 @@ export function HomeScreen({
               <Pressable
                 key={area.rota}
                 style={({ pressed }) => [
-                  styles.modulo,
-                  pressed && styles.moduloPressionado,
+                  styles.tile,
+                  pressed && styles.tilePressionado,
                 ]}
                 onPress={() => navigation.navigate(area.rota)}
               >
                 <View
-                  style={[styles.moduloIcone, { backgroundColor: `${corModulo}1A` }]}
+                  style={[styles.tileIcone, { backgroundColor: `${corModulo}1A` }]}
                 >
-                  <Icone size={15} color={corModulo} />
+                  <Icone size={24} color={corModulo} />
                   {pendencias > 0 && (
-                    <View style={styles.moduloBadge}>
-                      <Text style={styles.moduloBadgeTexto}>{pendencias}</Text>
+                    <View style={styles.tileBadge}>
+                      <Text style={styles.tileBadgeTexto}>{pendencias}</Text>
                     </View>
                   )}
                 </View>
-                <View style={styles.moduloTexto}>
-                  <Text style={styles.moduloTitulo}>{area.titulo}</Text>
-                  <Text style={styles.moduloDescricao}>{area.descricao}</Text>
-                </View>
-                <ChevronRight size={14} color={cores.textoSecundario} />
+                <Text style={styles.tileTitulo} numberOfLines={2}>
+                  {area.titulo}
+                </Text>
               </Pressable>
             );
           })}
@@ -299,19 +230,19 @@ const styles = StyleSheet.create({
     backgroundColor: cores.primaria,
   },
   header: {
-    paddingHorizontal: 11,
-    paddingBottom: 16,
+    paddingHorizontal: 12,
+    paddingBottom: 18,
   },
   marca: {
     fontFamily: 'Inter_800ExtraBold',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
     color: cores.textoInverso,
     letterSpacing: -0.3,
   },
   tagline: {
     ...tipografia.legenda,
-    fontSize: 10,
+    fontSize: 11,
     color: 'rgba(255,255,255,0.75)',
     marginTop: 2,
     letterSpacing: 0.2,
@@ -320,18 +251,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 11,
+    marginTop: 12,
   },
   usuarioBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 9,
     flex: 1,
   },
   avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 33,
+    height: 33,
+    borderRadius: 17,
     backgroundColor: 'rgba(255,255,255,0.16)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.28)',
@@ -341,7 +272,7 @@ const styles = StyleSheet.create({
   avatarTexto: {
     fontFamily: 'Inter_800ExtraBold',
     color: cores.textoInverso,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
   },
   usuarioInfo: {
@@ -349,26 +280,26 @@ const styles = StyleSheet.create({
   },
   saudacao: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: cores.textoInverso,
     letterSpacing: -0.2,
   },
   cargo: {
     ...tipografia.legenda,
-    fontSize: 10,
+    fontSize: 11,
     color: 'rgba(255,255,255,0.75)',
     marginTop: 1,
   },
   acoesTopo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
   },
   iconeAcao: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 11,
     backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -378,10 +309,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 1,
     right: 1,
-    minWidth: 12,
-    height: 12,
+    minWidth: 13,
+    height: 13,
     paddingHorizontal: 2,
-    borderRadius: 6,
+    borderRadius: 7,
     backgroundColor: cores.vermelho,
     alignItems: 'center',
     justifyContent: 'center',
@@ -396,112 +327,74 @@ const styles = StyleSheet.create({
   },
   conteudo: {
     backgroundColor: cores.fundo,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 11,
-    paddingTop: 16,
-    paddingBottom: 22,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 12,
+    paddingTop: 18,
+    paddingBottom: 24,
     minHeight: '100%',
   },
   secao: {
     ...tipografia.subtitulo,
-    fontSize: 13,
+    fontSize: 14,
     color: cores.texto,
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  lista: {
+  grade: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
-  acoesWrap: {
-    marginBottom: 11,
-  },
-  acoesLista: {
-    gap: 6,
-    paddingVertical: 2,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: cores.superficie,
-    borderRadius: raio.pill,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderWidth: 1,
-    borderColor: cores.divisor,
-    ...sombra.cartao,
-  },
-  chipPress: {
-    opacity: 0.85,
-  },
-  chipIcone: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipTexto: {
-    ...tipografia.rotulo,
-    fontSize: 10,
-    color: cores.texto,
-  },
-  modulo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  tile: {
+    width: '31%',
     backgroundColor: cores.superficie,
     borderRadius: raio.lg,
-    padding: 11,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     borderWidth: 1,
     borderColor: cores.divisor,
     ...sombra.cartao,
   },
-  moduloPressionado: {
+  tilePressionado: {
     opacity: 0.85,
-    transform: [{ scale: 0.99 }],
+    transform: [{ scale: 0.98 }],
   },
-  moduloIcone: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+  tileIcone: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 8,
     position: 'relative',
   },
-  moduloBadge: {
+  tileBadge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 14,
-    height: 14,
-    paddingHorizontal: 3,
-    borderRadius: 7,
+    top: -5,
+    right: -5,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
     backgroundColor: cores.vermelho,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: cores.superficie,
   },
-  moduloBadgeTexto: {
+  tileBadgeTexto: {
     fontFamily: 'Inter_800ExtraBold',
     color: cores.textoInverso,
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
   },
-  moduloTexto: {
-    flex: 1,
-  },
-  moduloTitulo: {
+  tileTitulo: {
     ...tipografia.rotulo,
-    fontSize: 11,
+    fontSize: 12,
     color: cores.texto,
-  },
-  moduloDescricao: {
-    ...tipografia.legenda,
-    fontSize: 10,
-    color: cores.textoSecundario,
-    marginTop: 1,
+    textAlign: 'center',
   },
 });
 
