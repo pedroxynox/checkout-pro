@@ -80,6 +80,7 @@ export function AuthProvider({
           return;
         }
         const eu = await acessosService.eu();
+        await lembrarNome(eu.nome);
         if (ativo) {
           setUsuario(eu);
         }

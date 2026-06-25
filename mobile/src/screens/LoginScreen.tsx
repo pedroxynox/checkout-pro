@@ -70,7 +70,7 @@ const SEM_CONTORNO_WEB =
 // Responsiva: ~46% da tela, com limites — equilibra melhor azul x branco e
 // acomoda o logo maior, mantendo um visual profissional.
 const ALTURA_TELA = Dimensions.get('window').height;
-const ALTURA_TOPO = Math.min(Math.max(Math.round(ALTURA_TELA * 0.46), 380), 480);
+const ALTURA_TOPO = Math.min(Math.max(Math.round(ALTURA_TELA * 0.45), 400), 480);
 const ALTURA_ONDA = 80;
 
 /**
@@ -514,22 +514,22 @@ const styles = StyleSheet.create({
   // Corpo branco (cartão + rodapé)
   corpo: {
     paddingHorizontal: 22,
-    marginTop: -28,
+    marginTop: -56,
   },
 
   // Marca — logo horizontal completo (já inclui o nome)
   marcaRow: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 14,
   },
   logo: {
-    width: 350,
-    height: 210,
+    width: 420,
+    height: 252,
   },
 
   // Saudação sobre o fundo
-  intro: { alignItems: 'center', marginBottom: 22 },
+  intro: { alignItems: 'center', marginBottom: 14 },
   introTitulo: {
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     fontSize: 30,
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: cores.superficie,
     borderRadius: raio.lg,
-    padding: 22,
+    padding: 18,
     ...sombra.cartao,
     shadowOpacity: 0.18,
   },
@@ -693,7 +693,7 @@ const styles = StyleSheet.create({
     backgroundColor: cores.primariaClara,
     borderRadius: raio.md,
     padding: 14,
-    marginTop: 18,
+    marginTop: 12,
   },
   seguroIcone: {
     width: 38,
@@ -719,7 +719,7 @@ const styles = StyleSheet.create({
   },
 
   // Rodapé
-  rodape: { alignItems: 'center', marginTop: 22, gap: 6 },
+  rodape: { alignItems: 'center', marginTop: 12, gap: 6 },
   cluby: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   clubyTexto: {
     fontFamily: 'Inter_600SemiBold',
