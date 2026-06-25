@@ -228,3 +228,260 @@ export function contagemPorTurno(
     total: abertura + intermediario + fechamento,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Analítica inteligente de faltas (taxa %, padrões, tendência e risco)
+// ---------------------------------------------------------------------------
+
+const NOMES_DIA_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+/** Operador para a analítica de faltas (id, nome e folga fixa). */
+export interface OperadorParaFaltas {
+  id: string;
+  nome: string;
+  /** Dia de folga fixa (0=Dom..6=Sáb). */
+  folgaDiaSemana: number;
+}
+
+export type RiscoFalta = 'BAIXO' | 'MEDIO' | 'ALTO';
+
+/** Detalhe inteligente das faltas de um operador no período. */
+export interface FaltasOperadorDetalhe {
+  id: string;
+  nome: string;
+  quantidade: number;
+  diasEscalados: number;
+  /** % de absenteísmo = faltas / dias escalados (0–100, arredondado). */
+  taxa: number;
+  /** Faltas coladas à folga (véspera ou dia seguinte) — "emenda". */
+  faltasEmenda: number;
+  /** Maior sequência de faltas em dias consecutivos. */
+  sequenciaMax: number;
+  /** Dia da semana em que mais falta, quando há concentração (≥2). */
+  diaRecorrente: { diaSemana: number; nome: string; quantidade: number } | null;
+  /** Variação de faltas vs. período anterior (delta). */
+  tendencia: number;
+  risco: RiscoFalta;
+}
+
+/** Resultado da analítica inteligente de faltas. */
+export interface AnaliticaFaltasDetalhe {
+  total: number;
+  totalAnterior: number;
+  /** Variação % do total vs. período anterior; null se não havia base. */
+  tendenciaPct: number | null;
+  /** % global de absenteísmo no período. */
+  taxaGlobal: number;
+  porOperador: FaltasOperadorDetalhe[];
+  porDiaSemana: { diaSemana: number; nome: string; quantidade: number }[];
+}
+
+/** Dia da semana deslocado (0..6). */
+function dowOffset(dow: number, delta: number): number {
+  return (dow + delta + 7) % 7;
+}
+
+/** Conta dias escalados (dow != folga) em [inicio, fim] inclusivo. */
+function contarDiasEscalados(folga: number, inicio: Date, fim: Date): number {
+  let count = 0;
+  const d = new Date(
+    Date.UTC(
+      inicio.getUTCFullYear(),
+      inicio.getUTCMonth(),
+      inicio.getUTCDate(),
+    ),
+  );
+  const fimDia = Date.UTC(
+    fim.getUTCFullYear(),
+    fim.getUTCMonth(),
+    fim.getUTCDate(),
+  );
+  while (d.getTime() <= fimDia) {
+    if (d.getUTCDay() !== folga) count += 1;
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return count;
+}
+
+/** Maior sequência de faltas em dias civis consecutivos. */
+function maiorSequencia(datas: readonly Date[]): number {
+  if (datas.length === 0) return 0;
+  const dias = datas
+    .map((d) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+    .sort((a, b) => a - b);
+  const UM_DIA = 24 * 60 * 60 * 1000;
+  let melhor = 1;
+  let atual = 1;
+  for (let i = 1; i < dias.length; i++) {
+    if (dias[i] === dias[i - 1]) continue;
+    if (dias[i] - dias[i - 1] === UM_DIA) {
+      atual += 1;
+      melhor = Math.max(melhor, atual);
+    } else {
+      atual = 1;
+    }
+  }
+  return melhor;
+}
+
+/** Classifica o nível de risco do operador a partir dos sinais de falta. */
+function classificarRisco(d: {
+  taxa: number;
+  quantidade: number;
+  faltasEmenda: number;
+  diaRecorrente: { quantidade: number } | null;
+  sequenciaMax: number;
+  tendencia: number;
+}): RiscoFalta {
+  let pontos = 0;
+  if (d.taxa >= 20) pontos += 2;
+  else if (d.taxa >= 10) pontos += 1;
+  if (d.quantidade >= 4) pontos += 2;
+  else if (d.quantidade >= 2) pontos += 1;
+  if (d.faltasEmenda >= 2) pontos += 1;
+  if (d.diaRecorrente && d.diaRecorrente.quantidade >= 3) pontos += 1;
+  if (d.sequenciaMax >= 2) pontos += 1;
+  if (d.tendencia > 0) pontos += 1;
+  if (pontos >= 4) return 'ALTO';
+  if (pontos >= 2) return 'MEDIO';
+  return 'BAIXO';
+}
+
+const ORDEM_RISCO: Record<RiscoFalta, number> = { ALTO: 0, MEDIO: 1, BAIXO: 2 };
+
+/**
+ * Analítica inteligente de faltas no período. Além do total e do ranking,
+ * calcula:
+ *  - taxa de absenteísmo (%) = faltas / dias escalados (justa entre operadores);
+ *  - padrões: dia da semana recorrente, faltas em "emenda" (coladas à folga) e
+ *    maior sequência de faltas em dias seguidos;
+ *  - tendência vs. período anterior (global e por operador);
+ *  - nível de risco por operador (semáforo) combinando os sinais acima.
+ *
+ * Função pura/determinística (sem Nest nem Prisma). `fimEscala` limita a
+ * contagem de dias escalados (normalmente min(fim, hoje)) para uma taxa justa
+ * no mês corrente.
+ */
+export function analisarFaltas(params: {
+  operadores: readonly OperadorParaFaltas[];
+  ausencias: readonly AusenciaRegistro[];
+  ausenciasAnterior: readonly AusenciaRegistro[];
+  inicio: Date;
+  fimEscala: Date;
+}): AnaliticaFaltasDetalhe {
+  const { operadores, ausencias, ausenciasAnterior, inicio, fimEscala } =
+    params;
+
+  const porOp = new Map<string, Date[]>();
+  for (const a of ausencias) {
+    const arr = porOp.get(a.pessoaId) ?? [];
+    arr.push(a.data);
+    porOp.set(a.pessoaId, arr);
+  }
+  const antPorOp = new Map<string, number>();
+  for (const a of ausenciasAnterior) {
+    antPorOp.set(a.pessoaId, (antPorOp.get(a.pessoaId) ?? 0) + 1);
+  }
+
+  const porDow = new Array<number>(7).fill(0);
+  for (const a of ausencias) porDow[a.data.getUTCDay()] += 1;
+
+  let somaDias = 0;
+  const porOperador: FaltasOperadorDetalhe[] = [];
+  for (const op of operadores) {
+    const diasEscalados = contarDiasEscalados(
+      op.folgaDiaSemana,
+      inicio,
+      fimEscala,
+    );
+    somaDias += diasEscalados;
+    const datas = porOp.get(op.id) ?? [];
+    if (datas.length === 0) continue; // sem faltas: fora do ranking
+
+    const quantidade = datas.length;
+    const taxa =
+      diasEscalados > 0 ? Math.round((quantidade / diasEscalados) * 100) : 0;
+
+    const vespera = dowOffset(op.folgaDiaSemana, -1);
+    const seguinte = dowOffset(op.folgaDiaSemana, 1);
+    let faltasEmenda = 0;
+    const contagemDow = new Array<number>(7).fill(0);
+    for (const d of datas) {
+      const dow = d.getUTCDay();
+      contagemDow[dow] += 1;
+      if (dow === vespera || dow === seguinte) faltasEmenda += 1;
+    }
+
+    let melhorDow = -1;
+    let melhorQtd = 0;
+    for (let dow = 0; dow < 7; dow++) {
+      if (contagemDow[dow] > melhorQtd) {
+        melhorQtd = contagemDow[dow];
+        melhorDow = dow;
+      }
+    }
+    const diaRecorrente =
+      melhorQtd >= 2
+        ? {
+            diaSemana: melhorDow,
+            nome: NOMES_DIA_SEMANA[melhorDow],
+            quantidade: melhorQtd,
+          }
+        : null;
+
+    const sequenciaMax = maiorSequencia(datas);
+    const tendencia = quantidade - (antPorOp.get(op.id) ?? 0);
+    const risco = classificarRisco({
+      taxa,
+      quantidade,
+      faltasEmenda,
+      diaRecorrente,
+      sequenciaMax,
+      tendencia,
+    });
+
+    porOperador.push({
+      id: op.id,
+      nome: op.nome,
+      quantidade,
+      diasEscalados,
+      taxa,
+      faltasEmenda,
+      sequenciaMax,
+      diaRecorrente,
+      tendencia,
+      risco,
+    });
+  }
+
+  porOperador.sort(
+    (a, b) =>
+      ORDEM_RISCO[a.risco] - ORDEM_RISCO[b.risco] ||
+      b.taxa - a.taxa ||
+      b.quantidade - a.quantidade ||
+      a.nome.localeCompare(b.nome),
+  );
+
+  const total = ausencias.length;
+  const totalAnterior = ausenciasAnterior.length;
+  const tendenciaPct =
+    totalAnterior > 0
+      ? Math.round(((total - totalAnterior) / totalAnterior) * 100)
+      : null;
+  const taxaGlobal = somaDias > 0 ? Math.round((total / somaDias) * 100) : 0;
+
+  const porDiaSemana = porDow.map((quantidade, diaSemana) => ({
+    diaSemana,
+    nome: NOMES_DIA_SEMANA[diaSemana],
+    quantidade,
+  }));
+
+  return {
+    total,
+    totalAnterior,
+    tendenciaPct,
+    taxaGlobal,
+    porOperador,
+    porDiaSemana,
+  };
+}

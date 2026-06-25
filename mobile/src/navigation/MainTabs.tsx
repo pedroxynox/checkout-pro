@@ -20,6 +20,7 @@ import {
 } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { useNotificacoes } from '../notificacoes/NotificacoesContext';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -63,6 +64,9 @@ export function MainTabs(): React.ReactElement {
   const { naoLidas } = useNotificacoes();
   // Selo de pendências na aba Tarefas (defensivo, por regras).
   const { totalPendencias } = usePulsoDoDia(perfil, podeAcessar);
+  // Respeita a área segura inferior (barra de gestos no Android/iOS e a barra
+  // do navegador na web) para que os rótulos não fiquem cortados no pé.
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -75,11 +79,11 @@ export function MainTabs(): React.ReactElement {
         tabBarStyle: {
           backgroundColor: cores.superficie,
           borderTopColor: cores.divisor,
-          height: 62,
-          paddingTop: 6,
-          paddingBottom: 8,
+          height: 64 + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: insets.bottom + 12,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', lineHeight: 14 },
       }}
     >
       <Tab.Screen

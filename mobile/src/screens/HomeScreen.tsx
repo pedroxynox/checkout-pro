@@ -115,7 +115,6 @@ export function HomeScreen({
             ? 'Importador'
             : 'Fiscal';
   const nome = primeiroNome;
-  const inicial = (nome.charAt(0) || 'U').toUpperCase();
 
   return (
     <View style={styles.container}>
@@ -129,20 +128,15 @@ export function HomeScreen({
         style={styles.header}
       >
         <SafeAreaView edges={['top']}>
-          <View style={styles.marcaRow}>
-            <Image
-              source={require('../../assets/LogoElemento.png')}
-              style={styles.marcaLogo}
-              resizeMode="contain"
-              accessibilityLabel="Check-out Pro"
-            />
-          </View>
-
           <View style={styles.headerRow}>
             <View style={styles.usuarioBox}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarTexto}>{inicial}</Text>
-              </View>
+              <Image
+                source={require('../../assets/LogoElemento.png')}
+                style={styles.headerLogo}
+                resizeMode="contain"
+                accessibilityLabel="Check-out Pro"
+              />
+              <View style={styles.separador} />
               <View style={styles.usuarioInfo}>
                 <Text style={styles.saudacao} numberOfLines={1}>
                   {saudacaoPorHora()}, {nome}
@@ -215,44 +209,29 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 13,
-    paddingBottom: 19,
+    paddingBottom: 14,
   },
-  marcaLogo: {
-    width: 46,
-    height: 46,
+  headerLogo: {
+    width: 42,
+    height: 42,
   },
-  marcaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  separador: {
+    width: 1.5,
+    height: 34,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.30)',
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 13,
+    marginTop: 4,
   },
   usuarioBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     flex: 1,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarTexto: {
-    fontFamily: 'Inter_800ExtraBold',
-    color: cores.textoInverso,
-    fontSize: 15,
-    fontWeight: '800',
   },
   usuarioInfo: {
     flex: 1,

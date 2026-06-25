@@ -742,10 +742,23 @@ export interface AoVivoOperadores {
   listaFaltantes: OperadorAgora[];
 }
 
+export type RiscoFalta = 'BAIXO' | 'MEDIO' | 'ALTO';
+
 export interface FaltasPorOperador {
   id: string;
   nome: string;
   quantidade: number;
+  diasEscalados: number;
+  /** % de absenteísmo = faltas / dias escalados. */
+  taxa: number;
+  /** Faltas coladas à folga (véspera/dia seguinte). */
+  faltasEmenda: number;
+  /** Maior sequência de faltas em dias consecutivos. */
+  sequenciaMax: number;
+  diaRecorrente: { diaSemana: number; nome: string; quantidade: number } | null;
+  /** Variação vs. período anterior (delta de faltas). */
+  tendencia: number;
+  risco: RiscoFalta;
 }
 
 export interface FaltasPorDiaSemana {
@@ -754,9 +767,14 @@ export interface FaltasPorDiaSemana {
   quantidade: number;
 }
 
-/** Analítica de faltas num período. */
+/** Analítica inteligente de faltas num período. */
 export interface AnaliticaFaltas {
   total: number;
+  totalAnterior: number;
+  /** Variação % vs. período anterior; null se não havia base. */
+  tendenciaPct: number | null;
+  /** % global de absenteísmo. */
+  taxaGlobal: number;
   porOperador: FaltasPorOperador[];
   porDiaSemana: FaltasPorDiaSemana[];
 }
