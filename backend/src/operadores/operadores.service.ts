@@ -119,11 +119,11 @@ export class OperadoresService {
   ): Promise<void> {
     if (!this.notificacoes) return;
     try {
-      const op = await this.prisma.operadorTurno.findUnique({
+      const op = await this.prisma.colaborador.findUnique({
         where: { id: pessoaId },
         select: { nome: true },
       });
-      if (!op) return; // não é um operador do quadro (ex.: fiscal)
+      if (!op) return; // não é um colaborador (ex.: fiscal/registro antigo)
       const ini = new Date(
         Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), 1),
       );
