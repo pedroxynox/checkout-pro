@@ -203,7 +203,6 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
               value={matricula}
               onChangeText={setMatricula}
               placeholder="Ex.: 232152"
-              style={styles.metade}
               containerStyle={styles.metade}
             />
             <CampoTexto
@@ -211,7 +210,6 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
               value={login}
               onChangeText={setLogin}
               placeholder="Ex.: ana.souza"
-              style={styles.metade}
               containerStyle={styles.metade}
             />
           </View>
@@ -256,12 +254,12 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
           </View>
 
           <View style={styles.linha}>
-            <CampoTexto rotulo="Entrada Seg–Qui" value={entSem} onChangeText={setEntSem} placeholder="08:00" style={styles.metade} />
-            <CampoTexto rotulo="Saída Seg–Qui" value={saiSem} onChangeText={setSaiSem} placeholder="17:00" style={styles.metade} />
+            <CampoTexto rotulo="Entrada Seg–Qui" value={entSem} onChangeText={setEntSem} placeholder="08:00" containerStyle={styles.metade} />
+            <CampoTexto rotulo="Saída Seg–Qui" value={saiSem} onChangeText={setSaiSem} placeholder="17:00" containerStyle={styles.metade} />
           </View>
           <View style={styles.linha}>
-            <CampoTexto rotulo="Entrada Sex–Sáb" value={entFds} onChangeText={setEntFds} placeholder="09:00" style={styles.metade} />
-            <CampoTexto rotulo="Saída Sex–Sáb" value={saiFds} onChangeText={setSaiFds} placeholder="18:00" style={styles.metade} />
+            <CampoTexto rotulo="Entrada Sex–Sáb" value={entFds} onChangeText={setEntFds} placeholder="09:00" containerStyle={styles.metade} />
+            <CampoTexto rotulo="Saída Sex–Sáb" value={saiFds} onChangeText={setSaiFds} placeholder="18:00" containerStyle={styles.metade} />
           </View>
 
           <Text style={styles.rotulo}>Dia de folga</Text>
@@ -355,7 +353,7 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
 
 const styles = StyleSheet.create({
   linha: { flexDirection: 'row', gap: espacamento.sm },
-  metade: { flex: 1 },
+  metade: { flex: 1, minWidth: 0 },
   rotulo: {
     ...tipografia.rotulo,
     color: cores.textoSecundario,
