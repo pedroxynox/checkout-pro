@@ -70,8 +70,8 @@ const SEM_CONTORNO_WEB =
 // Responsiva: ~46% da tela, com limites — equilibra melhor azul x branco e
 // acomoda o logo maior, mantendo um visual profissional.
 const ALTURA_TELA = Dimensions.get('window').height;
-const ALTURA_TOPO = Math.min(Math.max(Math.round(ALTURA_TELA * 0.42), 400), 470);
-const ALTURA_ONDA = 54;
+const ALTURA_TOPO = Math.min(Math.max(Math.round(ALTURA_TELA * 0.4), 350), 450);
+const ALTURA_ONDA = 42;
 
 /**
  * Estrela do Gemini (logo de 4 pontas em "sparkle") desenhada em SVG, com o
@@ -265,7 +265,7 @@ export function LoginScreen(): React.ReactElement {
           showsVerticalScrollIndicator={false}
         >
           {/* Topo azul com onda suave (metade azul / metade branca) */}
-          <View style={[styles.topoWrap, { paddingTop: insets.top + 20 }]}>
+          <View style={[styles.topoWrap, { paddingTop: insets.top + 10 }]}>
             <LinearGradient
               colors={gradientes.header}
               start={{ x: 0, y: 0 }}
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
   // Corpo branco (cartão + rodapé)
   corpo: {
     paddingHorizontal: 22,
-    marginTop: -40,
+    marginTop: -48,
   },
 
   // Marca — logo horizontal completo (já inclui o nome)
@@ -524,8 +524,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   logo: {
-    width: 420,
-    height: 252,
+    width: 360,
+    height: 216,
   },
 
   // Saudação sobre o fundo
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: cores.superficie,
     borderRadius: raio.lg,
-    padding: 18,
+    padding: 20,
     ...sombra.cartao,
     shadowOpacity: 0.18,
   },
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 12,
+    marginBottom: 18,
   },
   avatar: {
     width: 50,
@@ -611,8 +611,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: cores.divisor,
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 10,
+    paddingVertical: 11,
+    marginBottom: 14,
   },
   campoIcone: {
     width: 40,
@@ -639,7 +639,7 @@ const styles = StyleSheet.create({
   limpar: { padding: 6 },
   erro: { ...tipografia.legenda, color: cores.vermelho, marginLeft: 4 },
   aviso: { ...tipografia.legenda, color: cores.amarelo, marginLeft: 4 },
-  esqueciBox: { alignSelf: 'flex-end', marginVertical: 4 },
+  esqueciBox: { alignSelf: 'flex-end', marginVertical: 8 },
   esqueci: {
     ...tipografia.legenda,
     color: cores.primaria,
@@ -692,8 +692,8 @@ const styles = StyleSheet.create({
     gap: 12,
     backgroundColor: cores.primariaClara,
     borderRadius: raio.md,
-    padding: 10,
-    marginTop: 8,
+    padding: 13,
+    marginTop: 14,
   },
   seguroIcone: {
     width: 38,
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: cores.textoSecundario,
     marginTop: 2,
-    lineHeight: 15,
+    lineHeight: 17,
   },
 
   // Rodapé
