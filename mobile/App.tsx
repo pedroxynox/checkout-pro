@@ -16,6 +16,11 @@ import {
   Inter_700Bold,
   Inter_800ExtraBold,
 } from '@expo-google-fonts/inter';
+import {
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+} from '@expo-google-fonts/plus-jakarta-sans';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { Platform, View, type ViewStyle } from 'react-native';
@@ -60,13 +65,17 @@ export default function App(): React.ReactElement {
   // Bloqueia/dissuade capturas de tela (conteúdo interno e confidencial).
   useProtecaoTela();
 
-  // Fonte Inter (pesos usados pela tipografia do tema).
+  // Fonte Inter (corpo/UI) + Plus Jakarta Sans (marca e títulos — visual mais
+  // "convincente"/arredondado, no estilo dos SaaS premium).
   const [fontesCarregadas, erroFontes] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
     Inter_800ExtraBold,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
   });
 
   // Enquanto carrega (e sem erro), mostra um fundo na cor da marca. Em caso de

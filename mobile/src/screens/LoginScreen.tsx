@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Sparkles,
   User,
+  X,
 } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -194,6 +195,10 @@ export function LoginScreen(): React.ReactElement {
       style={styles.fundo}
     >
       <StatusBar style="light" />
+      {/* Formas decorativas suaves do fundo (estilo SaaS) — apenas estética. */}
+      <View pointerEvents="none" style={styles.blobTopo} />
+      <View pointerEvents="none" style={styles.blobLado} />
+      <View pointerEvents="none" style={styles.blobBaixo} />
       <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -204,13 +209,19 @@ export function LoginScreen(): React.ReactElement {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Marca */}
-            <View style={styles.marcaBox}>
-              <View style={styles.marcaLogo}>
-                <LogoPulseC size={88} cor={cores.textoInverso} />
+            {/* Marca — logo + nome lado a lado */}
+            <View style={styles.marcaRow}>
+              <LogoPulseC size={52} cor={cores.textoInverso} />
+              <View style={styles.marcaTextos}>
+                <Text style={styles.marca}>Check-out Pro</Text>
+                <Text style={styles.marcaTag}>Gestão Inteligente</Text>
               </View>
-              <Text style={styles.marca}>Check-out Pro</Text>
-              <Text style={styles.marcaTag}>Gestão Inteligente</Text>
+            </View>
+
+            {/* Saudação (sobre o fundo, fora do cartão) */}
+            <View style={styles.intro}>
+              <Text style={styles.introTitulo}>Bem-vindo!</Text>
+              <Text style={styles.introSub}>Acesse sua conta para continuar.</Text>
             </View>
 
             {/* Cartão de acesso */}
@@ -221,23 +232,21 @@ export function LoginScreen(): React.ReactElement {
                     <Text style={styles.avatarTexto}>
                       {(nome.charAt(0) || 'U').toUpperCase()}
                     </Text>
+                    <View style={styles.avatarStatus} />
                   </View>
                   <View style={styles.boasVindasInfo}>
-                    <Text style={styles.boasVindasMini}>{saudacaoPorHora()},</Text>
                     <Text style={styles.boasVindasNome} numberOfLines={1}>
-                      {nome}
+                      {saudacaoPorHora()}, {nome}!
+                    </Text>
+                    <Text style={styles.boasVindasMini}>
+                      Digite sua senha para continuar.
                     </Text>
                   </View>
                   <Pressable onPress={trocarUsuario} hitSlop={8}>
                     <Text style={styles.trocar}>Trocar</Text>
                   </Pressable>
                 </View>
-              ) : (
-                <>
-                  <Text style={styles.titulo}>Bem-vindo!</Text>
-                  <Text style={styles.subtitulo}>Acesse sua conta para continuar.</Text>
-                </>
-              )}
+              ) : null}
 
               {/* Usuário */}
               {!lembrado && (
@@ -260,6 +269,16 @@ export function LoginScreen(): React.ReactElement {
                       returnKeyType="next"
                     />
                   </View>
+                  {login.length > 0 ? (
+                    <Pressable
+                      onPress={() => setLogin('')}
+                      hitSlop={10}
+                      style={styles.limpar}
+                      accessibilityLabel="Limpar usuário"
+                    >
+                      <X size={18} color={cores.textoSecundario} />
+                    </Pressable>
+                  ) : null}
                 </View>
               )}
 
@@ -327,32 +346,41 @@ export function LoginScreen(): React.ReactElement {
               </Pressable>
 
               {bioLogin ? (
-                <Pressable
-                  onPress={() => void aoEntrarBiometria()}
-                  disabled={bioEnviando}
-                  style={({ pressed }) => [
-                    styles.botaoBio,
-                    pressed && styles.botaoPressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Entrar com biometria"
-                >
-                  {bioEnviando ? (
-                    <ActivityIndicator color={cores.primaria} />
-                  ) : (
-                    <>
-                      <Fingerprint size={20} color={cores.primaria} />
-                      <Text style={styles.botaoBioTexto}>Entrar com biometria</Text>
-                    </>
-                  )}
-                </Pressable>
+                <>
+                  <Pressable
+                    onPress={() => void aoEntrarBiometria()}
+                    disabled={bioEnviando}
+                    style={({ pressed }) => [
+                      styles.botaoBio,
+                      pressed && styles.botaoPressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Entrar com biometria"
+                  >
+                    {bioEnviando ? (
+                      <ActivityIndicator color={cores.primaria} />
+                    ) : (
+                      <>
+                        <Fingerprint size={20} color={cores.primaria} />
+                        <Text style={styles.botaoBioTexto}>Entrar com biometria</Text>
+                      </>
+                    )}
+                  </Pressable>
+                  <Text style={styles.bioHint}>Disponível apenas no app</Text>
+                </>
               ) : null}
 
-              <View style={styles.seguro}>
-                <View style={styles.seguroLinha} />
-                <ShieldCheck size={15} color={cores.textoSecundario} />
-                <Text style={styles.seguroTexto}>Acesso seguro e exclusivo</Text>
-                <View style={styles.seguroLinha} />
+              {/* Selo de segurança */}
+              <View style={styles.seguroCard}>
+                <View style={styles.seguroIcone}>
+                  <ShieldCheck size={20} color={cores.primaria} />
+                </View>
+                <View style={styles.seguroInfo}>
+                  <Text style={styles.seguroTitulo}>Acesso seguro e exclusivo</Text>
+                  <Text style={styles.seguroDesc}>
+                    Seus dados protegidos com criptografia e tecnologia avançada.
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -383,27 +411,45 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
   },
 
-  // Marca
-  marcaBox: { alignItems: 'center', marginBottom: 22 },
-  marcaLogo: {
-    marginBottom: 8,
+  // Marca — logo + nome lado a lado
+  marcaRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 12,
+    marginBottom: 20,
   },
+  marcaTextos: { justifyContent: 'center' },
   marca: {
-    fontFamily: 'Inter_800ExtraBold',
-    fontSize: 26,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 27,
     fontWeight: '800',
     color: cores.textoInverso,
-    letterSpacing: -0.4,
+    letterSpacing: -0.6,
   },
   marcaTag: {
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
     fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.8)',
-    letterSpacing: 1,
-    marginTop: 2,
+    color: 'rgba(255,255,255,0.82)',
+    letterSpacing: 0.2,
+    marginTop: 1,
+  },
+
+  // Saudação sobre o fundo
+  intro: { alignItems: 'center', marginBottom: 22 },
+  introTitulo: {
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 30,
+    fontWeight: '800',
+    color: cores.textoInverso,
+    letterSpacing: -0.5,
+  },
+  introSub: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.82)',
+    marginTop: 4,
   },
 
   // Cartão
@@ -414,45 +460,49 @@ const styles = StyleSheet.create({
     ...sombra.cartao,
     shadowOpacity: 0.18,
   },
-  titulo: {
-    ...tipografia.titulo,
-    fontSize: 24,
-    color: cores.texto,
-  },
-  subtitulo: {
-    ...tipografia.corpo,
-    color: cores.textoSecundario,
-    marginTop: 2,
-    marginBottom: 18,
-  },
   boasVindasRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 18,
+    marginBottom: 20,
   },
   avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: cores.primariaClara,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: cores.primaria,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarTexto: {
-    fontFamily: 'Inter_800ExtraBold',
-    fontSize: 20,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 21,
     fontWeight: '800',
-    color: cores.primaria,
+    color: cores.textoInverso,
+  },
+  avatarStatus: {
+    position: 'absolute',
+    right: -1,
+    bottom: -1,
+    width: 15,
+    height: 15,
+    borderRadius: 8,
+    backgroundColor: cores.verde,
+    borderWidth: 2.5,
+    borderColor: cores.superficie,
   },
   boasVindasInfo: { flex: 1 },
   boasVindasMini: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
+    marginTop: 1,
   },
   boasVindasNome: {
-    ...tipografia.subtitulo,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 18,
+    fontWeight: '700',
     color: cores.texto,
+    letterSpacing: -0.2,
   },
   trocar: {
     ...tipografia.rotulo,
@@ -494,6 +544,7 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'web' ? 6 : 2,
   },
   olho: { padding: 6 },
+  limpar: { padding: 6 },
   erro: { ...tipografia.legenda, color: cores.vermelho, marginLeft: 4 },
   aviso: { ...tipografia.legenda, color: cores.amarelo, marginLeft: 4 },
   esqueciBox: { alignSelf: 'flex-end', marginVertical: 8 },
@@ -536,17 +587,43 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '800',
   },
-  seguro: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 16,
-  },
-  seguroLinha: { flex: 1, height: 1, backgroundColor: cores.divisor },
-  seguroTexto: {
+  bioHint: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  // Selo de segurança (card)
+  seguroCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: cores.primariaClara,
+    borderRadius: raio.md,
+    padding: 14,
+    marginTop: 18,
+  },
+  seguroIcone: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(15,76,129,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  seguroInfo: { flex: 1 },
+  seguroTitulo: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
+    fontWeight: '700',
+    color: cores.primariaEscura,
+  },
+  seguroDesc: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    color: cores.textoSecundario,
+    marginTop: 2,
+    lineHeight: 17,
   },
 
   // Rodapé
@@ -562,6 +639,35 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
+  },
+
+  // Formas decorativas do fundo (estética SaaS)
+  blobTopo: {
+    position: 'absolute',
+    top: -120,
+    right: -90,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  blobLado: {
+    position: 'absolute',
+    top: 90,
+    left: -110,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  blobBaixo: {
+    position: 'absolute',
+    bottom: -100,
+    right: -70,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(10,37,64,0.35)',
   },
 });
 
