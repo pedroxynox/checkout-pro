@@ -196,9 +196,15 @@ model RegistroArrecadacao {
   quantidade    Int?
   autorizadoPor String?
   motivo        String?
+  // Vínculo canônico (Cadastro Unificado de Colaboradores). Nullable durante a
+  // transição; resolvido por identificador na importação. `nome`/`matricula`
+  // brutos seguem guardados para auditoria.
+  colaboradorId   String?
+  autorizadoPorId String?
   criadoEm      DateTime @default(now())
 
   @@index([tipo, data])
+  @@index([colaboradorId])
   @@map("registros_arrecadacao")
 }
 
@@ -352,6 +358,7 @@ model Requisicao {
 model RegistroPontoFiscal {
   id       String       @id @default(uuid())
   fiscalId String
+  colaboradorId String?
   status   StatusFiscal
   data     DateTime
   em       DateTime     @default(now())
@@ -359,12 +366,14 @@ model RegistroPontoFiscal {
   fiscal Fiscal @relation(fields: [fiscalId], references: [id])
 
   @@index([fiscalId, data])
+  @@index([colaboradorId])
   @@map("registros_ponto_fiscal")
 }
 
 model EscalaEntry {
   id            String  @id @default(uuid())
   funcionarioId String
+  colaboradorId String?
   diaSemana     Int
   entrada       String?
   saida         String?
@@ -373,6 +382,7 @@ model EscalaEntry {
   especial      Boolean @default(false)
 
   @@index([funcionarioId, diaSemana])
+  @@index([colaboradorId])
   @@map("escala_entries")
 }
 
@@ -420,9 +430,11 @@ model Checklist {
 model Ausencia {
   id       String   @id @default(uuid())
   pessoaId String
+  colaboradorId String?
   data     DateTime
 
   @@unique([pessoaId, data])
+  @@index([colaboradorId])
   @@map("ausencias")
 }
 
@@ -520,4 +532,73 @@ model MetaIndicador {
   atualizadoPor String?
 
   @@map("metas_indicador")
+}
+
+
+// --------------------- Cadastro Unificado de Colaboradores -----------------
+// Pessoa canônica da operação (operador/fiscal/gestor). A `matricula` é o
+// registro único; os identificadores mapeiam os códigos dos arquivos (login e
+// matrícula) para o mesmo colaborador, permitindo resolver os movimentos sem
+// depender de comparar nomes. Construído de forma aditiva: durante a transição
+// convive com Operador/OperadorTurno/Fiscal (que seguem alimentando as telas).
+
+enum FuncaoColaborador {
+  OPERADOR
+  FISCAL
+  SUPERVISOR
+  GESTOR
+}
+
+enum TurnoColaborador {
+  ABERTURA
+  INTERMEDIARIO
+  FECHAMENTO
+  APOIO
+}
+
+enum TipoIdentificador {
+  MATRICULA
+  LOGIN
+}
+
+model Colaborador {
+  id        String            @id @default(uuid())
+  matricula String            @unique
+  nome      String
+  funcao    FuncaoColaborador
+  genero    String?
+  ativo     Boolean           @default(true)
+
+  // Escala (apenas operadores normalmente). Opcional para não obrigar fiscais.
+  turno          TurnoColaborador?
+  entradaSemana  String?
+  saidaSemana    String?
+  entradaFds     String?
+  saidaFds       String?
+  folgaDiaSemana Int?
+
+  // Login do app (apenas fiscais/gestores). Escalar (sem relação rígida),
+  // seguindo o padrão de IDs do schema.
+  usuarioId String? @unique
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @default(now()) @updatedAt
+
+  identificadores ColaboradorIdentificador[]
+
+  @@map("colaboradores")
+}
+
+model ColaboradorIdentificador {
+  id            String            @id @default(uuid())
+  colaboradorId String
+  tipo          TipoIdentificador
+  // Valor normalizado (login minúsculo / matrícula sem espaços).
+  valor         String
+
+  colaborador Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+
+  @@unique([tipo, valor])
+  @@index([colaboradorId])
+  @@map("colaborador_identificadores")
 }
