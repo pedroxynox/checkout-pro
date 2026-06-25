@@ -24,6 +24,7 @@ import {
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -34,9 +35,10 @@ import {
   TextStyle,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { ApiError } from '../api/client';
@@ -58,6 +60,12 @@ const SEM_CONTORNO_WEB =
   Platform.OS === 'web'
     ? ({ outlineStyle: 'none', outlineWidth: 0 } as unknown as TextStyle)
     : undefined;
+
+// Altura da faixa azul do topo (metade azul / metade branca, com onda suave).
+// Responsiva: ~36% da tela, com limites para telas pequenas/grandes.
+const ALTURA_TELA = Dimensions.get('window').height;
+const ALTURA_TOPO = Math.min(Math.max(Math.round(ALTURA_TELA * 0.36), 280), 380);
+const ALTURA_ONDA = 80;
 
 /** Saudação conforme o horário do dispositivo. */
 function saudacaoPorHora(): string {
@@ -88,6 +96,8 @@ export function LoginScreen(): React.ReactElement {
   const [bioLogin, setBioLogin] = useState<string | null>(null);
   const [bioEnviando, setBioEnviando] = useState(false);
   const senhaRef = useRef<TextInput>(null);
+
+  const insets = useSafeAreaInsets();
 
   const versao = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -188,43 +198,62 @@ export function LoginScreen(): React.ReactElement {
   const nome = lembrado ? primeiroNomeDoLogin(login) : '';
 
   return (
-    <LinearGradient
-      colors={gradientes.header}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.fundo}
-    >
+    <View style={styles.fundo}>
       <StatusBar style="light" />
-      {/* Formas decorativas suaves do fundo (estilo SaaS) — apenas estética. */}
-      <View pointerEvents="none" style={styles.blobTopo} />
-      <View pointerEvents="none" style={styles.blobLado} />
-      <View pointerEvents="none" style={styles.blobBaixo} />
-      <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.flex}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.flex}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Marca — logo + nome lado a lado */}
-            <View style={styles.marcaRow}>
-              <LogoPulseC size={52} cor={cores.textoInverso} />
-              <View style={styles.marcaTextos}>
-                <Text style={styles.marca}>Check-out Pro</Text>
-                <Text style={styles.marcaTag}>Gestão Inteligente</Text>
+          {/* Topo azul com onda suave (metade azul / metade branca) */}
+          <View style={[styles.topoWrap, { paddingTop: insets.top + 20 }]}>
+            <LinearGradient
+              colors={gradientes.header}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            {/* Formas decorativas suaves (apenas estética) */}
+            <View pointerEvents="none" style={styles.blobTopo} />
+            <View pointerEvents="none" style={styles.blobLado} />
+
+            {/* Conteúdo sobre o azul */}
+            <View style={styles.topoConteudo}>
+              <View style={styles.marcaRow}>
+                <LogoPulseC size={52} cor={cores.textoInverso} />
+                <View style={styles.marcaTextos}>
+                  <Text style={styles.marca}>Check-out Pro</Text>
+                  <Text style={styles.marcaTag}>Gestão Inteligente</Text>
+                </View>
+              </View>
+
+              <View style={styles.intro}>
+                <Text style={styles.introTitulo}>Bem-vindo!</Text>
+                <Text style={styles.introSub}>Acesse sua conta para continuar.</Text>
               </View>
             </View>
 
-            {/* Saudação (sobre o fundo, fora do cartão) */}
-            <View style={styles.intro}>
-              <Text style={styles.introTitulo}>Bem-vindo!</Text>
-              <Text style={styles.introSub}>Acesse sua conta para continuar.</Text>
-            </View>
+            {/* Onda que recorta o azul deixando o fundo branco abaixo */}
+            <Svg
+              style={styles.onda}
+              width="100%"
+              height={ALTURA_ONDA}
+              viewBox="0 0 1440 80"
+              preserveAspectRatio="none"
+            >
+              <Path
+                d="M0,30 C 360,72 1080,72 1440,30 L1440,80 L0,80 Z"
+                fill={cores.fundo}
+              />
+            </Svg>
+          </View>
 
-            {/* Cartão de acesso */}
+          {/* Corpo branco com o cartão de acesso */}
+          <View style={styles.corpo}>
             <View style={styles.card}>
               {lembrado ? (
                 <View style={styles.boasVindasRow}>
@@ -385,30 +414,50 @@ export function LoginScreen(): React.ReactElement {
             </View>
 
             {/* Rodapé */}
-            <View style={styles.rodape}>
+            <View style={[styles.rodape, { marginBottom: insets.bottom + 8 }]}>
               <View style={styles.cluby}>
-                <Sparkles size={13} color="rgba(255,255,255,0.85)" />
+                <Sparkles size={13} color={cores.primaria} />
                 <Text style={styles.clubyTexto}>Potenciado pela Cluby</Text>
               </View>
               <Text style={styles.creditos}>
                 Check-out Pro · Versão {versao} · 2026
               </Text>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </LinearGradient>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fundo: { flex: 1 },
+  fundo: { flex: 1, backgroundColor: cores.fundo },
   flex: { flex: 1 },
-  scroll: {
-    flexGrow: 1,
+  scroll: { flexGrow: 1 },
+
+  // Faixa azul do topo + onda
+  topoWrap: {
+    height: ALTURA_TOPO,
+    overflow: 'hidden',
+  },
+  topoConteudo: {
+    flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 30,
+  },
+  onda: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -1,
+  },
+
+  // Corpo branco (cartão + rodapé)
+  corpo: {
     paddingHorizontal: 22,
-    paddingVertical: 24,
+    marginTop: -28,
   },
 
   // Marca — logo + nome lado a lado
@@ -632,16 +681,16 @@ const styles = StyleSheet.create({
   clubyTexto: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 12,
-    color: 'rgba(255,255,255,0.85)',
+    color: cores.textoSecundario,
   },
   creditos: {
     fontFamily: 'Inter_400Regular',
     fontSize: 11,
-    color: 'rgba(255,255,255,0.6)',
+    color: '#9CA3AF',
     textAlign: 'center',
   },
 
-  // Formas decorativas do fundo (estética SaaS)
+  // Formas decorativas (dentro da faixa azul)
   blobTopo: {
     position: 'absolute',
     top: -120,
@@ -649,25 +698,16 @@ const styles = StyleSheet.create({
     width: 280,
     height: 280,
     borderRadius: 140,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
   },
   blobLado: {
     position: 'absolute',
-    top: 90,
+    top: 30,
     left: -110,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  blobBaixo: {
-    position: 'absolute',
-    bottom: -100,
-    right: -70,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(10,37,64,0.35)',
   },
 });
 
