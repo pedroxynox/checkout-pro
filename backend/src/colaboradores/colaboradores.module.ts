@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ColaboradoresController } from './colaboradores.controller';
 import { ColaboradoresService } from './colaboradores.service';
+import { PerfilColaboradorService } from './perfil-colaborador.service';
 
 /**
  * Cadastro Unificado de Colaboradores: pessoa canônica (matrícula como
@@ -10,7 +11,7 @@ import { ColaboradoresService } from './colaboradores.service';
  * O `PrismaService` é provido globalmente pelo `PrismaModule`.
  */
 @Module({
-  providers: [ColaboradoresService],
+  providers: [ColaboradoresService, PerfilColaboradorService],
   controllers: [ColaboradoresController],
   exports: [ColaboradoresService],
 })
