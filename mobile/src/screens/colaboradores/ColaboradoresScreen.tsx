@@ -1,76 +1,52 @@
 /**
- * Seção "Colaboradores" — cadastro unificado de pessoas (operadores e fiscais).
+ * Seção "Colaboradores" (somente leitura).
  *
- * Lista todos os colaboradores (busca por nome/matrícula), permite cadastrar um
- * a um (matrícula, login, turno, horários, folga) e editar/inativar. Cada item
- * abre o formulário de edição. (O perfil completo com movimentos vem após a
- * fase do parser/vínculo da arrecadação.)
- *
- * Apenas gestor (funcionalidade OPERADORES_CRUD). Não altera as telas atuais.
+ * Lista todos os colaboradores (busca por nome/matrícula). Tocar num item abre
+ * o PERFIL do colaborador. O cadastro/edição NÃO acontece aqui — fica no
+ * "Centro de Controle ▸ Colaboradores" (apenas gestor).
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ApiError } from '../../api/client';
 import { colaboradoresService } from '../../api/services';
 import { Colaborador, FuncaoColaborador, TurnoColaborador } from '../../api/types';
 import {
-  Botao,
-  CampoTexto,
   Carregando,
-  Cartao,
+  CampoTexto,
   EstadoVazio,
   MensagemErro,
   Tela,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
+import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { confirmar, notificar } from '../../utils/dialogos';
 
-const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const FUNCOES: Record<FuncaoColaborador, string> = {
+  OPERADOR: 'Operador',
+  FISCAL: 'Fiscal',
+  SUPERVISOR: 'Supervisor',
+  GESTOR: 'Gestor',
+};
 
-const FUNCOES: { v: FuncaoColaborador; r: string }[] = [
-  { v: 'OPERADOR', r: 'Operador' },
-  { v: 'FISCAL', r: 'Fiscal' },
-  { v: 'SUPERVISOR', r: 'Supervisor' },
-];
+const TURNOS: Record<TurnoColaborador, string> = {
+  ABERTURA: 'Abertura',
+  INTERMEDIARIO: 'Intermediário',
+  FECHAMENTO: 'Fechamento',
+  APOIO: 'Apoio',
+};
 
-const TURNOS: { v: TurnoColaborador; r: string }[] = [
-  { v: 'ABERTURA', r: 'Abertura' },
-  { v: 'INTERMEDIARIO', r: 'Intermediário' },
-  { v: 'FECHAMENTO', r: 'Fechamento' },
-  { v: 'APOIO', r: 'Apoio' },
-];
-
-const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-function rotuloFuncao(f: FuncaoColaborador): string {
-  return FUNCOES.find((x) => x.v === f)?.r ?? f;
-}
 function rotuloTurno(t: TurnoColaborador | null): string {
-  return t ? TURNOS.find((x) => x.v === t)?.r ?? t : '—';
+  return t ? TURNOS[t] : '—';
 }
 
-export function ColaboradoresScreen(): React.ReactElement {
-  const lista = useRequisicao<Colaborador[]>(() => colaboradoresService.listar(), []);
-
+export function ColaboradoresScreen({
+  navigation,
+}: PropsTela<'Colaboradores'>): React.ReactElement {
+  const lista = useRequisicao<Colaborador[]>(
+    () => colaboradoresService.listar(),
+    [],
+  );
   const [busca, setBusca] = useState('');
-  const [formAberto, setFormAberto] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [salvando, setSalvando] = useState(false);
-
-  // Campos do formulário.
-  const [nome, setNome] = useState('');
-  const [matricula, setMatricula] = useState('');
-  const [login, setLogin] = useState('');
-  const [funcao, setFuncao] = useState<FuncaoColaborador>('OPERADOR');
-  const [genero, setGenero] = useState<'M' | 'F'>('F');
-  const [turno, setTurno] = useState<TurnoColaborador | null>(null);
-  const [entSem, setEntSem] = useState('');
-  const [saiSem, setSaiSem] = useState('');
-  const [entFds, setEntFds] = useState('');
-  const [saiFds, setSaiFds] = useState('');
-  const [folga, setFolga] = useState<number | null>(null);
 
   const filtrados = useMemo(() => {
     const dados = lista.dados ?? [];
@@ -83,221 +59,15 @@ export function ColaboradoresScreen(): React.ReactElement {
     );
   }, [lista.dados, busca]);
 
-  const limparForm = () => {
-    setEditId(null);
-    setNome('');
-    setMatricula('');
-    setLogin('');
-    setFuncao('OPERADOR');
-    setGenero('F');
-    setTurno(null);
-    setEntSem('');
-    setSaiSem('');
-    setEntFds('');
-    setSaiFds('');
-    setFolga(null);
-  };
-
-  const abrirNovo = () => {
-    limparForm();
-    setFormAberto(true);
-  };
-
-  const abrirEditar = (c: Colaborador) => {
-    setEditId(c.id);
-    setNome(c.nome);
-    setMatricula(c.matricula);
-    setLogin('');
-    setFuncao(c.funcao);
-    setGenero(c.genero === 'M' ? 'M' : 'F');
-    setTurno(c.turno);
-    setEntSem(c.entradaSemana ?? '');
-    setSaiSem(c.saidaSemana ?? '');
-    setEntFds(c.entradaFds ?? '');
-    setSaiFds(c.saidaFds ?? '');
-    setFolga(c.folgaDiaSemana);
-    setFormAberto(true);
-  };
-
-  const salvar = async () => {
-    if (!nome.trim()) {
-      notificar('Nome obrigatório', 'Informe o nome do colaborador.');
-      return;
-    }
-    if (!matricula.trim()) {
-      notificar('Matrícula obrigatória', 'Informe a matrícula (registro).');
-      return;
-    }
-    for (const [rotulo, valor] of [
-      ['Entrada Seg–Qui', entSem],
-      ['Saída Seg–Qui', saiSem],
-      ['Entrada Sex–Sáb', entFds],
-      ['Saída Sex–Sáb', saiFds],
-    ] as const) {
-      if (valor.trim() && !HHMM.test(valor.trim())) {
-        notificar('Horário inválido', `${rotulo} deve ser HH:mm (ex.: 08:00).`);
-        return;
-      }
-    }
-
-    const input = {
-      nome: nome.trim(),
-      matricula: matricula.trim(),
-      login: login.trim() || undefined,
-      funcao,
-      genero,
-      turno: turno ?? undefined,
-      entradaSemana: entSem.trim() || undefined,
-      saidaSemana: saiSem.trim() || undefined,
-      entradaFds: entFds.trim() || undefined,
-      saidaFds: saiFds.trim() || undefined,
-      folgaDiaSemana: folga ?? undefined,
-    };
-
-    setSalvando(true);
-    try {
-      if (editId) {
-        await colaboradoresService.editar(editId, input);
-        notificar('Salvo', 'Colaborador atualizado.');
-      } else {
-        await colaboradoresService.cadastrar(input);
-        notificar('Cadastrado', 'Colaborador adicionado.');
-      }
-      setFormAberto(false);
-      limparForm();
-      lista.recarregar();
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
-    } finally {
-      setSalvando(false);
-    }
-  };
-
-  const alternarAtivo = async (c: Colaborador) => {
-    const ok = await confirmar(
-      c.ativo ? 'Inativar colaborador' : 'Reativar colaborador',
-      c.ativo
-        ? `Inativar ${c.nome}? O histórico é preservado.`
-        : `Reativar ${c.nome}?`,
-      c.ativo ? 'Inativar' : 'Reativar',
-    );
-    if (!ok) return;
-    try {
-      if (c.ativo) await colaboradoresService.inativar(c.id);
-      else await colaboradoresService.reativar(c.id);
-      lista.recarregar();
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha na operação.');
-    }
-  };
-
   return (
     <Tela aoAtualizar={lista.recarregar} atualizando={lista.atualizando}>
-      {/* Formulário de cadastro/edição */}
-      {formAberto ? (
-        <Cartao titulo={editId ? 'Editar colaborador' : 'Novo colaborador'}>
-          <CampoTexto rotulo="Nome" value={nome} onChangeText={setNome} placeholder="Nome completo" />
-          <View style={styles.linha}>
-            <CampoTexto
-              rotulo="Matrícula"
-              value={matricula}
-              onChangeText={setMatricula}
-              placeholder="Ex.: 232152"
-              style={styles.metade}
-            />
-            <CampoTexto
-              rotulo="Login / código"
-              value={login}
-              onChangeText={setLogin}
-              placeholder="Ex.: ana.souza"
-              style={styles.metade}
-            />
-          </View>
+      <CampoTexto
+        rotulo="Buscar"
+        value={busca}
+        onChangeText={setBusca}
+        placeholder="Nome ou matrícula"
+      />
 
-          <Text style={styles.rotulo}>Função</Text>
-          <View style={styles.chips}>
-            {FUNCOES.map((f) => (
-              <Text
-                key={f.v}
-                onPress={() => setFuncao(f.v)}
-                style={[styles.chip, funcao === f.v && styles.chipAtivo]}
-              >
-                {f.r}
-              </Text>
-            ))}
-          </View>
-
-          <Text style={styles.rotulo}>Gênero (avatar)</Text>
-          <View style={styles.chips}>
-            {(['F', 'M'] as const).map((g) => (
-              <Text
-                key={g}
-                onPress={() => setGenero(g)}
-                style={[styles.chip, genero === g && styles.chipAtivo]}
-              >
-                {g === 'F' ? 'Mulher' : 'Homem'}
-              </Text>
-            ))}
-          </View>
-
-          <Text style={styles.rotulo}>Turno</Text>
-          <View style={styles.chips}>
-            {TURNOS.map((t) => (
-              <Text
-                key={t.v}
-                onPress={() => setTurno(turno === t.v ? null : t.v)}
-                style={[styles.chip, turno === t.v && styles.chipAtivo]}
-              >
-                {t.r}
-              </Text>
-            ))}
-          </View>
-
-          <View style={styles.linha}>
-            <CampoTexto rotulo="Entrada Seg–Qui" value={entSem} onChangeText={setEntSem} placeholder="08:00" style={styles.metade} />
-            <CampoTexto rotulo="Saída Seg–Qui" value={saiSem} onChangeText={setSaiSem} placeholder="17:00" style={styles.metade} />
-          </View>
-          <View style={styles.linha}>
-            <CampoTexto rotulo="Entrada Sex–Sáb" value={entFds} onChangeText={setEntFds} placeholder="09:00" style={styles.metade} />
-            <CampoTexto rotulo="Saída Sex–Sáb" value={saiFds} onChangeText={setSaiFds} placeholder="18:00" style={styles.metade} />
-          </View>
-
-          <Text style={styles.rotulo}>Dia de folga</Text>
-          <View style={styles.chips}>
-            {[1, 2, 3, 4, 5, 6, 0].map((d) => (
-              <Text
-                key={d}
-                onPress={() => setFolga(folga === d ? null : d)}
-                style={[styles.chip, folga === d && styles.chipAtivo]}
-              >
-                {NOMES_DIA[d]}
-              </Text>
-            ))}
-          </View>
-
-          <Botao titulo="Salvar" aoPressionar={salvar} carregando={salvando} />
-          <Botao
-            titulo="Cancelar"
-            variante="texto"
-            aoPressionar={() => {
-              setFormAberto(false);
-              limparForm();
-            }}
-          />
-        </Cartao>
-      ) : (
-        <>
-          <CampoTexto
-            rotulo="Buscar"
-            value={busca}
-            onChangeText={setBusca}
-            placeholder="Nome ou matrícula"
-          />
-          <Botao titulo="Adicionar colaborador" variante="secundario" aoPressionar={abrirNovo} />
-        </>
-      )}
-
-      {/* Lista */}
       {lista.carregando ? (
         <Carregando />
       ) : lista.erro ? (
@@ -306,15 +76,16 @@ export function ColaboradoresScreen(): React.ReactElement {
         <EstadoVazio
           icone="people-outline"
           titulo="Sem colaboradores"
-          descricao="Cadastre operadores e fiscais para vê-los aqui."
+          descricao="Os colaboradores cadastrados aparecerão aqui."
         />
       ) : (
-        !formAberto &&
         filtrados.map((c) => (
           <TouchableOpacity
             key={c.id}
             activeOpacity={0.7}
-            onPress={() => abrirEditar(c)}
+            onPress={() =>
+              navigation.navigate('PerfilColaborador', { colaboradorId: c.id })
+            }
             style={[styles.item, !c.ativo && styles.itemInativo]}
           >
             <View style={[styles.avatar, { backgroundColor: cores.primariaClara }]}>
@@ -330,20 +101,10 @@ export function ColaboradoresScreen(): React.ReactElement {
                 {!c.ativo ? ' (inativo)' : ''}
               </Text>
               <Text style={styles.itemMeta} numberOfLines={1}>
-                Mat. {c.matricula} · {rotuloFuncao(c.funcao)} · {rotuloTurno(c.turno)}
+                Mat. {c.matricula} · {FUNCOES[c.funcao]} · {rotuloTurno(c.turno)}
               </Text>
             </View>
-            <TouchableOpacity
-              onPress={() => void alternarAtivo(c)}
-              hitSlop={10}
-              style={styles.acao}
-            >
-              <Ionicons
-                name={c.ativo ? 'pause-circle-outline' : 'play-circle-outline'}
-                size={22}
-                color={c.ativo ? cores.textoSecundario : cores.verde}
-              />
-            </TouchableOpacity>
+            <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />
           </TouchableOpacity>
         ))
       )}
@@ -352,30 +113,6 @@ export function ColaboradoresScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  linha: { flexDirection: 'row', gap: espacamento.sm },
-  metade: { flex: 1 },
-  rotulo: {
-    ...tipografia.rotulo,
-    color: cores.textoSecundario,
-    marginTop: espacamento.sm,
-    marginBottom: espacamento.xs,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: espacamento.xs,
-    marginBottom: espacamento.sm,
-  },
-  chip: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    paddingVertical: espacamento.xs,
-    paddingHorizontal: espacamento.sm,
-    borderRadius: raio.pill,
-    backgroundColor: cores.divisor,
-    overflow: 'hidden',
-  },
-  chipAtivo: { backgroundColor: cores.primaria, color: cores.textoInverso },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -397,7 +134,6 @@ const styles = StyleSheet.create({
   itemInfo: { flex: 1, paddingHorizontal: espacamento.sm },
   itemNome: { ...tipografia.corpo, fontWeight: '600', color: cores.texto },
   itemMeta: { ...tipografia.legenda, color: cores.textoSecundario, marginTop: 1 },
-  acao: { padding: 4 },
 });
 
 export default ColaboradoresScreen;
