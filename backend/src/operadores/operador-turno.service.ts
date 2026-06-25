@@ -1,6 +1,6 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { OperadorTurno } from '@prisma/client';
+import { Colaborador, OperadorTurno } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import {
@@ -172,6 +172,27 @@ function iso(data: Date): string {
 }
 
 /**
+ * Adapta um Colaborador (Cadastro Unificado) ao formato OperadorTurno que o
+ * quadro/escala consome. A escala passa a vir dos colaboradores cadastrados;
+ * o OperadorTurno antigo fica OCULTO (não é mais lido aqui). Horários ausentes
+ * viram "" e a folga ausente vira -1 (nunca casa um dia da semana).
+ */
+function comoOperadorTurno(c: Colaborador): OperadorTurno {
+  return {
+    id: c.id,
+    nome: c.nome,
+    genero: c.genero,
+    entradaSemana: c.entradaSemana ?? '',
+    saidaSemana: c.saidaSemana ?? '',
+    entradaFds: c.entradaFds ?? '',
+    saidaFds: c.saidaFds ?? '',
+    folgaDiaSemana: c.folgaDiaSemana ?? -1,
+    ativo: c.ativo,
+    criadoEm: c.criadoEm,
+  };
+}
+
+/**
  * Quadro de Operadores: turno fixo (horário Seg–Qui x Sex–Sáb) e folga fixa por
  * operador. Monta a grade semanal visual (trabalha/folga/falta) cruzando com as
  * ausências pontuais (`Ausencia`, pessoaId = id do OperadorTurno) e calcula a
@@ -186,16 +207,20 @@ export class OperadorTurnoService {
     @Optional() private readonly notificacoes?: NotificacoesService,
   ) {}
 
-  /** Lista os operadores ativos, ordenados por folga e horário. */
-  listar(): Promise<OperadorTurno[]> {
-    return this.prisma.operadorTurno.findMany({
-      where: { ativo: true },
+  /**
+   * Lista os operadores ATIVOS para a escala. Fonte: Cadastro Unificado de
+   * Colaboradores (funcao OPERADOR). O OperadorTurno antigo fica oculto.
+   */
+  async listar(): Promise<OperadorTurno[]> {
+    const cols = await this.prisma.colaborador.findMany({
+      where: { funcao: 'OPERADOR', ativo: true },
       orderBy: [
         { folgaDiaSemana: 'asc' },
         { entradaSemana: 'asc' },
         { nome: 'asc' },
       ],
     });
+    return cols.map((c) => comoOperadorTurno(c));
   }
 
   /** Cria ou atualiza (por nome) um operador. */
@@ -464,9 +489,16 @@ export class OperadorTurnoService {
    * por dia da semana (qual dia mais se falta). Resolve nomes dos operadores.
    */
   async analiticaFaltas(inicio: Date, fim: Date): Promise<AnaliticaFaltas> {
-    const operadores = await this.prisma.operadorTurno.findMany({
-      select: { id: true, nome: true, folgaDiaSemana: true },
-    });
+    const operadores = (
+      await this.prisma.colaborador.findMany({
+        where: { funcao: 'OPERADOR' },
+        select: { id: true, nome: true, folgaDiaSemana: true },
+      })
+    ).map((o) => ({
+      id: o.id,
+      nome: o.nome,
+      folgaDiaSemana: o.folgaDiaSemana ?? -1,
+    }));
     const ids = operadores.map((o) => o.id);
     if (ids.length === 0) {
       return {

@@ -24,8 +24,6 @@ import {
 import { useAuth } from '../../auth/AuthContext';
 import {
   Aviso,
-  Botao,
-  CampoTexto,
   Carregando,
   Cartao,
   EstadoVazio,
@@ -38,7 +36,6 @@ import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, hojeISO } from '../../utils/formato';
 
-const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const NOMES_DIA_LONGO = [
   'Domingo',
   'Segunda',
@@ -280,7 +277,6 @@ function FaltaOperadorRow({ o }: { o: FaltasPorOperador }): React.ReactElement {
 
 export function OperadoresScreen(): React.ReactElement {
   const { podeAcessar, perfil } = useAuth();
-  const podeGerenciar = podeAcessar('OPERADORES_CRUD');
   const podeProgramarFuturo = perfil
     ? ['GERENTE', 'GERENTE_DESENVOLVEDOR', 'SUPERVISOR'].includes(perfil)
     : false;
@@ -319,17 +315,6 @@ export function OperadoresScreen(): React.ReactElement {
   );
 
   const [ocupado, setOcupado] = useState(false);
-
-  // Formulário de novo/atualizar operador (gestor).
-  const [novoAberto, setNovoAberto] = useState(false);
-  const [nome, setNome] = useState('');
-  const [entSem, setEntSem] = useState('');
-  const [saiSem, setSaiSem] = useState('');
-  const [entFds, setEntFds] = useState('');
-  const [saiFds, setSaiFds] = useState('');
-  const [folga, setFolga] = useState(1);
-  const [genero, setGenero] = useState<'M' | 'F'>('F');
-  const [salvando, setSalvando] = useState(false);
 
   const recarregarTudo = () => {
     dia.recarregar();
@@ -395,51 +380,6 @@ export function OperadoresScreen(): React.ReactElement {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao marcar falta.');
     } finally {
       setOcupado(false);
-    }
-  };
-
-  const salvarOperador = async () => {
-    const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/;
-    if (!nome.trim()) {
-      notificar('Nome obrigatório', 'Informe o nome do operador.');
-      return;
-    }
-    for (const [rotulo, valor] of [
-      ['Entrada Seg–Qui', entSem],
-      ['Saída Seg–Qui', saiSem],
-      ['Entrada Sex–Sáb', entFds],
-      ['Saída Sex–Sáb', saiFds],
-    ] as const) {
-      if (!hhmm.test(valor.trim())) {
-        notificar('Horário inválido', `${rotulo} deve ser HH:mm (ex.: 08:00).`);
-        return;
-      }
-    }
-    setSalvando(true);
-    try {
-      await operadoresService.salvarTurno({
-        nome: nome.trim(),
-        genero,
-        entradaSemana: entSem.trim(),
-        saidaSemana: saiSem.trim(),
-        entradaFds: entFds.trim(),
-        saidaFds: saiFds.trim(),
-        folgaDiaSemana: folga,
-      });
-      setNome('');
-      setEntSem('');
-      setSaiSem('');
-      setEntFds('');
-      setSaiFds('');
-      setFolga(1);
-      setGenero('F');
-      setNovoAberto(false);
-      dia.recarregar();
-      notificar('Salvo', 'Operador adicionado/atualizado no quadro.');
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
-    } finally {
-      setSalvando(false);
     }
   };
 
@@ -646,93 +586,6 @@ export function OperadoresScreen(): React.ReactElement {
               <Text style={styles.faltasRodape}>
                 🔴 alto · 🟡 médio · 🟢 baixo risco — por taxa, padrão e tendência.
               </Text>
-            </Cartao>
-          ) : null}
-
-          {/* Gestão: adicionar/atualizar operador */}
-          {podeGerenciar ? (
-            <Cartao titulo="Adicionar / atualizar operador">
-              {novoAberto ? (
-                <>
-                  <CampoTexto
-                    rotulo="Nome"
-                    value={nome}
-                    onChangeText={setNome}
-                    placeholder="Nome do operador"
-                  />
-                  <Text style={styles.rotuloFolga}>Gênero (avatar)</Text>
-                  <View style={styles.chipsFolga}>
-                    {(['F', 'M'] as const).map((g) => (
-                      <Text
-                        key={g}
-                        onPress={() => setGenero(g)}
-                        style={[styles.chipFolga, genero === g && styles.chipFolgaAtivo]}
-                      >
-                        {g === 'F' ? 'Mulher' : 'Homem'}
-                      </Text>
-                    ))}
-                  </View>
-                  <View style={styles.linhaHorarios}>
-                    <CampoTexto
-                      rotulo="Entrada Seg–Qui"
-                      value={entSem}
-                      onChangeText={setEntSem}
-                      placeholder="08:00"
-                      style={styles.horarioInput}
-                    />
-                    <CampoTexto
-                      rotulo="Saída Seg–Qui"
-                      value={saiSem}
-                      onChangeText={setSaiSem}
-                      placeholder="17:00"
-                      style={styles.horarioInput}
-                    />
-                  </View>
-                  <View style={styles.linhaHorarios}>
-                    <CampoTexto
-                      rotulo="Entrada Sex–Sáb"
-                      value={entFds}
-                      onChangeText={setEntFds}
-                      placeholder="08:00"
-                      style={styles.horarioInput}
-                    />
-                    <CampoTexto
-                      rotulo="Saída Sex–Sáb"
-                      value={saiFds}
-                      onChangeText={setSaiFds}
-                      placeholder="18:00"
-                      style={styles.horarioInput}
-                    />
-                  </View>
-                  <Text style={styles.rotuloFolga}>Dia de folga</Text>
-                  <View style={styles.chipsFolga}>
-                    {[1, 2, 3, 4, 5, 6, 0].map((d) => {
-                      const ativo = d === folga;
-                      return (
-                        <Text
-                          key={d}
-                          onPress={() => setFolga(d)}
-                          style={[styles.chipFolga, ativo && styles.chipFolgaAtivo]}
-                        >
-                          {NOMES_DIA[d]}
-                        </Text>
-                      );
-                    })}
-                  </View>
-                  <Botao titulo="Salvar" aoPressionar={salvarOperador} carregando={salvando} />
-                  <Botao
-                    titulo="Cancelar"
-                    variante="texto"
-                    aoPressionar={() => setNovoAberto(false)}
-                  />
-                </>
-              ) : (
-                <Botao
-                  titulo="Adicionar operador"
-                  variante="secundario"
-                  aoPressionar={() => setNovoAberto(true)}
-                />
-              )}
             </Cartao>
           ) : null}
         </>
