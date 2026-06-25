@@ -29,6 +29,7 @@ export interface Area {
     | 'Checklist'
     | 'Operadores'
     | 'Colaboradores'
+    | 'CentroControle'
     | 'Usuarios'
     | 'AlertasFila'
     | 'Normativas'
@@ -115,8 +116,15 @@ export const AREAS: Area[] = [
   {
     rota: 'Colaboradores',
     titulo: 'Colaboradores',
-    descricao: 'Cadastro de operadores e fiscais; perfil de cada um',
+    descricao: 'Perfil de cada operador e fiscal',
     icone: 'id-card-outline',
+    funcionalidade: 'OPERADORES_AUSENCIAS',
+  },
+  {
+    rota: 'CentroControle',
+    titulo: 'Centro de Controle',
+    descricao: 'Gestão: cadastro de colaboradores e configurações',
+    icone: 'options-outline',
     funcionalidade: 'OPERADORES_CRUD',
   },
   {

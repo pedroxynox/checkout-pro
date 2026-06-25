@@ -25,6 +25,9 @@ import { JornadaFiscaisScreen } from '../screens/fiscais/JornadaFiscaisScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
 import { OperadoresScreen } from '../screens/operadores/OperadoresScreen';
 import { ColaboradoresScreen } from '../screens/colaboradores/ColaboradoresScreen';
+import { GestaoColaboradoresScreen } from '../screens/colaboradores/GestaoColaboradoresScreen';
+import { PerfilColaboradorScreen } from '../screens/colaboradores/PerfilColaboradorScreen';
+import { CentroControleScreen } from '../screens/centroControle/CentroControleScreen';
 import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
 import { AlertasFilaScreen } from '../screens/alertasFila/AlertasFilaScreen';
 import { NormativasScreen } from '../screens/normativas/NormativasScreen';
@@ -146,12 +149,33 @@ export function AppNavigator(): React.ReactElement {
           options={{ title: 'Escalas' }}
         />
       )}
-      {podeAcessar('OPERADORES_CRUD') && (
+      {podeAcessar('OPERADORES_AUSENCIAS') && (
         <Stack.Screen
           name="Colaboradores"
           component={ColaboradoresScreen}
           options={{ title: 'Colaboradores' }}
         />
+      )}
+      {podeAcessar('OPERADORES_AUSENCIAS') && (
+        <Stack.Screen
+          name="PerfilColaborador"
+          component={PerfilColaboradorScreen}
+          options={{ title: 'Perfil do colaborador' }}
+        />
+      )}
+      {podeAcessar('OPERADORES_CRUD') && (
+        <>
+          <Stack.Screen
+            name="CentroControle"
+            component={CentroControleScreen}
+            options={{ title: 'Centro de Controle' }}
+          />
+          <Stack.Screen
+            name="GestaoColaboradores"
+            component={GestaoColaboradoresScreen}
+            options={{ title: 'Colaboradores (gestão)' }}
+          />
+        </>
       )}
       {podeAcessar('USUARIOS_CRUD') && (
         <Stack.Screen
