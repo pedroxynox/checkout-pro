@@ -54,6 +54,7 @@ function BotaoCluby(): React.ReactElement {
           <Sparkles size={24} color={cores.textoInverso} />
         </LinearGradient>
         <Text style={styles.clubyLabel}>Cluby</Text>
+        <View style={styles.clubyDot} />
       </Pressable>
     </View>
   );
@@ -74,19 +75,40 @@ export function MainTabs(): React.ReactElement {
         headerStyle: { backgroundColor: cores.primaria },
         headerTintColor: cores.textoInverso,
         headerTitleStyle: { fontWeight: '700' },
-        tabBarActiveTintColor: cores.primaria,
-        tabBarInactiveTintColor: cores.textoSecundario,
+        tabBarActiveTintColor: '#0A3D91',
+        tabBarInactiveTintColor: '#6B7280',
         tabBarStyle: {
           backgroundColor: cores.superficie,
-          borderTopColor: cores.divisor,
+          // Cantos superiores arredondados + sombra muito suave (visual premium).
+          borderTopWidth: 0,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          paddingHorizontal: 6,
           // Na web a área visível já é controlada por 100svh no #root, então NÃO
           // somamos insets (evita inflar a barra e cortá-la). No nativo, soma o
           // inset inferior (gestos/notch).
-          height: Platform.OS === 'web' ? 64 : 64 + insets.bottom,
-          paddingTop: 8,
-          paddingBottom: Platform.OS === 'web' ? 10 : insets.bottom + 12,
+          height: Platform.OS === 'web' ? 74 : 74 + insets.bottom,
+          paddingTop: 6,
+          paddingBottom: Platform.OS === 'web' ? 14 : insets.bottom + 14,
+          shadowColor: '#0A3D91',
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.06,
+          shadowRadius: 16,
+          elevation: 12,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', lineHeight: 14 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '500', lineHeight: 14 },
+        tabBarIconStyle: { marginTop: 2 },
+        tabBarBadgeStyle: {
+          backgroundColor: cores.vermelho,
+          color: cores.textoInverso,
+          fontSize: 10,
+          fontWeight: '700',
+          minWidth: 18,
+          height: 18,
+          borderRadius: 9,
+          borderWidth: 2,
+          borderColor: cores.superficie,
+        },
       }}
     >
       <Tab.Screen
@@ -154,25 +176,34 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.96 }],
   },
   clubyCirculo: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -22,
-    borderWidth: 3,
+    // Sobressai ~35% acima da barra (mantém a posição central atual).
+    marginTop: -20,
+    borderWidth: 4,
     borderColor: cores.superficie,
-    shadowColor: '#0F4C81',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowColor: '#0A3D91',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 22,
+    elevation: 10,
   },
   clubyLabel: {
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 11,
-    fontWeight: '700',
-    color: cores.primaria,
+    fontWeight: '600',
+    color: '#0A3D91',
+    marginTop: 4,
+  },
+  // Pequeno indicador azul abaixo do texto "Cluby".
+  clubyDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#0A3D91',
     marginTop: 3,
   },
 });
