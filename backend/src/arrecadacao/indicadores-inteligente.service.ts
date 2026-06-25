@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  montarVinculo,
+  type VinculoColaboradores,
+} from '../colaboradores/perfil-colaborador.domain';
 import { ArrecadacaoService } from './arrecadacao.service';
 import {
   CONFIG_ARRECADACAO,
@@ -107,16 +111,6 @@ function arredondar(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Normaliza um nome para comparação (sem acentos, maiúsculas, sem espaços extras). */
-function normalizarNome(nome: string): string {
-  return nome
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase()
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 /**
  * Serviço de inteligência dos indicadores: tendência histórica, comparativo
  * com período anterior, projeção de fechamento de mês, meta diária, operador
@@ -130,7 +124,11 @@ export class IndicadoresInteligenteService {
     private readonly arrecadacao: ArrecadacaoService,
   ) {}
 
-  private async somar(tipo: TipoArrecadacao, gte: Date, lt: Date): Promise<number> {
+  private async somar(
+    tipo: TipoArrecadacao,
+    gte: Date,
+    lt: Date,
+  ): Promise<number> {
     const r = await this.prisma.registroArrecadacao.aggregate({
       where: { tipo, data: { gte, lt } },
       _sum: { valor: true },
@@ -227,7 +225,11 @@ export class IndicadoresInteligenteService {
       anterior > 0 ? arredondar(((atual - anterior) / anterior) * 100) : null;
 
     return {
-      mes: { atual: mesAtual, anterior: mesAnterior, variacao: variacao(mesAtual, mesAnterior) },
+      mes: {
+        atual: mesAtual,
+        anterior: mesAnterior,
+        variacao: variacao(mesAtual, mesAnterior),
+      },
       semana: {
         atual: semAtual,
         anterior: semAnterior,
@@ -270,7 +272,8 @@ export class IndicadoresInteligenteService {
         inicioDoMes(data),
         inicioDoProximoMes(data),
       );
-      const pctMes = vendasMes > 0 ? arredondar((acumuladoMes / vendasMes) * 100) : 0;
+      const pctMes =
+        vendasMes > 0 ? arredondar((acumuladoMes / vendasMes) * 100) : 0;
       projecao = pctMes;
       metaDiaria = meta; // o alvo (% máximo) é o mesmo todos os dias
       metaAcumuladaHoje = meta;
@@ -292,38 +295,58 @@ export class IndicadoresInteligenteService {
   }
 
   /**
+   * Carrega o vínculo movimentos→colaboradores cadastrados (identificadores +
+   * colaboradores). Usado para mostrar nos indicadores **apenas** quem tem
+   * cadastro (casado por matrícula/login do arquivo).
+   */
+  private async carregarVinculo(): Promise<VinculoColaboradores> {
+    const [identificadores, colaboradores] = await Promise.all([
+      this.prisma.colaboradorIdentificador.findMany({
+        select: { colaboradorId: true, tipo: true, valor: true },
+      }),
+      this.prisma.colaborador.findMany({
+        select: { id: true, nome: true, funcao: true },
+      }),
+    ]);
+    return montarVinculo(identificadores, colaboradores);
+  }
+
+  /**
    * Destaques do mês: top operador por categoria (Top 3).
    * - Troco Solidário: maior arrecadação (positivo).
    * - Recargas: maior arrecadação (positivo).
    * - Cancelamento de Itens: maior VALOR cancelado — destaque de atenção.
    * Cada categoria só retorna alguém se houver valor > 0.
+   *
+   * Considera **apenas colaboradores cadastrados** (casados por matrícula/login
+   * do arquivo); quem não tem cadastro não aparece. As três primeiras
+   * categorias são de operadores (fiscais são excluídos).
    */
   async destaquesMes(data: Date): Promise<DestaquesMes> {
     const gte = inicioDoMes(data);
     const lt = inicioDoProximoMes(data);
-
-    // Excluir fiscais dos rankings de destaque — eles operam caixa raramente
-    // e não devem disputar com os operadores. Comparação por nome normalizado
-    // (sem acentos, maiúsculas, sem espaços extras) para casar com os .txt.
-    const fiscais = await this.prisma.fiscal.findMany({ select: { nome: true } });
-    const nomesFiscais = new Set(fiscais.map((f) => normalizarNome(f.nome)));
-    const ehFiscal = (nome: string): boolean =>
-      nomesFiscais.has(normalizarNome(nome));
+    const vinculo = await this.carregarVinculo();
 
     const topPorTipo = async (
       tipo: TipoArrecadacao,
     ): Promise<DestaqueOperador | null> => {
       const regs = await this.prisma.registroArrecadacao.findMany({
         where: { tipo, data: { gte, lt } },
-        select: { nome: true, valor: true },
+        select: { nome: true, matricula: true, valor: true },
       });
-      const totais = new Map<string, number>();
+      const totais = new Map<string, { nome: string; total: number }>();
       for (const r of regs) {
-        if (ehFiscal(r.nome)) continue;
-        totais.set(r.nome, (totais.get(r.nome) ?? 0) + Number(r.valor));
+        const id = vinculo.idDe(tipo, r.matricula);
+        if (!id || vinculo.funcao(id) === 'FISCAL') continue; // não cadastrado / fiscal
+        const cur = totais.get(id) ?? {
+          nome: vinculo.nome(id) || r.nome,
+          total: 0,
+        };
+        cur.total += Number(r.valor);
+        totais.set(id, cur);
       }
       let melhorTipo: DestaqueOperador | null = null;
-      for (const [nome, total] of totais.entries()) {
+      for (const { nome, total } of totais.values()) {
         if (total > 0 && (melhorTipo === null || total > melhorTipo.total)) {
           melhorTipo = { nome, total: arredondar(total) };
         }
@@ -337,44 +360,55 @@ export class IndicadoresInteligenteService {
       topPorTipo('CANCELAMENTO_ITENS'),
     ]);
 
-    // "Menos cancelou": entre os OPERADORES ativos (com troco/recargas no mês),
-    // o que teve o menor valor de cancelamento de itens (0 é o ideal).
-    // Fiscais são excluídos. Desempate: maior contribuição (troco + recargas).
+    // "Menos cancelou": entre os OPERADORES cadastrados com contribuição
+    // (troco/recargas) no mês, o que teve o menor cancelamento de itens (0 é o
+    // ideal). Desempate: maior contribuição.
     const [contribRegs, cancelRegs] = await Promise.all([
       this.prisma.registroArrecadacao.findMany({
         where: {
           tipo: { in: ['TROCO_SOLIDARIO', 'RECARGAS_CELULAR'] },
           data: { gte, lt },
         },
-        select: { nome: true, valor: true },
+        select: { tipo: true, matricula: true, valor: true, nome: true },
       }),
       this.prisma.registroArrecadacao.findMany({
         where: { tipo: 'CANCELAMENTO_ITENS', data: { gte, lt } },
-        select: { nome: true, valor: true },
+        select: { matricula: true, valor: true },
       }),
     ]);
 
-    const contrib = new Map<string, number>();
+    const contrib = new Map<string, { nome: string; total: number }>();
     for (const r of contribRegs) {
-      if (ehFiscal(r.nome)) continue;
-      contrib.set(r.nome, (contrib.get(r.nome) ?? 0) + Number(r.valor));
+      const id = vinculo.idDe(r.tipo, r.matricula);
+      if (!id || vinculo.funcao(id) === 'FISCAL') continue;
+      const cur = contrib.get(id) ?? {
+        nome: vinculo.nome(id) || r.nome,
+        total: 0,
+      };
+      cur.total += Number(r.valor);
+      contrib.set(id, cur);
     }
     const cancel = new Map<string, number>();
     for (const r of cancelRegs) {
-      if (ehFiscal(r.nome)) continue;
-      cancel.set(r.nome, (cancel.get(r.nome) ?? 0) + Number(r.valor));
+      const id = vinculo.idDe('CANCELAMENTO_ITENS', r.matricula);
+      if (!id || vinculo.funcao(id) === 'FISCAL') continue;
+      cancel.set(id, (cancel.get(id) ?? 0) + Number(r.valor));
     }
 
-    let melhor: { nome: string; cancelTotal: number; contribTotal: number } | null = null;
-    for (const [nome, contribTotal] of contrib.entries()) {
-      if (contribTotal <= 0) continue;
-      const cancelTotal = cancel.get(nome) ?? 0;
+    let melhor: {
+      nome: string;
+      cancelTotal: number;
+      contribTotal: number;
+    } | null = null;
+    for (const [id, c] of contrib.entries()) {
+      if (c.total <= 0) continue;
+      const cancelTotal = cancel.get(id) ?? 0;
       if (
         melhor === null ||
         cancelTotal < melhor.cancelTotal ||
-        (cancelTotal === melhor.cancelTotal && contribTotal > melhor.contribTotal)
+        (cancelTotal === melhor.cancelTotal && c.total > melhor.contribTotal)
       ) {
-        melhor = { nome, cancelTotal, contribTotal };
+        melhor = { nome: c.nome, cancelTotal, contribTotal: c.total };
       }
     }
     const menosCancelou: DestaqueOperador | null = melhor
@@ -390,9 +424,12 @@ export class IndicadoresInteligenteService {
    */
   async anomalias(
     data: Date,
-  ): Promise<{ tipo: TipoArrecadacao; nome: string; total: number; media: number }[]> {
+  ): Promise<
+    { tipo: TipoArrecadacao; nome: string; total: number; media: number }[]
+  > {
     const gte = inicioDoMes(data);
     const lt = inicioDoProximoMes(data);
+    const vinculo = await this.carregarVinculo();
     const tipos: TipoArrecadacao[] = [
       'CANCELAMENTO_ITENS',
       'CANCELAMENTO_CUPOM',
@@ -408,19 +445,28 @@ export class IndicadoresInteligenteService {
     for (const tipo of tipos) {
       const registros = await this.prisma.registroArrecadacao.findMany({
         where: { tipo, data: { gte, lt } },
-        select: { nome: true, valor: true },
+        select: { nome: true, matricula: true, valor: true },
       });
       if (registros.length === 0) continue;
 
-      const totais = new Map<string, number>();
+      // Agrega por colaborador cadastrado (não cadastrados são ignorados).
+      const totais = new Map<string, { nome: string; total: number }>();
       for (const r of registros) {
-        totais.set(r.nome, (totais.get(r.nome) ?? 0) + Number(r.valor));
+        const id = vinculo.idDe(tipo, r.matricula);
+        if (!id) continue;
+        const cur = totais.get(id) ?? {
+          nome: vinculo.nome(id) || r.nome,
+          total: 0,
+        };
+        cur.total += Number(r.valor);
+        totais.set(id, cur);
       }
-      const valores = [...totais.values()];
+      const valores = [...totais.values()].map((t) => t.total);
+      if (valores.length === 0) continue;
       const media = valores.reduce((a, b) => a + b, 0) / valores.length;
       if (media <= 0) continue;
 
-      for (const [nome, total] of totais.entries()) {
+      for (const { nome, total } of totais.values()) {
         if (total >= media * 2 && valores.length >= 3) {
           resultado.push({
             tipo,
@@ -475,10 +521,8 @@ export class IndicadoresInteligenteService {
       let tendencia: TendenciaAlerta | undefined;
       let detalheTendencia: string | undefined;
       if (v !== null) {
-        const piora =
-          config.sentido === 'MENOR_MELHOR' ? v > 10 : v < -10;
-        const melhora =
-          config.sentido === 'MENOR_MELHOR' ? v < -10 : v > 10;
+        const piora = config.sentido === 'MENOR_MELHOR' ? v > 10 : v < -10;
+        const melhora = config.sentido === 'MENOR_MELHOR' ? v < -10 : v > 10;
         tendencia = piora ? 'PIORANDO' : melhora ? 'MELHORANDO' : 'ESTAVEL';
         detalheTendencia = `${v >= 0 ? '+' : ''}${v}% vs semana passada`;
       }
@@ -579,6 +623,7 @@ export class IndicadoresInteligenteService {
   > {
     const gte = inicioDoMes(data);
     const lt = inicioDoProximoMes(data);
+    const vinculo = await this.carregarVinculo();
     const tipos: TipoArrecadacao[] = [
       'CANCELAMENTO_ITENS',
       'CANCELAMENTO_CUPOM',
@@ -599,6 +644,7 @@ export class IndicadoresInteligenteService {
         where: { tipo, data: { gte, lt } },
         select: {
           nome: true,
+          matricula: true,
           valor: true,
           quantidade: true,
           autorizadoPor: true,
@@ -606,13 +652,22 @@ export class IndicadoresInteligenteService {
       });
       if (registros.length === 0) continue;
 
-      // Agrega por operador (por VALOR).
+      // Agrega por colaborador cadastrado (por VALOR). Ignora não cadastrados.
       const agg = new Map<
         string,
-        { total: number; itens: number; maiorValor: number; autorizadoPor: string | null }
+        {
+          nome: string;
+          total: number;
+          itens: number;
+          maiorValor: number;
+          autorizadoPor: string | null;
+        }
       >();
       for (const r of registros) {
-        const atual = agg.get(r.nome) ?? {
+        const id = vinculo.idDe(tipo, r.matricula);
+        if (!id) continue;
+        const atual = agg.get(id) ?? {
+          nome: vinculo.nome(id) || r.nome,
           total: 0,
           itens: 0,
           maiorValor: 0,
@@ -625,22 +680,23 @@ export class IndicadoresInteligenteService {
           atual.maiorValor = valor;
           atual.autorizadoPor = r.autorizadoPor ?? null;
         }
-        agg.set(r.nome, atual);
+        agg.set(id, atual);
       }
 
       const valores = [...agg.values()].map((a) => a.total);
       const media = valores.reduce((a, b) => a + b, 0) / valores.length;
       if (media <= 0 || valores.length < 3) continue;
 
-      for (const [nome, a] of agg.entries()) {
+      for (const a of agg.values()) {
         if (a.total >= media * 2) {
           resultado.push({
             tipo,
-            nome,
+            nome: a.nome,
             total: arredondar(a.total),
             media: arredondar(media),
             itens: a.itens,
-            ticketMedio: a.itens > 0 ? arredondar(a.total / a.itens) : arredondar(a.total),
+            ticketMedio:
+              a.itens > 0 ? arredondar(a.total / a.itens) : arredondar(a.total),
             autorizadoPor: a.autorizadoPor,
           });
         }

@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FechamentoService } from '../fechamento/fechamento.service';
+import {
+  montarVinculo,
+  type VinculoColaboradores,
+} from '../colaboradores/perfil-colaborador.domain';
 import { LinhaArrecadacao } from './arrecadacao.parser';
 import {
   CONFIG_ARRECADACAO,
@@ -212,7 +216,13 @@ export class ArrecadacaoService {
 
   /** Lista todas as metas configuradas (com fallback ao default). */
   async listarMetas(): Promise<
-    { tipo: TipoArrecadacao; titulo: string; meta: number; base: string; sentido: string }[]
+    {
+      tipo: TipoArrecadacao;
+      titulo: string;
+      meta: number;
+      base: string;
+      sentido: string;
+    }[]
   > {
     return Promise.all(
       TIPOS_ARRECADACAO.map(async (tipo) => {
@@ -370,26 +380,44 @@ export class ArrecadacaoService {
   ): Promise<ItemRankingArrecadacao[]> {
     const gte = inicioDoDia(inicio);
     const lt = inicioDoProximoDia(fim);
-    const grupos = await this.prisma.registroArrecadacao.groupBy({
-      by: ['nome'],
+    const vinculo = await this.carregarVinculo();
+    const regs = await this.prisma.registroArrecadacao.findMany({
       where: { tipo, data: { gte, lt } },
-      _sum: { valor: true, quantidade: true },
-      orderBy: { _sum: { valor: 'desc' } },
+      select: { nome: true, matricula: true, valor: true, quantidade: true },
     });
-    return grupos.map((g) => ({
-      nome: g.nome,
-      total: arredondar(Number(g._sum.valor ?? 0)),
-      quantidade:
-        g._sum.quantidade === null || g._sum.quantidade === undefined
-          ? null
-          : Number(g._sum.quantidade),
-    }));
+    // Agrega por colaborador cadastrado; não cadastrados são omitidos.
+    const agg = new Map<
+      string,
+      { nome: string; total: number; quantidade: number | null }
+    >();
+    for (const r of regs) {
+      const id = vinculo.idDe(tipo, r.matricula);
+      if (!id) continue;
+      const cur = agg.get(id) ?? {
+        nome: vinculo.nome(id) || r.nome,
+        total: 0,
+        quantidade: null,
+      };
+      cur.total += Number(r.valor);
+      if (r.quantidade != null) {
+        cur.quantidade = (cur.quantidade ?? 0) + r.quantidade;
+      }
+      agg.set(id, cur);
+    }
+    return [...agg.values()]
+      .map((a) => ({
+        nome: a.nome,
+        total: arredondar(a.total),
+        quantidade: a.quantidade,
+      }))
+      .sort((a, b) => b.total - a.total);
   }
 
   /**
    * Detalhe de cada lançamento no intervalo (operador, quem autorizou, motivo
    * e valor). Útil para o cancelamento de cupom, onde o gerente quer ver cada
-   * cancelamento individualmente. Ordenado pelo maior valor.
+   * cancelamento individualmente. Ordenado pelo maior valor. Considera apenas
+   * lançamentos de colaboradores cadastrados.
    */
   async detalhes(
     tipo: TipoArrecadacao,
@@ -398,17 +426,48 @@ export class ArrecadacaoService {
   ): Promise<DetalheArrecadacao[]> {
     const gte = inicioDoDia(inicio);
     const lt = inicioDoProximoDia(fim);
+    const vinculo = await this.carregarVinculo();
     const regs = await this.prisma.registroArrecadacao.findMany({
       where: { tipo, data: { gte, lt } },
       orderBy: { valor: 'desc' },
+      select: {
+        nome: true,
+        matricula: true,
+        autorizadoPor: true,
+        motivo: true,
+        valor: true,
+        data: true,
+      },
       take: 300,
     });
-    return regs.map((r) => ({
-      nome: r.nome,
-      autorizadoPor: r.autorizadoPor,
-      motivo: r.motivo,
-      valor: arredondar(Number(r.valor)),
-      data: r.data.toISOString(),
-    }));
+    const out: DetalheArrecadacao[] = [];
+    for (const r of regs) {
+      const id = vinculo.idDe(tipo, r.matricula);
+      if (!id) continue;
+      out.push({
+        nome: vinculo.nome(id) || r.nome,
+        autorizadoPor: r.autorizadoPor,
+        motivo: r.motivo,
+        valor: arredondar(Number(r.valor)),
+        data: r.data.toISOString(),
+      });
+    }
+    return out;
+  }
+
+  /**
+   * Carrega o vínculo movimentos→colaboradores cadastrados (identificadores +
+   * colaboradores), para o ranking/detalhe mostrarem apenas quem tem cadastro.
+   */
+  private async carregarVinculo(): Promise<VinculoColaboradores> {
+    const [identificadores, colaboradores] = await Promise.all([
+      this.prisma.colaboradorIdentificador.findMany({
+        select: { colaboradorId: true, tipo: true, valor: true },
+      }),
+      this.prisma.colaborador.findMany({
+        select: { id: true, nome: true, funcao: true },
+      }),
+    ]);
+    return montarVinculo(identificadores, colaboradores);
   }
 }
