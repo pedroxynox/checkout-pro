@@ -17,7 +17,6 @@ import {
   Fingerprint,
   Lock,
   ShieldCheck,
-  ShoppingCart,
   Sparkles,
   User,
 } from 'lucide-react-native';
@@ -49,6 +48,7 @@ import {
   loginBiometrico,
 } from '../auth/biometria';
 import { cores, gradientes, raio, sombra, tipografia } from '../theme';
+import { LogoPulseC } from '../components/Logo';
 
 const CHAVE_LOGIN_SALVO = 'checkoutpro:login-lembrado';
 
@@ -206,8 +206,8 @@ export function LoginScreen(): React.ReactElement {
           >
             {/* Marca */}
             <View style={styles.marcaBox}>
-              <View style={styles.marcaIcone}>
-                <ShoppingCart size={26} color={cores.textoInverso} />
+              <View style={styles.marcaLogo}>
+                <LogoPulseC size={88} cor={cores.textoInverso} />
               </View>
               <Text style={styles.marca}>Check-out Pro</Text>
               <Text style={styles.marcaTag}>Gestão Inteligente</Text>
@@ -385,16 +385,10 @@ const styles = StyleSheet.create({
 
   // Marca
   marcaBox: { alignItems: 'center', marginBottom: 22 },
-  marcaIcone: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
+  marcaLogo: {
+    marginBottom: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
   },
   marca: {
     fontFamily: 'Inter_800ExtraBold',

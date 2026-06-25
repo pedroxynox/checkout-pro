@@ -39,6 +39,7 @@ import { useAuth } from '../auth/AuthContext';
 import { AREAS } from '../navigation/areas';
 import { ResumoDoDia } from './centroDeMando/ResumoDoDia';
 import { usePulsoDoDia } from './centroDeMando/usePulsoDoDia';
+import { LogoPulseC } from '../components/Logo';
 import { PropsTabInicio } from '../navigation/types';
 import { cores, coresModulos, gradientes, raio, sombra, tipografia } from '../theme';
 
@@ -129,7 +130,10 @@ export function HomeScreen({
         style={styles.header}
       >
         <SafeAreaView edges={['top']}>
-          <Text style={styles.marca}>Check-out Pro</Text>
+          <View style={styles.marcaRow}>
+            <LogoPulseC size={22} cor={cores.textoInverso} />
+            <Text style={styles.marca}>Check-out Pro</Text>
+          </View>
 
           <View style={styles.headerRow}>
             <View style={styles.usuarioBox}>
@@ -216,6 +220,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: cores.textoInverso,
     letterSpacing: -0.3,
+  },
+  marcaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   headerRow: {
     flexDirection: 'row',

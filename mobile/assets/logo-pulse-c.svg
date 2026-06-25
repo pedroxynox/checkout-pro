@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Marca "Pulse C" SEM azulejo (transparente), em azul-marinho.
+       Para usar sobre fundos claros (documentos, web, lockup com o nome). -->
+  <path d="M362 150 A150 150 0 1 0 362 362" fill="none" stroke="#0A2540" stroke-width="46" stroke-linecap="round"/>
+  <path d="M150 256 L200 256 L220 236 L244 300 L270 206 L296 264 L316 256 L360 256" fill="none" stroke="#0A2540" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="384" cy="256" r="18" fill="#0A2540"/>
+</svg>
