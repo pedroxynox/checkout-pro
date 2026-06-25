@@ -28,6 +28,7 @@ export interface Area {
     | 'Escala'
     | 'Checklist'
     | 'Operadores'
+    | 'Colaboradores'
     | 'Usuarios'
     | 'AlertasFila'
     | 'Normativas'
@@ -110,6 +111,13 @@ export const AREAS: Area[] = [
     descricao: 'Fiscais e operadores por dia: folgas, faltas e cobertura',
     icone: 'calendar-outline',
     funcionalidade: 'OPERADORES_AUSENCIAS',
+  },
+  {
+    rota: 'Colaboradores',
+    titulo: 'Colaboradores',
+    descricao: 'Cadastro de operadores e fiscais; perfil de cada um',
+    icone: 'id-card-outline',
+    funcionalidade: 'OPERADORES_CRUD',
   },
   {
     rota: 'Usuarios',

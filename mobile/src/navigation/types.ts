@@ -31,6 +31,7 @@ export type RootStackParamList = {
   Escala: undefined;
   Checklist: undefined;
   Operadores: undefined;
+  Colaboradores: undefined;
   Usuarios: undefined;
   AlertasFila: undefined;
   Normativas: undefined;
