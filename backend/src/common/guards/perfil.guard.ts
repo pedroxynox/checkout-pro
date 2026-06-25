@@ -26,13 +26,16 @@ export class PerfilGuard implements CanActivate {
   ) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const funcionalidade = this.reflector.getAllAndOverride<string | undefined>(
-      FUNCIONALIDADE_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const meta = this.reflector.getAllAndOverride<
+      string | string[] | undefined
+    >(FUNCIONALIDADE_KEY, [context.getHandler(), context.getClass()]);
+
+    // Normaliza para lista (o decorator pode declarar uma ou mais).
+    const funcionalidades =
+      meta == null ? [] : Array.isArray(meta) ? meta : [meta];
 
     // Sem funcionalidade declarada, basta estar autenticado.
-    if (!funcionalidade) {
+    if (funcionalidades.length === 0) {
       return true;
     }
 
@@ -44,9 +47,13 @@ export class PerfilGuard implements CanActivate {
       throw new ForbiddenException('Usuário não autenticado.');
     }
 
-    // Lança PermissaoInsuficienteError quando o perfil não tem acesso; o
-    // filtro de exceções de domínio mapeia para 403 com mensagem em Português.
-    this.acessosService.exigirAutorizacao(usuario.perfil, funcionalidade);
+    // Autoriza se o perfil tiver acesso a QUALQUER uma das funcionalidades
+    // (semântica OR). Lança PermissaoInsuficienteError quando nenhuma é
+    // permitida; o filtro de exceções mapeia para 403 com mensagem em PT.
+    this.acessosService.exigirAlgumaAutorizacao(
+      usuario.perfil,
+      funcionalidades,
+    );
     return true;
   }
 }

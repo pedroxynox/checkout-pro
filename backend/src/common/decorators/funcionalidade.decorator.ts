@@ -7,14 +7,17 @@ import { SetMetadata } from '@nestjs/common';
 export const FUNCIONALIDADE_KEY = 'funcionalidade';
 
 /**
- * Decorator que associa uma funcionalidade (string) a um handler ou
- * controller. O `PerfilGuard` lê este metadado e exige autorização do perfil
- * do usuário autenticado por meio do `AcessosService` (Req 7.2).
+ * Decorator que associa **uma ou mais** funcionalidades a um handler ou
+ * controller. O `PerfilGuard` lê este metadado e autoriza o perfil do usuário
+ * se ele tiver acesso a **qualquer uma** das funcionalidades informadas
+ * (semântica OR). Útil quando um endpoint é compartilhado por fluxos com
+ * permissões diferentes (ex.: o status do dia, lido tanto na Importação quanto
+ * no Fechamento).
  *
  * Quando ausente, o `PerfilGuard` exige apenas que o usuário esteja
  * autenticado, sem restrição adicional de perfil.
  */
 export const Funcionalidade = (
-  funcionalidade: string,
+  ...funcionalidades: string[]
 ): MethodDecorator & ClassDecorator =>
-  SetMetadata(FUNCIONALIDADE_KEY, funcionalidade);
+  SetMetadata(FUNCIONALIDADE_KEY, funcionalidades);

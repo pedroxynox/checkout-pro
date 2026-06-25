@@ -80,7 +80,7 @@ export class ArrecadacaoController {
 
   /** Status (enviado / sem movimento / pendente) de cada tipo no dia. */
   @Get('status')
-  @Funcionalidade('FECHAMENTO')
+  @Funcionalidade('FECHAMENTO', 'IMPORTACOES')
   status(@Query() dto: StatusArrecadacaoDto): Promise<StatusArrecadacao> {
     return this.arrecadacaoService.status(new Date(dto.data));
   }
