@@ -33,12 +33,16 @@ import { useProtecaoTela } from './src/utils/protecaoTela';
 
 /**
  * Na WEB (notebook/PC e mobile), fixa a RAIZ do app à altura VISÍVEL da janela
- * (100dvh) e impede o `body` de rolar (overflow hidden). Assim só o conteúdo
- * interno rola: o header (topo) e a barra de abas (base) ficam FIXOS. No app
- * nativo nada disso se aplica.
+ * e impede o `body` de rolar (overflow hidden). Assim só o conteúdo interno
+ * rola: o header (topo) e a barra de abas (base) ficam FIXOS. No app nativo
+ * nada disso se aplica.
+ *
+ * A altura visível dinâmica (100dvh) é aplicada no PRÓPRIO #root via CSS; aqui o
+ * app só preenche o pai com height 100% (mais confiável no mobile do que somar
+ * 100dvh em níveis diferentes, que estava cortando a barra inferior).
  */
 const estiloRaizWeb: ViewStyle | undefined =
-  Platform.OS === 'web' ? ({ height: '100dvh' } as unknown as ViewStyle) : undefined;
+  Platform.OS === 'web' ? ({ height: '100%' } as unknown as ViewStyle) : undefined;
 
 // Trava a rolagem da página (apenas web). Tipagem mínima do `document` para não
 // depender da lib DOM no tsconfig.
@@ -57,7 +61,11 @@ if (Platform.OS === 'web' && docWeb) {
   docWeb.body.style.overflow = 'hidden';
   const raiz = docWeb.getElementById('root');
   if (raiz) {
-    raiz.style.height = '100%';
+    // Altura VISÍVEL real do navegador (dvh), com fallback para vh em
+    // navegadores antigos: a 2ª atribuição é ignorada se 'dvh' não existir.
+    raiz.style.height = '100vh';
+    raiz.style.height = '100dvh';
+    raiz.style.overflow = 'hidden';
   }
 }
 
