@@ -63,3 +63,11 @@ jobs:
 
       - name: Testes (jest)
         run: npm run test --workspace=@checkout-pro/mobile
+
+      # Compila a web igual ao Render. Pega erros de build/deploy (ex.:
+      # favicon/asset invalido) ainda no PR, antes do merge.
+      - name: Validar build web (expo export para web)
+        run: npx expo export --platform web
+        working-directory: mobile
+        env:
+          CI: '1'
