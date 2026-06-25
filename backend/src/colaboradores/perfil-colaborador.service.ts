@@ -12,7 +12,6 @@ import {
   calcularScore,
   gerarInsignias,
   gerarResumo,
-  normalizarNome,
   rankingPorValor,
   resolverColaboradorId,
   rotuloMes,
@@ -137,14 +136,6 @@ export class PerfilColaboradorService {
       else mapaLogin.set(i.valor, i.colaboradorId);
     }
 
-    // Nome normalizado → fiscal (autorizador de cupom vem só por nome).
-    const fiscais = await this.prisma.colaborador.findMany({
-      where: { funcao: 'FISCAL' },
-      select: { id: true, nome: true },
-    });
-    const mapaNomeFiscal = new Map<string, string>();
-    for (const f of fiscais) mapaNomeFiscal.set(normalizarNome(f.nome), f.id);
-
     // Janelas de tempo: período selecionado, período anterior (mesma duração)
     // e últimos 6 meses (para as séries de evolução).
     const inicioDia = inicioDoDia(inicio);
@@ -176,14 +167,6 @@ export class PerfilColaboradorService {
       mapaMatricula,
       mapaLogin,
     );
-    const cuponsAutAtual = this.agregarCuponsAutorizados(
-      regsAtual,
-      mapaNomeFiscal,
-    );
-    const cuponsAutAnterior = this.agregarCuponsAutorizados(
-      regsAnterior,
-      mapaNomeFiscal,
-    );
 
     // Séries de 6 meses do próprio colaborador, por tipo.
     const serie6m = this.serie6mDoColaborador(
@@ -191,7 +174,6 @@ export class PerfilColaboradorService {
       id,
       mapaMatricula,
       mapaLogin,
-      mapaNomeFiscal,
     );
 
     const construirSerie = (tipo: string): PontoSerie[] => {
@@ -235,15 +217,6 @@ export class PerfilColaboradorService {
     const indicadores: IndicadorPerfil[] = [];
     if (ehFiscal) {
       indicadores.push(
-        montarIndicador(
-          'CUPONS_AUTORIZADOS',
-          'Cupons Autorizados',
-          'NUMERO',
-          'MAIOR_MELHOR',
-          false,
-          cuponsAutAtual,
-          cuponsAutAnterior,
-        ),
         montarIndicador(
           'DEVOLUCOES',
           CONFIG_ARRECADACAO.DEVOLUCOES.titulo,
@@ -322,15 +295,9 @@ export class PerfilColaboradorService {
     const score = calcularScore(
       ehFiscal
         ? {
+            // Fiscal: o app não controla "quem autorizou" (externo) e as
+            // devoluções são informativas. A saúde foca na assiduidade.
             taxaFaltas: faltas.taxa,
-            atividade: {
-              valor:
-                valorIndicador('CUPONS_AUTORIZADOS') +
-                valorIndicador('DEVOLUCOES'),
-              media:
-                mediaIndicador('CUPONS_AUTORIZADOS') +
-                mediaIndicador('DEVOLUCOES'),
-            },
           }
         : {
             taxaFaltas: faltas.taxa,
@@ -444,30 +411,12 @@ export class PerfilColaboradorService {
     return out;
   }
 
-  /** Cupons autorizados por fiscal (casado por nome do autorizador). */
-  private agregarCuponsAutorizados(
-    registros: RegistroBruto[],
-    mapaNomeFiscal: Map<string, string>,
-  ): Map<string, Agg> {
-    const out = new Map<string, Agg>();
-    for (const r of registros) {
-      if (r.tipo !== 'CANCELAMENTO_CUPOM' || !r.autorizadoPor) continue;
-      const colId = mapaNomeFiscal.get(normalizarNome(r.autorizadoPor));
-      if (!colId) continue;
-      const a = out.get(colId) ?? { valor: 0, qtd: 0 };
-      a.valor += 1; // conta cupons autorizados
-      out.set(colId, a);
-    }
-    return out;
-  }
-
-  /** Séries de 6 meses do colaborador, por tipo (incl. CUPONS_AUTORIZADOS). */
+  /** Séries de 6 meses do colaborador, por tipo (apenas do próprio). */
   private serie6mDoColaborador(
     registros: RegistroBruto[],
     colaboradorId: string,
     mapaMatricula: Map<string, string>,
     mapaLogin: Map<string, string>,
-    mapaNomeFiscal: Map<string, string>,
   ): Map<string, Map<number, number>> {
     const out = new Map<string, Map<number, number>>();
     const add = (tipo: string, mes: number, valor: number): void => {
@@ -487,13 +436,6 @@ export class PerfilColaboradorService {
         mapaLogin,
       );
       if (dono === colaboradorId) add(r.tipo, mes, Number(r.valor));
-      if (
-        r.tipo === 'CANCELAMENTO_CUPOM' &&
-        r.autorizadoPor &&
-        mapaNomeFiscal.get(normalizarNome(r.autorizadoPor)) === colaboradorId
-      ) {
-        add('CUPONS_AUTORIZADOS', mes, 1);
-      }
     }
     return out;
   }
