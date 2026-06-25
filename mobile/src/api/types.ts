@@ -881,3 +881,86 @@ export interface ColaboradorInput {
   folgaDiaSemana?: number;
   ativo?: boolean;
 }
+
+
+// ----- Perfil Inteligente do Colaborador -----
+export type SentidoIndicador = 'MAIOR_MELHOR' | 'MENOR_MELHOR';
+export type FormatoIndicador = 'MOEDA' | 'NUMERO';
+export type NivelSaude = 'BOM' | 'ATENCAO' | 'CRITICO';
+
+/** Ponto de uma série (mês/dia/motivo) para gráficos. */
+export interface PontoSerie {
+  rotulo: string;
+  valor: number;
+}
+
+/** Indicador do perfil (com ranking, tendência e comparação à equipe). */
+export interface IndicadorPerfil {
+  chave: string;
+  titulo: string;
+  valor: number;
+  formato: FormatoIndicador;
+  quantidade: number | null;
+  sentido: SentidoIndicador;
+  posicao: number | null;
+  totalParticipantes: number;
+  tendencia: number;
+  mediaEquipe: number;
+  serie: PontoSerie[];
+}
+
+/** Sub-nota do score (0–100 com peso). */
+export interface ComponenteScore {
+  chave: string;
+  rotulo: string;
+  valor: number;
+  peso: number;
+}
+
+/** Score de Saúde do Colaborador (0–100 + semáforo). */
+export interface ScoreSaude {
+  valor: number;
+  nivel: NivelSaude;
+  componentes: ComponenteScore[];
+}
+
+/** Insígnia/destaque (gamificação). */
+export interface InsigniaPerfil {
+  id: string;
+  titulo: string;
+  descricao: string;
+  icone: string;
+}
+
+/** Perfil inteligente completo de um colaborador num período. */
+export interface PerfilColaborador {
+  colaborador: {
+    id: string;
+    nome: string;
+    matricula: string;
+    login: string | null;
+    funcao: FuncaoColaborador;
+    genero: string | null;
+    ativo: boolean;
+    turno: TurnoColaborador | null;
+    entradaSemana: string | null;
+    saidaSemana: string | null;
+    entradaFds: string | null;
+    saidaFds: string | null;
+    folgaDiaSemana: number | null;
+  };
+  periodo: { inicio: string; fim: string };
+  score: ScoreSaude;
+  resumo: string[];
+  indicadores: IndicadorPerfil[];
+  faltas: {
+    total: number;
+    taxa: number;
+    risco: 'BAIXO' | 'MEDIO' | 'ALTO';
+    tendencia: number;
+    porMes: PontoSerie[];
+    porDiaSemana: PontoSerie[];
+  };
+  motivosCancelamento: PontoSerie[];
+  insignias: InsigniaPerfil[];
+}

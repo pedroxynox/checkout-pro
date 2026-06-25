@@ -4,6 +4,7 @@ import {
   Colaborador,
   ColaboradorInput,
   FuncaoColaborador,
+  PerfilColaborador,
   TurnoColaborador,
 } from '../types';
 
@@ -28,6 +29,20 @@ export const colaboradoresService = {
   /** Detalhe de um colaborador. */
   obter(id: string): Promise<Colaborador> {
     return apiClient.get<Colaborador>(`/colaboradores/${id}`);
+  },
+
+  /** Perfil inteligente do colaborador (score, indicadores, faltas, etc.). */
+  perfil(
+    id: string,
+    periodo: { inicio?: string; fim?: string } = {},
+  ): Promise<PerfilColaborador> {
+    const params: Record<string, string> = {};
+    if (periodo.inicio) params.inicio = periodo.inicio;
+    if (periodo.fim) params.fim = periodo.fim;
+    return apiClient.get<PerfilColaborador>(
+      `/colaboradores/${id}/perfil`,
+      params,
+    );
   },
 
   /** Cadastra um colaborador (operador por padrão). */
