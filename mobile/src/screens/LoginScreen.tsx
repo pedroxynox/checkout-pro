@@ -17,7 +17,6 @@ import {
   Fingerprint,
   Lock,
   ShieldCheck,
-  Sparkles,
   User,
   X,
 } from 'lucide-react-native';
@@ -39,7 +38,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path } from 'react-native-svg';
+import Svg, {
+  Defs,
+  LinearGradient as SvgLinearGradient,
+  Path,
+  Stop,
+} from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { ApiError } from '../api/client';
@@ -54,6 +58,7 @@ import {
 import { cores, gradientes, raio, sombra, tipografia } from '../theme';
 
 const CHAVE_LOGIN_SALVO = 'checkoutpro:login-lembrado';
+const CHAVE_NOME_SALVO = 'checkoutpro:nome-lembrado';
 
 // Remove o contorno de foco que o navegador adiciona aos inputs na web.
 const SEM_CONTORNO_WEB =
@@ -62,10 +67,41 @@ const SEM_CONTORNO_WEB =
     : undefined;
 
 // Altura da faixa azul do topo (metade azul / metade branca, com onda suave).
-// Responsiva: ~36% da tela, com limites para telas pequenas/grandes.
+// Responsiva: ~46% da tela, com limites — equilibra melhor azul x branco e
+// acomoda o logo maior, mantendo um visual profissional.
 const ALTURA_TELA = Dimensions.get('window').height;
-const ALTURA_TOPO = Math.min(Math.max(Math.round(ALTURA_TELA * 0.36), 280), 380);
+const ALTURA_TOPO = Math.min(Math.max(Math.round(ALTURA_TELA * 0.46), 380), 480);
 const ALTURA_ONDA = 80;
+
+/**
+ * Estrela do Gemini (logo de 4 pontas em "sparkle") desenhada em SVG, com o
+ * degradê característico (azul → roxo → coral). Usada no rodapé "Potenciado
+ * pela Cluby" (a Cluby é movida pelo Gemini).
+ */
+function EstrelaGemini({ size = 14 }: { size?: number }): React.ReactElement {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityLabel="Gemini">
+      <Defs>
+        <SvgLinearGradient
+          id="gemini"
+          x1="0"
+          y1="0"
+          x2="24"
+          y2="24"
+          gradientUnits="userSpaceOnUse"
+        >
+          <Stop offset="0" stopColor="#4796E3" />
+          <Stop offset="0.5" stopColor="#9177C7" />
+          <Stop offset="1" stopColor="#D96570" />
+        </SvgLinearGradient>
+      </Defs>
+      <Path
+        d="M12 0 C 12 6.6 17.4 12 24 12 C 17.4 12 12 17.4 12 24 C 12 17.4 6.6 12 0 12 C 6.6 12 12 6.6 12 0 Z"
+        fill="url(#gemini)"
+      />
+    </Svg>
+  );
+}
 
 /** Saudação conforme o horário do dispositivo. */
 function saudacaoPorHora(): string {
@@ -73,6 +109,12 @@ function saudacaoPorHora(): string {
   if (h < 12) return 'Bom dia';
   if (h < 18) return 'Boa tarde';
   return 'Boa noite';
+}
+
+/** Primeiro nome a partir do nome completo (ex.: "João Pedro Silva" -> "João"). */
+function primeiroNome(nomeCompleto: string): string {
+  const p = nomeCompleto.trim().split(/\s+/)[0] ?? '';
+  return p ? p.charAt(0).toUpperCase() + p.slice(1) : '';
 }
 
 /** Deriva um nome legível a partir do login (ex.: "pedro.silva" -> "Pedro"). */
@@ -89,6 +131,7 @@ export function LoginScreen(): React.ReactElement {
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
   const [lembrado, setLembrado] = useState(false);
+  const [nomeSalvo, setNomeSalvo] = useState<string | null>(null);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -110,6 +153,12 @@ export function LoginScreen(): React.ReactElement {
           setLogin(salvo);
           setLembrado(true);
           setTimeout(() => senhaRef.current?.focus(), 350);
+          try {
+            const n = await AsyncStorage.getItem(CHAVE_NOME_SALVO);
+            if (n) setNomeSalvo(n);
+          } catch {
+            // ignora — saudação cai para o login se não houver nome salvo.
+          }
         }
       } catch {
         // ignora
@@ -152,7 +201,9 @@ export function LoginScreen(): React.ReactElement {
     setSenha('');
     setErro(null);
     setBioLogin(null);
+    setNomeSalvo(null);
     void AsyncStorage.removeItem(CHAVE_LOGIN_SALVO);
+    void AsyncStorage.removeItem(CHAVE_NOME_SALVO);
     void limparBiometria();
   };
 
@@ -195,7 +246,11 @@ export function LoginScreen(): React.ReactElement {
     );
   };
 
-  const nome = lembrado ? primeiroNomeDoLogin(login) : '';
+  const nome = lembrado
+    ? nomeSalvo
+      ? primeiroNome(nomeSalvo)
+      : primeiroNomeDoLogin(login)
+    : '';
 
   return (
     <View style={styles.fundo}>
@@ -417,9 +472,10 @@ export function LoginScreen(): React.ReactElement {
             {/* Rodapé */}
             <View style={[styles.rodape, { marginBottom: insets.bottom + 8 }]}>
               <View style={styles.cluby}>
-                <Sparkles size={13} color={cores.primaria} />
+                <EstrelaGemini size={15} />
                 <Text style={styles.clubyTexto}>Potenciado pela Cluby</Text>
               </View>
+              <Text style={styles.slogan}>A gestão na palma da sua mão</Text>
               <Text style={styles.creditos}>
                 Check-out Pro · Versão {versao} · 2026
               </Text>
@@ -468,8 +524,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   logo: {
-    width: 250,
-    height: 150,
+    width: 350,
+    height: 210,
   },
 
   // Saudação sobre o fundo
@@ -664,11 +720,19 @@ const styles = StyleSheet.create({
 
   // Rodapé
   rodape: { alignItems: 'center', marginTop: 22, gap: 6 },
-  cluby: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  cluby: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   clubyTexto: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 12,
     color: cores.textoSecundario,
+  },
+  slogan: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 13.5,
+    color: cores.primaria,
+    textAlign: 'center',
+    letterSpacing: -0.1,
+    marginTop: 2,
   },
   creditos: {
     fontFamily: 'Inter_400Regular',

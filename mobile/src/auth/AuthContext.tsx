@@ -18,11 +18,30 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError, registrarAoExpirarSessao } from '../api/client';
 import { acessosService } from '../api/services';
 import { tokenStorage } from '../api/tokenStorage';
 import { Perfil, UsuarioAutenticado } from '../api/types';
 import { podeAcessar } from './funcionalidades';
+
+/**
+ * Nome do último usuário autenticado, guardado para a saudação personalizada
+ * na tela de login (ex.: "Bom dia, João!" em vez da matrícula). É lido pelo
+ * LoginScreen na próxima abertura.
+ */
+const CHAVE_NOME_SALVO = 'checkoutpro:nome-lembrado';
+
+/** Persiste o nome do usuário para a saudação do login (silencioso). */
+async function lembrarNome(nome?: string | null): Promise<void> {
+  try {
+    if (nome && nome.trim()) {
+      await AsyncStorage.setItem(CHAVE_NOME_SALVO, nome.trim());
+    }
+  } catch {
+    // ignora — a saudação cai para o login/matrícula se não houver nome.
+  }
+}
 
 interface EstadoAuth {
   carregando: boolean;
@@ -93,6 +112,7 @@ export function AuthProvider({
     await tokenStorage.salvarToken(token);
     const eu = await acessosService.eu();
     setUsuario(eu);
+    await lembrarNome(eu.nome);
   }, []);
 
   // Login por biometria: usa um token previamente salvo (validado no backend
@@ -101,6 +121,7 @@ export function AuthProvider({
     await tokenStorage.salvarToken(token);
     const eu = await acessosService.eu();
     setUsuario(eu);
+    await lembrarNome(eu.nome);
   }, []);
 
   const valor = useMemo<EstadoAuth>(

@@ -18,6 +18,7 @@ import {
   AoVivoOperadores,
   ColaboradorDia,
   DiaOperadores,
+  FaltasPorOperador,
   ItemEscalaConsolidada,
 } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
@@ -71,24 +72,47 @@ function mesAtualISO(): { inicio: string; fim: string } {
   return { inicio: ini.toISOString().slice(0, 10), fim: fim.toISOString().slice(0, 10) };
 }
 
-/** Turnos (por hora de entrada) para agrupar e contar o roster do dia. */
+/**
+ * Turnos (por hora de entrada) para agrupar o roster do dia. A folga NÃO entra
+ * aqui — vai para um card separado no fim ("Folga operadores").
+ */
 const TURNOS: { chave: string; titulo: string }[] = [
   { chave: 'ABERTURA', titulo: 'Abertura' },
   { chave: 'INTERMEDIARIO', titulo: 'Intermediário' },
   { chave: 'FECHAMENTO', titulo: 'Fechamento' },
-  { chave: 'FOLGA', titulo: 'Folga' },
+  { chave: 'APOIO', titulo: 'Horários de apoio' },
 ];
 
+/** Minutos do dia a partir de "HH:mm". */
+function minutos(hhmm: string): number {
+  const [h, m] = hhmm.split(':');
+  return parseInt(h, 10) * 60 + parseInt(m, 10);
+}
+
 /**
- * Classifica o turno pela hora de ENTRADA:
+ * Turno de apoio: entra antes das 14h E tem carga horária de ~6h no dia
+ * (jornada reduzida). Distingue dos turnos normais (8h+).
+ */
+const APOIO_CARGA_MIN = 6 * 60; // 6h de carga horária
+function ehApoio(c: ColaboradorDia): boolean {
+  if (c.status === 'FOLGA' || !c.entrada || !c.saida) return false;
+  const ent = minutos(c.entrada);
+  const carga = minutos(c.saida) - ent;
+  // Entra antes das 14h e cumpre ~6h (tolerância de 30 min).
+  return ent < 14 * 60 && Math.abs(carga - APOIO_CARGA_MIN) <= 30;
+}
+
+/**
+ * Classifica o turno pela hora de ENTRADA (com o apoio à parte):
+ *  - Apoio: entra antes das 14h e cumpre ~6h de carga (jornada reduzida);
  *  - Abertura: entrada antes das 10:00 (06:50–09:00);
- *  - Intermediário: das 10:00 às 12:59 (10:00–12:00);
- *  - Fechamento: das 13:00 em diante (13:00–17:00).
+ *  - Intermediário: das 10:00 às 12:59;
+ *  - Fechamento: das 13:00 em diante.
  */
 function turnoDe(c: ColaboradorDia): string {
   if (c.status === 'FOLGA' || !c.entrada) return 'FOLGA';
-  const [h, m] = c.entrada.split(':');
-  const min = parseInt(h, 10) * 60 + parseInt(m, 10);
+  if (ehApoio(c)) return 'APOIO';
+  const min = minutos(c.entrada);
   if (min < 10 * 60) return 'ABERTURA';
   if (min < 13 * 60) return 'INTERMEDIARIO';
   return 'FECHAMENTO';
@@ -118,12 +142,18 @@ function contarTurnos(cols: ColaboradorDia[]): {
   ABERTURA: number;
   INTERMEDIARIO: number;
   FECHAMENTO: number;
+  APOIO: number;
 } {
-  const c = { ABERTURA: 0, INTERMEDIARIO: 0, FECHAMENTO: 0 };
+  const c = { ABERTURA: 0, INTERMEDIARIO: 0, FECHAMENTO: 0, APOIO: 0 };
   for (const x of cols) {
     if (x.status !== 'TRABALHA') continue; // exclui folgas e faltas
     const t = turnoDe(x);
-    if (t === 'ABERTURA' || t === 'INTERMEDIARIO' || t === 'FECHAMENTO') {
+    if (
+      t === 'ABERTURA' ||
+      t === 'INTERMEDIARIO' ||
+      t === 'FECHAMENTO' ||
+      t === 'APOIO'
+    ) {
       c[t] += 1;
     }
   }
@@ -160,6 +190,91 @@ function ColaboradorRow({
         <Text style={[styles.chipTexto, { color: cor.texto }]}>{rotuloStatus(c.status)}</Text>
       </View>
     </TouchableOpacity>
+  );
+}
+
+/** Linha de um fiscal na escala do dia. */
+function FiscalRow({ f }: { f: ItemEscalaConsolidada }): React.ReactElement {
+  const ef = f.efetiva;
+  const folga = ef === 'FOLGA';
+  const cor = folga ? cores.textoSecundario : cores.primaria;
+  const fundo = folga ? cores.divisor : cores.primariaClara;
+  return (
+    <View style={[styles.linha, { borderLeftColor: cor }]}>
+      <View style={[styles.avatar, { backgroundColor: fundo }]}>
+        <Ionicons name="shield-checkmark" size={20} color={cor} />
+      </View>
+      <View style={styles.linhaInfo}>
+        <Text style={styles.nomeColaborador} numberOfLines={1}>
+          {f.nome ?? f.funcionarioId}
+        </Text>
+        <Text style={styles.horarioInline}>
+          {ef === 'FOLGA'
+            ? 'Dia de folga'
+            : `${ef.entrada ?? '--'} – ${ef.saida ?? '--'}`}
+        </Text>
+      </View>
+      <View style={[styles.chip, { backgroundColor: fundo }]}>
+        <Text style={[styles.chipTexto, { color: cor }]}>
+          {folga ? 'Folga' : 'Fiscal'}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/** Item compacto de folga (cards "Folga operadores" / "Folga fiscais" no fim). */
+function FolgaItem({
+  nome,
+  icone,
+}: {
+  nome: string;
+  icone: React.ComponentProps<typeof Ionicons>['name'];
+}): React.ReactElement {
+  return (
+    <View style={styles.folgaItem}>
+      <View style={styles.folgaAvatar}>
+        <Ionicons name={icone} size={18} color={cores.textoSecundario} />
+      </View>
+      <Text style={styles.folgaNome} numberOfLines={1}>
+        {nome}
+      </Text>
+      <Text style={styles.folgaTag}>Folga</Text>
+    </View>
+  );
+}
+
+/** Linha inteligente de um operador no card "Faltas do mês" (risco + padrões). */
+function FaltaOperadorRow({ o }: { o: FaltasPorOperador }): React.ReactElement {
+  const corRisco =
+    o.risco === 'ALTO'
+      ? cores.vermelho
+      : o.risco === 'MEDIO'
+        ? cores.amarelo
+        : cores.verde;
+  const tags: string[] = [];
+  if (o.diaRecorrente) tags.push(`${o.diaRecorrente.nome} recorrente`);
+  if (o.faltasEmenda >= 2) tags.push(`${o.faltasEmenda}× emenda`);
+  if (o.sequenciaMax >= 2) tags.push(`${o.sequenciaMax} dias seguidos`);
+  if (o.tendencia > 0) tags.push(`▲ ${o.tendencia} vs. anterior`);
+  return (
+    <View style={styles.faltaItem}>
+      <View style={[styles.riscoDot, { backgroundColor: corRisco }]} />
+      <View style={styles.faltaItemInfo}>
+        <Text style={styles.faltaNomeFull} numberOfLines={1}>
+          {o.nome}
+        </Text>
+        {tags.length > 0 ? (
+          <Text style={styles.faltaTags} numberOfLines={1}>
+            {tags.join(' · ')}
+          </Text>
+        ) : null}
+      </View>
+      <View style={styles.faltaNums}>
+        <Text style={styles.faltaQtdFull}>{o.quantidade}</Text>
+        <Text style={styles.faltaTaxa}>{o.taxa}%</Text>
+      </View>
+    </View>
   );
 }
 
@@ -331,6 +446,15 @@ export function OperadoresScreen(): React.ReactElement {
   const ehHoje = diaSel === hojeISO();
   const coberturaBaixa = dados ? dados.trabalhando < COBERTURA_MINIMA : false;
 
+  // Fiscais: quem trabalha hoje fica no topo; os de folga vão para um card no
+  // fim ("Folga fiscais"), junto com os operadores de folga.
+  const fiscaisDados = escalaFiscais.dados ?? [];
+  const fiscaisTrabalham = fiscaisDados.filter((f) => f.efetiva !== 'FOLGA');
+  const fiscaisFolga = fiscaisDados.filter((f) => f.efetiva === 'FOLGA');
+  const operadoresFolga = (dados?.colaboradores ?? []).filter(
+    (c) => c.status === 'FOLGA',
+  );
+
   return (
     <Tela aoAtualizar={recarregarTudo} atualizando={dia.atualizando}>
       {/* Tablero "ao vivo": quem deveria estar agora */}
@@ -384,48 +508,19 @@ export function OperadoresScreen(): React.ReactElement {
 
       <SeletorData valor={diaSel} aoMudar={setDiaSel} rotulo="Dia" />
 
-      {/* Fiscais do dia (escala) — sempre acima dos operadores */}
-      {escalaFiscais.dados && escalaFiscais.dados.length > 0 ? (
+      {/* Fiscais que TRABALHAM hoje (escala) — acima dos operadores.
+          Os de folga vão para o card "Folga fiscais" no fim. */}
+      {fiscaisTrabalham.length > 0 ? (
         <View>
           <View style={styles.secaoHeader}>
             <Text style={styles.secaoTitulo}>Fiscais</Text>
             <View style={styles.secaoBadge}>
-              <Text style={styles.secaoBadgeTexto}>
-                {escalaFiscais.dados.filter((f) => f.efetiva !== 'FOLGA').length}
-              </Text>
+              <Text style={styles.secaoBadgeTexto}>{fiscaisTrabalham.length}</Text>
             </View>
           </View>
-          {escalaFiscais.dados.map((f) => {
-            const ef = f.efetiva;
-            const folga = ef === 'FOLGA';
-            const cor = folga ? cores.textoSecundario : cores.primaria;
-            const fundo = folga ? cores.divisor : cores.primariaClara;
-            return (
-              <View
-                key={f.funcionarioId}
-                style={[styles.linha, { borderLeftColor: cor }]}
-              >
-                <View style={[styles.avatar, { backgroundColor: fundo }]}>
-                  <Ionicons name="shield-checkmark" size={20} color={cor} />
-                </View>
-                <View style={styles.linhaInfo}>
-                  <Text style={styles.nomeColaborador} numberOfLines={1}>
-                    {f.nome ?? f.funcionarioId}
-                  </Text>
-                  <Text style={styles.horarioInline}>
-                    {ef === 'FOLGA'
-                      ? 'Dia de folga'
-                      : `${ef.entrada ?? '--'} – ${ef.saida ?? '--'}`}
-                  </Text>
-                </View>
-                <View style={[styles.chip, { backgroundColor: fundo }]}>
-                  <Text style={[styles.chipTexto, { color: cor }]}>
-                    {folga ? 'Folga' : 'Fiscal'}
-                  </Text>
-                </View>
-              </View>
-            );
-          })}
+          {fiscaisTrabalham.map((f) => (
+            <FiscalRow key={f.funcionarioId} f={f} />
+          ))}
         </View>
       ) : null}
 
@@ -467,6 +562,9 @@ export function OperadoresScreen(): React.ReactElement {
                       cor={cores.verde}
                     />
                     <Resumo valor={ct.FECHAMENTO} rotulo="Fechamento" cor={cores.verde} />
+                    {ct.APOIO > 0 ? (
+                      <Resumo valor={ct.APOIO} rotulo="Apoio" cor={cores.verde} />
+                    ) : null}
                   </>
                 );
               })()}
@@ -500,10 +598,37 @@ export function OperadoresScreen(): React.ReactElement {
             );
           })}
 
-          {/* Análise de faltas do mês */}
+          {/* Análise inteligente de faltas do mês */}
           {analitica.dados && analitica.dados.total > 0 ? (
             <Cartao titulo="Faltas do mês">
-              <Text style={styles.faltasTotal}>{analitica.dados.total} falta(s) no mês</Text>
+              <View style={styles.faltasTopo}>
+                <View>
+                  <Text style={styles.faltasTotal}>
+                    {analitica.dados.total} falta(s)
+                  </Text>
+                  <Text style={styles.faltasLegenda}>
+                    Absenteísmo: {analitica.dados.taxaGlobal}%
+                  </Text>
+                </View>
+                {analitica.dados.tendenciaPct != null
+                  ? (() => {
+                      const t = analitica.dados.tendenciaPct as number;
+                      const corT =
+                        t > 0
+                          ? cores.vermelho
+                          : t < 0
+                            ? cores.verde
+                            : cores.textoSecundario;
+                      const seta = t > 0 ? '▲ +' : t < 0 ? '▼ ' : '';
+                      return (
+                        <Text style={[styles.faltasTend, { color: corT }]}>
+                          {seta}
+                          {t}% vs. período anterior
+                        </Text>
+                      );
+                    })()
+                  : null}
+              </View>
               {(() => {
                 const pior = [...analitica.dados.porDiaSemana].sort(
                   (a, b) => b.quantidade - a.quantidade,
@@ -514,15 +639,13 @@ export function OperadoresScreen(): React.ReactElement {
                   </Text>
                 ) : null;
               })()}
-              <Text style={styles.faltasSubtitulo}>Quem mais faltou</Text>
-              {analitica.dados.porOperador.slice(0, 5).map((o) => (
-                <View key={o.id} style={styles.faltaLinha}>
-                  <Text style={styles.faltaNome} numberOfLines={1}>
-                    {o.nome}
-                  </Text>
-                  <Text style={styles.faltaQtd}>{o.quantidade}</Text>
-                </View>
+              <Text style={styles.faltasSubtitulo}>Quem precisa de atenção</Text>
+              {analitica.dados.porOperador.slice(0, 6).map((o) => (
+                <FaltaOperadorRow key={o.id} o={o} />
               ))}
+              <Text style={styles.faltasRodape}>
+                🔴 alto · 🟡 médio · 🟢 baixo risco — por taxa, padrão e tendência.
+              </Text>
             </Cartao>
           ) : null}
 
@@ -614,6 +737,30 @@ export function OperadoresScreen(): React.ReactElement {
           ) : null}
         </>
       )}
+
+      {/* Folga do dia — em cards separados por papel, no fim da tela */}
+      {operadoresFolga.length > 0 ? (
+        <Cartao titulo="Folga operadores">
+          {operadoresFolga.map((c) => (
+            <FolgaItem
+              key={c.id}
+              nome={c.nome}
+              icone={iconeGenero(c.genero, c.nome)}
+            />
+          ))}
+        </Cartao>
+      ) : null}
+      {fiscaisFolga.length > 0 ? (
+        <Cartao titulo="Folga fiscais">
+          {fiscaisFolga.map((f) => (
+            <FolgaItem
+              key={f.funcionarioId}
+              nome={f.nome ?? f.funcionarioId}
+              icone="shield-checkmark"
+            />
+          ))}
+        </Cartao>
+      ) : null}
     </Tela>
   );
 }
@@ -792,10 +939,55 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+  // Folga (cards no fim, compactos)
+  folgaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    paddingVertical: espacamento.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: cores.divisor,
+  },
+  folgaAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: cores.divisor,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  folgaNome: {
+    ...tipografia.corpo,
+    color: cores.texto,
+    flex: 1,
+  },
+  folgaTag: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    fontWeight: '700',
+  },
   // Faltas
+  faltasTopo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: espacamento.xs,
+  },
   faltasTotal: {
     ...tipografia.titulo,
     color: cores.texto,
+  },
+  faltasLegenda: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 1,
+  },
+  faltasTend: {
+    ...tipografia.legenda,
+    fontWeight: '700',
+    flexShrink: 1,
+    textAlign: 'right',
+    maxWidth: '50%',
   },
   faltasDica: {
     ...tipografia.legenda,
@@ -809,24 +1001,50 @@ const styles = StyleSheet.create({
     marginTop: espacamento.sm,
     marginBottom: espacamento.xs,
   },
-  faltaLinha: {
+  faltaItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: espacamento.sm,
     paddingVertical: espacamento.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: cores.divisor,
   },
-  faltaNome: {
-    ...tipografia.corpo,
-    color: cores.texto,
-    flex: 1,
-    paddingRight: espacamento.sm,
+  riscoDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
-  faltaQtd: {
+  faltaItemInfo: {
+    flex: 1,
+  },
+  faltaNomeFull: {
+    ...tipografia.corpo,
+    fontWeight: '600',
+    color: cores.texto,
+  },
+  faltaTags: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 1,
+  },
+  faltaNums: {
+    alignItems: 'flex-end',
+    minWidth: 48,
+  },
+  faltaQtdFull: {
     ...tipografia.rotulo,
     fontWeight: '700',
-    color: cores.vermelho,
+    color: cores.texto,
+  },
+  faltaTaxa: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  faltasRodape: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    fontStyle: 'italic',
+    marginTop: espacamento.sm,
   },
   // Gestão
   linhaHorarios: {

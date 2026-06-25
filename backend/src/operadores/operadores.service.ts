@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { Operador, Ausencia } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import {
   AusenciaRegistro,
   ContagemTurno,
@@ -19,6 +20,9 @@ import {
   NomeDuplicadoError,
 } from './operadores.errors';
 
+/** A partir de quantas faltas no mês os gestores são avisados (RH). */
+const LIMITE_FALTAS_MES = 3;
+
 /**
  * Serviço do Modulo_Operadores: cadastro de operadores com unicidade de nome
  * (Req 6.1), registro/remoção de ausências com unicidade por pessoa/dia
@@ -31,7 +35,10 @@ import {
  */
 @Injectable()
 export class OperadoresService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly notificacoes?: NotificacoesService,
+  ) {}
 
   /**
    * Cadastra um operador pelo nome (Req 6.1.1, 6.1.2). Rejeita nome idêntico a
@@ -91,7 +98,51 @@ export class OperadoresService {
     if (ausenciaDuplicada(existentes, pessoaId, data)) {
       throw new AusenciaDuplicadaError();
     }
-    return this.prisma.ausencia.create({ data: { pessoaId, data } });
+    const ausencia = await this.prisma.ausencia.create({
+      data: { pessoaId, data },
+    });
+    // Aviso inteligente: se o operador cruzou o limite de faltas no mês, avisa
+    // os gestores (uma única vez, ao atingir o limite). Defensivo: nunca
+    // bloqueia o registro da falta.
+    await this.verificarLimiteFaltasMes(pessoaId, data);
+    return ausencia;
+  }
+
+  /**
+   * Avisa os gestores quando um operador atinge `LIMITE_FALTAS_MES` faltas no
+   * mês da data informada. Dispara só ao cruzar o limite (contagem === limite)
+   * para não repetir. Só vale para operadores do quadro (OperadorTurno).
+   */
+  private async verificarLimiteFaltasMes(
+    pessoaId: string,
+    data: Date,
+  ): Promise<void> {
+    if (!this.notificacoes) return;
+    try {
+      const op = await this.prisma.operadorTurno.findUnique({
+        where: { id: pessoaId },
+        select: { nome: true },
+      });
+      if (!op) return; // não é um operador do quadro (ex.: fiscal)
+      const ini = new Date(
+        Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), 1),
+      );
+      const fim = new Date(
+        Date.UTC(data.getUTCFullYear(), data.getUTCMonth() + 1, 1),
+      );
+      const qtd = await this.prisma.ausencia.count({
+        where: { pessoaId, data: { gte: ini, lt: fim } },
+      });
+      if (qtd !== LIMITE_FALTAS_MES) return;
+      const gestores = await this.notificacoes.gestores();
+      if (gestores.length === 0) return;
+      await this.notificacoes.enviar(gestores, {
+        titulo: '🔴 Operador com muitas faltas',
+        mensagem: `${op.nome} já tem ${qtd} faltas neste mês. Vale uma conversa de acompanhamento.`,
+      });
+    } catch {
+      // defensivo: o aviso nunca deve impedir o registro da falta.
+    }
   }
 
   /** Remove uma ausência registrada (Req 6.2.4). */

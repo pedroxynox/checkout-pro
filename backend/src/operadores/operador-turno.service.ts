@@ -3,6 +3,11 @@ import { Cron } from '@nestjs/schedule';
 import { OperadorTurno } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import {
+  analisarFaltas,
+  type AnaliticaFaltasDetalhe,
+  type FaltasOperadorDetalhe,
+} from './operadores.domain';
 
 /** Dados para criar/atualizar um turno de operador. */
 export interface TurnoInput {
@@ -72,24 +77,16 @@ export interface AoVivoOperadores {
   listaFaltantes: OperadorAgora[];
 }
 
-export interface FaltasPorOperador {
-  id: string;
-  nome: string;
-  quantidade: number;
-}
-
 export interface FaltasPorDiaSemana {
   diaSemana: number;
   nome: string;
   quantidade: number;
 }
 
-/** Analítica de faltas num período. */
-export interface AnaliticaFaltas {
-  total: number;
-  porOperador: FaltasPorOperador[];
-  porDiaSemana: FaltasPorDiaSemana[];
-}
+// A analítica de faltas agora é inteligente (taxa %, padrões, tendência e
+// risco). A forma vem do domínio puro `analisarFaltas`.
+export type FaltasPorOperador = FaltasOperadorDetalhe;
+export type AnaliticaFaltas = AnaliticaFaltasDetalhe;
 
 /** Um colaborador no roster de um dia. */
 export interface ColaboradorDia {
@@ -468,40 +465,53 @@ export class OperadorTurnoService {
    */
   async analiticaFaltas(inicio: Date, fim: Date): Promise<AnaliticaFaltas> {
     const operadores = await this.prisma.operadorTurno.findMany({
-      select: { id: true, nome: true },
+      select: { id: true, nome: true, folgaDiaSemana: true },
     });
-    const mapaNome = new Map(operadores.map((o) => [o.id, o.nome]));
     const ids = operadores.map((o) => o.id);
-    const ausencias =
-      ids.length > 0
-        ? await this.prisma.ausencia.findMany({
-            where: { pessoaId: { in: ids }, data: { gte: inicio, lte: fim } },
-            select: { pessoaId: true, data: true },
-          })
-        : [];
-
-    const porOp = new Map<string, number>();
-    const porDow = new Array<number>(7).fill(0);
-    for (const a of ausencias) {
-      porOp.set(a.pessoaId, (porOp.get(a.pessoaId) ?? 0) + 1);
-      porDow[a.data.getUTCDay()] += 1;
+    if (ids.length === 0) {
+      return {
+        total: 0,
+        totalAnterior: 0,
+        tendenciaPct: null,
+        taxaGlobal: 0,
+        porOperador: [],
+        porDiaSemana: NOMES_DIA.map((nome, diaSemana) => ({
+          diaSemana,
+          nome,
+          quantidade: 0,
+        })),
+      };
     }
 
-    const porOperador: FaltasPorOperador[] = Array.from(porOp.entries())
-      .map(([id, quantidade]) => ({
-        id,
-        nome: mapaNome.get(id) ?? id,
-        quantidade,
-      }))
-      .sort((a, b) => b.quantidade - a.quantidade || a.nome.localeCompare(b.nome));
+    // Janela anterior de igual duração, imediatamente antes (para a tendência).
+    const UM_DIA = 24 * 60 * 60 * 1000;
+    const prevFim = new Date(inicio.getTime() - UM_DIA);
+    const prevInicio = new Date(
+      prevFim.getTime() - (fim.getTime() - inicio.getTime()),
+    );
 
-    const porDiaSemana: FaltasPorDiaSemana[] = porDow.map((quantidade, dow) => ({
-      diaSemana: dow,
-      nome: NOMES_DIA[dow],
-      quantidade,
-    }));
+    const [ausencias, ausenciasAnterior] = await Promise.all([
+      this.prisma.ausencia.findMany({
+        where: { pessoaId: { in: ids }, data: { gte: inicio, lte: fim } },
+        select: { pessoaId: true, data: true },
+      }),
+      this.prisma.ausencia.findMany({
+        where: { pessoaId: { in: ids }, data: { gte: prevInicio, lte: prevFim } },
+        select: { pessoaId: true, data: true },
+      }),
+    ]);
 
-    return { total: ausencias.length, porOperador, porDiaSemana };
+    // Conta dias escalados só até hoje (taxa de absenteísmo justa no mês atual).
+    const agora = new Date();
+    const fimEscala = agora.getTime() < fim.getTime() ? agora : fim;
+
+    return analisarFaltas({
+      operadores,
+      ausencias,
+      ausenciasAnterior,
+      inicio,
+      fimEscala,
+    });
   }
 
   /** Operadores que deveriam trabalhar num dia da semana (não estão de folga). */
