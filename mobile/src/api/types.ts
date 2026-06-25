@@ -838,3 +838,46 @@ export interface MensagemAssistente {
   criadaEm: string;
   procedimento?: ProcedimentoResposta;
 }
+
+
+
+// ----- Cadastro Unificado de Colaboradores -----
+export type FuncaoColaborador = 'OPERADOR' | 'FISCAL' | 'SUPERVISOR' | 'GESTOR';
+export type TurnoColaborador =
+  | 'ABERTURA'
+  | 'INTERMEDIARIO'
+  | 'FECHAMENTO'
+  | 'APOIO';
+
+/** Pessoa canônica (operador/fiscal) do cadastro unificado. */
+export interface Colaborador {
+  id: string;
+  matricula: string;
+  nome: string;
+  funcao: FuncaoColaborador;
+  genero: string | null;
+  ativo: boolean;
+  turno: TurnoColaborador | null;
+  entradaSemana: string | null;
+  saidaSemana: string | null;
+  entradaFds: string | null;
+  saidaFds: string | null;
+  folgaDiaSemana: number | null;
+  usuarioId: string | null;
+}
+
+/** Dados para cadastrar/editar um colaborador. */
+export interface ColaboradorInput {
+  nome: string;
+  matricula: string;
+  login?: string;
+  funcao?: FuncaoColaborador;
+  genero?: 'M' | 'F';
+  turno?: TurnoColaborador;
+  entradaSemana?: string;
+  saidaSemana?: string;
+  entradaFds?: string;
+  saidaFds?: string;
+  folgaDiaSemana?: number;
+  ativo?: boolean;
+}

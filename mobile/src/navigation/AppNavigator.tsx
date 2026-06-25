@@ -24,6 +24,7 @@ import { FiscaisScreen } from '../screens/fiscais/FiscaisScreen';
 import { JornadaFiscaisScreen } from '../screens/fiscais/JornadaFiscaisScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
 import { OperadoresScreen } from '../screens/operadores/OperadoresScreen';
+import { ColaboradoresScreen } from '../screens/colaboradores/ColaboradoresScreen';
 import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
 import { AlertasFilaScreen } from '../screens/alertasFila/AlertasFilaScreen';
 import { NormativasScreen } from '../screens/normativas/NormativasScreen';
@@ -143,6 +144,13 @@ export function AppNavigator(): React.ReactElement {
           name="Operadores"
           component={OperadoresScreen}
           options={{ title: 'Escalas' }}
+        />
+      )}
+      {podeAcessar('OPERADORES_CRUD') && (
+        <Stack.Screen
+          name="Colaboradores"
+          component={ColaboradoresScreen}
+          options={{ title: 'Colaboradores' }}
         />
       )}
       {podeAcessar('USUARIOS_CRUD') && (

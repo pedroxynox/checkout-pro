@@ -11,6 +11,8 @@ export { fiscaisService, escalaService } from './fiscais';
 export { checklistService } from './checklist';
 export type { ImagemSelecionada } from './checklist';
 export { operadoresService } from './operadores';
+export { colaboradoresService } from './colaboradores';
+export type { FiltroColaboradores } from './colaboradores';
 export { usuariosService } from './usuarios';
 export { notificacoesService } from './notificacoes';
 export { assistenteService } from './assistente';
