@@ -1,27 +1,32 @@
 /** Campo de texto rotulado, com suporte a erro e tipos comuns de teclado. */
 import React from 'react';
 import {
+  StyleProp,
   StyleSheet,
   Text,
   TextInput,
   TextInputProps,
   View,
+  ViewStyle,
 } from 'react-native';
 import { cores, espacamento, raio, tipografia } from '../theme';
 
 interface CampoTextoProps extends TextInputProps {
   rotulo: string;
   erro?: string | null;
+  /** Estilo do contêiner externo (ex.: flex:1 para layout em colunas). */
+  containerStyle?: StyleProp<ViewStyle>;
 }
 
 export function CampoTexto({
   rotulo,
   erro,
   style,
+  containerStyle,
   ...props
 }: CampoTextoProps): React.ReactElement {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       <Text style={styles.rotulo}>{rotulo}</Text>
       <TextInput
         placeholderTextColor={cores.textoSecundario}
