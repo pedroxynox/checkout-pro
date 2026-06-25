@@ -144,6 +144,10 @@ graph TD
 3. **Perfil do Colaborador**: cabeçalho (nome, matrícula, função, turno) + abas/seções:
    - **Operador**: troco, recargas, cancel. itens (com qtd), cancel. cupom (com motivos), cada um com total/meta/tendência; faltas (analítica existente); escala.
    - **Fiscal**: cupons autorizados, devoluções lançadas (qtd/valor); jornada/ponto existentes; faltas; escala.
+   - **Indicadores sempre visíveis**: todos os indicadores do papel aparecem mesmo zerados (mostram **0**), nunca ocultos.
+   - **Gráficos inteligentes** (reutilizando `GraficoBarrasVerticais` / `GraficoPizza`, sem novas libs):
+     - por indicador: barras da evolução do colaborador no período (ex.: por mês) e/ou comparação à meta;
+     - **controle de faltas**: barras de faltas **por mês** (tendência) e **por dia da semana** (padrão), com o **semáforo de risco** e a **taxa de absenteísmo** (da `analisarFaltas`).
 4. **Fila de não reconhecidos** (gestor): lista de movimentos sem vínculo, com ação de associar a um colaborador ou criar novo.
 
 ## API (REST) — esboço

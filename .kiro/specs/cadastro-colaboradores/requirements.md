@@ -86,6 +86,9 @@ O sistema é escrito integralmente em Português do Brasil.
 3. O Sistema DEVE exibir, no perfil de um **fiscal**, suas estatísticas próprias: **cupons autorizados** e **devoluções lançadas** (quantidade e valor), além de jornada/ponto já existentes.
 4. O Sistema DEVE permitir abrir o perfil a partir da seção **Colaboradores** e a partir dos rankings de indicadores.
 5. O perfil DEVE usar exclusivamente movimentos **vinculados por identificador** (não por comparação de nome).
+6. Cada indicador DEVE aparecer SEMPRE no perfil, exibindo **0** quando não houver movimento no período (nunca ocultar um indicador por estar zerado).
+7. O perfil DEVE incluir o **controle de faltas** com **gráficos inteligentes**: faltas por mês (tendência) e por dia da semana (padrão), além do nível de risco (semáforo) e da taxa de absenteísmo.
+8. Os indicadores e as faltas DEVEM ser apresentados com **gráficos**, reutilizando os componentes existentes (`GraficoBarrasVerticais`, `GraficoPizza`), sem novas dependências.
 
 ## Requisito 6 — Fiscais no cadastro unificado
 
