@@ -93,7 +93,7 @@ export class VendasController {
 
   /** Status (enviado/pendente) das vendas no dia. */
   @Get('status')
-  @Funcionalidade('FECHAMENTO')
+  @Funcionalidade('FECHAMENTO', 'IMPORTACOES')
   status(@Query() dto: DataVendasDto): Promise<{ enviado: boolean }> {
     return this.vendasService.status(new Date(dto.data));
   }

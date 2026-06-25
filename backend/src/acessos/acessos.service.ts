@@ -80,6 +80,18 @@ export class AcessosService {
   }
 
   /**
+   * Exige autorização para **pelo menos uma** das funcionalidades (semântica
+   * OR). Usado por endpoints compartilhados entre fluxos com permissões
+   * diferentes (ex.: o status do dia, acessível na Importação ou no
+   * Fechamento). Lança `PermissaoInsuficienteError` se nenhuma for permitida.
+   */
+  exigirAlgumaAutorizacao(perfil: Perfil, funcionalidades: string[]): void {
+    if (!funcionalidades.some((f) => this.autorizar(perfil, f))) {
+      throw new PermissaoInsuficienteError();
+    }
+  }
+
+  /**
    * Verifica se um login está disponível, garantindo a unicidade/exclusividade
    * de login (Req 7.1.4, 7.1.6): nenhum login é compartilhado entre usuários.
    * Apoia-se na restrição de unicidade de `Usuario.login` no banco.
