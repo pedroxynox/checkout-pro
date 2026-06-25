@@ -139,7 +139,7 @@ graph TD
 
 ## Telas (mobile)
 
-1. **Lista de Colaboradores** (gestor): busca, filtros (função/turno/ativo), abre cadastro/edição e perfil. Reaproveita o padrão de `OperadoresScreen`.
+1. **Colaboradores** (seção principal, gestor): lista de TODOS os colaboradores (operadores e fiscais), com busca, filtros (função/turno/ativo). Abre cadastro/edição e o perfil de cada um. Reaproveita o padrão de `OperadoresScreen`. Fluxo: cadastra-se os operadores um a um e todos passam a aparecer aqui, ao lado dos fiscais.
 2. **Cadastro/Edição de Colaborador**: formulário com matrícula, login, nome, gênero, turno, horários Seg–Qui / Sex–Sáb, dia de folga; ações salvar/inativar.
 3. **Perfil do Colaborador**: cabeçalho (nome, matrícula, função, turno) + abas/seções:
    - **Operador**: troco, recargas, cancel. itens (com qtd), cancel. cupom (com motivos), cada um com total/meta/tendência; faltas (analítica existente); escala.

@@ -62,4 +62,5 @@ Convenções: testes de propriedade com **fast-check** (≥100 iterações), ano
 ## Notas
 
 - Construir atrás de compatibilidade: nada de remover modelos/telas até a virada validada.
-- Perguntas em aberto a confirmar antes da Fase 4: confirmação final de que a matrícula do fiscal é a mesma usada em devoluções/cupom (assumido = sim).
+- A seção que reúne todos (operadores + fiscais) chama-se **Colaboradores**; cada item abre o perfil.
+- Confirmado: a **matrícula do fiscal é a mesma** usada em devoluções e na autorização de cupom.

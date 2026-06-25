@@ -43,7 +43,7 @@ O sistema é escrito integralmente em Português do Brasil.
 
 ### Critérios de Aceitação
 
-1. O Sistema DEVE exibir a lista de colaboradores cadastrados, com busca por nome ou matrícula e filtro por função/turno/ativo.
+1. O Sistema DEVE exibir uma seção chamada **Colaboradores** com a lista de TODOS os colaboradores cadastrados (operadores e fiscais), com busca por nome ou matrícula e filtro por função/turno/ativo. Tocar em um colaborador abre o seu **perfil** (Requisito 5).
 2. O Sistema DEVE permitir **editar** todos os dados cadastrais de um colaborador (nome, login, turno, horários, folga, gênero).
 3. QUANDO a matrícula ou o login forem alterados, O Sistema DEVE manter a unicidade e atualizar os identificadores correspondentes.
 4. O Sistema DEVE permitir **inativar** um colaborador (preservando o histórico de movimentos) e **reativar**.
@@ -84,7 +84,7 @@ O sistema é escrito integralmente em Português do Brasil.
 1. O Sistema DEVE exibir, no perfil de um **operador**, por período selecionável: troco solidário (total), recargas (total), cancelamento de itens (total e quantidade), cancelamento de cupom (total e motivos) — com **comparação à meta** quando aplicável.
 2. O Sistema DEVE exibir, no perfil, o **histórico de faltas** (com a analítica inteligente existente: taxa, padrão, tendência, risco) e a **escala** do colaborador.
 3. O Sistema DEVE exibir, no perfil de um **fiscal**, suas estatísticas próprias: **cupons autorizados** e **devoluções lançadas** (quantidade e valor), além de jornada/ponto já existentes.
-4. O Sistema DEVE permitir abrir o perfil a partir da lista de colaboradores e a partir dos rankings de indicadores.
+4. O Sistema DEVE permitir abrir o perfil a partir da seção **Colaboradores** e a partir dos rankings de indicadores.
 5. O perfil DEVE usar exclusivamente movimentos **vinculados por identificador** (não por comparação de nome).
 
 ## Requisito 6 — Fiscais no cadastro unificado
@@ -95,7 +95,7 @@ O sistema é escrito integralmente em Português do Brasil.
 
 1. O Sistema DEVE representar fiscais como Colaborador (funcao = FISCAL) com **matrícula** própria.
 2. O Sistema DEVE manter o vínculo do fiscal com seu `Usuario` (login do app) quando existir, sem alterar a regra de que **apenas fiscais/gestores acessam o app**.
-3. O Sistema DEVE reconhecer o fiscal nas devoluções e nas autorizações de cupom pela sua **matrícula**.
+3. O Sistema DEVE reconhecer o fiscal nas devoluções e nas autorizações de cupom pela sua **matrícula** — que é **a mesma matrícula** usada para cadastrá-lo como Colaborador (confirmado).
 
 ## Requisito 7 — Migração e compatibilidade
 
