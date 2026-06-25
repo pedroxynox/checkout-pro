@@ -146,6 +146,58 @@ export function resolverColaboradorId(
   return mapaLogin.get(comoLogin) ?? mapaMatricula.get(comoMatricula);
 }
 
+/** Identificador cru de um colaborador (como vem do banco). */
+export interface IdentificadorBruto {
+  colaboradorId: string;
+  tipo: string;
+  valor: string;
+}
+
+/** Dados mínimos de um colaborador para o vínculo. */
+export interface ColaboradorBasico {
+  id: string;
+  nome: string;
+  funcao: string;
+}
+
+/**
+ * Vínculo entre os movimentos (RegistroArrecadacao) e os colaboradores
+ * **cadastrados**. Permite resolver o dono de um lançamento pelo código cru
+ * (matrícula/login) e recuperar nome/função. Movimentos cujo código não casa
+ * com nenhum identificador cadastrado são considerados **não cadastrados**.
+ */
+export interface VinculoColaboradores {
+  /** Id do colaborador dono do código, ou undefined se não cadastrado. */
+  idDe(tipo: string, codigo: string | null | undefined): string | undefined;
+  nome(id: string): string;
+  funcao(id: string): string;
+}
+
+/**
+ * Monta o vínculo (puro) a partir dos identificadores e colaboradores
+ * cadastrados. Reaproveita `resolverColaboradorId` para casar cupom/devoluções
+ * por matrícula e troco/recargas/cancelamento de itens por login.
+ */
+export function montarVinculo(
+  identificadores: readonly IdentificadorBruto[],
+  colaboradores: readonly ColaboradorBasico[],
+): VinculoColaboradores {
+  const mapaMatricula = new Map<string, string>();
+  const mapaLogin = new Map<string, string>();
+  for (const i of identificadores) {
+    if (i.tipo === 'MATRICULA') mapaMatricula.set(i.valor, i.colaboradorId);
+    else mapaLogin.set(i.valor, i.colaboradorId);
+  }
+  const info = new Map<string, ColaboradorBasico>();
+  for (const c of colaboradores) info.set(c.id, c);
+  return {
+    idDe: (tipo, codigo) =>
+      resolverColaboradorId(tipo, codigo, mapaMatricula, mapaLogin),
+    nome: (id) => info.get(id)?.nome ?? '',
+    funcao: (id) => info.get(id)?.funcao ?? '',
+  };
+}
+
 /**
  * Posição (1-based) de um colaborador num ranking por valor decrescente, e o
  * total de participantes (valor > 0). Retorna posicao=null quando o
