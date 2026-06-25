@@ -15,6 +15,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
 import { ArrecadacaoModule } from './arrecadacao/arrecadacao.module';
 import { VendasModule } from './vendas/vendas.module';
 import { OperadoresModule } from './operadores/operadores.module';
+import { ColaboradoresModule } from './colaboradores/colaboradores.module';
 import { LoteApaeModule } from './lote-apae/lote-apae.module';
 import { InsumosModule } from './insumos/insumos.module';
 import { RequisicoesModule } from './requisicoes/requisicoes.module';
@@ -38,6 +39,7 @@ import { AssistenteModule } from './assistente/assistente.module';
     ArrecadacaoModule,
     VendasModule,
     OperadoresModule,
+    ColaboradoresModule,
     LoteApaeModule,
     InsumosModule,
     RequisicoesModule,
