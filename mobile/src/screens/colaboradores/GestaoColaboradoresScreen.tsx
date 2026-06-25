@@ -204,6 +204,7 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
               onChangeText={setMatricula}
               placeholder="Ex.: 232152"
               style={styles.metade}
+              containerStyle={styles.metade}
             />
             <CampoTexto
               rotulo="Login / código"
@@ -211,6 +212,7 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
               onChangeText={setLogin}
               placeholder="Ex.: ana.souza"
               style={styles.metade}
+              containerStyle={styles.metade}
             />
           </View>
 
