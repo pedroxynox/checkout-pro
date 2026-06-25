@@ -17,9 +17,14 @@ import {
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import { ColaboradoresService } from './colaboradores.service';
 import {
+  PerfilColaboradorResposta,
+  PerfilColaboradorService,
+} from './perfil-colaborador.service';
+import {
   CadastrarColaboradorDto,
   EditarColaboradorDto,
   ListarColaboradoresDto,
+  PerfilColaboradorDto,
 } from './dto/colaboradores.dto';
 
 /**
@@ -31,7 +36,10 @@ import {
 @Controller('colaboradores')
 @Funcionalidade('OPERADORES_CRUD')
 export class ColaboradoresController {
-  constructor(private readonly service: ColaboradoresService) {}
+  constructor(
+    private readonly service: ColaboradoresService,
+    private readonly perfilService: PerfilColaboradorService,
+  ) {}
 
   /** Cadastra um colaborador (operador por padrão). */
   @Post()
@@ -68,6 +76,25 @@ export class ColaboradoresController {
   @Funcionalidade('OPERADORES_AUSENCIAS')
   async obter(@Param('id') id: string): Promise<Colaborador> {
     return this.service.obter(id);
+  }
+
+  /**
+   * Perfil inteligente do colaborador no período (score, indicadores com
+   * ranking/tendência, faltas com gráficos, resumo e insígnias). Sem `inicio`/
+   * `fim`, usa o mês corrente. Liberado a quem vê a escala.
+   */
+  @Get(':id/perfil')
+  @Funcionalidade('OPERADORES_AUSENCIAS')
+  async perfil(
+    @Param('id') id: string,
+    @Query() q: PerfilColaboradorDto,
+  ): Promise<PerfilColaboradorResposta> {
+    const agora = new Date();
+    const inicio = q.inicio
+      ? new Date(q.inicio)
+      : new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
+    const fim = q.fim ? new Date(q.fim) : agora;
+    return this.perfilService.perfil(id, inicio, fim);
   }
 
   /** Edita um colaborador. */

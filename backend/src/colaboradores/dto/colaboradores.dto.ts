@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsDateString,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -135,4 +136,15 @@ export class ListarColaboradoresDto {
   @IsOptional()
   @IsIn(['true', 'false'], { message: 'ativo deve ser true ou false.' })
   ativo?: string;
+}
+
+/** Período (inicio/fim) do perfil inteligente do colaborador. */
+export class PerfilColaboradorDto {
+  @IsOptional()
+  @IsDateString({}, { message: 'A data inicial deve ser uma data válida.' })
+  inicio?: string;
+
+  @IsOptional()
+  @IsDateString({}, { message: 'A data final deve ser uma data válida.' })
+  fim?: string;
 }
