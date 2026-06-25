@@ -32,14 +32,13 @@ import {
   Users,
 } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../auth/AuthContext';
 import { AREAS } from '../navigation/areas';
 import { ResumoDoDia } from './centroDeMando/ResumoDoDia';
 import { usePulsoDoDia } from './centroDeMando/usePulsoDoDia';
-import { LogoPulseC } from '../components/Logo';
 import { PropsTabInicio } from '../navigation/types';
 import { cores, coresModulos, gradientes, raio, sombra, tipografia } from '../theme';
 
@@ -131,8 +130,12 @@ export function HomeScreen({
       >
         <SafeAreaView edges={['top']}>
           <View style={styles.marcaRow}>
-            <LogoPulseC size={22} cor={cores.textoInverso} />
-            <Text style={styles.marca}>Check-out Pro</Text>
+            <Image
+              source={require('../../assets/LogoElemento.png')}
+              style={styles.marcaLogo}
+              resizeMode="contain"
+              accessibilityLabel="Check-out Pro"
+            />
           </View>
 
           <View style={styles.headerRow}>
@@ -214,12 +217,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     paddingBottom: 19,
   },
-  marca: {
-    fontFamily: 'Inter_800ExtraBold',
-    fontSize: 16,
-    fontWeight: '800',
-    color: cores.textoInverso,
-    letterSpacing: -0.3,
+  marcaLogo: {
+    width: 46,
+    height: 46,
   },
   marcaRow: {
     flexDirection: 'row',

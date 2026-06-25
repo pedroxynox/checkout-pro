@@ -6,6 +6,9 @@
 > y `.kiro/steering/estado-e-pendientes.md`.
 >
 > Idioma de trabajo: español · UI/dominio: portugués (Brasil).
+>
+> Última revisión: 2026-06-23 (refrescado tras el sprint de UI —barra inferior,
+> Centro de Mando, login rediseñado— y la subida de las imágenes de branding).
 
 ---
 
@@ -105,14 +108,28 @@ mobile/ (Expo / React Native)  --HTTPS + JWT Bearer-->  backend/ (NestJS)
 
 - `api/` — `client.ts`, `config.ts`, `socket.ts`, `tokenStorage.ts`, `types.ts`,
   y `services/` (uno por dominio).
-- `auth/` — contexto de autenticación y `podeAcessar(perfil, funcionalidade)`.
-- `navigation/` — `RootNavigator`, `AppNavigator`, `areas.ts` (allowlist por
-  funcionalidad reflejando el backend), `types.ts`.
-- `screens/` — pantallas por área (admin, fechamento, fiscais, importacoes,
-  indicadores, insumos, loteApae, normativas, notificacoes, operadores, quebra,
-  usuarios, checklist, alertasFila) + Home y Login.
-- `components/` (incl. `Graficos.tsx`: pizza/rosca interactiva + barras),
-  `hooks/`, `offline/` (SQLite + cola), `theme/`, `utils/` (`dialogos.ts`).
+- `auth/` — contexto de autenticación, `podeAcessar(perfil, funcionalidade)`,
+  `funcionalidades.ts` (espejo del catálogo del backend) y `biometria.ts`.
+- `navigation/` — `RootNavigator`, `AppNavigator` (pila de pantallas de módulo),
+  **`MainTabs.tsx`** (barra inferior del app autenticado: **Início, Tarefas
+  [badge de pendencias], botón central Cluby [sparkles] → Mensagens,
+  Notificações [badge], Perfil**), `areas.ts` (allowlist por funcionalidad
+  reflejando el backend; áreas `emBreve: true` ocultas del menú), `types.ts`.
+- `screens/` — pantallas por área (admin/GerenciarDados, fechamento, fiscais
+  [Fiscais/Escala/JornadaFiscais], importacoes, indicadores [Indicadores/
+  IndicadorDetalhe/PainelVendas], insumos [Insumos/InsumoDetalhe/Requisicoes],
+  loteApae, normativas, notificacoes, operadores, quebra, usuarios, checklist,
+  alertasFila) + **centroDeMando** (`ResumoDoDia` + hook `usePulsoDoDia`),
+  **tarefas** (`TarefasScreen`), **mensagens** (chat Cluby), **perfil**
+  (`PerfilScreen`), Home y Login (rediseñado: fondo onda azul/blanco).
+- `components/` (incl. `Graficos.tsx`: pizza/rosca interactiva + barras,
+  `Logo.tsx` con `LogoPulseC`, `LeitorCodigoBarras`, `MarkdownTexto`,
+  `ProcedimentoView`), `assistente/` (`AssistenteContext`), `notificacoes/`
+  (`NotificacoesContext`), `hooks/`, `offline/` (SQLite + cola), `theme/`
+  (tema azul + `Inter` + iconos Lucide), `utils/` (`dialogos.ts`).
+- `assets/` — branding subido por el usuario: `Logo.png` (login),
+  `LogoElemento.png` (header), `Appicon.png` (ícono APK), `Favicon.ico` (web).
+  Integración **en curso** en la rama `feat/branding-imagens` (ver §5).
 
 ### Perfiles y autorización
 
@@ -160,9 +177,22 @@ Secretos en Render (no en el repo): `DATABASE_URL`, `JWT_SECRET`,
 - Funcionalidades posteriores al spec (migraciones `9h`–`9o`): pedidos
   recurrentes, stock inicial, metas configurables, APAE inteligente, config de
   ventas, cuadro de operadores, auditoría de checklist, género de operador.
+- **Rediseño de UX reciente** (sprint de UI): barra inferior de navegación
+  (`MainTabs`: Início / Tarefas / botón central **Cluby** / Notificações /
+  Perfil), **Centro de Mando** ("Pulso do Dia" — resumen y pendencias por
+  perfil), Home compacta en grilla de "Acessos rápidos", escalas unificadas
+  (fiscales + operadores), tipografía **Inter** + iconos **Lucide**, y login
+  rediseñado (fondo mitad blanco/mitad azul con onda suave + logo Pulse C).
+- **Branding (en curso, rama `feat/branding-imagens`):** el usuario subió 4
+  imágenes a `mobile/assets/` (`Logo.png`, `LogoElemento.png`, `Appicon.png`,
+  `Favicon.ico`). Pendiente integrarlas: `Logo.png` en el login (reemplaza el
+  vector `LogoPulseC`), `LogoElemento.png` en el header del menú (solo el logo,
+  sin el texto "Check-out Pro"), `Appicon.png` como ícono del APK y
+  `Favicon.ico` como favicon web (en `app.json`), y pasar los colores rojos
+  viejos de `app.json` a azul. Aún sin commits en la rama.
 
 ### Verificación
-- Backend: 39 archivos `.spec.ts`. Mobile: 10 tests.
+- Backend: **31** archivos `.spec.ts`. Mobile: **10** tests (`.test.*`).
 - Comandos: backend (`prisma generate` + `validate` + `build` + `lint` + `jest`);
   mobile (`type-check` + `lint` + `jest` + `expo export --platform web`).
 

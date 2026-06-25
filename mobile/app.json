@@ -7,12 +7,12 @@
     "version": "1.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "primaryColor": "#C8102E",
-    "icon": "./assets/icon.png",
+    "primaryColor": "#0F4C81",
+    "icon": "./assets/Appicon.png",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#C8102E"
+      "backgroundColor": "#0F4C81"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -27,8 +27,8 @@
     "android": {
       "package": "center.stok.frentedecaixa",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#E30613"
+        "foregroundImage": "./assets/Appicon.png",
+        "backgroundColor": "#0F4C81"
       },
       "permissions": [
         "android.permission.CAMERA",
@@ -36,7 +36,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png",
+      "favicon": "./assets/Favicon.ico",
       "bundler": "metro"
     },
     "plugins": [

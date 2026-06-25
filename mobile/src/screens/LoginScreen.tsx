@@ -25,6 +25,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -51,7 +52,6 @@ import {
   loginBiometrico,
 } from '../auth/biometria';
 import { cores, gradientes, raio, sombra, tipografia } from '../theme';
-import { LogoPulseC } from '../components/Logo';
 
 const CHAVE_LOGIN_SALVO = 'checkoutpro:login-lembrado';
 
@@ -224,11 +224,12 @@ export function LoginScreen(): React.ReactElement {
             {/* Conteúdo sobre o azul */}
             <View style={styles.topoConteudo}>
               <View style={styles.marcaRow}>
-                <LogoPulseC size={52} cor={cores.textoInverso} />
-                <View style={styles.marcaTextos}>
-                  <Text style={styles.marca}>Check-out Pro</Text>
-                  <Text style={styles.marcaTag}>Gestão Inteligente</Text>
-                </View>
+                <Image
+                  source={require('../../assets/Logo.png')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                  accessibilityLabel="Check-out Pro"
+                />
               </View>
 
               <View style={styles.intro}>
@@ -460,29 +461,15 @@ const styles = StyleSheet.create({
     marginTop: -28,
   },
 
-  // Marca — logo + nome lado a lado
+  // Marca — logo horizontal completo (já inclui o nome)
   marcaRow: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
     marginBottom: 20,
   },
-  marcaTextos: { justifyContent: 'center' },
-  marca: {
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontSize: 27,
-    fontWeight: '800',
-    color: cores.textoInverso,
-    letterSpacing: -0.6,
-  },
-  marcaTag: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.82)',
-    letterSpacing: 0.2,
-    marginTop: 1,
+  logo: {
+    width: 250,
+    height: 150,
   },
 
   // Saudação sobre o fundo
