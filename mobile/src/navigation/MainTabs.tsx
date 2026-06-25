@@ -19,7 +19,7 @@ import {
   User,
 } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { useNotificacoes } from '../notificacoes/NotificacoesContext';
@@ -79,9 +79,12 @@ export function MainTabs(): React.ReactElement {
         tabBarStyle: {
           backgroundColor: cores.superficie,
           borderTopColor: cores.divisor,
-          height: 64 + insets.bottom,
+          // Na web a área visível já é controlada por 100svh no #root, então NÃO
+          // somamos insets (evita inflar a barra e cortá-la). No nativo, soma o
+          // inset inferior (gestos/notch).
+          height: Platform.OS === 'web' ? 64 : 64 + insets.bottom,
           paddingTop: 8,
-          paddingBottom: insets.bottom + 12,
+          paddingBottom: Platform.OS === 'web' ? 10 : insets.bottom + 12,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600', lineHeight: 14 },
       }}

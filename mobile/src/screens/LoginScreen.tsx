@@ -70,8 +70,8 @@ const SEM_CONTORNO_WEB =
 // Responsiva: ~46% da tela, com limites — equilibra melhor azul x branco e
 // acomoda o logo maior, mantendo um visual profissional.
 const ALTURA_TELA = Dimensions.get('window').height;
-const ALTURA_TOPO = Math.min(Math.max(Math.round(ALTURA_TELA * 0.45), 400), 480);
-const ALTURA_ONDA = 80;
+const ALTURA_TOPO = Math.min(Math.max(Math.round(ALTURA_TELA * 0.42), 400), 470);
+const ALTURA_ONDA = 54;
 
 /**
  * Estrela do Gemini (logo de 4 pontas em "sparkle") desenhada em SVG, com o
@@ -500,9 +500,9 @@ const styles = StyleSheet.create({
   topoConteudo: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: 24,
-    paddingBottom: 30,
+    paddingBottom: 14,
   },
   onda: {
     position: 'absolute',
@@ -514,14 +514,14 @@ const styles = StyleSheet.create({
   // Corpo branco (cartão + rodapé)
   corpo: {
     paddingHorizontal: 22,
-    marginTop: -56,
+    marginTop: -40,
   },
 
   // Marca — logo horizontal completo (já inclui o nome)
   marcaRow: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 8,
   },
   logo: {
     width: 420,
@@ -529,10 +529,10 @@ const styles = StyleSheet.create({
   },
 
   // Saudação sobre o fundo
-  intro: { alignItems: 'center', marginBottom: 14 },
+  intro: { alignItems: 'center', marginBottom: 10 },
   introTitulo: {
     fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: '800',
     color: cores.textoInverso,
     letterSpacing: -0.5,
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 12,
   },
   avatar: {
     width: 50,
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
     borderColor: cores.divisor,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   campoIcone: {
     width: 40,
@@ -639,7 +639,7 @@ const styles = StyleSheet.create({
   limpar: { padding: 6 },
   erro: { ...tipografia.legenda, color: cores.vermelho, marginLeft: 4 },
   aviso: { ...tipografia.legenda, color: cores.amarelo, marginLeft: 4 },
-  esqueciBox: { alignSelf: 'flex-end', marginVertical: 8 },
+  esqueciBox: { alignSelf: 'flex-end', marginVertical: 4 },
   esqueci: {
     ...tipografia.legenda,
     color: cores.primaria,
@@ -692,8 +692,8 @@ const styles = StyleSheet.create({
     gap: 12,
     backgroundColor: cores.primariaClara,
     borderRadius: raio.md,
-    padding: 14,
-    marginTop: 12,
+    padding: 10,
+    marginTop: 8,
   },
   seguroIcone: {
     width: 38,
@@ -715,11 +715,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: cores.textoSecundario,
     marginTop: 2,
-    lineHeight: 17,
+    lineHeight: 15,
   },
 
   // Rodapé
-  rodape: { alignItems: 'center', marginTop: 12, gap: 6 },
+  rodape: { alignItems: 'center', marginTop: 8, gap: 6 },
   cluby: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   clubyTexto: {
     fontFamily: 'Inter_600SemiBold',

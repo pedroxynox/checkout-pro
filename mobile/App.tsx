@@ -61,10 +61,12 @@ if (Platform.OS === 'web' && docWeb) {
   docWeb.body.style.overflow = 'hidden';
   const raiz = docWeb.getElementById('root');
   if (raiz) {
-    // Altura VISÍVEL real do navegador (dvh), com fallback para vh em
-    // navegadores antigos: a 2ª atribuição é ignorada se 'dvh' não existir.
+    // Altura VISÍVEL real do navegador. Usamos 100svh (small viewport height):
+    // corresponde à área visível COM a barra do navegador presente, então a
+    // barra de abas inferior nunca fica cortada. Fallback para vh em navegadores
+    // antigos (a 2ª atribuição é ignorada se 'svh' não existir).
     raiz.style.height = '100vh';
-    raiz.style.height = '100dvh';
+    raiz.style.height = '100svh';
     raiz.style.overflow = 'hidden';
   }
 }
