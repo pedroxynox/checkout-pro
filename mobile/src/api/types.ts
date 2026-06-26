@@ -882,6 +882,17 @@ export interface ColaboradorInput {
   ativo?: boolean;
 }
 
+/** Identificador (matrícula/login) vinculado a um colaborador. */
+export interface ColaboradorIdentificador {
+  tipo: 'MATRICULA' | 'LOGIN';
+  valor: string;
+}
+
+/** Colaborador com seus identificadores (resposta do detalhe `obter`). */
+export interface ColaboradorDetalhe extends Colaborador {
+  identificadores: ColaboradorIdentificador[];
+}
+
 
 // ----- Perfil Inteligente do Colaborador -----
 export type SentidoIndicador = 'MAIOR_MELHOR' | 'MENOR_MELHOR';

@@ -2,6 +2,7 @@
 import { apiClient } from '../client';
 import {
   Colaborador,
+  ColaboradorDetalhe,
   ColaboradorInput,
   FuncaoColaborador,
   PerfilColaborador,
@@ -26,9 +27,9 @@ export const colaboradoresService = {
     return apiClient.get<Colaborador[]>('/colaboradores', params);
   },
 
-  /** Detalhe de um colaborador. */
-  obter(id: string): Promise<Colaborador> {
-    return apiClient.get<Colaborador>(`/colaboradores/${id}`);
+  /** Detalhe de um colaborador (inclui os identificadores: matrícula/login). */
+  obter(id: string): Promise<ColaboradorDetalhe> {
+    return apiClient.get<ColaboradorDetalhe>(`/colaboradores/${id}`);
   },
 
   /** Perfil inteligente do colaborador (score, indicadores, faltas, etc.). */
