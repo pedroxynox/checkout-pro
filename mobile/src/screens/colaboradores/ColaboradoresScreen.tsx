@@ -59,6 +59,28 @@ export function ColaboradoresScreen({
     );
   }, [lista.dados, busca]);
 
+  // Conteo do quadro (somente colaboradores ATIVOS): total e por turno.
+  const contagem = useMemo(() => {
+    const ativos = (lista.dados ?? []).filter((c) => c.ativo);
+    const porTurno = (t: TurnoColaborador): number =>
+      ativos.filter((c) => c.turno === t).length;
+    return {
+      total: ativos.length,
+      ABERTURA: porTurno('ABERTURA'),
+      INTERMEDIARIO: porTurno('INTERMEDIARIO'),
+      FECHAMENTO: porTurno('FECHAMENTO'),
+      APOIO: porTurno('APOIO'),
+    };
+  }, [lista.dados]);
+
+  const cardsContagem: { rotulo: string; valor: number; destaque?: boolean }[] = [
+    { rotulo: 'Total', valor: contagem.total, destaque: true },
+    { rotulo: 'Abertura', valor: contagem.ABERTURA },
+    { rotulo: 'Intermediário', valor: contagem.INTERMEDIARIO },
+    { rotulo: 'Fechamento', valor: contagem.FECHAMENTO },
+    { rotulo: 'Apoio', valor: contagem.APOIO },
+  ];
+
   return (
     <Tela aoAtualizar={lista.recarregar} atualizando={lista.atualizando}>
       <CampoTexto
@@ -67,6 +89,29 @@ export function ColaboradoresScreen({
         onChangeText={setBusca}
         placeholder="Nome ou matrícula"
       />
+
+      {!lista.carregando && !lista.erro && (lista.dados?.length ?? 0) > 0 && (
+        <View style={styles.contadores}>
+          {cardsContagem.map((c) => (
+            <View
+              key={c.rotulo}
+              style={[styles.cardConta, c.destaque && styles.cardContaDestaque]}
+            >
+              <Text
+                style={[
+                  styles.cardContaNum,
+                  c.destaque && styles.cardContaNumDestaque,
+                ]}
+              >
+                {c.valor}
+              </Text>
+              <Text style={styles.cardContaRotulo} numberOfLines={1}>
+                {c.rotulo}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       {lista.carregando ? (
         <Carregando />
@@ -113,6 +158,35 @@ export function ColaboradoresScreen({
 }
 
 const styles = StyleSheet.create({
+  contadores: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espacamento.xs,
+    marginBottom: espacamento.sm,
+  },
+  cardConta: {
+    flexGrow: 1,
+    flexBasis: 92,
+    minWidth: 92,
+    backgroundColor: cores.superficie,
+    borderWidth: 1,
+    borderColor: cores.divisor,
+    borderRadius: raio.md,
+    paddingVertical: espacamento.sm,
+    paddingHorizontal: espacamento.sm,
+    alignItems: 'center',
+  },
+  cardContaDestaque: {
+    backgroundColor: cores.primariaClara,
+    borderColor: cores.primariaClara,
+  },
+  cardContaNum: { ...tipografia.subtitulo, color: cores.texto },
+  cardContaNumDestaque: { color: cores.primaria },
+  cardContaRotulo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+  },
   item: {
     flexDirection: 'row',
     alignItems: 'center',

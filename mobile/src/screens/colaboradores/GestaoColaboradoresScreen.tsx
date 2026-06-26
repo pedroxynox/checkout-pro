@@ -117,6 +117,15 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
     setSaiFds(c.saidaFds ?? '');
     setFolga(c.folgaDiaSemana);
     setFormAberto(true);
+    // Precarrega o login atual (guardado como identificador, não vem na lista).
+    void colaboradoresService
+      .obter(c.id)
+      .then((det) => {
+        const lg =
+          det.identificadores.find((i) => i.tipo === 'LOGIN')?.valor ?? '';
+        setLogin(lg);
+      })
+      .catch(() => undefined);
   };
 
   const salvar = async () => {
