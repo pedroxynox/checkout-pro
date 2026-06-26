@@ -15,6 +15,15 @@ jest.mock('../../api/services', () => ({
   },
 }));
 
+// A tela passou a permitir abrir o perfil do colaborador: mockamos navegação e
+// auth (sem permissão => itens não navegáveis, comportamento neutro no teste).
+jest.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({ navigate: jest.fn() }),
+}));
+jest.mock('../../auth/AuthContext', () => ({
+  useAuth: () => ({ podeAcessar: () => false }),
+}));
+
 // "Hoje" determinístico (sexta-feira = 5) para o snapshot não depender do dia
 // real de execução — ver utils/formato (fuso de Brasília).
 jest.mock('../../utils/formato', () => {

@@ -17,10 +17,16 @@ import {
 } from './fiscais.domain';
 import { FiscalNaoEncontradoError, FaltaRegistradaError, JaIniciouJornadaError, FiscalDeFolgaError } from './fiscais.errors';
 import { FiscalStatusEventos } from './fiscais.eventos';
+import {
+  ColaboradorDoFiscal,
+  mapearFiscalColaborador,
+} from './colaborador-vinculo';
 
 /** Item do painel em tempo real: um fiscal e seu status atual. */
 export interface ItemPainel {
   fiscalId: string;
+  /** Ficha única correspondente (ou null se ainda não houver). */
+  colaboradorId: string | null;
   primeiroNome: string;
   status: StatusFiscal;
   /** Instante (ISO) do último registro; null se ainda não bateu ponto hoje. */
@@ -30,6 +36,7 @@ export interface ItemPainel {
 /** Item do log de jornada do dia (tempos por fiscal). */
 export interface ItemJornada extends Jornada {
   fiscalId: string;
+  colaboradorId: string | null;
   primeiroNome: string;
   status: StatusFiscal;
 }
@@ -81,6 +88,24 @@ export class FiscaisService {
       throw new FiscalNaoEncontradoError();
     }
     return fiscal;
+  }
+
+  /**
+   * Mapa fiscalId → ficha única (colaborador), resolvido por conta de acesso
+   * ou matrícula. Usado para ligar o painel/jornada à ficha do colaborador.
+   */
+  private async mapaColaboradores(): Promise<Map<string, ColaboradorDoFiscal>> {
+    const [fiscais, usuarios, colaboradores] = await Promise.all([
+      this.prisma.fiscal.findMany({
+        select: { id: true, nome: true, usuarioId: true },
+      }),
+      this.prisma.usuario.findMany({ select: { id: true, login: true } }),
+      this.prisma.colaborador.findMany({
+        where: { funcao: 'FISCAL' },
+        select: { id: true, nome: true, matricula: true, usuarioId: true },
+      }),
+    ]);
+    return mapearFiscalColaborador(fiscais, usuarios, colaboradores);
   }
 
   /**
@@ -179,20 +204,23 @@ export class FiscaisService {
   /** Painel de todos os fiscais com o status atual (tempo real via WebSocket). */
   async painel(): Promise<ItemPainel[]> {
     const agora = new Date();
-    const [fiscais, registros] = await Promise.all([
+    const [fiscais, registros, mapaCol] = await Promise.all([
       this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
       this.prisma.registroPontoFiscal.findMany({
         where: { data: inicioDoDia(agora) },
         orderBy: { em: 'asc' },
       }),
+      this.mapaColaboradores(),
     ]);
     const porFiscal = this.agrupar(registros);
     return fiscais.map((f) => {
       const regs = porFiscal.get(f.id) ?? [];
       const ultimo = regs[regs.length - 1] ?? null;
+      const col = mapaCol.get(f.id);
       return {
         fiscalId: f.id,
-        primeiroNome: primeiroNome(f.nome),
+        colaboradorId: col?.colaboradorId ?? null,
+        primeiroNome: primeiroNome(col?.nome ?? f.nome),
         status: statusAtual(regs) ?? 'FORA_EXPEDIENTE',
         desde: ultimo ? ultimo.em.toISOString() : null,
       };
@@ -205,19 +233,22 @@ export class FiscaisService {
     const fim = inicioDoProximoDia(data);
     // Para dias passados, conta no máximo até o fim do dia; para hoje, até agora.
     const limite = agora < fim ? agora : fim;
-    const [fiscais, registros] = await Promise.all([
+    const [fiscais, registros, mapaCol] = await Promise.all([
       this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
       this.prisma.registroPontoFiscal.findMany({
         where: { data: inicioDoDia(data) },
         orderBy: { em: 'asc' },
       }),
+      this.mapaColaboradores(),
     ]);
     const porFiscal = this.agrupar(registros);
     return fiscais.map((f) => {
       const regs = porFiscal.get(f.id) ?? [];
+      const col = mapaCol.get(f.id);
       return {
         fiscalId: f.id,
-        primeiroNome: primeiroNome(f.nome),
+        colaboradorId: col?.colaboradorId ?? null,
+        primeiroNome: primeiroNome(col?.nome ?? f.nome),
         status: statusAtual(regs) ?? 'FORA_EXPEDIENTE',
         ...calcularJornada(regs, limite),
       };

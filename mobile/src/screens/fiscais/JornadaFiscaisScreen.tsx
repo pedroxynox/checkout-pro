@@ -10,8 +10,11 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { fiscaisService } from '../../api/services';
+import { useAuth } from '../../auth/AuthContext';
 import { ItemHorasExtrasFiscal, ItemJornadaFiscal, StatusFiscal } from '../../api/types';
 import {
   Carregando,
@@ -21,6 +24,7 @@ import {
   Tela,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
+import { RootStackParamList } from '../../navigation/types';
 import { formatarDuracao } from '../../utils/formato';
 import { ROTULO_STATUS_FISCAL } from '../../utils/rotulos';
 import { cores, espacamento, raio, tipografia } from '../../theme';
@@ -76,6 +80,10 @@ function nomeMesAtual(): string {
 }
 
 export function JornadaFiscaisScreen(): React.ReactElement {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { podeAcessar } = useAuth();
+  const podeVerPerfil = podeAcessar('OPERADORES_AUSENCIAS');
   const jornada = useRequisicao<ItemJornadaFiscal[]>(
     () => fiscaisService.jornada(),
     [],
@@ -170,8 +178,21 @@ export function JornadaFiscaisScreen(): React.ReactElement {
           descricao="Ainda não há ponto registrado hoje."
         />
       ) : (
-        jornada.dados.map((f) => (
-          <Cartao key={f.fiscalId} style={styles.cartaoFiscal}>
+        jornada.dados.map((f) => {
+          const navegavel = podeVerPerfil && !!f.colaboradorId;
+          return (
+          <Pressable
+            key={f.fiscalId}
+            disabled={!navegavel}
+            onPress={() =>
+              f.colaboradorId &&
+              navigation.navigate('PerfilColaborador', {
+                colaboradorId: f.colaboradorId,
+              })
+            }
+            style={({ pressed }) => (pressed && navegavel ? { opacity: 0.6 } : null)}
+          >
+          <Cartao style={styles.cartaoFiscal}>
             {/* Borda lateral colorida */}
             <View style={[styles.bordaLateral, { backgroundColor: corStatus(f.status) }]} />
 
@@ -210,7 +231,9 @@ export function JornadaFiscaisScreen(): React.ReactElement {
               </View>
             )}
           </Cartao>
-        ))
+          </Pressable>
+          );
+        })
       )}
     </Tela>
   );

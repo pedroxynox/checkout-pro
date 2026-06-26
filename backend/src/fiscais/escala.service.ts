@@ -8,6 +8,7 @@ import {
   escalaConsolidada,
   resolverEscalaEfetiva,
 } from './escala.domain';
+import { mapearFiscalColaborador } from './colaborador-vinculo';
 
 /** Dados para cadastrar uma entrada de escala (Req 4.3.1–4.3.4). */
 export interface EscalaEntryInput {
@@ -22,6 +23,10 @@ export interface EscalaEntryInput {
 /** Item da escala consolidada com o nome resolvido do funcionário. */
 export interface ItemEscalaConsolidadaComNome extends ItemEscalaConsolidada {
   nome: string;
+  /** Ficha única correspondente (para abrir o perfil), ou null. */
+  colaboradorId: string | null;
+  /** Matrícula da ficha, quando resolvida. */
+  matricula: string | null;
 }
 
 /**
@@ -110,19 +115,31 @@ export class EscalaService {
     const itens = escalaConsolidada(entries as unknown as EscalaEntry[], diaSemana);
 
     // Resolve nomes (fiscais, operadores e usuários) num único mapa id -> nome.
-    const [fiscais, operadores, usuarios] = await Promise.all([
-      this.prisma.fiscal.findMany({ select: { id: true, nome: true } }),
+    const [fiscais, operadores, usuarios, colaboradores] = await Promise.all([
+      this.prisma.fiscal.findMany({ select: { id: true, nome: true, usuarioId: true } }),
       this.prisma.operador.findMany({ select: { id: true, nome: true } }),
-      this.prisma.usuario.findMany({ select: { id: true, nome: true } }),
+      this.prisma.usuario.findMany({ select: { id: true, login: true, nome: true } }),
+      this.prisma.colaborador.findMany({
+        where: { funcao: 'FISCAL' },
+        select: { id: true, nome: true, matricula: true, usuarioId: true },
+      }),
     ]);
     const mapa = new Map<string, string>();
     for (const f of fiscais) mapa.set(f.id, f.nome);
     for (const o of operadores) mapa.set(o.id, o.nome);
     for (const u of usuarios) if (u.nome) mapa.set(u.id, u.nome);
 
-    return itens.map((it) => ({
-      ...it,
-      nome: mapa.get(it.funcionarioId) ?? it.funcionarioId,
-    }));
+    // Vínculo Fiscal → ficha única (colaborador), para nome canônico + perfil.
+    const mapaCol = mapearFiscalColaborador(fiscais, usuarios, colaboradores);
+
+    return itens.map((it) => {
+      const col = mapaCol.get(it.funcionarioId);
+      return {
+        ...it,
+        nome: col?.nome ?? mapa.get(it.funcionarioId) ?? it.funcionarioId,
+        colaboradorId: col?.colaboradorId ?? null,
+        matricula: col?.matricula ?? null,
+      };
+    });
   }
 }

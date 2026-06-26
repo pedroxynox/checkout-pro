@@ -35,6 +35,16 @@ describe('FiscaisService e EscalaService', () => {
             fiscais.find((f) => f.usuarioId === usuarioId) ?? null,
           ),
       },
+      usuario: {
+        findMany: () =>
+          Promise.resolve([
+            { id: 'u1', login: '223747', nome: 'Karen Mendoza Barro' },
+            { id: 'u2', login: '999999', nome: 'Ana Souza' },
+          ]),
+      },
+      colaborador: {
+        findMany: () => Promise.resolve([]),
+      },
       registroPontoFiscal: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         create: ({ data }: any) => {
