@@ -897,6 +897,8 @@ export interface ColaboradorInput {
   nome: string;
   matricula: string;
   login?: string;
+  /** Conta de acesso do app (Usuario.id). String vazia = desvincular. */
+  usuarioId?: string | null;
   funcao?: FuncaoColaborador;
   genero?: 'M' | 'F';
   turno?: TurnoColaborador;
@@ -917,6 +919,17 @@ export interface ColaboradorIdentificador {
 /** Colaborador com seus identificadores (resposta do detalhe `obter`). */
 export interface ColaboradorDetalhe extends Colaborador {
   identificadores: ColaboradorIdentificador[];
+}
+
+/** Conta de acesso (login) disponível para vincular a um colaborador. */
+export interface LoginColaborador {
+  id: string;
+  login: string;
+  nome: string | null;
+  perfil: Perfil;
+  /** Colaborador já vinculado a este login (null se livre). */
+  colaboradorId: string | null;
+  colaboradorNome: string | null;
 }
 
 
@@ -986,6 +999,16 @@ export interface PerfilColaborador {
     saidaFds: string | null;
     folgaDiaSemana: number | null;
   };
+  /** Vínculo com a conta de acesso do app (online/offline + jornada de hoje). */
+  vinculoApp: {
+    usuarioId: string;
+    login: string | null;
+    ehFiscal: boolean;
+    online: boolean;
+    status: StatusFiscal | null;
+    desde: string | null;
+    jornada: JornadaTempos | null;
+  } | null;
   periodo: { inicio: string; fim: string };
   score: ScoreSaude;
   resumo: string[];

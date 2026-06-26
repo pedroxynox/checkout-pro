@@ -5,6 +5,7 @@ import {
   ColaboradorDetalhe,
   ColaboradorInput,
   FuncaoColaborador,
+  LoginColaborador,
   PerfilColaborador,
   TurnoColaborador,
 } from '../types';
@@ -30,6 +31,11 @@ export const colaboradoresService = {
   /** Detalhe de um colaborador (inclui os identificadores: matrícula/login). */
   obter(id: string): Promise<ColaboradorDetalhe> {
     return apiClient.get<ColaboradorDetalhe>(`/colaboradores/${id}`);
+  },
+
+  /** Contas de acesso (logins) disponíveis para vincular, com seu uso atual. */
+  logins(): Promise<LoginColaborador[]> {
+    return apiClient.get<LoginColaborador[]>('/colaboradores/logins');
   },
 
   /** Perfil inteligente do colaborador (score, indicadores, faltas, etc.). */

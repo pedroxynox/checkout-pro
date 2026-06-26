@@ -13,7 +13,12 @@ import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { colaboradoresService } from '../../api/services';
-import { Colaborador, FuncaoColaborador, TurnoColaborador } from '../../api/types';
+import {
+  Colaborador,
+  FuncaoColaborador,
+  LoginColaborador,
+  TurnoColaborador,
+} from '../../api/types';
 import {
   Botao,
   CampoTexto,
@@ -53,6 +58,10 @@ function rotuloTurno(t: TurnoColaborador | null): string {
 
 export function GestaoColaboradoresScreen(): React.ReactElement {
   const lista = useRequisicao<Colaborador[]>(() => colaboradoresService.listar(), []);
+  const logins = useRequisicao<LoginColaborador[]>(
+    () => colaboradoresService.logins(),
+    [],
+  );
 
   const [busca, setBusca] = useState('');
   const [formAberto, setFormAberto] = useState(false);
@@ -71,6 +80,7 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
   const [entFds, setEntFds] = useState('');
   const [saiFds, setSaiFds] = useState('');
   const [folga, setFolga] = useState<number | null>(null);
+  const [usuarioId, setUsuarioId] = useState<string | null>(null);
 
   const filtrados = useMemo(() => {
     const dados = lista.dados ?? [];
@@ -82,6 +92,15 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
         c.matricula.toLowerCase().includes(b),
     );
   }, [lista.dados, busca]);
+
+  // Logins livres + o já vinculado a este colaborador (em edição).
+  const loginsDisponiveis = useMemo(
+    () =>
+      (logins.dados ?? []).filter(
+        (l) => l.colaboradorId === null || l.colaboradorId === editId,
+      ),
+    [logins.dados, editId],
+  );
 
   const limparForm = () => {
     setEditId(null);
@@ -96,6 +115,7 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
     setEntFds('');
     setSaiFds('');
     setFolga(null);
+    setUsuarioId(null);
   };
 
   const abrirNovo = () => {
@@ -116,6 +136,7 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
     setEntFds(c.entradaFds ?? '');
     setSaiFds(c.saidaFds ?? '');
     setFolga(c.folgaDiaSemana);
+    setUsuarioId(c.usuarioId);
     setFormAberto(true);
     // Precarrega o login atual (guardado como identificador, não vem na lista).
     void colaboradoresService
@@ -153,6 +174,7 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
       nome: nome.trim(),
       matricula: matricula.trim(),
       login: login.trim() || undefined,
+      usuarioId: usuarioId ?? '',
       funcao,
       genero,
       turno: turno ?? undefined,
@@ -175,6 +197,7 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
       setFormAberto(false);
       limparForm();
       lista.recarregar();
+      logins.recarregar();
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
     } finally {
@@ -235,6 +258,34 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
               </Text>
             ))}
           </View>
+
+          <Text style={styles.rotulo}>Conta de acesso (login do app)</Text>
+          <Text style={styles.ajudaLogin}>
+            Liga a ficha ao login do app: o perfil passa a mostrar o status
+            online/offline e a jornada do fiscal.
+          </Text>
+          <View style={styles.chips}>
+            <Text
+              onPress={() => setUsuarioId(null)}
+              style={[styles.chip, usuarioId === null && styles.chipAtivo]}
+            >
+              Nenhuma
+            </Text>
+            {loginsDisponiveis.map((l) => (
+              <Text
+                key={l.id}
+                onPress={() => setUsuarioId(l.id)}
+                style={[styles.chip, usuarioId === l.id && styles.chipAtivo]}
+              >
+                {l.login}
+              </Text>
+            ))}
+          </View>
+          {logins.erro && (
+            <Text style={styles.ajudaLogin}>
+              Não foi possível carregar os logins.
+            </Text>
+          )}
 
           <Text style={styles.rotulo}>Gênero (avatar)</Text>
           <View style={styles.chips}>
@@ -385,6 +436,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   chipAtivo: { backgroundColor: cores.primaria, color: cores.textoInverso },
+  ajudaLogin: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: -espacamento.xs,
+    marginBottom: espacamento.xs,
+  },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
