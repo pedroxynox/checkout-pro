@@ -121,11 +121,6 @@ export function LoteApaeScreen(): React.ReactElement {
   const [reinicioQtd, setReinicioQtd] = useState('');
   const [ocupado, setOcupado] = useState(false);
 
-  // Configuração editável (preço/meta) — apenas gestor.
-  const [precoInput, setPrecoInput] = useState('');
-  const [metaInput, setMetaInput] = useState('');
-  const [salvandoConfig, setSalvandoConfig] = useState(false);
-
   const historico = useRequisicao(() => loteApaeService.historico(), []);
   const painelReq = useRequisicao(() => loteApaeService.painel(), []);
   const painel: PainelApae | null = painelReq.dados ?? null;
@@ -148,14 +143,6 @@ export function LoteApaeScreen(): React.ReactElement {
   useEffect(() => {
     carregarAtivo();
   }, [carregarAtivo]);
-
-  // Preenche os campos de configuração quando o painel carrega (uma vez).
-  useEffect(() => {
-    if (painel) {
-      setPrecoInput(String(painel.precoSacola).replace('.', ','));
-      setMetaInput(String(painel.metaMensal).replace('.', ','));
-    }
-  }, [painel]);
 
   const aoAtualizar = useCallback(() => {
     carregarAtivo();
@@ -233,29 +220,6 @@ export function LoteApaeScreen(): React.ReactElement {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao reiniciar.');
     } finally {
       setOcupado(false);
-    }
-  };
-
-  const salvarConfig = async () => {
-    const precoNum = Number(precoInput.replace(',', '.'));
-    const metaNum = Number(metaInput.replace(',', '.'));
-    if (!Number.isFinite(precoNum) || precoNum < 0) {
-      notificar('Preço inválido', 'Informe um valor em reais maior ou igual a zero.');
-      return;
-    }
-    if (!Number.isFinite(metaNum) || metaNum < 0) {
-      notificar('Meta inválida', 'Informe um valor em reais maior ou igual a zero.');
-      return;
-    }
-    setSalvandoConfig(true);
-    try {
-      await loteApaeService.definirConfig({ precoSacola: precoNum, metaMensal: metaNum });
-      painelReq.recarregar();
-      notificar('Configuração salva', 'Preço da sacola e meta mensal atualizados.');
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar configuração.');
-    } finally {
-      setSalvandoConfig(false);
     }
   };
 
@@ -475,33 +439,7 @@ export function LoteApaeScreen(): React.ReactElement {
         </Cartao>
       )}
 
-      {/* Configuração (preço da sacola e meta mensal) — apenas gestor */}
-      {podeGerenciar && (
-        <Cartao titulo="Configuração">
-          <Aviso texto="Defina o preço de cada sacola e a meta de arrecadação do mês." />
-          <CampoTexto
-            rotulo="Preço por sacola (R$)"
-            keyboardType="decimal-pad"
-            value={precoInput}
-            onChangeText={setPrecoInput}
-            placeholder="0,49"
-          />
-          <CampoTexto
-            rotulo="Meta mensal (R$)"
-            keyboardType="decimal-pad"
-            value={metaInput}
-            onChangeText={setMetaInput}
-            placeholder="500"
-            style={{ marginTop: espacamento.sm }}
-          />
-          <Botao
-            titulo="Salvar configuração"
-            variante="secundario"
-            aoPressionar={salvarConfig}
-            carregando={salvandoConfig}
-          />
-        </Cartao>
-      )}
+      {/* A edição de preço/meta foi movida para Centro de Controle ▸ Metas. */}
 
       <Text style={styles.tituloSecao}>Histórico de lotes vendidos</Text>
       {historico.carregando ? (
