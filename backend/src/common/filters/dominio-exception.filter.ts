@@ -35,6 +35,8 @@ import {
 } from '../../operadores/operadores.errors';
 import {
   ColaboradorNaoEncontradoError,
+  LoginAppDuplicadoError,
+  LoginAppInexistenteError,
   LoginColaboradorDuplicadoError,
   MatriculaColaboradorDuplicadaError,
 } from '../../colaboradores/colaboradores.errors';
@@ -61,11 +63,13 @@ const MAPA_STATUS: ReadonlyArray<readonly [ConstrutorErro, HttpStatus]> = [
   [UsuarioNaoEncontradoError, HttpStatus.NOT_FOUND],
   [FiscalNaoEncontradoError, HttpStatus.NOT_FOUND],
   [ColaboradorNaoEncontradoError, HttpStatus.NOT_FOUND],
+  [LoginAppInexistenteError, HttpStatus.NOT_FOUND],
   // 409 — conflitos de unicidade / estado.
   [NomeDuplicadoError, HttpStatus.CONFLICT],
   [MatriculaDuplicadaError, HttpStatus.CONFLICT],
   [MatriculaColaboradorDuplicadaError, HttpStatus.CONFLICT],
   [LoginColaboradorDuplicadoError, HttpStatus.CONFLICT],
+  [LoginAppDuplicadoError, HttpStatus.CONFLICT],
   [AusenciaDuplicadaError, HttpStatus.CONFLICT],
   [JaIniciouJornadaError, HttpStatus.CONFLICT],
   [FaltaRegistradaError, HttpStatus.CONFLICT],

@@ -30,6 +30,10 @@ export class CadastrarColaboradorDto {
   login?: string;
 
   @IsOptional()
+  @IsString()
+  usuarioId?: string;
+
+  @IsOptional()
   @IsIn(FUNCOES, { message: 'Função inválida.' })
   funcao?: string;
 
@@ -79,6 +83,10 @@ export class EditarColaboradorDto {
   @IsOptional()
   @IsString()
   login?: string;
+
+  @IsOptional()
+  @IsString()
+  usuarioId?: string;
 
   @IsOptional()
   @IsIn(FUNCOES, { message: 'Função inválida.' })

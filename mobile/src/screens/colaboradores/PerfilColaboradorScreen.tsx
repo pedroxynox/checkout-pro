@@ -29,6 +29,8 @@ import {
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
+import { formatarDuracao } from '../../utils/formato';
+import { ROTULO_STATUS_FISCAL } from '../../utils/rotulos';
 
 const FUNCOES: Record<FuncaoColaborador, string> = {
   OPERADOR: 'Operador',
@@ -204,6 +206,60 @@ export function PerfilColaboradorScreen({
               </View>
             </View>
           </Cartao>
+
+          {/* Acesso ao app: login vinculado + status online/offline + jornada */}
+          {p.vinculoApp && (
+            <Cartao titulo="Acesso ao app">
+              <View style={styles.escalaLinha}>
+                <Text style={styles.escalaRotulo}>Login</Text>
+                <Text style={styles.escalaValor}>
+                  {p.vinculoApp.login ?? '—'}
+                </Text>
+              </View>
+              {p.vinculoApp.ehFiscal ? (
+                <>
+                  <View style={styles.escalaLinha}>
+                    <Text style={styles.escalaRotulo}>Status agora</Text>
+                    <View style={styles.statusLinha}>
+                      <View
+                        style={[
+                          styles.pontoStatus,
+                          {
+                            backgroundColor: p.vinculoApp.online
+                              ? cores.verde
+                              : cores.textoSecundario,
+                          },
+                        ]}
+                      />
+                      <Text style={styles.escalaValor}>
+                        {ROTULO_STATUS_FISCAL[p.vinculoApp.status ?? 'FORA_EXPEDIENTE']}
+                      </Text>
+                    </View>
+                  </View>
+                  {p.vinculoApp.jornada && (
+                    <>
+                      <View style={styles.escalaLinha}>
+                        <Text style={styles.escalaRotulo}>Carga de hoje</Text>
+                        <Text style={styles.escalaValor}>
+                          {formatarDuracao(p.vinculoApp.jornada.cargaHorariaMs)}
+                        </Text>
+                      </View>
+                      <View style={styles.escalaLinha}>
+                        <Text style={styles.escalaRotulo}>Intervalo de hoje</Text>
+                        <Text style={styles.escalaValor}>
+                          {formatarDuracao(p.vinculoApp.jornada.tempoIntervaloMs)}
+                        </Text>
+                      </View>
+                    </>
+                  )}
+                </>
+              ) : (
+                <Text style={styles.semDados}>
+                  Conta sem registro de fiscal — sem status/jornada.
+                </Text>
+              )}
+            </Cartao>
+          )}
 
           {/* Score de Saúde */}
           <Cartao titulo="Saúde do colaborador">
@@ -500,6 +556,8 @@ const styles = StyleSheet.create({
   },
   escalaRotulo: { ...tipografia.corpo, color: cores.textoSecundario },
   escalaValor: { ...tipografia.corpo, color: cores.texto, fontWeight: '600' },
+  statusLinha: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  pontoStatus: { width: 9, height: 9, borderRadius: 5 },
 });
 
 export default PerfilColaboradorScreen;

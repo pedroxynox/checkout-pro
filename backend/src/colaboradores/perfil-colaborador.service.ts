@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { FiscaisService } from '../fiscais/fiscais.service';
+import { StatusFiscal } from '../fiscais/fiscais.domain';
 import {
   CONFIG_ARRECADACAO,
   inicioDoDia,
@@ -67,6 +69,26 @@ export interface PerfilColaboradorResposta {
     saidaFds: string | null;
     folgaDiaSemana: number | null;
   };
+  /**
+   * Vínculo com a conta de acesso do app (quando o colaborador tem `usuarioId`).
+   * Traz o login, o status online/offline e a jornada de hoje do fiscal —
+   * unindo a ficha do colaborador à seção de Fiscais.
+   */
+  vinculoApp: {
+    usuarioId: string;
+    login: string | null;
+    /** Há um registro de Fiscal para essa conta (status/jornada disponíveis). */
+    ehFiscal: boolean;
+    online: boolean;
+    status: StatusFiscal | null;
+    /** Instante (ISO) do último ponto; null se ainda não bateu hoje. */
+    desde: string | null;
+    jornada: {
+      tempoTrabalhandoMs: number;
+      tempoIntervaloMs: number;
+      cargaHorariaMs: number;
+    } | null;
+  } | null;
   periodo: { inicio: string; fim: string };
   score: ScoreSaude;
   resumo: string[];
@@ -105,7 +127,10 @@ function chaveMes(d: Date): number {
  */
 @Injectable()
 export class PerfilColaboradorService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fiscais: FiscaisService,
+  ) {}
 
   async perfil(
     id: string,
@@ -117,6 +142,9 @@ export class PerfilColaboradorService {
       include: { identificadores: true },
     });
     if (!colaborador) throw new ColaboradorNaoEncontradoError();
+
+    // Vínculo com a conta de acesso do app (online/offline + jornada do fiscal).
+    const vinculoApp = await this.resolverVinculoApp(colaborador.usuarioId);
 
     const ehFiscal = colaborador.funcao === 'FISCAL';
     const login =
@@ -350,6 +378,7 @@ export class PerfilColaboradorService {
         saidaFds: colaborador.saidaFds,
         folgaDiaSemana: colaborador.folgaDiaSemana,
       },
+      vinculoApp,
       periodo: {
         inicio: inicioDia.toISOString().slice(0, 10),
         fim: fim.toISOString().slice(0, 10),
@@ -360,6 +389,37 @@ export class PerfilColaboradorService {
       faltas,
       motivosCancelamento,
       insignias,
+    };
+  }
+
+  /**
+   * Resolve o vínculo com a conta de acesso do app: login, status online/
+   * offline e jornada de hoje. Reaproveita o FiscaisService (mesma conta do
+   * Fiscal via usuarioId). Retorna null quando não há login vinculado.
+   */
+  private async resolverVinculoApp(
+    usuarioId: string | null,
+  ): Promise<PerfilColaboradorResposta['vinculoApp']> {
+    if (!usuarioId) return null;
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      select: { login: true },
+    });
+    const resumo = await this.fiscais.meuResumo(usuarioId);
+    return {
+      usuarioId,
+      login: usuario?.login ?? null,
+      ehFiscal: !!resumo,
+      online: resumo ? resumo.status !== 'FORA_EXPEDIENTE' : false,
+      status: resumo?.status ?? null,
+      desde: resumo?.em ?? null,
+      jornada: resumo
+        ? {
+            tempoTrabalhandoMs: resumo.tempoTrabalhandoMs,
+            tempoIntervaloMs: resumo.tempoIntervaloMs,
+            cargaHorariaMs: resumo.cargaHorariaMs,
+          }
+        : null,
     };
   }
 

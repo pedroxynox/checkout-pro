@@ -15,7 +15,7 @@ import {
   TurnoColaborador,
 } from '@prisma/client';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
-import { ColaboradoresService } from './colaboradores.service';
+import { ColaboradoresService, LoginColaborador } from './colaboradores.service';
 import {
   PerfilColaboradorResposta,
   PerfilColaboradorService,
@@ -48,6 +48,7 @@ export class ColaboradoresController {
       nome: dto.nome,
       matricula: dto.matricula,
       login: dto.login,
+      usuarioId: dto.usuarioId,
       funcao: dto.funcao as FuncaoColaborador | undefined,
       genero: dto.genero,
       turno: dto.turno as TurnoColaborador | undefined,
@@ -69,6 +70,15 @@ export class ColaboradoresController {
       turno: q.turno as TurnoColaborador | undefined,
       ativo: q.ativo === undefined ? undefined : q.ativo === 'true',
     });
+  }
+
+  /**
+   * Contas de acesso (logins) disponíveis para vincular a um colaborador, com
+   * a indicação de quais já estão em uso. Restrito ao gestor (OPERADORES_CRUD).
+   */
+  @Get('logins')
+  async logins(): Promise<LoginColaborador[]> {
+    return this.service.listarLogins();
   }
 
   /** Detalhe de um colaborador. Liberado a quem vê a escala. */
@@ -107,6 +117,7 @@ export class ColaboradoresController {
       nome: dto.nome,
       matricula: dto.matricula,
       login: dto.login,
+      usuarioId: dto.usuarioId,
       funcao: dto.funcao as FuncaoColaborador | undefined,
       genero: dto.genero,
       turno: dto.turno as TurnoColaborador | undefined,

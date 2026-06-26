@@ -9,6 +9,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { normalizarLogin, normalizarMatricula } from './colaboradores.domain';
 import {
   ColaboradorNaoEncontradoError,
+  LoginAppDuplicadoError,
+  LoginAppInexistenteError,
   LoginColaboradorDuplicadoError,
   MatriculaColaboradorDuplicadaError,
 } from './colaboradores.errors';
@@ -26,6 +28,23 @@ export interface ColaboradorInput {
   entradaFds?: string | null;
   saidaFds?: string | null;
   folgaDiaSemana?: number | null;
+  /**
+   * Conta de acesso do app (Usuario.id) vinculada a este colaborador. É o elo
+   * que liga a ficha ao login — e, por ele, ao status online/offline e à
+   * jornada do fiscal. String vazia na edição = desvincular.
+   */
+  usuarioId?: string | null;
+}
+
+/** Um login (conta de acesso) disponível para vincular a um colaborador. */
+export interface LoginColaborador {
+  id: string;
+  login: string;
+  nome: string | null;
+  perfil: string;
+  /** Colaborador já vinculado a este login (null se livre). */
+  colaboradorId: string | null;
+  colaboradorNome: string | null;
 }
 
 export interface FiltroColaboradores {
@@ -49,6 +68,7 @@ export class ColaboradoresService {
   async cadastrar(input: ColaboradorInput): Promise<Colaborador> {
     const matricula = normalizarMatricula(input.matricula);
     const login = input.login ? normalizarLogin(input.login) : undefined;
+    const usuarioId = input.usuarioId ? input.usuarioId : undefined;
 
     const jaMatricula = await this.prisma.colaborador.findUnique({
       where: { matricula },
@@ -64,6 +84,9 @@ export class ColaboradoresService {
         throw new LoginColaboradorDuplicadoError(login);
       }
     }
+    if (usuarioId) {
+      await this.garantirUsuarioVinculavel(usuarioId, null);
+    }
 
     return this.prisma.colaborador.create({
       data: {
@@ -77,6 +100,7 @@ export class ColaboradoresService {
         entradaFds: input.entradaFds ?? null,
         saidaFds: input.saidaFds ?? null,
         folgaDiaSemana: input.folgaDiaSemana ?? null,
+        usuarioId: usuarioId ?? null,
         identificadores: {
           create: [
             { tipo: 'MATRICULA', valor: matricula },
@@ -110,6 +134,15 @@ export class ColaboradoresService {
     if (input.folgaDiaSemana !== undefined)
       data.folgaDiaSemana = input.folgaDiaSemana;
     if (input.ativo !== undefined) data.ativo = input.ativo;
+
+    // Conta de acesso (login do app): string vazia/null = desvincular.
+    if (input.usuarioId !== undefined) {
+      const novoUsuario = input.usuarioId ? input.usuarioId : null;
+      if (novoUsuario) {
+        await this.garantirUsuarioVinculavel(novoUsuario, id);
+      }
+      data.usuarioId = novoUsuario;
+    }
 
     // Matrícula (registro) — checa unicidade se mudar.
     let novaMatricula: string | undefined;
@@ -194,6 +227,36 @@ export class ColaboradoresService {
     return c;
   }
 
+  /**
+   * Lista as contas de acesso (logins) e a quem já estão vinculadas. Alimenta
+   * o seletor "Conta de acesso" no cadastro do colaborador, deixando claro
+   * quais logins estão livres e quais já pertencem a outra ficha.
+   */
+  async listarLogins(): Promise<LoginColaborador[]> {
+    const [usuarios, vinculados] = await Promise.all([
+      this.prisma.usuario.findMany({
+        orderBy: [{ nome: 'asc' }, { login: 'asc' }],
+        select: { id: true, login: true, nome: true, perfil: true },
+      }),
+      this.prisma.colaborador.findMany({
+        where: { usuarioId: { not: null } },
+        select: { id: true, nome: true, usuarioId: true },
+      }),
+    ]);
+    const porUsuario = new Map(vinculados.map((c) => [c.usuarioId as string, c]));
+    return usuarios.map((u) => {
+      const vinculo = porUsuario.get(u.id);
+      return {
+        id: u.id,
+        login: u.login,
+        nome: u.nome,
+        perfil: u.perfil,
+        colaboradorId: vinculo?.id ?? null,
+        colaboradorNome: vinculo?.nome ?? null,
+      };
+    });
+  }
+
   /** Inativa um colaborador (preserva o histórico). */
   async inativar(id: string): Promise<Colaborador> {
     return this.definirAtivo(id, false);
@@ -202,6 +265,31 @@ export class ColaboradoresService {
   /** Reativa um colaborador. */
   async reativar(id: string): Promise<Colaborador> {
     return this.definirAtivo(id, true);
+  }
+
+  /**
+   * Garante que a conta de acesso (Usuario) existe e não está vinculada a
+   * outro colaborador. `selfId` é o colaborador em edição (ignorado na checagem
+   * de duplicidade), ou null no cadastro.
+   */
+  private async garantirUsuarioVinculavel(
+    usuarioId: string,
+    selfId: string | null,
+  ): Promise<void> {
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      select: { id: true },
+    });
+    if (!usuario) {
+      throw new LoginAppInexistenteError();
+    }
+    const outro = await this.prisma.colaborador.findUnique({
+      where: { usuarioId },
+      select: { id: true },
+    });
+    if (outro && outro.id !== selfId) {
+      throw new LoginAppDuplicadoError();
+    }
   }
 
   private async definirAtivo(id: string, ativo: boolean): Promise<Colaborador> {

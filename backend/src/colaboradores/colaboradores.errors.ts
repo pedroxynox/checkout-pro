@@ -34,6 +34,20 @@ export class LoginColaboradorDuplicadoError extends ColaboradoresError {
   }
 }
 
+/** Conta de acesso (login do app) já vinculada a outro colaborador. */
+export class LoginAppDuplicadoError extends ColaboradoresError {
+  constructor() {
+    super('Esta conta de acesso já está vinculada a outro colaborador.');
+  }
+}
+
+/** Conta de acesso (login do app) informada não existe. */
+export class LoginAppInexistenteError extends ColaboradoresError {
+  constructor() {
+    super('A conta de acesso informada não existe.');
+  }
+}
+
 /** Colaborador inexistente. */
 export class ColaboradorNaoEncontradoError extends ColaboradoresError {
   constructor() {
