@@ -366,22 +366,21 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
     .sort((a, b) => (a.prioridade === 'alta' ? 0 : 1) - (b.prioridade === 'alta' ? 0 : 1))
     .slice(0, 3);
 
-  // ----- Nota da saúde (só sinais relevantes ao perfil) -----
-  const nota = Math.max(
-    0,
-    Math.min(
-      100,
-      100 -
-        (aberturaNaoFeita ? 20 : 0) -
-        (fechamentoNaoFeito ? 20 : 0) -
-        pendentesLabels.length * 8 -
-        (vendasCairam ? 12 : 0) -
-        criticos.length * 10 -
-        indicadoresForaMeta * 6 -
-        faltas * 8 -
-        (metaAbaixo ? 15 : 0),
-    ),
-  );
+  // ----- Nota da saúde (0–100) -----
+  // Penalidades por categoria, com TETO por categoria, para a nota refletir a
+  // operação de forma realista e não "despencar" a 0 por acúmulo (alguns
+  // pontos de atenção ≠ negócio em colapso). Cada categoria tira no máximo o
+  // seu teto, mesmo quando há muitos itens (ex.: vários insumos baixos).
+  const penalidade =
+    (aberturaNaoFeita ? 15 : 0) +
+    (fechamentoNaoFeito ? 15 : 0) +
+    Math.min(pendentesLabels.length * 5, 20) +
+    (vendasCairam ? 10 : 0) +
+    Math.min(criticos.length * 6, 18) +
+    Math.min(indicadoresForaMeta * 5, 15) +
+    Math.min(faltas * 6, 15) +
+    (metaAbaixo ? 12 : 0);
+  const nota = Math.max(0, Math.min(100, 100 - penalidade));
   const saude = classificar(nota);
 
   const motivos: string[] = [];
