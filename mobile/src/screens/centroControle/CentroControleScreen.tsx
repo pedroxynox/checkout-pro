@@ -26,6 +26,12 @@ const ITENS: ItemControle[] = [
     descricao: 'Cadastrar e editar operadores e fiscais',
     icone: 'id-card-outline',
   },
+  {
+    rota: 'Metas',
+    titulo: 'Metas',
+    descricao: 'Definir as metas de cada indicador por mês',
+    icone: 'flag-outline',
+  },
 ];
 
 export function CentroControleScreen({

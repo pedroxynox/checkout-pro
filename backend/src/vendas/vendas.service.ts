@@ -2,6 +2,8 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FechamentoService } from '../fechamento/fechamento.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { MetasService } from '../metas/metas.service';
+import { anoMesDe } from '../metas/metas.domain';
 import { LinhaVendaHora } from './vendas.parser';
 import {
   NOMES_DIA_SEMANA,
@@ -127,6 +129,7 @@ export class VendasService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fechamento: FechamentoService,
+    private readonly metas: MetasService,
     @Optional() private readonly notificacoes?: NotificacoesService,
   ) {}
 
@@ -271,7 +274,9 @@ export class VendasService {
    */
   async painel(dataRef: Date = new Date()): Promise<PainelVendas> {
     const ref = inicioDoDia(dataRef);
-    const { metaMensal } = await this.obterConfig();
+    // Meta do mês de referência (Centro de Controle ▸ Metas), por período
+    // mensal. Substitui a antiga meta única do Painel de Vendas.
+    const metaMensal = await this.metas.resolver('VENDAS', anoMesDe(ref));
 
     // --- Mês atual (até a data de referência) e projeção (run-rate) ---
     const inicioMes = inicioDoMes(ref);
@@ -502,8 +507,8 @@ export class VendasService {
       }
 
       // (c) Meta do mês em risco (a partir do dia 10).
-      const cfg = await this.obterConfig();
-      if (cfg.metaMensal > 0 && dia.getUTCDate() >= 10) {
+      const metaMensal = await this.metas.resolver('VENDAS', anoMesDe(dia));
+      if (metaMensal > 0 && dia.getUTCDate() >= 10) {
         const inicioMes = inicioDoMes(dia);
         const fimMtd = addDias(dia, 1);
         const totalMes = await this.somarDiario(inicioMes, fimMtd);
@@ -512,11 +517,11 @@ export class VendasService {
         });
         if (dias > 0) {
           const projecao = (totalMes / dias) * diasNoMes(dia);
-          if (projecao < cfg.metaMensal * 0.9) {
-            const falta = Math.round((1 - projecao / cfg.metaMensal) * 100);
+          if (projecao < metaMensal * 0.9) {
+            const falta = Math.round((1 - projecao / metaMensal) * 100);
             await this.notificacoes.enviar(gestores, {
               titulo: '📉 Meta do mês em risco',
-              mensagem: `No ritmo atual, o mês deve fechar em R$${projecao.toFixed(2)} — ${falta}% abaixo da meta de R$${cfg.metaMensal.toFixed(2)}.`,
+              mensagem: `No ritmo atual, o mês deve fechar em R$${projecao.toFixed(2)} — ${falta}% abaixo da meta de R$${metaMensal.toFixed(2)}.`,
             });
           }
         }

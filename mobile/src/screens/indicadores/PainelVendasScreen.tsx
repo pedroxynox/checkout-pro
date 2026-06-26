@@ -14,14 +14,10 @@
  */
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ApiError } from '../../api/client';
 import { vendasService } from '../../api/services';
 import { PainelVendas, VendasPorHora } from '../../api/types';
-import { useAuth } from '../../auth/AuthContext';
 import {
   Aviso,
-  Botao,
-  CampoTexto,
   Carregando,
   Cartao,
   EstadoVazio,
@@ -35,7 +31,6 @@ import {
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { notificar } from '../../utils/dialogos';
 import {
   formatarData,
   formatarMoeda,
@@ -209,16 +204,10 @@ function Heatmap({
 }
 
 export function PainelVendasScreen(): React.ReactElement {
-  const { podeAcessar } = useAuth();
-  const podeEditar = podeAcessar('PAINEL_VENDAS_EDITAR');
-
   const [data, setData] = useState(hojeISO());
   const [periodo, setPeriodo] = useState<PeriodoGrafico>('DIA');
   const [inicioPers, setInicioPers] = useState(hojeISO());
   const [fimPers, setFimPers] = useState(hojeISO());
-
-  const [metaInput, setMetaInput] = useState('');
-  const [salvandoMeta, setSalvandoMeta] = useState(false);
 
   const { inicio, fim } = intervaloDoPeriodo(periodo, data, inicioPers, fimPers);
 
@@ -237,31 +226,6 @@ export function PainelVendasScreen(): React.ReactElement {
     [data],
   );
   const porHoraDia: VendasPorHora | undefined = diaReq.dados ?? undefined;
-
-  // Preenche o campo de meta quando o painel carrega.
-  React.useEffect(() => {
-    if (painel) {
-      setMetaInput(painel.metaMensal > 0 ? String(painel.metaMensal).replace('.', ',') : '');
-    }
-  }, [painel]);
-
-  const salvarMeta = async () => {
-    const metaNum = Number(metaInput.replace(',', '.'));
-    if (!Number.isFinite(metaNum) || metaNum < 0) {
-      notificar('Meta inválida', 'Informe um valor em reais maior ou igual a zero.');
-      return;
-    }
-    setSalvandoMeta(true);
-    try {
-      await vendasService.definirConfig({ metaMensal: metaNum });
-      painelReq.recarregar();
-      notificar('Meta salva', 'A meta mensal de faturamento foi atualizada.');
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar a meta.');
-    } finally {
-      setSalvandoMeta(false);
-    }
-  };
 
   // Horas operacionais (com venda na curva típica) para gráficos e heatmap.
   const horasOperacionais = (painel?.curvaHoraria ?? [])
@@ -340,9 +304,7 @@ export function PainelVendasScreen(): React.ReactElement {
                 <Text style={styles.metaProj}>
                   Projeção de fechamento: {formatarMoeda(painel.projecaoFechamento)}
                 </Text>
-                {podeEditar && (
-                  <Aviso texto="Defina uma meta mensal abaixo para acompanhar o progresso." />
-                )}
+                <Aviso texto="A meta do mês ainda não foi definida. O gestor pode defini-la em Centro de Controle ▸ Metas." />
               </>
             )}
             <Text style={styles.metaNota}>
@@ -440,25 +402,6 @@ export function PainelVendasScreen(): React.ReactElement {
               />
             )}
           </Cartao>
-
-          {/* ----- Gestão: meta mensal ----- */}
-          {podeEditar && (
-            <Cartao titulo="Configuração">
-              <CampoTexto
-                rotulo="Meta mensal de faturamento (R$)"
-                keyboardType="decimal-pad"
-                value={metaInput}
-                onChangeText={setMetaInput}
-                placeholder="0"
-              />
-              <Botao
-                titulo="Salvar meta"
-                variante="secundario"
-                aoPressionar={salvarMeta}
-                carregando={salvandoMeta}
-              />
-            </Cartao>
-          )}
         </>
       ) : null}
 
