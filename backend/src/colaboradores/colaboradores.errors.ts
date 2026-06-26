@@ -41,6 +41,22 @@ export class LoginAppDuplicadoError extends ColaboradoresError {
   }
 }
 
+/** Falta a senha de acesso ao criar fiscal/supervisor/gerente. */
+export class SenhaAcessoObrigatoriaError extends ColaboradoresError {
+  constructor() {
+    super(
+      'Defina uma senha de acesso (mínimo 4 caracteres) para fiscal, supervisor ou gerente.',
+    );
+  }
+}
+
+/** A matrícula já está em uso como login de outra conta de acesso. */
+export class ContaAcessoExistenteError extends ColaboradoresError {
+  constructor() {
+    super('Já existe uma conta de acesso com esta matrícula.');
+  }
+}
+
 /** Conta de acesso (login do app) informada não existe. */
 export class LoginAppInexistenteError extends ColaboradoresError {
   constructor() {

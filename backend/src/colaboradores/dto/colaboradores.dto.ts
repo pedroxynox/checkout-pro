@@ -34,6 +34,14 @@ export class CadastrarColaboradorDto {
   usuarioId?: string;
 
   @IsOptional()
+  @IsString()
+  senha?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  gerenteDesenvolvedor?: boolean;
+
+  @IsOptional()
   @IsIn(FUNCOES, { message: 'Função inválida.' })
   funcao?: string;
 
@@ -87,6 +95,14 @@ export class EditarColaboradorDto {
   @IsOptional()
   @IsString()
   usuarioId?: string;
+
+  @IsOptional()
+  @IsString()
+  senha?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  gerenteDesenvolvedor?: boolean;
 
   @IsOptional()
   @IsIn(FUNCOES, { message: 'Função inválida.' })

@@ -1,9 +1,9 @@
 /**
- * Tela de Pessoas e Acessos (uso do gerente).
+ * Tela "Acesso" (uso do gerente) — Centro de Controle ▸ Acesso.
  *
- * Permite cadastrar novas pessoas (login por matrícula), listar os usuários,
- * redefinir senha e remover. Funcionalidade restrita ao gerente
- * (`USUARIOS_CRUD`); a autorização definitiva é aplicada no backend.
+ * Lista todas as pessoas que têm acesso ao app (login), permite redefinir a
+ * senha e revogar o acesso. O cadastro de pessoas (e a criação do login) é
+ * feito no cadastro de Colaboradores. Restrita ao gerente (`USUARIOS_CRUD`).
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
@@ -18,7 +18,6 @@ import {
   CampoTexto,
   EstadoVazio,
   MensagemErro,
-  Segmentado,
   Tela,
 } from '../../components';
 import { useAuth } from '../../auth/AuthContext';
@@ -38,42 +37,9 @@ export function UsuariosScreen(): React.ReactElement {
   const { usuario } = useAuth();
   const usuarios = useRequisicao(() => usuariosService.listar(), []);
 
-  // Formulário de cadastro
-  const [matricula, setMatricula] = useState('');
-  const [nome, setNome] = useState('');
-  const [perfil, setPerfil] = useState<Perfil>('FISCAL');
-  const [senha, setSenha] = useState('');
-  const [salvando, setSalvando] = useState(false);
-
   // Redefinição de senha inline
   const [redefinindoId, setRedefinindoId] = useState<string | null>(null);
   const [novaSenha, setNovaSenha] = useState('');
-
-  const cadastrar = async () => {
-    if (!matricula.trim() || !nome.trim() || !senha.trim()) {
-      notificar('Campos obrigatórios', 'Informe matrícula, nome e senha.');
-      return;
-    }
-    setSalvando(true);
-    try {
-      await usuariosService.cadastrar({
-        matricula: matricula.trim(),
-        nome: nome.trim(),
-        perfil,
-        senha: senha.trim(),
-      });
-      setMatricula('');
-      setNome('');
-      setSenha('');
-      setPerfil('FISCAL');
-      usuarios.recarregar();
-      notificar('Pronto', 'Pessoa cadastrada com sucesso.');
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao cadastrar.');
-    } finally {
-      setSalvando(false);
-    }
-  };
 
   const salvarNovaSenha = async (id: string) => {
     if (!novaSenha.trim()) return;
@@ -107,44 +73,12 @@ export function UsuariosScreen(): React.ReactElement {
 
   return (
     <Tela aoAtualizar={usuarios.recarregar} atualizando={usuarios.atualizando}>
-      <Cartao titulo="Cadastrar pessoa">
-        <CampoTexto
-          rotulo="Matrícula (login)"
-          value={matricula}
-          onChangeText={setMatricula}
-          placeholder="Ex.: 232152"
-          keyboardType="number-pad"
-          autoCapitalize="none"
-        />
-        <CampoTexto
-          rotulo="Nome completo"
-          value={nome}
-          onChangeText={setNome}
-          placeholder="Ex.: Ana Silva"
-        />
-        <Text style={styles.rotulo}>Cargo</Text>
-        <Segmentado
-          opcoes={[
-            { valor: 'FISCAL', rotulo: 'Fiscal' },
-            { valor: 'SUPERVISOR', rotulo: 'Supervisor' },
-            { valor: 'GERENTE', rotulo: 'Gerente' },
-            { valor: 'GERENTE_DESENVOLVEDOR', rotulo: 'Gerente Dev' },
-            { valor: 'IMPORTADOR', rotulo: 'Importador' },
-          ]}
-          selecionado={perfil}
-          aoSelecionar={setPerfil}
-        />
-        <CampoTexto
-          rotulo="Senha inicial"
-          value={senha}
-          onChangeText={setSenha}
-          placeholder="Mínimo 4 caracteres"
-          autoCapitalize="none"
-        />
-        <Botao titulo="Cadastrar pessoa" aoPressionar={cadastrar} carregando={salvando} />
-      </Cartao>
+      <Text style={styles.intro}>
+        Pessoas com acesso ao app. O cadastro e a criação do login são feitos em
+        Colaboradores; aqui você redefine a senha ou revoga o acesso.
+      </Text>
 
-      <Text style={styles.tituloSecao}>Pessoas cadastradas</Text>
+      <Text style={styles.tituloSecao}>Pessoas com acesso</Text>
       {usuarios.carregando ? (
         <Carregando />
       ) : usuarios.erro ? (
@@ -221,6 +155,11 @@ export function UsuariosScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
+  intro: {
+    ...tipografia.corpo,
+    color: cores.textoSecundario,
+    marginBottom: espacamento.sm,
+  },
   rotulo: {
     ...tipografia.rotulo,
     color: cores.textoSecundario,

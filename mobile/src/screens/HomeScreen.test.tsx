@@ -78,8 +78,8 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     for (const area of AREAS.filter((a) => !a.emBreve)) {
       expect(screen.getByText(area.titulo)).toBeTruthy();
     }
-    // Inclui as áreas administrativas exclusivas do desenvolvedor.
-    expect(screen.getByText('Pessoas e Acessos')).toBeTruthy();
+    // Inclui as áreas administrativas exclusivas do desenvolvedor. (A gestão de
+    // acessos foi movida para Centro de Controle ▸ Acesso.)
     expect(screen.getByText('Gerenciar dados')).toBeTruthy();
 
     // As áreas EM CONSTRUÇÃO ("em breve") ficam ocultas até serem concluídas,

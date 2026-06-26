@@ -128,13 +128,6 @@ export const AREAS: Area[] = [
     funcionalidade: 'OPERADORES_CRUD',
   },
   {
-    rota: 'Usuarios',
-    titulo: 'Pessoas e Acessos',
-    descricao: 'Cadastrar pessoas e definir acessos',
-    icone: 'person-add-outline',
-    funcionalidade: 'USUARIOS_CRUD',
-  },
-  {
     rota: 'AlertasFila',
     titulo: 'Alertas de Fila',
     descricao: 'Avisos de filas/caixas (em breve)',

@@ -187,7 +187,7 @@ export function AppNavigator(): React.ReactElement {
         <Stack.Screen
           name="Usuarios"
           component={UsuariosScreen}
-          options={{ title: 'Pessoas e Acessos' }}
+          options={{ title: 'Acesso' }}
         />
       )}
       {podeAcessar('ALERTAS_FILA') && (
