@@ -5,9 +5,13 @@
  * escala efetiva (horário de entrada/saída, intervalo e se é especial) ou
  * "Folga". O dia da semana é selecionável.
  */
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { escalaService } from '../../api/services';
+import { useAuth } from '../../auth/AuthContext';
 import { ItemEscalaConsolidada } from '../../api/types';
 import {
   Carregando,
@@ -18,10 +22,15 @@ import {
   Tela,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
+import { RootStackParamList } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { DIAS_SEMANA, DIAS_SEMANA_CURTO, diaSemanaHoje } from '../../utils/formato';
 
 export function EscalaScreen(): React.ReactElement {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { podeAcessar } = useAuth();
+  const podeVerPerfil = podeAcessar('OPERADORES_AUSENCIAS');
   const hoje = diaSemanaHoje();
   const [dia, setDia] = useState<number>(hoje);
 
@@ -63,25 +72,46 @@ export function EscalaScreen(): React.ReactElement {
         escala.dados.map((item) => {
           const efetiva = item.efetiva;
           const folga = efetiva === 'FOLGA';
+          const navegavel = podeVerPerfil && !!item.colaboradorId;
           return (
-            <Cartao key={item.funcionarioId}>
-              <View style={styles.linhaCabecalho}>
-                <Text style={styles.func} numberOfLines={1}>
-                  {item.nome ?? item.funcionarioId}
-                </Text>
-                {folga ? (
-                  <Selo texto="Folga" cor={cores.textoSecundario} fundo={cores.superficieAlternativa} />
-                ) : efetiva.especial ? (
-                  <Selo texto="Especial" cor={cores.primaria} fundo={cores.primariaClara} />
+            <Pressable
+              key={item.funcionarioId}
+              disabled={!navegavel}
+              onPress={() =>
+                item.colaboradorId &&
+                navigation.navigate('PerfilColaborador', {
+                  colaboradorId: item.colaboradorId,
+                })
+              }
+              style={({ pressed }) => (pressed && navegavel ? { opacity: 0.6 } : null)}
+            >
+              <Cartao>
+                <View style={styles.linhaCabecalho}>
+                  <Text style={styles.func} numberOfLines={1}>
+                    {item.nome ?? item.funcionarioId}
+                  </Text>
+                  <View style={styles.direita}>
+                    {folga ? (
+                      <Selo texto="Folga" cor={cores.textoSecundario} fundo={cores.superficieAlternativa} />
+                    ) : efetiva.especial ? (
+                      <Selo texto="Especial" cor={cores.primaria} fundo={cores.primariaClara} />
+                    ) : null}
+                    {navegavel && (
+                      <Ionicons name="chevron-forward" size={16} color={cores.textoSecundario} />
+                    )}
+                  </View>
+                </View>
+                {item.matricula ? (
+                  <Text style={styles.matricula}>Matrícula {item.matricula}</Text>
                 ) : null}
-              </View>
-              {efetiva !== 'FOLGA' ? (
-                <Text style={styles.horario}>
-                  {efetiva.entrada ?? '--'} às {efetiva.saida ?? '--'} ·
-                  intervalo {efetiva.intervaloMin} min
-                </Text>
-              ) : null}
-            </Cartao>
+                {efetiva !== 'FOLGA' ? (
+                  <Text style={styles.horario}>
+                    {efetiva.entrada ?? '--'} às {efetiva.saida ?? '--'} ·
+                    intervalo {efetiva.intervaloMin} min
+                  </Text>
+                ) : null}
+              </Cartao>
+            </Pressable>
           );
         })
       )}
@@ -118,6 +148,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  direita: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+  },
+  matricula: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
   },
   func: {
     ...tipografia.corpo,

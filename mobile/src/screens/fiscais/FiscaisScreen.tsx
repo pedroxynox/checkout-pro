@@ -459,41 +459,63 @@ export function FiscaisScreen({
       )}
 
       {/* Painel de todos os fiscais — cards individuais ordenados por status */}
-      {painelOrdenado.map((f) => (
-        <View
-          key={f.fiscalId}
-          style={[styles.cardFiscal, { borderLeftColor: corStatus(f.status) }]}
-        >
-          {/* Avatar femenino */}
-          <View style={[styles.avatar, { backgroundColor: corFundoStatus(f.status) }]}>
-            <Ionicons
-              name={avatarIcone()}
-              size={24}
-              color={corStatus(f.status)}
-            />
-          </View>
-          <View style={styles.cardInfo}>
-            <Text style={styles.cardNome}>{f.primeiroNome}</Text>
-            <Text style={[styles.cardStatus, { color: corStatus(f.status) }]}>
-              {ROTULO_STATUS_FISCAL[f.status]}
-            </Text>
-          </View>
-          {/* Timer do card (relógio correndo ou zerado) */}
-          <View style={styles.cardTimerContainer}>
-            <Ionicons
-              name="time-outline"
-              size={14}
-              color={f.status === 'FORA_EXPEDIENTE' ? cores.textoSecundario : corStatus(f.status)}
-            />
-            <Text style={[
-              styles.cardTimerTexto,
-              { color: f.status === 'FORA_EXPEDIENTE' ? cores.textoSecundario : corStatus(f.status) },
-            ]}>
-              {timerCard(f.desde, f.status, tick)}
-            </Text>
-          </View>
-        </View>
-      ))}
+      {painelOrdenado.map((f) => {
+        const navegavel = podeAcessar('OPERADORES_AUSENCIAS') && !!f.colaboradorId;
+        return (
+          <Pressable
+            key={f.fiscalId}
+            disabled={!navegavel}
+            onPress={() =>
+              f.colaboradorId &&
+              navigation.navigate('PerfilColaborador', {
+                colaboradorId: f.colaboradorId,
+              })
+            }
+            style={({ pressed }) => [
+              styles.cardFiscal,
+              { borderLeftColor: corStatus(f.status) },
+              pressed && navegavel && { opacity: 0.6 },
+            ]}
+          >
+            {/* Avatar femenino */}
+            <View style={[styles.avatar, { backgroundColor: corFundoStatus(f.status) }]}>
+              <Ionicons
+                name={avatarIcone()}
+                size={24}
+                color={corStatus(f.status)}
+              />
+            </View>
+            <View style={styles.cardInfo}>
+              <Text style={styles.cardNome}>{f.primeiroNome}</Text>
+              <Text style={[styles.cardStatus, { color: corStatus(f.status) }]}>
+                {ROTULO_STATUS_FISCAL[f.status]}
+              </Text>
+            </View>
+            {/* Timer do card (relógio correndo ou zerado) */}
+            <View style={styles.cardTimerContainer}>
+              <Ionicons
+                name="time-outline"
+                size={14}
+                color={f.status === 'FORA_EXPEDIENTE' ? cores.textoSecundario : corStatus(f.status)}
+              />
+              <Text style={[
+                styles.cardTimerTexto,
+                { color: f.status === 'FORA_EXPEDIENTE' ? cores.textoSecundario : corStatus(f.status) },
+              ]}>
+                {timerCard(f.desde, f.status, tick)}
+              </Text>
+            </View>
+            {navegavel && (
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={cores.textoSecundario}
+                style={{ marginLeft: espacamento.xs }}
+              />
+            )}
+          </Pressable>
+        );
+      })}
     </Tela>
   );
 }

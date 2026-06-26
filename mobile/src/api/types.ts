@@ -505,6 +505,8 @@ export interface JornadaTempos {
 /** Item do painel em tempo real: um fiscal e seu status atual. */
 export interface ItemPainelFiscal {
   fiscalId: string;
+  /** Ficha única correspondente (para abrir o perfil), ou null. */
+  colaboradorId: string | null;
   primeiroNome: string;
   status: StatusFiscal;
   desde: string | null;
@@ -523,6 +525,7 @@ export interface MeuResumoFiscal extends JornadaTempos {
 /** Item do log de jornada do dia (tempos por fiscal) — uso gerencial. */
 export interface ItemJornadaFiscal extends JornadaTempos {
   fiscalId: string;
+  colaboradorId: string | null;
   primeiroNome: string;
   status: StatusFiscal;
 }
@@ -588,6 +591,10 @@ export interface ItemEscalaConsolidada {
   funcionarioId: string;
   /** Nome resolvido do funcionário (fallback para o id). */
   nome?: string;
+  /** Ficha única correspondente (para abrir o perfil), ou null. */
+  colaboradorId?: string | null;
+  /** Matrícula da ficha, quando resolvida. */
+  matricula?: string | null;
   efetiva: EscalaEfetiva;
 }
 
