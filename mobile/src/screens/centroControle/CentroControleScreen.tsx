@@ -42,6 +42,20 @@ const ITENS: ItemControle[] = [
     icone: 'key-outline',
     funcionalidade: 'USUARIOS_CRUD',
   },
+  {
+    rota: 'Importacoes',
+    titulo: 'Importações',
+    descricao: 'Carregar os arquivos do dia',
+    icone: 'cloud-upload-outline',
+    funcionalidade: 'IMPORTACOES',
+  },
+  {
+    rota: 'InsumosDados',
+    titulo: 'Insumos',
+    descricao: 'Zerar estoque e limpar histórico de requisições',
+    icone: 'cube-outline',
+    funcionalidade: 'ADMIN_DADOS',
+  },
 ];
 
 export function CentroControleScreen({

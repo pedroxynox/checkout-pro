@@ -72,7 +72,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       AlertasFila: 'alertas-fila',
       Normativas: 'normativas',
       IndicadorQuebra: 'quebra',
-      GerenciarDados: 'gerenciar-dados',
+      InsumosDados: 'centro-controle/insumos',
     },
   },
 };

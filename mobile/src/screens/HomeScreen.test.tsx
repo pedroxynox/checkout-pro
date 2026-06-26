@@ -74,13 +74,17 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     montarAuth('GERENTE_DESENVOLVEDOR');
     render(<HomeScreen navigation={navegacaoFake()} route={{} as never} />);
 
-    // Vê todas as áreas que já estão prontas.
-    for (const area of AREAS.filter((a) => !a.emBreve)) {
+    // Vê todas as áreas prontas — exceto "Importações", que saiu da Home para
+    // o Centro de Controle quando o usuário tem acesso ao Centro de Controle.
+    for (const area of AREAS.filter(
+      (a) => !a.emBreve && a.rota !== 'Importacoes',
+    )) {
       expect(screen.getByText(area.titulo)).toBeTruthy();
     }
-    // Inclui as áreas administrativas exclusivas do desenvolvedor. (A gestão de
-    // acessos foi movida para Centro de Controle ▸ Acesso.)
-    expect(screen.getByText('Gerenciar dados')).toBeTruthy();
+    // Importações não aparece mais na Home para o gerente (vive no Centro de
+    // Controle); Gerenciar dados deixou de existir (ações movidas para lá).
+    expect(screen.queryByText('Importações')).toBeNull();
+    expect(screen.queryByText('Gerenciar dados')).toBeNull();
 
     // As áreas EM CONSTRUÇÃO ("em breve") ficam ocultas até serem concluídas,
     // mesmo para o desenvolvedor.

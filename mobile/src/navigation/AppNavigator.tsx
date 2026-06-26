@@ -29,11 +29,11 @@ import { GestaoColaboradoresScreen } from '../screens/colaboradores/GestaoColabo
 import { PerfilColaboradorScreen } from '../screens/colaboradores/PerfilColaboradorScreen';
 import { CentroControleScreen } from '../screens/centroControle/CentroControleScreen';
 import { MetasScreen } from '../screens/metas/MetasScreen';
+import { InsumosDadosScreen } from '../screens/centroControle/InsumosDadosScreen';
 import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
 import { AlertasFilaScreen } from '../screens/alertasFila/AlertasFilaScreen';
 import { NormativasScreen } from '../screens/normativas/NormativasScreen';
 import { IndicadorQuebraScreen } from '../screens/quebra/IndicadorQuebraScreen';
-import { GerenciarDadosScreen } from '../screens/admin/GerenciarDadosScreen';
 import { cores } from '../theme';
 import { ROTULO_TIPO_ARRECADACAO } from '../utils/rotulos';
 import { RootStackParamList } from './types';
@@ -213,9 +213,9 @@ export function AppNavigator(): React.ReactElement {
       )}
       {podeAcessar('ADMIN_DADOS') && (
         <Stack.Screen
-          name="GerenciarDados"
-          component={GerenciarDadosScreen}
-          options={{ title: 'Gerenciar dados' }}
+          name="InsumosDados"
+          component={InsumosDadosScreen}
+          options={{ title: 'Insumos' }}
         />
       )}
     </Stack.Navigator>
