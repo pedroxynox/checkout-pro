@@ -35,13 +35,13 @@ export type RootStackParamList = {
   CentroControle: undefined;
   GestaoColaboradores: undefined;
   Metas: undefined;
+  InsumosDados: undefined;
   PerfilColaborador: { colaboradorId: string };
   Usuarios: undefined;
   AlertasFila: undefined;
   Normativas: undefined;
   IndicadorQuebra: undefined;
   Notificacoes: undefined;
-  GerenciarDados: undefined;
 };
 
 export type RotaApp = keyof RootStackParamList;

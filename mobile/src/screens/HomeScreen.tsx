@@ -87,7 +87,13 @@ export function HomeScreen({
   // marcada como "em breve" (em construção). Áreas `emBreve` ficam ocultas até
   // serem concluídas, inclusive para o gerente desenvolvedor.
   const areasVisiveis = AREAS.filter(
-    (a) => !a.emBreve && podeAcessar(a.funcionalidade),
+    (a) =>
+      !a.emBreve &&
+      podeAcessar(a.funcionalidade) &&
+      // "Importações" saiu da Home para quem tem o Centro de Controle (agora ela
+      // vive lá dentro). O importador (sem Centro de Controle) continua vendo a
+      // card na Home, para seguir carregando os arquivos do dia.
+      !(a.rota === 'Importacoes' && podeAcessar('OPERADORES_CRUD')),
   );
   // Ordena por relevância: módulos com mais pendências primeiro; em empate,
   // mantém a ordem original (sort estável). Apenas reordena a exibição.

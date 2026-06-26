@@ -1,23 +1,19 @@
 /**
- * Tela de Gerenciamento de Dados (administrativo, apenas GERENTE).
+ * Centro de Controle ▸ Insumos — ações administrativas de dados de insumos.
  *
- * Reúne operações sobre os dados do banco — hoje, ações de "zerar/limpar".
- * Cada ação pede confirmação e é irreversível. Separada das telas operacionais
- * de propósito, para não misturar com o uso do dia a dia.
+ * Reúne as operações de "zerar/limpar" relativas a insumos: zerar o estoque
+ * (movimentos) e limpar o histórico de requisições. Cada ação pede confirmação
+ * e é irreversível. Restrita ao gestor (ADMIN_DADOS).
  */
 import React, { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { ApiError } from '../../api/client';
-import {
-  insumosService,
-  loteApaeService,
-  requisicoesService,
-} from '../../api/services';
+import { insumosService, requisicoesService } from '../../api/services';
 import { Aviso, Botao, Cartao, Tela } from '../../components';
 import { cores, espacamento, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
 
-export function GerenciarDadosScreen(): React.ReactElement {
+export function InsumosDadosScreen(): React.ReactElement {
   const [ocupado, setOcupado] = useState<string | null>(null);
 
   const rodar = async (
@@ -65,7 +61,7 @@ export function GerenciarDadosScreen(): React.ReactElement {
         />
       </Cartao>
 
-      <Cartao titulo="Limpar requisições">
+      <Cartao titulo="Limpar histórico de requisições">
         <Text style={styles.descricao}>
           Remove todas as requisições (pendentes, aprovadas e negadas). Não
           afeta o estoque já lançado.
@@ -84,26 +80,6 @@ export function GerenciarDadosScreen(): React.ReactElement {
           }
         />
       </Cartao>
-
-      <Cartao titulo="Limpar histórico de Sacolas APAE">
-        <Text style={styles.descricao}>
-          Remove os lotes vendidos do histórico de Sacolas APAE. O lote ativo
-          não é afetado.
-        </Text>
-        <Botao
-          titulo="Limpar histórico"
-          variante="perigo"
-          carregando={ocupado === 'apae'}
-          aoPressionar={() =>
-            rodar(
-              'apae',
-              'Remover todos os lotes vendidos do histórico de Sacolas APAE?',
-              () => loteApaeService.limparHistorico(),
-              (n) => `${n} lote(s) removido(s) do histórico.`,
-            )
-          }
-        />
-      </Cartao>
     </Tela>
   );
 }
@@ -116,4 +92,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default GerenciarDadosScreen;
+export default InsumosDadosScreen;

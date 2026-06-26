@@ -27,7 +27,7 @@ import {
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { notificar } from '../../utils/dialogos';
+import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarMoeda, formatarPercentual } from '../../utils/formato';
 
 /** Ícone de cada indicador. */
@@ -99,6 +99,7 @@ export function MetasScreen(): React.ReactElement {
   const [precoApae, setPrecoApae] = useState('');
   const [metaApae, setMetaApae] = useState('');
   const [salvandoApae, setSalvandoApae] = useState(false);
+  const [limpandoApae, setLimpandoApae] = useState(false);
 
   useEffect(() => {
     const cfg = apaeReq.dados;
@@ -158,6 +159,24 @@ export function MetasScreen(): React.ReactElement {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
     } finally {
       setSalvandoApae(false);
+    }
+  };
+
+  const limparHistoricoApae = async () => {
+    const ok = await confirmar(
+      'Limpar histórico',
+      'Remover todos os lotes vendidos do histórico de Sacolas APAE? O lote ativo não é afetado. Esta ação não pode ser desfeita.',
+      'Limpar',
+    );
+    if (!ok) return;
+    setLimpandoApae(true);
+    try {
+      const { removidos } = await loteApaeService.limparHistorico();
+      notificar('Pronto', `${removidos} lote(s) removido(s) do histórico.`);
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao limpar.');
+    } finally {
+      setLimpandoApae(false);
     }
   };
 
@@ -277,6 +296,12 @@ export function MetasScreen(): React.ReactElement {
                 titulo="Salvar Sacolas APAE"
                 aoPressionar={() => void salvarApae()}
                 carregando={salvandoApae}
+              />
+              <Botao
+                titulo="Limpar histórico de Sacolas APAE"
+                variante="perigo"
+                aoPressionar={() => void limparHistoricoApae()}
+                carregando={limpandoApae}
               />
             </>
           )}

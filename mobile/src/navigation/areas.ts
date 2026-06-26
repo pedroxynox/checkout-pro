@@ -35,7 +35,6 @@ export interface Area {
     | 'Normativas'
     | 'IndicadorQuebra'
     | 'Notificacoes'
-    | 'GerenciarDados'
   >;
   titulo: string;
   descricao: string;
@@ -150,12 +149,5 @@ export const AREAS: Area[] = [
     icone: 'trending-down-outline',
     funcionalidade: 'INDICADOR_QUEBRA',
     emBreve: true,
-  },
-  {
-    rota: 'GerenciarDados',
-    titulo: 'Gerenciar dados',
-    descricao: 'Zerar/limpar dados (administrativo)',
-    icone: 'construct-outline',
-    funcionalidade: 'ADMIN_DADOS',
   },
 ];
