@@ -59,13 +59,17 @@ export function ColaboradoresScreen({
     );
   }, [lista.dados, busca]);
 
-  // Conteo do quadro (somente colaboradores ATIVOS): total e por turno.
+  // Conteo do quadro (somente colaboradores ATIVOS): total, fiscais e por
+  // turno. Os turnos (Abertura/Intermediário/Fechamento/Apoio) contam APENAS
+  // operadores — os fiscais têm a sua própria contagem e não entram nos turnos.
   const contagem = useMemo(() => {
     const ativos = (lista.dados ?? []).filter((c) => c.ativo);
+    const operadores = ativos.filter((c) => c.funcao === 'OPERADOR');
     const porTurno = (t: TurnoColaborador): number =>
-      ativos.filter((c) => c.turno === t).length;
+      operadores.filter((c) => c.turno === t).length;
     return {
       total: ativos.length,
+      FISCAIS: ativos.filter((c) => c.funcao === 'FISCAL').length,
       ABERTURA: porTurno('ABERTURA'),
       INTERMEDIARIO: porTurno('INTERMEDIARIO'),
       FECHAMENTO: porTurno('FECHAMENTO'),
@@ -75,6 +79,7 @@ export function ColaboradoresScreen({
 
   const cardsContagem: { rotulo: string; valor: number; destaque?: boolean }[] = [
     { rotulo: 'Total', valor: contagem.total, destaque: true },
+    { rotulo: 'Fiscais', valor: contagem.FISCAIS },
     { rotulo: 'Abertura', valor: contagem.ABERTURA },
     { rotulo: 'Intermediário', valor: contagem.INTERMEDIARIO },
     { rotulo: 'Fechamento', valor: contagem.FECHAMENTO },
