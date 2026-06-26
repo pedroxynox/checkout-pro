@@ -2,18 +2,44 @@ import { Injectable } from '@nestjs/common';
 import {
   Colaborador,
   FuncaoColaborador,
+  Perfil,
   Prisma,
   TurnoColaborador,
+  TurnoFiscal,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AcessosService } from '../acessos/acessos.service';
 import { normalizarLogin, normalizarMatricula } from './colaboradores.domain';
 import {
   ColaboradorNaoEncontradoError,
+  ContaAcessoExistenteError,
   LoginAppDuplicadoError,
   LoginAppInexistenteError,
   LoginColaboradorDuplicadoError,
   MatriculaColaboradorDuplicadaError,
+  SenhaAcessoObrigatoriaError,
 } from './colaboradores.errors';
+
+/** Funções que têm acesso ao app (login). Operador NÃO entra no app. */
+function perfilDaFuncao(
+  funcao: FuncaoColaborador,
+  gerenteDesenvolvedor?: boolean,
+): Perfil | null {
+  if (funcao === 'FISCAL') return 'FISCAL';
+  if (funcao === 'SUPERVISOR') return 'SUPERVISOR';
+  if (funcao === 'GESTOR') {
+    return gerenteDesenvolvedor ? 'GERENTE_DESENVOLVEDOR' : 'GERENTE';
+  }
+  return null;
+}
+
+/** Mapeia o turno do colaborador para o turno do fiscal (3 turnos). */
+function turnoFiscalDe(turno?: TurnoColaborador | null): TurnoFiscal {
+  if (turno === 'ABERTURA' || turno === 'INTERMEDIARIO' || turno === 'FECHAMENTO') {
+    return turno;
+  }
+  return 'INTERMEDIARIO';
+}
 
 /** Dados de cadastro/edição de um colaborador. */
 export interface ColaboradorInput {
@@ -29,9 +55,16 @@ export interface ColaboradorInput {
   saidaFds?: string | null;
   folgaDiaSemana?: number | null;
   /**
-   * Conta de acesso do app (Usuario.id) vinculada a este colaborador. É o elo
-   * que liga a ficha ao login — e, por ele, ao status online/offline e à
-   * jornada do fiscal. String vazia na edição = desvincular.
+   * Senha de acesso ao app. No cadastro de fiscal/supervisor/gerente é
+   * obrigatória (cria a conta com login = matrícula). Na edição, quando
+   * informada, redefine a senha.
+   */
+  senha?: string | null;
+  /** Quando a função é GESTOR, define se é o gerente desenvolvedor (acesso total). */
+  gerenteDesenvolvedor?: boolean;
+  /**
+   * Conta de acesso já existente a vincular (Usuario.id). Caminho secundário;
+   * o normal é criar a conta pela senha. String vazia na edição = desvincular.
    */
   usuarioId?: string | null;
 }
@@ -62,13 +95,22 @@ export interface FiltroColaboradores {
  */
 @Injectable()
 export class ColaboradoresService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly acessos: AcessosService,
+  ) {}
 
-  /** Cadastra um colaborador (operador por padrão) e seus identificadores. */
+  /**
+   * Cadastra um colaborador. Para fiscal/supervisor/gerente, cria também a
+   * conta de acesso ao app (login = matrícula, com a senha informada) e, no
+   * caso de fiscal, o registro de fiscal (mantendo o painel/jornada/escala
+   * funcionando). Operadores não recebem login (sem acesso ao app).
+   */
   async cadastrar(input: ColaboradorInput): Promise<Colaborador> {
     const matricula = normalizarMatricula(input.matricula);
     const login = input.login ? normalizarLogin(input.login) : undefined;
-    const usuarioId = input.usuarioId ? input.usuarioId : undefined;
+    const funcao = input.funcao ?? 'OPERADOR';
+    const perfilAcesso = perfilDaFuncao(funcao, input.gerenteDesenvolvedor);
 
     const jaMatricula = await this.prisma.colaborador.findUnique({
       where: { matricula },
@@ -84,15 +126,38 @@ export class ColaboradoresService {
         throw new LoginColaboradorDuplicadoError(login);
       }
     }
-    if (usuarioId) {
-      await this.garantirUsuarioVinculavel(usuarioId, null);
+
+    // Resolve a conta de acesso: vincula uma existente (caminho secundário) ou
+    // cria uma nova com login = matrícula (caminho normal para quem entra no app).
+    let usuarioId: string | null = null;
+    if (input.usuarioId) {
+      await this.garantirUsuarioVinculavel(input.usuarioId, null);
+      usuarioId = input.usuarioId;
+    } else if (perfilAcesso) {
+      const senha = input.senha?.trim() ?? '';
+      if (senha.length < 4) {
+        throw new SenhaAcessoObrigatoriaError();
+      }
+      if (!(await this.acessos.loginDisponivel(matricula))) {
+        throw new ContaAcessoExistenteError();
+      }
+      const senhaHash = await this.acessos.gerarHashSenha(senha);
+      const conta = await this.prisma.usuario.create({
+        data: {
+          login: matricula,
+          nome: input.nome.trim(),
+          senhaHash,
+          perfil: perfilAcesso,
+        },
+      });
+      usuarioId = conta.id;
     }
 
-    return this.prisma.colaborador.create({
+    const colaborador = await this.prisma.colaborador.create({
       data: {
         matricula,
         nome: input.nome.trim(),
-        funcao: input.funcao ?? 'OPERADOR',
+        funcao,
         genero: input.genero ?? null,
         turno: input.turno ?? null,
         entradaSemana: input.entradaSemana ?? null,
@@ -100,7 +165,7 @@ export class ColaboradoresService {
         entradaFds: input.entradaFds ?? null,
         saidaFds: input.saidaFds ?? null,
         folgaDiaSemana: input.folgaDiaSemana ?? null,
-        usuarioId: usuarioId ?? null,
+        usuarioId,
         identificadores: {
           create: [
             { tipo: 'MATRICULA', valor: matricula },
@@ -108,6 +173,37 @@ export class ColaboradoresService {
           ],
         },
       },
+    });
+
+    // Fiscal: cria o registro que alimenta o painel/jornada/escala (uma vez).
+    if (funcao === 'FISCAL' && usuarioId) {
+      await this.garantirFiscal(usuarioId, input.nome.trim(), input.turno);
+    }
+
+    return colaborador;
+  }
+
+  /** Garante um registro de Fiscal para a conta (cria se ainda não existir). */
+  private async garantirFiscal(
+    usuarioId: string,
+    nome: string,
+    turno?: TurnoColaborador | null,
+  ): Promise<void> {
+    const existente = await this.prisma.fiscal.findFirst({
+      where: { usuarioId },
+    });
+    if (existente) return;
+    const mesmoNome = await this.prisma.fiscal.findUnique({ where: { nome } });
+    if (mesmoNome) {
+      // Já há um fiscal com esse nome: apenas garante o vínculo da conta.
+      await this.prisma.fiscal.update({
+        where: { id: mesmoNome.id },
+        data: { usuarioId },
+      });
+      return;
+    }
+    await this.prisma.fiscal.create({
+      data: { nome, turno: turnoFiscalDe(turno), usuarioId },
     });
   }
 
@@ -172,8 +268,8 @@ export class ColaboradoresService {
       }
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const atualizado = await tx.colaborador.update({ where: { id }, data });
+    const atualizado = await this.prisma.$transaction(async (tx) => {
+      const c = await tx.colaborador.update({ where: { id }, data });
       if (novaMatricula) {
         await tx.colaboradorIdentificador.deleteMany({
           where: { colaboradorId: id, tipo: 'MATRICULA' },
@@ -192,8 +288,51 @@ export class ColaboradoresService {
           });
         }
       }
-      return atualizado;
+      return c;
     });
+
+    // Conta de acesso: redefine a senha e/ou atualiza perfil/nome/login da
+    // conta já vinculada. (Criar a conta na edição fica fora do escopo: o
+    // normal é criá-la no cadastro.)
+    await this.atualizarAcessoNaEdicao(atual, input, novaMatricula);
+
+    return atualizado;
+  }
+
+  /** Atualiza a conta de acesso vinculada na edição (senha/perfil/nome/login). */
+  private async atualizarAcessoNaEdicao(
+    atual: Colaborador,
+    input: Partial<ColaboradorInput>,
+    novaMatricula?: string,
+  ): Promise<void> {
+    if (!atual.usuarioId) return;
+
+    const senha = input.senha?.trim();
+    if (input.senha !== undefined && input.senha !== '' && (senha?.length ?? 0) < 4) {
+      throw new SenhaAcessoObrigatoriaError();
+    }
+
+    const funcao = input.funcao ?? atual.funcao;
+    const perfilAcesso = perfilDaFuncao(funcao, input.gerenteDesenvolvedor);
+
+    const upd: Prisma.UsuarioUpdateInput = {};
+    if (perfilAcesso) upd.perfil = perfilAcesso;
+    if (input.nome !== undefined) upd.nome = input.nome.trim();
+    if (novaMatricula) {
+      if (!(await this.acessos.loginDisponivel(novaMatricula))) {
+        throw new ContaAcessoExistenteError();
+      }
+      upd.login = novaMatricula; // mantém login = matrícula
+    }
+    if (senha && senha.length >= 4) {
+      upd.senhaHash = await this.acessos.gerarHashSenha(senha);
+    }
+    if (Object.keys(upd).length > 0) {
+      await this.prisma.usuario.update({
+        where: { id: atual.usuarioId },
+        data: upd,
+      });
+    }
   }
 
   /** Lista os colaboradores, com busca e filtros opcionais. */

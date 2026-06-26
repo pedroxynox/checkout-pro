@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Tela } from '../../components';
+import { useAuth } from '../../auth/AuthContext';
 import { PropsTela, RotaApp } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 
@@ -17,13 +18,15 @@ interface ItemControle {
   titulo: string;
   descricao: string;
   icone: keyof typeof Ionicons.glyphMap;
+  /** Funcionalidade necessária para ver a card (opcional). */
+  funcionalidade?: string;
 }
 
 const ITENS: ItemControle[] = [
   {
     rota: 'GestaoColaboradores',
     titulo: 'Colaboradores',
-    descricao: 'Cadastrar e editar operadores e fiscais',
+    descricao: 'Cadastrar e editar operadores, fiscais e gerentes',
     icone: 'id-card-outline',
   },
   {
@@ -32,17 +35,28 @@ const ITENS: ItemControle[] = [
     descricao: 'Definir as metas de cada indicador por mês',
     icone: 'flag-outline',
   },
+  {
+    rota: 'Usuarios',
+    titulo: 'Acesso',
+    descricao: 'Quem tem acesso ao app, redefinir senha e revogar',
+    icone: 'key-outline',
+    funcionalidade: 'USUARIOS_CRUD',
+  },
 ];
 
 export function CentroControleScreen({
   navigation,
 }: PropsTela<'CentroControle'>): React.ReactElement {
+  const { podeAcessar } = useAuth();
+  const itens = ITENS.filter(
+    (i) => !i.funcionalidade || podeAcessar(i.funcionalidade),
+  );
   return (
     <Tela>
       <Text style={styles.intro}>
         Ferramentas de gestão. Apenas o gestor tem acesso a esta área.
       </Text>
-      {ITENS.map((item) => (
+      {itens.map((item) => (
         <TouchableOpacity
           key={item.rota}
           activeOpacity={0.7}

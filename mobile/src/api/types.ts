@@ -904,8 +904,12 @@ export interface ColaboradorInput {
   nome: string;
   matricula: string;
   login?: string;
-  /** Conta de acesso do app (Usuario.id). String vazia = desvincular. */
+  /** Conta de acesso já existente (Usuario.id). String vazia = desvincular. */
   usuarioId?: string | null;
+  /** Senha de acesso ao app (cria/reseta o login = matrícula). */
+  senha?: string;
+  /** Quando a função é Gerente (GESTOR): se é gerente desenvolvedor. */
+  gerenteDesenvolvedor?: boolean;
   funcao?: FuncaoColaborador;
   genero?: 'M' | 'F';
   turno?: TurnoColaborador;

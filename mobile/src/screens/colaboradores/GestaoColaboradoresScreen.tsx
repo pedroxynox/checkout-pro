@@ -13,12 +13,7 @@ import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { colaboradoresService } from '../../api/services';
-import {
-  Colaborador,
-  FuncaoColaborador,
-  LoginColaborador,
-  TurnoColaborador,
-} from '../../api/types';
+import { Colaborador, FuncaoColaborador, TurnoColaborador } from '../../api/types';
 import {
   Botao,
   CampoTexto,
@@ -38,7 +33,11 @@ const FUNCOES: { v: FuncaoColaborador; r: string }[] = [
   { v: 'OPERADOR', r: 'Operador' },
   { v: 'FISCAL', r: 'Fiscal' },
   { v: 'SUPERVISOR', r: 'Supervisor' },
+  { v: 'GESTOR', r: 'Gerente' },
 ];
+
+/** Funções que entram no app (precisam de login/senha). Operador não entra. */
+const FUNCOES_COM_ACESSO: FuncaoColaborador[] = ['FISCAL', 'SUPERVISOR', 'GESTOR'];
 
 const TURNOS: { v: TurnoColaborador; r: string }[] = [
   { v: 'ABERTURA', r: 'Abertura' },
@@ -58,10 +57,6 @@ function rotuloTurno(t: TurnoColaborador | null): string {
 
 export function GestaoColaboradoresScreen(): React.ReactElement {
   const lista = useRequisicao<Colaborador[]>(() => colaboradoresService.listar(), []);
-  const logins = useRequisicao<LoginColaborador[]>(
-    () => colaboradoresService.logins(),
-    [],
-  );
 
   const [busca, setBusca] = useState('');
   const [formAberto, setFormAberto] = useState(false);
@@ -80,7 +75,10 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
   const [entFds, setEntFds] = useState('');
   const [saiFds, setSaiFds] = useState('');
   const [folga, setFolga] = useState<number | null>(null);
-  const [usuarioId, setUsuarioId] = useState<string | null>(null);
+  const [senha, setSenha] = useState('');
+  const [gerenteDev, setGerenteDev] = useState(false);
+
+  const temAcesso = FUNCOES_COM_ACESSO.includes(funcao);
 
   const filtrados = useMemo(() => {
     const dados = lista.dados ?? [];
@@ -92,15 +90,6 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
         c.matricula.toLowerCase().includes(b),
     );
   }, [lista.dados, busca]);
-
-  // Logins livres + o já vinculado a este colaborador (em edição).
-  const loginsDisponiveis = useMemo(
-    () =>
-      (logins.dados ?? []).filter(
-        (l) => l.colaboradorId === null || l.colaboradorId === editId,
-      ),
-    [logins.dados, editId],
-  );
 
   const limparForm = () => {
     setEditId(null);
@@ -115,7 +104,8 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
     setEntFds('');
     setSaiFds('');
     setFolga(null);
-    setUsuarioId(null);
+    setSenha('');
+    setGerenteDev(false);
   };
 
   const abrirNovo = () => {
@@ -136,7 +126,8 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
     setEntFds(c.entradaFds ?? '');
     setSaiFds(c.saidaFds ?? '');
     setFolga(c.folgaDiaSemana);
-    setUsuarioId(c.usuarioId);
+    setSenha('');
+    setGerenteDev(false);
     setFormAberto(true);
     // Precarrega o login atual (guardado como identificador, não vem na lista).
     void colaboradoresService
@@ -158,6 +149,18 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
       notificar('Matrícula obrigatória', 'Informe a matrícula (registro).');
       return;
     }
+    // Acesso ao app: ao cadastrar fiscal/supervisor/gerente, a senha é obrigatória.
+    if (temAcesso && !editId && senha.trim().length < 4) {
+      notificar(
+        'Senha de acesso obrigatória',
+        'Defina uma senha (mínimo 4 caracteres) para o login do app.',
+      );
+      return;
+    }
+    if (temAcesso && senha.trim() && senha.trim().length < 4) {
+      notificar('Senha muito curta', 'A senha deve ter no mínimo 4 caracteres.');
+      return;
+    }
     for (const [rotulo, valor] of [
       ['Entrada Seg–Qui', entSem],
       ['Saída Seg–Qui', saiSem],
@@ -174,7 +177,6 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
       nome: nome.trim(),
       matricula: matricula.trim(),
       login: login.trim() || undefined,
-      usuarioId: usuarioId ?? '',
       funcao,
       genero,
       turno: turno ?? undefined,
@@ -183,6 +185,9 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
       entradaFds: entFds.trim() || undefined,
       saidaFds: saiFds.trim() || undefined,
       folgaDiaSemana: folga ?? undefined,
+      // Acesso ao app (apenas funções com acesso).
+      senha: temAcesso && senha.trim() ? senha.trim() : undefined,
+      gerenteDesenvolvedor: funcao === 'GESTOR' ? gerenteDev : undefined,
     };
 
     setSalvando(true);
@@ -197,7 +202,6 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
       setFormAberto(false);
       limparForm();
       lista.recarregar();
-      logins.recarregar();
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
     } finally {
@@ -260,30 +264,41 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
           </View>
 
           <Text style={styles.rotulo}>Conta de acesso (login do app)</Text>
-          <Text style={styles.ajudaLogin}>
-            Liga a ficha ao login do app: o perfil passa a mostrar o status
-            online/offline e a jornada do fiscal.
-          </Text>
-          <View style={styles.chips}>
-            <Text
-              onPress={() => setUsuarioId(null)}
-              style={[styles.chip, usuarioId === null && styles.chipAtivo]}
-            >
-              Nenhuma
-            </Text>
-            {loginsDisponiveis.map((l) => (
-              <Text
-                key={l.id}
-                onPress={() => setUsuarioId(l.id)}
-                style={[styles.chip, usuarioId === l.id && styles.chipAtivo]}
-              >
-                {l.login}
+          {temAcesso ? (
+            <>
+              <Text style={styles.ajudaLogin}>
+                {funcao === 'GESTOR' ? 'Gerente' : rotuloFuncao(funcao)} entra no
+                app com a <Text style={{ fontWeight: '700' }}>matrícula</Text> como
+                login. Defina a senha de acesso.
               </Text>
-            ))}
-          </View>
-          {logins.erro && (
+              <CampoTexto
+                rotulo={editId ? 'Nova senha (deixe vazio para manter)' : 'Senha de acesso'}
+                value={senha}
+                onChangeText={setSenha}
+                placeholder="Mínimo 4 caracteres"
+                autoCapitalize="none"
+                secureTextEntry
+              />
+              {funcao === 'GESTOR' && (
+                <View style={styles.chips}>
+                  <Text
+                    onPress={() => setGerenteDev(false)}
+                    style={[styles.chip, !gerenteDev && styles.chipAtivo]}
+                  >
+                    Gerente
+                  </Text>
+                  <Text
+                    onPress={() => setGerenteDev(true)}
+                    style={[styles.chip, gerenteDev && styles.chipAtivo]}
+                  >
+                    Gerente desenvolvedor
+                  </Text>
+                </View>
+              )}
+            </>
+          ) : (
             <Text style={styles.ajudaLogin}>
-              Não foi possível carregar os logins.
+              Operadores não acessam o app — não precisam de login.
             </Text>
           )}
 

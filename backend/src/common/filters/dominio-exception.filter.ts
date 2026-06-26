@@ -35,10 +35,12 @@ import {
 } from '../../operadores/operadores.errors';
 import {
   ColaboradorNaoEncontradoError,
+  ContaAcessoExistenteError,
   LoginAppDuplicadoError,
   LoginAppInexistenteError,
   LoginColaboradorDuplicadoError,
   MatriculaColaboradorDuplicadaError,
+  SenhaAcessoObrigatoriaError,
 } from '../../colaboradores/colaboradores.errors';
 import {
   MatriculaDuplicadaError,
@@ -70,12 +72,14 @@ const MAPA_STATUS: ReadonlyArray<readonly [ConstrutorErro, HttpStatus]> = [
   [MatriculaColaboradorDuplicadaError, HttpStatus.CONFLICT],
   [LoginColaboradorDuplicadoError, HttpStatus.CONFLICT],
   [LoginAppDuplicadoError, HttpStatus.CONFLICT],
+  [ContaAcessoExistenteError, HttpStatus.CONFLICT],
   [AusenciaDuplicadaError, HttpStatus.CONFLICT],
   [JaIniciouJornadaError, HttpStatus.CONFLICT],
   [FaltaRegistradaError, HttpStatus.CONFLICT],
   [FiscalDeFolgaError, HttpStatus.CONFLICT],
   // 400 — entradas inválidas / regras de validação de domínio.
   [OperacaoInvalidaError, HttpStatus.BAD_REQUEST],
+  [SenhaAcessoObrigatoriaError, HttpStatus.BAD_REQUEST],
   [ColunaAusenteError, HttpStatus.BAD_REQUEST],
   [ValorVendaInvalidoError, HttpStatus.BAD_REQUEST],
   [SaldoInvalidoError, HttpStatus.BAD_REQUEST],
