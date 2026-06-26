@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FechamentoService } from '../fechamento/fechamento.service';
+import { MetasService } from '../metas/metas.service';
+import { anoMesDe, ehTipoMeta } from '../metas/metas.domain';
 import {
   montarVinculo,
   type VinculoColaboradores,
@@ -84,6 +86,7 @@ export class ArrecadacaoService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fechamento: FechamentoService,
+    private readonly metas: MetasService,
   ) {}
 
   /** Substitui os lançamentos do tipo no dia informado pelos do arquivo. */
@@ -196,11 +199,16 @@ export class ArrecadacaoService {
   }
 
   /**
-   * Resolve a meta de um indicador: lê de `metas_indicador` (configurável pelo
-   * gestor) e, na ausência, usa o default de CONFIG_ARRECADACAO. Fonte única
-   * de verdade das metas.
+   * Resolve a meta de um indicador para o mês da `data`. Para os tipos geridos
+   * em Centro de Controle ▸ Metas (recargas, cancelamentos, devoluções), usa a
+   * meta MENSAL (MetasService, com fallback ao padrão). TROCO_SOLIDARIO não é
+   * gerido por mês: segue com a meta global de `metas_indicador`/CONFIG.
    */
-  async metaDe(tipo: TipoArrecadacao): Promise<number> {
+  async metaDe(tipo: TipoArrecadacao, data: Date): Promise<number> {
+    // Tipos com meta mensal (todos, exceto TROCO_SOLIDARIO).
+    if (ehTipoMeta(tipo)) {
+      return this.metas.resolver(tipo, anoMesDe(data));
+    }
     try {
       const registro = await this.prisma.metaIndicador.findUnique({
         where: { tipo },
@@ -224,13 +232,14 @@ export class ArrecadacaoService {
       sentido: string;
     }[]
   > {
+    const hoje = new Date();
     return Promise.all(
       TIPOS_ARRECADACAO.map(async (tipo) => {
         const config = CONFIG_ARRECADACAO[tipo];
         return {
           tipo,
           titulo: config.titulo,
-          meta: await this.metaDe(tipo),
+          meta: await this.metaDe(tipo, hoje),
           base: config.base,
           sentido: config.sentido,
         };
@@ -330,7 +339,7 @@ export class ArrecadacaoService {
       tipo,
       titulo: config.titulo,
       base: config.base,
-      meta: await this.metaDe(tipo),
+      meta: await this.metaDe(tipo, data),
       sentido: config.sentido,
       totalDia,
       totalSemana,

@@ -34,6 +34,7 @@ export type RootStackParamList = {
   Colaboradores: undefined;
   CentroControle: undefined;
   GestaoColaboradores: undefined;
+  Metas: undefined;
   PerfilColaborador: { colaboradorId: string };
   Usuarios: undefined;
   AlertasFila: undefined;

@@ -28,6 +28,7 @@ import { ColaboradoresScreen } from '../screens/colaboradores/ColaboradoresScree
 import { GestaoColaboradoresScreen } from '../screens/colaboradores/GestaoColaboradoresScreen';
 import { PerfilColaboradorScreen } from '../screens/colaboradores/PerfilColaboradorScreen';
 import { CentroControleScreen } from '../screens/centroControle/CentroControleScreen';
+import { MetasScreen } from '../screens/metas/MetasScreen';
 import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
 import { AlertasFilaScreen } from '../screens/alertasFila/AlertasFilaScreen';
 import { NormativasScreen } from '../screens/normativas/NormativasScreen';
@@ -174,6 +175,11 @@ export function AppNavigator(): React.ReactElement {
             name="GestaoColaboradores"
             component={GestaoColaboradoresScreen}
             options={{ title: 'Colaboradores (gestão)' }}
+          />
+          <Stack.Screen
+            name="Metas"
+            component={MetasScreen}
+            options={{ title: 'Metas' }}
           />
         </>
       )}

@@ -14,6 +14,7 @@ import { AcessosModule } from './acessos/acessos.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { ArrecadacaoModule } from './arrecadacao/arrecadacao.module';
 import { VendasModule } from './vendas/vendas.module';
+import { MetasModule } from './metas/metas.module';
 import { OperadoresModule } from './operadores/operadores.module';
 import { ColaboradoresModule } from './colaboradores/colaboradores.module';
 import { LoteApaeModule } from './lote-apae/lote-apae.module';
@@ -38,6 +39,7 @@ import { AssistenteModule } from './assistente/assistente.module';
     UsuariosModule,
     ArrecadacaoModule,
     VendasModule,
+    MetasModule,
     OperadoresModule,
     ColaboradoresModule,
     LoteApaeModule,

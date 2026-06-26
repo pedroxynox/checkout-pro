@@ -534,6 +534,27 @@ model MetaIndicador {
   @@map("metas_indicador")
 }
 
+// Meta MENSAL de um indicador (definida pelo gestor no Centro de Controle ▸
+// Metas). Diferente de MetaIndicador (valor único global), aqui a meta é por
+// período mensal (`anoMes` = "AAAA-MM"), permitindo metas diferentes a cada
+// mês. Tipos: VENDAS (R$), RECARGAS_CELULAR (R$), CANCELAMENTO_ITENS (%),
+// CANCELAMENTO_CUPOM (%), DEVOLUCOES (%). Quando não há registro para o mês,
+// usa-se o valor padrão de CONFIG_METAS (e, para VENDAS, a config legada).
+model MetaMensal {
+  id            String   @id @default(uuid())
+  /// Tipo da meta (ex.: VENDAS, CANCELAMENTO_ITENS).
+  tipo          String
+  /// Período mensal no formato "AAAA-MM" (ex.: "2026-06").
+  anoMes        String
+  /// Valor da meta: R$ (vendas/recargas) ou % sobre vendas (cancelamentos/devoluções).
+  meta          Float
+  atualizadoEm  DateTime @default(now()) @updatedAt
+  atualizadoPor String?
+
+  @@unique([tipo, anoMes])
+  @@map("metas_mensais")
+}
+
 
 // --------------------- Cadastro Unificado de Colaboradores -----------------
 // Pessoa canônica da operação (operador/fiscal/gestor). A `matricula` é o

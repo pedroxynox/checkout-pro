@@ -146,6 +146,32 @@ export interface MetaIndicador {
   sentido: 'MAIOR_MELHOR' | 'MENOR_MELHOR';
 }
 
+// ----- Metas mensais (Centro de Controle ▸ Metas) -----
+
+/** Indicadores cuja meta é configurável por mês (período mensal). */
+export type TipoMeta =
+  | 'VENDAS'
+  | 'RECARGAS_CELULAR'
+  | 'CANCELAMENTO_ITENS'
+  | 'CANCELAMENTO_CUPOM'
+  | 'DEVOLUCOES';
+
+/** Unidade do valor da meta (R$ ou % sobre vendas). */
+export type UnidadeMeta = 'REAIS' | 'PERCENTUAL';
+
+/** Meta mensal de um indicador (valor + metadados de exibição). */
+export interface MetaMensal {
+  tipo: TipoMeta;
+  /** Período mensal "AAAA-MM" (ex.: "2026-06"). */
+  anoMes: string;
+  titulo: string;
+  unidade: UnidadeMeta;
+  sentido: 'MAIOR_MELHOR' | 'MENOR_MELHOR';
+  meta: number;
+  /** Verdadeiro se há um valor salvo para o mês (não é apenas o padrão). */
+  definida: boolean;
+}
+
 /** Um destaque (top operador) de uma categoria. */
 export interface DestaqueOperador {
   nome: string;

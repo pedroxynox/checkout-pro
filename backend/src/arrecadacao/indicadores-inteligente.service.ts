@@ -241,7 +241,7 @@ export class IndicadoresInteligenteService {
   /** Projeção de fechamento de mês ao ritmo atual + meta diária derivada. */
   async projecaoMes(tipo: TipoArrecadacao, data: Date): Promise<ProjecaoMes> {
     const config = CONFIG_ARRECADACAO[tipo];
-    const meta = await this.arrecadacao.metaDe(tipo);
+    const meta = await this.arrecadacao.metaDe(tipo, data);
     const acumuladoMes = await this.somar(
       tipo,
       inicioDoMes(data),
