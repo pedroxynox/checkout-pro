@@ -11,11 +11,12 @@
  * Apenas o gestor (funcionalidade OPERADORES_CRUD).
  */
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
-import { metasService } from '../../api/services';
-import { MetaMensal, TipoMeta } from '../../api/types';
+import { loteApaeService, metasService } from '../../api/services';
+import { ConfigApae, MetaMensal, TipoMeta } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
 import {
   Botao,
   CampoTexto,
@@ -78,6 +79,9 @@ function ajudaUnidade(item: MetaMensal): string {
 }
 
 export function MetasScreen(): React.ReactElement {
+  const { podeAcessar } = useAuth();
+  const podeGerenciarApae = podeAcessar('LOTE_APAE_GERENCIAR');
+
   const [anoMes, setAnoMes] = useState(mesAtual());
   const [editTipo, setEditTipo] = useState<TipoMeta | null>(null);
   const [valor, setValor] = useState('');
@@ -88,6 +92,21 @@ export function MetasScreen(): React.ReactElement {
     [anoMes],
   );
   const metas = req.dados ?? [];
+
+  // Configuração das Sacolas APAE (preço + meta mensal) — valor geral, não
+  // varia por mês. Editável apenas pelo gestor (LOTE_APAE_GERENCIAR).
+  const apaeReq = useRequisicao<ConfigApae>(() => loteApaeService.config(), []);
+  const [precoApae, setPrecoApae] = useState('');
+  const [metaApae, setMetaApae] = useState('');
+  const [salvandoApae, setSalvandoApae] = useState(false);
+
+  useEffect(() => {
+    const cfg = apaeReq.dados;
+    if (cfg) {
+      setPrecoApae(String(cfg.precoSacola).replace('.', ','));
+      setMetaApae(String(cfg.metaMensal).replace('.', ','));
+    }
+  }, [apaeReq.dados]);
 
   const trocarMes = (delta: number) => {
     setEditTipo(null);
@@ -116,6 +135,29 @@ export function MetasScreen(): React.ReactElement {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar a meta.');
     } finally {
       setSalvando(false);
+    }
+  };
+
+  const salvarApae = async () => {
+    const preco = Number(precoApae.replace(',', '.'));
+    const meta = Number(metaApae.replace(',', '.'));
+    if (!Number.isFinite(preco) || preco < 0) {
+      notificar('Preço inválido', 'Informe um valor em reais maior ou igual a zero.');
+      return;
+    }
+    if (!Number.isFinite(meta) || meta < 0) {
+      notificar('Meta inválida', 'Informe um valor em reais maior ou igual a zero.');
+      return;
+    }
+    setSalvandoApae(true);
+    try {
+      await loteApaeService.definirConfig({ precoSacola: preco, metaMensal: meta });
+      apaeReq.recarregar();
+      notificar('Sacolas APAE salvas', 'Preço da sacola e meta mensal atualizados.');
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
+    } finally {
+      setSalvandoApae(false);
     }
   };
 
@@ -198,6 +240,47 @@ export function MetasScreen(): React.ReactElement {
             )}
           </Cartao>
         ))
+      )}
+
+      {/* Sacolas APAE — preço e meta gerais (não variam por mês). */}
+      {podeGerenciarApae && (
+        <Cartao titulo="Sacolas APAE">
+          <Text style={styles.ajuda}>
+            Preço da sacola e meta de arrecadação da APAE. Valores gerais — não
+            variam por mês.
+          </Text>
+          {apaeReq.carregando ? (
+            <Carregando />
+          ) : apaeReq.erro ? (
+            <MensagemErro
+              mensagem={apaeReq.erro}
+              aoTentarNovamente={apaeReq.recarregar}
+            />
+          ) : (
+            <>
+              <CampoTexto
+                rotulo="Preço por sacola (R$)"
+                keyboardType="decimal-pad"
+                value={precoApae}
+                onChangeText={setPrecoApae}
+                placeholder="0,49"
+              />
+              <CampoTexto
+                rotulo="Meta mensal (R$)"
+                keyboardType="decimal-pad"
+                value={metaApae}
+                onChangeText={setMetaApae}
+                placeholder="500"
+                style={{ marginTop: espacamento.sm }}
+              />
+              <Botao
+                titulo="Salvar Sacolas APAE"
+                aoPressionar={() => void salvarApae()}
+                carregando={salvandoApae}
+              />
+            </>
+          )}
+        </Cartao>
       )}
     </Tela>
   );
