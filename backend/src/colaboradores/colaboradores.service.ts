@@ -9,6 +9,10 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AcessosService } from '../acessos/acessos.service';
+import {
+  gerarEscalaSemanalFiscal,
+  temEscalaDefinida,
+} from '../fiscais/escala.domain';
 import { normalizarLogin, normalizarMatricula } from './colaboradores.domain';
 import {
   ColaboradorNaoEncontradoError,
@@ -180,6 +184,9 @@ export class ColaboradoresService {
       await this.garantirFiscal(usuarioId, input.nome.trim(), input.turno);
     }
 
+    // Escala geral do fiscal a partir do cadastro (Opção A: fonte única).
+    await this.sincronizarEscalaFiscal(colaborador);
+
     return colaborador;
   }
 
@@ -205,6 +212,57 @@ export class ColaboradoresService {
     await this.prisma.fiscal.create({
       data: { nome, turno: turnoFiscalDe(turno), usuarioId },
     });
+  }
+
+  /**
+   * Sincroniza a escala semanal GERAL do fiscal a partir do cadastro (Opção A:
+   * o Colaborador é a fonte única). Preserva os horários ESPECIAIS (exceções)
+   * e o intervalo já cadastrado. Não faz nada se: não é fiscal, não tem conta/
+   * registro de fiscal, ou ainda não tem escala definida no cadastro (evita
+   * apagar a escala vinda do seed enquanto o gestor não a preenche aqui).
+   */
+  private async sincronizarEscalaFiscal(colaborador: Colaborador): Promise<void> {
+    if (colaborador.funcao !== 'FISCAL' || !colaborador.usuarioId) return;
+    const escala = {
+      entradaSemana: colaborador.entradaSemana,
+      saidaSemana: colaborador.saidaSemana,
+      entradaFds: colaborador.entradaFds,
+      saidaFds: colaborador.saidaFds,
+      folgaDiaSemana: colaborador.folgaDiaSemana,
+    };
+    if (!temEscalaDefinida(escala)) return;
+    const fiscal = await this.prisma.fiscal.findFirst({
+      where: { usuarioId: colaborador.usuarioId },
+      select: { id: true },
+    });
+    if (!fiscal) return;
+
+    const dias = gerarEscalaSemanalFiscal(escala);
+    // Preserva o intervalo já usado nas entradas gerais (ex.: 120 min do seed).
+    const geraisAtuais = await this.prisma.escalaEntry.findMany({
+      where: { funcionarioId: fiscal.id, especial: false },
+      select: { intervaloMin: true },
+    });
+    const intervaloMin = geraisAtuais[0]?.intervaloMin ?? 0;
+
+    await this.prisma.$transaction([
+      // Remove apenas as entradas GERAIS; as exceções (especial) ficam intactas.
+      this.prisma.escalaEntry.deleteMany({
+        where: { funcionarioId: fiscal.id, especial: false },
+      }),
+      this.prisma.escalaEntry.createMany({
+        data: dias.map((d) => ({
+          funcionarioId: fiscal.id,
+          colaboradorId: colaborador.id,
+          diaSemana: d.diaSemana,
+          entrada: d.entrada,
+          saida: d.saida,
+          intervaloMin,
+          folga: d.folga,
+          especial: false,
+        })),
+      }),
+    ]);
   }
 
   /** Edita um colaborador, mantendo a unicidade de matrícula/login. */
@@ -295,6 +353,9 @@ export class ColaboradoresService {
     // conta já vinculada. (Criar a conta na edição fica fora do escopo: o
     // normal é criá-la no cadastro.)
     await this.atualizarAcessoNaEdicao(atual, input, novaMatricula);
+
+    // Mantém a escala geral do fiscal em sincronia com o cadastro (Opção A).
+    await this.sincronizarEscalaFiscal(atualizado);
 
     return atualizado;
   }

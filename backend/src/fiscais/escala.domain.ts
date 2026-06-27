@@ -94,3 +94,74 @@ export function escalaConsolidada(
     }))
     .sort((a, b) => a.funcionarioId.localeCompare(b.funcionarioId));
 }
+
+
+/**
+ * Escala semanal definida no cadastro do colaborador (fonte única — Opção A).
+ *
+ * O cadastro guarda um modelo simples: horário Seg–Qui, horário Sex–Sáb e um
+ * dia de folga. A partir dele geramos as entradas GERAIS da escala (uma por dia
+ * da semana), que alimentam a tela "Escala". Os ajustes pontuais (horário
+ * especial de um dia) seguem como exceções (`especial`) e NÃO são tocados aqui.
+ */
+export interface EscalaColaboradorInput {
+  entradaSemana: string | null;
+  saidaSemana: string | null;
+  entradaFds: string | null;
+  saidaFds: string | null;
+  folgaDiaSemana: number | null;
+}
+
+/** Um dia gerado da escala semanal (geral). */
+export interface DiaEscalaGerado {
+  diaSemana: number;
+  entrada: string | null;
+  saida: string | null;
+  folga: boolean;
+}
+
+/** Verdadeiro se o colaborador tem ALGUM dado de escala definido. */
+export function temEscalaDefinida(input: EscalaColaboradorInput): boolean {
+  return (
+    !!input.entradaSemana ||
+    !!input.saidaSemana ||
+    !!input.entradaFds ||
+    !!input.saidaFds ||
+    input.folgaDiaSemana != null
+  );
+}
+
+/**
+ * Gera a escala semanal GERAL a partir do cadastro (Opção A). Regras:
+ * - o dia de folga vira uma entrada de folga;
+ * - Seg–Qui (1–4) usam o horário Seg–Qui; Sex–Sáb (5–6) usam o horário Sex–Sáb;
+ * - Domingo (0) só aparece se for o dia de folga (o cadastro não tem horário de
+ *   domingo);
+ * - dias sem horário completo (e que não são folga) são omitidos.
+ *
+ * Retorna apenas os dias que produziram uma entrada (determinístico, ordenado).
+ */
+export function gerarEscalaSemanalFiscal(
+  input: EscalaColaboradorInput,
+): DiaEscalaGerado[] {
+  const dias: DiaEscalaGerado[] = [];
+  for (let dia = 0; dia <= 6; dia++) {
+    if (input.folgaDiaSemana != null && dia === input.folgaDiaSemana) {
+      dias.push({ diaSemana: dia, entrada: null, saida: null, folga: true });
+      continue;
+    }
+    let entrada: string | null = null;
+    let saida: string | null = null;
+    if (dia >= 1 && dia <= 4) {
+      entrada = input.entradaSemana ?? null;
+      saida = input.saidaSemana ?? null;
+    } else if (dia === 5 || dia === 6) {
+      entrada = input.entradaFds ?? null;
+      saida = input.saidaFds ?? null;
+    }
+    if (entrada && saida) {
+      dias.push({ diaSemana: dia, entrada, saida, folga: false });
+    }
+  }
+  return dias;
+}
