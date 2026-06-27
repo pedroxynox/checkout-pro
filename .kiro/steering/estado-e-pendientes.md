@@ -25,7 +25,7 @@
   - Backend: `npx prisma generate` + `DATABASE_URL=postgresql://u:p@localhost:5432/db npx prisma validate` + `npm run build` + `npm run lint` + `npx jest`.
   - Mobile: `npm run type-check` + `npm run lint` + `npx jest` + `EXPO_PUBLIC_API_URL=https://checkout-pro-api.onrender.com npx expo export --platform web --output-dir dist`.
 - Commits descriptivos en portugués. Migraciones Prisma: nombrar para que ordenen
-  DESPUÉS de la última (ya van por `9a`..`9o`; la próxima debe ordenar después de `9o`).
+  DESPUÉS de la última (ya van por `9a`..`9s`; la próxima debe ordenar después de `9s`).
 - Diálogos: usar `confirmar`/`notificar` de `mobile/src/utils/dialogos.ts` (la web
   no soporta `Alert`).
 - TypeScript en `strict` total (backend y mobile). 0 `any`.
@@ -69,6 +69,33 @@
 - ⚠️ Pendiente de verificación: no se pudo correr `build`/`lint`/`jest` en el
   entorno de edición (sin dependencias / red restringida). Correr la verificación
   completa antes del deploy.
+
+### Actualización — Cadastro Unificado, Centro de Controle y escalas (sesión 2026-06-26)
+
+- **Cadastro Unificado de Colaboradores** es ahora la fuente única de personas:
+  cadastro/edición con unicidad de matrícula/login; el **login del app se crea en
+  el propio cadastro** del colaborador (fiscal/supervisor/gestor); **operadores
+  sin acceso al app**; senha mínima subida a **6**. Pantallas: `ColaboradoresScreen`
+  (lista, con conteo separado de **Fiscais**), `GestaoColaboradoresScreen`
+  (cadastro + aba de acceso) y `PerfilColaboradorScreen` (perfil inteligente).
+- **Vínculo único fiscal:** la escala, el login de acceso y la sección de fiscais
+  (online/jornada) quedan enlazados al mismo colaborador (`usuarioId`/`colaboradorId`;
+  helper `colaborador-vinculo.ts`; backfill `9s_colaboradores_de_fiscais`).
+- **Escala unificada (Opción A):** el Colaborador es la fuente; al guardar un
+  fiscal se regenera su `EscalaEntry` semanal (PR #79). La escala de **operadores**
+  también lee de `Colaborador`; el model `OperadorTurno` quedó `[DEPRECADO]` y se
+  retiró su camino de escritura (PR #80). **Sin migraciones destructivas.**
+- **Centro de Controle reorganizado:** ya **no existen** "Pessoas e Acessos" ni
+  "Gerenciar dados". Cards: **Acesso**, **Metas** (metas mensuales por indicador +
+  card **Sacolas APAE** con precio y meta), **Insumos** (zerar estoque / limpar
+  requisições) e **Importações** (sale de la Home salvo perfil IMPORTADOR).
+- **Metas mensuales:** modelo `MetaMensal`, módulo `backend/src/metas/`
+  (migración `9r_metas_mensais`). La meta de ventas ya no se define en el Painel
+  de Vendas, sino en Centro de Controle ▸ Metas.
+- **Salud del negocio:** corregido el cálculo que caía a 0 (topes por categoría);
+  los archivos pendientes solo penalizan a partir de las 18h.
+- **Verificación de esta sesión:** backend `build` + **152 tests**; mobile
+  `type-check` + **32 tests**. Todo verde.
 
 ## Pendientes / próximos pasos (en orden sugerido)
 

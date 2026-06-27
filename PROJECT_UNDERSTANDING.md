@@ -7,8 +7,11 @@
 >
 > Idioma de trabajo: español · UI/dominio: portugués (Brasil).
 >
-> Última revisión: 2026-06-23 (refrescado tras el sprint de UI —barra inferior,
-> Centro de Mando, login rediseñado— y la subida de las imágenes de branding).
+> Última revisión: 2026-06-26 (Cadastro Unificado de Colaboradores como fuente
+> única de personas; login creado en el cadastro; escalas unificadas —fiscais y
+> operadores leen de `Colaborador`, `OperadorTurno` deprecado—; Centro de
+> Controle reorganizado con cards Acesso/Metas/Insumos/Importações; metas
+> mensuales; fix de "Saúde do negócio").
 
 ---
 
@@ -32,7 +35,7 @@ Funcionalidades principales:
 Producto 100% en **portugués de Brasil**, disponible como **app Android (APK vía
 Expo)** y como **web estática**. Estado: **funcional/en producción**; spec
 completo (tareas 1–22 marcadas como hechas) con evolución posterior reflejada en
-migraciones `9h`–`9o`.
+migraciones `9h`–`9s`.
 
 ---
 
@@ -88,17 +91,19 @@ mobile/ (Expo / React Native)  --HTTPS + JWT Bearer-->  backend/ (NestJS)
 | Módulo | Responsabilidad |
 | --- | --- |
 | `acessos` | Login (matrícula + senha) + JWT; mapa de permisos por perfil (`acessos.domain.ts`). |
-| `usuarios` | CRUD de personas / accesos. |
+| `usuarios` | CRUD de logins/accesos del app. |
+| `colaboradores` | **Cadastro Unificado** (fuente única de personas): cadastro/edición con unicidad de matrícula/login, login creado en el cadastro, `resolverColaboradorId` y **perfil inteligente** (`perfil-colaborador.*`). |
 | `arrecadacao` | Indicadores desde `.txt` (parser por tipo) + `indicadores-inteligente` / `indicadores-resumo`. **(flujo actual)** |
 | `vendas` | Ventas por hora desde `.txt`; espeja el total diario en `VendaDiaria`. |
+| `metas` | Metas mensuales por indicador (`MetaMensal`): vendas, cancelamientos, recargas, devoluções y Sacolas APAE. Mostradas en Centro de Controle ▸ Metas. |
 | `indicadores` | Flujo **ANTIGUO** (% / color / rankings, registro manual). No usado por la UI; mantenido por compat. |
 | `importacoes` | Flujo **ANTIGUO** CSV/XLSX. No usado por la UI; mantenido por compat. |
 | `insumos` | Stock como suma de `MovimentoEstoque`; fardos por código de barras; alertas de stock bajo. |
 | `requisicoes` | Requisiciones de insumos (aprobación) + pedidos recurrentes / sugerencias. |
 | `lote-apae` | Sacolas APAE por lote, histórico, config de precio/meta. |
-| `fiscais` | Estado en tiempo real (WebSocket) + jornada (`RegistroPontoFiscal`) + escala. |
+| `fiscais` | Estado en tiempo real (WebSocket) + jornada (`RegistroPontoFiscal`) + escala (la escala del fiscal viene del cadastro del colaborador — Opción A). |
 | `checklist` | Apertura/cierre con imagen, ventanas fijas, hash anti-fraude. |
-| `operadores` | Cuadro de turnos (`OperadorTurno`) y ausencias. |
+| `operadores` | Cuadro de turnos y ausencias. La **escala lee de `Colaborador`** (funcao OPERADOR); `OperadorTurno` quedó `[DEPRECADO]` (no se lee ni escribe). |
 | `notificacoes` | In-app + WebSocket (toast + badge). Sin push real de dispositivo aún. |
 | `assistente` | Chat Cluby (Gemini) + procedimientos guiados (desactivados por flag). |
 | `alertas` | Cron jobs: checklist (08:55 / 13:55) e importaciones (fin del día). |
@@ -115,7 +120,8 @@ mobile/ (Expo / React Native)  --HTTPS + JWT Bearer-->  backend/ (NestJS)
   [badge de pendencias], botón central Cluby [sparkles] → Mensagens,
   Notificações [badge], Perfil**), `areas.ts` (allowlist por funcionalidad
   reflejando el backend; áreas `emBreve: true` ocultas del menú), `types.ts`.
-- `screens/` — pantallas por área (admin/GerenciarDados, fechamento, fiscais
+- `screens/` — pantallas por área (colaboradores [Colaboradores/Gestão/Perfil],
+  centroControle [Centro de Controle: Acesso/Insumos], metas, fechamento, fiscais
   [Fiscais/Escala/JornadaFiscais], importacoes, indicadores [Indicadores/
   IndicadorDetalhe/PainelVendas], insumos [Insumos/InsumoDetalhe/Requisicoes],
   loteApae, normativas, notificacoes, operadores, quebra, usuarios, checklist,
@@ -174,7 +180,7 @@ Secretos en Render (no en el repo): `DATABASE_URL`, `JWT_SECRET`,
 - Jornada de fiscales en tiempo real (3 estados, log, cálculo de jornada).
 - Asistente Cluby (Gemini) con chat flotante, conversación 24h, markdown.
 - Notificaciones in-app en tiempo real; sesión de 30 días; `JWT_SECRET` seguro.
-- Funcionalidades posteriores al spec (migraciones `9h`–`9o`): pedidos
+- Funcionalidades posteriores al spec (migraciones `9h`–`9s`): pedidos
   recurrentes, stock inicial, metas configurables, APAE inteligente, config de
   ventas, cuadro de operadores, auditoría de checklist, género de operador.
 - **Rediseño de UX reciente** (sprint de UI): barra inferior de navegación
@@ -190,9 +196,18 @@ Secretos en Render (no en el repo): `DATABASE_URL`, `JWT_SECRET`,
   sin el texto "Check-out Pro"), `Appicon.png` como ícono del APK y
   `Favicon.ico` como favicon web (en `app.json`), y pasar los colores rojos
   viejos de `app.json` a azul. Aún sin commits en la rama.
+- **Cadastro Unificado de Colaboradores (fuente única de personas):** cadastro/
+  edición con unicidad de matrícula/login; el **login del app se crea en el
+  cadastro** (fiscal/supervisor/gestor); operadores sin acceso; senha mínima 6.
+  Pantallas Lista/Gestão/Perfil. **Escalas unificadas:** fiscais y operadores
+  leen de `Colaborador`; `OperadorTurno` deprecado (sin migración destructiva).
+- **Centro de Controle reorganizado:** desaparecen "Pessoas e Acessos" y
+  "Gerenciar dados"; cards **Acesso / Metas / Insumos / Importações**. **Metas
+  mensuales** por indicador (`MetaMensal`, módulo `metas/`) + card Sacolas APAE.
+  Fix de "Saúde do negócio" (topes por categoría; archivos pendientes pesan tras 18h).
 
 ### Verificación
-- Backend: **31** archivos `.spec.ts`. Mobile: **10** tests (`.test.*`).
+- Backend: **35** suites `.spec.ts` / **152** tests. Mobile: **11** suites / **32** tests.
 - Comandos: backend (`prisma generate` + `validate` + `build` + `lint` + `jest`);
   mobile (`type-check` + `lint` + `jest` + `expo export --platform web`).
 
@@ -206,7 +221,9 @@ Secretos en Render (no en el repo): `DATABASE_URL`, `JWT_SECRET`,
    PDFs (RAG + pgvector + object storage) y tier pago.
 4. **APK + push notifications reales (v1.1):** hoy solo in-app; falta
    `expo-notifications` + tokens push + `expo-server-sdk`.
-5. **EscalaScreen con nombres** (hoy muestra IDs) — diferido.
+5. **EscalaScreen con nombres:** la escala del Quadro de Operadores ya muestra
+   nombres (vía `Colaborador`); revisar si la `EscalaScreen` dedicada de fiscais
+   aún muestra algún ID suelto y pulirlo — menor.
 6. Áreas marcadas "(em breve)" en la UI: **Alertas de Fila**, **Normativas**,
    **Indicador de Quebra**.
 
@@ -214,12 +231,13 @@ Secretos en Render (no en el repo): `DATABASE_URL`, `JWT_SECRET`,
 - Coexistencia de flujos **antiguos** (`indicadores`, `importacoes` CSV/XLSX) sin
   uso por la UI → candidatos a documentar/deprecar.
 - Acoplamiento implícito: `vendas` → `VendaDiaria` → % de indicadores.
-- `pessoaId` polimórfico (Operador/Fiscal) sin FK rígida en `Ausencia` /
-  `EscalaEntry`.
+- `pessoaId` en `Ausencia`/`EscalaEntry` ahora apunta al `Colaborador` (id); se
+  añadió `colaboradorId` (nullable) para el vínculo. Convive con datos históricos
+  sin FK rígida.
 - Notificaciones "push" simuladas (campos `canalPush`/`canalInApp` son marcadores).
 - Plan free de Render: API "duerme" (~30–60s primer arranque) y BD expira.
-- Migraciones con nomenclatura `9a..9o`: la próxima debe ordenarse **después de
-  `9o`**.
+- Migraciones con nomenclatura `9a..9s`: la próxima debe ordenarse **después de
+  `9s`**.
 - El repositorio fue clonado **shallow (1 commit squashed)** → sin historial
   detallado; el contexto de evolución vive en `.kiro/steering/`.
 
@@ -253,7 +271,7 @@ Secretos en Render (no en el repo): `DATABASE_URL`, `JWT_SECRET`,
 3. Reutilizar los patrones existentes (módulo por dominio, lógica pura + tests
    de propiedad, allowlist por funcionalidad) en cualquier extensión.
 4. Para nuevas migraciones Prisma, nombrar de forma que ordenen después de la
-   última (`9o`).
+   última (`9s`).
 5. Ejecutar la batería de verificación completa antes de cualquier push.
 
 ---
