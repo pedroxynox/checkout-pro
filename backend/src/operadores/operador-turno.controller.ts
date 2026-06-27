@@ -1,22 +1,7 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { OperadorTurno } from '@prisma/client';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
-import {
-  GradeOperadoresDto,
-  ImportarTurnosDto,
-  PeriodoAusenciasDto,
-  TurnoOperadorDto,
-} from './dto/operadores.dto';
+import { GradeOperadoresDto, PeriodoAusenciasDto } from './dto/operadores.dto';
 import {
   AnaliticaFaltas,
   AoVivoOperadores,
@@ -44,7 +29,9 @@ export class OperadorTurnoController {
   /** Roster de um único dia (ordenado por entrada, folga ao fim). Padrão: hoje. */
   @Get('dia')
   dia(@Query() dto: GradeOperadoresDto): Promise<DiaOperadores> {
-    return this.service.diaOperadores(dto.data ? new Date(dto.data) : undefined);
+    return this.service.diaOperadores(
+      dto.data ? new Date(dto.data) : undefined,
+    );
   }
 
   /** Tablero "ao vivo": quem deveria estar no caixa agora. */
@@ -55,39 +42,18 @@ export class OperadorTurnoController {
 
   /** Analítica de faltas num período (ranking + dia que mais se falta). */
   @Get('faltas/analitica')
-  analiticaFaltas(@Query() periodo: PeriodoAusenciasDto): Promise<AnaliticaFaltas> {
+  analiticaFaltas(
+    @Query() periodo: PeriodoAusenciasDto,
+  ): Promise<AnaliticaFaltas> {
     return this.service.analiticaFaltas(
       new Date(periodo.inicio),
       new Date(periodo.fim),
     );
   }
 
-  /** Lista os operadores (turno fixo). */
+  /** Lista os operadores (turno fixo). Fonte: Cadastro Unificado de Colaboradores. */
   @Get('turnos')
   listar(): Promise<OperadorTurno[]> {
     return this.service.listar();
-  }
-
-  /** Cria ou atualiza (por nome) um operador. */
-  @Post('turnos')
-  @Funcionalidade('OPERADORES_CRUD')
-  salvar(@Body() dto: TurnoOperadorDto): Promise<OperadorTurno> {
-    return this.service.salvar(dto);
-  }
-
-  /** Importa em massa (upsert por nome). */
-  @Post('turnos/importar')
-  @Funcionalidade('OPERADORES_CRUD')
-  @HttpCode(HttpStatus.OK)
-  importar(@Body() dto: ImportarTurnosDto): Promise<{ salvos: number }> {
-    return this.service.importar(dto.turnos);
-  }
-
-  /** Inativa um operador. */
-  @Delete('turnos/:id')
-  @Funcionalidade('OPERADORES_CRUD')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async remover(@Param('id') id: string): Promise<void> {
-    await this.service.remover(id);
   }
 }

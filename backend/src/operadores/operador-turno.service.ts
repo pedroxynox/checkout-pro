@@ -9,17 +9,6 @@ import {
   type FaltasOperadorDetalhe,
 } from './operadores.domain';
 
-/** Dados para criar/atualizar um turno de operador. */
-export interface TurnoInput {
-  nome: string;
-  genero?: string | null;
-  entradaSemana: string;
-  saidaSemana: string;
-  entradaFds: string;
-  saidaFds: string;
-  folgaDiaSemana: number;
-}
-
 export type StatusCelula = 'TRABALHA' | 'FOLGA' | 'FALTA';
 
 export interface GradeCelula {
@@ -223,46 +212,11 @@ export class OperadorTurnoService {
     return cols.map((c) => comoOperadorTurno(c));
   }
 
-  /** Cria ou atualiza (por nome) um operador. */
-  salvar(dados: TurnoInput): Promise<OperadorTurno> {
-    return this.prisma.operadorTurno.upsert({
-      where: { nome: dados.nome.trim() },
-      update: {
-        genero: dados.genero ?? null,
-        entradaSemana: dados.entradaSemana,
-        saidaSemana: dados.saidaSemana,
-        entradaFds: dados.entradaFds,
-        saidaFds: dados.saidaFds,
-        folgaDiaSemana: dados.folgaDiaSemana,
-        ativo: true,
-      },
-      create: {
-        nome: dados.nome.trim(),
-        genero: dados.genero ?? null,
-        entradaSemana: dados.entradaSemana,
-        saidaSemana: dados.saidaSemana,
-        entradaFds: dados.entradaFds,
-        saidaFds: dados.saidaFds,
-        folgaDiaSemana: dados.folgaDiaSemana,
-      },
-    });
-  }
-
-  /** Importa em massa (upsert por nome). Retorna quantos foram salvos. */
-  async importar(linhas: readonly TurnoInput[]): Promise<{ salvos: number }> {
-    for (const linha of linhas) {
-      await this.salvar(linha);
-    }
-    return { salvos: linhas.length };
-  }
-
-  /** Inativa um operador (mantém histórico de ausências). */
-  async remover(id: string): Promise<void> {
-    await this.prisma.operadorTurno.update({
-      where: { id },
-      data: { ativo: false },
-    });
-  }
+  // Observação: a criação/edição/remoção de operadores agora é feita pelo
+  // Cadastro Unificado de Colaboradores (funcao OPERADOR). Os antigos métodos
+  // de escrita em `OperadorTurno` (salvar/importar/remover) foram removidos
+  // por escreverem numa tabela que não é mais lida. A escala é 100% derivada
+  // do colaborador.
 
   /**
    * Grade semanal (Seg–Sáb) a partir de uma data de referência. Para cada
