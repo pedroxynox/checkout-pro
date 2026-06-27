@@ -150,15 +150,15 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
       return;
     }
     // Acesso ao app: ao cadastrar fiscal/supervisor/gerente, a senha é obrigatória.
-    if (temAcesso && !editId && senha.trim().length < 4) {
+    if (temAcesso && !editId && senha.trim().length < 6) {
       notificar(
         'Senha de acesso obrigatória',
-        'Defina uma senha (mínimo 4 caracteres) para o login do app.',
+        'Defina uma senha (mínimo 6 caracteres) para o login do app.',
       );
       return;
     }
-    if (temAcesso && senha.trim() && senha.trim().length < 4) {
-      notificar('Senha muito curta', 'A senha deve ter no mínimo 4 caracteres.');
+    if (temAcesso && senha.trim() && senha.trim().length < 6) {
+      notificar('Senha muito curta', 'A senha deve ter no mínimo 6 caracteres.');
       return;
     }
     for (const [rotulo, valor] of [
@@ -275,7 +275,7 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
                 rotulo={editId ? 'Nova senha (deixe vazio para manter)' : 'Senha de acesso'}
                 value={senha}
                 onChangeText={setSenha}
-                placeholder="Mínimo 4 caracteres"
+                placeholder="Mínimo 6 caracteres"
                 autoCapitalize="none"
                 secureTextEntry
               />

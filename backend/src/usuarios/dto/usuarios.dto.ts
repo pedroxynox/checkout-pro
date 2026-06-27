@@ -25,13 +25,13 @@ export class CadastrarUsuarioDto {
     | 'IMPORTADOR';
 
   @IsString()
-  @MinLength(4, { message: 'A senha deve ter ao menos 4 caracteres.' })
+  @MinLength(6, { message: 'A senha deve ter ao menos 6 caracteres.' })
   senha!: string;
 }
 
 /** Redefinição de senha de um usuário. */
 export class RedefinirSenhaDto {
   @IsString()
-  @MinLength(4, { message: 'A senha deve ter ao menos 4 caracteres.' })
+  @MinLength(6, { message: 'A senha deve ter ao menos 6 caracteres.' })
   senha!: string;
 }

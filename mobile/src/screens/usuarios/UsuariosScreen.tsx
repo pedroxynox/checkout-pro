@@ -42,7 +42,10 @@ export function UsuariosScreen(): React.ReactElement {
   const [novaSenha, setNovaSenha] = useState('');
 
   const salvarNovaSenha = async (id: string) => {
-    if (!novaSenha.trim()) return;
+    if (novaSenha.trim().length < 6) {
+      notificar('Senha muito curta', 'A nova senha deve ter no mínimo 6 caracteres.');
+      return;
+    }
     try {
       await usuariosService.redefinirSenha(id, novaSenha.trim());
       setRedefinindoId(null);
@@ -128,7 +131,7 @@ export function UsuariosScreen(): React.ReactElement {
                     rotulo="Nova senha"
                     value={novaSenha}
                     onChangeText={setNovaSenha}
-                    placeholder="Mínimo 4 caracteres"
+                    placeholder="Mínimo 6 caracteres"
                     autoCapitalize="none"
                   />
                   <View style={styles.botoesLinha}>
