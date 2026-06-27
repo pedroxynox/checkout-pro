@@ -127,6 +127,13 @@ function ontemISO(): string {
 
 const QUEDA_VENDAS_RELEVANTE = 10;
 
+/**
+ * Hora (Brasília, aprox.) a partir da qual os arquivos do dia ainda pendentes
+ * passam a PESAR na nota de saúde. Antes disso é normal que nem todos tenham
+ * chegado (eles são carregados ao longo do dia), então não penalizamos.
+ */
+const HORA_PESA_ARQUIVOS_PENDENTES = 18;
+
 function classificar(nota: number): ResumoSaude {
   if (nota >= 80) {
     return { nota, cor: cores.verde, fundo: cores.verdeFundo, rotulo: 'Tudo em ordem' };
@@ -371,10 +378,15 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
   // operação de forma realista e não "despencar" a 0 por acúmulo (alguns
   // pontos de atenção ≠ negócio em colapso). Cada categoria tira no máximo o
   // seu teto, mesmo quando há muitos itens (ex.: vários insumos baixos).
+  //
+  // Arquivos pendentes só pesam a partir de HORA_PESA_ARQUIVOS_PENDENTES —
+  // antes disso é normal que ainda não tenham chegado (chegam ao longo do dia).
+  const arquivosAtrasados =
+    horaAgora >= HORA_PESA_ARQUIVOS_PENDENTES ? pendentesLabels.length : 0;
   const penalidade =
     (aberturaNaoFeita ? 15 : 0) +
     (fechamentoNaoFeito ? 15 : 0) +
-    Math.min(pendentesLabels.length * 5, 20) +
+    Math.min(arquivosAtrasados * 5, 20) +
     (vendasCairam ? 10 : 0) +
     Math.min(criticos.length * 6, 18) +
     Math.min(indicadoresForaMeta * 5, 15) +
