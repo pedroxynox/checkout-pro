@@ -29,6 +29,7 @@ import { GestaoColaboradoresScreen } from '../screens/colaboradores/GestaoColabo
 import { PerfilColaboradorScreen } from '../screens/colaboradores/PerfilColaboradorScreen';
 import { CentroControleScreen } from '../screens/centroControle/CentroControleScreen';
 import { MetasScreen } from '../screens/metas/MetasScreen';
+import { NaoReconhecidosScreen } from '../screens/indicadores/NaoReconhecidosScreen';
 import { InsumosDadosScreen } from '../screens/centroControle/InsumosDadosScreen';
 import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
 import { AlertasFilaScreen } from '../screens/alertasFila/AlertasFilaScreen';
@@ -180,6 +181,11 @@ export function AppNavigator(): React.ReactElement {
             name="Metas"
             component={MetasScreen}
             options={{ title: 'Metas' }}
+          />
+          <Stack.Screen
+            name="NaoReconhecidos"
+            component={NaoReconhecidosScreen}
+            options={{ title: 'Não reconhecidos' }}
           />
         </>
       )}

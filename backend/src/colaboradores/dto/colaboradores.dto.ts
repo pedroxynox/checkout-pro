@@ -172,3 +172,13 @@ export class PerfilColaboradorDto {
   @IsDateString({}, { message: 'A data final deve ser uma data válida.' })
   fim?: string;
 }
+
+/**
+ * Associa um código bruto (matrícula/login do arquivo) a um colaborador, para
+ * atribuir-lhe os lançamentos antes "não reconhecidos". Tratado como matrícula.
+ */
+export class AdicionarIdentificadorDto {
+  @IsString()
+  @IsNotEmpty({ message: 'O código (matrícula) é obrigatório.' })
+  valor!: string;
+}

@@ -9,7 +9,7 @@
  * seção "Colaboradores" (geral) é somente leitura (perfil).
  */
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { colaboradoresService } from '../../api/services';
@@ -24,6 +24,7 @@ import {
   Tela,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
+import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
 
@@ -55,7 +56,9 @@ function rotuloTurno(t: TurnoColaborador | null): string {
   return t ? TURNOS.find((x) => x.v === t)?.r ?? t : '—';
 }
 
-export function GestaoColaboradoresScreen(): React.ReactElement {
+export function GestaoColaboradoresScreen({
+  route,
+}: PropsTela<'GestaoColaboradores'>): React.ReactElement {
   const lista = useRequisicao<Colaborador[]>(() => colaboradoresService.listar(), []);
 
   const [busca, setBusca] = useState('');
@@ -112,6 +115,21 @@ export function GestaoColaboradoresScreen(): React.ReactElement {
     limparForm();
     setFormAberto(true);
   };
+
+  // Pré-preenche o cadastro quando chega da fila de "não reconhecidos"
+  // (com a matrícula/nome do código solto), abrindo o formulário pronto.
+  const matriculaInicial = route.params?.matriculaInicial;
+  const nomeInicial = route.params?.nomeInicial;
+  useEffect(() => {
+    if (!matriculaInicial) return;
+    setEditId(null);
+    setLogin('');
+    setSenha('');
+    setFuncao('OPERADOR');
+    setMatricula(matriculaInicial);
+    setNome(nomeInicial ?? '');
+    setFormAberto(true);
+  }, [matriculaInicial, nomeInicial]);
 
   const abrirEditar = (c: Colaborador) => {
     setEditId(c.id);
