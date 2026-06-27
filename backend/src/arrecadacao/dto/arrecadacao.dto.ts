@@ -41,6 +41,15 @@ export class StatusArrecadacaoDto {
   data!: string;
 }
 
+/** Período (inicio/fim) sem tipo — usado na fila de não reconhecidos. */
+export class PeriodoArrecadacaoDto {
+  @IsISO8601()
+  inicio!: string;
+
+  @IsISO8601()
+  fim!: string;
+}
+
 /** Marca/desmarca "sem movimento" de um tipo num dia. */
 export class SemMovimentoArrecadacaoDto {
   @IsIn(TIPOS_ARRECADACAO as unknown as string[], {

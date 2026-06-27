@@ -15,6 +15,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ArquivoUpload } from '../common/arquivo-upload';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
+  PeriodoArrecadacaoDto,
   RankingArrecadacaoDto,
   ResumoArrecadacaoDto,
   SemMovimentoArrecadacaoDto,
@@ -29,9 +30,11 @@ import { parseArrecadacao } from './arrecadacao.parser';
 import {
   ArrecadacaoService,
   DetalheArrecadacao,
+  ItemNaoReconhecido,
   ItemRankingArrecadacao,
   ResultadoUploadArrecadacao,
   ResumoArrecadacao,
+  ResumoNaoReconhecido,
   StatusArrecadacao,
 } from './arrecadacao.service';
 import {
@@ -129,6 +132,33 @@ export class ArrecadacaoController {
   detalhes(@Query() dto: RankingArrecadacaoDto): Promise<DetalheArrecadacao[]> {
     return this.arrecadacaoService.detalhes(
       dto.tipo,
+      new Date(dto.inicio),
+      new Date(dto.fim),
+    );
+  }
+
+  /**
+   * Agregado dos lançamentos não reconhecidos de um tipo no período (total +
+   * nº de lançamentos), para a linha "Não reconhecidos" do indicador.
+   */
+  @Get('nao-reconhecidos/resumo')
+  naoReconhecidosResumo(
+    @Query() dto: RankingArrecadacaoDto,
+  ): Promise<ResumoNaoReconhecido> {
+    return this.arrecadacaoService.naoReconhecidos(
+      dto.tipo,
+      new Date(dto.inicio),
+      new Date(dto.fim),
+    );
+  }
+
+  /** Fila de não reconhecidos no período (códigos soltos para associar/criar). */
+  @Get('nao-reconhecidos')
+  @Funcionalidade('OPERADORES_CRUD')
+  listarNaoReconhecidos(
+    @Query() dto: PeriodoArrecadacaoDto,
+  ): Promise<ItemNaoReconhecido[]> {
+    return this.arrecadacaoService.listarNaoReconhecidos(
       new Date(dto.inicio),
       new Date(dto.fim),
     );
