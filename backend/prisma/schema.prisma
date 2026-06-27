@@ -101,6 +101,11 @@ model Usuario {
   @@map("usuarios")
 }
 
+// [DEPRECADO] Operador "simples" (só nome) do fluxo antigo de importação
+// CSV/XLSX. Os operadores agora são pessoas do Cadastro Unificado de
+// Colaboradores (model `Colaborador`, funcao OPERADOR). Não é mais lido nem
+// escrito pelo app; mantido só para preservar dados/histórico (sem migração
+// destrutiva). Ver também `RegistroOperacional` (mesmo fluxo antigo).
 model Operador {
   id       String   @id @default(uuid())
   nome     String   @unique
@@ -127,6 +132,10 @@ model Fiscal {
   @@map("fiscais")
 }
 
+// [DEPRECADO] Registro do fluxo ANTIGO de importação CSV/XLSX (associado a
+// `Operador`/`Fiscal` por id). O fluxo atual usa `RegistroArrecadacao`
+// (vinculado por identificador ao Cadastro de Colaboradores). Não é mais
+// lido nem escrito; mantido para histórico (sem migração destrutiva).
 model RegistroOperacional {
   id           String       @id @default(uuid())
   tipo         TipoRegistro

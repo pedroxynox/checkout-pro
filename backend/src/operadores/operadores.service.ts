@@ -1,5 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { Operador, Ausencia } from '@prisma/client';
+import { Ausencia } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import {
@@ -12,13 +12,9 @@ import {
   ausenciaDuplicada,
   classificarTurnoOperador,
   contagemPorTurno,
-  nomeDuplicado,
   relatorioAusencias,
 } from './operadores.domain';
-import {
-  AusenciaDuplicadaError,
-  NomeDuplicadoError,
-} from './operadores.errors';
+import { AusenciaDuplicadaError } from './operadores.errors';
 
 /** A partir de quantas faltas no mês os gestores são avisados (RH). */
 const LIMITE_FALTAS_MES = 3;
@@ -40,50 +36,10 @@ export class OperadoresService {
     @Optional() private readonly notificacoes?: NotificacoesService,
   ) {}
 
-  /**
-   * Cadastra um operador pelo nome (Req 6.1.1, 6.1.2). Rejeita nome idêntico a
-   * um operador já cadastrado lançando `NomeDuplicadoError` (Req 6.1.3).
-   */
-  async cadastrar(nome: string): Promise<Operador> {
-    const existentes = await this.prisma.operador.findMany({
-      select: { nome: true },
-    });
-    if (
-      nomeDuplicado(
-        existentes.map((o) => o.nome),
-        nome,
-      )
-    ) {
-      throw new NomeDuplicadoError(nome);
-    }
-    return this.prisma.operador.create({ data: { nome } });
-  }
-
-  /**
-   * Edita o nome de um operador já cadastrado (Req 6.1.4). Rejeita quando o
-   * novo nome coincide com o de outro operador, lançando `NomeDuplicadoError`
-   * (Req 6.1.3).
-   */
-  async editarNome(id: string, nome: string): Promise<Operador> {
-    const outros = await this.prisma.operador.findMany({
-      where: { id: { not: id } },
-      select: { nome: true },
-    });
-    if (
-      nomeDuplicado(
-        outros.map((o) => o.nome),
-        nome,
-      )
-    ) {
-      throw new NomeDuplicadoError(nome);
-    }
-    return this.prisma.operador.update({ where: { id }, data: { nome } });
-  }
-
-  /** Lista os operadores cadastrados, ordenados por nome (Req 6.1.5). */
-  async listar(): Promise<Operador[]> {
-    return this.prisma.operador.findMany({ orderBy: { nome: 'asc' } });
-  }
+  // O cadastro/edição/listagem de operadores pelo model simples `Operador` foi
+  // removido: operadores agora são pessoas do Cadastro Unificado de
+  // Colaboradores (funcao OPERADOR). Este serviço cuida apenas de ausências e
+  // da classificação/contagem por turno.
 
   /**
    * Registra uma ausência de um operador ou fiscal para um dia (Req 6.2.1,

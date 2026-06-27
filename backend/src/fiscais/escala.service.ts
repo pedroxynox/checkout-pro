@@ -114,19 +114,21 @@ export class EscalaService {
     });
     const itens = escalaConsolidada(entries as unknown as EscalaEntry[], diaSemana);
 
-    // Resolve nomes (fiscais, operadores e usuários) num único mapa id -> nome.
-    const [fiscais, operadores, usuarios, colaboradores] = await Promise.all([
-      this.prisma.fiscal.findMany({ select: { id: true, nome: true, usuarioId: true } }),
-      this.prisma.operador.findMany({ select: { id: true, nome: true } }),
-      this.prisma.usuario.findMany({ select: { id: true, login: true, nome: true } }),
+    // Resolve nomes (fiscais, colaboradores e usuários) num único mapa id -> nome.
+    const [fiscais, usuarios, colaboradores] = await Promise.all([
+      this.prisma.fiscal.findMany({
+        select: { id: true, nome: true, usuarioId: true },
+      }),
+      this.prisma.usuario.findMany({
+        select: { id: true, login: true, nome: true },
+      }),
       this.prisma.colaborador.findMany({
-        where: { funcao: 'FISCAL' },
         select: { id: true, nome: true, matricula: true, usuarioId: true },
       }),
     ]);
     const mapa = new Map<string, string>();
     for (const f of fiscais) mapa.set(f.id, f.nome);
-    for (const o of operadores) mapa.set(o.id, o.nome);
+    for (const c of colaboradores) mapa.set(c.id, c.nome);
     for (const u of usuarios) if (u.nome) mapa.set(u.id, u.nome);
 
     // Vínculo Fiscal → ficha única (colaborador), para nome canônico + perfil.
