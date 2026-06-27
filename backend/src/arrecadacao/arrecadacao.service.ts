@@ -7,6 +7,7 @@ import {
   montarVinculo,
   type VinculoColaboradores,
 } from '../colaboradores/perfil-colaborador.domain';
+import { normalizarMatricula } from '../colaboradores/colaboradores.domain';
 import { LinhaArrecadacao } from './arrecadacao.parser';
 import {
   CONFIG_ARRECADACAO,
@@ -65,6 +66,34 @@ export interface DetalheArrecadacao {
   motivo: string | null;
   valor: number;
   data: string;
+}
+
+/**
+ * Agregado dos lançamentos NÃO reconhecidos (cuja matrícula/login do arquivo
+ * não casa com nenhum colaborador cadastrado) de um tipo num período. Serve
+ * para a linha "Não reconhecidos" do indicador (Opção B): o total do indicador
+ * soma TODOS os lançamentos, e esta é a parte que veio de gente sem cadastro.
+ */
+export interface ResumoNaoReconhecido {
+  total: number;
+  lancamentos: number;
+}
+
+/**
+ * Um código "solto" (matrícula/login do arquivo) que não casa com nenhum
+ * colaborador cadastrado, agregado no período (somando todos os indicadores).
+ * É a unidade da "fila de não reconhecidos": ao associar este código a um
+ * colaborador (como identificador), o histórico passa a ser atribuído a ele.
+ */
+export interface ItemNaoReconhecido {
+  /** Código bruto como veio do arquivo (matrícula/login do operador). */
+  matricula: string;
+  /** Nome bruto representativo (o mais recente encontrado). */
+  nome: string;
+  total: number;
+  lancamentos: number;
+  /** Indicadores em que esse código apareceu. */
+  tipos: TipoArrecadacao[];
 }
 
 /** Estado de um arquivo de arrecadação no dia. */
@@ -462,6 +491,77 @@ export class ArrecadacaoService {
       });
     }
     return out;
+  }
+
+  /**
+   * Agregado dos lançamentos NÃO reconhecidos de um tipo no período (total e
+   * número de lançamentos). Usado na linha "Não reconhecidos" do indicador,
+   * para deixar claro que o TOTAL do indicador soma também quem não tem
+   * cadastro (ex.: pessoas de fora que contribuíram).
+   */
+  async naoReconhecidos(
+    tipo: TipoArrecadacao,
+    inicio: Date,
+    fim: Date,
+  ): Promise<ResumoNaoReconhecido> {
+    const gte = inicioDoDia(inicio);
+    const lt = inicioDoProximoDia(fim);
+    const vinculo = await this.carregarVinculo();
+    const regs = await this.prisma.registroArrecadacao.findMany({
+      where: { tipo, data: { gte, lt } },
+      select: { matricula: true, valor: true },
+    });
+    let total = 0;
+    let lancamentos = 0;
+    for (const r of regs) {
+      if (vinculo.idDe(tipo, r.matricula)) continue; // já tem cadastro
+      total += Number(r.valor);
+      lancamentos += 1;
+    }
+    return { total: arredondar(total), lancamentos };
+  }
+
+  /**
+   * Lista os códigos "soltos" (matrícula/login do arquivo) que não casam com
+   * nenhum colaborador cadastrado, agregando todos os indicadores no período.
+   * É a base da "fila de não reconhecidos": cada item pode ser associado a um
+   * colaborador (ou virar um cadastro novo). Lançamentos sem código (matrícula
+   * vazia) não entram aqui (não há como associá-los), mas continuam somando no
+   * total do indicador via `naoReconhecidos`.
+   */
+  async listarNaoReconhecidos(
+    inicio: Date,
+    fim: Date,
+  ): Promise<ItemNaoReconhecido[]> {
+    const gte = inicioDoDia(inicio);
+    const lt = inicioDoProximoDia(fim);
+    const vinculo = await this.carregarVinculo();
+    const regs = await this.prisma.registroArrecadacao.findMany({
+      where: { data: { gte, lt } },
+      select: { tipo: true, matricula: true, nome: true, valor: true },
+    });
+    const mapa = new Map<string, ItemNaoReconhecido>();
+    for (const r of regs) {
+      const tipo = r.tipo as TipoArrecadacao;
+      if (vinculo.idDe(tipo, r.matricula)) continue; // já cadastrado
+      if (!r.matricula || r.matricula.trim() === '') continue; // sem código
+      const chave = normalizarMatricula(r.matricula);
+      const cur = mapa.get(chave) ?? {
+        matricula: r.matricula.trim(),
+        nome: r.nome,
+        total: 0,
+        lancamentos: 0,
+        tipos: [] as TipoArrecadacao[],
+      };
+      cur.nome = r.nome || cur.nome;
+      cur.total += Number(r.valor);
+      cur.lancamentos += 1;
+      if (!cur.tipos.includes(tipo)) cur.tipos.push(tipo);
+      mapa.set(chave, cur);
+    }
+    return [...mapa.values()]
+      .map((i) => ({ ...i, total: arredondar(i.total) }))
+      .sort((a, b) => b.total - a.total);
   }
 
   /**
