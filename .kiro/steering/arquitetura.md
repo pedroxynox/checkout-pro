@@ -13,22 +13,36 @@ Deploy (Render):
 - O `mobile` usa `EXPO_PUBLIC_API_URL` para falar com a API.
 
 ## Autenticação e perfis
-- Login por **matrícula** + senha (JWT). Ex.: gerente `232152`.
-- Perfis: `GERENTE` | `SUPERVISOR` | `FISCAL` (`backend/src/acessos/acessos.domain.ts`).
+- Login por **matrícula** + senha (JWT). Ex.: gerente `232152`. Senha mínima: **6**.
+- Perfis: `GERENTE_DESENVOLVEDOR` (acesso total) | `GERENTE` | `SUPERVISOR` |
+  `FISCAL` | `IMPORTADOR` (só *Importações*) — `backend/src/acessos/acessos.domain.ts`.
 - Autorização por **funcionalidade**: decorator `@Funcionalidade('X')` + `PerfilGuard`
   (método sobrepõe classe via `getAllAndOverride`). No mobile, `funcionalidades.ts`
   + `useAuth().podeAcessar(...)` controla o que aparece.
+- **Cadastro Unificado de Colaboradores** é a fonte única de pessoas. O login do
+  app é criado no próprio cadastro do colaborador quando a função é
+  fiscal/supervisor/gestor; **operadores não têm acesso ao app**.
 
 ## Módulos principais do backend (`backend/src/*`)
 - `acessos` — login, identidade, mapa de permissões por perfil.
-- `usuarios` — CRUD de pessoas (gerente).
+- `usuarios` — CRUD de logins/acessos do app.
+- `colaboradores` — **Cadastro Unificado** (fonte única de pessoas): cadastro/
+  edição com unicidade de matrícula/login, criação do login no cadastro,
+  `resolverColaboradorId` (matrícula/login) e **perfil inteligente**
+  (`perfil-colaborador.*`).
 - `arrecadacao` — **indicadores** a partir de arquivos .txt (ver fluxo abaixo).
 - `vendas` — **vendas por hora** a partir de .txt (ver fluxo abaixo).
+- `metas` — metas mensais por indicador (`MetaMensal`), exibidas no Centro de
+  Controle ▸ Metas (vendas, cancelamentos, recargas, devoluções, Sacolas APAE).
 - `indicadores` — fluxo ANTIGO (cálculo de %/cor, rankings, registro manual de
   venda). Endpoints existem, mas a UI atual NÃO os usa. Mantido por compat.
 - `importacoes` — fluxo ANTIGO de importação CSV/XLSX. Idem: não usado pela UI.
-- `fiscais` — status dos fiscais (gateway WebSocket) e **escala** de trabalho.
-- `insumos`, `lote-apae`, `checklist`, `operadores`, `notificacoes`.
+- `fiscais` — status dos fiscais (gateway WebSocket) e **escala** de trabalho
+  (a escala do fiscal vem do cadastro do colaborador — Opção A).
+- `operadores` — Quadro de Operadores (escala + ausências). A **escala lê de
+  `Colaborador`** (funcao OPERADOR); o model `OperadorTurno` está `[DEPRECADO]`
+  (não é mais lido nem escrito).
+- `insumos`, `lote-apae`, `checklist`, `notificacoes`.
 
 ## Fluxo 1 — Indicadores (arrecadação por operador)
 Arquivos .txt que o fiscal sobe em "Importações" alimentam os indicadores.
@@ -70,13 +84,27 @@ apenas marcadores — NÃO há push real de dispositivo ainda). Ao completar os 
 arquivos de indicadores do dia, `ArrecadacaoService` notifica os gerentes
 ("Fechamento concluído").
 
+## Centro de Controle (mobile)
+Área administrativa (gestor) que concentra a configuração que antes ficava
+espalhada. Cards atuais:
+- **Acesso** — pessoas com login no app (antiga "Pessoas e Acessos"). Os
+  acessos são criados no cadastro do colaborador.
+- **Metas** — metas mensais por indicador (vendas, cancelamento de itens/cupom,
+  recargas, devoluções) e **Sacolas APAE** (preço da sacola + meta mensal).
+- **Insumos** — botões de zerar estoque de consumo e limpar histórico de
+  requisições.
+- **Importações** — saiu da Home (fica só para o perfil IMPORTADOR) e passou
+  para cá.
+A antiga seção "Gerenciar dados" deixou de existir (seus botões foram
+distribuídos nos cards acima e em Sacolas APAE).
+
 ## Banco de dados
 - Prisma (`backend/prisma/schema.prisma`). Migrações numeradas em
   `backend/prisma/migrations/`. No deploy roda `prisma migrate deploy` + seed.
 - Só guardamos dados essenciais (não os arquivos .txt).
 
 ## Verificação (rodar antes de qualquer push)
-- Backend: `npm run build` + `npm test` (159 testes) + `npm run lint`.
+- Backend: `npm run build` + `npm test` (152 testes) + `npm run lint`.
 - Mobile: `npm run type-check` + `npm run lint` + `npm test` + `npx expo export --platform web`.
 - Banco: `npx prisma validate` + `npx prisma generate` (gerar o client ANTES do build).
 
