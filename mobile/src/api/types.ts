@@ -247,6 +247,34 @@ export type StatusArquivoArrecadacao = 'ENVIADO' | 'SEM_MOVIMENTO' | 'PENDENTE';
 /** Status (enviado/sem movimento/pendente) de cada tipo no dia. */
 export type StatusArrecadacao = Record<TipoArrecadacao, StatusArquivoArrecadacao>;
 
+// ----- Fechamento inteligente (resumo do dia) -----
+export type StatusItemFechamento =
+  | 'OK'
+  | 'SEM_MOVIMENTO'
+  | 'PENDENTE'
+  | 'NAO_ENVIADO';
+
+export type CategoriaFechamento = 'ARRECADACAO' | 'VENDAS' | 'CHECKLIST';
+
+export interface ItemFechamento {
+  id: string;
+  titulo: string;
+  categoria: CategoriaFechamento;
+  status: StatusItemFechamento;
+}
+
+/** Resumo inteligente do fechamento do dia. */
+export interface ResumoFechamento {
+  dataISO: string;
+  completoArquivos: boolean;
+  tudoPronto: boolean;
+  totalItens: number;
+  concluidos: number;
+  itens: ItemFechamento[];
+  pendentes: string[];
+  alertas: string[];
+}
+
 // ----- Vendas por hora (Painel de Vendas) -----
 export interface ItemVendaHora {
   hora: number;
