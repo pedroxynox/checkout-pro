@@ -1,24 +1,17 @@
 import { OperadoresService } from './operadores.service';
-import {
-  AusenciaDuplicadaError,
-  NomeDuplicadoError,
-} from './operadores.errors';
+import { AusenciaDuplicadaError } from './operadores.errors';
 
 /**
  * Testes de exemplo (unitários) do `OperadoresService`. Usam um
- * `PrismaService` falso (em memória) exercitando os efeitos colaterais (CRUD de
- * operadores e ausências) sem banco de dados.
+ * `PrismaService` falso (em memória) exercitando os efeitos colaterais sem
+ * banco de dados.
  *
- * Cobre os casos concretos de cadastro/edição/listagem e registro/remoção de
- * ausências (subtarefa 4.6) e a contagem/classificação por turno (Req 6.6).
+ * O cadastro/edição/listagem de operadores pelo model simples `Operador` foi
+ * removido (operadores agora vêm do Cadastro Unificado de Colaboradores), então
+ * este spec cobre apenas ausências (Req 6.2/6.3) e a classificação/contagem por
+ * turno (Req 6.6).
  */
 describe('OperadoresService', () => {
-  interface OperadorFake {
-    id: string;
-    nome: string;
-    ativo: boolean;
-    criadoEm: Date;
-  }
   interface AusenciaFake {
     id: string;
     pessoaId: string;
@@ -26,52 +19,10 @@ describe('OperadoresService', () => {
   }
 
   function criarServico(): OperadoresService {
-    const operadores: OperadorFake[] = [];
     const ausencias: AusenciaFake[] = [];
     let seq = 0;
 
     const prismaFake = {
-      operador: {
-        findMany: (args?: {
-          where?: { id?: { not?: string } };
-          orderBy?: { nome?: 'asc' | 'desc' };
-        }) => {
-          let lista = [...operadores];
-          const not = args?.where?.id?.not;
-          if (not !== undefined) {
-            lista = lista.filter((o) => o.id !== not);
-          }
-          if (args?.orderBy?.nome) {
-            const dir = args.orderBy.nome === 'asc' ? 1 : -1;
-            lista.sort((a, b) => a.nome.localeCompare(b.nome) * dir);
-          }
-          return Promise.resolve(lista);
-        },
-        create: ({ data: { nome } }: { data: { nome: string } }) => {
-          const novo: OperadorFake = {
-            id: `op${++seq}`,
-            nome,
-            ativo: true,
-            criadoEm: new Date(),
-          };
-          operadores.push(novo);
-          return Promise.resolve(novo);
-        },
-        update: ({
-          where: { id },
-          data: { nome },
-        }: {
-          where: { id: string };
-          data: { nome: string };
-        }) => {
-          const alvo = operadores.find((o) => o.id === id);
-          if (!alvo) {
-            return Promise.reject(new Error('Operador não encontrado'));
-          }
-          alvo.nome = nome;
-          return Promise.resolve(alvo);
-        },
-      },
       ausencia: {
         findMany: (args?: {
           where?: {
@@ -116,48 +67,6 @@ describe('OperadoresService', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return new OperadoresService(prismaFake as any);
   }
-
-  describe('cadastrar / editarNome / listar', () => {
-    it('cadastra operadores e os lista ordenados por nome', async () => {
-      const service = criarServico();
-      await service.cadastrar('Carlos');
-      await service.cadastrar('Ana');
-
-      const lista = await service.listar();
-      expect(lista.map((o) => o.nome)).toEqual(['Ana', 'Carlos']);
-    });
-
-    it('rejeita cadastro de nome idêntico lançando NomeDuplicadoError', async () => {
-      const service = criarServico();
-      await service.cadastrar('Maria');
-      await expect(service.cadastrar('Maria')).rejects.toBeInstanceOf(
-        NomeDuplicadoError,
-      );
-    });
-
-    it('edita o nome de um operador existente', async () => {
-      const service = criarServico();
-      const op = await service.cadastrar('Joana');
-      const atualizado = await service.editarNome(op.id, 'Joana Silva');
-      expect(atualizado.nome).toBe('Joana Silva');
-    });
-
-    it('rejeita edição para um nome já usado por outro operador', async () => {
-      const service = criarServico();
-      await service.cadastrar('Pedro');
-      const op2 = await service.cadastrar('Paulo');
-      await expect(service.editarNome(op2.id, 'Pedro')).rejects.toBeInstanceOf(
-        NomeDuplicadoError,
-      );
-    });
-
-    it('permite editar mantendo o próprio nome (sem falso positivo de duplicidade)', async () => {
-      const service = criarServico();
-      const op = await service.cadastrar('Lucas');
-      const atualizado = await service.editarNome(op.id, 'Lucas');
-      expect(atualizado.nome).toBe('Lucas');
-    });
-  });
 
   describe('ausências', () => {
     it('registra e permite remover uma ausência', async () => {

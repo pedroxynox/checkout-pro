@@ -6,13 +6,6 @@ import {
   IsString,
 } from 'class-validator';
 
-/** Cadastro/edição de operador por nome (Req 6.1). */
-export class CadastrarOperadorDto {
-  @IsString()
-  @IsNotEmpty({ message: 'O nome do operador é obrigatório.' })
-  nome!: string;
-}
-
 /** Registro de ausência de uma pessoa (operador/fiscal) numa data (Req 6.2). */
 export class RegistrarAusenciaDto {
   @IsString()

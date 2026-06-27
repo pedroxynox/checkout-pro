@@ -7,18 +7,16 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  Patch,
   Post,
   Query,
 } from '@nestjs/common';
-import { Ausencia, Operador } from '@prisma/client';
+import { Ausencia } from '@prisma/client';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
   UsuarioAtual,
   UsuarioAutenticado,
 } from '../common/decorators/usuario-atual.decorator';
 import {
-  CadastrarOperadorDto,
   ContagemTurnoDto,
   PeriodoAusenciasDto,
   RegistrarAusenciaDto,
@@ -51,28 +49,6 @@ const PERFIS_AUTORIZA_FUTURO = ['GERENTE', 'GERENTE_DESENVOLVEDOR', 'SUPERVISOR'
 @Funcionalidade('OPERADORES_CRUD')
 export class OperadoresController {
   constructor(private readonly operadoresService: OperadoresService) {}
-
-  /** Cadastra um operador por nome (Req 6.1.1–6.1.3). */
-  @Post()
-  async cadastrar(@Body() dto: CadastrarOperadorDto): Promise<Operador> {
-    return this.operadoresService.cadastrar(dto.nome);
-  }
-
-  /** Lista os operadores cadastrados (Req 6.1.5). Liberado a quem lança ausências. */
-  @Get()
-  @Funcionalidade('OPERADORES_AUSENCIAS')
-  async listar(): Promise<Operador[]> {
-    return this.operadoresService.listar();
-  }
-
-  /** Edita o nome de um operador (Req 6.1.4). */
-  @Patch(':id')
-  async editarNome(
-    @Param('id') id: string,
-    @Body() dto: CadastrarOperadorDto,
-  ): Promise<Operador> {
-    return this.operadoresService.editarNome(id, dto.nome);
-  }
 
   /**
    * Registra uma ausência de uma pessoa numa data (Req 6.2.1–6.2.3). Marcar
