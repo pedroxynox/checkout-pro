@@ -45,7 +45,7 @@ export class LoginAppDuplicadoError extends ColaboradoresError {
 export class SenhaAcessoObrigatoriaError extends ColaboradoresError {
   constructor() {
     super(
-      'Defina uma senha de acesso (mínimo 4 caracteres) para fiscal, supervisor ou gerente.',
+      'Defina uma senha de acesso (mínimo 6 caracteres) para fiscal, supervisor ou gerente.',
     );
   }
 }

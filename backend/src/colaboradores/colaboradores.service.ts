@@ -135,7 +135,7 @@ export class ColaboradoresService {
       usuarioId = input.usuarioId;
     } else if (perfilAcesso) {
       const senha = input.senha?.trim() ?? '';
-      if (senha.length < 4) {
+      if (senha.length < 6) {
         throw new SenhaAcessoObrigatoriaError();
       }
       if (!(await this.acessos.loginDisponivel(matricula))) {
@@ -308,7 +308,7 @@ export class ColaboradoresService {
     if (!atual.usuarioId) return;
 
     const senha = input.senha?.trim();
-    if (input.senha !== undefined && input.senha !== '' && (senha?.length ?? 0) < 4) {
+    if (input.senha !== undefined && input.senha !== '' && (senha?.length ?? 0) < 6) {
       throw new SenhaAcessoObrigatoriaError();
     }
 
