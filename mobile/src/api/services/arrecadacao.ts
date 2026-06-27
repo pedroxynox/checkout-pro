@@ -15,11 +15,13 @@ import {
   ItemRankingArrecadacao,
   MetaIndicador,
   DestaquesMes,
+  ItemNaoReconhecido,
   PainelAtencao,
   PontoTendencia,
   ProjecaoMes,
   ResultadoUploadArrecadacao,
   ResumoArrecadacao,
+  ResumoNaoReconhecido,
   StatusArrecadacao,
   TipoArrecadacao,
 } from '../types';
@@ -120,6 +122,29 @@ export const arrecadacaoService = {
   ): Promise<DetalheArrecadacao[]> {
     return apiClient.get<DetalheArrecadacao[]>('/arrecadacao/detalhes', {
       tipo,
+      inicio,
+      fim,
+    });
+  },
+
+  /** Agregado dos lançamentos não reconhecidos de um tipo no período. */
+  naoReconhecidosResumo(
+    tipo: TipoArrecadacao,
+    inicio: string,
+    fim: string,
+  ): Promise<ResumoNaoReconhecido> {
+    return apiClient.get<ResumoNaoReconhecido>(
+      '/arrecadacao/nao-reconhecidos/resumo',
+      { tipo, inicio, fim },
+    );
+  },
+
+  /** Fila de não reconhecidos no período (códigos soltos para associar/criar). */
+  listarNaoReconhecidos(
+    inicio: string,
+    fim: string,
+  ): Promise<ItemNaoReconhecido[]> {
+    return apiClient.get<ItemNaoReconhecido[]>('/arrecadacao/nao-reconhecidos', {
       inicio,
       fim,
     });

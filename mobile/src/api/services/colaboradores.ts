@@ -71,4 +71,15 @@ export const colaboradoresService = {
   reativar(id: string): Promise<Colaborador> {
     return apiClient.post<Colaborador>(`/colaboradores/${id}/reativar`, {});
   },
+
+  /**
+   * Associa um código solto (matrícula do arquivo, "não reconhecido") a um
+   * colaborador. Resolve o histórico retroativamente. Apenas gestor.
+   */
+  adicionarIdentificador(id: string, valor: string): Promise<{ ok: true }> {
+    return apiClient.post<{ ok: true }>(
+      `/colaboradores/${id}/identificadores`,
+      { valor },
+    );
+  },
 };

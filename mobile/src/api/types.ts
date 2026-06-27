@@ -101,6 +101,21 @@ export interface ItemRankingArrecadacao {
   quantidade: number | null;
 }
 
+/** Agregado dos lançamentos não reconhecidos (sem cadastro) de um indicador. */
+export interface ResumoNaoReconhecido {
+  total: number;
+  lancamentos: number;
+}
+
+/** Um código solto (matrícula/login do arquivo) sem cadastro, agregado. */
+export interface ItemNaoReconhecido {
+  matricula: string;
+  nome: string;
+  total: number;
+  lancamentos: number;
+  tipos: TipoArrecadacao[];
+}
+
 // ----- Inteligência de indicadores -----
 
 /** Um ponto da série temporal (um dia). */

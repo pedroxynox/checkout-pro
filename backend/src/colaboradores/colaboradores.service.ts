@@ -468,6 +468,37 @@ export class ColaboradoresService {
   }
 
   /**
+   * Associa um código bruto (matrícula/login que veio do arquivo e não casava
+   * com ninguém) a um colaborador, criando um identificador `MATRICULA`. Como a
+   * resolução de todos os indicadores cai na matrícula em último caso, isso
+   * passa a atribuir o histórico desse código ao colaborador (retroativo).
+   * Idempotente: se o código já é dele, não faz nada; se é de outro, erro.
+   */
+  async adicionarIdentificador(
+    colaboradorId: string,
+    valor: string,
+  ): Promise<void> {
+    const colaborador = await this.prisma.colaborador.findUnique({
+      where: { id: colaboradorId },
+      select: { id: true },
+    });
+    if (!colaborador) throw new ColaboradorNaoEncontradoError();
+
+    const m = normalizarMatricula(valor);
+    const existente = await this.prisma.colaboradorIdentificador.findUnique({
+      where: { tipo_valor: { tipo: 'MATRICULA', valor: m } },
+      select: { colaboradorId: true },
+    });
+    if (existente) {
+      if (existente.colaboradorId === colaboradorId) return; // já é dele
+      throw new MatriculaColaboradorDuplicadaError(m);
+    }
+    await this.prisma.colaboradorIdentificador.create({
+      data: { colaboradorId, tipo: 'MATRICULA', valor: m },
+    });
+  }
+
+  /**
    * Garante que a conta de acesso (Usuario) existe e não está vinculada a
    * outro colaborador. `selfId` é o colaborador em edição (ignorado na checagem
    * de duplicidade), ou null no cadastro.

@@ -21,6 +21,7 @@ import {
   PerfilColaboradorService,
 } from './perfil-colaborador.service';
 import {
+  AdicionarIdentificadorDto,
   CadastrarColaboradorDto,
   EditarColaboradorDto,
   ListarColaboradoresDto,
@@ -146,5 +147,19 @@ export class ColaboradoresController {
   @HttpCode(HttpStatus.OK)
   async reativar(@Param('id') id: string): Promise<Colaborador> {
     return this.service.reativar(id);
+  }
+
+  /**
+   * Associa um código "solto" (matrícula/login do arquivo) a este colaborador,
+   * resolvendo os lançamentos antes "não reconhecidos" (fila). Gestor.
+   */
+  @Post(':id/identificadores')
+  @HttpCode(HttpStatus.OK)
+  async adicionarIdentificador(
+    @Param('id') id: string,
+    @Body() dto: AdicionarIdentificadorDto,
+  ): Promise<{ ok: true }> {
+    await this.service.adicionarIdentificador(id, dto.valor);
+    return { ok: true };
   }
 }

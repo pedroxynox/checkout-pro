@@ -18,8 +18,10 @@ import {
   PontoTendencia,
   ProjecaoMes,
   ResumoArrecadacao,
+  ResumoNaoReconhecido,
 } from '../../api/types';
 import {
+  Botao,
   Carregando,
   Cartao,
   EstadoVazio,
@@ -31,6 +33,7 @@ import {
   SeletorData,
   Tela,
 } from '../../components';
+import { useAuth } from '../../auth/AuthContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, tipografia } from '../../theme';
@@ -373,8 +376,10 @@ function CardTendencia({
 
 export function IndicadorDetalheScreen({
   route,
+  navigation,
 }: PropsTela<'IndicadorDetalhe'>): React.ReactElement {
   const { tipo } = route.params;
+  const { podeAcessar } = useAuth();
   const def =
     ARRECADACAO.find((d) => d.tipo === tipo) ?? ARRECADACAO[0];
 
@@ -383,7 +388,7 @@ export function IndicadorDetalheScreen({
 
   const req = useRequisicao(async () => {
     const { inicio, fim } = intervaloDoPeriodo(periodo, data);
-    const [resumo, ranking, detalhes, tendencia, comparativo, projecao] =
+    const [resumo, ranking, detalhes, tendencia, comparativo, projecao, naoReconhecidos] =
       await Promise.all([
         arrecadacaoService.resumo(def.tipo, data),
         arrecadacaoService.ranking(def.tipo, inicio, fim),
@@ -393,8 +398,11 @@ export function IndicadorDetalheScreen({
         arrecadacaoService.tendencia(def.tipo, data, 14).catch(() => [] as PontoTendencia[]),
         arrecadacaoService.comparativo(def.tipo, data).catch(() => null),
         arrecadacaoService.projecao(def.tipo, data).catch(() => null),
+        arrecadacaoService
+          .naoReconhecidosResumo(def.tipo, inicio, fim)
+          .catch(() => null),
       ]);
-    return { resumo, ranking, detalhes, tendencia, comparativo, projecao };
+    return { resumo, ranking, detalhes, tendencia, comparativo, projecao, naoReconhecidos };
   }, [def.tipo, data, periodo]);
 
   const resumo = req.dados?.resumo;
@@ -403,6 +411,8 @@ export function IndicadorDetalheScreen({
   const tendencia: PontoTendencia[] = req.dados?.tendencia ?? [];
   const comparativo: ComparativoIndicador | null = req.dados?.comparativo ?? null;
   const projecao: ProjecaoMes | null = req.dados?.projecao ?? null;
+  const naoReconhecidos: ResumoNaoReconhecido | null =
+    req.dados?.naoReconhecidos ?? null;
   const maxRanking = ranking.length > 0 ? ranking[0].total : 0;
 
   const metaTexto =
@@ -477,6 +487,26 @@ export function IndicadorDetalheScreen({
               />
             )}
           </Cartao>
+
+          {naoReconhecidos && naoReconhecidos.lancamentos > 0 ? (
+            <Cartao titulo="Não reconhecidos">
+              <Text style={styles.naoRecLinha}>
+                {formatarMoeda(naoReconhecidos.total)} ·{' '}
+                {naoReconhecidos.lancamentos} lançamento(s) sem cadastro
+              </Text>
+              <Text style={styles.naoRecAjuda}>
+                Já incluído no total acima. São códigos do arquivo que não casam
+                com nenhum cadastro (ex.: pessoas de fora).
+              </Text>
+              {podeAcessar('OPERADORES_CRUD') ? (
+                <Botao
+                  titulo="Ver e associar"
+                  variante="secundario"
+                  aoPressionar={() => navigation.navigate('NaoReconhecidos')}
+                />
+              ) : null}
+            </Cartao>
+          ) : null}
 
           {ranking.some((r) => r.total > 0) ? (
             <Cartao
@@ -630,6 +660,17 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     paddingVertical: espacamento.sm,
+  },
+  naoRecLinha: {
+    ...tipografia.corpo,
+    color: cores.texto,
+    fontWeight: '700',
+  },
+  naoRecAjuda: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+    marginBottom: espacamento.sm,
   },
   projLinha: {
     flexDirection: 'row',

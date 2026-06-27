@@ -33,8 +33,9 @@ export type RootStackParamList = {
   Operadores: undefined;
   Colaboradores: undefined;
   CentroControle: undefined;
-  GestaoColaboradores: undefined;
+  GestaoColaboradores: { matriculaInicial?: string; nomeInicial?: string } | undefined;
   Metas: undefined;
+  NaoReconhecidos: undefined;
   InsumosDados: undefined;
   PerfilColaborador: { colaboradorId: string };
   Usuarios: undefined;
