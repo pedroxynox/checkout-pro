@@ -1,14 +1,9 @@
 import { Type } from 'class-transformer';
 import {
   IsDateString,
-  IsIn,
-  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
-  Matches,
-  Max,
-  Min,
 } from 'class-validator';
 
 /** Cadastro/edição de operador por nome (Req 6.1). */
@@ -64,40 +59,6 @@ export class OperadorEscalaDiaDto {
 export class ContagemTurnoDto {
   @Type(() => OperadorEscalaDiaDto)
   operadores!: OperadorEscalaDiaDto[];
-}
-
-/** Turno fixo de um operador (Quadro de Operadores). */
-export class TurnoOperadorDto {
-  @IsString()
-  @IsNotEmpty({ message: 'O nome é obrigatório.' })
-  nome!: string;
-
-  @IsOptional()
-  @IsIn(['M', 'F'], { message: 'genero deve ser M ou F' })
-  genero?: string;
-
-  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'entradaSemana deve ser HH:mm' })
-  entradaSemana!: string;
-
-  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'saidaSemana deve ser HH:mm' })
-  saidaSemana!: string;
-
-  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'entradaFds deve ser HH:mm' })
-  entradaFds!: string;
-
-  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'saidaFds deve ser HH:mm' })
-  saidaFds!: string;
-
-  @IsInt()
-  @Min(0)
-  @Max(6)
-  folgaDiaSemana!: number;
-}
-
-/** Importação em massa de turnos de operadores. */
-export class ImportarTurnosDto {
-  @Type(() => TurnoOperadorDto)
-  turnos!: TurnoOperadorDto[];
 }
 
 /** Filtro (data de referência) da grade semanal. */

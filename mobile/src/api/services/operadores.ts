@@ -13,17 +13,6 @@ import {
   OperadorTurno,
 } from '../types';
 
-/** Dados de um turno fixo de operador (criar/editar). */
-export interface TurnoOperadorInput {
-  nome: string;
-  genero?: 'M' | 'F';
-  entradaSemana: string;
-  saidaSemana: string;
-  entradaFds: string;
-  saidaFds: string;
-  folgaDiaSemana: number;
-}
-
 export const operadoresService = {
   /** Cadastra um operador por nome (Req 6.1.1–6.1.3). */
   cadastrar(nome: string): Promise<Operador> {
@@ -102,28 +91,8 @@ export const operadoresService = {
     });
   },
 
-  /** Lista os turnos fixos dos operadores. */
+  /** Lista os operadores (escala derivada do Cadastro de Colaboradores). */
   listarTurnos(): Promise<OperadorTurno[]> {
     return apiClient.get<OperadorTurno[]>('/quadro-operadores/turnos');
-  },
-
-  /** Cria ou atualiza (por nome) um turno de operador (gestor). */
-  salvarTurno(dados: TurnoOperadorInput): Promise<OperadorTurno> {
-    return apiClient.post<OperadorTurno>('/quadro-operadores/turnos', dados);
-  },
-
-  /** Importa em massa turnos (gestor). */
-  importarTurnos(
-    turnos: TurnoOperadorInput[],
-  ): Promise<{ salvos: number }> {
-    return apiClient.post<{ salvos: number }>(
-      '/quadro-operadores/turnos/importar',
-      { turnos },
-    );
-  },
-
-  /** Inativa um operador do quadro (gestor). */
-  removerTurno(id: string): Promise<void> {
-    return apiClient.delete<void>(`/quadro-operadores/turnos/${id}`);
   },
 };
