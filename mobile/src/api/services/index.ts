@@ -4,6 +4,7 @@ export { arrecadacaoService } from './arrecadacao';
 export type { ArquivoArrecadacao } from './arrecadacao';
 export { vendasService } from './vendas';
 export type { ArquivoVendas } from './vendas';
+export { fechamentoService } from './fechamento';
 export { metasService } from './metas';
 export { loteApaeService } from './loteApae';
 export { insumosService } from './insumos';
