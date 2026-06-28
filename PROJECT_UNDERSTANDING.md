@@ -7,11 +7,11 @@
 >
 > Idioma de trabajo: español · UI/dominio: portugués (Brasil).
 >
-> Última revisión: 2026-06-26 (Cadastro Unificado de Colaboradores como fuente
-> única de personas; login creado en el cadastro; escalas unificadas —fiscais y
-> operadores leen de `Colaborador`, `OperadorTurno` deprecado—; Centro de
-> Controle reorganizado con cards Acesso/Metas/Insumos/Importações; metas
-> mensuales; fix de "Saúde do negócio").
+> Última revisión: 2026-06-27 (fila de "Não reconhecidos" —total cuenta a todos,
+> bandeja para asociar/crear—; Fechamento inteligente Fase 1 —resumen del día con
+> pendencias y alertas—; deprecados los modelos viejos `Operador`/`OperadorTurno`;
+> branding ya integrado y limpieza del rojo viejo muerto. Meta del usuario: dejar
+> la app 100% operativa antes de escalar; multi-tenancy parqueado).
 
 ---
 
@@ -93,7 +93,8 @@ mobile/ (Expo / React Native)  --HTTPS + JWT Bearer-->  backend/ (NestJS)
 | `acessos` | Login (matrícula + senha) + JWT; mapa de permisos por perfil (`acessos.domain.ts`). |
 | `usuarios` | CRUD de logins/accesos del app. |
 | `colaboradores` | **Cadastro Unificado** (fuente única de personas): cadastro/edición con unicidad de matrícula/login, login creado en el cadastro, `resolverColaboradorId` y **perfil inteligente** (`perfil-colaborador.*`). |
-| `arrecadacao` | Indicadores desde `.txt` (parser por tipo) + `indicadores-inteligente` / `indicadores-resumo`. **(flujo actual)** |
+| `arrecadacao` | Indicadores desde `.txt` (parser por tipo) + `indicadores-inteligente` / `indicadores-resumo` + **"não reconhecidos"** (total cuenta a todos; bandeja para asociar/crear). **(flujo actual)** |
+| `fechamento` | Cierre del día: `estaCompleto`/notificación + **resumo inteligente** (`fechamento.domain` puro + `GET /fechamento/resumo`: pendencias y alertas). |
 | `vendas` | Ventas por hora desde `.txt`; espeja el total diario en `VendaDiaria`. |
 | `metas` | Metas mensuales por indicador (`MetaMensal`): vendas, cancelamientos, recargas, devoluções y Sacolas APAE. Mostradas en Centro de Controle ▸ Metas. |
 | `indicadores` | Flujo **ANTIGUO** (% / color / rankings, registro manual). No usado por la UI; mantenido por compat. |
@@ -207,7 +208,7 @@ Secretos en Render (no en el repo): `DATABASE_URL`, `JWT_SECRET`,
   Fix de "Saúde do negócio" (topes por categoría; archivos pendientes pesan tras 18h).
 
 ### Verificación
-- Backend: **35** suites `.spec.ts` / **152** tests. Mobile: **11** suites / **32** tests.
+- Backend: **35** suites `.spec.ts` / **156** tests. Mobile: **13** suites / **37** tests.
 - Comandos: backend (`prisma generate` + `validate` + `build` + `lint` + `jest`);
   mobile (`type-check` + `lint` + `jest` + `expo export --platform web`).
 
