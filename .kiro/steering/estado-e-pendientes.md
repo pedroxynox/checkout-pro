@@ -97,31 +97,151 @@
 - **Verificación de esta sesión:** backend `build` + **152 tests**; mobile
   `type-check` + **32 tests**. Todo verde.
 
-## Pendientes / próximos pasos (en orden sugerido)
+### Actualización — fila de no reconocidos, Fechamento inteligente y limpieza (sesión 2026-06-27)
 
-1. **Gemini tier pago (URGENTE para multiusuario):** la capa gratis da ~20
-   req/min → insuficiente para 15 fiscais (da `RESOURCE_EXHAUSTED`). Activar
-   facturación en Google AI Studio (pago por uso, ~$5–20/mes). Además, el tier
-   pago **no usa los datos para entrenar** (requisito para las normativas).
-2. **Migrar la BD de Render a plan pago** antes de que expire (~30 días).
-3. **Normativas de Cluby (RAG con fotos):** están DESACTIVADAS por el flag
-   `PROCEDIMENTOS_ATIVOS=false` en `backend/src/assistente/procedimentos.service.ts`
-   (los datos del piloto siguen en `procedimentos.data.ts` + fotos en
-   `backend/assets/procedimentos/`). Para reactivar a escala: poner el flag en
-   `true`, ingerir los ~300 PDFs (RAG con pgvector + object storage tipo
-   Cloudinary para las fotos) y usar tier pago (datos confidenciales).
-4. **APK + push notifications reales (v1.1):** `expo-notifications` + tokens push
-   (campo `pushToken` en `Usuario`) + `expo-server-sdk` en el backend. Solo
-   funciona en el APK instalado, no en la web. Hoy las notificaciones son in-app.
-5. **EscalaScreen con nombres** (hoy muestra IDs) — diferido.
-6. **Opcional:** renombrar el repo de GitHub a `checkout-pro` (GitHub deja
-   redirecciones, no rompe). Mergear el PR `chore/keep-alive-checkout-pro` si
-   sigue abierto.
+PRs mergeados esta sesión: **#83, #84, #85, #86, #87** (todos en `main`).
 
-## Cómo continuar en otra cuenta de Kiro
+- **Fila de "Não reconhecidos"** (PRs #83 backend + #84 mobile): los lançamentos
+  de arrecadación cuyo código (matrícula/login del .txt) no casa con ningún
+  colaborador **YA suman en el total del indicador** (gente de fuera también
+  cuenta — el `somar` nunca filtró por cadastro; quien filtra es solo el ranking
+  por persona). Se expuso:
+  - `ArrecadacaoService.naoReconhecidos(tipo, ini, fim)` → `{ total, lancamentos }`
+    (línea "Não reconhecidos" en el detalle del indicador, Opción B).
+  - `ArrecadacaoService.listarNaoReconhecidos(ini, fim)` → bandeja agrupada por
+    código. Endpoints `GET /arrecadacao/nao-reconhecidos/resumo` y
+    `/nao-reconhecidos` (lista, gestor).
+  - `ColaboradoresService.adicionarIdentificador(colaboradorId, valor)` + endpoint
+    `POST /colaboradores/:id/identificadores`: **asociar** un código a una persona
+    crea un identificador `MATRICULA` (resuelve en TODOS los indicadores y
+    **arregla el histórico retroactivamente**, porque la resolución es en lectura).
+  - Mobile: pantalla `NaoReconhecidosScreen` (ruta `NaoReconhecidos`, gestor) con
+    **Asociar** (selector inline) y **Criar** (abre `GestaoColaboradores` con
+    `matriculaInicial`/`nomeInicial` prellenados). Línea en `IndicadorDetalheScreen`.
+  - Decisión de diseño: total = TODO; ranking/atribución = solo cadastrados;
+    lançamentos sin código no entran en la bandeja pero siguen sumando al total.
+- **Deprecación `OperadorTurno`** (PR #80, sesión previa) y **`Operador` simple**
+  (PR #82): retirados los caminos de escritura/CRUD viejos; modelos marcados
+  `[DEPRECADO]` en el schema (sin migración). `escala.service` resuelve nombres
+  con `Colaborador` (ya no con `Operador`). `NomeDuplicadoError` se mantuvo (lo
+  usa el filtro global); `nomeDuplicado` (domínio) se mantuvo (property test).
+- **Fechamento inteligente — Fase 1** (PR #85): nuevo `fechamento.domain.ts`
+  (puro, testeado) `montarResumoFechamento` + `FechamentoService.resumo(data)` +
+  `FechamentoController` (`GET /fechamento/resumo`). La pantalla pasó de "X de N
+  archivos" a un **resumen del día**: titular ("Tudo pronto"/"X de N"), **alertas
+  de consistencia** (todas "sem movimento"; vendas sin arrecadación; dia encerrado
+  con pendencias) y el estado de cada item (5 arrecadaciones + vendas + 2
+  checklists). `estaCompleto`/notificaciones NO cambiaron.
+- **Branding** (PR #86): se constató que **ya estaba aplicado** (login usa
+  `assets/Logo.png`, header de Home usa `assets/LogoElemento.png`, `app.json` azul
+  `#0F4C81` + `Appicon.png`). Solo se removió **código muerto con el rojo viejo**:
+  `components/Logo.tsx` (LogoPulseC) y `theme/icones.ts` (`#E30613`/`SVG_*`).
+- **Tests de frontend** (PR #87): `NaoReconhecidosScreen.test.tsx` (lista/vacío/
+  asociar) y `GestaoColaboradoresScreen.test.tsx` (prellenado).
+- **Verificación final de la sesión:** backend `build` + **156 tests**; mobile
+  `type-check` + **37 tests**; lint OK. Sin migraciones nuevas (siguen hasta `9s`).
 
-El proyecto vive en **GitHub**, no en Kiro. En la cuenta nueva: conectar el mismo
-GitHub, abrir el repo `pedroxynox/gestao-frente-de-caixa-stok-center` (o su nuevo
-nombre). El contexto viaja en `.kiro/steering/` (este archivo + `arquitetura.md`).
-Lo que NO viaja: el historial de chat. Cuentas externas (Render/Gemini/GitHub) son
-del usuario, independientes de Kiro.
+### Incidente de deploy resuelto (2026-06-27)
+
+- Síntoma: build OK pero deploy "Failed/Timed Out" con **"Port scan timeout, no
+  open ports"** y **cero logs de la app** durante ~15 min.
+- Causa: el **start command** corre `npx prisma migrate deploy && npx prisma db
+  seed && node dist/main.js`. Al mergear varios PRs seguidos, los deploys se
+  encimaron y `migrate deploy` quedó **colgado esperando un advisory lock** →
+  el servidor nunca arrancó. (La BD estaba "Available", PG 18 — NO era base caída.)
+- Solución que funcionó: **Manual Deploy → "Clear build cache & deploy"**, uno
+  solo. Arrancó normal (`Conexão com o banco… / ouvindo na porta 10000 / live`).
+- **Arreglo de fondo recomendado (en el panel de Render, no en el repo, porque los
+  servicios se manejan a mano):** mover migraciones al **Pre-Deploy Command**
+  (`npx prisma migrate deploy && npx prisma db seed`) y dejar **Start Command** =
+  `node dist/main.js`. Así un cuelgue de migrate no bloquea el puerto en silencio.
+
+### Decisiones de producto/negocio de la sesión
+
+- **Foco actual del usuario:** dejar la app **100% operativa ANTES de escalar**.
+  Multi-tenancy queda **parqueado** (plan ya discutido, ver abajo).
+- **Multi-tenancy (cuando se retome):** modelo recomendado = **1 BD + columna
+  `lojaId`** (row-level) + RLS de Postgres como red de seguridad. Toca ~28 modelos
+  y las ~15 unicidades (pasan a compuestas con `lojaId`). El token JWT llevaría
+  `lojaId`. Decisión pendiente: cómo identifica el usuario su tienda en el login
+  (A: código de tienda; B: email global; C: subdominio web) — se sugirió **A**.
+  Plan por fases en el chat; es el cambio más grande (riesgo: fuga entre tenants →
+  exige tests de aislamiento).
+- **Reset para entrega a cliente (pre-entrega, NO ahora):** crear `seed-cliente`
+  mínimo (1 gerente + configs por defecto) + script `reset:cliente` (borra datos
+  operativos) + sacar el seed demo del arranque (hoy el seed recrea ~39 operadores
+  Zaffari en cada deploy → la limpieza no "pega" si no se cambia el seed). Quitar
+  también las normativas del piloto Zaffari del código.
+- **Pricing (orientativo):** para un mercado que factura ~R$18M/mes, sugerido
+  **R$1.500–2.500/mes + setup R$3–5k** como primer cliente (early adopter), con
+  plan de subir a **R$3–6k/mes** con caso de éxito + soporte/infra de pago. Ancla
+  de venta = prevención de pérdidas (1–3% del faturamento).
+
+## Pendientes / próximos pasos (estado a 2026-06-27)
+
+> Meta del usuario: **app 100% operativa antes de escalar.** No hay PRs abiertos.
+
+### 🖐️ Infraestructura / decisiones del usuario (bloqueantes reales para uso diario)
+1. **Gemini tier pago (URGENTE multiusuario):** la capa gratis (~20 req/min) es
+   insuficiente para ~15 fiscais (`RESOURCE_EXHAUSTED`). Activar facturación en
+   Google AI Studio. El tier pago además **no entrena con los datos** (requisito
+   para normativas).
+2. **BD de Render a plan estable** antes de que expire la free.
+3. **Endurecer el deploy:** Pre-Deploy Command (ver "Incidente de deploy" arriba).
+4. **Borrar el `checkout-pro-web` duplicado** en Render (hay 2 servicios web).
+5. Confirmar `JWT_SECRET` en Render (debería estar auto-generado).
+
+### 🧩 Producto incompleto pero OCULTO (no rompe nada)
+6. Áreas "em breve" (`emBreve: true` en `areas.ts`, ocultas): **Alertas de Fila,
+   Normativas, Indicador de Quebra** (pantallas placeholder de ~15 líneas).
+   Decisión: terminarlas o quitarlas (limpieza ofrecida).
+7. **Normativas de Cluby** desactivadas por `PROCEDIMENTOS_ATIVOS=false`
+   (`assistente/procedimentos.service.ts`). Reactivar a escala requiere RAG
+   (pgvector + object storage) + tier pago. Datos del piloto en
+   `procedimentos.data.ts` + fotos en `backend/assets/procedimentos/`.
+
+### 🔧 Que el agente puede hacer en código (ofrecido, pendiente de luz verde)
+8. **Guía de QA paso a paso** (documento `GUIA_QA.md`): checklist manual por
+   perfil/módulo para validar todo en producción. **El usuario preguntó cómo
+   funciona; quedó pendiente decidir formato (A: archivo en repo / B: en chat) y
+   organización (por perfil / por módulo) antes de generarla.**
+9. **Limpiar las 3 áreas "em breve"** (quitar placeholders + rutas).
+10. **Push notifications reales (v1.1):** `expo-notifications` + `pushToken` en
+    `Usuario` + `expo-server-sdk`. Hoy solo in-app. Solo funciona en APK.
+11. **EscalaScreen con nombres** (la escala del quadro ya muestra nombres vía
+    `Colaborador`; revisar si la EscalaScreen dedicada aún muestra algún ID) — menor.
+
+### 🚀 Escalado (parqueado por decisión del usuario)
+12. **Multi-tenancy** (ver "Decisiones de producto/negocio" arriba). El cambio
+    grande para ser SaaS multi-cliente.
+13. **Cobros / registro self-service** (Stripe, planes) — capa aparte del #12.
+14. **Script `reset:cliente` + seed limpio** (pre-entrega a cliente — ver arriba).
+
+### 📄 Negocio
+15. **Propuesta comercial de una página** con cuenta de ROI (ofrecida, pendiente).
+
+## Cómo continuar en otra cuenta/sesión de Kiro
+
+El proyecto vive en **GitHub** (`pedroxynox/checkout-pro`), no en Kiro. El
+contexto viaja en `.kiro/steering/` (este archivo + `arquitetura.md` +
+`PROJECT_UNDERSTANDING.md`). Lo que NO viaja: el historial de chat. Cuentas
+externas (Render/Gemini/GitHub) son del usuario.
+
+### Notas operativas para el agente (gotchas confirmados esta sesión)
+- **Git directo NO funciona** (`git push`/`fetch` dan auth error). Usar el **power
+  de GitHub** (`kiro_powers` → `github` → `push_to_remote`, `create_pull_request`,
+  `pull_repository`, `list_pull_requests`). Para sincronizar `main` local:
+  `pull_repository` + `git merge --ff-only origin/main` (operación local).
+- **`npm run lint` del backend corre con `--fix`** y reformatea archivos ajenos.
+  NO usarlo para validar; usar `npx eslint <archivos>` (sin fix). Errores de
+  prettier preexistentes en líneas no tocadas → el CI los auto-corrige (CI usa
+  `lint` con `--fix` y sale 0). Solo formatear los archivos NUEVOS propios con
+  `npx prettier --write`.
+- **Flujo de entrega:** rama nueva desde `main` actualizado → editar → validar
+  (build/type-check + jest, sin lint --fix) → commit → `push_to_remote` →
+  `create_pull_request` contra `main`. El usuario mergea. Si una rama remota ya
+  existe (rechazo "fetch first"), usar un nombre de rama nuevo.
+- **Trabajar por partes: 1 PR por parte.** Responder en **español**; código,
+  commits y PRs en **portugués**. Tono claro para no-programador.
+- Tras mergear varios PRs, avisar de hacer **Manual Deploy → Clear build cache**
+  uno a la vez para evitar el cuelgue de migrate (advisory lock).
