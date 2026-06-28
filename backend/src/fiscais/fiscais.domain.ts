@@ -123,20 +123,10 @@ export function calcularJornada(
   };
 }
 
-/** Início do dia (00:00 UTC) — agrupa os registros por dia-calendário. */
-export function inicioDoDia(data: Date): Date {
-  return new Date(
-    Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate()),
-  );
-}
-
-/** Início do dia seguinte (limite superior exclusivo). */
-export function inicioDoProximoDia(data: Date): Date {
-  const d = inicioDoDia(data);
-  d.setUTCDate(d.getUTCDate() + 1);
-  return d;
-}
-
+// Os utilitários de período em UTC vivem em `common/datas` (fonte única de
+// verdade). Reexportados aqui para preservar os imports existentes — usados
+// para agrupar os registros de ponto por dia-calendário.
+export { inicioDoDia, inicioDoProximoDia } from '../common/datas';
 
 /**
  * Jornada esperada por dia da semana (em milissegundos).
