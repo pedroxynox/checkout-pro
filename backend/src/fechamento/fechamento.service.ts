@@ -1,11 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { inicioDoDia, inicioDoProximoDia } from '../common/datas';
 import {
   TIPOS_ARRECADACAO,
   TipoArrecadacao,
-  inicioDoDia,
-  inicioDoProximoDia,
 } from '../arrecadacao/arrecadacao.domain';
 import {
   ResumoFechamento,

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { inicioDoDia } from '../common/datas';
 
 /**
  * Serviço de lembretes de horário para fiscais.
@@ -83,7 +84,7 @@ export class FiscaisHorarioService {
       const jaRegistrou = await this.prisma.registroPontoFiscal.findFirst({
         where: {
           fiscalId: escala.funcionarioId,
-          data: this.inicioDoDia(agora),
+          data: inicioDoDia(agora),
         },
       });
       if (jaRegistrou) {
@@ -113,11 +114,5 @@ export class FiscaisHorarioService {
         `Lembrete enviado para ${fiscal.nome} (entrada ${escala.entrada}).`,
       );
     }
-  }
-
-  private inicioDoDia(data: Date): Date {
-    return new Date(
-      Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate()),
-    );
   }
 }

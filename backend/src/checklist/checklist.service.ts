@@ -2,6 +2,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Checklist } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { inicioDoDia } from '../common/datas';
 import {
   ArquivoRef,
   JanelaExecucao,
@@ -17,13 +18,6 @@ import {
   minutosDoDia,
 } from './checklist.domain';
 import { ArquivoNaoImagemError } from './checklist.errors';
-
-/** Normaliza uma data para o início do dia (UTC), chave do checklist diário. */
-function inicioDoDia(data: Date): Date {
-  return new Date(
-    Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate()),
-  );
-}
 
 function addDias(data: Date, dias: number): Date {
   const d = inicioDoDia(data);

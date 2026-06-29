@@ -2,12 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FiscaisService } from '../fiscais/fiscais.service';
 import { StatusFiscal } from '../fiscais/fiscais.domain';
-import {
-  CONFIG_ARRECADACAO,
-  inicioDoDia,
-  inicioDoMes,
-  inicioDoProximoDia,
-} from '../arrecadacao/arrecadacao.domain';
+import { inicioDoDia, inicioDoMes, inicioDoProximoDia } from '../common/datas';
+import { CONFIG_ARRECADACAO } from '../arrecadacao/arrecadacao.domain';
 import { analisarFaltas } from '../operadores/operadores.domain';
 import { ColaboradorNaoEncontradoError } from './colaboradores.errors';
 import {
