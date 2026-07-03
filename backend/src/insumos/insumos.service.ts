@@ -3,7 +3,6 @@ import { CategoriaInsumo, Insumo, MovimentoEstoque } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import {
-  calcularSaldo,
   deltaConsumo,
   deltaRetiradaFardo,
   estoqueBaixo,
@@ -83,17 +82,40 @@ export class InsumosService {
       where: { ativo: true },
       orderBy: { nome: 'asc' },
     });
+    const movimentosPorInsumo = await this.movimentosPorInsumo(
+      insumos.map((i) => i.id),
+    );
     const agora = new Date();
-    const resultado: InsumoComResumo[] = [];
-    for (const insumo of insumos) {
-      const movimentos = await this.prisma.movimentoEstoque.findMany({
-        where: { insumoId: insumo.id },
-        select: { delta: true, dataHora: true },
-      });
-      const resumo = resumoEstoque(movimentos, insumo.limiteMinimo, agora);
-      resultado.push({ ...insumo, ...resumo });
+    return insumos.map((insumo) => {
+      const resumo = resumoEstoque(
+        movimentosPorInsumo.get(insumo.id) ?? [],
+        insumo.limiteMinimo,
+        agora,
+      );
+      return { ...insumo, ...resumo };
+    });
+  }
+
+  /**
+   * Busca em UMA consulta os movimentos dos insumos informados e os agrupa por
+   * insumoId (evita o N+1 de uma consulta por insumo). Retorna apenas os campos
+   * necessários para os cálculos de estoque (delta e dataHora).
+   */
+  private async movimentosPorInsumo(
+    ids: string[],
+  ): Promise<Map<string, { delta: number; dataHora: Date }[]>> {
+    const mapa = new Map<string, { delta: number; dataHora: Date }[]>();
+    if (ids.length === 0) return mapa;
+    const movimentos = await this.prisma.movimentoEstoque.findMany({
+      where: { insumoId: { in: ids } },
+      select: { insumoId: true, delta: true, dataHora: true },
+    });
+    for (const m of movimentos) {
+      const arr = mapa.get(m.insumoId) ?? [];
+      arr.push({ delta: m.delta, dataHora: m.dataHora });
+      mapa.set(m.insumoId, arr);
     }
-    return resultado;
+    return mapa;
   }
 
   /**
@@ -123,11 +145,11 @@ export class InsumosService {
    * soma de todos os deltas dos movimentos registrados.
    */
   async saldo(insumoId: string): Promise<number> {
-    const movimentos = await this.prisma.movimentoEstoque.findMany({
+    const r = await this.prisma.movimentoEstoque.aggregate({
       where: { insumoId },
-      select: { delta: true },
+      _sum: { delta: true },
     });
-    return calcularSaldo(0, movimentos);
+    return Number(r._sum.delta ?? 0);
   }
 
   /**
@@ -291,20 +313,18 @@ export class InsumosService {
       where: { ativo: true },
       orderBy: { nome: 'asc' },
     });
+    const movimentosPorInsumo = await this.movimentosPorInsumo(
+      insumos.map((i) => i.id),
+    );
     const agora = new Date();
-    const resultado: InsumoProativo[] = [];
-    for (const insumo of insumos) {
-      const movimentos = await this.prisma.movimentoEstoque.findMany({
-        where: { insumoId: insumo.id },
-        select: { delta: true, dataHora: true },
-      });
+    return insumos.map((insumo) => {
       const resumo = resumoProativo(
-        movimentos,
+        movimentosPorInsumo.get(insumo.id) ?? [],
         insumo.limiteMinimo,
         insumo.fatorEmbalagem,
         agora,
       );
-      resultado.push({
+      return {
         ...insumo,
         saldo: resumo.saldo,
         estoqueBaixo: resumo.estoqueBaixo,
@@ -314,9 +334,8 @@ export class InsumosService {
         diasAteRuptura: resumo.diasAteRuptura,
         nivel: resumo.nivel,
         sugestaoReposicao: resumo.sugestaoReposicao,
-      });
-    }
-    return resultado;
+      };
+    });
   }
 
   /**

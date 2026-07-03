@@ -326,49 +326,40 @@ export class ArrecadacaoService {
   /** Totais do dia, da semana (seg–dom) e do mês que contêm a data. */
   async resumo(tipo: TipoArrecadacao, data: Date): Promise<ResumoArrecadacao> {
     const config = CONFIG_ARRECADACAO[tipo];
-    const totalDia = await this.somar(
-      tipo,
-      inicioDoDia(data),
-      inicioDoProximoDia(data),
-    );
-    const totalSemana = await this.somar(
-      tipo,
-      inicioDaSemana(data),
-      inicioDaProximaSemana(data),
-    );
-    const totalMes = await this.somar(
-      tipo,
-      inicioDoMes(data),
-      inicioDoProximoMes(data),
-    );
-    const quantidadeDia = await this.prisma.registroArrecadacao.count({
-      where: {
-        tipo,
-        data: { gte: inicioDoDia(data), lt: inicioDoProximoDia(data) },
-      },
-    });
+    const diaIni = inicioDoDia(data);
+    const diaFim = inicioDoProximoDia(data);
+    const semIni = inicioDaSemana(data);
+    const semFim = inicioDaProximaSemana(data);
+    const mesIni = inicioDoMes(data);
+    const mesFim = inicioDoProximoMes(data);
 
-    const itensDia = await this.somarItens(
-      tipo,
-      inicioDoDia(data),
-      inicioDoProximoDia(data),
-    );
-    const itensSemana = await this.somarItens(
-      tipo,
-      inicioDaSemana(data),
-      inicioDaProximaSemana(data),
-    );
-    const itensMes = await this.somarItens(
-      tipo,
-      inicioDoMes(data),
-      inicioDoProximoMes(data),
-    );
+    const [
+      totalDia,
+      totalSemana,
+      totalMes,
+      quantidadeDia,
+      itensDia,
+      itensSemana,
+      itensMes,
+      meta,
+    ] = await Promise.all([
+      this.somar(tipo, diaIni, diaFim),
+      this.somar(tipo, semIni, semFim),
+      this.somar(tipo, mesIni, mesFim),
+      this.prisma.registroArrecadacao.count({
+        where: { tipo, data: { gte: diaIni, lt: diaFim } },
+      }),
+      this.somarItens(tipo, diaIni, diaFim),
+      this.somarItens(tipo, semIni, semFim),
+      this.somarItens(tipo, mesIni, mesFim),
+      this.metaDe(tipo, data),
+    ]);
 
     const base: ResumoArrecadacao = {
       tipo,
       titulo: config.titulo,
       base: config.base,
-      meta: await this.metaDe(tipo, data),
+      meta,
       sentido: config.sentido,
       totalDia,
       totalSemana,
@@ -384,18 +375,11 @@ export class ArrecadacaoService {
     }
 
     // Indicador sobre vendas: calcula vendas do período e o percentual.
-    const vendasDia = await this.somarVendas(
-      inicioDoDia(data),
-      inicioDoProximoDia(data),
-    );
-    const vendasSemana = await this.somarVendas(
-      inicioDaSemana(data),
-      inicioDaProximaSemana(data),
-    );
-    const vendasMes = await this.somarVendas(
-      inicioDoMes(data),
-      inicioDoProximoMes(data),
-    );
+    const [vendasDia, vendasSemana, vendasMes] = await Promise.all([
+      this.somarVendas(diaIni, diaFim),
+      this.somarVendas(semIni, semFim),
+      this.somarVendas(mesIni, mesFim),
+    ]);
     const pct = (valor: number, vendas: number): number =>
       vendas > 0 ? arredondar((valor / vendas) * 100) : 0;
 

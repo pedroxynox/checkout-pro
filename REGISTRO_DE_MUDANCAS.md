@@ -12,6 +12,40 @@
 
 ---
 
+## Desempenho: fim do N+1 e consultas em paralelo (2026-07-03)
+
+**Objetivo:** reduzir o número e o custo das consultas ao banco em telas e
+contextos que hoje disparam muitas queries sequenciais — **sem mudar o
+comportamento** (mesmos resultados) nem o schema/migrações.
+
+- **Painel de insumos sem N+1 (`InsumosService`):** `listarInsumos` e
+  `listarProativo` faziam uma consulta de movimentos **por insumo** (N+1).
+  Agora buscam os movimentos de todos os insumos ativos em **uma única
+  consulta** (`movimentoEstoque.findMany` com `insumoId: { in: [...] }`) e
+  agrupam em memória por `insumoId` (novo helper `movimentosPorInsumo`). O
+  resumo por insumo é idêntico ao anterior.
+- **Saldo via agregação no banco (`InsumosService.saldo`):** em vez de trazer
+  todo o histórico de movimentos e somar em memória, agora usa
+  `movimentoEstoque.aggregate({ _sum: { delta } })` — equivale exatamente à
+  soma dos deltas (`calcularSaldo`), mas transfere só o total. A função de
+  domínio `calcularSaldo` foi mantida (ainda coberta pelos testes de
+  propriedade) e a coluna `Insumo.saldo` **não foi tocada** (limpeza adiada).
+- **Contexto de indicadores da Cluby (`AssistenteService`):** o laço por tipo
+  fazia um `registroArrecadacao.aggregate` por indicador (N+1 sequencial).
+  Agora um único `groupBy(['tipo'])` do mês alimenta um mapa e o laço apenas
+  lê o total já calculado. Saída idêntica.
+- **Resumo de arrecadação (`ArrecadacaoService.resumo`):** as consultas
+  independentes (totais dia/semana/mês, contagem, itens, meta e vendas) passam
+  a rodar concorrentemente via `Promise.all`, preservando os mesmos resultados.
+
+**Testes:** o `insumos.service.spec.ts` foi atualizado para o novo formato de
+consultas (mock com `aggregate` e `findMany` por `in: [...]`), com dois casos
+adicionais: `listarInsumos` faz **uma** única busca de movimentos (sem N+1) e
+`saldo` retorna a soma agregada (`_sum.delta`). Os testes de propriedade do
+domínio permanecem inalterados. Build + 42 suítes / 180 testes passando.
+
+---
+
 ## Segurança: revogação de sessões via tokenVersion (2026-07-03)
 
 **Objetivo:** permitir invalidar JWTs antes do vencimento (os tokens duram 30

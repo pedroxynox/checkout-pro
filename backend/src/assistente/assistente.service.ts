@@ -226,14 +226,20 @@ export class AssistenteService {
       const linhas: string[] = [];
       let temDados = false;
 
+      // Uma única consulta agregada por tipo (evita o aggregate por tipo).
+      const gruposMes = await this.prisma.registroArrecadacao.groupBy({
+        by: ['tipo'],
+        where: { data: { gte: inicioMes, lt: inicioProximoMes } },
+        _sum: { valor: true },
+      });
+      const totalPorTipo = new Map(
+        gruposMes.map((g) => [g.tipo, Number(g._sum.valor ?? 0)]),
+      );
+
       for (const tipo of TIPOS_ARRECADACAO) {
         const config = CONFIG_ARRECADACAO[tipo];
         const meta = metaPorTipo.get(tipo) ?? config.meta;
-        const agg = await this.prisma.registroArrecadacao.aggregate({
-          where: { tipo, data: { gte: inicioMes, lt: inicioProximoMes } },
-          _sum: { valor: true },
-        });
-        const totalMes = arred(Number(agg._sum.valor ?? 0));
+        const totalMes = arred(totalPorTipo.get(tipo) ?? 0);
         if (totalMes > 0) temDados = true;
 
         if (config.base === 'VENDAS') {

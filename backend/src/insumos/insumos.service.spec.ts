@@ -48,6 +48,13 @@ describe('InsumosService', () => {
           const i = insumos.find((x) => x.id === id);
           return Promise.resolve(i ? { ...i } : null);
         },
+        findMany: () =>
+          Promise.resolve(
+            insumos
+              .slice()
+              .sort((a, b) => a.nome.localeCompare(b.nome))
+              .map((i) => ({ ...i })),
+          ),
       },
       fardo: {
         findMany: () => Promise.resolve(fardos.map((f) => ({ ...f }))),
@@ -66,21 +73,43 @@ describe('InsumosService', () => {
           where: { insumoId },
           select,
         }: {
-          where: { insumoId: string };
-          select?: { delta?: boolean };
+          where: { insumoId: string | { in: string[] } };
+          select?: { insumoId?: boolean; delta?: boolean; dataHora?: boolean };
           orderBy?: unknown;
         }) => {
-          const lista = movimentos
-            .filter((m) => m.insumoId === insumoId)
-            .map((m) => (select?.delta ? { delta: m.delta } : { ...m }));
+          const casa = (m: MovFake): boolean =>
+            typeof insumoId === 'object' &&
+            insumoId !== null &&
+            'in' in insumoId
+              ? insumoId.in.includes(m.insumoId)
+              : m.insumoId === insumoId;
+          const lista = movimentos.filter(casa).map((m) => {
+            if (!select) return { ...m };
+            const out: Partial<MovFake> = {};
+            if (select.insumoId) out.insumoId = m.insumoId;
+            if (select.delta) out.delta = m.delta;
+            if (select.dataHora) out.dataHora = m.dataHora;
+            return out;
+          });
           return Promise.resolve(lista);
+        },
+        aggregate: ({
+          where: { insumoId },
+        }: {
+          where: { insumoId: string };
+          _sum?: { delta?: boolean };
+        }) => {
+          const soma = movimentos
+            .filter((m) => m.insumoId === insumoId)
+            .reduce((acc, m) => acc + m.delta, 0);
+          return Promise.resolve({ _sum: { delta: soma } });
         },
       },
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new InsumosService(prismaFake as any);
-    return { service, insumos, fardos, movimentos };
+    return { service, insumos, fardos, movimentos, prismaFake };
   }
 
   it('cadastra insumo e registra saldo inicial como movimento de entrada', async () => {
@@ -159,5 +188,44 @@ describe('InsumosService', () => {
     expect(await service.verificarEstoqueBaixo(insumo.id)).toBe(false);
     await service.registrarConsumoInsumo(insumo.id, 10); // saldo = 50 = limite
     expect(await service.verificarEstoqueBaixo(insumo.id)).toBe(true);
+  });
+
+  it('listarInsumos faz UMA única busca de movimentos (sem N+1) e calcula o resumo por insumo', async () => {
+    const { service, prismaFake } = criarServico();
+    // Três insumos com saldos distintos (cada cadastro gera 1 movimento de entrada).
+    const a = await service.cadastrarInsumo('A-Pano', 'PANO' as any, 5, 30);
+    const b = await service.cadastrarInsumo('B-Bobina', 'BOBINA' as any, 5, 10);
+    const c = await service.cadastrarInsumo('C-Sacola', 'SACOLA' as any, 5, 50);
+
+    const spy = jest.spyOn(prismaFake.movimentoEstoque, 'findMany');
+    const lista = await service.listarInsumos();
+    // Uma única consulta de movimentos, independentemente do número de insumos.
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0][0]).toMatchObject({
+      where: { insumoId: { in: [a.id, b.id, c.id] } },
+    });
+
+    const porId = new Map(lista.map((i) => [i.id, i]));
+    expect(porId.get(a.id)?.saldo).toBe(30);
+    expect(porId.get(b.id)?.saldo).toBe(10);
+    expect(porId.get(c.id)?.saldo).toBe(50);
+  });
+
+  it('saldo retorna a soma agregada dos deltas (_sum.delta)', async () => {
+    const { service, prismaFake } = criarServico();
+    const insumo = await service.cadastrarInsumo(
+      'Insumo',
+      'OUTRO' as any,
+      5,
+      100,
+    );
+    await service.registrarConsumoInsumo(insumo.id, 40); // 100 - 40 = 60
+    const spy = jest.spyOn(prismaFake.movimentoEstoque, 'aggregate');
+    expect(await service.saldo(insumo.id)).toBe(60);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0][0]).toMatchObject({
+      where: { insumoId: insumo.id },
+      _sum: { delta: true },
+    });
   });
 });
