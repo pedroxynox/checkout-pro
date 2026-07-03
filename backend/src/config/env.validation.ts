@@ -35,6 +35,9 @@ export class EnvironmentVariables {
   @IsOptional()
   PORT = 3000;
 
+  // URL de conexão do banco de dados (Prisma). OBRIGATÓRIA em produção — a
+  // exigência é imposta por `validateEnv` (falha rápida no boot). Opcional em
+  // desenvolvimento/teste.
   @IsString()
   @IsOptional()
   DATABASE_URL?: string;
@@ -100,6 +103,12 @@ export function validateEnv(
   if (validated.NODE_ENV === Ambiente.Production && !validated.JWT_SECRET) {
     throw new Error(
       'Configuração de ambiente inválida: JWT_SECRET é obrigatório quando NODE_ENV=production.',
+    );
+  }
+
+  if (validated.NODE_ENV === Ambiente.Production && !validated.DATABASE_URL) {
+    throw new Error(
+      'Configuração de ambiente inválida: DATABASE_URL é obrigatório quando NODE_ENV=production.',
     );
   }
 
