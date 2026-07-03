@@ -18,12 +18,25 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ NODE_ENV: 'production' })).toThrow(/JWT_SECRET/);
   });
 
-  it('passa quando NODE_ENV=production e JWT_SECRET está presente', () => {
+  it('lança quando NODE_ENV=production e DATABASE_URL está ausente (com JWT_SECRET presente)', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'production',
+        JWT_SECRET: 'segredo-de-producao',
+      }),
+    ).toThrow(/DATABASE_URL/);
+  });
+
+  it('passa quando NODE_ENV=production e as variáveis obrigatórias estão presentes', () => {
     const validated = validateEnv({
       NODE_ENV: 'production',
       JWT_SECRET: 'segredo-de-producao',
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
     });
     expect(validated.NODE_ENV).toBe(Ambiente.Production);
     expect(validated.JWT_SECRET).toBe('segredo-de-producao');
+    expect(validated.DATABASE_URL).toBe(
+      'postgresql://user:pass@localhost:5432/db',
+    );
   });
 });

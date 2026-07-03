@@ -12,6 +12,30 @@
 
 ---
 
+## Resiliência: timeout/concorrência no Gemini e readiness com checagem de banco (2026-07-03)
+
+**Objetivo:** evitar que dependências externas (API do Gemini e banco de dados)
+travem ou mascarem indisponibilidades do serviço.
+
+- **(7) Cliente Gemini com timeout por tentativa e concorrência limitada:** cada
+  tentativa de chamada à API do Gemini agora tem um **timeout** de 20s
+  (via `AbortController`), impedindo que uma conexão pendurada bloqueie o fluxo
+  indefinidamente. Além disso, a antiga **fila única** (que serializava as
+  chamadas, uma de cada vez, causando bloqueio de cabeça de fila) foi
+  substituída por um **semáforo de concorrência limitada** que permite até 2
+  chamadas simultâneas — melhora a vazão em picos de uso sem estourar a cota
+  gratuita. O reintento automático com backoff (429/503) foi mantido.
+- **(15) Endpoint de readiness `/health/ready` com checagem real de banco:** o
+  `/health` continua sendo a verificação de **liveness** (o processo está de pé;
+  responde sempre 200 — é o que o Render consulta e não foi alterado). Foi
+  adicionado o `/health/ready` (**readiness**), que executa `SELECT 1` no banco
+  e responde **503** quando o banco está indisponível, para que monitores/
+  orquestradores não roteiem tráfego para uma instância incapaz de servir.
+  Também tornamos `DATABASE_URL` **obrigatória em produção** (falha rápida no
+  boot, junto com a exigência já existente de `JWT_SECRET`).
+
+---
+
 ## 0. Hardening de segurança (2026-07-03)
 
 **Objetivo:** reduzir a superfície de ataque da API com medidas de defesa em

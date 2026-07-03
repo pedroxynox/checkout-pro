@@ -30,6 +30,7 @@ export class GeminiIndisponivelError extends Error {
 
 const URL_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_TENTATIVAS = 3;
+const TIMEOUT_MS = 20000; // 20s por tentativa — evita que uma conexão pendurada bloqueie indefinidamente.
 
 interface RespostaGemini {
   candidates?: {
@@ -48,16 +49,40 @@ function dormir(ms: number): Promise<void> {
  *
  * Usa o `fetch` nativo do Node (sem dependências novas). Para suportar picos
  * de uso (ex.: vários usuários conversando ao mesmo tempo) sem estourar o
- * limite por minuto da camada gratuita, as chamadas são **serializadas** numa
- * fila interna e há **reintento automático com backoff** quando a API responde
- * 429 (limite) ou 503 (sobrecarga). Assim, no pior caso o usuário espera
- * alguns segundos a mais, em vez de receber um erro.
+ * limite por minuto da camada gratuita, as chamadas são limitadas a
+ * `MAX_CONCORRENCIA` requisições **simultâneas** (concorrência limitada via
+ * semáforo), evitando o bloqueio de fila única (head-of-line blocking). Cada
+ * tentativa tem um **timeout** (TIMEOUT_MS) para não ficar pendurada, e há
+ * **reintento automático com backoff** quando a API responde 429 (limite) ou
+ * 503 (sobrecarga). Assim, no pior caso o usuário espera alguns segundos a
+ * mais, em vez de receber um erro.
  */
 @Injectable()
 export class GeminiClient {
   private readonly logger = new Logger(GeminiClient.name);
-  /** Cadeia de promessas que serializa as chamadas à API. */
-  private fila: Promise<unknown> = Promise.resolve();
+
+  /** Máximo de chamadas simultâneas ao Gemini (equilibra vazão x limite gratuito). */
+  private readonly MAX_CONCORRENCIA = 2;
+  private emExecucao = 0;
+  private readonly aguardando: Array<() => void> = [];
+
+  private async adquirir(): Promise<void> {
+    if (this.emExecucao < this.MAX_CONCORRENCIA) {
+      this.emExecucao++;
+      return;
+    }
+    // Sem vaga: aguarda. O "slot" é transferido no liberar() (sem alterar o contador).
+    return new Promise<void>((resolve) => this.aguardando.push(resolve));
+  }
+
+  private liberar(): void {
+    const proximo = this.aguardando.shift();
+    if (proximo) {
+      proximo();
+    } else {
+      this.emExecucao--;
+    }
+  }
 
   constructor(private readonly config: ConfigService) {}
 
@@ -68,18 +93,19 @@ export class GeminiClient {
 
   /**
    * Gera uma resposta do modelo a partir da instrução de sistema e do
-   * histórico da conversa. As chamadas entram numa fila (uma de cada vez).
+   * histórico da conversa. As chamadas são limitadas a `MAX_CONCORRENCIA`
+   * requisições simultâneas (concorrência limitada por semáforo).
    */
   async gerarResposta(
     instrucaoSistema: string,
     mensagens: MensagemGemini[],
   ): Promise<string> {
-    const tarefa = this.fila.then(() =>
-      this.chamarComReintento(instrucaoSistema, mensagens),
-    );
-    // Mantém a fila viva mesmo se esta tarefa falhar (não propaga rejeição).
-    this.fila = tarefa.catch(() => undefined);
-    return tarefa;
+    await this.adquirir();
+    try {
+      return await this.chamarComReintento(instrucaoSistema, mensagens);
+    } finally {
+      this.liberar();
+    }
   }
 
   private async chamarComReintento(
@@ -114,6 +140,8 @@ export class GeminiClient {
     let ultimoErro = '';
     for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
       let resposta: Response;
+      const controlador = new AbortController();
+      const timer = setTimeout(() => controlador.abort(), TIMEOUT_MS);
       try {
         resposta = await fetch(url, {
           method: 'POST',
@@ -124,11 +152,17 @@ export class GeminiClient {
             'x-goog-api-key': chave,
           },
           body: JSON.stringify(corpo),
+          signal: controlador.signal,
         });
       } catch (erro) {
-        ultimoErro = (erro as Error).message;
+        const abortado = (erro as Error).name === 'AbortError';
+        ultimoErro = abortado
+          ? `tempo limite de ${TIMEOUT_MS}ms excedido`
+          : (erro as Error).message;
         await dormir(this.atraso(tentativa));
         continue;
+      } finally {
+        clearTimeout(timer);
       }
 
       if (resposta.ok) {
