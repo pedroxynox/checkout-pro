@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AcessosModule } from '../acessos/acessos.module';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { PerfilGuard } from './guards/perfil.guard';
+import { resolverSegredoJwt } from './config/jwt-secret';
 
 /**
  * Módulo de segurança transversal (Tarefa 13). Registra globalmente o guard de
@@ -24,7 +25,7 @@ import { PerfilGuard } from './guards/perfil.guard';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET') ?? 'dev-secret-trocar',
+        secret: resolverSegredoJwt(config),
         signOptions: {
           // Mesma expiração do AcessosModule: 30 dias por padrão.
           expiresIn: (config.get<string>('JWT_EXPIRES_IN') ??

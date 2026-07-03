@@ -45,8 +45,9 @@ export class EnvironmentVariables {
   @IsOptional()
   HORARIO_FIM_DO_DIA = '22:50';
 
-  // Segredo de assinatura dos tokens JWT (Modulo_Acessos). Opcional em
-  // desenvolvimento; obrigatório definir em produção.
+  // Segredo de assinatura dos tokens JWT (Modulo_Acessos). OBRIGATÓRIO em
+  // produção — a exigência é imposta por `validateEnv` (falha rápida no boot).
+  // Opcional em desenvolvimento/teste (usa-se um segredo aleatório efêmero).
   @IsString()
   @IsOptional()
   JWT_SECRET?: string;
@@ -88,6 +89,12 @@ export function validateEnv(
 
   if (errors.length > 0) {
     throw new Error(`Configuração de ambiente inválida: ${errors.toString()}`);
+  }
+
+  if (validated.NODE_ENV === Ambiente.Production && !validated.JWT_SECRET) {
+    throw new Error(
+      'Configuração de ambiente inválida: JWT_SECRET é obrigatório quando NODE_ENV=production.',
+    );
   }
 
   return validated;

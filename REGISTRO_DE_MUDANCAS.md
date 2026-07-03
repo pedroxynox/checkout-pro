@@ -12,6 +12,32 @@
 
 ---
 
+## 0. Segurança: JWT_SECRET obrigatório em produção + remoção de xlsx/papaparse (2026-07-03)
+
+**Objetivo:** eliminar dois riscos críticos de segurança.
+
+- **JWT_SECRET agora é obrigatório em produção (falha rápida no boot).** O
+  fallback fixo e inseguro `'dev-secret-trocar'` (que era versionado no
+  repositório e permitiria forjar tokens) foi **removido**. A exigência é
+  imposta em dois pontos: na validação de ambiente (`validateEnv`, que lança se
+  `NODE_ENV=production` sem `JWT_SECRET`) e na resolução do segredo
+  (`resolverSegredoJwt`). Em desenvolvimento/teste, quando `JWT_SECRET` não está
+  definido, gera-se um **segredo aleatório efêmero por processo** (memoizado e
+  compartilhado entre `AcessosModule` e `SegurancaModule`), nunca um valor fixo.
+  Sem mudança de comportamento quando `JWT_SECRET` está definido corretamente.
+  - Novo arquivo: `backend/src/common/config/jwt-secret.ts` (+ testes).
+  - Ajustes: `acessos.module.ts`, `common/seguranca.module.ts`,
+    `config/env.validation.ts`, `main.ts` (remoção do aviso agora obsoleto) e
+    `.env.example`.
+- **Dependências `xlsx` e `papaparse` removidas (código morto / CVEs).** O
+  fluxo antigo de leitura de arquivos CSV/XLSX já não tinha chamador vivo.
+  De `importacoes.parser.ts` restou apenas `parseValor` (conversão de valores
+  monetários em R$), reaproveitado pelos parsers de arrecadação e de vendas.
+  Removidos também `@types/papaparse` e as funções mortas
+  (`parseData`/`parseCsv`/`parseXlsx`/`valorDaColuna`/`paraLinhaImportada`).
+
+---
+
 ## 1. Permissões: fonte única de verdade + acesso total do desenvolvedor
 
 **Objetivo:** o perfil `GERENTE_DESENVOLVEDOR` deve ver **absolutamente tudo**, e
