@@ -22,9 +22,13 @@ Sem estes itens a aplicação **não sobe** ou fica insegura/instável:
       API reflete a origem da requisição — inadequado para produção.
 - [ ] **`GEMINI_API_KEY`** definido (assistente Cluby). Sem ela, o assistente
       responde "não configurado".
-- [ ] **Migrações aplicadas** via `prisma migrate deploy` (idealmente como
-      **Pre-Deploy Command** no Render), garantindo o schema atualizado antes de a
-      nova versão entrar no ar.
+- [ ] **`SENHA_INICIAL`** definido no painel do serviço (não versionado; no
+      `render.yaml` está como `sync: false`). É a senha inicial dos usuários do
+      seed — troque após o primeiro login.
+- [ ] **Migrações aplicadas** via `prisma migrate deploy`. Já configuradas como
+      **Pre-Deploy Command** no `render.yaml` (`npx prisma migrate deploy && npx
+      prisma db seed`), garantindo o schema atualizado antes de a nova versão
+      entrar no ar.
 
 ## 2. Infra de produção
 
@@ -33,9 +37,10 @@ Sem estes itens a aplicação **não sobe** ou fica insegura/instável:
       Google AI Studio.
 - [ ] **PostgreSQL persistente:** o plano free do Render expira em ~30 dias e pode
       **causar perda de dados**. Migrar para um plano pago/estável.
-- [ ] **Endurecer o deploy:** rodar as migrações no **Pre-Deploy Command** e deixar
-      o Start Command apenas com `node dist/main.js`. Isso evita que o *advisory
-      lock* do Prisma (em deploys encavalados) trave a porta em silêncio.
+- [x] **Endurecer o deploy:** migrações rodam no **Pre-Deploy Command** e o Start
+      Command ficou apenas com `node dist/main.js` (configurado no `render.yaml`).
+      Isso evita que o *advisory lock* do Prisma (em deploys encavalados) trave a
+      porta em silêncio.
 - [ ] **Remover o serviço web duplicado** no Render (existem 2 serviços web —
       manter apenas um).
 - [ ] **Health check de readiness:** opcionalmente apontar o health check do Render

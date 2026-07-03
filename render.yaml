@@ -28,7 +28,11 @@ services:
     # --include=dev força a instalação das devDependencies (NestJS CLI, Prisma,
     # ts-node) mesmo com NODE_ENV=production, necessárias para build e seed.
     buildCommand: npm install --include=dev && npx prisma generate && npm run build
-    startCommand: npx prisma migrate deploy && npx prisma db seed && node dist/main.js
+    # Migrações e seed rodam ANTES de subir o serviço — evita timeout de porta no
+    # Render por causa do advisory lock do Prisma segurar a partida enquanto o
+    # Render aguarda a porta abrir.
+    preDeployCommand: npx prisma migrate deploy && npx prisma db seed
+    startCommand: node dist/main.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -44,10 +48,10 @@ services:
         value: 30d
       - key: HORARIO_FIM_DO_DIA
         value: "22:50"
-      # Senha inicial dos usuários criados pelo seed (gerentes e fiscais).
-      # Troque este valor pelo desejado antes do primeiro deploy, se preferir.
+      # Senha inicial dos usuários do seed. Secreta — defina no painel do serviço
+      # (não versionar). Troque após o primeiro login.
       - key: SENHA_INICIAL
-        value: CheckoutPro@2025
+        sync: false
       # Assistente de IA (Cluby): a chave é secreta — defina no painel do serviço.
       - key: GEMINI_API_KEY
         sync: false
