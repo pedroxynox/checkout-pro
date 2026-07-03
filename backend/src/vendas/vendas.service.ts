@@ -141,9 +141,6 @@ export class VendasService {
     const dia = inicioDoDia(data);
     const proximo = inicioDoProximoDia(data);
     const total = arredondar(linhas.reduce((s, l) => s + l.valor, 0));
-    // Captura se o dia já estava concluído antes deste envio (para notificar
-    // o fechamento apenas na transição).
-    const completoAntes = await this.fechamento.estaCompleto(data);
     await this.prisma.$transaction([
       this.prisma.vendaHora.deleteMany({
         where: { data: { gte: dia, lt: proximo } },
@@ -157,10 +154,8 @@ export class VendasService {
         update: { valor: total },
       }),
     ]);
-    const fechamentoConcluido = await this.fechamento.concluirSeCompletou(
-      data,
-      completoAntes,
-    );
+    const fechamentoConcluido =
+      await this.fechamento.concluirSeCompletou(data);
     // Avisos inteligentes (recorde, queda anômala, meta em risco) — best-effort.
     void this.avisarVendas(dia, total);
     return { data: dia, horas: linhas.length, total, fechamentoConcluido };

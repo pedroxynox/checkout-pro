@@ -12,6 +12,42 @@
 
 ---
 
+## Erros auto-classificados + atomicidade (fechamento e auto-reposição) (2026-07-03)
+
+**Objetivo:** tornar o tratamento de erros mais robusto e eliminar corridas que
+geravam notificações e requisições duplicadas — com duas migrações **aditivas**
+(9u, 9v) que não tocam dados existentes.
+
+- **(14) Erros de domínio declaram o próprio status HTTP.** Criada a base
+  `ErroDominio` (`common/errors/erro-dominio.ts`), da qual todos os erros de
+  domínio agora herdam. Cada erro concreto declara seu `statusHttp` (401/403/
+  404/409/400). O filtro global (`DominioExceptionFilter`) deixou de manter um
+  **mapa central manual** (com os imports de cada módulo) e passou a ler o
+  `statusHttp` do próprio erro. Resultado: um erro novo nunca mais cai em 500
+  por esquecimento de registrá-lo no mapa. Comportamento inalterado para os
+  erros já mapeados (os 27 status foram preservados). O default seguro é 400.
+- **(12) Fechamento notifica exatamente uma vez.** `concluirSeCompletou` não
+  depende mais de um `completoAntes` capturado antes da escrita (sujeito a
+  corrida sob uploads concorrentes). Agora insere uma **marca idempotente** por
+  dia na nova tabela `fechamentos_concluidos` (unicidade de `data` como trava
+  atômica): apenas uma inserção vence e notifica; violação de unicidade (P2002)
+  é no-op. Migração `9u_fechamento_concluido`.
+- **(13) Auto-reposição sem requisições automáticas duplicadas.** As
+  requisições criadas pela auto-reposição são marcadas com `automatica = true`
+  e um **índice único parcial** (`requisicoes_auto_pendente_key`, apenas para
+  `status = 'PENDENTE' AND automatica = true`) impede duplicatas pendentes do
+  mesmo insumo sob consumos concorrentes. A criação é envolvida em try/catch
+  (P2002 = no-op) e a notificação só ocorre após a criação bem-sucedida.
+  Migração `9v_requisicao_automatica`.
+
+**Migrações aditivas:** `9u_fechamento_concluido` e `9v_requisicao_automatica`
+— criam uma tabela nova e adicionam uma coluna com default, sem afetar dados
+atuais. Não foi executado `prisma migrate` (sem banco no ambiente); rode-o no
+deploy. Nesta rodada as dependências foram instaladas e a verificação completa
+passou: `prisma generate`, `nest build` e `jest` (42 suítes, 180 testes) OK.
+
+---
+
 ## Desempenho: fim do N+1 e consultas em paralelo (2026-07-03)
 
 **Objetivo:** reduzir o número e o custo das consultas ao banco em telas e

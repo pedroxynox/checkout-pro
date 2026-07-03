@@ -5,9 +5,11 @@
  * domínio permaneça testável de forma isolada. A camada de API mapeará cada um
  * deles para a resposta HTTP apropriada (Tarefa 13).
  */
+import { HttpStatus } from '@nestjs/common';
+import { ErroDominio } from '../common/errors/erro-dominio';
 
 /** Classe base para os erros de domínio do módulo de operadores. */
-export abstract class OperadoresError extends Error {
+export abstract class OperadoresError extends ErroDominio {
   constructor(mensagem: string) {
     super(mensagem);
     this.name = new.target.name;
@@ -21,6 +23,7 @@ export abstract class OperadoresError extends Error {
  * operador idêntico a um operador já cadastrado — Requisito 6.1.3.
  */
 export class NomeDuplicadoError extends OperadoresError {
+  readonly statusHttp = HttpStatus.CONFLICT;
   constructor(nome?: string) {
     super(
       nome
@@ -35,6 +38,7 @@ export class NomeDuplicadoError extends OperadoresError {
  * (operador ou fiscal) na mesma data — Requisito 6.2.3.
  */
 export class AusenciaDuplicadaError extends OperadoresError {
+  readonly statusHttp = HttpStatus.CONFLICT;
   constructor(mensagem = 'Já existe uma ausência registrada para esta data.') {
     super(mensagem);
   }
@@ -45,6 +49,7 @@ export class AusenciaDuplicadaError extends OperadoresError {
  * ou representa um horário inválido (usado na classificação de turno).
  */
 export class HorarioInvalidoError extends OperadoresError {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
   constructor(horario?: string) {
     super(
       horario

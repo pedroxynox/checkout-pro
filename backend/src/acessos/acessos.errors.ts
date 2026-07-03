@@ -5,9 +5,11 @@
  * domínio permaneça testável de forma isolada. A camada de API mapeará cada um
  * deles para a resposta HTTP apropriada (Tarefa 13).
  */
+import { HttpStatus } from '@nestjs/common';
+import { ErroDominio } from '../common/errors/erro-dominio';
 
 /** Classe base para os erros de domínio do módulo de acessos. */
-export abstract class AcessosError extends Error {
+export abstract class AcessosError extends ErroDominio {
   constructor(mensagem: string) {
     super(mensagem);
     this.name = new.target.name;
@@ -21,6 +23,7 @@ export abstract class AcessosError extends Error {
  * cadastrado (login inexistente ou senha incorreta) — Requisito 7.1.3.
  */
 export class CredenciaisInvalidasError extends AcessosError {
+  readonly statusHttp = HttpStatus.UNAUTHORIZED;
   constructor(mensagem = 'Credenciais inválidas.') {
     super(mensagem);
   }
@@ -31,6 +34,7 @@ export class CredenciaisInvalidasError extends AcessosError {
  * funcionalidade restrita ao perfil de gerente — Requisito 7.2.4.
  */
 export class PermissaoInsuficienteError extends AcessosError {
+  readonly statusHttp = HttpStatus.FORBIDDEN;
   constructor(
     mensagem = 'Permissão insuficiente para acessar esta funcionalidade.',
   ) {

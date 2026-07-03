@@ -9,9 +9,11 @@
  * indicadores). São erros puros (sem dependência do Nest ou do banco) para
  * que a lógica de domínio permaneça testável de forma isolada.
  */
+import { HttpStatus } from '@nestjs/common';
+import { ErroDominio } from '../common/errors/erro-dominio';
 
 /** Classe base para os erros de domínio do módulo de indicadores. */
-export abstract class IndicadoresError extends Error {
+export abstract class IndicadoresError extends ErroDominio {
   constructor(mensagem: string) {
     super(mensagem);
     this.name = new.target.name;
@@ -24,6 +26,7 @@ export abstract class IndicadoresError extends Error {
  * 2.1.4. A mensagem solicita um valor maior ou igual a zero.
  */
 export class ValorVendaInvalidoError extends IndicadoresError {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
   constructor(valor?: number) {
     super(
       valor !== undefined

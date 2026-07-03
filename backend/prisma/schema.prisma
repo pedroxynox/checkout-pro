@@ -345,6 +345,7 @@ model Requisicao {
   insumoId        String
   quantidade      Int
   status          StatusRequisicao @default(PENDENTE)
+  automatica      Boolean          @default(false)
   observacao      String?
   solicitanteId   String?
   solicitanteNome String?
@@ -358,6 +359,17 @@ model Requisicao {
 
   @@index([status])
   @@map("requisicoes")
+}
+
+/// Marca idempotente de que o fechamento de um dia foi concluído (e notificado).
+/// A unicidade de `data` garante notificação exatamente uma vez, mesmo sob
+/// uploads concorrentes.
+model FechamentoConcluido {
+  id          String   @id @default(uuid())
+  data        DateTime @unique
+  concluidoEm DateTime @default(now())
+
+  @@map("fechamentos_concluidos")
 }
 
 // Registro de ponto/jornada dos fiscais: cada transição de status (entrar =
