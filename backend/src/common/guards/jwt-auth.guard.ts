@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Perfil } from '../../acessos/acessos.domain';
+import { PrismaService } from '../../prisma/prisma.service';
 import { PUBLICO_KEY } from '../decorators/publico.decorator';
 import { UsuarioAutenticado } from '../decorators/usuario-atual.decorator';
 
@@ -23,6 +24,7 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
+    private readonly prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -46,23 +48,42 @@ export class JwtAuthGuard implements CanActivate {
       );
     }
 
+    let payload: {
+      sub: string;
+      login: string;
+      nome?: string | null;
+      perfil: Perfil;
+      tokenVersion?: number;
+    };
     try {
-      const payload = await this.jwtService.verifyAsync<{
-        sub: string;
-        login: string;
-        nome?: string | null;
-        perfil: Perfil;
-      }>(token);
-      request.usuario = {
-        sub: payload.sub,
-        login: payload.login,
-        nome: payload.nome ?? null,
-        perfil: payload.perfil,
-      };
-      return true;
+      payload = await this.jwtService.verifyAsync(token);
     } catch {
       throw new UnauthorizedException('Token de acesso inválido ou expirado.');
     }
+
+    // Verificação de revogação: comparada FORA do try/catch acima para que a
+    // UnauthorizedException de "sessão expirada" não seja remapeada para
+    // "token inválido". Uma leitura por PK (indexada) por requisição.
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: payload.sub },
+      select: { tokenVersion: true },
+    });
+    // Rejeita se o usuário foi removido ou se o token foi revogado
+    // (versão diferente da atual — ex.: após redefinição de senha).
+    // Tokens antigos sem `tokenVersion` são tratados como 0.
+    if (!usuario || usuario.tokenVersion !== (payload.tokenVersion ?? 0)) {
+      throw new UnauthorizedException(
+        'Sessão expirada. Faça login novamente.',
+      );
+    }
+
+    request.usuario = {
+      sub: payload.sub,
+      login: payload.login,
+      nome: payload.nome ?? null,
+      perfil: payload.perfil,
+    };
+    return true;
   }
 
   /** Extrai o token do cabeçalho "Bearer <token>"; retorna null se ausente. */

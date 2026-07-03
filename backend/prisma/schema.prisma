@@ -91,6 +91,7 @@ model Usuario {
   senhaHash String
   perfil    Perfil
   online    Boolean  @default(false)
+  tokenVersion Int      @default(0)
   criadoEm  DateTime @default(now())
 
   fiscal       Fiscal?
