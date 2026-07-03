@@ -2,7 +2,10 @@
  * Erros de domínio tipados do Modulo_Usuarios (gestão de pessoas/acessos).
  * Mapeados para status HTTP pelo DominioExceptionFilter.
  */
-export abstract class UsuariosError extends Error {
+import { HttpStatus } from '@nestjs/common';
+import { ErroDominio } from '../common/errors/erro-dominio';
+
+export abstract class UsuariosError extends ErroDominio {
   constructor(mensagem: string) {
     super(mensagem);
     this.name = new.target.name;
@@ -12,6 +15,7 @@ export abstract class UsuariosError extends Error {
 
 /** Matrícula (login) já utilizada por outro usuário (Req 7.1.4/7.1.6). */
 export class MatriculaDuplicadaError extends UsuariosError {
+  readonly statusHttp = HttpStatus.CONFLICT;
   constructor(matricula?: string) {
     super(
       matricula
@@ -23,6 +27,7 @@ export class MatriculaDuplicadaError extends UsuariosError {
 
 /** Usuário não encontrado pelo id informado. */
 export class UsuarioNaoEncontradoError extends UsuariosError {
+  readonly statusHttp = HttpStatus.NOT_FOUND;
   constructor() {
     super('Usuário não encontrado.');
   }
@@ -30,6 +35,7 @@ export class UsuarioNaoEncontradoError extends UsuariosError {
 
 /** Operação não permitida (ex.: excluir o próprio usuário). */
 export class OperacaoInvalidaError extends UsuariosError {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
   constructor(mensagem: string) {
     super(mensagem);
   }

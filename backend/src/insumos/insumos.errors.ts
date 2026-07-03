@@ -3,9 +3,11 @@
  * do Nest ou do banco) para manter a lógica de domínio testável de forma
  * isolada.
  */
+import { HttpStatus } from '@nestjs/common';
+import { ErroDominio } from '../common/errors/erro-dominio';
 
 /** Classe base para os erros de domínio do controle de insumos. */
-export abstract class InsumosError extends Error {
+export abstract class InsumosError extends ErroDominio {
   constructor(mensagem: string) {
     super(mensagem);
     this.name = new.target.name;
@@ -19,6 +21,7 @@ export abstract class InsumosError extends Error {
  * permanece inalterado.
  */
 export class FardoNaoReconhecidoError extends InsumosError {
+  readonly statusHttp = HttpStatus.NOT_FOUND;
   constructor(codigoBarras?: string) {
     super(
       codigoBarras !== undefined
@@ -33,6 +36,7 @@ export class FardoNaoReconhecidoError extends InsumosError {
  * (não inteira ou menor ou igual a zero).
  */
 export class QuantidadeInvalidaError extends InsumosError {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
   constructor(quantidade?: number) {
     super(
       quantidade !== undefined

@@ -11,9 +11,11 @@
  * domínio permaneça testável de forma isolada. A camada de API mapeará cada um
  * deles para a resposta HTTP apropriada (Tarefa 13).
  */
+import { HttpStatus } from '@nestjs/common';
+import { ErroDominio } from '../common/errors/erro-dominio';
 
 /** Classe base para os erros de domínio do módulo de importações. */
-export abstract class ImportacoesError extends Error {
+export abstract class ImportacoesError extends ErroDominio {
   constructor(mensagem: string) {
     super(mensagem);
     this.name = new.target.name;
@@ -28,6 +30,7 @@ export abstract class ImportacoesError extends Error {
  * indica explicitamente a(s) coluna(s) ausente(s).
  */
 export class ColunaAusenteError extends ImportacoesError {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
   /** Colunas obrigatórias que faltaram no arquivo. */
   readonly colunasAusentes: string[];
 

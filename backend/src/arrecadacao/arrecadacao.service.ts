@@ -126,9 +126,6 @@ export class ArrecadacaoService {
   ): Promise<ResultadoUploadArrecadacao> {
     const dia = inicioDoDia(data);
     const proximo = inicioDoProximoDia(data);
-    // Captura se o dia já estava concluído antes deste envio (para notificar
-    // o fechamento apenas na transição).
-    const completoAntes = await this.fechamento.estaCompleto(data);
     await this.prisma.$transaction([
       this.prisma.registroArrecadacao.deleteMany({
         where: { tipo, data: { gte: dia, lt: proximo } },
@@ -150,10 +147,8 @@ export class ArrecadacaoService {
         where: { tipo, data: { gte: dia, lt: proximo } },
       }),
     ]);
-    const fechamentoConcluido = await this.fechamento.concluirSeCompletou(
-      data,
-      completoAntes,
-    );
+    const fechamentoConcluido =
+      await this.fechamento.concluirSeCompletou(data);
     const total = linhas.reduce((soma, l) => soma + l.valor, 0);
     return {
       tipo,
@@ -205,16 +200,13 @@ export class ArrecadacaoService {
     marcadoPor?: string,
   ): Promise<{ fechamentoConcluido: boolean }> {
     const dia = inicioDoDia(data);
-    const completoAntes = await this.fechamento.estaCompleto(data);
     await this.prisma.arrecadacaoSemMovimento.upsert({
       where: { tipo_data: { tipo, data: dia } },
       update: { marcadoPor },
       create: { tipo, data: dia, marcadoPor },
     });
-    const fechamentoConcluido = await this.fechamento.concluirSeCompletou(
-      data,
-      completoAntes,
-    );
+    const fechamentoConcluido =
+      await this.fechamento.concluirSeCompletou(data);
     return { fechamentoConcluido };
   }
 

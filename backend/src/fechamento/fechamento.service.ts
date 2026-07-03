@@ -126,21 +126,31 @@ export class FechamentoService {
 
   /**
    * Após uma operação (upload ou marcação), verifica a transição para
-   * concluído. Recebe se já estava completo ANTES da operação para notificar
-   * apenas uma vez. Retorna `true` se o fechamento foi concluído agora.
+   * concluído e notifica os gestores **exatamente uma vez** — mesmo sob
+   * uploads concorrentes. A notificação única é garantida por uma marca
+   * idempotente por dia (`FechamentoConcluido`), cuja unicidade de `data` atua
+   * como trava atômica. Retorna `true` se o fechamento foi concluído (e
+   * notificado) agora; `false` se ainda incompleto ou se já havia sido
+   * concluído.
    */
-  async concluirSeCompletou(
-    data: Date,
-    completoAntes: boolean,
-  ): Promise<boolean> {
-    if (completoAntes) {
-      return false;
-    }
+  async concluirSeCompletou(data: Date): Promise<boolean> {
     const completoAgora = await this.estaCompleto(data);
     if (!completoAgora) {
       return false;
     }
-    await this.notificar(inicioDoDia(data));
+    const dia = inicioDoDia(data);
+    try {
+      // Insere a marca do dia. A unicidade de `data` atua como trava atômica:
+      // sob concorrência, apenas UMA inserção vence e notifica.
+      await this.prisma.fechamentoConcluido.create({ data: { data: dia } });
+    } catch (erro) {
+      // P2002 = violação de unicidade → já concluído/notificado. Idempotente.
+      if ((erro as { code?: string }).code === 'P2002') {
+        return false;
+      }
+      throw erro;
+    }
+    await this.notificar(dia);
     return true;
   }
 

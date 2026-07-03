@@ -418,15 +418,25 @@ export class InsumosService {
         Math.max(1, Math.ceil(insumo.limiteMinimo / insumo.fatorEmbalagem));
     }
 
-    await this.prisma.requisicao.create({
-      data: {
-        insumoId,
-        quantidade,
-        status: 'PENDENTE',
-        observacao: `[Auto] Reposição automática — estoque crítico (${resumo.saldo} ${insumo.unidade}s).`,
-        solicitanteNome: 'Sistema (auto-reposição)',
-      },
-    });
+    try {
+      await this.prisma.requisicao.create({
+        data: {
+          insumoId,
+          quantidade,
+          status: 'PENDENTE',
+          automatica: true,
+          observacao: `[Auto] Reposição automática — estoque crítico (${resumo.saldo} ${insumo.unidade}s).`,
+          solicitanteNome: 'Sistema (auto-reposição)',
+        },
+      });
+    } catch (erro) {
+      // P2002 = já existe requisição automática pendente para este insumo
+      // (corrida entre consumos concorrentes). No-op idempotente.
+      if ((erro as { code?: string }).code === 'P2002') {
+        return;
+      }
+      throw erro;
+    }
 
     if (this.notificacoes) {
       const gestores = await this.notificacoes.gestores();
