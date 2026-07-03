@@ -15,7 +15,12 @@ import {
   primeiroNome,
   statusAtual,
 } from './fiscais.domain';
-import { FiscalNaoEncontradoError, FaltaRegistradaError, JaIniciouJornadaError, FiscalDeFolgaError } from './fiscais.errors';
+import {
+  FiscalNaoEncontradoError,
+  FaltaRegistradaError,
+  JaIniciouJornadaError,
+  FiscalDeFolgaError,
+} from './fiscais.errors';
 import { FiscalStatusEventos } from './fiscais.eventos';
 import {
   ColaboradorDoFiscal,
@@ -112,7 +117,11 @@ export class FiscaisService {
    * Resumo do próprio fiscal (status atual + jornada do dia). Retorna null se o
    * usuário autenticado não for um fiscal (ex.: gerente apenas visualizando).
    */
-  async meuResumo(usuarioId: string): Promise<(ResumoStatus & Jornada & { faltaHoje: boolean; folgaHoje: boolean }) | null> {
+  async meuResumo(
+    usuarioId: string,
+  ): Promise<
+    (ResumoStatus & Jornada & { faltaHoje: boolean; folgaHoje: boolean }) | null
+  > {
     const fiscal = await this.prisma.fiscal.findFirst({ where: { usuarioId } });
     if (!fiscal) {
       return null;
@@ -121,7 +130,9 @@ export class FiscaisService {
     const registros = await this.registrosDoDia(fiscal.id, agora);
     const ultimo = registros[registros.length - 1] ?? null;
     const faltaHoje = !!(await this.prisma.ausencia.findUnique({
-      where: { pessoaId_data: { pessoaId: fiscal.id, data: inicioDoDia(agora) } },
+      where: {
+        pessoaId_data: { pessoaId: fiscal.id, data: inicioDoDia(agora) },
+      },
     }));
     const folgaHoje = await this.isFolgaHoje(fiscal.id, agora);
     return {
@@ -198,7 +209,13 @@ export class FiscaisService {
     const registros = await this.registrosDoDia(fiscalId, em);
     const jornada = calcularJornada(registros, em);
 
-    return { fiscalId, primeiroNome: pn, status, em: em.toISOString(), ...jornada };
+    return {
+      fiscalId,
+      primeiroNome: pn,
+      status,
+      em: em.toISOString(),
+      ...jornada,
+    };
   }
 
   /** Painel de todos os fiscais com o status atual (tempo real via WebSocket). */
@@ -296,9 +313,7 @@ export class FiscaisService {
    * Acumulado de horas extras do mês por fiscal (excluindo domingos).
    * Horas extras = soma de max(0, cargaTrabalhada - jornadaEsperada) por dia.
    */
-  async horasExtrasMes(
-    mes?: Date,
-  ): Promise<ItemHorasExtras[]> {
+  async horasExtrasMes(mes?: Date): Promise<ItemHorasExtras[]> {
     const referencia = mes ?? new Date();
     const inicioMes = new Date(
       Date.UTC(referencia.getUTCFullYear(), referencia.getUTCMonth(), 1),
@@ -329,7 +344,9 @@ export class FiscaisService {
       if (!mapaFiscal.has(diaKey)) {
         mapaFiscal.set(diaKey, []);
       }
-      mapaFiscal.get(diaKey)!.push({ status: r.status as StatusFiscal, em: r.em });
+      mapaFiscal
+        .get(diaKey)!
+        .push({ status: r.status as StatusFiscal, em: r.em });
     }
 
     return fiscais.map((f) => {
@@ -369,7 +386,12 @@ export class FiscaisService {
     if (!fiscal) return null;
 
     const agora = new Date();
-    const dias: { data: string; diaSemana: number; trabalhadoMs: number; esperadoMs: number }[] = [];
+    const dias: {
+      data: string;
+      diaSemana: number;
+      trabalhadoMs: number;
+      esperadoMs: number;
+    }[] = [];
 
     for (let i = 6; i >= 0; i--) {
       const dia = new Date(agora);
@@ -382,7 +404,10 @@ export class FiscaisService {
         orderBy: { em: 'asc' },
       });
 
-      const regs = registros.map((r) => ({ status: r.status as StatusFiscal, em: r.em }));
+      const regs = registros.map((r) => ({
+        status: r.status as StatusFiscal,
+        em: r.em,
+      }));
       const fimDia = inicioDoProximoDia(dia);
       const limite = agora < fimDia ? agora : fimDia;
       const jornada = calcularJornada(regs, limite);
@@ -395,32 +420,46 @@ export class FiscaisService {
       });
     }
 
-    return { fiscalId: fiscal.id, primeiroNome: primeiroNome(fiscal.nome), dias };
+    return {
+      fiscalId: fiscal.id,
+      primeiroNome: primeiroNome(fiscal.nome),
+      dias,
+    };
   }
 
   /** Ranking do mês por puntualidade (quem registra mais perto do horário). */
   async rankingMes() {
     const agora = new Date();
-    const inicioMes = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
-    const fimMes = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 1));
+    const inicioMes = new Date(
+      Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1),
+    );
+    const fimMes = new Date(
+      Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 1),
+    );
 
     const fiscais = await this.prisma.fiscal.findMany();
     const registros = await this.prisma.registroPontoFiscal.findMany({
       where: { data: { gte: inicioMes, lt: fimMes } },
       orderBy: { em: 'asc' },
     });
-    const escalas = await this.prisma.escalaEntry.findMany({ where: { folga: false } });
+    const escalas = await this.prisma.escalaEntry.findMany({
+      where: { folga: false },
+    });
 
     // Mapa de escala por fiscal + dia.
     const escalaMap = new Map<string, Map<number, string>>();
     for (const e of escalas) {
       if (!e.entrada) continue;
-      if (!escalaMap.has(e.funcionarioId)) escalaMap.set(e.funcionarioId, new Map());
+      if (!escalaMap.has(e.funcionarioId))
+        escalaMap.set(e.funcionarioId, new Map());
       escalaMap.get(e.funcionarioId)!.set(e.diaSemana, e.entrada);
     }
 
     // Agrupar primeiro DISPONIVEL por fiscal por dia.
-    const primeiroDisponivel = new Map<string, { desvioTotalMin: number; diasContados: number }>();
+    const primeiroDisponivel = new Map<
+      string,
+      { desvioTotalMin: number; diasContados: number }
+    >();
 
     for (const fiscal of fiscais) {
       const fiscalRegs = registros.filter((r) => r.fiscalId === fiscal.id);
@@ -449,14 +488,20 @@ export class FiscaisService {
         const [h, m] = entradaPrevista.split(':').map(Number);
         const previstoMs = (h * 60 + m) * 60 * 1000;
         const realMs =
-          (primeiraEntrada.getUTCHours() * 60 + primeiraEntrada.getUTCMinutes()) * 60 * 1000 +
+          (primeiraEntrada.getUTCHours() * 60 +
+            primeiraEntrada.getUTCMinutes()) *
+            60 *
+            1000 +
           primeiraEntrada.getUTCSeconds() * 1000;
         const desvio = Math.abs(realMs - previstoMs) / 60000; // em minutos
         desvioTotal += desvio;
         diasContados++;
       }
 
-      primeiroDisponivel.set(fiscal.id, { desvioTotalMin: desvioTotal, diasContados });
+      primeiroDisponivel.set(fiscal.id, {
+        desvioTotalMin: desvioTotal,
+        diasContados,
+      });
     }
 
     // Calcular ranking (menor desvio médio = mais pontual).
@@ -464,7 +509,8 @@ export class FiscaisService {
       .map((f) => {
         const dados = primeiroDisponivel.get(f.id);
         const diasContados = dados?.diasContados ?? 0;
-        const desvioMedio = diasContados > 0 ? (dados!.desvioTotalMin / diasContados) : 999;
+        const desvioMedio =
+          diasContados > 0 ? dados!.desvioTotalMin / diasContados : 999;
         return {
           fiscalId: f.id,
           primeiroNome: primeiroNome(f.nome),
@@ -482,8 +528,12 @@ export class FiscaisService {
   /** Previsão de horas extras ao final do mês (projeção linear). */
   async previsaoExtras() {
     const agora = new Date();
-    const inicioMes = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
-    const fimMes = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 1));
+    const inicioMes = new Date(
+      Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1),
+    );
+    const fimMes = new Date(
+      Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 1),
+    );
 
     // Dias úteis transcorridos no mês (excluindo domingos).
     const diasTranscorridos = this.diasUteisEntre(inicioMes, agora);
@@ -491,16 +541,22 @@ export class FiscaisService {
 
     if (diasTranscorridos === 0) return [];
 
-    const fiscais = await this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } });
+    const fiscais = await this.prisma.fiscal.findMany({
+      orderBy: { nome: 'asc' },
+    });
     const registros = await this.prisma.registroPontoFiscal.findMany({
       where: { data: { gte: inicioMes, lt: fimMes } },
       orderBy: { em: 'asc' },
     });
 
-    const porFiscalDia = new Map<string, Map<string, { status: StatusFiscal; em: Date }[]>>();
+    const porFiscalDia = new Map<
+      string,
+      Map<string, { status: StatusFiscal; em: Date }[]>
+    >();
     for (const r of registros) {
       const diaKey = r.data.toISOString();
-      if (!porFiscalDia.has(r.fiscalId)) porFiscalDia.set(r.fiscalId, new Map());
+      if (!porFiscalDia.has(r.fiscalId))
+        porFiscalDia.set(r.fiscalId, new Map());
       const m = porFiscalDia.get(r.fiscalId)!;
       if (!m.has(diaKey)) m.set(diaKey, []);
       m.get(diaKey)!.push({ status: r.status as StatusFiscal, em: r.em });
@@ -526,7 +582,9 @@ export class FiscaisService {
       }
 
       // Projeção linear: (extras atuais / dias transcorridos) * dias totais
-      const projecaoMs = Math.round((extrasAtualMs / diasTranscorridos) * diasTotaisMes);
+      const projecaoMs = Math.round(
+        (extrasAtualMs / diasTranscorridos) * diasTotaisMes,
+      );
       const critico = projecaoMs > 7 * 60 * 60 * 1000; // >7h projetado
 
       return {
@@ -541,15 +599,27 @@ export class FiscaisService {
 
   /** Contexto de escala formatado para integração com Cluby (texto). */
   async contextoEscala(): Promise<{ contexto: string }> {
-    const fiscais = await this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } });
+    const fiscais = await this.prisma.fiscal.findMany({
+      orderBy: { nome: 'asc' },
+    });
     const escalas = await this.prisma.escalaEntry.findMany();
-    const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const DIAS = [
+      'Domingo',
+      'Segunda',
+      'Terça',
+      'Quarta',
+      'Quinta',
+      'Sexta',
+      'Sábado',
+    ];
 
     const linhas: string[] = ['=== ESCALA DE FISCAIS ==='];
 
     for (const fiscal of fiscais) {
       const escFiscal = escalas.filter((e) => e.funcionarioId === fiscal.id);
-      linhas.push(`\n${fiscal.nome} (${fiscal.turno}${fiscal.especial ? ' - horário especial' : ''}):`);
+      linhas.push(
+        `\n${fiscal.nome} (${fiscal.turno}${fiscal.especial ? ' - horário especial' : ''}):`,
+      );
       for (let dia = 0; dia <= 6; dia++) {
         const esc = escFiscal.find((e) => e.diaSemana === dia);
         if (!esc) continue;
@@ -576,7 +646,10 @@ export class FiscaisService {
   }
 
   /** Verifica se o fiscal está de folga num dia (baseado na escala). */
-  private async isFolgaHoje(fiscalId: string, dia: Date = new Date()): Promise<boolean> {
+  private async isFolgaHoje(
+    fiscalId: string,
+    dia: Date = new Date(),
+  ): Promise<boolean> {
     const diaSemana = this.diaSemanaEmBrasilia(dia);
     const escala = await this.prisma.escalaEntry.findFirst({
       where: { funcionarioId: fiscalId, diaSemana, folga: true },

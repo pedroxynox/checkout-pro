@@ -5,6 +5,7 @@ import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { MetasService } from '../metas/metas.service';
 import { anoMesDe } from '../metas/metas.domain';
 import { LinhaVendaHora } from './vendas.parser';
+import { arredondar } from '../common/numeros';
 import {
   NOMES_DIA_SEMANA,
   deslocarMeses,
@@ -100,10 +101,6 @@ export interface PainelVendas {
   padraoDiaSemana: PadraoDiaSemana[];
 }
 
-function arredondar(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
 /** Data deslocada N dias (em UTC, a partir do início do dia). */
 function addDias(data: Date, dias: number): Date {
   const d = inicioDoDia(data);
@@ -154,8 +151,7 @@ export class VendasService {
         update: { valor: total },
       }),
     ]);
-    const fechamentoConcluido =
-      await this.fechamento.concluirSeCompletou(data);
+    const fechamentoConcluido = await this.fechamento.concluirSeCompletou(data);
     // Avisos inteligentes (recorde, queda anômala, meta em risco) — best-effort.
     void this.avisarVendas(dia, total);
     return { data: dia, horas: linhas.length, total, fechamentoConcluido };
@@ -286,29 +282,25 @@ export class VendasService {
     const mediaDiaria =
       diasComVenda > 0 ? arredondar(arrecadadoMes / diasComVenda) : 0;
     const projecaoFechamento = arredondar(mediaDiaria * totalDiasMes);
-    const metaProgresso =
-      metaMensal > 0 ? arrecadadoMes / metaMensal : 0;
+    const metaProgresso = metaMensal > 0 ? arrecadadoMes / metaMensal : 0;
     const projecaoVsMeta =
-      metaMensal > 0 ? arredondar((projecaoFechamento / metaMensal - 1) * 100) : null;
+      metaMensal > 0
+        ? arredondar((projecaoFechamento / metaMensal - 1) * 100)
+        : null;
 
     // --- Comparativos por data ---
     const refAnterior = deslocarMeses(ref, -1);
     const variacao = (atual: number, anterior: number): number | null =>
       anterior > 0 ? arredondar((atual / anterior - 1) * 100) : null;
 
-    const [
-      diaAtual,
-      diaAnterior,
-      semanaAtual,
-      semanaAnterior,
-      mesAnterior,
-    ] = await Promise.all([
-      this.valorDoDia(ref),
-      this.valorDoDia(refAnterior),
-      this.somarDiario(addDias(ref, -6), addDias(ref, 1)),
-      this.somarDiario(addDias(ref, -13), addDias(ref, -6)),
-      this.somarDiario(inicioDoMes(refAnterior), addDias(refAnterior, 1)),
-    ]);
+    const [diaAtual, diaAnterior, semanaAtual, semanaAnterior, mesAnterior] =
+      await Promise.all([
+        this.valorDoDia(ref),
+        this.valorDoDia(refAnterior),
+        this.somarDiario(addDias(ref, -6), addDias(ref, 1)),
+        this.somarDiario(addDias(ref, -13), addDias(ref, -6)),
+        this.somarDiario(inicioDoMes(refAnterior), addDias(refAnterior, 1)),
+      ]);
 
     const comparativos = {
       dia: {
@@ -342,7 +334,10 @@ export class VendasService {
     for (let i = 29; i >= 0; i--) {
       const dia = addDias(ref, -i);
       const iso = dia.toISOString().slice(0, 10);
-      tendencia.push({ data: iso, valor: arredondar(mapaDiario.get(iso) ?? 0) });
+      tendencia.push({
+        data: iso,
+        valor: arredondar(mapaDiario.get(iso) ?? 0),
+      });
     }
 
     // --- Perfis típicos (curva, heatmap, padrão por dia da semana) ---
@@ -397,7 +392,10 @@ export class VendasService {
     const somaHeat: number[][] = Array.from({ length: 7 }, () =>
       new Array<number>(24).fill(0),
     );
-    const diasPorSemana: Set<string>[] = Array.from({ length: 7 }, () => new Set());
+    const diasPorSemana: Set<string>[] = Array.from(
+      { length: 7 },
+      () => new Set(),
+    );
 
     for (const r of regs) {
       const v = Number(r.valor);

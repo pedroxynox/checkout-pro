@@ -92,9 +92,7 @@ export class FiscaisController {
 
   /** Histórico semanal do próprio fiscal (últimos 7 dias). */
   @Get('eu/historico-semanal')
-  async historicoSemanal(
-    @UsuarioAtual() usuario: UsuarioAutenticado,
-  ) {
+  async historicoSemanal(@UsuarioAtual() usuario: UsuarioAutenticado) {
     return this.service.historicoSemanal(usuario.sub);
   }
 

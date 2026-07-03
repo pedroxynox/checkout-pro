@@ -154,7 +154,6 @@ export function resumoEstoque(
   };
 }
 
-
 // ==================== SISTEMA PROATIVO ====================
 
 /**
@@ -180,10 +179,13 @@ export function consumoPorDiaSemana(
   agora: Date = new Date(),
 ): ConsumoPorDiaSemana[] {
   const limite = agora.getTime() - diasHistorico * 24 * 60 * 60 * 1000;
-  const porDia: { total: number; count: number }[] = Array.from({ length: 7 }, () => ({
-    total: 0,
-    count: 0,
-  }));
+  const porDia: { total: number; count: number }[] = Array.from(
+    { length: 7 },
+    () => ({
+      total: 0,
+      count: 0,
+    }),
+  );
 
   // Agrupar consumos por dia do calendário.
   const diasVisto = new Map<string, { dia: number; consumo: number }>();
@@ -269,7 +271,10 @@ export function quantidadeReposicao(
  */
 export type NivelEstoque = 'CRITICO' | 'ATENCAO' | 'OK';
 
-export function nivelEstoque(saldo: number, limiteMinimo: number): NivelEstoque {
+export function nivelEstoque(
+  saldo: number,
+  limiteMinimo: number,
+): NivelEstoque {
   if (saldo <= limiteMinimo) return 'CRITICO';
   if (saldo <= limiteMinimo * 2) return 'ATENCAO';
   return 'OK';

@@ -112,7 +112,10 @@ export class EscalaService {
     const entries = await this.prisma.escalaEntry.findMany({
       where: { diaSemana },
     });
-    const itens = escalaConsolidada(entries as unknown as EscalaEntry[], diaSemana);
+    const itens = escalaConsolidada(
+      entries as unknown as EscalaEntry[],
+      diaSemana,
+    );
 
     // Resolve nomes (fiscais, colaboradores e usuários) num único mapa id -> nome.
     const [fiscais, usuarios, colaboradores] = await Promise.all([

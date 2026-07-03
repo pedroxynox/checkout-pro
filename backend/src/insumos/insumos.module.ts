@@ -13,7 +13,11 @@ import { PedidosRecorrentesService } from './pedidos-recorrentes.service';
  */
 @Module({
   imports: [NotificacoesModule],
-  providers: [InsumosService, InsumosProativoService, PedidosRecorrentesService],
+  providers: [
+    InsumosService,
+    InsumosProativoService,
+    PedidosRecorrentesService,
+  ],
   controllers: [InsumosController, PedidosRecorrentesController],
   exports: [InsumosService],
 })

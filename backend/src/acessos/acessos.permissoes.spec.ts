@@ -28,9 +28,9 @@ describe('Permissões (fonte única de verdade)', () => {
   it('GERENTE_DESENVOLVEDOR continua autorizado mesmo para funcionalidade futura/desconhecida', () => {
     // Reforça que o acesso do desenvolvedor não depende de lista: qualquer
     // funcionalidade nova é liberada automaticamente.
-    expect(decidirAutorizacao('GERENTE_DESENVOLVEDOR', 'FUNCIONALIDADE_NOVA')).toBe(
-      true,
-    );
+    expect(
+      decidirAutorizacao('GERENTE_DESENVOLVEDOR', 'FUNCIONALIDADE_NOVA'),
+    ).toBe(true);
   });
 
   it('todas as funcionalidades dos perfis existem no catálogo', () => {

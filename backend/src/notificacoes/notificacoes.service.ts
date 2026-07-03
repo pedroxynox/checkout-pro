@@ -39,19 +39,25 @@ export class NotificacoesService {
     conteudo: ConteudoNotificacao,
   ): Promise<Notificacao[]> {
     const entregas = montarEntregas(destinatarios, conteudo);
-    const criadas: Notificacao[] = [];
-    for (const e of entregas) {
-      const criada = await this.prisma.notificacao.create({
-        data: {
-          usuarioId: e.usuarioId,
-          titulo: e.titulo,
-          mensagem: e.mensagem,
-          canalPush: e.canalPush,
-          canalInApp: e.canalInApp,
-        },
-      });
-      criadas.push(criada);
-      // Entrega em tempo real (WebSocket) ao destinatário, se conectado.
+    // Cria cada entrega individualmente (preserva o id/criadaEm de cada linha,
+    // necessários para a publicação em tempo real), porém de forma concorrente
+    // via Promise.all — que mantém a ordem das entregas no array de resultado.
+    // Não usamos createMany porque ele não retorna os ids gerados.
+    const criadas = await Promise.all(
+      entregas.map((e) =>
+        this.prisma.notificacao.create({
+          data: {
+            usuarioId: e.usuarioId,
+            titulo: e.titulo,
+            mensagem: e.mensagem,
+            canalPush: e.canalPush,
+            canalInApp: e.canalInApp,
+          },
+        }),
+      ),
+    );
+    // Entrega em tempo real (WebSocket) ao destinatário, se conectado.
+    for (const criada of criadas) {
       this.eventos?.publicar({
         usuarioId: criada.usuarioId,
         id: criada.id,

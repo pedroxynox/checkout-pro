@@ -9,6 +9,7 @@ import {
 } from '../colaboradores/perfil-colaborador.domain';
 import { normalizarMatricula } from '../colaboradores/colaboradores.domain';
 import { LinhaArrecadacao } from './arrecadacao.parser';
+import { arredondar } from '../common/numeros';
 import {
   CONFIG_ARRECADACAO,
   TipoArrecadacao,
@@ -102,10 +103,6 @@ export type StatusArquivo = 'ENVIADO' | 'SEM_MOVIMENTO' | 'PENDENTE';
 /** Mapa tipo -> estado (enviado / sem movimento / pendente) no dia. */
 export type StatusArrecadacao = Record<TipoArrecadacao, StatusArquivo>;
 
-function arredondar(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
 /**
  * Serviço de arrecadação: importa as linhas de um arquivo (substituindo o dia),
  * e calcula totais (dia/semana/mês) e ranking por operador para os indicadores.
@@ -147,8 +144,7 @@ export class ArrecadacaoService {
         where: { tipo, data: { gte: dia, lt: proximo } },
       }),
     ]);
-    const fechamentoConcluido =
-      await this.fechamento.concluirSeCompletou(data);
+    const fechamentoConcluido = await this.fechamento.concluirSeCompletou(data);
     const total = linhas.reduce((soma, l) => soma + l.valor, 0);
     return {
       tipo,
@@ -205,8 +201,7 @@ export class ArrecadacaoService {
       update: { marcadoPor },
       create: { tipo, data: dia, marcadoPor },
     });
-    const fechamentoConcluido =
-      await this.fechamento.concluirSeCompletou(data);
+    const fechamentoConcluido = await this.fechamento.concluirSeCompletou(data);
     return { fechamentoConcluido };
   }
 

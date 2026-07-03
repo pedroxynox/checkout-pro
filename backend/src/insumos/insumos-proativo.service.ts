@@ -40,7 +40,9 @@ export class InsumosProativoService {
     const apenasUrgentes = criticos.filter((i) => i.nivel === 'CRITICO');
 
     if (apenasUrgentes.length === 0) {
-      this.logger.log('Auto-reposição: todos os insumos em nível OK ou ATENÇÃO.');
+      this.logger.log(
+        'Auto-reposição: todos os insumos em nível OK ou ATENÇÃO.',
+      );
       return;
     }
 
@@ -65,9 +67,10 @@ export class InsumosProativoService {
         },
       });
 
-      const plural = insumo.sugestaoReposicao === 1
-        ? insumo.embalagem
-        : `${insumo.embalagem}s`;
+      const plural =
+        insumo.sugestaoReposicao === 1
+          ? insumo.embalagem
+          : `${insumo.embalagem}s`;
       linhas.push(
         `• ${insumo.nome}: ${insumo.sugestaoReposicao} ${plural} (saldo: ${insumo.saldo})`,
       );
@@ -108,7 +111,9 @@ export class InsumosProativoService {
       mensagem: `Os seguintes insumos podem acabar em breve:\n${linhas.join('\n')}\n\nVerifique o estoque e providencie reposição.`,
     });
 
-    this.logger.warn(`Alerta de ruptura: ${iminentes.length} insumo(s) iminente(s).`);
+    this.logger.warn(
+      `Alerta de ruptura: ${iminentes.length} insumo(s) iminente(s).`,
+    );
   }
 
   /**
@@ -121,7 +126,8 @@ export class InsumosProativoService {
     const gestores = await this.notificacoes.gestores();
 
     const linhas = todos.map((i) => {
-      const nivel = i.nivel === 'CRITICO' ? '🔴' : i.nivel === 'ATENCAO' ? '🟡' : '🟢';
+      const nivel =
+        i.nivel === 'CRITICO' ? '🔴' : i.nivel === 'ATENCAO' ? '🟡' : '🟢';
       return `${nivel} ${i.nome}: consumo ${i.consumoSemana} | entrada ${i.entradaSemana} | saldo ${i.saldo}`;
     });
 

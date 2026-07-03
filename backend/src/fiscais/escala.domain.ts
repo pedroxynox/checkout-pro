@@ -95,7 +95,6 @@ export function escalaConsolidada(
     .sort((a, b) => a.funcionarioId.localeCompare(b.funcionarioId));
 }
 
-
 /**
  * Escala semanal definida no cadastro do colaborador (fonte única — Opção A).
  *

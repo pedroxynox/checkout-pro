@@ -90,9 +90,7 @@ describe('JwtAuthGuard', () => {
     });
     const { ctx } = contexto(`Bearer ${token}`);
     const { guard: g } = guard(false, { tokenVersion: 2 });
-    await expect(g.canActivate(ctx)).rejects.toThrow(
-      /Sessão expirada/,
-    );
+    await expect(g.canActivate(ctx)).rejects.toThrow(/Sessão expirada/);
   });
 
   it('rejeita quando o usuário não existe mais (findUnique retorna null)', async () => {

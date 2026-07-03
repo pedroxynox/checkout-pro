@@ -112,7 +112,8 @@ describe('LoteApaeService', () => {
     const movimentoLoteApae = {
       aggregate: () => Promise.resolve({ _sum: { vendidas: 0 } }),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      create: ({ data }: any) => Promise.resolve({ id: `mov${++seq}`, ...data }),
+      create: ({ data }: any) =>
+        Promise.resolve({ id: `mov${++seq}`, ...data }),
       findMany: () => Promise.resolve([]),
     };
     const configApae = {

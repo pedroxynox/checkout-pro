@@ -73,7 +73,8 @@ export class PedidosRecorrentesService {
         });
         if (ultimaSugestao?.confirmadaEm) {
           const diasDesde = Math.floor(
-            (agora.getTime() - ultimaSugestao.confirmadaEm.getTime()) / (24 * 60 * 60 * 1000),
+            (agora.getTime() - ultimaSugestao.confirmadaEm.getTime()) /
+              (24 * 60 * 60 * 1000),
           );
           if (diasDesde < pedido.frequenciaDias - 1) continue; // Ainda não é hora.
         }
@@ -92,13 +93,19 @@ export class PedidosRecorrentesService {
         );
 
         // Se o saldo já cobre mais de 2 semanas, reduzir a sugestão.
-        if (saldoEmEmbalagens >= consumoSemanalEmb * 2 && pedido.frequenciaDias <= 7) {
+        if (
+          saldoEmEmbalagens >= consumoSemanalEmb * 2 &&
+          pedido.frequenciaDias <= 7
+        ) {
           const reducao = Math.floor(saldoEmEmbalagens / 2);
           quantidadeSugerida = Math.max(1, pedido.quantidade - reducao);
         }
 
         // Se o consumo recente foi maior que o habitual, aumentar.
-        if (consumoSemanalEmb > pedido.quantidade && pedido.frequenciaDias <= 7) {
+        if (
+          consumoSemanalEmb > pedido.quantidade &&
+          pedido.frequenciaDias <= 7
+        ) {
           quantidadeSugerida = Math.max(quantidadeSugerida, consumoSemanalEmb);
         }
       }
@@ -124,7 +131,9 @@ export class PedidosRecorrentesService {
         titulo: '📋 Pedido da semana gerado',
         mensagem: `Sugestão de pedido para amanhã:\n${sugestoesCriadas.join('\n')}\n\nConfirme no app para dar entrada.`,
       });
-      this.logger.log(`Sugestões geradas: ${sugestoesCriadas.length} itens (lote ${lote}).`);
+      this.logger.log(
+        `Sugestões geradas: ${sugestoesCriadas.length} itens (lote ${lote}).`,
+      );
     }
   }
 
@@ -132,7 +141,16 @@ export class PedidosRecorrentesService {
   async listarPendentes() {
     const sugestoes = await this.prisma.sugestaoPedido.findMany({
       where: { status: 'PENDENTE' },
-      include: { insumo: { select: { nome: true, embalagem: true, fatorEmbalagem: true, unidade: true } } },
+      include: {
+        insumo: {
+          select: {
+            nome: true,
+            embalagem: true,
+            fatorEmbalagem: true,
+            unidade: true,
+          },
+        },
+      },
       orderBy: { criadaEm: 'desc' },
     });
     return sugestoes.map((s) => ({
@@ -166,7 +184,8 @@ export class PedidosRecorrentesService {
     }
 
     const diasDesde = Math.floor(
-      (Date.now() - ultimaConfirmada.confirmadaEm.getTime()) / (24 * 60 * 60 * 1000),
+      (Date.now() - ultimaConfirmada.confirmadaEm.getTime()) /
+        (24 * 60 * 60 * 1000),
     );
     const restantes = Math.max(0, pedidoQuinzenal.frequenciaDias - diasDesde);
     return { diasRestantes: restantes };

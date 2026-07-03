@@ -12,6 +12,44 @@
 
 ---
 
+## Polimento: DRY, observabilidade, correções de config e docs de produção (2026-07-03)
+
+**Objetivo:** rodada de polimento final com mudanças de baixo risco e, salvo o
+novo log de requisições e a documentação, **preservando o comportamento**.
+
+- **(21) DRY — `arredondar` centralizado.** Criado `common/numeros.ts` como fonte
+  única do helper de arredondamento a 2 casas (`Math.round(n * 100) / 100`). As
+  definições locais duplicadas foram substituídas por `import` em
+  `arrecadacao.service.ts`, `indicadores-inteligente.service.ts`,
+  `perfil-colaborador.service.ts` e `vendas.service.ts`; os helpers locais `arred`
+  (idênticos) em `assistente.service.ts` e `lote-apae.service.ts` também passaram a
+  usar o `arredondar` compartilhado. Sem mudança de comportamento de arredondamento.
+- **(22) Notificações criadas em paralelo.** Em `notificacoes.service.ts`, o método
+  `enviar` troca o laço sequencial de `create` por `Promise.all` (cada entrega ainda
+  é um `create` individual — preserva o id/`criadaEm` de cada linha para a publicação
+  em tempo real). A ordem e o comportamento de realtime são idênticos, apenas
+  concorrentes (não se usa `createMany`, que não retorna ids).
+- **(20) Coerência de config.** Em `config/env.validation.ts`, removido
+  `enableImplicitConversion: true` do `plainToInstance` — o único campo numérico
+  (`PORT`) já tem `@Type(() => Number)`, tornando o comentário do campo coerente.
+  Testes de `validateEnv` seguem passando (defaults e conversão de `PORT` string).
+- **(24) Observabilidade leve.** Novo `common/correlation-id.middleware.ts` (lê/gera
+  o `x-request-id`, anexa ao `req` e devolve no header da resposta) e
+  `common/logging.interceptor.ts` (loga uma linha por requisição após a conclusão:
+  `método url status duração [correlationId]`, sem corpos, não-lançante). Ambos
+  registrados em `app.module.ts` (interceptor global via `APP_INTERCEPTOR`;
+  middleware para todas as rotas via `NestModule.configure`). Spec do middleware
+  incluída.
+- **Formatação:** aplicado o Prettier a `src/**/*.ts` (limpa avisos pré-existentes).
+- **Docs:** `README.md` (JWT_SECRET obrigatório em produção sem default inseguro,
+  nota de `DATABASE_URL`, linha de `CORS_ORIGINS`, nota de segurança atualizada e
+  seção de deploy com `/health/ready` e `prisma migrate deploy`), steering
+  `estado-e-pendientes.md` (pendiente #5: JWT_SECRET agora obrigatório),
+  `PROJECT_UNDERSTANDING.md` (`CORS_ORIGINS` na lista de secrets) e novo
+  `docs/CHECKLIST_PRODUCAO.md` (checklist de prontidão para produção).
+
+---
+
 ## Erros auto-classificados + atomicidade (fechamento e auto-reposição) (2026-07-03)
 
 **Objetivo:** tornar o tratamento de erros mais robusto e eliminar corridas que

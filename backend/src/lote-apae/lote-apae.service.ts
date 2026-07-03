@@ -13,6 +13,7 @@ import {
   QuantidadeInicialInvalidaError,
   SaldoInvalidoError,
 } from './lote-apae.errors';
+import { arredondar } from '../common/numeros';
 
 /**
  * Serviço do ciclo de Lote de Sacolas APAE (Req 2.6): registro do lote inicial,
@@ -124,8 +125,12 @@ export class LoteApaeService {
 
   /** Soma de sacolas vendidas no mês da data (via movimentos), em R$. */
   private async arrecadadoNoMes(data: Date): Promise<number> {
-    const inicio = new Date(Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), 1));
-    const fim = new Date(Date.UTC(data.getUTCFullYear(), data.getUTCMonth() + 1, 1));
+    const inicio = new Date(
+      Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), 1),
+    );
+    const fim = new Date(
+      Date.UTC(data.getUTCFullYear(), data.getUTCMonth() + 1, 1),
+    );
     const agg = await this.prisma.movimentoLoteApae.aggregate({
       where: { em: { gte: inicio, lt: fim } },
       _sum: { vendidas: true },
@@ -288,15 +293,23 @@ export class LoteApaeService {
 
   /** Configuração singleton (preço da sacola e meta mensal). Cria com defaults. */
   async obterConfig(): Promise<{ precoSacola: number; metaMensal: number }> {
-    const cfg = await this.prisma.configApae.findUnique({ where: { id: 'apae' } });
+    const cfg = await this.prisma.configApae.findUnique({
+      where: { id: 'apae' },
+    });
     if (cfg) {
-      return { precoSacola: Number(cfg.precoSacola), metaMensal: Number(cfg.metaMensal) };
+      return {
+        precoSacola: Number(cfg.precoSacola),
+        metaMensal: Number(cfg.metaMensal),
+      };
     }
     // Cria a linha singleton com defaults na primeira leitura.
     const criada = await this.prisma.configApae.create({
       data: { id: 'apae', precoSacola: 0.49, metaMensal: 500 },
     });
-    return { precoSacola: Number(criada.precoSacola), metaMensal: Number(criada.metaMensal) };
+    return {
+      precoSacola: Number(criada.precoSacola),
+      metaMensal: Number(criada.metaMensal),
+    };
   }
 
   /** Preço unitário atual da sacola (config). */
@@ -324,7 +337,10 @@ export class LoteApaeService {
       update: { precoSacola, metaMensal, atualizadoPor },
       create: { id: 'apae', precoSacola, metaMensal, atualizadoPor },
     });
-    return { precoSacola: Number(cfg.precoSacola), metaMensal: Number(cfg.metaMensal) };
+    return {
+      precoSacola: Number(cfg.precoSacola),
+      metaMensal: Number(cfg.metaMensal),
+    };
   }
 
   // ===================== Painel inteligente (análises) =====================
@@ -350,11 +366,16 @@ export class LoteApaeService {
   }> {
     const agora = new Date();
     const { precoSacola, metaMensal } = await this.obterConfig();
-    const arred = (n: number): number => Math.round(n * 100) / 100;
 
-    const inicioMes = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
-    const inicioProxMes = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 1));
-    const inicioMesAnterior = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() - 1, 1));
+    const inicioMes = new Date(
+      Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1),
+    );
+    const inicioProxMes = new Date(
+      Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 1),
+    );
+    const inicioMesAnterior = new Date(
+      Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() - 1, 1),
+    );
 
     const [aggMes, aggMesAnt] = await Promise.all([
       this.prisma.movimentoLoteApae.aggregate({
@@ -368,11 +389,14 @@ export class LoteApaeService {
     ]);
     const vendidasMes = Number(aggMes._sum.vendidas ?? 0);
     const vendidasMesAnt = Number(aggMesAnt._sum.vendidas ?? 0);
-    const arrecadadoMes = arred(vendidasMes * precoSacola);
-    const arrecadadoMesAnterior = arred(vendidasMesAnt * precoSacola);
+    const arrecadadoMes = arredondar(vendidasMes * precoSacola);
+    const arrecadadoMesAnterior = arredondar(vendidasMesAnt * precoSacola);
     const variacaoMes =
       arrecadadoMesAnterior > 0
-        ? arred(((arrecadadoMes - arrecadadoMesAnterior) / arrecadadoMesAnterior) * 100)
+        ? arredondar(
+            ((arrecadadoMes - arrecadadoMesAnterior) / arrecadadoMesAnterior) *
+              100,
+          )
         : null;
 
     // Total histórico: soma de tudo já vendido (lotes encerrados + ativo),
@@ -380,29 +404,42 @@ export class LoteApaeService {
     const aggLotes = await this.prisma.loteApae.aggregate({
       _sum: { quantidadeVendida: true },
     });
-    const totalHistorico = arred(Number(aggLotes._sum.quantidadeVendida ?? 0) * precoSacola);
+    const totalHistorico = arredondar(
+      Number(aggLotes._sum.quantidadeVendida ?? 0) * precoSacola,
+    );
 
     // Velocidade média: vendidas nos últimos 14 dias / 14.
     const janela = 14;
-    const inicioJanela = new Date(agora.getTime() - janela * 24 * 60 * 60 * 1000);
+    const inicioJanela = new Date(
+      agora.getTime() - janela * 24 * 60 * 60 * 1000,
+    );
     const aggJanela = await this.prisma.movimentoLoteApae.aggregate({
       where: { em: { gte: inicioJanela, lt: agora } },
       _sum: { vendidas: true },
     });
-    const velocidadeDia = arred(Number(aggJanela._sum.vendidas ?? 0) / janela);
+    const velocidadeDia = arredondar(
+      Number(aggJanela._sum.vendidas ?? 0) / janela,
+    );
 
     // Previsão de fim do lote ativo (saldo / velocidade).
     const ativo = await this.loteAtivo();
     const saldoLoteAtivo = ativo ? ativo.saldoAtual : null;
     const previsaoDiasFimLote =
-      ativo && velocidadeDia > 0 ? Math.ceil(ativo.saldoAtual / velocidadeDia) : null;
+      ativo && velocidadeDia > 0
+        ? Math.ceil(ativo.saldoAtual / velocidadeDia)
+        : null;
 
-    const metaProgresso = metaMensal > 0 ? Math.min(1, arrecadadoMes / metaMensal) : 0;
+    const metaProgresso =
+      metaMensal > 0 ? Math.min(1, arrecadadoMes / metaMensal) : 0;
 
     // Tendência: vendidas por dia nos últimos 30 dias.
     const dias = 30;
     const inicioTend = new Date(
-      Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate()) -
+      Date.UTC(
+        agora.getUTCFullYear(),
+        agora.getUTCMonth(),
+        agora.getUTCDate(),
+      ) -
         (dias - 1) * 24 * 60 * 60 * 1000,
     );
     const movimentos = await this.prisma.movimentoLoteApae.findMany({
@@ -417,12 +454,20 @@ export class LoteApaeService {
     const tendencia: { data: string; vendidas: number; valor: number }[] = [];
     for (let i = dias - 1; i >= 0; i--) {
       const d = new Date(
-        Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate()) -
+        Date.UTC(
+          agora.getUTCFullYear(),
+          agora.getUTCMonth(),
+          agora.getUTCDate(),
+        ) -
           i * 24 * 60 * 60 * 1000,
       );
       const k = d.toISOString().slice(0, 10);
       const v = porDia.get(k) ?? 0;
-      tendencia.push({ data: k, vendidas: v, valor: arred(v * precoSacola) });
+      tendencia.push({
+        data: k,
+        vendidas: v,
+        valor: arredondar(v * precoSacola),
+      });
     }
 
     return {

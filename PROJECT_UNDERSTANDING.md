@@ -166,7 +166,7 @@ Dev: `jest-expo`, `@testing-library/react-native`, ESLint, TypeScript.
 Render (hosting API/Web/BD), Google Gemini (asistente), EAS Build (APK).
 Secretos en Render (no en el repo): `DATABASE_URL`, `JWT_SECRET`,
 `GEMINI_API_KEY`, `GEMINI_MODEL`, `JWT_EXPIRES_IN`, `HORARIO_FIM_DO_DIA`,
-`SENHA_INICIAL`. Mobile: `EXPO_PUBLIC_API_URL`.
+`CORS_ORIGINS`, `SENHA_INICIAL`. Mobile: `EXPO_PUBLIC_API_URL`.
 
 ---
 

@@ -53,7 +53,10 @@ function agoraBrasilia(): { dataISO: string; minutos: number } {
  * acima de qualquer janela (dia encerrado); se é futura, retorna -1; se é hoje,
  * os minutos atuais de Brasília. Serve para derivar NAO_FEITO/PENDENTE.
  */
-function minutosRelativos(dataISO: string, agora: { dataISO: string; minutos: number }): number {
+function minutosRelativos(
+  dataISO: string,
+  agora: { dataISO: string; minutos: number },
+): number {
   if (dataISO < agora.dataISO) return 24 * 60 + 1;
   if (dataISO > agora.dataISO) return -1;
   return agora.minutos;
@@ -263,7 +266,7 @@ export class ChecklistService {
     const nomeDe = (id: string | null): string | null => {
       if (!id) return null;
       const u = usuarios.find((x) => x.id === id);
-      return u ? u.nome ?? u.login : id;
+      return u ? (u.nome ?? u.login) : id;
     };
 
     // Hashes repetidos (aparecem em mais de um checklist no histórico).
@@ -302,7 +305,11 @@ export class ChecklistService {
       };
     };
 
-    return { dataISO, abertura: build('ABERTURA'), fechamento: build('FECHAMENTO') };
+    return {
+      dataISO,
+      abertura: build('ABERTURA'),
+      fechamento: build('FECHAMENTO'),
+    };
   }
 
   /**
@@ -313,10 +320,14 @@ export class ChecklistService {
   async metricas(data: Date): Promise<ChecklistMetricas> {
     const ref = inicioDoDia(data);
     const agora = agoraBrasilia();
-    const inicioMes = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), 1));
+    const inicioMes = new Date(
+      Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), 1),
+    );
     const hojeISO = agora.dataISO;
     // Limite: hoje (se o mês de referência é o atual) ou fim do mês.
-    const fimMes = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() + 1, 1));
+    const fimMes = new Date(
+      Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() + 1, 1),
+    );
     const hojeDate = new Date(`${hojeISO}T00:00:00.000Z`);
     const limite = hojeDate < fimMes ? addDias(hojeDate, 1) : fimMes;
 
@@ -389,7 +400,7 @@ export class ChecklistService {
     const nomeDe = (id: string | null): string | null => {
       if (!id) return null;
       const u = usuarios.find((x) => x.id === id);
-      return u ? u.nome ?? u.login : id;
+      return u ? (u.nome ?? u.login) : id;
     };
 
     const lista: ChecklistHistoricoDia[] = [];
@@ -403,7 +414,12 @@ export class ChecklistService {
         );
         const status = (r?.status as StatusChecklist) ?? 'PENDENTE';
         return {
-          statusVisual: derivarStatusVisual(status, r?.noPrazo ?? null, minutos, tipo),
+          statusVisual: derivarStatusVisual(
+            status,
+            r?.noPrazo ?? null,
+            minutos,
+            tipo,
+          ),
           imagemUrl: r?.imagemUrl ?? null,
           enviadoPor: nomeDe(r?.enviadoPor ?? null),
           enviadoEm: r?.enviadoEm ? r.enviadoEm.toISOString() : null,
@@ -432,7 +448,10 @@ export class ChecklistService {
    * Verifica se o lembrete de início (5 min antes da janela) deve ser
    * disparado e o checklist ainda está pendente.
    */
-  async verificarLembreteInicio(tipo: TipoChecklist, agora: Date): Promise<boolean> {
+  async verificarLembreteInicio(
+    tipo: TipoChecklist,
+    agora: Date,
+  ): Promise<boolean> {
     const status = await this.status(tipo, agora);
     return deveLembrarInicio(tipo, minutosDoDia(agora), status);
   }

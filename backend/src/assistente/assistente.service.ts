@@ -18,6 +18,7 @@ import {
   CONFIG_ARRECADACAO,
   TIPOS_ARRECADACAO,
 } from '../arrecadacao/arrecadacao.domain';
+import { arredondar } from '../common/numeros';
 
 /** Uma mensagem da conversa exposta ao app. */
 export interface MensagemConversa {
@@ -111,9 +112,10 @@ export class AssistenteService {
       this.montarContextoApae(),
       this.montarContextoVendas(),
     ]);
-    const indicadores = [indicadoresBase, apae, vendas]
-      .filter((s): s is string => !!s)
-      .join('\n\n') || undefined;
+    const indicadores =
+      [indicadoresBase, apae, vendas]
+        .filter((s): s is string => !!s)
+        .join('\n\n') || undefined;
     const instrucao = montarInstrucaoSistema({
       nomeUsuario: usuario.nome,
       perfil: usuario.perfil,
@@ -222,7 +224,6 @@ export class AssistenteService {
       });
       const vendasMes = Number(vendasAgg._sum.valor ?? 0);
 
-      const arred = (n: number): number => Math.round(n * 100) / 100;
       const linhas: string[] = [];
       let temDados = false;
 
@@ -239,11 +240,12 @@ export class AssistenteService {
       for (const tipo of TIPOS_ARRECADACAO) {
         const config = CONFIG_ARRECADACAO[tipo];
         const meta = metaPorTipo.get(tipo) ?? config.meta;
-        const totalMes = arred(totalPorTipo.get(tipo) ?? 0);
+        const totalMes = arredondar(totalPorTipo.get(tipo) ?? 0);
         if (totalMes > 0) temDados = true;
 
         if (config.base === 'VENDAS') {
-          const pct = vendasMes > 0 ? arred((totalMes / vendasMes) * 100) : 0;
+          const pct =
+            vendasMes > 0 ? arredondar((totalMes / vendasMes) * 100) : 0;
           const emoji = pct <= meta ? '🟢' : pct <= meta * 1.5 ? '🟡' : '🔴';
           linhas.push(
             `${emoji} ${config.titulo}: ${pct}% das vendas no mês (meta ≤ ${meta}%).`,
@@ -260,14 +262,23 @@ export class AssistenteService {
       if (!temDados) return undefined;
 
       // Fiscais não entram nos rankings de destaque (operam caixa raramente).
-      const fiscaisDb = await this.prisma.fiscal.findMany({ select: { nome: true } });
+      const fiscaisDb = await this.prisma.fiscal.findMany({
+        select: { nome: true },
+      });
       const norm = (n: string): string =>
-        n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+        n
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toUpperCase()
+          .replace(/\s+/g, ' ')
+          .trim();
       const nomesFiscais = new Set(fiscaisDb.map((f) => norm(f.nome)));
       const ehFiscal = (nome: string): boolean => nomesFiscais.has(norm(nome));
 
       // Destaques do mês (Top por categoria, excluindo fiscais).
-      const topPorTipo = async (tipo: string): Promise<{ nome: string; total: number } | null> => {
+      const topPorTipo = async (
+        tipo: string,
+      ): Promise<{ nome: string; total: number } | null> => {
         const regs = await this.prisma.registroArrecadacao.findMany({
           where: { tipo, data: { gte: inicioMes, lt: inicioProximoMes } },
           select: { nome: true, valor: true },
@@ -280,7 +291,7 @@ export class AssistenteService {
         let melhorTipo: { nome: string; total: number } | null = null;
         for (const [nome, total] of totais.entries()) {
           if (total > 0 && (melhorTipo === null || total > melhorTipo.total)) {
-            melhorTipo = { nome, total: arred(total) };
+            melhorTipo = { nome, total: arredondar(total) };
           }
         }
         return melhorTipo;
@@ -291,10 +302,21 @@ export class AssistenteService {
         topPorTipo('CANCELAMENTO_ITENS'),
       ]);
       if (topTroco || topRecargas || topCancel) {
-        linhas.push('\nDestaques do mês (somente operadores; fiscais não entram):');
-        if (topTroco) linhas.push(`🏆 Troco solidário: ${topTroco.nome} (R$${topTroco.total}).`);
-        if (topRecargas) linhas.push(`🏆 Recargas: ${topRecargas.nome} (R$${topRecargas.total}).`);
-        if (topCancel) linhas.push(`⚠️ Mais cancelou itens: ${topCancel.nome} (R$${topCancel.total}).`);
+        linhas.push(
+          '\nDestaques do mês (somente operadores; fiscais não entram):',
+        );
+        if (topTroco)
+          linhas.push(
+            `🏆 Troco solidário: ${topTroco.nome} (R$${topTroco.total}).`,
+          );
+        if (topRecargas)
+          linhas.push(
+            `🏆 Recargas: ${topRecargas.nome} (R$${topRecargas.total}).`,
+          );
+        if (topCancel)
+          linhas.push(
+            `⚠️ Mais cancelou itens: ${topCancel.nome} (R$${topCancel.total}).`,
+          );
 
         // Menos cancelou: entre operadores ativos (troco/recargas), o menor cancelamento.
         const [contribRegs, cancelRegs] = await Promise.all([
@@ -306,7 +328,10 @@ export class AssistenteService {
             select: { nome: true, valor: true },
           }),
           this.prisma.registroArrecadacao.findMany({
-            where: { tipo: 'CANCELAMENTO_ITENS', data: { gte: inicioMes, lt: inicioProximoMes } },
+            where: {
+              tipo: 'CANCELAMENTO_ITENS',
+              data: { gte: inicioMes, lt: inicioProximoMes },
+            },
             select: { nome: true, valor: true },
           }),
         ]);
@@ -320,20 +345,28 @@ export class AssistenteService {
           if (ehFiscal(r.nome)) continue;
           cancel.set(r.nome, (cancel.get(r.nome) ?? 0) + Number(r.valor));
         }
-        let melhorMenos: { nome: string; cancel: number; contrib: number } | null = null;
+        let melhorMenos: {
+          nome: string;
+          cancel: number;
+          contrib: number;
+        } | null = null;
         for (const [nome, contribTotal] of contrib.entries()) {
           if (contribTotal <= 0) continue;
           const cancelTotal = cancel.get(nome) ?? 0;
           if (
             melhorMenos === null ||
             cancelTotal < melhorMenos.cancel ||
-            (cancelTotal === melhorMenos.cancel && contribTotal > melhorMenos.contrib)
+            (cancelTotal === melhorMenos.cancel &&
+              contribTotal > melhorMenos.contrib)
           ) {
             melhorMenos = { nome, cancel: cancelTotal, contrib: contribTotal };
           }
         }
         if (melhorMenos) {
-          const txt = melhorMenos.cancel > 0 ? `R$${arred(melhorMenos.cancel)}` : 'sem cancelamentos';
+          const txt =
+            melhorMenos.cancel > 0
+              ? `R$${arredondar(melhorMenos.cancel)}`
+              : 'sem cancelamentos';
           linhas.push(`🏆 Menos cancelou itens: ${melhorMenos.nome} (${txt}).`);
         }
       }
@@ -355,11 +388,16 @@ export class AssistenteService {
   private async montarContextoApae(): Promise<string | undefined> {
     try {
       const agora = new Date();
-      const inicioMes = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1));
-      const inicioProxMes = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 1));
-      const arred = (n: number): number => Math.round(n * 100) / 100;
+      const inicioMes = new Date(
+        Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1),
+      );
+      const inicioProxMes = new Date(
+        Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 1),
+      );
 
-      const cfg = await this.prisma.configApae.findUnique({ where: { id: 'apae' } });
+      const cfg = await this.prisma.configApae.findUnique({
+        where: { id: 'apae' },
+      });
       const preco = cfg ? Number(cfg.precoSacola) : 0.49;
       const meta = cfg ? Number(cfg.metaMensal) : 500;
 
@@ -371,8 +409,10 @@ export class AssistenteService {
         this.prisma.loteApae.aggregate({ _sum: { quantidadeVendida: true } }),
       ]);
       const vendidasMes = Number(aggMes._sum.vendidas ?? 0);
-      const arrecadadoMes = arred(vendidasMes * preco);
-      const totalHistorico = arred(Number(aggTotal._sum.quantidadeVendida ?? 0) * preco);
+      const arrecadadoMes = arredondar(vendidasMes * preco);
+      const totalHistorico = arredondar(
+        Number(aggTotal._sum.quantidadeVendida ?? 0) * preco,
+      );
 
       // Só inclui se houver alguma arrecadação histórica (evita ruído).
       if (totalHistorico <= 0 && arrecadadoMes <= 0) return undefined;
@@ -380,8 +420,8 @@ export class AssistenteService {
       const pctMeta = meta > 0 ? Math.round((arrecadadoMes / meta) * 100) : 0;
       const linhas = [
         '=== SACOLAS APAE (causa social) ===',
-        `Preço por sacola: R$${arred(preco)}.`,
-        `Arrecadado no mês: R$${arrecadadoMes} (${vendidasMes} sacolas) — meta de R$${arred(meta)} (${pctMeta}% da meta).`,
+        `Preço por sacola: R$${arredondar(preco)}.`,
+        `Arrecadado no mês: R$${arrecadadoMes} (${vendidasMes} sacolas) — meta de R$${arredondar(meta)} (${pctMeta}% da meta).`,
         `Total já arrecadado para a APAE (histórico): R$${totalHistorico}.`,
       ];
       return linhas.join('\n');
@@ -412,7 +452,6 @@ export class AssistenteService {
       const spIni = new Date(Date.UTC(ano, mes, agora.getUTCDate() - 8));
       const spFim = new Date(Date.UTC(ano, mes, agora.getUTCDate() - 7));
       const diasDoMes = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate();
-      const arred = (n: number): number => Math.round(n * 100) / 100;
 
       const cfg = await this.prisma.configVendas.findUnique({
         where: { id: 'vendas' },
@@ -447,17 +486,18 @@ export class AssistenteService {
           }),
         ]);
 
-      const arrecadadoMes = arred(Number(aggMes._sum.valor ?? 0));
-      const vendaHoje = arred(Number(aggHoje._sum.valor ?? 0));
-      const vendaOntem = arred(Number(aggOntem._sum.valor ?? 0));
-      const vendaOntemSP = arred(Number(aggOntemSP._sum.valor ?? 0));
+      const arrecadadoMes = arredondar(Number(aggMes._sum.valor ?? 0));
+      const vendaHoje = arredondar(Number(aggHoje._sum.valor ?? 0));
+      const vendaOntem = arredondar(Number(aggOntem._sum.valor ?? 0));
+      const vendaOntemSP = arredondar(Number(aggOntemSP._sum.valor ?? 0));
 
       // Sem dados de vendas: não inclui (evita ruído no prompt).
-      if (arrecadadoMes <= 0 && vendaHoje <= 0 && vendaOntem <= 0) return undefined;
+      if (arrecadadoMes <= 0 && vendaHoje <= 0 && vendaOntem <= 0)
+        return undefined;
 
       const projecao =
         diasComVenda > 0
-          ? arred((arrecadadoMes / diasComVenda) * diasDoMes)
+          ? arredondar((arrecadadoMes / diasComVenda) * diasDoMes)
           : 0;
 
       let horaPico: number | null = null;
@@ -488,18 +528,16 @@ export class AssistenteService {
       if (meta > 0) {
         const pct = Math.round((arrecadadoMes / meta) * 100);
         linhas.push(
-          `Faturamento do mês: R$${arrecadadoMes} — meta de R$${arred(meta)} (${pct}% da meta).`,
+          `Faturamento do mês: R$${arrecadadoMes} — meta de R$${arredondar(meta)} (${pct}% da meta).`,
         );
-        linhas.push(
-          `Projeção de fechamento (no ritmo atual): R$${projecao}.`,
-        );
+        linhas.push(`Projeção de fechamento (no ritmo atual): R$${projecao}.`);
       } else {
         linhas.push(`Faturamento do mês: R$${arrecadadoMes}.`);
         linhas.push(`Projeção de fechamento (no ritmo atual): R$${projecao}.`);
       }
       if (horaPico != null) {
         linhas.push(
-          `Hora de pico do mês: ${horaPico}h às ${horaPico + 1}h (R$${arred(maxHora)}).`,
+          `Hora de pico do mês: ${horaPico}h às ${horaPico + 1}h (R$${arredondar(maxHora)}).`,
         );
       }
       return linhas.join('\n');

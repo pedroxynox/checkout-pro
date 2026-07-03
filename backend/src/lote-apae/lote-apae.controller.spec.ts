@@ -27,11 +27,15 @@ describe('LoteApaeController', () => {
     } as unknown as LoteApaeService);
 
     await expect(
-      controller.atualizarSaldo('l1', { saldoAtual: 10 }, {
-        sub: 'u1',
-        login: 'gerente',
-        perfil: 'GERENTE',
-      }),
+      controller.atualizarSaldo(
+        'l1',
+        { saldoAtual: 10 },
+        {
+          sub: 'u1',
+          login: 'gerente',
+          perfil: 'GERENTE',
+        },
+      ),
     ).rejects.toBeInstanceOf(SaldoInvalidoError);
   });
 

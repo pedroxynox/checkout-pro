@@ -39,7 +39,11 @@ function perfilDaFuncao(
 
 /** Mapeia o turno do colaborador para o turno do fiscal (3 turnos). */
 function turnoFiscalDe(turno?: TurnoColaborador | null): TurnoFiscal {
-  if (turno === 'ABERTURA' || turno === 'INTERMEDIARIO' || turno === 'FECHAMENTO') {
+  if (
+    turno === 'ABERTURA' ||
+    turno === 'INTERMEDIARIO' ||
+    turno === 'FECHAMENTO'
+  ) {
     return turno;
   }
   return 'INTERMEDIARIO';
@@ -221,7 +225,9 @@ export class ColaboradoresService {
    * registro de fiscal, ou ainda não tem escala definida no cadastro (evita
    * apagar a escala vinda do seed enquanto o gestor não a preenche aqui).
    */
-  private async sincronizarEscalaFiscal(colaborador: Colaborador): Promise<void> {
+  private async sincronizarEscalaFiscal(
+    colaborador: Colaborador,
+  ): Promise<void> {
     if (colaborador.funcao !== 'FISCAL' || !colaborador.usuarioId) return;
     const escala = {
       entradaSemana: colaborador.entradaSemana,
@@ -369,7 +375,11 @@ export class ColaboradoresService {
     if (!atual.usuarioId) return;
 
     const senha = input.senha?.trim();
-    if (input.senha !== undefined && input.senha !== '' && (senha?.length ?? 0) < 6) {
+    if (
+      input.senha !== undefined &&
+      input.senha !== '' &&
+      (senha?.length ?? 0) < 6
+    ) {
       throw new SenhaAcessoObrigatoriaError();
     }
 
@@ -443,7 +453,9 @@ export class ColaboradoresService {
         select: { id: true, nome: true, usuarioId: true },
       }),
     ]);
-    const porUsuario = new Map(vinculados.map((c) => [c.usuarioId as string, c]));
+    const porUsuario = new Map(
+      vinculados.map((c) => [c.usuarioId as string, c]),
+    );
     return usuarios.map((u) => {
       const vinculo = porUsuario.get(u.id);
       return {

@@ -1,5 +1,5 @@
-import { Module } from '@nestjs/common';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -7,6 +7,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AlertasModule } from './alertas/alertas.module';
 import { DominioExceptionFilter } from './common/filters/dominio-exception.filter';
+import { CorrelationIdMiddleware } from './common/correlation-id.middleware';
+import { LoggingInterceptor } from './common/logging.interceptor';
 import { SegurancaModule } from './common/seguranca.module';
 import { StorageModule } from './storage/storage.module';
 import { validateEnv } from './config/env.validation';
@@ -64,6 +66,14 @@ import { AssistenteModule } from './assistente/assistente.module';
     // Guarda global de rate limiting. Aplica o teto global (acima) a todas as
     // rotas; rotas com @Throttle têm seus próprios limites (ex.: login).
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Observabilidade: log de uma linha por requisição (método, url, status,
+    // duração e id de correlação) após a conclusão.
+    { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    // Anexa/propaga o id de correlação (x-request-id) em todas as rotas.
+    consumer.apply(CorrelationIdMiddleware).forRoutes('*');
+  }
+}

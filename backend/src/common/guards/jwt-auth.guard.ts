@@ -72,9 +72,7 @@ export class JwtAuthGuard implements CanActivate {
     // (versão diferente da atual — ex.: após redefinição de senha).
     // Tokens antigos sem `tokenVersion` são tratados como 0.
     if (!usuario || usuario.tokenVersion !== (payload.tokenVersion ?? 0)) {
-      throw new UnauthorizedException(
-        'Sessão expirada. Faça login novamente.',
-      );
+      throw new UnauthorizedException('Sessão expirada. Faça login novamente.');
     }
 
     request.usuario = {

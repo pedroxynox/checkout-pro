@@ -181,7 +181,11 @@ export class ArrecadacaoController {
     @Body() dto: { tipo: TipoArrecadacao; meta: number },
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<{ tipo: TipoArrecadacao; meta: number }> {
-    return this.arrecadacaoService.definirMeta(dto.tipo, dto.meta, usuario?.sub);
+    return this.arrecadacaoService.definirMeta(
+      dto.tipo,
+      dto.meta,
+      usuario?.sub,
+    );
   }
 
   /** Série temporal (tendência) dos últimos N dias de um indicador. */

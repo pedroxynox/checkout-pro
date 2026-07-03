@@ -15,7 +15,10 @@ import {
   TurnoColaborador,
 } from '@prisma/client';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
-import { ColaboradoresService, LoginColaborador } from './colaboradores.service';
+import {
+  ColaboradoresService,
+  LoginColaborador,
+} from './colaboradores.service';
 import {
   PerfilColaboradorResposta,
   PerfilColaboradorService,
