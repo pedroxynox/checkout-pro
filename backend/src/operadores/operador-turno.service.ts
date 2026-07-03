@@ -303,7 +303,13 @@ export class OperadorTurnoService {
         else if (c.status === 'FOLGA') folgas += 1;
         else faltas += 1;
       }
-      return { diaSemana: dia.diaSemana, data: dia.data, trabalhando, folgas, faltas };
+      return {
+        diaSemana: dia.diaSemana,
+        data: dia.data,
+        trabalhando,
+        folgas,
+        faltas,
+      };
     });
 
     return {
@@ -333,38 +339,43 @@ export class OperadorTurnoService {
     const ausencias =
       ids.length > 0
         ? await this.prisma.ausencia.findMany({
-            where: { pessoaId: { in: ids }, data: { gte: diaInicio, lt: diaFim } },
+            where: {
+              pessoaId: { in: ids },
+              data: { gte: diaInicio, lt: diaFim },
+            },
             select: { id: true, pessoaId: true },
           })
         : [];
     const mapaAus = new Map(ausencias.map((a) => [a.pessoaId, a.id]));
     const fds = diaSemana === 5 || diaSemana === 6;
 
-    const colaboradores: ColaboradorDia[] = operadores.map((op): ColaboradorDia => {
-      if (op.folgaDiaSemana === diaSemana) {
+    const colaboradores: ColaboradorDia[] = operadores.map(
+      (op): ColaboradorDia => {
+        if (op.folgaDiaSemana === diaSemana) {
+          return {
+            id: op.id,
+            nome: op.nome,
+            genero: op.genero ?? null,
+            status: 'FOLGA',
+            entrada: null,
+            saida: null,
+            ausenciaId: null,
+          };
+        }
+        const entrada = fds ? op.entradaFds : op.entradaSemana;
+        const saida = fds ? op.saidaFds : op.saidaSemana;
+        const ausenciaId = mapaAus.get(op.id) ?? null;
         return {
           id: op.id,
           nome: op.nome,
           genero: op.genero ?? null,
-          status: 'FOLGA',
-          entrada: null,
-          saida: null,
-          ausenciaId: null,
+          status: ausenciaId ? 'FALTA' : 'TRABALHA',
+          entrada,
+          saida,
+          ausenciaId,
         };
-      }
-      const entrada = fds ? op.entradaFds : op.entradaSemana;
-      const saida = fds ? op.saidaFds : op.saidaSemana;
-      const ausenciaId = mapaAus.get(op.id) ?? null;
-      return {
-        id: op.id,
-        nome: op.nome,
-        genero: op.genero ?? null,
-        status: ausenciaId ? 'FALTA' : 'TRABALHA',
-        entrada,
-        saida,
-        ausenciaId,
-      };
-    });
+      },
+    );
 
     // Trabalha/falta primeiro, por hora de entrada; folga ao fim (por nome).
     colaboradores.sort((a, b) => {
@@ -403,7 +414,10 @@ export class OperadorTurnoService {
     const ausencias =
       ids.length > 0
         ? await this.prisma.ausencia.findMany({
-            where: { pessoaId: { in: ids }, data: { gte: diaInicio, lt: diaFim } },
+            where: {
+              pessoaId: { in: ids },
+              data: { gte: diaInicio, lt: diaFim },
+            },
             select: { pessoaId: true },
           })
         : [];
@@ -422,7 +436,8 @@ export class OperadorTurnoService {
       if (ent == null || sai == null) continue;
       const cobreAgora = nowMin >= ent && nowMin < sai;
       if (!cobreAgora) continue;
-      if (faltou.has(op.id)) listaFaltantes.push({ nome: op.nome, entrada, saida });
+      if (faltou.has(op.id))
+        listaFaltantes.push({ nome: op.nome, entrada, saida });
       else listaDisponiveis.push({ nome: op.nome, entrada, saida });
     }
 
@@ -482,7 +497,10 @@ export class OperadorTurnoService {
         select: { pessoaId: true, data: true },
       }),
       this.prisma.ausencia.findMany({
-        where: { pessoaId: { in: ids }, data: { gte: prevInicio, lte: prevFim } },
+        where: {
+          pessoaId: { in: ids },
+          data: { gte: prevInicio, lte: prevFim },
+        },
         select: { pessoaId: true, data: true },
       }),
     ]);

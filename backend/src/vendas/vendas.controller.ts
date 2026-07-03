@@ -106,7 +106,9 @@ export class VendasController {
    */
   @Get('painel')
   painel(@Query() dto: PainelVendasDto): Promise<PainelVendas> {
-    return this.vendasService.painel(dto.data ? new Date(dto.data) : new Date());
+    return this.vendasService.painel(
+      dto.data ? new Date(dto.data) : new Date(),
+    );
   }
 
   /** Configuração do painel (meta mensal). Visível a quem vê o painel. */

@@ -55,7 +55,12 @@ describe('gerarEscalaSemanalFiscal', () => {
   it('inclui o domingo quando é o dia de folga', () => {
     const dias = gerarEscalaSemanalFiscal({ ...base, folgaDiaSemana: 0 });
     const domingo = dias.find((d) => d.diaSemana === 0);
-    expect(domingo).toEqual({ diaSemana: 0, entrada: null, saida: null, folga: true });
+    expect(domingo).toEqual({
+      diaSemana: 0,
+      entrada: null,
+      saida: null,
+      folga: true,
+    });
     // Como a folga saiu da segunda, segunda volta a ter horário Seg–Qui.
     expect(dias.find((d) => d.diaSemana === 1)?.folga).toBe(false);
   });

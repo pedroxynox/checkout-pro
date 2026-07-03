@@ -103,13 +103,17 @@ export class ChecklistController {
   /** Estado rico dos dois checklists do dia (auditoria/pontualidade). */
   @Get('estado')
   estado(@Query() dto: ChecklistDataDto): Promise<EstadoChecklists> {
-    return this.checklistService.estado(dto.data ? new Date(dto.data) : new Date());
+    return this.checklistService.estado(
+      dto.data ? new Date(dto.data) : new Date(),
+    );
   }
 
   /** Métricas de cumprimento do mês (% no prazo, racha). */
   @Get('metricas')
   metricas(@Query() dto: ChecklistDataDto): Promise<ChecklistMetricas> {
-    return this.checklistService.metricas(dto.data ? new Date(dto.data) : new Date());
+    return this.checklistService.metricas(
+      dto.data ? new Date(dto.data) : new Date(),
+    );
   }
 
   /** Histórico dos últimos N dias (padrão 14). */

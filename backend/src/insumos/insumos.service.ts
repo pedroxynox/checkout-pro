@@ -345,7 +345,9 @@ export class InsumosService {
   async insumosParaRepor(): Promise<InsumoProativo[]> {
     const todos = await this.listarProativo();
     return todos.filter(
-      (i) => i.sugestaoReposicao > 0 && (i.nivel === 'CRITICO' || i.nivel === 'ATENCAO'),
+      (i) =>
+        i.sugestaoReposicao > 0 &&
+        (i.nivel === 'CRITICO' || i.nivel === 'ATENCAO'),
     );
   }
 
@@ -358,7 +360,9 @@ export class InsumosService {
     embalagens: number,
     responsavelId?: string,
   ): Promise<{ saldo: number }> {
-    const insumo = await this.prisma.insumo.findUnique({ where: { id: insumoId } });
+    const insumo = await this.prisma.insumo.findUnique({
+      where: { id: insumoId },
+    });
     if (!insumo) throw new NotFoundException('Insumo não encontrado.');
     const base = embalagens * insumo.fatorEmbalagem;
     await this.prisma.movimentoEstoque.create({
@@ -385,7 +389,9 @@ export class InsumosService {
    * usa o limite mínimo convertido em embalagens.
    */
   async verificarEReporAutomatico(insumoId: string): Promise<void> {
-    const insumo = await this.prisma.insumo.findUnique({ where: { id: insumoId } });
+    const insumo = await this.prisma.insumo.findUnique({
+      where: { id: insumoId },
+    });
     if (!insumo) return;
 
     const movimentos = await this.prisma.movimentoEstoque.findMany({
@@ -440,7 +446,8 @@ export class InsumosService {
 
     if (this.notificacoes) {
       const gestores = await this.notificacoes.gestores();
-      const plural = quantidade === 1 ? insumo.embalagem : `${insumo.embalagem}s`;
+      const plural =
+        quantidade === 1 ? insumo.embalagem : `${insumo.embalagem}s`;
       await this.notificacoes.enviar(gestores, {
         titulo: '📦 Reposição automática',
         mensagem: `${insumo.nome} atingiu nível crítico. Requisição automática de ${quantidade} ${plural} criada — aprove para dar entrada.`,

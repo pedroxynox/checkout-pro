@@ -37,7 +37,11 @@ function hojeBrasiliaISO(): string {
 }
 
 /** Perfis autorizados a programar ausência futura. */
-const PERFIS_AUTORIZA_FUTURO = ['GERENTE', 'GERENTE_DESENVOLVEDOR', 'SUPERVISOR'];
+const PERFIS_AUTORIZA_FUTURO = [
+  'GERENTE',
+  'GERENTE_DESENVOLVEDOR',
+  'SUPERVISOR',
+];
 
 /**
  * Controller do Modulo_Operadores (Req 6.1, 6.2, 6.3, 6.6). A gestão de

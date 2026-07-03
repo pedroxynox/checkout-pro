@@ -45,9 +45,7 @@ describe('GeminiClient', () => {
   });
 
   it('retorna o texto extraído em uma chamada simples', async () => {
-    jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValue(respostaOk('olá do modelo'));
+    jest.spyOn(global, 'fetch').mockResolvedValue(respostaOk('olá do modelo'));
     const cliente = new GeminiClient(configComChave);
     await expect(cliente.gerarResposta('sys', [])).resolves.toBe(
       'olá do modelo',

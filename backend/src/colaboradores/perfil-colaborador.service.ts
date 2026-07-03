@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { FiscaisService } from '../fiscais/fiscais.service';
 import { StatusFiscal } from '../fiscais/fiscais.domain';
 import { inicioDoDia, inicioDoMes, inicioDoProximoDia } from '../common/datas';
+import { arredondar } from '../common/numeros';
 import { CONFIG_ARRECADACAO } from '../arrecadacao/arrecadacao.domain';
 import { analisarFaltas } from '../operadores/operadores.domain';
 import { ColaboradorNaoEncontradoError } from './colaboradores.errors';
@@ -99,10 +100,6 @@ export interface PerfilColaboradorResposta {
   };
   motivosCancelamento: PontoSerie[];
   insignias: Insignia[];
-}
-
-function arredondar(n: number): number {
-  return Math.round(n * 100) / 100;
 }
 
 /** Chave de mês (ano*12+mês) para agrupar séries temporais. */

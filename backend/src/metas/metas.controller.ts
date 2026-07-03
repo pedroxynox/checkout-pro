@@ -1,4 +1,12 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
   UsuarioAtual,
@@ -30,6 +38,11 @@ export class MetasController {
     @Body() dto: DefinirMetaDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<MetaMensalView> {
-    return this.metasService.definir(dto.tipo, dto.anoMes, dto.meta, usuario?.sub);
+    return this.metasService.definir(
+      dto.tipo,
+      dto.anoMes,
+      dto.meta,
+      usuario?.sub,
+    );
   }
 }

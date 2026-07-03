@@ -5,6 +5,7 @@ import {
   type VinculoColaboradores,
 } from '../colaboradores/perfil-colaborador.domain';
 import { ArrecadacaoService } from './arrecadacao.service';
+import { arredondar } from '../common/numeros';
 import {
   CONFIG_ARRECADACAO,
   TipoArrecadacao,
@@ -105,10 +106,6 @@ export interface DestaquesMes {
   cancelamentoItens: DestaqueOperador | null;
   /** Operador ativo que MENOS cancelou itens (premiação). total = valor cancelado. */
   menosCancelou: DestaqueOperador | null;
-}
-
-function arredondar(n: number): number {
-  return Math.round(n * 100) / 100;
 }
 
 /**

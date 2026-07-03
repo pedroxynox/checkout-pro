@@ -114,18 +114,21 @@ EXPO_PUBLIC_API_URL=http://localhost:3000 npm run start
 
 | Variável | Obrigatória | Padrão | Descrição |
 | --- | --- | --- | --- |
-| `DATABASE_URL` | sim | — | String de conexão PostgreSQL (Prisma) |
-| `JWT_SECRET` | **sim em produção** | `dev-secret-trocar` (inseguro) | Segredo de assinatura dos tokens JWT. Use algo longo e aleatório (`openssl rand -hex 32`) |
+| `DATABASE_URL` | **sim em produção** | — | String de conexão PostgreSQL (Prisma). Obrigatória em produção — a API não sobe sem ela |
+| `JWT_SECRET` | **sim em produção** | — (sem default) | Segredo de assinatura dos tokens JWT. **Obrigatório em produção** (a API se recusa a iniciar sem ele); em desenvolvimento usa-se um segredo aleatório efêmero. Use algo longo e aleatório (`openssl rand -hex 32`) |
 | `JWT_EXPIRES_IN` | não | `30d` | Expiração do token de acesso (a equipe fica logada ~1 mês) |
 | `PORT` | não | `3000` | Porta HTTP (o Render injeta automaticamente) |
 | `NODE_ENV` | não | `development` | `development` \| `test` \| `production` |
 | `HORARIO_FIM_DO_DIA` | não | `18:00` | Horário (HH:mm) para alertas de importações pendentes |
 | `GEMINI_API_KEY` | não | — | Chave do Google Gemini (assistente Cluby). Sem ela, o assistente responde "não configurado" |
 | `GEMINI_MODEL` | não | `gemini-2.5-flash` | Modelo Gemini usado pela Cluby |
+| `CORS_ORIGINS` | não | — | Lista de origens permitidas para CORS, separadas por vírgula (ex.: `https://checkout-pro-web.onrender.com`). Se vazia, a API reflete a origem da requisição — **defina-a em produção** |
 
-> ⚠️ **Segurança:** defina `JWT_SECRET` em produção. Sem ele, a API usa um segredo
-> padrão conhecido e os tokens podem ser forjados. A aplicação registra um alerta no
-> startup quando isso ocorre em produção.
+> ⚠️ **Segurança:** em **produção** o `JWT_SECRET` é **obrigatório** — a API **não
+> inicializa** (falha rápida no boot) sem ele; não há mais segredo padrão inseguro.
+> Em desenvolvimento/teste, quando ausente, é gerado um segredo aleatório efêmero por
+> processo (útil localmente, inválido entre reinícios). O `DATABASE_URL` também é
+> obrigatório em produção pelo mesmo mecanismo de falha rápida.
 
 ### Mobile
 
@@ -172,8 +175,14 @@ São três serviços no Render, todos com deploy automático ao dar push na `mai
 1. **API (`checkout-pro-api`)** — Web Service, root directory `backend/`.
    - Build: `npm install && npm run build && npm run prisma:generate`
    - Start: `npm run start:prod`
-   - Variáveis: `DATABASE_URL`, `JWT_SECRET`, `GEMINI_API_KEY`, etc.
-   - Migrations: aplicar via `prisma migrate deploy` no banco de produção.
+   - Variáveis: `DATABASE_URL`, `JWT_SECRET`, `GEMINI_API_KEY`, `CORS_ORIGINS`, etc.
+     (`JWT_SECRET` e `DATABASE_URL` são obrigatórios — sem eles a API não sobe).
+   - Migrations: aplicar via `prisma migrate deploy` (inclui as migrações
+     `9t`/`9u`/`9v`). Recomenda-se configurá-lo como **Pre-Deploy Command** para
+     rodar antes de a nova versão entrar no ar (o advisory lock do Prisma evita
+     execuções concorrentes).
+   - Health check / readiness: o endpoint `GET /health/ready` sinaliza prontidão
+     (inclui conectividade com o banco); pode ser usado como health check do Render.
 2. **Web (`checkout-pro-web`)** — site estático gerado com:
    `EXPO_PUBLIC_API_URL=<url-da-api> npx expo export --platform web --output-dir dist`
    (publish directory `dist`).

@@ -79,7 +79,10 @@ function hhmm(min: number): string {
 }
 
 /** Janela de execução em texto "HH:mm" (para a UI). */
-export function janelaTexto(tipo: TipoChecklist): { inicio: string; fim: string } {
+export function janelaTexto(tipo: TipoChecklist): {
+  inicio: string;
+  fim: string;
+} {
   const j = JANELAS[tipo];
   return { inicio: hhmm(j.inicioMin), fim: hhmm(j.fimMin) };
 }

@@ -101,23 +101,23 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
  * operadores, gestão de requisições e o **Fechamento** (status dos arquivos do
  * dia). Permanece exclusiva do gerente a gestão de pessoas/acessos.
  */
-export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] = Object.freeze([
-  ...FUNCIONALIDADES_FISCAL,
-  'OPERADORES_CRUD',
-  'INSUMOS_GERENCIAR',
-  'FECHAMENTO',
-  // Log de jornada dos fiscais (horas trabalhadas e intervalos).
-  'FISCAIS_JORNADA',
-]);
+export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] =
+  Object.freeze([
+    ...FUNCIONALIDADES_FISCAL,
+    'OPERADORES_CRUD',
+    'INSUMOS_GERENCIAR',
+    'FECHAMENTO',
+    // Log de jornada dos fiscais (horas trabalhadas e intervalos).
+    'FISCAIS_JORNADA',
+  ]);
 
 /**
  * Funcionalidades do perfil IMPORTADOR: usuário dedicado, deixado no computador
  * da loja, cuja única função é **carregar os arquivos do dia** (Importações).
  * Não enxerga nenhuma outra área.
  */
-export const FUNCIONALIDADES_IMPORTADOR: readonly Funcionalidade[] = Object.freeze([
-  'IMPORTACOES',
-]);
+export const FUNCIONALIDADES_IMPORTADOR: readonly Funcionalidade[] =
+  Object.freeze(['IMPORTACOES']);
 
 const FUNCIONALIDADES_FISCAL_SET = new Set<string>(FUNCIONALIDADES_FISCAL);
 const FUNCIONALIDADES_SUPERVISOR_SET = new Set<string>(
@@ -137,27 +137,29 @@ const FUNCIONALIDADES_IMPORTADOR_SET = new Set<string>(
  * - A alteração de status de fiscal não é por funcionalidade: só o próprio
  *   fiscal (do seu status) ou o desenvolvedor podem alterar (ver FiscaisController).
  */
-export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze([
-  // Visualização / relatórios
-  'INDICADORES_VISUALIZAR',
-  'PAINEL_VENDAS_VISUALIZAR',
-  'PAINEL_VENDAS_EDITAR',
-  'ESCALA_VISUALIZAR',
-  'NOTIFICACOES',
-  'ALERTAS_FILA',
-  'NORMATIVAS',
-  'INDICADOR_QUEBRA',
-  'FECHAMENTO',
-  // Operação permitida ao gerente comum
-  'INSUMOS',
-  'INSUMOS_GERENCIAR',
-  'LOTE_APAE',
-  'CHECKLIST',
-  'OPERADORES_AUSENCIAS',
-  'FISCAIS_STATUS',
-  // Log de jornada dos fiscais (horas trabalhadas e intervalos).
-  'FISCAIS_JORNADA',
-]);
+export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
+  [
+    // Visualização / relatórios
+    'INDICADORES_VISUALIZAR',
+    'PAINEL_VENDAS_VISUALIZAR',
+    'PAINEL_VENDAS_EDITAR',
+    'ESCALA_VISUALIZAR',
+    'NOTIFICACOES',
+    'ALERTAS_FILA',
+    'NORMATIVAS',
+    'INDICADOR_QUEBRA',
+    'FECHAMENTO',
+    // Operação permitida ao gerente comum
+    'INSUMOS',
+    'INSUMOS_GERENCIAR',
+    'LOTE_APAE',
+    'CHECKLIST',
+    'OPERADORES_AUSENCIAS',
+    'FISCAIS_STATUS',
+    // Log de jornada dos fiscais (horas trabalhadas e intervalos).
+    'FISCAIS_JORNADA',
+  ],
+);
 
 const FUNCIONALIDADES_GERENTE_SET = new Set<string>(FUNCIONALIDADES_GERENTE);
 

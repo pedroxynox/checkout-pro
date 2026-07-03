@@ -49,7 +49,11 @@ export class LoteApaeController {
     @Body() dto: AtualizarSaldoDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<LoteApae> {
-    return this.loteApaeService.atualizarSaldo(id, dto.saldoAtual, usuario?.sub);
+    return this.loteApaeService.atualizarSaldo(
+      id,
+      dto.saldoAtual,
+      usuario?.sub,
+    );
   }
 
   /**

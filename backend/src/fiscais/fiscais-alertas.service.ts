@@ -87,7 +87,9 @@ export class FiscaisAlertasService {
       if (tempoIntervalo < LIMITE_INTERVALO_MS) continue;
 
       // Enviar alerta.
-      const fiscal = await this.prisma.fiscal.findUnique({ where: { id: fiscalId } });
+      const fiscal = await this.prisma.fiscal.findUnique({
+        where: { id: fiscalId },
+      });
       if (!fiscal) continue;
 
       const nome = primeiroNome(fiscal.nome);
@@ -98,7 +100,9 @@ export class FiscaisAlertasService {
 
       // Notificar o próprio fiscal.
       if (fiscal.usuarioId) {
-        const usuario = await this.prisma.usuario.findUnique({ where: { id: fiscal.usuarioId } });
+        const usuario = await this.prisma.usuario.findUnique({
+          where: { id: fiscal.usuarioId },
+        });
         if (usuario) {
           await this.notificacoes.enviar([usuario], {
             titulo: '⚠️ Intervalo longo',
@@ -115,7 +119,9 @@ export class FiscaisAlertasService {
       });
 
       this.alertasIntervaloEnviados.add(fiscalId);
-      this.logger.warn(`Alerta de intervalo longo: ${fiscal.nome} (${tempoStr}).`);
+      this.logger.warn(
+        `Alerta de intervalo longo: ${fiscal.nome} (${tempoStr}).`,
+      );
     }
   }
 
@@ -163,7 +169,9 @@ export class FiscaisAlertasService {
             : 'Apenas 1 fiscal disponível. Cobertura mínima (2) não atingida.',
       });
       this.ultimoAlertaCobertura = agora.getTime();
-      this.logger.warn(`Alerta de cobertura: ${disponiveis} fiscal(is) disponível(is).`);
+      this.logger.warn(
+        `Alerta de cobertura: ${disponiveis} fiscal(is) disponível(is).`,
+      );
     }
   }
 
@@ -190,7 +198,10 @@ export class FiscaisAlertasService {
     });
 
     // Agrupar por fiscal e dia.
-    const porFiscalDia = new Map<string, Map<string, { status: StatusFiscal; em: Date }[]>>();
+    const porFiscalDia = new Map<
+      string,
+      Map<string, { status: StatusFiscal; em: Date }[]>
+    >();
     for (const r of registros) {
       const diaKey = r.data.toISOString();
       if (!porFiscalDia.has(r.fiscalId)) {
@@ -229,7 +240,9 @@ export class FiscaisAlertasService {
       const minExtras = Math.floor((totalExtrasMs % 3600000) / 60000);
 
       if (fiscal.usuarioId) {
-        const usuario = await this.prisma.usuario.findUnique({ where: { id: fiscal.usuarioId } });
+        const usuario = await this.prisma.usuario.findUnique({
+          where: { id: fiscal.usuarioId },
+        });
         if (usuario) {
           await this.notificacoes.enviar([usuario], {
             titulo: '🎉 Dia de folga sugerido!',
@@ -245,7 +258,9 @@ export class FiscaisAlertasService {
       });
 
       this.alertasFolgaAutomatica.add(fiscal.id);
-      this.logger.log(`Folga sugerida para ${fiscal.nome}: ${horasExtras}h${minExtras}min extras.`);
+      this.logger.log(
+        `Folga sugerida para ${fiscal.nome}: ${horasExtras}h${minExtras}min extras.`,
+      );
     }
   }
 
@@ -271,15 +286,20 @@ export class FiscaisAlertasService {
     const escalaMap = new Map<string, Map<number, string>>(); // fiscalId -> diaSemana -> entrada
     for (const e of escalas) {
       if (!e.entrada || e.folga) continue;
-      if (!escalaMap.has(e.funcionarioId)) escalaMap.set(e.funcionarioId, new Map());
+      if (!escalaMap.has(e.funcionarioId))
+        escalaMap.set(e.funcionarioId, new Map());
       escalaMap.get(e.funcionarioId)!.set(e.diaSemana, e.entrada);
     }
 
     // Agrupar registros por fiscal e dia.
-    const porFiscalDia = new Map<string, Map<string, { status: StatusFiscal; em: Date }[]>>();
+    const porFiscalDia = new Map<
+      string,
+      Map<string, { status: StatusFiscal; em: Date }[]>
+    >();
     for (const r of registros) {
       const diaKey = r.data.toISOString();
-      if (!porFiscalDia.has(r.fiscalId)) porFiscalDia.set(r.fiscalId, new Map());
+      if (!porFiscalDia.has(r.fiscalId))
+        porFiscalDia.set(r.fiscalId, new Map());
       const m = porFiscalDia.get(r.fiscalId)!;
       if (!m.has(diaKey)) m.set(diaKey, []);
       m.get(diaKey)!.push({ status: r.status as StatusFiscal, em: r.em });
@@ -300,7 +320,10 @@ export class FiscaisAlertasService {
         const diaSemana = diaDate.getUTCDay();
 
         // Verificar intervalo longo (>2h).
-        const jornada = calcularJornada(regs, new Date(diaDate.getTime() + 24 * 60 * 60 * 1000));
+        const jornada = calcularJornada(
+          regs,
+          new Date(diaDate.getTime() + 24 * 60 * 60 * 1000),
+        );
         if (jornada.tempoIntervaloMs > 120 * 60 * 1000) {
           diasComIntervaloLongo++;
         }
@@ -324,10 +347,14 @@ export class FiscaisAlertasService {
 
       const nome = primeiroNome(fiscal.nome);
       if (diasComIntervaloLongo >= 3) {
-        alertas.push(`${nome}: intervalo >2h em ${diasComIntervaloLongo} dias na semana passada.`);
+        alertas.push(
+          `${nome}: intervalo >2h em ${diasComIntervaloLongo} dias na semana passada.`,
+        );
       }
       if (diasComAtraso >= 3) {
-        alertas.push(`${nome}: atraso (>15min) em ${diasComAtraso} dias na semana passada.`);
+        alertas.push(
+          `${nome}: atraso (>15min) em ${diasComAtraso} dias na semana passada.`,
+        );
       }
     }
 

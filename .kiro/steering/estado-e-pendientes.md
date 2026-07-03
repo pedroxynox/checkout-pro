@@ -189,7 +189,10 @@ PRs mergeados esta sesión: **#83, #84, #85, #86, #87** (todos en `main`).
 2. **BD de Render a plan estable** antes de que expire la free.
 3. **Endurecer el deploy:** Pre-Deploy Command (ver "Incidente de deploy" arriba).
 4. **Borrar el `checkout-pro-web` duplicado** en Render (hay 2 servicios web).
-5. Confirmar `JWT_SECRET` en Render (debería estar auto-generado).
+5. **`JWT_SECRET` ahora es OBLIGATORIO en producción:** la API **no arranca** sin
+   él (falla rápida en el boot — ya no hay default inseguro ni "solo warning").
+   Ya no es un "confirmar": debe estar seteado en Render (`DATABASE_URL` cae en la
+   misma regla). Asegurar ambos configurados antes de cualquier deploy.
 
 ### 🧩 Producto incompleto pero OCULTO (no rompe nada)
 6. Áreas "em breve" (`emBreve: true` en `areas.ts`, ocultas): **Alertas de Fila,

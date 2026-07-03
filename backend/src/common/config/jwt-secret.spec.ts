@@ -7,7 +7,9 @@ import { resolverSegredoJwt } from './jwt-secret';
  */
 
 /** ConfigService falso: responde `get(chave)` a partir de um mapa simples. */
-function fakeConfig(valores: Record<string, string | undefined>): ConfigService {
+function fakeConfig(
+  valores: Record<string, string | undefined>,
+): ConfigService {
   return {
     get: (chave: string) => valores[chave],
   } as unknown as ConfigService;
