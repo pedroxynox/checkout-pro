@@ -90,7 +90,13 @@ export class UsuariosService {
   async redefinirSenha(id: string, senha: string): Promise<void> {
     await this.garantirExiste(id);
     const senhaHash = await this.acessos.gerarHashSenha(senha);
-    await this.prisma.usuario.update({ where: { id }, data: { senhaHash } });
+    // Incrementa a versão do token para invalidar imediatamente as sessões
+    // antigas (JWTs emitidos antes da troca de senha param de ser aceitos pelo
+    // guard, que compara a versão do token com a versão atual do usuário).
+    await this.prisma.usuario.update({
+      where: { id },
+      data: { senhaHash, tokenVersion: { increment: 1 } },
+    });
   }
 
   /**
@@ -105,6 +111,9 @@ export class UsuariosService {
       );
     }
     await this.garantirExiste(id);
+    // Não é preciso mexer em tokenVersion aqui: ao remover o usuário, o
+    // JwtAuthGuard já rejeita qualquer token existente dele, pois o findUnique
+    // por id retorna null (usuário inexistente => sessão inválida).
     await this.prisma.$transaction([
       this.prisma.notificacao.deleteMany({ where: { usuarioId: id } }),
       this.prisma.usuario.delete({ where: { id } }),

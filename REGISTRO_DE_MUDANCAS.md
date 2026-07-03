@@ -12,6 +12,30 @@
 
 ---
 
+## Segurança: revogação de sessões via tokenVersion (2026-07-03)
+
+**Objetivo:** permitir invalidar JWTs antes do vencimento (os tokens duram 30
+dias e, até então, nada os invalidava mais cedo).
+
+- **JWT agora carrega `tokenVersion`:** no login, o token passa a incluir a
+  versão atual do usuário. O `JwtAuthGuard`, após validar a assinatura, compara
+  o `tokenVersion` do token com a versão atual do usuário no banco e **rejeita**
+  (401 "Sessão expirada. Faça login novamente.") quando divergem — ou quando o
+  usuário não existe mais.
+- **Redefinir senha invalida sessões antigas imediatamente:** `redefinirSenha`
+  passa a incrementar `tokenVersion` (`{ increment: 1 }`), de modo que todos os
+  JWTs emitidos antes da troca deixam de ser aceitos.
+- **Remoção de usuário também invalida:** não exige mudança específica — o guard
+  já rejeita tokens de usuários inexistentes (o `findUnique` retorna null).
+- **Mudança aditiva no banco:** nova coluna `tokenVersion` em `usuarios`
+  (`INTEGER NOT NULL DEFAULT 0`), sem impacto em usuários ou tokens atuais.
+  Tokens antigos, sem o campo `tokenVersion`, são lidos como 0 e continuam
+  válidos até que a versão do usuário mude (nenhum re-login forçado no deploy).
+- **Tradeoff:** o guard passa a fazer **1 leitura por requisição autenticada**
+  (`findUnique` por chave primária, indexada) para comparar a versão do token.
+
+---
+
 ## Resiliência: timeout/concorrência no Gemini e readiness com checagem de banco (2026-07-03)
 
 **Objetivo:** evitar que dependências externas (API do Gemini e banco de dados)

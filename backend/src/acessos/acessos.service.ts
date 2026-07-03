@@ -55,6 +55,7 @@ export class AcessosService {
       login: usuario.login,
       nome: usuario.nome ?? null,
       perfil,
+      tokenVersion: usuario.tokenVersion,
     });
 
     return { token, perfil };
