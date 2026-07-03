@@ -35,19 +35,6 @@ async function bootstrap(): Promise<void> {
   const port = configService.get<number>('PORT', 3000);
   const logger = new Logger('Bootstrap');
 
-  // Aviso de segurança: em produção, JWT_SECRET DEVE estar definido. Sem ele, a
-  // API recorreria a um segredo padrão conhecido (inseguro), permitindo forjar
-  // tokens e burlar a autenticação. Não derrubamos o processo (para não
-  // interromper o serviço em produção), mas registramos um alerta evidente.
-  const ehProducao = configService.get<string>('NODE_ENV') === 'production';
-  if (ehProducao && !configService.get<string>('JWT_SECRET')) {
-    logger.error(
-      'SEGURANÇA: JWT_SECRET não está definido em produção! A API está usando ' +
-        'um segredo padrão inseguro. Defina a variável JWT_SECRET no ambiente ' +
-        '(Render) o quanto antes — isso invalida sessões atuais (novo login).',
-    );
-  }
-
   // Escuta em 0.0.0.0 para funcionar em provedores de hospedagem (ex.: Render),
   // que encaminham o tráfego para a porta definida na variável de ambiente PORT.
   await app.listen(port, '0.0.0.0');
