@@ -7,7 +7,7 @@
  * fiscal. Também verifica que tocar em uma área navega para a rota
  * correspondente.
  */
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { Perfil } from '../api/types';
 import { podeAcessar } from '../auth/funcionalidades';
@@ -70,9 +70,13 @@ function navegacaoFake() {
 describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('o gerente desenvolvedor vê todas as áreas disponíveis (menos as "em breve")', () => {
+  it('o gerente desenvolvedor vê todas as áreas disponíveis (menos as "em breve")', async () => {
     montarAuth('GERENTE_DESENVOLVEDOR');
     render(<HomeScreen navigation={navegacaoFake()} route={{} as never} />);
+    // Descarrega as atualizações de estado assíncronas dos hooks (Resumo do
+    // Dia) dentro de act(...) para evitar o warning; os tiles renderizam de
+    // forma síncrona, então as asserções abaixo permanecem válidas.
+    await act(async () => {});
 
     // Vê todas as áreas prontas — exceto "Importações", que saiu da Home para
     // o Centro de Controle quando o usuário tem acesso ao Centro de Controle.
@@ -93,9 +97,10 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     }
   });
 
-  it('o gerente comum vê a operação, mas não a gestão de dados', () => {
+  it('o gerente comum vê a operação, mas não a gestão de dados', async () => {
     montarAuth('GERENTE');
     render(<HomeScreen navigation={navegacaoFake()} route={{} as never} />);
+    await act(async () => {});
 
     // Operação do dia a dia visível.
     expect(screen.getByText('Insumos')).toBeTruthy();
@@ -107,9 +112,10 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     expect(screen.queryByText('Gerenciar dados')).toBeNull();
   });
 
-  it('o fiscal vê as áreas operacionais, mas não a gestão de acessos', () => {
+  it('o fiscal vê as áreas operacionais, mas não a gestão de acessos', async () => {
     montarAuth('FISCAL');
     render(<HomeScreen navigation={navegacaoFake()} route={{} as never} />);
+    await act(async () => {});
 
     // Áreas operacionais visíveis (inclui Escalas para fiscais e operadores).
     expect(screen.getByText('Insumos')).toBeTruthy();
@@ -121,14 +127,17 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     expect(screen.queryByText('Pessoas e Acessos')).toBeNull();
   });
 
-  it('navega para a rota da área ao tocar no cartão', () => {
+  it('navega para a rota da área ao tocar no cartão', async () => {
     montarAuth('GERENTE');
     const navigation = navegacaoFake();
     render(<HomeScreen navigation={navigation} route={{} as never} />);
+    await act(async () => {});
 
     fireEvent.press(screen.getByText('Insumos'));
     expect((navigation as { navigate: jest.Mock }).navigate).toHaveBeenCalledWith(
       'Insumos',
     );
+    // Descarrega qualquer atualização pendente após a navegação.
+    await act(async () => {});
   });
 });
