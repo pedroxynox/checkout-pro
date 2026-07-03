@@ -8,6 +8,7 @@ import {
 } from '@nestjs/websockets';
 import { Subscription } from 'rxjs';
 import { Server, Socket } from 'socket.io';
+import { origensCorsDoAmbiente } from '../common/cors';
 import { NotificacaoEventos } from './notificacoes.eventos';
 
 /** Nome do evento WebSocket emitido a cada nova notificação. */
@@ -27,7 +28,10 @@ function salaDoUsuario(usuarioId: string): string {
  * (`NotificacaoEventos`), cada notificação é entregue APENAS ao seu
  * destinatário — diferente do painel de fiscais, que faz broadcast geral.
  */
-@WebSocketGateway({ namespace: '/notificacoes', cors: { origin: '*' } })
+@WebSocketGateway({
+  namespace: '/notificacoes',
+  cors: { origin: origensCorsDoAmbiente() },
+})
 export class NotificacoesGateway
   implements OnGatewayInit, OnGatewayConnection, OnModuleDestroy
 {

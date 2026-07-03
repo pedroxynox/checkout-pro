@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ArquivoUpload } from '../common/arquivo-upload';
+import { opcoesUploadTexto } from '../common/upload-options';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
   PeriodoArrecadacaoDto,
@@ -61,7 +62,7 @@ export class ArrecadacaoController {
   /** Recebe o arquivo .txt de um tipo e importa as linhas do dia. */
   @Post('upload')
   @Funcionalidade('IMPORTACOES')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', opcoesUploadTexto))
   async upload(
     @UploadedFile() arquivo: ArquivoUpload | undefined,
     @Query() dto: UploadArrecadacaoDto,

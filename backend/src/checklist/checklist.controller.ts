@@ -16,6 +16,7 @@ import { createHash } from 'crypto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Checklist } from '@prisma/client';
 import { ArquivoUpload } from '../common/arquivo-upload';
+import { opcoesUploadImagem } from '../common/upload-options';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
   UsuarioAtual,
@@ -65,7 +66,7 @@ export class ChecklistController {
    */
   @Post(':tipo/imagem')
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', opcoesUploadImagem))
   async enviarImagem(
     @Param() params: TipoChecklistParamDto,
     @Query() dto: ChecklistDataDto,

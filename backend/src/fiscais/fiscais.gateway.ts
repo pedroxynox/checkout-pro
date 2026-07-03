@@ -6,6 +6,7 @@ import {
 import { Logger, OnModuleDestroy } from '@nestjs/common';
 import { Subscription } from 'rxjs';
 import { Server } from 'socket.io';
+import { origensCorsDoAmbiente } from '../common/cors';
 import { FiscalStatusEvento, FiscalStatusEventos } from './fiscais.eventos';
 
 /** Nome do evento WebSocket emitido a cada atualização de status. */
@@ -21,7 +22,10 @@ export const EVENTO_STATUS_FISCAL = 'fiscal:status';
  *
  * O namespace `/fiscais` isola o canal do painel.
  */
-@WebSocketGateway({ namespace: '/fiscais', cors: { origin: '*' } })
+@WebSocketGateway({
+  namespace: '/fiscais',
+  cors: { origin: origensCorsDoAmbiente() },
+})
 export class FiscaisGateway implements OnGatewayInit, OnModuleDestroy {
   private readonly logger = new Logger(FiscaisGateway.name);
   private inscricao?: Subscription;

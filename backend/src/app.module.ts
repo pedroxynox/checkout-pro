@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AlertasModule } from './alertas/alertas.module';
@@ -32,6 +33,11 @@ import { AssistenteModule } from './assistente/assistente.module';
       validate: validateEnv,
     }),
     ScheduleModule.forRoot(),
+    // Limite GLOBAL de requisições — teto ALTO de anti-abuso apenas. Vários
+    // usuários da loja compartilham UM ÚNICO IP público (NAT), então um limite
+    // global baixo causaria falsos 429 para o time inteiro. O limite restrito
+    // (brute force) é aplicado SOMENTE ao login, no AcessosController.
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60000, limit: 2000 }]),
     PrismaModule,
     SegurancaModule,
     StorageModule,
@@ -55,6 +61,9 @@ import { AssistenteModule } from './assistente/assistente.module';
   providers: [
     AppService,
     { provide: APP_FILTER, useClass: DominioExceptionFilter },
+    // Guarda global de rate limiting. Aplica o teto global (acima) a todas as
+    // rotas; rotas com @Throttle têm seus próprios limites (ex.: login).
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}
