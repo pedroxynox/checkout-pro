@@ -92,7 +92,7 @@ export class GeminiClient {
     }
     const modelo =
       this.config.get<string>('GEMINI_MODEL') ?? 'gemini-2.5-flash';
-    const url = `${URL_BASE}/${modelo}:generateContent?key=${chave}`;
+    const url = `${URL_BASE}/${modelo}:generateContent`;
 
     const corpo = {
       systemInstruction: { parts: [{ text: instrucaoSistema }] },
@@ -117,7 +117,12 @@ export class GeminiClient {
       try {
         resposta = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            // A chave vai no cabeçalho (não na query string da URL), evitando
+            // que ela seja exposta em logs de acesso/proxies e no histórico.
+            'x-goog-api-key': chave,
+          },
           body: JSON.stringify(corpo),
         });
       } catch (erro) {

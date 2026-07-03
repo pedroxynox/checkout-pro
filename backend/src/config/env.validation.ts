@@ -70,6 +70,12 @@ export class EnvironmentVariables {
   @IsString()
   @IsOptional()
   GEMINI_MODEL = 'gemini-2.5-flash';
+
+  // Lista de origens permitidas para CORS (separadas por vírgula). Ex.:
+  // "https://checkout-pro-web.onrender.com". Se vazio, em dev reflete a origem.
+  @IsString()
+  @IsOptional()
+  CORS_ORIGINS?: string;
 }
 
 /**

@@ -12,7 +12,37 @@
 
 ---
 
-## 0. Segurança: JWT_SECRET obrigatório em produção + remoção de xlsx/papaparse (2026-07-03)
+## 0. Hardening de segurança (2026-07-03)
+
+**Objetivo:** reduzir a superfície de ataque da API com medidas de defesa em
+profundidade, sem alterar comportamento legítimo.
+
+- **Rate-limit no login + helmet:** adicionado `@nestjs/throttler` com um teto
+  GLOBAL alto (2000 req/min) — apenas anti-abuso, pois todos os usuários da loja
+  compartilham UM IP público (NAT) e um limite baixo causaria falsos `429` para
+  o time inteiro. O limite ESTRITO (8 tentativas/min) é aplicado SOMENTE à rota
+  de login (`POST /acessos/login`), protegendo contra força bruta — o login é
+  raro (sessões de 30 dias). Adicionado `helmet` para cabeçalhos de segurança
+  HTTP, com `Cross-Origin-Resource-Policy: cross-origin` para que as imagens
+  estáticas em `/assets` continuem carregáveis pelo app web em outro domínio.
+- **Limites de tamanho de upload:** novos presets em
+  `backend/src/common/upload-options.ts` — 2 MiB para arquivos de texto (.txt de
+  arrecadação e vendas) e 10 MiB para imagens (fotos do checklist), ambos com
+  `files: 1`. Evita que um upload gigante seja carregado inteiro em memória
+  (proteção contra exaustão de RAM).
+- **CORS por allowlist (`CORS_ORIGINS`):** as origens permitidas passam a vir da
+  variável de ambiente `CORS_ORIGINS` (lista separada por vírgula); sem ela (dev)
+  a origem é refletida. Como a autenticação é via token Bearer (sem cookies),
+  `credentials` foi desabilitado. Os gateways WebSocket (`/fiscais` e
+  `/notificacoes`) deixaram de usar `origin: '*'` e passaram a respeitar a mesma
+  allowlist.
+- **Chave do Gemini no cabeçalho:** a chave da API do Google Gemini deixou de ser
+  enviada na query string da URL (`?key=`) e passou para o cabeçalho
+  `x-goog-api-key`, evitando vazamento em logs de acesso/proxies.
+
+---
+
+## 0b. Segurança: JWT_SECRET obrigatório em produção + remoção de xlsx/papaparse (2026-07-03)
 
 **Objetivo:** eliminar dois riscos críticos de segurança.
 

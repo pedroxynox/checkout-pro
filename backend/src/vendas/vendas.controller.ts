@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ArquivoUpload } from '../common/arquivo-upload';
+import { opcoesUploadTexto } from '../common/upload-options';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
   UsuarioAtual,
@@ -47,7 +48,7 @@ export class VendasController {
   /** Recebe o arquivo .txt de vendas por hora e importa o dia. */
   @Post('upload')
   @Funcionalidade('IMPORTACOES')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', opcoesUploadTexto))
   async upload(
     @UploadedFile() arquivo: ArquivoUpload | undefined,
     @Query() dto: UploadVendasDto,

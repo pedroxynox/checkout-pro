@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Post,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Publico } from '../common/decorators/publico.decorator';
 import {
   UsuarioAtual,
@@ -27,6 +28,10 @@ export class AcessosController {
    * pública; em caso de credenciais inválidas, o `AcessosService` lança
    * `CredenciaisInvalidasError`, mapeado para 401 pelo filtro de exceções.
    */
+  // Limite ESTRITO contra força bruta: no máximo 8 tentativas por minuto por
+  // IP. O login é infrequente (sessões de 30 dias), então um limite baixo não
+  // atrapalha o uso legítimo, mas barra ataques de adivinhação de senha.
+  @Throttle({ default: { ttl: 60000, limit: 8 } })
   @Publico()
   @Post('login')
   @HttpCode(HttpStatus.OK)
