@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AcessosModule } from '../acessos/acessos.module';
 import { FiscaisModule } from '../fiscais/fiscais.module';
+import { IncidenciasModule } from '../incidencias/incidencias.module';
 import { ColaboradoresController } from './colaboradores.controller';
 import { ColaboradoresService } from './colaboradores.service';
 import { PerfilColaboradorService } from './perfil-colaborador.service';
@@ -11,11 +12,12 @@ import { PerfilColaboradorService } from './perfil-colaborador.service';
  * "Colaboradores", os perfis e a resolução dos movimentos de arrecadação.
  *
  * Importa o `AcessosModule` para criar/atualizar a conta de acesso (login do
- * app) ao cadastrar fiscal/supervisor/gerente, e o `FiscaisModule` para mostrar
- * status/jornada no perfil. O `PrismaService` é global.
+ * app) ao cadastrar fiscal/supervisor/gerente, o `FiscaisModule` para mostrar
+ * status/jornada no perfil e o `IncidenciasModule` para a seção de incidências
+ * de escala do perfil. O `PrismaService` é global.
  */
 @Module({
-  imports: [AcessosModule, FiscaisModule],
+  imports: [AcessosModule, FiscaisModule, IncidenciasModule],
   providers: [ColaboradoresService, PerfilColaboradorService],
   controllers: [ColaboradoresController],
   exports: [ColaboradoresService],

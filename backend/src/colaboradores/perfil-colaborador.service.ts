@@ -6,6 +6,7 @@ import { inicioDoDia, inicioDoMes, inicioDoProximoDia } from '../common/datas';
 import { arredondar } from '../common/numeros';
 import { CONFIG_ARRECADACAO } from '../arrecadacao/arrecadacao.domain';
 import { analisarFaltas } from '../operadores/operadores.domain';
+import { IncidenciasService } from '../incidencias/incidencias.service';
 import { ColaboradorNaoEncontradoError } from './colaboradores.errors';
 import {
   calcularScore,
@@ -100,7 +101,26 @@ export interface PerfilColaboradorResposta {
   };
   motivosCancelamento: PontoSerie[];
   insignias: Insignia[];
+  /**
+   * Incidências de escala (Fase 1 — "não retornou do intervalo"): resumo
+   * analítico do colaborador (últimos ~6 meses) + linha do tempo unificada
+   * (incidências + faltas). Alimentado por `IncidenciasService`.
+   */
+  incidencias: {
+    totalNaoRetorno: number;
+    ultimoNaoRetorno: string | null;
+    diasConsecutivosSemIncidencia: number;
+    risco: string;
+    tendencia: string;
+    porDiaSemana: PontoSerie[];
+    frequenciaMensal: number;
+    percentualSobreEscalados: number;
+    timeline: { data: string; kind: string }[];
+  };
 }
+
+/** Rótulos curtos dos dias da semana (0=Dom..6=Sáb) para as séries. */
+const DIAS_SEMANA_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 /** Chave de mês (ano*12+mês) para agrupar séries temporais. */
 function chaveMes(d: Date): number {
@@ -123,6 +143,7 @@ export class PerfilColaboradorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fiscais: FiscaisService,
+    private readonly incidenciasService: IncidenciasService,
   ) {}
 
   async perfil(
@@ -355,6 +376,9 @@ export class PerfilColaboradorService {
       faltas: { total: faltas.total, risco: faltas.risco },
     });
 
+    // Incidências de escala (resumo analítico + linha do tempo unificada).
+    const incidencias = await this.incidenciasDoColaborador(id, fim);
+
     return {
       colaborador: {
         id: colaborador.id,
@@ -382,6 +406,37 @@ export class PerfilColaboradorService {
       faltas,
       motivosCancelamento,
       insignias,
+      incidencias,
+    };
+  }
+
+  /**
+   * Seção de incidências de escala do perfil: reaproveita
+   * `IncidenciasService.resumoDoColaborador` (analítica + linha do tempo) e
+   * adapta ao formato do perfil (séries por dia da semana e timeline em ISO).
+   */
+  private async incidenciasDoColaborador(
+    id: string,
+    fim: Date,
+  ): Promise<PerfilColaboradorResposta['incidencias']> {
+    const { analise, timeline } =
+      await this.incidenciasService.resumoDoColaborador(id, fim);
+    return {
+      totalNaoRetorno: analise.porTipo.NAO_RETORNO_INTERVALO,
+      ultimoNaoRetorno: analise.ultimaPorTipo.NAO_RETORNO_INTERVALO,
+      diasConsecutivosSemIncidencia: analise.diasConsecutivosSemIncidencia,
+      risco: analise.risco,
+      tendencia: analise.tendencia,
+      porDiaSemana: analise.porDiaSemana.map((valor, dia) => ({
+        rotulo: DIAS_SEMANA_CURTO[dia],
+        valor,
+      })),
+      frequenciaMensal: analise.frequenciaMensal,
+      percentualSobreEscalados: analise.percentualSobreEscalados,
+      timeline: timeline.map((t) => ({
+        data: t.data.toISOString().slice(0, 10),
+        kind: t.kind,
+      })),
     };
   }
 

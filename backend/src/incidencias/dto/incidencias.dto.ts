@@ -1,0 +1,111 @@
+import {
+  IsDateString,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+} from 'class-validator';
+import { TIPOS_INCIDENCIA, TipoIncidencia } from '../incidencias.domain';
+
+/** Expressão de horário "HH:mm" (00:00–23:59). */
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+const MSG_HHMM = 'O horário deve estar no formato HH:mm (00:00–23:59).';
+
+/** Registra uma incidência de escala (por colaborador, tipo e data). */
+export class CriarIncidenciaDto {
+  @IsString()
+  @IsNotEmpty({ message: 'O identificador do colaborador é obrigatório.' })
+  colaboradorId!: string;
+
+  @IsIn(TIPOS_INCIDENCIA as unknown as string[], {
+    message: 'Tipo de incidência inválido.',
+  })
+  tipo!: TipoIncidencia;
+
+  @IsDateString(
+    {},
+    { message: 'A data deve estar em formato de data válido (ISO 8601).' },
+  )
+  data!: string;
+
+  @IsOptional()
+  @Matches(HHMM, { message: MSG_HHMM })
+  horaSaida?: string;
+
+  @IsOptional()
+  @Matches(HHMM, { message: MSG_HHMM })
+  horaEsperadaRetorno?: string;
+
+  @IsOptional()
+  @Matches(HHMM, { message: MSG_HHMM })
+  horaReal?: string;
+
+  @IsOptional()
+  @IsString()
+  motivo?: string;
+
+  @IsOptional()
+  @IsString()
+  observacao?: string;
+}
+
+/** Edita os campos editáveis de uma incidência (parcial). */
+export class EditarIncidenciaDto {
+  @IsOptional()
+  @Matches(HHMM, { message: MSG_HHMM })
+  horaSaida?: string;
+
+  @IsOptional()
+  @Matches(HHMM, { message: MSG_HHMM })
+  horaEsperadaRetorno?: string;
+
+  @IsOptional()
+  @Matches(HHMM, { message: MSG_HHMM })
+  horaReal?: string;
+
+  @IsOptional()
+  @IsString()
+  motivo?: string;
+
+  @IsOptional()
+  @IsString()
+  observacao?: string;
+}
+
+/** Filtros de listagem de incidências. */
+export class ListarIncidenciasDto {
+  @IsOptional()
+  @IsString()
+  colaboradorId?: string;
+
+  @IsOptional()
+  @IsIn(TIPOS_INCIDENCIA as unknown as string[], {
+    message: 'Tipo de incidência inválido.',
+  })
+  tipo?: TipoIncidencia;
+
+  @IsOptional()
+  @IsDateString({}, { message: 'A data inicial deve ser uma data válida.' })
+  inicio?: string;
+
+  @IsOptional()
+  @IsDateString({}, { message: 'A data final deve ser uma data válida.' })
+  fim?: string;
+}
+
+/** Filtro de data para as sugestões (auto-detecção do ponto). */
+export class SugestoesIncidenciaDto {
+  @IsOptional()
+  @IsDateString({}, { message: 'A data deve ser uma data válida (ISO 8601).' })
+  data?: string;
+}
+
+/** Janela do ranking de incidências. */
+export class RankingIncidenciasDto {
+  @IsDateString({}, { message: 'A data inicial deve ser uma data válida.' })
+  inicio!: string;
+
+  @IsDateString({}, { message: 'A data final deve ser uma data válida.' })
+  fim!: string;
+}

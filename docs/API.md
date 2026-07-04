@@ -139,6 +139,16 @@
 | GET | `/escala/consolidada/:diaSemana` | `ESCALA_VISUALIZAR` | Escala consolidada do dia |
 | GET | `/escala/:funcionarioId/efetiva` | `ESCALA_VISUALIZAR` | Escala efetiva (`?diaSemana=`) |
 
+## Incidências de Escala  *(base `/escala/incidencias`)*
+| Método | Rota | Permissão | Descrição |
+|---|---|---|---|
+| POST | `/escala/incidencias` | `OPERADORES_AUSENCIAS` | Registra incidência (ex.: não retorno do intervalo) |
+| PATCH | `/escala/incidencias/:id` | `OPERADORES_AUSENCIAS` | Edita campos editáveis |
+| DELETE | `/escala/incidencias/:id` | `OPERADORES_AUSENCIAS` | Remove incidência |
+| GET | `/escala/incidencias` | `ESCALA_VISUALIZAR` | Lista (`?colaboradorId=&tipo=&inicio=&fim=`) |
+| GET | `/escala/incidencias/sugestoes` | `ESCALA_VISUALIZAR` | Auto-detecção do ponto (`?data=`) |
+| GET | `/escala/incidencias/ranking` | `ESCALA_VISUALIZAR` | Ranking por colaborador (`?inicio=&fim=`) |
+
 ## Quadro de Operadores  *(classe: `OPERADORES_AUSENCIAS`, base `/quadro-operadores`)*
 | Método | Rota | Permissão | Descrição |
 |---|---|---|---|
