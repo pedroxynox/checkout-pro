@@ -12,6 +12,12 @@
 
 ---
 
+## Documentação — Estado do projeto e próximos passos (2026-07-03)
+
+Documentação: adicionado docs/ESTADO_Y_PROXIMOS_PASOS.md (estado do projeto + próximos passos consolidados).
+
+---
+
 ## Incidências de Escala — mobile/UX (Fase 2: "não retornou do intervalo") (2026-07-03)
 
 **Objetivo:** trazer para o app móvel a experiência das **incidências de escala**
