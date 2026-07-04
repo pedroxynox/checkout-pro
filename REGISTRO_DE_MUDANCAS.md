@@ -12,7 +12,48 @@
 
 ---
 
-## Polimento: DRY, observabilidade, correções de config e docs de produção (2026-07-03)
+## Incidências de Escala — backend (Fase 1: "não retornou do intervalo") (2026-07-03)
+
+**Objetivo:** introduzir o registro e a análise de **incidências de escala** por
+data, começando pelo evento "não retornou do intervalo". A modelagem é
+**genérica por `tipo`** para crescer sem novas tabelas, e a detecção pode ser
+automática a partir do ponto dos fiscais. Esta é a **Fase 1 (somente backend)**;
+a experiência no app móvel vem em um PR seguinte.
+
+- **(Modelo) Tabela genérica `IncidenciaEscala`.** Nova tabela (por DATA,
+  diferente de `EscalaEntry`, que é a plantilla semanal) com `tipo`
+  (`TipoIncidenciaEscala`, hoje só `NAO_RETORNO_INTERVALO`), `colaboradorId`,
+  `funcionarioId?` (Fiscal), horários (`horaSaida`, `horaEsperadaRetorno`,
+  `horaReal`), `origem` (`MANUAL`/`DETECTADO_PONTO`), `motivo`/`observacao`,
+  autor do registro e timestamps. Unicidade `(colaboradorId, tipo, data)` +
+  índices `(colaboradorId, data)`, `(tipo, data)` e `(data)`.
+- **(Migração) `9w_incidencia_escala` — aditiva.** Cria o enum e a tabela com
+  os índices; **não remove nem altera** dados existentes.
+- **(Domínio puro) `incidencias.domain.ts`.** Sem Nest/Prisma:
+  `derivarHoraEsperadaRetorno` (saída + intervalo, limitado a 23:59),
+  `detectarNaoRetorno` (intervalo sem retorno no log de ponto),
+  `analisarIncidencias` (taxa, padrões, tendência e risco — espelhando as
+  heurísticas de `analisarFaltas` dos operadores), `timelineUnificada`
+  (faltas + incidências, desc) e `rankingIncidencias`. Coberto por testes de
+  propriedade (fast-check, ≥100 execuções por propriedade).
+- **(Módulo) `escala/incidencias`.** Serviço + controller + `dto` (class-validator,
+  horários validados por `@Matches(/^([01]\d|2[0-3]):[0-5]\d$/)`) + erros
+  próprios estendendo `ErroDominio` (`IncidenciaNaoEncontradaError` 404,
+  `IncidenciaDuplicadaError` 409, etc.). Endpoints: `POST /`, `PATCH /:id`,
+  `DELETE /:id` (`OPERADORES_AUSENCIAS`); `GET /`, `GET /sugestoes`,
+  `GET /ranking` (`ESCALA_VISUALIZAR`). Registrado em `app.module.ts`.
+- **(Auto-detecção do ponto).** `GET /sugestoes?data=` monta o log de transições
+  de cada fiscal a partir de `RegistroPontoFiscal` (instante formatado em HH:mm
+  no fuso `America/Sao_Paulo`), aplica `detectarNaoRetorno` com o `intervaloMin`
+  da escala e devolve os candidatos que ainda não têm incidência registrada.
+- **(Alerta por limite).** Ao registrar, se o colaborador atinge 3 incidências
+  do tipo no mês, os gestores recebem **um** aviso (mesmo padrão do alerta de 3
+  faltas dos operadores; defensivo — nunca bloqueia o registro).
+- **(Perfil enriquecido).** O Perfil Inteligente do Colaborador ganhou a seção
+  `incidencias` (total, última, dias sem incidência, risco, tendência, série por
+  dia da semana, frequência mensal, % sobre escalados e linha do tempo
+  unificada), alimentada por `IncidenciasService.resumoDoColaborador`. Os campos
+  existentes do perfil foram preservados.
 
 **Objetivo:** rodada de polimento final com mudanças de baixo risco e, salvo o
 novo log de requisições e a documentação, **preservando o comportamento**.

@@ -82,6 +82,12 @@ enum TurnoFiscal {
   FECHAMENTO
 }
 
+// Tipo de incidência de escala (por data). Genérico por `tipo` para crescer
+// sem novas tabelas. O primeiro evento é "não retornou do intervalo".
+enum TipoIncidenciaEscala {
+  NAO_RETORNO_INTERVALO
+}
+
 // ---------------------------- Modelos -------------------------------------
 
 model Usuario {
@@ -645,4 +651,33 @@ model ColaboradorIdentificador {
   @@unique([tipo, valor])
   @@index([colaboradorId])
   @@map("colaborador_identificadores")
+}
+
+
+/// Incidência de escala por DATA (diferente de EscalaEntry, que é a plantilla
+/// semanal). Genérica por `tipo` para crescer sem novas tabelas. O horário
+/// ESPERADO é derivado da escala (intervaloMin); para fiscais, o horário REAL
+/// pode ser detectado do ponto (RegistroPontoFiscal).
+model IncidenciaEscala {
+  id                 String               @id @default(uuid())
+  colaboradorId      String
+  funcionarioId      String?
+  tipo               TipoIncidenciaEscala
+  data               DateTime
+  horaSaida          String?
+  horaEsperadaRetorno String?
+  horaReal           String?
+  origem             String               @default("MANUAL") // MANUAL | DETECTADO_PONTO
+  motivo             String?
+  observacao         String?
+  registradoPorId    String?
+  registradoPorNome  String?
+  criadoEm           DateTime             @default(now())
+  atualizadoEm       DateTime             @default(now()) @updatedAt
+
+  @@unique([colaboradorId, tipo, data])
+  @@index([colaboradorId, data])
+  @@index([tipo, data])
+  @@index([data])
+  @@map("incidencias_escala")
 }
