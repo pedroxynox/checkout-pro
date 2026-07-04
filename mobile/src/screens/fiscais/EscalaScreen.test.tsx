@@ -12,16 +12,26 @@ import { EscalaScreen } from './EscalaScreen';
 jest.mock('../../api/services', () => ({
   escalaService: {
     consolidada: jest.fn(),
+    // Incidências de escala (Fase 2): a tela consulta as sugestões do dia e
+    // pode registrar/editar/remover incidências.
+    sugestoesIncidencias: jest.fn(),
+    registrarIncidencia: jest.fn(),
+    editarIncidencia: jest.fn(),
+    removerIncidencia: jest.fn(),
+    listarIncidencias: jest.fn(),
+    rankingIncidencias: jest.fn(),
   },
 }));
 
 // A tela passou a permitir abrir o perfil do colaborador: mockamos navegação e
-// auth (sem permissão => itens não navegáveis, comportamento neutro no teste).
+// auth. `mockAuth.permitir` controla `podeAcessar` (perfil/registro de
+// incidências) por teste — sem permissão o comportamento é neutro.
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: jest.fn() }),
 }));
+const mockAuth = { permitir: false };
 jest.mock('../../auth/AuthContext', () => ({
-  useAuth: () => ({ podeAcessar: () => false }),
+  useAuth: () => ({ podeAcessar: () => mockAuth.permitir }),
 }));
 
 // "Hoje" determinístico (sexta-feira = 5) para o snapshot não depender do dia
@@ -65,7 +75,9 @@ const CONSOLIDADA = [
 describe('EscalaScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuth.permitir = false;
     escalaService.consolidada.mockResolvedValue(CONSOLIDADA);
+    escalaService.sugestoesIncidencias.mockResolvedValue([]);
   });
 
   it('exibe os horários efetivos e selos de folga/especial', async () => {
@@ -83,5 +95,37 @@ describe('EscalaScreen', () => {
     render(<EscalaScreen />);
 
     expect(await screen.findByText('Sem escala')).toBeTruthy();
+  });
+
+  it('não busca sugestões nem mostra a seção sem permissão de gestão', async () => {
+    render(<EscalaScreen />);
+
+    expect(await screen.findByText('Ana Souza')).toBeTruthy();
+    expect(
+      screen.queryByText('Não retorno do intervalo — hoje'),
+    ).toBeNull();
+    expect(escalaService.sugestoesIncidencias).not.toHaveBeenCalled();
+  });
+
+  it('mostra as sugestões auto-detectadas e a ação de registrar quando há permissão', async () => {
+    mockAuth.permitir = true;
+    escalaService.sugestoesIncidencias.mockResolvedValue([
+      {
+        colaboradorId: 'c1',
+        nome: 'Ana Souza',
+        horaSaida: '12:00',
+        horaEsperadaRetorno: '13:00',
+        origem: 'DETECTADO_PONTO',
+      },
+    ]);
+
+    render(<EscalaScreen />);
+
+    expect(
+      await screen.findByText('Não retorno do intervalo — hoje'),
+    ).toBeTruthy();
+    expect(screen.getByText(/saiu 12:00 · esperado 13:00/)).toBeTruthy();
+    expect(screen.getByText('Registrar')).toBeTruthy();
+    expect(escalaService.sugestoesIncidencias).toHaveBeenCalled();
   });
 });

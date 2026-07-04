@@ -8,14 +8,17 @@
  * (`GET /colaboradores/:id/perfil`) — determinístico, sem IA.
  */
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { colaboradoresService } from '../../api/services';
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { colaboradoresService, escalaService } from '../../api/services';
+import { useAuth } from '../../auth/AuthContext';
 import {
   FuncaoColaborador,
+  IncidenciaEscala,
   IndicadorPerfil,
   NivelSaude,
   PerfilColaborador,
+  TimelineItem,
 } from '../../api/types';
 import {
   Carregando,
@@ -24,13 +27,15 @@ import {
   GraficoPizza,
   MensagemErro,
   montarFatias,
+  Segmentado,
   Tela,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { formatarDuracao } from '../../utils/formato';
+import { formatarData, formatarDuracao } from '../../utils/formato';
 import { ROTULO_STATUS_FISCAL } from '../../utils/rotulos';
+import { RegistrarIncidenciaModal } from '../fiscais/RegistrarIncidenciaModal';
 
 const FUNCOES: Record<FuncaoColaborador, string> = {
   OPERADOR: 'Operador',
@@ -160,13 +165,175 @@ function CartaoIndicador({ ind }: { ind: IndicadorPerfil }): React.ReactElement 
   );
 }
 
+/** Rótulos e ícones da linha do tempo unificada (faltas + incidências). */
+const ROTULO_KIND: Record<TimelineItem['kind'], string> = {
+  FALTA: 'Falta',
+  NAO_RETORNO_INTERVALO: 'Não retorno do intervalo',
+};
+const ICONE_KIND: Record<TimelineItem['kind'], keyof typeof Ionicons.glyphMap> = {
+  FALTA: 'close-circle-outline',
+  NAO_RETORNO_INTERVALO: 'time-outline',
+};
+
+type FiltroTimeline = 'TODAS' | 'FALTA' | 'NAO_RETORNO_INTERVALO';
+
+/**
+ * Histórico unificado de incidências (faltas + não retorno do intervalo) do
+ * colaborador. O resumo e a linha do tempo vêm do perfil; os registros
+ * completos (para editar/excluir) são buscados à parte quando há permissão.
+ */
+function HistoricoIncidencias({
+  incidencias,
+  registros,
+  podeEditar,
+  colaboradorId,
+  aoMudar,
+}: {
+  incidencias: PerfilColaborador['incidencias'];
+  registros: IncidenciaEscala[];
+  podeEditar: boolean;
+  colaboradorId: string;
+  aoMudar: () => void;
+}): React.ReactElement {
+  const [filtro, setFiltro] = useState<FiltroTimeline>('TODAS');
+  const [editando, setEditando] = useState<IncidenciaEscala | null>(null);
+  const [modalVisivel, setModalVisivel] = useState(false);
+
+  const risco = coresRisco(incidencias.risco);
+  const temDiaSemana = incidencias.porDiaSemana.some((d) => d.valor > 0);
+  const timeline = incidencias.timeline.filter((t) =>
+    filtro === 'TODAS' ? true : t.kind === filtro,
+  );
+
+  /** Abre o modal de edição para uma incidência da linha do tempo. */
+  const editarDaTimeline = (item: TimelineItem): void => {
+    if (!podeEditar || item.kind !== 'NAO_RETORNO_INTERVALO') return;
+    const registro = registros.find(
+      (r) => r.data.slice(0, 10) === item.data && r.tipo === item.kind,
+    );
+    if (!registro) return;
+    setEditando(registro);
+    setModalVisivel(true);
+  };
+
+  return (
+    <Cartao titulo="Histórico de incidências">
+      <View style={styles.incResumoTopo}>
+        <View style={styles.faltaBox}>
+          <Text style={styles.faltaNumero}>{incidencias.totalNaoRetorno}</Text>
+          <Text style={styles.faltaRotulo}>não retornos</Text>
+        </View>
+        <View style={styles.faltaBox}>
+          <Text style={styles.faltaNumero}>
+            {incidencias.diasConsecutivosSemIncidencia}
+          </Text>
+          <Text style={styles.faltaRotulo}>dias sem incidência</Text>
+        </View>
+        <Pilula texto={risco.rotulo} cor={risco.cor} fundo={risco.fundo} />
+      </View>
+
+      <View style={styles.escalaLinha}>
+        <Text style={styles.escalaRotulo}>Último não retorno</Text>
+        <Text style={styles.escalaValor}>
+          {incidencias.ultimoNaoRetorno
+            ? formatarData(incidencias.ultimoNaoRetorno)
+            : '—'}
+        </Text>
+      </View>
+
+      {temDiaSemana ? (
+        <>
+          <Text style={styles.graficoLegenda}>Não retornos por dia da semana</Text>
+          <GraficoBarrasVerticais dados={incidencias.porDiaSemana} altura={120} />
+        </>
+      ) : null}
+
+      <View style={{ marginTop: espacamento.md }}>
+        <Segmentado<FiltroTimeline>
+          opcoes={[
+            { valor: 'TODAS', rotulo: 'Todas' },
+            { valor: 'FALTA', rotulo: 'Faltas' },
+            { valor: 'NAO_RETORNO_INTERVALO', rotulo: 'Não retorno' },
+          ]}
+          selecionado={filtro}
+          aoSelecionar={setFiltro}
+        />
+      </View>
+
+      {timeline.length === 0 ? (
+        <Text style={styles.semDados}>Sem incidências no período.</Text>
+      ) : (
+        timeline.map((item, i) => {
+          const editavel = podeEditar && item.kind === 'NAO_RETORNO_INTERVALO';
+          const conteudo = (
+            <View style={styles.timelineLinha}>
+              <Ionicons
+                name={ICONE_KIND[item.kind]}
+                size={18}
+                color={
+                  item.kind === 'FALTA' ? cores.vermelho : cores.amarelo
+                }
+              />
+              <Text style={styles.timelineTexto}>{ROTULO_KIND[item.kind]}</Text>
+              <Text style={styles.timelineData}>{formatarData(item.data)}</Text>
+              {editavel ? (
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={cores.textoSecundario}
+                />
+              ) : null}
+            </View>
+          );
+          if (editavel) {
+            return (
+              <Pressable
+                key={`${item.data}-${item.kind}-${i}`}
+                onPress={() => editarDaTimeline(item)}
+                style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
+              >
+                {conteudo}
+              </Pressable>
+            );
+          }
+          return (
+            <View key={`${item.data}-${item.kind}-${i}`}>{conteudo}</View>
+          );
+        })
+      )}
+
+      {editando ? (
+        <RegistrarIncidenciaModal
+          visivel={modalVisivel}
+          aoFechar={() => setModalVisivel(false)}
+          aoSalvar={aoMudar}
+          colaboradorId={colaboradorId}
+          incidenciaExistente={editando}
+          podeExcluir={podeEditar}
+        />
+      ) : null}
+    </Cartao>
+  );
+}
+
 export function PerfilColaboradorScreen({
   route,
 }: PropsTela<'PerfilColaborador'>): React.ReactElement {
   const { colaboradorId } = route.params;
+  const { podeAcessar } = useAuth();
+  const podeEditarIncidencia = podeAcessar('OPERADORES_AUSENCIAS');
   const req = useRequisicao<PerfilColaborador>(
     () => colaboradoresService.perfil(colaboradorId),
     [colaboradorId],
+  );
+  // Registros completos das incidências (para editar/excluir). Só buscamos
+  // quando há permissão de gestão; a linha do tempo do perfil basta para exibir.
+  const incidenciasReq = useRequisicao<IncidenciaEscala[]>(
+    () =>
+      podeEditarIncidencia
+        ? escalaService.listarIncidencias({ colaboradorId })
+        : Promise.resolve<IncidenciaEscala[]>([]),
+    [colaboradorId, podeEditarIncidencia],
   );
   const p = req.dados;
 
@@ -401,6 +568,18 @@ export function PerfilColaboradorScreen({
             )}
           </Cartao>
 
+          {/* Histórico unificado de incidências (faltas + não retorno) */}
+          <HistoricoIncidencias
+            incidencias={p.incidencias}
+            registros={incidenciasReq.dados ?? []}
+            podeEditar={podeEditarIncidencia}
+            colaboradorId={colaboradorId}
+            aoMudar={() => {
+              req.recarregar();
+              incidenciasReq.recarregar();
+            }}
+          />
+
           {/* Escala / folga */}
           <Cartao titulo="Escala">
             <View style={styles.escalaLinha}>
@@ -544,6 +723,31 @@ const styles = StyleSheet.create({
   faltaBox: { alignItems: 'center' },
   faltaNumero: { ...tipografia.subtitulo, color: cores.texto },
   faltaRotulo: { ...tipografia.legenda, color: cores.textoSecundario },
+
+  // Histórico de incidências
+  incResumoTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.md,
+    marginBottom: espacamento.sm,
+  },
+  timelineLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    paddingVertical: espacamento.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: cores.divisor,
+  },
+  timelineTexto: {
+    ...tipografia.corpo,
+    color: cores.texto,
+    flex: 1,
+  },
+  timelineData: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
 
   // Escala
   escalaLinha: {

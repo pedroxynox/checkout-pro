@@ -4,6 +4,11 @@
  * Exibe a escala consolidada por dia da semana: para cada funcionário, mostra a
  * escala efetiva (horário de entrada/saída, intervalo e se é especial) ou
  * "Folga". O dia da semana é selecionável.
+ *
+ * Para quem gere ausências (`OPERADORES_AUSENCIAS`), a tela também traz as
+ * incidências de "não retorno do intervalo" (Fase 2): um cartão com as
+ * sugestões auto-detectadas do ponto de hoje e uma ação por colaborador para
+ * registrar a incidência (modal de registro/edição).
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
@@ -12,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { escalaService } from '../../api/services';
 import { useAuth } from '../../auth/AuthContext';
-import { ItemEscalaConsolidada } from '../../api/types';
+import { ItemEscalaConsolidada, SugestaoIncidencia } from '../../api/types';
 import {
   Carregando,
   Cartao,
@@ -24,23 +29,113 @@ import {
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { DIAS_SEMANA, DIAS_SEMANA_CURTO, diaSemanaHoje } from '../../utils/formato';
+import {
+  DIAS_SEMANA,
+  DIAS_SEMANA_CURTO,
+  diaSemanaHoje,
+  hojeISO,
+} from '../../utils/formato';
+import {
+  RegistrarIncidenciaModal,
+  ValoresIniciaisIncidencia,
+} from './RegistrarIncidenciaModal';
+
+/** Alvo do modal de registro: quem e com quais valores pré-preenchidos. */
+interface AlvoRegistro {
+  colaboradorId: string;
+  nome: string;
+  valoresIniciais?: ValoresIniciaisIncidencia;
+}
 
 export function EscalaScreen(): React.ReactElement {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { podeAcessar } = useAuth();
   const podeVerPerfil = podeAcessar('OPERADORES_AUSENCIAS');
+  const podeRegistrar = podeAcessar('OPERADORES_AUSENCIAS');
   const hoje = diaSemanaHoje();
   const [dia, setDia] = useState<number>(hoje);
+  const [alvo, setAlvo] = useState<AlvoRegistro | null>(null);
+  const [modalVisivel, setModalVisivel] = useState(false);
 
   const escala = useRequisicao<ItemEscalaConsolidada[]>(
     () => escalaService.consolidada(dia),
     [dia],
   );
 
+  // Sugestões auto-detectadas do ponto de hoje (só para quem gere ausências).
+  // Quando não há permissão, evitamos a chamada resolvendo uma lista vazia.
+  const sugestoes = useRequisicao<SugestaoIncidencia[]>(
+    () =>
+      podeRegistrar
+        ? escalaService.sugestoesIncidencias(hojeISO())
+        : Promise.resolve<SugestaoIncidencia[]>([]),
+    [podeRegistrar],
+  );
+
+  const abrirRegistro = (novoAlvo: AlvoRegistro): void => {
+    setAlvo(novoAlvo);
+    setModalVisivel(true);
+  };
+
   return (
     <Tela aoAtualizar={escala.recarregar} atualizando={escala.atualizando}>
+      {podeRegistrar ? (
+        <Cartao titulo="Não retorno do intervalo — hoje">
+          {sugestoes.carregando ? (
+            <Carregando texto="Detectando..." />
+          ) : sugestoes.erro ? (
+            <MensagemErro
+              mensagem={sugestoes.erro}
+              aoTentarNovamente={sugestoes.recarregar}
+            />
+          ) : !sugestoes.dados || sugestoes.dados.length === 0 ? (
+            <Text style={styles.vazioInline}>
+              Nenhum não retorno detectado hoje.
+            </Text>
+          ) : (
+            sugestoes.dados.map((s) => (
+              <View key={s.colaboradorId} style={styles.sugestaoLinha}>
+                <View style={styles.sugestaoTextos}>
+                  <Text style={styles.sugestaoNome} numberOfLines={1}>
+                    {s.nome}
+                  </Text>
+                  <Text style={styles.sugestaoDetalhe}>
+                    saiu {s.horaSaida ?? '--'} · esperado{' '}
+                    {s.horaEsperadaRetorno ?? '--'}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() =>
+                    abrirRegistro({
+                      colaboradorId: s.colaboradorId,
+                      nome: s.nome,
+                      valoresIniciais: {
+                        data: hojeISO(),
+                        horaSaida: s.horaSaida,
+                        horaEsperadaRetorno: s.horaEsperadaRetorno,
+                        origem: 'DETECTADO_PONTO',
+                      },
+                    })
+                  }
+                  style={({ pressed }) => [
+                    styles.botaoRegistrar,
+                    pressed && styles.pressionado,
+                  ]}
+                >
+                  <Ionicons
+                    name="add-circle-outline"
+                    size={16}
+                    color={cores.primaria}
+                  />
+                  <Text style={styles.botaoRegistrarTexto}>Registrar</Text>
+                </Pressable>
+              </View>
+            ))
+          )}
+        </Cartao>
+      ) : null}
+
       <View style={styles.dias}>
         {DIAS_SEMANA_CURTO.map((rotulo, idx) => {
           const ativo = idx === dia;
@@ -110,11 +205,45 @@ export function EscalaScreen(): React.ReactElement {
                     intervalo {efetiva.intervaloMin} min
                   </Text>
                 ) : null}
+                {podeRegistrar && item.colaboradorId ? (
+                  <Pressable
+                    onPress={() =>
+                      abrirRegistro({
+                        colaboradorId: item.colaboradorId as string,
+                        nome: item.nome ?? item.funcionarioId,
+                        valoresIniciais: { data: hojeISO(), origem: 'MANUAL' },
+                      })
+                    }
+                    style={({ pressed }) => [
+                      styles.acaoCartao,
+                      pressed && styles.pressionado,
+                    ]}
+                  >
+                    <Ionicons
+                      name="time-outline"
+                      size={15}
+                      color={cores.primaria}
+                    />
+                    <Text style={styles.acaoCartaoTexto}>
+                      Registrar não retorno
+                    </Text>
+                  </Pressable>
+                ) : null}
               </Cartao>
             </Pressable>
           );
         })
       )}
+
+      {alvo ? (
+        <RegistrarIncidenciaModal
+          visivel={modalVisivel}
+          aoFechar={() => setModalVisivel(false)}
+          aoSalvar={() => sugestoes.recarregar()}
+          colaboradorId={alvo.colaboradorId}
+          valoresIniciais={alvo.valoresIniciais}
+        />
+      ) : null}
     </Tela>
   );
 }
@@ -170,6 +299,69 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginTop: espacamento.xs,
+  },
+  // Sugestões auto-detectadas
+  vazioInline: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    fontStyle: 'italic',
+  },
+  sugestaoLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: espacamento.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: cores.divisor,
+  },
+  sugestaoTextos: {
+    flex: 1,
+    paddingRight: espacamento.sm,
+  },
+  sugestaoNome: {
+    ...tipografia.corpo,
+    color: cores.texto,
+    fontWeight: '600',
+  },
+  sugestaoDetalhe: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+  },
+  botaoRegistrar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+    paddingVertical: espacamento.xs,
+    paddingHorizontal: espacamento.sm,
+    borderRadius: raio.sm,
+    borderWidth: 1,
+    borderColor: cores.primaria,
+    backgroundColor: cores.primariaClara,
+  },
+  botaoRegistrarTexto: {
+    ...tipografia.rotulo,
+    color: cores.primaria,
+  },
+  acaoCartao: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: espacamento.xs,
+    marginTop: espacamento.sm,
+    paddingVertical: espacamento.xs,
+    paddingHorizontal: espacamento.sm,
+    borderRadius: raio.sm,
+    borderWidth: 1,
+    borderColor: cores.borda,
+  },
+  acaoCartaoTexto: {
+    ...tipografia.legenda,
+    color: cores.primaria,
+    fontWeight: '600',
+  },
+  pressionado: {
+    opacity: 0.6,
   },
 });
 

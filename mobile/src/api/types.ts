@@ -649,6 +649,94 @@ export interface EventoStatusFiscal {
   em: string;
 }
 
+// ----- Incidências de Escala (Fase 1/2 — "não retornou do intervalo") -----
+
+/** Tipos de incidência de escala (espelho do enum Prisma do backend). */
+export type TipoIncidenciaEscala = 'NAO_RETORNO_INTERVALO';
+
+/** Origem do registro: manual (gestor) ou auto-detectado do ponto. */
+export type OrigemIncidencia = 'MANUAL' | 'DETECTADO_PONTO';
+
+/**
+ * Uma incidência de escala registrada (espelha `IncidenciaEscala` do Prisma).
+ */
+export interface IncidenciaEscala {
+  id: string;
+  colaboradorId: string;
+  funcionarioId?: string | null;
+  tipo: TipoIncidenciaEscala;
+  data: string;
+  horaSaida?: string | null;
+  horaEsperadaRetorno?: string | null;
+  horaReal?: string | null;
+  origem: OrigemIncidencia;
+  motivo?: string | null;
+  observacao?: string | null;
+  registradoPorNome?: string | null;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+/**
+ * Candidato auto-detectado a partir do ponto dos fiscais (sugestão para
+ * registrar uma incidência de "não retorno do intervalo").
+ */
+export interface SugestaoIncidencia {
+  colaboradorId: string;
+  funcionarioId?: string;
+  nome: string;
+  tipo?: TipoIncidenciaEscala;
+  horaSaida?: string;
+  horaEsperadaRetorno?: string;
+  origem: 'DETECTADO_PONTO';
+}
+
+/** Uma linha do ranking de incidências por colaborador. */
+export interface RankingIncidencia {
+  colaboradorId: string;
+  nome: string;
+  total: number;
+}
+
+/** Dados para registrar uma incidência (espelha o CriarIncidenciaDto). */
+export interface RegistrarIncidenciaInput {
+  colaboradorId: string;
+  tipo: TipoIncidenciaEscala;
+  /** Data ISO (yyyy-mm-dd). */
+  data: string;
+  horaSaida?: string;
+  horaEsperadaRetorno?: string;
+  horaReal?: string;
+  motivo?: string;
+  observacao?: string;
+}
+
+/** Campos editáveis de uma incidência (espelha o EditarIncidenciaDto). */
+export interface EditarIncidenciaInput {
+  horaSaida?: string;
+  horaEsperadaRetorno?: string;
+  horaReal?: string;
+  motivo?: string;
+  observacao?: string;
+}
+
+/** Filtros de listagem de incidências. */
+export interface FiltroIncidencias {
+  colaboradorId?: string;
+  tipo?: TipoIncidenciaEscala;
+  inicio?: string;
+  fim?: string;
+}
+
+/**
+ * Um item da linha do tempo unificada (faltas + incidências). Espelha o
+ * formato do backend: `{ data (ISO yyyy-mm-dd), kind }`.
+ */
+export interface TimelineItem {
+  data: string;
+  kind: 'FALTA' | TipoIncidenciaEscala;
+}
+
 // ----- Checklist (Req 5.x) -----
 export type TipoChecklist = 'ABERTURA' | 'FECHAMENTO';
 export type StatusChecklist = 'PENDENTE' | 'FEITO';
@@ -1077,4 +1165,20 @@ export interface PerfilColaborador {
   };
   motivosCancelamento: PontoSerie[];
   insignias: InsigniaPerfil[];
+  /**
+   * Incidências de escala (Fase 1 — "não retornou do intervalo"): resumo
+   * analítico do colaborador (últimos ~6 meses) + linha do tempo unificada
+   * (incidências + faltas). Espelha 1:1 o formato do backend.
+   */
+  incidencias: {
+    totalNaoRetorno: number;
+    ultimoNaoRetorno: string | null;
+    diasConsecutivosSemIncidencia: number;
+    risco: string;
+    tendencia: string;
+    porDiaSemana: PontoSerie[];
+    frequenciaMensal: number;
+    percentualSobreEscalados: number;
+    timeline: TimelineItem[];
+  };
 }
