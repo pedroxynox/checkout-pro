@@ -24,4 +24,12 @@ module.exports = {
   ],
   collectCoverageFrom: ['src/**/*.{ts,tsx}'],
   testMatch: ['<rootDir>/src/**/*.test.{ts,tsx}'],
+  // Tempo-limite por teste generoso. As suítes de tela do RN/Expo fazem, no
+  // PRIMEIRO teste, uma compilação "a frio" de uma árvore pesada (ícones
+  // Lucide, react-native-svg, ResumoDoDia + várias chamadas de serviço) e o
+  // render assíncrono é aguardado dentro de act(...). Em máquina de CI (mais
+  // lenta/concorrida) esse primeiro render fica perto do padrão de 5000ms e,
+  // ocasionalmente, o ultrapassa — causando falha intermitente por timeout.
+  // 20s dá folga sem mascarar travamentos reais (que continuam falhando).
+  testTimeout: 20000,
 };
