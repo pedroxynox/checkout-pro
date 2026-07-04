@@ -12,6 +12,45 @@
 
 ---
 
+## Incidências de Escala — mobile/UX (Fase 2: "não retornou do intervalo") (2026-07-03)
+
+**Objetivo:** trazer para o app móvel a experiência das **incidências de escala**
+(evento "não retornou do intervalo") sobre o backend da Fase 1 (PR #100),
+reutilizando os componentes e padrões visuais existentes.
+
+- **(Tipos) `api/types.ts`.** Espelho 1:1 do contrato do backend:
+  `TipoIncidenciaEscala`, `IncidenciaEscala`, `SugestaoIncidencia`,
+  `RankingIncidencia`, `TimelineItem` (`{ data, kind: 'FALTA' | ... }`) e os
+  inputs de registro/edição. `PerfilColaborador` ganhou a seção `incidencias`
+  (total, último, dias consecutivos, risco, tendência, por dia da semana,
+  frequência mensal, % sobre escalados e a linha do tempo unificada).
+- **(Serviço) `escalaService`.** Novos métodos sobre `/escala/incidencias`:
+  `registrarIncidencia`, `editarIncidencia`, `removerIncidencia`,
+  `listarIncidencias`, `sugestoesIncidencias` e `rankingIncidencias`, no mesmo
+  estilo dos serviços existentes.
+- **(Tela de Escala) sugestões + registro.** Para quem gere ausências
+  (`OPERADORES_AUSENCIAS`), um cartão "Não retorno do intervalo — hoje" lista as
+  sugestões **auto-detectadas do ponto** (com botão "Registrar" pré-preenchido)
+  e cada colaborador ganha uma ação "Registrar não retorno" — sem quebrar a
+  navegação de "tocar no cartão → perfil". Sem permissão, a seção some (e não há
+  chamada extra).
+- **(Modal) `RegistrarIncidenciaModal`.** Reutilizado para criar/editar/excluir,
+  com campos de horário (máscara/validação `HH:mm`), motivo e observação, e erros
+  da API exibidos inline. O tipo é fixo em `NAO_RETORNO_INTERVALO` (sem seletor).
+- **(Perfil) histórico unificado.** Novo cartão "Histórico de incidências" com
+  resumo (total, último, dias sem incidência, pílula de risco), gráfico por dia
+  da semana, filtro segmentado (Todas/Faltas/Não retorno) e a linha do tempo;
+  tocar num "Não retorno" abre o modal em modo de edição/exclusão (com recarga
+  do perfil ao concluir).
+- **(Testes) Escala + perfil.** `EscalaScreen.test` cobre a exibição das
+  sugestões e a ação de registrar com permissão (e a ausência delas sem
+  permissão); novo `PerfilColaboradorScreen.test` cobre o histórico unificado.
+
+**Verificação (executada neste PR):** `tsc --noEmit` OK, `eslint` OK, `jest`
+14 suítes / 41 testes OK e `expo export --platform web` concluído com sucesso.
+
+---
+
 ## Incidências de Escala — backend (Fase 1: "não retornou do intervalo") (2026-07-03)
 
 **Objetivo:** introduzir o registro e a análise de **incidências de escala** por

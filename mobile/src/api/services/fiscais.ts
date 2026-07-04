@@ -1,7 +1,10 @@
 /** Serviço de Fiscais (controle de jornada) e Escala (Req 4.x). */
 import { apiClient } from '../client';
 import {
+  EditarIncidenciaInput,
   EscalaEfetiva,
+  FiltroIncidencias,
+  IncidenciaEscala,
   ItemEscalaConsolidada,
   ItemFolgaFiscal,
   ItemHorasExtrasFiscal,
@@ -11,7 +14,10 @@ import {
   ItemRankingFiscal,
   HistoricoSemanalFiscal,
   MeuResumoFiscal,
+  RankingIncidencia,
+  RegistrarIncidenciaInput,
   StatusFiscal,
+  SugestaoIncidencia,
 } from '../types';
 
 export const fiscaisService = {
@@ -82,6 +88,62 @@ export const escalaService = {
     return apiClient.get<{ efetiva: EscalaEfetiva }>(
       `/escala/${funcionarioId}/efetiva`,
       { diaSemana },
+    );
+  },
+
+  // ----- Incidências de escala (Fase 1/2 — "não retornou do intervalo") -----
+
+  /** Registra uma incidência de escala (por colaborador, tipo e data). */
+  registrarIncidencia(
+    dto: RegistrarIncidenciaInput,
+  ): Promise<IncidenciaEscala> {
+    return apiClient.post<IncidenciaEscala>('/escala/incidencias', dto);
+  },
+
+  /** Edita os campos editáveis de uma incidência. */
+  editarIncidencia(
+    id: string,
+    dto: EditarIncidenciaInput,
+  ): Promise<IncidenciaEscala> {
+    return apiClient.patch<IncidenciaEscala>(
+      `/escala/incidencias/${id}`,
+      dto,
+    );
+  },
+
+  /** Remove uma incidência. */
+  removerIncidencia(id: string): Promise<void> {
+    return apiClient.delete<void>(`/escala/incidencias/${id}`);
+  },
+
+  /** Lista incidências pelos filtros informados, mais recentes primeiro. */
+  listarIncidencias(
+    filtros: FiltroIncidencias = {},
+  ): Promise<IncidenciaEscala[]> {
+    const params: Record<string, string> = {};
+    if (filtros.colaboradorId) params.colaboradorId = filtros.colaboradorId;
+    if (filtros.tipo) params.tipo = filtros.tipo;
+    if (filtros.inicio) params.inicio = filtros.inicio;
+    if (filtros.fim) params.fim = filtros.fim;
+    return apiClient.get<IncidenciaEscala[]>('/escala/incidencias', params);
+  },
+
+  /** Sugestões auto-detectadas do ponto dos fiscais para uma data. */
+  sugestoesIncidencias(data?: string): Promise<SugestaoIncidencia[]> {
+    return apiClient.get<SugestaoIncidencia[]>(
+      '/escala/incidencias/sugestoes',
+      { data },
+    );
+  },
+
+  /** Ranking de incidências por colaborador na janela [inicio, fim]. */
+  rankingIncidencias(
+    inicio: string,
+    fim: string,
+  ): Promise<RankingIncidencia[]> {
+    return apiClient.get<RankingIncidencia[]>(
+      '/escala/incidencias/ranking',
+      { inicio, fim },
     );
   },
 };
