@@ -18,6 +18,7 @@ import {
   ItemRankingIncidencias,
 } from './incidencias.domain';
 import {
+  ColaboradorIncidenciaInvalidoError,
   DadosIncidenciaInvalidosError,
   IncidenciaDuplicadaError,
   IncidenciaNaoEncontradaError,
@@ -119,6 +120,17 @@ export class IncidenciasService {
     const data = inicioDoDia(new Date(dto.data));
     if (Number.isNaN(data.getTime())) {
       throw new DadosIncidenciaInvalidosError('Data da incidência inválida.');
+    }
+
+    // Valida a existência do colaborador antes de persistir: sem isso, um id
+    // inválido criaria uma incidência órfã que polui o ranking (nome = id cru)
+    // e a listagem. O erro é 400 (ColaboradorIncidenciaInvalidoError).
+    const colaborador = await this.prisma.colaborador.findUnique({
+      where: { id: dto.colaboradorId },
+      select: { id: true },
+    });
+    if (!colaborador) {
+      throw new ColaboradorIncidenciaInvalidoError();
     }
 
     const funcionarioId = await this.resolverFuncionarioId(dto.colaboradorId);
