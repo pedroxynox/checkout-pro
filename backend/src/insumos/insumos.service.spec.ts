@@ -1,6 +1,7 @@
 import { InsumosService } from './insumos.service';
 import { FardoNaoReconhecidoError } from './insumos.errors';
 import { QuantidadeInvalidaError } from './insumos.errors';
+import { EstoqueInsuficienteError } from './insumos.errors';
 
 /**
  * Testes de exemplo (unitários) do `InsumosService`. Usam um `PrismaService`
@@ -175,6 +176,65 @@ describe('InsumosService', () => {
     await expect(
       service.registrarConsumoInsumo(insumo.id, 0),
     ).rejects.toBeInstanceOf(QuantidadeInvalidaError);
+  });
+
+  it('rejeita consumo maior que o saldo e mantém o saldo inalterado', async () => {
+    const { service } = criarServico();
+    const insumo = await service.cadastrarInsumo(
+      'Álcool',
+      'ALCOOL' as any,
+      1,
+      5,
+    );
+    await expect(
+      service.registrarConsumoInsumo(insumo.id, 6),
+    ).rejects.toBeInstanceOf(EstoqueInsuficienteError);
+    // O saldo NÃO foi alterado (nenhum movimento negativo foi gravado).
+    expect(await service.saldo(insumo.id)).toBe(5);
+  });
+
+  it('bloqueia consumo quando o saldo é 0 (não deixa ir a negativo)', async () => {
+    const { service } = criarServico();
+    const insumo = await service.cadastrarInsumo(
+      'Álcool',
+      'ALCOOL' as any,
+      1,
+      0,
+    );
+    await expect(
+      service.registrarConsumoInsumo(insumo.id, 1),
+    ).rejects.toBeInstanceOf(EstoqueInsuficienteError);
+    expect(await service.saldo(insumo.id)).toBe(0);
+  });
+
+  it('permite consumir exatamente o saldo disponível (deixando 0)', async () => {
+    const { service } = criarServico();
+    const insumo = await service.cadastrarInsumo(
+      'Álcool',
+      'ALCOOL' as any,
+      1,
+      5,
+    );
+    const saldo = await service.registrarConsumoInsumo(insumo.id, 5);
+    expect(saldo).toBe(0);
+  });
+
+  it('rejeita retirada de fardo maior que o saldo de sacolas', async () => {
+    const { service, fardos } = criarServico();
+    const sacolas = await service.cadastrarInsumo(
+      'Sacolas',
+      'SACOLA' as any,
+      100,
+      200,
+    );
+    fardos.push({ id: 'f1', codigoBarras: '789', quantidadeSacolas: 250 });
+    await expect(
+      service.registrarRetiradaFardo({
+        codigoBarras: '789',
+        insumoId: sacolas.id,
+      }),
+    ).rejects.toBeInstanceOf(EstoqueInsuficienteError);
+    expect(await service.saldo(sacolas.id)).toBe(200);
   });
 
   it('emite alerta de estoque baixo na fronteira do limite (Req 3.1.5)', async () => {

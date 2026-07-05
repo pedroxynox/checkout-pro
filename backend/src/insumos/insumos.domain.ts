@@ -11,6 +11,7 @@
  */
 
 import {
+  EstoqueInsuficienteError,
   FardoNaoReconhecidoError,
   QuantidadeInvalidaError,
 } from './insumos.errors';
@@ -99,6 +100,34 @@ export function resolverDeltaFardo<T extends FardoRef>(
  */
 export function estoqueBaixo(saldo: number, limiteMinimo: number): boolean {
   return saldo <= limiteMinimo;
+}
+
+/**
+ * Há saldo suficiente para consumir/retirar `quantidade` (em unidade base)?
+ * Consumir exatamente o saldo disponível (deixando 0) é permitido; só o que
+ * levaria o saldo a negativo é insuficiente.
+ */
+export function saldoSuficiente(
+  saldoAtual: number,
+  quantidade: number,
+): boolean {
+  return quantidade <= saldoAtual;
+}
+
+/**
+ * Garante que há saldo suficiente para consumir/retirar `quantidade` (unidade
+ * base), lançando `EstoqueInsuficienteError` caso contrário — não se pode
+ * registrar a saída de um insumo que não existe em estoque (o saldo nunca deve
+ * ficar negativo). `unidade` é opcional, apenas para uma mensagem mais clara.
+ */
+export function garantirSaldoSuficiente(
+  saldoAtual: number,
+  quantidade: number,
+  unidade?: string,
+): void {
+  if (!saldoSuficiente(saldoAtual, quantidade)) {
+    throw new EstoqueInsuficienteError(saldoAtual, quantidade, unidade);
+  }
 }
 
 /** Movimento com data, para os cálculos do painel (consumo/entrada por período). */

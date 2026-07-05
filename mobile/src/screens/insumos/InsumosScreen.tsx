@@ -148,6 +148,15 @@ export function InsumosScreen({
 
   const consumirRapido = async (insumo: InsumoProativo) => {
     const nomeEmb = capitalizar(insumo.embalagem);
+    // Não deixa registrar consumo do que não há em estoque (o backend também
+    // bloqueia; aqui evitamos a ida ao servidor e damos um aviso claro).
+    if (insumo.saldo < insumo.fatorEmbalagem) {
+      notificar(
+        'Sem estoque',
+        `Não há ${nomeEmb} de ${insumo.nome} em estoque para registrar consumo.`,
+      );
+      return;
+    }
     const ok = await confirmar(
       `Usar 1 ${nomeEmb}`,
       `Registrar consumo de 1 ${nomeEmb} de ${insumo.nome}?`,
@@ -392,12 +401,15 @@ export function InsumosScreen({
           <View style={styles.acoesGrid}>
             {insumos.map((i) => {
               const loading = consumindo === i.id;
+              // Sem saldo para nem 1 embalagem: botão desabilitado e apagado.
+              const semSaldo = i.saldo < i.fatorEmbalagem;
+              const inativo = loading || semSaldo;
               return (
                 <Pressable
                   key={i.id}
                   onPress={() => void consumirRapido(i)}
-                  disabled={consumindo !== null}
-                  style={[styles.acaoBtn, loading && styles.acaoBtnLoading]}
+                  disabled={consumindo !== null || semSaldo}
+                  style={[styles.acaoBtn, inativo && styles.acaoBtnLoading]}
                 >
                   <Ionicons
                     name={
@@ -410,12 +422,14 @@ export function InsumosScreen({
                             : 'cube-outline'
                     }
                     size={28}
-                    color={loading ? cores.textoSecundario : cores.primaria}
+                    color={inativo ? cores.textoSecundario : cores.primaria}
                   />
-                  <Text style={[styles.acaoBtnTexto, loading && { color: cores.textoSecundario }]}>
+                  <Text style={[styles.acaoBtnTexto, inativo && { color: cores.textoSecundario }]}>
                     1 {capitalizar(i.embalagem)}
                   </Text>
-                  <Text style={styles.acaoBtnSub}>{capitalizar(i.nome)}</Text>
+                  <Text style={styles.acaoBtnSub}>
+                    {semSaldo ? 'Sem estoque' : capitalizar(i.nome)}
+                  </Text>
                 </Pressable>
               );
             })}
