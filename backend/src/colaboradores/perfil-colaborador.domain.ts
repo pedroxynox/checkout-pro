@@ -78,13 +78,55 @@ export interface Insignia {
 export interface EntradaScore {
   /** Taxa de absenteísmo no período (0–100). */
   taxaFaltas: number;
-  /** Operador: contribuição (troco + recargas) vs. meta somada. */
-  contribuicao?: { valor: number; meta: number };
-  /** Operador: cancelamentos (itens + cupom) vs. média da equipe. */
-  cancelamentos?: { valor: number; media: number };
+
+  /**
+   * Operador — Contribuição (indicadores "maior é melhor"):
+   * aporte real (troco + recargas) e a meta individual derivada do período.
+   * `metaIndividualPeriodo` é calculada pelo serviço (ou pelo helper puro
+   * `metaIndividualDerivada`) e pode ser `null` (indefinida → sub-nota neutra).
+   */
+  contribuicao?: {
+    /** Soma de TROCO_SOLIDARIO + RECARGAS_CELULAR do operador no período. */
+    aporteReal: number;
+    /** Meta individual do período (R$); null = indefinida → sub-nota neutra. */
+    metaIndividualPeriodo: number | null;
+  };
+
+  /**
+   * Operador — Disciplina (indicadores "menor é melhor"):
+   * cancelamentos (itens + cupom) vs. linha de base da equipe + não-retornos.
+   */
+  disciplina?: {
+    /** Soma de CANCELAMENTO_ITENS + CANCELAMENTO_CUPOM do operador. */
+    cancelamentos: number;
+    /** Linha de base justa: soma das médias da equipe dos dois cancelamentos. */
+    linhaBaseCancelamentos: number;
+    /** Contagem de Incidencia_Nao_Retorno do operador no período. */
+    naoRetornos: number;
+  };
+
   /** Fiscal: atividade (devoluções + cupons autorizados) vs. média da equipe. */
   atividade?: { valor: number; media: number };
 }
+
+/**
+ * Constantes de calibração do Score de Saúde. Ficam nomeadas para que o modelo
+ * de pontuação seja transparente, determinístico e fácil de ajustar.
+ */
+/** Sub-nota neutra determinística usada quando faltam dados (ex.: meta indefinida). */
+const NEUTRA = 50;
+/** Peso do componente de Assiduidade na média ponderada. */
+const PESO_ASSIDUIDADE = 0.4;
+/** Peso do componente de Contribuição na média ponderada. */
+const PESO_CONTRIBUICAO = 0.3;
+/** Peso do componente de Disciplina na média ponderada. */
+const PESO_DISCIPLINA = 0.3;
+/** Peso do componente de Atividade (fiscal) na média ponderada. */
+const PESO_ATIVIDADE = 0.4;
+/** Sensibilidade da penalização de cancelamentos acima da linha de base. */
+const FATOR_CANCELAMENTO = 50;
+/** Pontos subtraídos da Disciplina por cada não-retorno do intervalo. */
+const PENAL_POR_NAO_RETORNO = 20;
 
 const NOMES_MES = [
   'Jan',
@@ -219,41 +261,157 @@ export function rankingPorValor(
 }
 
 /**
+ * Meta individual do período para um indicador "maior é melhor".
+ *
+ * Fórmula (period-level, dimensionalmente consistente):
+ *   metaIndividualPeriodo =
+ *     (metaGlobalMensal / nOperadoresAtivos) * (diasEscaladosPeriodo / diasUteisMes)
+ *
+ * Retorna `null` (indefinida) quando qualquer insumo é `<= 0` (ou não-finito),
+ * evitando divisão por zero. Quando todos os insumos são estritamente
+ * positivos, o resultado é finito e estritamente positivo.
+ */
+export function metaIndividualDerivada(p: {
+  metaGlobalMensal: number;
+  nOperadoresAtivos: number;
+  diasEscaladosPeriodo: number;
+  diasUteisMes: number;
+}): number | null {
+  const {
+    metaGlobalMensal,
+    nOperadoresAtivos,
+    diasEscaladosPeriodo,
+    diasUteisMes,
+  } = p;
+  // `!(x > 0)` também rejeita NaN, garantindo saída definida ou null.
+  if (
+    !(metaGlobalMensal > 0) ||
+    !(nOperadoresAtivos > 0) ||
+    !(diasEscaladosPeriodo > 0) ||
+    !(diasUteisMes > 0)
+  ) {
+    return null;
+  }
+  return (
+    (metaGlobalMensal / nOperadoresAtivos) *
+    (diasEscaladosPeriodo / diasUteisMes)
+  );
+}
+
+/**
+ * Conta os dias de `[inicio, fim]` (inclusivo em ambos os extremos) cujo
+ * dia-da-semana (UTC) difere de `folgaDiaSemana` (0=Dom..6=Sáb). Determinístico
+ * e puro: percorre dia a dia em UTC, sem depender de fuso local nem de `Date.now`.
+ */
+export function contarDiasEscalados(
+  folgaDiaSemana: number,
+  inicio: Date,
+  fim: Date,
+): number {
+  let count = 0;
+  const d = new Date(
+    Date.UTC(
+      inicio.getUTCFullYear(),
+      inicio.getUTCMonth(),
+      inicio.getUTCDate(),
+    ),
+  );
+  const fimDia = Date.UTC(
+    fim.getUTCFullYear(),
+    fim.getUTCMonth(),
+    fim.getUTCDate(),
+  );
+  while (d.getTime() <= fimDia) {
+    if (d.getUTCDay() !== folgaDiaSemana) count += 1;
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return count;
+}
+
+/**
+ * Sub-nota de Contribuição (0–100) proporcional a `aporteReal / meta`.
+ * Meta indefinida (`null`) → sub-nota neutra determinística. Vale exatamente
+ * 100 quando `aporteReal >= metaIndividualPeriodo`; sempre limitada a [0,100].
+ */
+export function notaContribuicao(
+  aporteReal: number,
+  metaIndividualPeriodo: number | null,
+): number {
+  if (metaIndividualPeriodo === null) return NEUTRA;
+  return clamp((aporteReal / metaIndividualPeriodo) * 100, 0, 100);
+}
+
+/**
+ * Sub-nota de Disciplina (0–100): parte da nota de cancelamentos vs. a linha de
+ * base da equipe e aplica a penalidade por não-retornos do intervalo. É um
+ * **único** componente (não cria componente separado para o não-retorno).
+ * Sempre em [0,100]; vale 100 quando o operador está em/abaixo da linha de base
+ * e não teve não-retornos.
+ */
+export function notaDisciplina(d: {
+  cancelamentos: number;
+  linhaBaseCancelamentos: number;
+  naoRetornos: number;
+}): number {
+  const { cancelamentos, linhaBaseCancelamentos, naoRetornos } = d;
+  const notaCancel =
+    linhaBaseCancelamentos > 0
+      ? clamp(
+          100 -
+            ((cancelamentos - linhaBaseCancelamentos) /
+              linhaBaseCancelamentos) *
+              FATOR_CANCELAMENTO,
+        )
+      : cancelamentos > 0
+        ? clamp(100 - FATOR_CANCELAMENTO)
+        : 100;
+  return clamp(notaCancel - naoRetornos * PENAL_POR_NAO_RETORNO, 0, 100);
+}
+
+/**
+ * Sub-nota de Assiduidade (0–100) a partir da taxa de faltas (%). Monótona
+ * decrescente na taxa; sempre limitada a [0,100].
+ */
+export function notaAssiduidade(taxaFaltas: number): number {
+  return clamp(100 - taxaFaltas * 3, 0, 100);
+}
+
+/**
  * Score de Saúde do Colaborador (0–100). Combina assiduidade (sempre) com
  * contribuição/disciplina (operador) ou atividade (fiscal). Os pesos dos
- * componentes presentes são normalizados, então o score é sempre 0–100.
+ * componentes presentes são normalizados, então o score é sempre 0–100. É
+ * determinístico: sem IA, sem `Date.now()`, sem aleatoriedade.
  */
 export function calcularScore(e: EntradaScore): ScoreSaude {
   const componentes: ComponenteScore[] = [];
 
-  const assiduidade = Math.round(clamp(100 - e.taxaFaltas * 3));
   componentes.push({
     chave: 'assiduidade',
     rotulo: 'Assiduidade',
-    valor: assiduidade,
-    peso: 0.4,
+    valor: Math.round(notaAssiduidade(e.taxaFaltas)),
+    peso: PESO_ASSIDUIDADE,
   });
 
   if (e.contribuicao) {
-    const { valor, meta } = e.contribuicao;
-    const nota = meta > 0 ? clamp((valor / meta) * 100) : valor > 0 ? 100 : 50;
     componentes.push({
       chave: 'contribuicao',
       rotulo: 'Contribuição',
-      valor: Math.round(nota),
-      peso: 0.3,
+      valor: Math.round(
+        notaContribuicao(
+          e.contribuicao.aporteReal,
+          e.contribuicao.metaIndividualPeriodo,
+        ),
+      ),
+      peso: PESO_CONTRIBUICAO,
     });
   }
 
-  if (e.cancelamentos) {
-    const { valor, media } = e.cancelamentos;
-    // Menor é melhor: até a média = 100; acima penaliza proporcionalmente.
-    const nota = media > 0 ? clamp(100 - ((valor - media) / media) * 50) : 100;
+  if (e.disciplina) {
     componentes.push({
       chave: 'disciplina',
       rotulo: 'Disciplina',
-      valor: Math.round(nota),
-      peso: 0.3,
+      valor: Math.round(notaDisciplina(e.disciplina)),
+      peso: PESO_DISCIPLINA,
     });
   }
 
@@ -264,7 +422,7 @@ export function calcularScore(e: EntradaScore): ScoreSaude {
       chave: 'atividade',
       rotulo: 'Atividade',
       valor: Math.round(nota),
-      peso: 0.4,
+      peso: PESO_ATIVIDADE,
     });
   }
 

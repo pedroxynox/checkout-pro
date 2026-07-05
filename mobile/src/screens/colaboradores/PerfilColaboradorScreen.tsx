@@ -33,9 +33,12 @@ import {
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { formatarData, formatarDuracao } from '../../utils/formato';
+import { formatarData, formatarDuracao, hojeISO } from '../../utils/formato';
 import { ROTULO_STATUS_FISCAL } from '../../utils/rotulos';
-import { RegistrarIncidenciaModal } from '../fiscais/RegistrarIncidenciaModal';
+import {
+  RegistrarIncidenciaModal,
+  ValoresIniciaisIncidencia,
+} from '../fiscais/RegistrarIncidenciaModal';
 
 const FUNCOES: Record<FuncaoColaborador, string> = {
   OPERADOR: 'Operador',
@@ -197,6 +200,9 @@ function HistoricoIncidencias({
 }): React.ReactElement {
   const [filtro, setFiltro] = useState<FiltroTimeline>('TODAS');
   const [editando, setEditando] = useState<IncidenciaEscala | null>(null);
+  // Pré-preenchimento no modo de CRIAÇÃO (null enquanto editando/fechado).
+  const [valoresCriar, setValoresCriar] =
+    useState<ValoresIniciaisIncidencia | null>(null);
   const [modalVisivel, setModalVisivel] = useState(false);
 
   const risco = coresRisco(incidencias.risco);
@@ -205,6 +211,14 @@ function HistoricoIncidencias({
     filtro === 'TODAS' ? true : t.kind === filtro,
   );
 
+  /** Abre o modal em modo criar (mesmo fluxo manual da EscalaScreen). */
+  const registrarNaoRetorno = (): void => {
+    if (!podeEditar) return;
+    setEditando(null);
+    setValoresCriar({ data: hojeISO(), origem: 'MANUAL' });
+    setModalVisivel(true);
+  };
+
   /** Abre o modal de edição para uma incidência da linha do tempo. */
   const editarDaTimeline = (item: TimelineItem): void => {
     if (!podeEditar || item.kind !== 'NAO_RETORNO_INTERVALO') return;
@@ -212,6 +226,7 @@ function HistoricoIncidencias({
       (r) => r.data.slice(0, 10) === item.data && r.tipo === item.kind,
     );
     if (!registro) return;
+    setValoresCriar(null);
     setEditando(registro);
     setModalVisivel(true);
   };
@@ -231,6 +246,19 @@ function HistoricoIncidencias({
         </View>
         <Pilula texto={risco.rotulo} cor={risco.cor} fundo={risco.fundo} />
       </View>
+
+      {podeEditar ? (
+        <Pressable
+          onPress={registrarNaoRetorno}
+          style={({ pressed }) => [
+            styles.acaoRegistrar,
+            pressed && { opacity: 0.6 },
+          ]}
+        >
+          <Ionicons name="time-outline" size={15} color={cores.primaria} />
+          <Text style={styles.acaoRegistrarTexto}>Registrar não retorno</Text>
+        </Pressable>
+      ) : null}
 
       <View style={styles.escalaLinha}>
         <Text style={styles.escalaRotulo}>Último não retorno</Text>
@@ -302,13 +330,14 @@ function HistoricoIncidencias({
         })
       )}
 
-      {editando ? (
+      {modalVisivel ? (
         <RegistrarIncidenciaModal
           visivel={modalVisivel}
           aoFechar={() => setModalVisivel(false)}
           aoSalvar={aoMudar}
           colaboradorId={colaboradorId}
           incidenciaExistente={editando}
+          valoresIniciais={valoresCriar ?? undefined}
           podeExcluir={podeEditar}
         />
       ) : null}
@@ -730,6 +759,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: espacamento.md,
     marginBottom: espacamento.sm,
+  },
+  acaoRegistrar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: espacamento.xs,
+    marginBottom: espacamento.sm,
+    paddingVertical: espacamento.xs,
+    paddingHorizontal: espacamento.sm,
+    borderRadius: raio.sm,
+    borderWidth: 1,
+    borderColor: cores.borda,
+  },
+  acaoRegistrarTexto: {
+    ...tipografia.legenda,
+    color: cores.primaria,
+    fontWeight: '600',
   },
   timelineLinha: {
     flexDirection: 'row',

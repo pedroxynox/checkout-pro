@@ -400,6 +400,27 @@ export class IncidenciasService {
     return { analise, timeline };
   }
 
+  /**
+   * Conta as incidências de "não retorno do intervalo" de um colaborador na
+   * janela `[inicio, fim)` (fim exclusivo). Usada pelo perfil para penalizar a
+   * Disciplina do operador com os não-retornos DENTRO do período avaliado
+   * (diferente do resumo de ~6 meses de `resumoDoColaborador`). Uma única query
+   * `count`, sem tabelas novas.
+   */
+  async contarNaoRetornos(
+    colaboradorId: string,
+    inicio: Date,
+    fimExcl: Date,
+  ): Promise<number> {
+    return this.prisma.incidenciaEscala.count({
+      where: {
+        colaboradorId,
+        tipo: 'NAO_RETORNO_INTERVALO',
+        data: { gte: inicioDoDia(inicio), lt: fimExcl },
+      },
+    });
+  }
+
   // -------------------------------------------------------------------------
   // Auxiliares (efeitos colaterais / resolução)
   // -------------------------------------------------------------------------

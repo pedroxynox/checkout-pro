@@ -1,0 +1,57 @@
+{
+  "pbtResults": {
+    "2.1 Property 1 — Derivação da meta individual": {
+      "status": "passed",
+      "lastRunTimestamp": 1783249171636
+    },
+    "2.2 Property 2 — Meta indefinida evita divisão por zero (sub-nota neutra)": {
+      "status": "passed",
+      "lastRunTimestamp": 1783249171791
+    },
+    "2.3 Property 3 — Contagem de dias escalados": {
+      "status": "passed",
+      "lastRunTimestamp": 1783249175351
+    },
+    "2.4 Property 4 — Correção da sub-nota de Contribuição": {
+      "status": "passed",
+      "lastRunTimestamp": 1783249176390
+    },
+    "2.5 Property 5 — Monotonicidade da Contribuição no aporte": {
+      "status": "passed",
+      "lastRunTimestamp": 1783249177423
+    },
+    "2.6 Property 6 — Correção da sub-nota de Disciplina": {
+      "status": "passed",
+      "lastRunTimestamp": 1783249179304
+    },
+    "2.7 Property 7 — Disciplina decresce com não-retornos": {
+      "status": "passed",
+      "lastRunTimestamp": 1783249180348
+    },
+    "2.8 Property 8 — Correção e monotonicidade da Assiduidade": {
+      "status": "passed",
+      "lastRunTimestamp": 1783249181326
+    },
+    "2.9 Property 9 — Nota final é combinação convexa em [0,100]": {
+      "status": "passed",
+      "lastRunTimestamp": 1783249182339
+    },
+    "2.10 Property 10 — Partição do semáforo": {
+      "status": "passed",
+      "lastRunTimestamp": 1783249184296
+    },
+    "2.11 Property 11 — Monotonicidade global da nota": {
+      "status": "passed",
+      "lastRunTimestamp": 1783249186017
+    },
+    "2.12 Property 12 — Componentes bem-formados e presentes conforme os dados": {
+      "status": "passed",
+      "lastRunTimestamp": 1783249186330
+    },
+    "2.13 Property 13 — Determinismo": {
+      "status": "passed",
+      "lastRunTimestamp": 1783249187341
+    }
+  },
+  "executionHistory": {}
+}
