@@ -12,6 +12,54 @@
 
 ---
 
+## Reinício Operacional + Data Inicial do Sistema (2026-07-05)
+
+**Objetivo:** permitir ao gestor (perfil `ADMIN_DADOS`) definir a **data inicial
+de operação do sistema** e zerar, com segurança, todos os **dados de movimento**
+sem perder cadastros, escalas, definições de insumos nem configuração/metas.
+Toda a entrega é **apenas aditiva** (sem migração destrutiva) e foi validada por
+property tests (`fast-check` ≥100 iterações, Properties 1–4) e regressão de
+backend e mobile verdes.
+
+- **Config global singleton `config_sistema`.** Migração **aditiva**
+  `9x_config_sistema` cria a tabela singleton (id fixo `'sistema'`) com a
+  `Data_Inicial_Sistema` (padrão **01/07/2026**), editável apenas por
+  `ADMIN_DADOS`. Sem alteração de permissões (reutiliza a `ADMIN_DADOS`
+  existente) e sem tocar em dados já gravados.
+- **Módulo `data-inicial` (GET/PATCH).** `GET /config/data-inicial` (leitura
+  autenticada para o app) e `PATCH /config/data-inicial` (restrito a
+  `ADMIN_DADOS`, grava `atualizadoPor`). O `ValidacaoDataService` compartilhado
+  bloqueia carga/edição com data **anterior** à data inicial nos endpoints de
+  **arrecadação** (upload e sem-movimento), **vendas** (upload), **ausências**,
+  **incidências**, **ponto de fiscal** e **checklist**, lançando
+  `ErroDataAnteriorInicial` (HTTP 400) com a data mínima em `dd/mm/aaaa`.
+  Fronteira: mesmo dia é permitido, véspera é rejeitada.
+- **Módulo `reset-operacional`.** `POST /admin/reset-operacional` (restrito a
+  `ADMIN_DADOS`, exige `confirmacao: "ZERAR"`) apaga os **dados de movimento** —
+  vendas, arrecadação, estoque em movimento (**+ zera o saldo dos insumos**),
+  sacolas/movimentos APAE, ponto/ausências/incidências,
+  notificações/assistente/fechamentos/checklists e fluxos legados — numa **única
+  transação idempotente** (rollback automático em erro), **conservando** pessoas,
+  escalas, definições de insumos e configuração/metas. Devolve um **resumo por
+  entidade** com as contagens apagadas.
+- **Mobile (Expo).** Os calendários/seletores passam a ter **data mínima = data
+  inicial** (bloqueiam navegar para antes dela) e o Centro de Controle ganha a
+  tela **"Zerar dados operacionais"**, visível apenas para `ADMIN_DADOS` e com
+  confirmação explícita ("ZERAR") antes de disparar o reinício.
+- **Qualidade.** Sem migração destrutiva. Domínio puro validado por property
+  tests (`fast-check` ≥100, Properties 1–4: fronteira de data, partição
+  apagar/conservar, idempotência conceptual e cobertura do resumo). Regressão de
+  backend (`build`/`lint`/`test`) e mobile verdes.
+- **Nota importante (Req 9):** o apagamento em **produção** é executado pelo
+  próprio gestor, pelo botão do app; o time entrega a função
+  **construída/testada/publicada** — nunca dispara o reinício no banco de
+  produção.
+- **ADR:** **não amerita** um novo ADR — reutiliza a tabela genérica de
+  configuração (singleton) e a permissão `ADMIN_DADOS` já existentes, sem
+  mudança de arquitetura.
+
+---
+
 ## Score de Perfil Abrangente — nota minuciosa e proporcional do operador (2026-07-05)
 
 **Objetivo:** substituir a nota de perfil do operador por um **score abrangente,

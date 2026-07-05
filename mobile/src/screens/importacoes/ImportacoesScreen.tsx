@@ -29,6 +29,7 @@ import {
   SeletorData,
   Tela,
 } from '../../components';
+import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { notificar } from '../../utils/dialogos';
@@ -64,6 +65,7 @@ async function escolherArquivo(): Promise<DocumentPicker.DocumentPickerAsset | n
 }
 
 export function ImportacoesScreen(): React.ReactElement {
+  const { dataInicial } = useConfigSistema();
   const [data, setData] = useState(hojeISO());
   const [enviando, setEnviando] = useState<string | null>(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
@@ -178,7 +180,12 @@ export function ImportacoesScreen(): React.ReactElement {
 
   return (
     <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
-      <SeletorData valor={data} aoMudar={setData} rotulo="Dia de referência" />
+      <SeletorData
+        valor={data}
+        aoMudar={setData}
+        rotulo="Dia de referência"
+        dataMinima={dataInicial}
+      />
 
       {/* Progresso da sequência */}
       <View style={styles.progressoCard}>

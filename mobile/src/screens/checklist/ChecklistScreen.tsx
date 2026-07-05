@@ -32,6 +32,7 @@ import {
   SeletorData,
   Tela,
 } from '../../components';
+import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { formatarData, formatarHora, hojeISO } from '../../utils/formato';
@@ -168,6 +169,7 @@ function ChecklistCard({
 }
 
 export function ChecklistScreen(): React.ReactElement {
+  const { dataInicial } = useConfigSistema();
   const [data, setData] = useState(hojeISO());
 
   const estadoReq = useRequisicao<EstadoChecklists>(
@@ -220,7 +222,12 @@ export function ChecklistScreen(): React.ReactElement {
         </Cartao>
       ) : null}
 
-      <SeletorData valor={data} aoMudar={setData} rotulo="Dia" />
+      <SeletorData
+        valor={data}
+        aoMudar={setData}
+        rotulo="Dia"
+        dataMinima={dataInicial}
+      />
 
       {estadoReq.carregando ? (
         <Carregando />

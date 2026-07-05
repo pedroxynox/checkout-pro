@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { FechamentoModule } from '../fechamento/fechamento.module';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { MetasModule } from '../metas/metas.module';
+import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { VendasController } from './vendas.controller';
 import { VendasService } from './vendas.service';
 
@@ -17,7 +18,12 @@ import { VendasService } from './vendas.service';
  * global.
  */
 @Module({
-  imports: [FechamentoModule, NotificacoesModule, MetasModule],
+  imports: [
+    FechamentoModule,
+    NotificacoesModule,
+    MetasModule,
+    DataInicialModule,
+  ],
   providers: [VendasService],
   controllers: [VendasController],
   exports: [VendasService],

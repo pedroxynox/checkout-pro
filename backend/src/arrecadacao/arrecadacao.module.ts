@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { FechamentoModule } from '../fechamento/fechamento.module';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { MetasModule } from '../metas/metas.module';
+import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { ArrecadacaoController } from './arrecadacao.controller';
 import { ArrecadacaoService } from './arrecadacao.service';
 import { IndicadoresInteligenteService } from './indicadores-inteligente.service';
@@ -19,7 +20,12 @@ import { IndicadoresResumoService } from './indicadores-resumo.service';
  * os arquivos do dia são resolvidos, e o NotificacoesModule para o resumo.
  */
 @Module({
-  imports: [FechamentoModule, NotificacoesModule, MetasModule],
+  imports: [
+    FechamentoModule,
+    NotificacoesModule,
+    MetasModule,
+    DataInicialModule,
+  ],
   providers: [
     ArrecadacaoService,
     IndicadoresInteligenteService,

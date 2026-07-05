@@ -28,6 +28,8 @@ import { FiscaisModule } from './fiscais/fiscais.module';
 import { ChecklistModule } from './checklist/checklist.module';
 import { NotificacoesModule } from './notificacoes/notificacoes.module';
 import { AssistenteModule } from './assistente/assistente.module';
+import { DataInicialModule } from './data-inicial/data-inicial.module';
+import { ResetOperacionalModule } from './reset-operacional/reset-operacional.module';
 
 @Module({
   imports: [
@@ -60,6 +62,8 @@ import { AssistenteModule } from './assistente/assistente.module';
     NotificacoesModule,
     AssistenteModule,
     AlertasModule,
+    DataInicialModule,
+    ResetOperacionalModule,
   ],
   controllers: [AppController],
   providers: [

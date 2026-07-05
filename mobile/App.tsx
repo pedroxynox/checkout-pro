@@ -26,6 +26,7 @@ import React from 'react';
 import { Platform, View, type ViewStyle } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/auth/AuthContext';
+import { ConfigSistemaProvider } from './src/config/ConfigSistemaContext';
 import { OfflineProvider } from './src/offline/OfflineContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { cores } from './src/theme';
@@ -100,9 +101,11 @@ export default function App(): React.ReactElement {
     <SafeAreaProvider style={estiloRaizWeb}>
       <StatusBar style="light" />
       <AuthProvider>
-        <OfflineProvider>
-          <RootNavigator />
-        </OfflineProvider>
+        <ConfigSistemaProvider>
+          <OfflineProvider>
+            <RootNavigator />
+          </OfflineProvider>
+        </ConfigSistemaProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

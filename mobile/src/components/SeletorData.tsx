@@ -20,24 +20,33 @@ export function SeletorData({
   aoMudar,
   rotulo = 'Data',
   permitirFuturo = true,
+  dataMinima,
 }: {
   valor: string;
   aoMudar: (iso: string) => void;
   rotulo?: string;
   permitirFuturo?: boolean;
+  /**
+   * Data mínima (ISO `yyyy-mm-dd`) permitida. Quando definida, bloqueia o botão
+   * "dia anterior" e a navegação abaixo dela (espelha `permitirFuturo`). A
+   * fronteira é inclusiva: `valor === dataMinima` já bloqueia voltar.
+   */
+  dataMinima?: string;
 }): React.ReactElement {
   const hoje = hojeISO();
   const proximoBloqueado = !permitirFuturo && valor >= hoje;
+  const anteriorBloqueado = !!dataMinima && valor <= dataMinima;
 
   return (
     <View style={styles.container}>
       <Text style={styles.rotulo}>{rotulo}</Text>
       <View style={styles.controles}>
         <Pressable
-          onPress={() => aoMudar(deslocarDias(valor, -1))}
-          style={styles.botao}
+          onPress={() => !anteriorBloqueado && aoMudar(deslocarDias(valor, -1))}
+          style={[styles.botao, anteriorBloqueado && styles.inativo]}
           hitSlop={8}
           accessibilityLabel="Dia anterior"
+          accessibilityState={{ disabled: anteriorBloqueado }}
         >
           <Ionicons name="chevron-back" size={20} color={cores.primaria} />
         </Pressable>

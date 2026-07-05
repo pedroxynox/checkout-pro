@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FechamentoService } from '../fechamento/fechamento.service';
 import { MetasService } from '../metas/metas.service';
+import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { anoMesDe, ehTipoMeta } from '../metas/metas.domain';
 import {
   montarVinculo,
@@ -113,6 +114,7 @@ export class ArrecadacaoService {
     private readonly prisma: PrismaService,
     private readonly fechamento: FechamentoService,
     private readonly metas: MetasService,
+    @Optional() private readonly validacaoData?: ValidacaoDataService,
   ) {}
 
   /** Substitui os lançamentos do tipo no dia informado pelos do arquivo. */
@@ -121,6 +123,8 @@ export class ArrecadacaoService {
     data: Date,
     linhas: LinhaArrecadacao[],
   ): Promise<ResultadoUploadArrecadacao> {
+    // Rejeita datas anteriores à Data_Inicial_Sistema (Req 6.1–6.3).
+    await this.validacaoData?.exigirDataPermitida(data);
     const dia = inicioDoDia(data);
     const proximo = inicioDoProximoDia(data);
     await this.prisma.$transaction([
@@ -195,6 +199,8 @@ export class ArrecadacaoService {
     data: Date,
     marcadoPor?: string,
   ): Promise<{ fechamentoConcluido: boolean }> {
+    // Rejeita datas anteriores à Data_Inicial_Sistema (Req 6.1–6.3).
+    await this.validacaoData?.exigirDataPermitida(data);
     const dia = inicioDoDia(data);
     await this.prisma.arrecadacaoSemMovimento.upsert({
       where: { tipo_data: { tipo, data: dia } },

@@ -2,6 +2,7 @@ import { Injectable, Optional } from '@nestjs/common';
 import { Fiscal } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import {
   Jornada,
   RegistroPonto,
@@ -84,6 +85,7 @@ export class FiscaisService {
     private readonly prisma: PrismaService,
     @Optional() private readonly eventos?: FiscalStatusEventos,
     @Optional() private readonly notificacoes?: NotificacoesService,
+    @Optional() private readonly validacaoData?: ValidacaoDataService,
   ) {}
 
   /** Fiscal vinculado ao usuário autenticado (erro se não houver). */
@@ -167,6 +169,9 @@ export class FiscaisService {
     status: StatusFiscal,
     em: Date = new Date(),
   ): Promise<ResumoStatus & Jornada> {
+    // Rejeita datas anteriores à Data_Inicial_Sistema (Req 6.1–6.3).
+    await this.validacaoData?.exigirDataPermitida(em);
+
     // Valida: se está de folga hoje, não pode registrar ponto.
     if (await this.isFolgaHoje(fiscalId, em)) {
       throw new FiscalDeFolgaError();
