@@ -2,6 +2,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Checklist } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { inicioDoDia } from '../common/datas';
 import {
   ArquivoRef,
@@ -120,6 +121,7 @@ export class ChecklistService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly notificacoes?: NotificacoesService,
+    @Optional() private readonly validacaoData?: ValidacaoDataService,
   ) {}
 
   /** Disponibiliza (cria se ausente) o checklist diário (Req 5.1.1). */
@@ -127,6 +129,8 @@ export class ChecklistService {
     tipo: TipoChecklist,
     data: Date,
   ): Promise<Checklist> {
+    // Rejeita datas anteriores à Data_Inicial_Sistema (Req 6.1–6.3).
+    await this.validacaoData?.exigirDataPermitida(data);
     const dia = inicioDoDia(data);
     const existente = await this.prisma.checklist.findUnique({
       where: { tipo_data: { tipo, data: dia } },
@@ -160,6 +164,8 @@ export class ChecklistService {
         arquivo.mimeType ?? arquivo.nome ?? undefined,
       );
     }
+    // Rejeita datas anteriores à Data_Inicial_Sistema (Req 6.1–6.3).
+    await this.validacaoData?.exigirDataPermitida(data);
     const dia = inicioDoDia(data);
     const agora = agoraBrasilia();
     // Pontualidade: enviado dentro da janela (só faz sentido no mesmo dia).

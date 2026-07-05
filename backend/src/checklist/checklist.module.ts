@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
+import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { ChecklistController } from './checklist.controller';
 import { ChecklistService } from './checklist.service';
 
@@ -13,7 +14,7 @@ import { ChecklistService } from './checklist.service';
  * `ChecklistService` para uso pela camada de API e pelos cron jobs.
  */
 @Module({
-  imports: [NotificacoesModule],
+  imports: [NotificacoesModule, DataInicialModule],
   providers: [ChecklistService],
   controllers: [ChecklistController],
   exports: [ChecklistService],

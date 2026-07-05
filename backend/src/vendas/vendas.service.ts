@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { FechamentoService } from '../fechamento/fechamento.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { MetasService } from '../metas/metas.service';
+import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { anoMesDe } from '../metas/metas.domain';
 import { LinhaVendaHora } from './vendas.parser';
 import { arredondar } from '../common/numeros';
@@ -128,6 +129,7 @@ export class VendasService {
     private readonly fechamento: FechamentoService,
     private readonly metas: MetasService,
     @Optional() private readonly notificacoes?: NotificacoesService,
+    @Optional() private readonly validacaoData?: ValidacaoDataService,
   ) {}
 
   /** Substitui as vendas por hora do dia e atualiza o total em VendaDiaria. */
@@ -135,6 +137,8 @@ export class VendasService {
     data: Date,
     linhas: LinhaVendaHora[],
   ): Promise<ResultadoUploadVendas> {
+    // Rejeita datas anteriores à Data_Inicial_Sistema (Req 6.1–6.3).
+    await this.validacaoData?.exigirDataPermitida(data);
     const dia = inicioDoDia(data);
     const proximo = inicioDoProximoDia(data);
     const total = arredondar(linhas.reduce((s, l) => s + l.valor, 0));

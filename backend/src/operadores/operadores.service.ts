@@ -2,6 +2,7 @@ import { Injectable, Optional } from '@nestjs/common';
 import { Ausencia } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import {
   AusenciaRegistro,
   ContagemTurno,
@@ -34,6 +35,7 @@ export class OperadoresService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly notificacoes?: NotificacoesService,
+    @Optional() private readonly validacaoData?: ValidacaoDataService,
   ) {}
 
   // O cadastro/edição/listagem de operadores pelo model simples `Operador` foi
@@ -47,6 +49,8 @@ export class OperadoresService {
    * lançando `AusenciaDuplicadaError` (Req 6.2.3).
    */
   async registrarAusencia(pessoaId: string, data: Date): Promise<Ausencia> {
+    // Rejeita datas anteriores à Data_Inicial_Sistema (Req 6.1–6.3).
+    await this.validacaoData?.exigirDataPermitida(data);
     const existentes = await this.prisma.ausencia.findMany({
       where: { pessoaId },
       select: { pessoaId: true, data: true },

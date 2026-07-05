@@ -2,6 +2,7 @@ import { Injectable, Optional } from '@nestjs/common';
 import { IncidenciaEscala, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { inicioDoDia, inicioDoMes, inicioDoProximoMes } from '../common/datas';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 import { primeiroNome } from '../fiscais/fiscais.domain';
@@ -104,6 +105,7 @@ export class IncidenciasService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly notificacoes?: NotificacoesService,
+    @Optional() private readonly validacaoData?: ValidacaoDataService,
   ) {}
 
   /**
@@ -121,6 +123,9 @@ export class IncidenciasService {
     if (Number.isNaN(data.getTime())) {
       throw new DadosIncidenciaInvalidosError('Data da incidência inválida.');
     }
+
+    // Rejeita datas anteriores à Data_Inicial_Sistema (Req 6.1–6.3).
+    await this.validacaoData?.exigirDataPermitida(data);
 
     // O `colaboradorId` é um String sem FK; garante que a ficha existe antes de
     // persistir para não criar incidências órfãs (que contaminariam ranking e

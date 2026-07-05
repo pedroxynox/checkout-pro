@@ -1,20 +1,22 @@
 import { Module } from '@nestjs/common';
 import { DataInicialController } from './data-inicial.controller';
 import { DataInicialService } from './data-inicial.service';
+import { ValidacaoDataService } from './validacao-data.service';
 
 /**
  * Módulo da Data_Inicial_Sistema (Modulo_DataInicial): leitura/edição da
  * configuração global *singleton* e fonte de verdade da data mínima.
  *
- * Exporta `DataInicialService` para reutilização por outros módulos. Na Ola B
- * (Tarefa 3) este módulo também proverá/exportará o `ValidacaoDataService`
- * compartilhado, injetado nos endpoints de carga/edição.
+ * Exporta `DataInicialService` (leitura/edição) e `ValidacaoDataService`
+ * (validação de data mínima compartilhada) para reutilização pelos endpoints
+ * de carga/edição (arrecadação, vendas, ausências, incidências, ponto,
+ * checklist).
  *
  * PrismaService é global (PrismaModule), então não precisa ser reimportado.
  */
 @Module({
   controllers: [DataInicialController],
-  providers: [DataInicialService],
-  exports: [DataInicialService],
+  providers: [DataInicialService, ValidacaoDataService],
+  exports: [DataInicialService, ValidacaoDataService],
 })
 export class DataInicialModule {}
