@@ -12,6 +12,7 @@ import {
   calcularScore,
   gerarInsignias,
   gerarResumo,
+  metaIndividualDerivada,
   rankingPorValor,
   resolverColaboradorId,
   rotuloMes,
@@ -334,6 +335,15 @@ export class PerfilColaboradorService {
     const mediaIndicador = (chave: string): number =>
       indicadores.find((i) => i.chave === chave)?.mediaEquipe ?? 0;
 
+    // NOTA (Ola A — score-perfil-abrangente): o domínio `calcularScore` foi
+    // evoluído (contribuição por meta individual derivada + disciplina com
+    // não-retornos). O *wiring* completo dos insumos (meta global mensal, nº de
+    // operadores ativos, dias escalados, não-retornos do período via
+    // `IncidenciasService.contarNaoRetornos`) é a Tarefa 5 (Ola B). Aqui é feita
+    // apenas a adaptação MÍNIMA para o projeto compilar, preservando o
+    // comportamento atual: a meta individual usa a cota global como referência
+    // (fator de escala 1), equivalente à razão valor/meta anterior; a linha de
+    // base de disciplina segue a média da equipe e `naoRetornos = 0` até a Ola B.
     const score = calcularScore(
       ehFiscal
         ? {
@@ -344,20 +354,26 @@ export class PerfilColaboradorService {
         : {
             taxaFaltas: faltas.taxa,
             contribuicao: {
-              valor:
+              aporteReal:
                 valorIndicador('TROCO_SOLIDARIO') +
                 valorIndicador('RECARGAS_CELULAR'),
-              meta:
-                CONFIG_ARRECADACAO.TROCO_SOLIDARIO.meta +
-                CONFIG_ARRECADACAO.RECARGAS_CELULAR.meta,
+              metaIndividualPeriodo: metaIndividualDerivada({
+                metaGlobalMensal:
+                  CONFIG_ARRECADACAO.TROCO_SOLIDARIO.meta +
+                  CONFIG_ARRECADACAO.RECARGAS_CELULAR.meta,
+                nOperadoresAtivos: 1,
+                diasEscaladosPeriodo: 1,
+                diasUteisMes: 1,
+              }),
             },
-            cancelamentos: {
-              valor:
+            disciplina: {
+              cancelamentos:
                 valorIndicador('CANCELAMENTO_ITENS') +
                 valorIndicador('CANCELAMENTO_CUPOM'),
-              media:
+              linhaBaseCancelamentos:
                 mediaIndicador('CANCELAMENTO_ITENS') +
                 mediaIndicador('CANCELAMENTO_CUPOM'),
+              naoRetornos: 0,
             },
           },
     );
