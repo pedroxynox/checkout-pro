@@ -5,11 +5,11 @@ import {
 } from './incidencias.errors';
 
 /**
- * Justificativa de não-retornos: `contarNaoRetornos` passa a ser PONDERADO
+ * Justificativa de incidências: `contarIncidenciasPonderadas` é PONDERADO
  * (justificados pesam menos) e o serviço grava/valida a justificativa.
  */
 describe('Justificativa de não-retorno', () => {
-  describe('contarNaoRetornos (ponderado)', () => {
+  describe('contarIncidenciasPonderadas (ponderado)', () => {
     it('soma pesos: PENDENTE=1, JUSTIFICADO por atestado=0.02', async () => {
       const linhas = [
         { statusJustificativa: 'PENDENTE', motivoJustificativa: null },
@@ -25,7 +25,7 @@ describe('Justificativa de não-retorno', () => {
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service = new IncidenciasService(prisma as any);
-      const total = await service.contarNaoRetornos(
+      const total = await service.contarIncidenciasPonderadas(
         'c1',
         new Date(Date.UTC(2026, 6, 1)),
         new Date(Date.UTC(2026, 7, 1)),

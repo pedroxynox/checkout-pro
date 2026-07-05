@@ -19,12 +19,12 @@ import {
  *
  * Constantes de calibração espelhadas do domínio (privadas ao módulo), usadas
  * apenas como referência independente nos testes:
- *   NEUTRA = 50, FATOR_CANCELAMENTO = 50, PENAL_POR_NAO_RETORNO = 20.
+ *   NEUTRA = 50, FATOR_CANCELAMENTO = 50, PENAL_POR_INCIDENCIA = 20.
  */
 const NUM_RUNS = 200;
 const NEUTRA_REF = 50;
 const FATOR_CANCELAMENTO_REF = 50;
-const PENAL_POR_NAO_RETORNO_REF = 20;
+const PENAL_POR_INCIDENCIA_REF = 20;
 
 // ---------------------------------------------------------------------------
 // Arbitrários auxiliares
@@ -54,7 +54,7 @@ const contribuicaoArb: fc.Arbitrary<EntradaScore['contribuicao']> = fc.record({
 const disciplinaArb: fc.Arbitrary<EntradaScore['disciplina']> = fc.record({
   cancelamentos: naoNegativo(10_000),
   linhaBaseCancelamentos: naoNegativo(10_000),
-  naoRetornos: fc.integer({ min: 0, max: 30 }),
+  incidenciasDisciplinares: fc.integer({ min: 0, max: 30 }),
 });
 
 const atividadeArb: fc.Arbitrary<EntradaScore['atividade']> = fc.record({
@@ -258,11 +258,11 @@ describe('score-perfil-abrangente — testes de propriedade do domínio', () => 
         naoNegativo(10_000),
         naoNegativo(10_000),
         fc.integer({ min: 0, max: 30 }),
-        (cancelamentos, linhaBaseCancelamentos, naoRetornos) => {
+        (cancelamentos, linhaBaseCancelamentos, incidenciasDisciplinares) => {
           const nota = notaDisciplina({
             cancelamentos,
             linhaBaseCancelamentos,
-            naoRetornos,
+            incidenciasDisciplinares,
           });
           const notaCancelRef =
             linhaBaseCancelamentos > 0
@@ -276,12 +276,15 @@ describe('score-perfil-abrangente — testes de propriedade do domínio', () => 
                 ? clamp(100 - FATOR_CANCELAMENTO_REF)
                 : 100;
           const esperado = clamp(
-            notaCancelRef - naoRetornos * PENAL_POR_NAO_RETORNO_REF,
+            notaCancelRef - incidenciasDisciplinares * PENAL_POR_INCIDENCIA_REF,
             0,
             100,
           );
           const ok = nota === esperado && emFaixa(nota);
-          if (cancelamentos <= linhaBaseCancelamentos && naoRetornos === 0) {
+          if (
+            cancelamentos <= linhaBaseCancelamentos &&
+            incidenciasDisciplinares === 0
+          ) {
             return ok && nota === 100;
           }
           return ok;
@@ -306,12 +309,12 @@ describe('score-perfil-abrangente — testes de propriedade do domínio', () => 
           const notaMenos = notaDisciplina({
             cancelamentos,
             linhaBaseCancelamentos,
-            naoRetornos: menos,
+            incidenciasDisciplinares: menos,
           });
           const notaMais = notaDisciplina({
             cancelamentos,
             linhaBaseCancelamentos,
-            naoRetornos: mais,
+            incidenciasDisciplinares: mais,
           });
           return notaMais <= notaMenos;
         },
@@ -456,7 +459,7 @@ describe('score-perfil-abrangente — testes de exemplo/borda', () => {
       notaDisciplina({
         cancelamentos: 0,
         linhaBaseCancelamentos: 0,
-        naoRetornos: 0,
+        incidenciasDisciplinares: 0,
       }),
     ).toBe(100);
     // Também 100 quando abaixo da linha de base e sem não-retornos.
@@ -464,7 +467,7 @@ describe('score-perfil-abrangente — testes de exemplo/borda', () => {
       notaDisciplina({
         cancelamentos: 3,
         linhaBaseCancelamentos: 10,
-        naoRetornos: 0,
+        incidenciasDisciplinares: 0,
       }),
     ).toBe(100);
   });
@@ -472,9 +475,9 @@ describe('score-perfil-abrangente — testes de exemplo/borda', () => {
   // Validates: Requirements 4.3, 4.4
   it('cada não-retorno subtrai 20 pontos da disciplina (limitado a 0)', () => {
     const base = { cancelamentos: 0, linhaBaseCancelamentos: 0 };
-    expect(notaDisciplina({ ...base, naoRetornos: 1 })).toBe(80);
-    expect(notaDisciplina({ ...base, naoRetornos: 2 })).toBe(60);
-    expect(notaDisciplina({ ...base, naoRetornos: 10 })).toBe(0);
+    expect(notaDisciplina({ ...base, incidenciasDisciplinares: 1 })).toBe(80);
+    expect(notaDisciplina({ ...base, incidenciasDisciplinares: 2 })).toBe(60);
+    expect(notaDisciplina({ ...base, incidenciasDisciplinares: 10 })).toBe(0);
   });
 
   // Validates: Requirements 6.3, 6.4, 6.5

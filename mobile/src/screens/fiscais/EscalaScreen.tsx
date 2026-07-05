@@ -45,6 +45,8 @@ interface AlvoRegistro {
   colaboradorId: string;
   nome: string;
   valoresIniciais?: ValoresIniciaisIncidencia;
+  /** Permite escolher o tipo (lançamento manual); falso no fluxo de sugestão. */
+  permitirEscolherTipo?: boolean;
 }
 
 export function EscalaScreen(): React.ReactElement {
@@ -212,6 +214,7 @@ export function EscalaScreen(): React.ReactElement {
                         colaboradorId: item.colaboradorId as string,
                         nome: item.nome ?? item.funcionarioId,
                         valoresIniciais: { data: hojeISO(), origem: 'MANUAL' },
+                        permitirEscolherTipo: true,
                       })
                     }
                     style={({ pressed }) => [
@@ -225,7 +228,7 @@ export function EscalaScreen(): React.ReactElement {
                       color={cores.primaria}
                     />
                     <Text style={styles.acaoCartaoTexto}>
-                      Registrar não retorno
+                      Registrar ocorrência
                     </Text>
                   </Pressable>
                 ) : null}
@@ -242,6 +245,7 @@ export function EscalaScreen(): React.ReactElement {
           aoSalvar={() => sugestoes.recarregar()}
           colaboradorId={alvo.colaboradorId}
           valoresIniciais={alvo.valoresIniciais}
+          permitirEscolherTipo={alvo.permitirEscolherTipo}
         />
       ) : null}
     </Tela>

@@ -20,6 +20,7 @@ import {
   StatusFiscal,
   StatusJustificativa,
   SugestaoIncidencia,
+  TipoIncidenciaEscala,
 } from '../types';
 
 export const fiscaisService = {
@@ -153,14 +154,20 @@ export const escalaService = {
     );
   },
 
-  /** Ranking de incidências por colaborador na janela [inicio, fim]. */
+  /**
+   * Ranking de incidências por colaborador na janela [inicio, fim]. Aceita um
+   * `tipo` opcional para comparar um evento específico (senão, soma todos).
+   */
   rankingIncidencias(
     inicio: string,
     fim: string,
+    tipo?: TipoIncidenciaEscala,
   ): Promise<RankingIncidencia[]> {
+    const params: Record<string, string> = { inicio, fim };
+    if (tipo) params.tipo = tipo;
     return apiClient.get<RankingIncidencia[]>(
       '/escala/incidencias/ranking',
-      { inicio, fim },
+      params,
     );
   },
 };

@@ -1,12 +1,19 @@
 import * as fc from 'fast-check';
 import {
   IncidenciaRegistro,
+  TIPOS_INCIDENCIA,
+  TipoIncidencia,
   TransicaoPonto,
   analisarIncidencias,
   derivarHoraEsperadaRetorno,
   detectarNaoRetorno,
   timelineUnificada,
 } from './incidencias.domain';
+
+/** Arbitrário de tipo de incidência sobre todos os tipos conhecidos. */
+const tipoIncidenciaArb: fc.Arbitrary<TipoIncidencia> = fc.constantFrom(
+  ...TIPOS_INCIDENCIA,
+);
 
 /**
  * Testes de propriedade (fast-check) das Incidências de Escala.
@@ -143,7 +150,7 @@ describe('Incidências de Escala — testes de propriedade', () => {
   // Validates: Requirements 3
   it('Property 3: analítica particiona por tipo/dia e percentual fica em [0,100]', () => {
     const incidenciaArb: fc.Arbitrary<IncidenciaRegistro> = fc.record({
-      tipo: fc.constant('NAO_RETORNO_INTERVALO' as const),
+      tipo: tipoIncidenciaArb,
       data: dataArb,
     });
     fc.assert(
@@ -182,7 +189,7 @@ describe('Incidências de Escala — testes de propriedade', () => {
   // Validates: Requirements 4
   it('Property 4: linha do tempo unificada é decrescente e preserva a contagem', () => {
     const incidenciaArb: fc.Arbitrary<IncidenciaRegistro> = fc.record({
-      tipo: fc.constant('NAO_RETORNO_INTERVALO' as const),
+      tipo: tipoIncidenciaArb,
       data: dataArb,
     });
     fc.assert(

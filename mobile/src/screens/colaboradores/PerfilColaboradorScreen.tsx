@@ -16,6 +16,7 @@ import {
   FuncaoColaborador,
   IncidenciaEscala,
   IndicadorPerfil,
+  META_TIPO_INCIDENCIA,
   NivelSaude,
   PerfilColaborador,
   TimelineItem,
@@ -209,14 +210,23 @@ function CartaoIndicador({ ind }: { ind: IndicadorPerfil }): React.ReactElement 
 /** Rótulos e ícones da linha do tempo unificada (faltas + incidências). */
 const ROTULO_KIND: Record<TimelineItem['kind'], string> = {
   FALTA: 'Falta',
-  NAO_RETORNO_INTERVALO: 'Não retorno do intervalo',
+  NAO_RETORNO_INTERVALO: META_TIPO_INCIDENCIA.NAO_RETORNO_INTERVALO.rotulo,
+  ATRASO: META_TIPO_INCIDENCIA.ATRASO.rotulo,
+  SAIDA_ANTECIPADA: META_TIPO_INCIDENCIA.SAIDA_ANTECIPADA.rotulo,
+  RETORNO_TARDIO: META_TIPO_INCIDENCIA.RETORNO_TARDIO.rotulo,
+  ADVERTENCIA: META_TIPO_INCIDENCIA.ADVERTENCIA.rotulo,
 };
 const ICONE_KIND: Record<TimelineItem['kind'], keyof typeof Ionicons.glyphMap> = {
   FALTA: 'close-circle-outline',
   NAO_RETORNO_INTERVALO: 'time-outline',
+  ATRASO: 'alarm-outline',
+  SAIDA_ANTECIPADA: 'exit-outline',
+  RETORNO_TARDIO: 'hourglass-outline',
+  ADVERTENCIA: 'warning-outline',
 };
 
-type FiltroTimeline = 'TODAS' | 'FALTA' | 'NAO_RETORNO_INTERVALO';
+/** Filtro da linha do tempo: todas, só faltas ou só incidências (qualquer tipo). */
+type FiltroTimeline = 'TODAS' | 'FALTA' | 'INCIDENCIA';
 
 /**
  * Histórico unificado de incidências (faltas + não retorno do intervalo) do
@@ -246,20 +256,24 @@ function HistoricoIncidencias({
   const risco = coresRisco(incidencias.risco);
   const temDiaSemana = incidencias.porDiaSemana.some((d) => d.valor > 0);
   const timeline = incidencias.timeline.filter((t) =>
-    filtro === 'TODAS' ? true : t.kind === filtro,
+    filtro === 'TODAS'
+      ? true
+      : filtro === 'FALTA'
+        ? t.kind === 'FALTA'
+        : t.kind !== 'FALTA',
   );
 
   /** Abre o modal em modo criar (mesmo fluxo manual da EscalaScreen). */
-  const registrarNaoRetorno = (): void => {
+  const registrarOcorrencia = (): void => {
     if (!podeEditar) return;
     setEditando(null);
     setValoresCriar({ data: hojeISO(), origem: 'MANUAL' });
     setModalVisivel(true);
   };
 
-  /** Abre o modal de edição para uma incidência da linha do tempo. */
+  /** Abre o modal de edição para uma incidência (qualquer tipo) da timeline. */
   const editarDaTimeline = (item: TimelineItem): void => {
-    if (!podeEditar || item.kind !== 'NAO_RETORNO_INTERVALO') return;
+    if (!podeEditar || item.kind === 'FALTA') return;
     const registro = registros.find(
       (r) => r.data.slice(0, 10) === item.data && r.tipo === item.kind,
     );
@@ -273,8 +287,8 @@ function HistoricoIncidencias({
     <Cartao titulo="Histórico de incidências">
       <View style={styles.incResumoTopo}>
         <View style={styles.faltaBox}>
-          <Text style={styles.faltaNumero}>{incidencias.totalNaoRetorno}</Text>
-          <Text style={styles.faltaRotulo}>não retornos</Text>
+          <Text style={styles.faltaNumero}>{incidencias.total}</Text>
+          <Text style={styles.faltaRotulo}>incidências</Text>
         </View>
         <View style={styles.faltaBox}>
           <Text style={styles.faltaNumero}>
@@ -285,16 +299,26 @@ function HistoricoIncidencias({
         <Pilula texto={risco.rotulo} cor={risco.cor} fundo={risco.fundo} />
       </View>
 
+      {incidencias.porTipo.length > 0 ? (
+        <View style={styles.incPorTipo}>
+          {incidencias.porTipo.map((t) => (
+            <Text key={t.tipo} style={styles.incPorTipoChip}>
+              {t.rotulo}: <Text style={styles.incPorTipoNum}>{t.total}</Text>
+            </Text>
+          ))}
+        </View>
+      ) : null}
+
       {podeEditar ? (
         <Pressable
-          onPress={registrarNaoRetorno}
+          onPress={registrarOcorrencia}
           style={({ pressed }) => [
             styles.acaoRegistrar,
             pressed && { opacity: 0.6 },
           ]}
         >
           <Ionicons name="time-outline" size={15} color={cores.primaria} />
-          <Text style={styles.acaoRegistrarTexto}>Registrar não retorno</Text>
+          <Text style={styles.acaoRegistrarTexto}>Registrar ocorrência</Text>
         </Pressable>
       ) : null}
 
@@ -319,7 +343,7 @@ function HistoricoIncidencias({
           opcoes={[
             { valor: 'TODAS', rotulo: 'Todas' },
             { valor: 'FALTA', rotulo: 'Faltas' },
-            { valor: 'NAO_RETORNO_INTERVALO', rotulo: 'Não retorno' },
+            { valor: 'INCIDENCIA', rotulo: 'Incidências' },
           ]}
           selecionado={filtro}
           aoSelecionar={setFiltro}
@@ -330,7 +354,7 @@ function HistoricoIncidencias({
         <Text style={styles.semDados}>Sem incidências no período.</Text>
       ) : (
         timeline.map((item, i) => {
-          const editavel = podeEditar && item.kind === 'NAO_RETORNO_INTERVALO';
+          const editavel = podeEditar && item.kind !== 'FALTA';
           const conteudo = (
             <View style={styles.timelineLinha}>
               <Ionicons
@@ -377,6 +401,7 @@ function HistoricoIncidencias({
           incidenciaExistente={editando}
           valoresIniciais={valoresCriar ?? undefined}
           podeExcluir={podeEditar}
+          permitirEscolherTipo
         />
       ) : null}
     </Cartao>
@@ -866,6 +891,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: espacamento.md,
     marginBottom: espacamento.sm,
+  },
+  incPorTipo: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espacamento.xs,
+    marginBottom: espacamento.sm,
+  },
+  incPorTipoChip: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    backgroundColor: cores.superficieAlternativa,
+    paddingVertical: espacamento.xs,
+    paddingHorizontal: espacamento.sm,
+    borderRadius: raio.pill,
+    overflow: 'hidden',
+  },
+  incPorTipoNum: {
+    color: cores.texto,
+    fontWeight: '700',
   },
   acaoRegistrar: {
     flexDirection: 'row',

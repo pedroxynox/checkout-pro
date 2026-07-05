@@ -109,6 +109,6 @@ export class IncidenciasController {
   async ranking(
     @Query() dto: RankingIncidenciasDto,
   ): Promise<ItemRankingIncidencias[]> {
-    return this.incidencias.ranking(dto.inicio, dto.fim);
+    return this.incidencias.ranking(dto.inicio, dto.fim, dto.tipo);
   }
 }

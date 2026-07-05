@@ -652,7 +652,61 @@ export interface EventoStatusFiscal {
 // ----- Incidências de Escala (Fase 1/2 — "não retornou do intervalo") -----
 
 /** Tipos de incidência de escala (espelho do enum Prisma do backend). */
-export type TipoIncidenciaEscala = 'NAO_RETORNO_INTERVALO';
+export type TipoIncidenciaEscala =
+  | 'NAO_RETORNO_INTERVALO'
+  | 'ATRASO'
+  | 'SAIDA_ANTECIPADA'
+  | 'RETORNO_TARDIO'
+  | 'ADVERTENCIA';
+
+/** Metadados de um tipo de incidência (espelho de META_TIPO_INCIDENCIA). */
+export interface MetaTipoIncidencia {
+  rotulo: string;
+  /** Faz uso dos horários (saída/esperado/real). Advertência não usa. */
+  usaHorarios: boolean;
+  /** Só o não-retorno é auto-detectável do ponto; os demais são manuais. */
+  autoDetectavel: boolean;
+}
+
+/** Rótulos + regras por tipo, na ordem de exibição (espelho do backend). */
+export const META_TIPO_INCIDENCIA: Record<
+  TipoIncidenciaEscala,
+  MetaTipoIncidencia
+> = {
+  NAO_RETORNO_INTERVALO: {
+    rotulo: 'Não retorno do intervalo',
+    usaHorarios: true,
+    autoDetectavel: true,
+  },
+  ATRASO: { rotulo: 'Atraso', usaHorarios: true, autoDetectavel: false },
+  SAIDA_ANTECIPADA: {
+    rotulo: 'Saída antecipada',
+    usaHorarios: true,
+    autoDetectavel: false,
+  },
+  RETORNO_TARDIO: {
+    rotulo: 'Retorno tardio',
+    usaHorarios: true,
+    autoDetectavel: false,
+  },
+  ADVERTENCIA: {
+    rotulo: 'Advertência',
+    usaHorarios: false,
+    autoDetectavel: false,
+  },
+};
+
+/** Todos os tipos de incidência conhecidos (ordem de exibição). */
+export const TIPOS_INCIDENCIA: TipoIncidenciaEscala[] = [
+  'NAO_RETORNO_INTERVALO',
+  'ATRASO',
+  'SAIDA_ANTECIPADA',
+  'RETORNO_TARDIO',
+  'ADVERTENCIA',
+];
+
+/** Tipos que o usuário pode lançar manualmente (todos, hoje). */
+export const TIPOS_INCIDENCIA_MANUAIS: TipoIncidenciaEscala[] = TIPOS_INCIDENCIA;
 
 /** Origem do registro: manual (gestor) ou auto-detectado do ponto. */
 export type OrigemIncidencia = 'MANUAL' | 'DETECTADO_PONTO';
@@ -1218,6 +1272,11 @@ export interface PerfilColaborador {
    * (incidências + faltas). Espelha 1:1 o formato do backend.
    */
   incidencias: {
+    /** Total de incidências de TODOS os tipos no período (~6 meses). */
+    total: number;
+    /** Desglose por tipo (só tipos com ocorrências). */
+    porTipo: { tipo: TipoIncidenciaEscala; rotulo: string; total: number }[];
+    /** Retrocompatível: total só de "não retorno do intervalo". */
     totalNaoRetorno: number;
     ultimoNaoRetorno: string | null;
     diasConsecutivosSemIncidencia: number;
