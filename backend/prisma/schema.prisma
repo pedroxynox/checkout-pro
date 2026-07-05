@@ -295,6 +295,18 @@ model ConfigVendas {
   @@map("config_vendas")
 }
 
+// Configuração (singleton) global do Sistema. Guarda a Data_Inicial_Sistema:
+// data a partir da qual registros podem ser cadastrados/editados e a partir da
+// qual começam os calendários do app. Editável pelo gestor sem redeploy.
+model ConfigSistema {
+  id            String   @id @default("sistema")
+  dataInicial   DateTime @default("2026-07-01T00:00:00.000Z")
+  atualizadoEm  DateTime @default(now()) @updatedAt
+  atualizadoPor String?
+
+  @@map("config_sistema")
+}
+
 model Insumo {
   id           String          @id @default(uuid())
   nome         String
