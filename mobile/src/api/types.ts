@@ -1028,6 +1028,8 @@ export interface Colaborador {
   saidaFds: string | null;
   folgaDiaSemana: number | null;
   usuarioId: string | null;
+  /** Data de admissão (ISO yyyy-mm-dd) — base do módulo de Contratos. */
+  dataAdmissao: string | null;
 }
 
 /** Dados para cadastrar/editar um colaborador. */
@@ -1049,6 +1051,8 @@ export interface ColaboradorInput {
   entradaFds?: string;
   saidaFds?: string;
   folgaDiaSemana?: number;
+  /** Data de admissão (ISO yyyy-mm-dd) — base do módulo de Contratos. */
+  dataAdmissao?: string;
   ativo?: boolean;
 }
 
@@ -1181,4 +1185,73 @@ export interface PerfilColaborador {
     percentualSobreEscalados: number;
     timeline: TimelineItem[];
   };
+  /**
+   * Contrato de experiência / **tempo de casa** (informativo — NÃO afeta o
+   * score). `temAdmissao=false` quando ainda não há data de admissão definida.
+   */
+  contrato: ResumoContratoColaborador;
+}
+
+
+// ----- Contratos de experiência (45 + 45 dias) -----
+export type MarcoContrato = 'MARCO_45' | 'MARCO_90';
+export type ResultadoDecisao = 'APROVADO' | 'REPROVADO';
+export type EstadoContrato =
+  | 'SEM_ADMISSAO'
+  | 'EXPERIENCIA'
+  | 'EFETIVADO'
+  | 'ENCERRADO';
+export type EtiquetaContrato =
+  | 'sem_admissao'
+  | 'experiencia'
+  | 'efetivado'
+  | 'encerrado';
+export type UrgenciaContrato = 'INATIVO' | 'OK' | 'ATENCAO' | 'CRITICO';
+
+/** Card de contrato de um operador (seção Contratos). */
+export interface ContratoCard {
+  colaboradorId: string;
+  nome: string;
+  matricula: string;
+  dataAdmissao: string | null;
+  diasDeCasa: number;
+  estado: EstadoContrato;
+  etiqueta: EtiquetaContrato;
+  urgencia: UrgenciaContrato;
+  proximoMarco: MarcoContrato | null;
+  dataProximoMarco: string | null;
+  diasParaProximoMarco: number | null;
+  marcoEmAtraso: MarcoContrato | null;
+  efetivadoPorDecurso: boolean;
+  decisao45: ResultadoDecisao | null;
+  decisao90: ResultadoDecisao | null;
+}
+
+/** Seção "Tempo de casa / Contrato" do perfil (informativa). */
+export interface ResumoContratoColaborador {
+  temAdmissao: boolean;
+  dataAdmissao: string | null;
+  diasDeCasa: number;
+  estado: EstadoContrato;
+  etiqueta: EtiquetaContrato;
+  dataMarco45: string | null;
+  dataMarco90: string | null;
+  proximoMarco: MarcoContrato | null;
+  dataProximoMarco: string | null;
+  diasParaProximoMarco: number | null;
+  marcoEmAtraso: MarcoContrato | null;
+  efetivadoPorDecurso: boolean;
+  decisao45: ResultadoDecisao | null;
+  decisao90: ResultadoDecisao | null;
+}
+
+/** Contagens agregadas da carteira de contratos (resumo do topo da seção). */
+export interface ResumoCarteiraContratos {
+  total: number;
+  emExperiencia: number;
+  efetivados: number;
+  encerrados: number;
+  semAdmissao: number;
+  vencendoSemana: number;
+  decisaoPendente: number;
 }

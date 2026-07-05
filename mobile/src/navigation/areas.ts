@@ -29,6 +29,7 @@ export interface Area {
     | 'Checklist'
     | 'Operadores'
     | 'Colaboradores'
+    | 'Contratos'
     | 'CentroControle'
     | 'Usuarios'
     | 'AlertasFila'
@@ -118,6 +119,13 @@ export const AREAS: Area[] = [
     descricao: 'Perfil de cada operador e fiscal',
     icone: 'id-card-outline',
     funcionalidade: 'OPERADORES_AUSENCIAS',
+  },
+  {
+    rota: 'Contratos',
+    titulo: 'Contratos',
+    descricao: 'Tempo de casa e experiência (45/90 dias)',
+    icone: 'document-text-outline',
+    funcionalidade: 'CONTRATOS_VISUALIZAR',
   },
   {
     rota: 'CentroControle',

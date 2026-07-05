@@ -60,6 +60,9 @@ export const TODAS_FUNCIONALIDADES = [
   'CHECKLIST',
   'OPERADORES_AUSENCIAS',
   'OPERADORES_CRUD',
+  // Contratos de experiência (tempo de casa + marcos 45/90)
+  'CONTRATOS_VISUALIZAR',
+  'CONTRATOS_GERIR',
   // Pessoas e avisos
   'USUARIOS_CRUD',
   'NOTIFICACOES',
@@ -109,6 +112,8 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] =
     'FECHAMENTO',
     // Log de jornada dos fiscais (horas trabalhadas e intervalos).
     'FISCAIS_JORNADA',
+    // Contratos: o supervisor acompanha (visualiza), mas não decide os marcos.
+    'CONTRATOS_VISUALIZAR',
   ]);
 
 /**
@@ -158,6 +163,9 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
     'FISCAIS_STATUS',
     // Log de jornada dos fiscais (horas trabalhadas e intervalos).
     'FISCAIS_JORNADA',
+    // Contratos de experiência: o gerente visualiza e decide os marcos.
+    'CONTRATOS_VISUALIZAR',
+    'CONTRATOS_GERIR',
   ],
 );
 

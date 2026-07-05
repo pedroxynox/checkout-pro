@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AcessosModule } from '../acessos/acessos.module';
 import { FiscaisModule } from '../fiscais/fiscais.module';
 import { IncidenciasModule } from '../incidencias/incidencias.module';
+import { ContratosModule } from '../contratos/contratos.module';
 import { MetasModule } from '../metas/metas.module';
 import { ColaboradoresController } from './colaboradores.controller';
 import { ColaboradoresService } from './colaboradores.service';
@@ -19,7 +20,13 @@ import { PerfilColaboradorService } from './perfil-colaborador.service';
  * usadas na meta individual derivada do score. O `PrismaService` é global.
  */
 @Module({
-  imports: [AcessosModule, FiscaisModule, IncidenciasModule, MetasModule],
+  imports: [
+    AcessosModule,
+    FiscaisModule,
+    IncidenciasModule,
+    ContratosModule,
+    MetasModule,
+  ],
   providers: [ColaboradoresService, PerfilColaboradorService],
   controllers: [ColaboradoresController],
   exports: [ColaboradoresService],

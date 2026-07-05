@@ -48,6 +48,44 @@ const FUNCOES: Record<FuncaoColaborador, string> = {
 };
 const NOMES_DIA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
+/** Rótulo do marco do contrato. */
+const ROTULO_MARCO_CONTRATO: Record<'MARCO_45' | 'MARCO_90', string> = {
+  MARCO_45: '45 dias',
+  MARCO_90: '90 dias',
+};
+
+/** Pílula (cor/fundo/rótulo) da etiqueta do contrato. */
+function pilulaContrato(
+  c: PerfilColaborador['contrato'],
+): { cor: string; fundo: string; rotulo: string } {
+  if (c.etiqueta === 'efetivado')
+    return { cor: cores.verde, fundo: cores.verdeFundo, rotulo: 'Efetivado' };
+  if (c.etiqueta === 'experiencia')
+    return {
+      cor: cores.amarelo,
+      fundo: cores.amareloFundo,
+      rotulo: 'Experiência',
+    };
+  if (c.etiqueta === 'encerrado')
+    return {
+      cor: cores.textoSecundario,
+      fundo: cores.superficieAlternativa,
+      rotulo: 'Encerrado',
+    };
+  return {
+    cor: cores.textoSecundario,
+    fundo: cores.superficieAlternativa,
+    rotulo: 'Sem admissão',
+  };
+}
+
+/** Rótulo de uma decisão de marco. */
+function rotuloDecisao(d: 'APROVADO' | 'REPROVADO' | null): string {
+  if (d === 'APROVADO') return 'Aprovado';
+  if (d === 'REPROVADO') return 'Reprovado';
+  return 'Pendente';
+}
+
 /** Cor (texto/fundo) do semáforo a partir do nível de saúde. */
 function coresNivel(nivel: NivelSaude): { cor: string; fundo: string } {
   if (nivel === 'BOM') return { cor: cores.verde, fundo: cores.verdeFundo };
@@ -608,6 +646,70 @@ export function PerfilColaboradorScreen({
               incidenciasReq.recarregar();
             }}
           />
+
+          {/* Tempo de casa / Contrato de experiência (informativo) */}
+          {p.contrato.temAdmissao && (
+            <Cartao titulo="Tempo de casa">
+              <View style={styles.faltasTopo}>
+                <View style={styles.faltaBox}>
+                  <Text style={styles.faltaNumero}>{p.contrato.diasDeCasa}</Text>
+                  <Text style={styles.faltaRotulo}>dias de casa</Text>
+                </View>
+                <Pilula
+                  texto={pilulaContrato(p.contrato).rotulo}
+                  cor={pilulaContrato(p.contrato).cor}
+                  fundo={pilulaContrato(p.contrato).fundo}
+                />
+              </View>
+
+              <View style={styles.escalaLinha}>
+                <Text style={styles.escalaRotulo}>Admissão</Text>
+                <Text style={styles.escalaValor}>
+                  {p.contrato.dataAdmissao
+                    ? formatarData(p.contrato.dataAdmissao)
+                    : '—'}
+                </Text>
+              </View>
+              <View style={styles.escalaLinha}>
+                <Text style={styles.escalaRotulo}>Marco de 45 dias</Text>
+                <Text style={styles.escalaValor}>
+                  {p.contrato.dataMarco45
+                    ? `${formatarData(p.contrato.dataMarco45)} · ${rotuloDecisao(p.contrato.decisao45)}`
+                    : '—'}
+                </Text>
+              </View>
+              <View style={styles.escalaLinha}>
+                <Text style={styles.escalaRotulo}>Marco de 90 dias</Text>
+                <Text style={styles.escalaValor}>
+                  {p.contrato.dataMarco90
+                    ? `${formatarData(p.contrato.dataMarco90)} · ${rotuloDecisao(p.contrato.decisao90)}`
+                    : '—'}
+                </Text>
+              </View>
+              {p.contrato.marcoEmAtraso ? (
+                <Text style={[styles.semDados, { color: cores.vermelho }]}>
+                  Decisão do marco de{' '}
+                  {ROTULO_MARCO_CONTRATO[p.contrato.marcoEmAtraso]} em atraso.
+                </Text>
+              ) : p.contrato.proximoMarco &&
+                p.contrato.diasParaProximoMarco !== null ? (
+                <Text style={styles.semDados}>
+                  Próximo marco (
+                  {ROTULO_MARCO_CONTRATO[p.contrato.proximoMarco]}) em{' '}
+                  {p.contrato.diasParaProximoMarco} dia
+                  {p.contrato.diasParaProximoMarco === 1 ? '' : 's'}.
+                </Text>
+              ) : null}
+              {p.contrato.efetivadoPorDecurso ? (
+                <Text style={styles.semDados}>
+                  Efetivado por decurso de prazo (passou de 90 dias).
+                </Text>
+              ) : null}
+              <Text style={[styles.semDados, { fontStyle: 'italic' }]}>
+                Informativo — não afeta o score.
+              </Text>
+            </Cartao>
+          )}
 
           {/* Escala / folga */}
           <Cartao titulo="Escala">
