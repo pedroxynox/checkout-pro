@@ -5,19 +5,19 @@
  * escala efetiva (horário de entrada/saída, intervalo e se é especial) ou
  * "Folga". O dia da semana é selecionável.
  *
- * Para quem gere ausências (`OPERADORES_AUSENCIAS`), a tela também traz as
- * incidências de "não retorno do intervalo" (Fase 2): um cartão com as
- * sugestões auto-detectadas do ponto de hoje e uma ação por colaborador para
- * registrar a incidência (modal de registro/edição).
+ * Para quem gere ausências (`OPERADORES_AUSENCIAS`), cada colaborador ganha dois
+ * botões diretos — **Falta** e **Sem retorno** — que marcam a ocorrência de hoje
+ * com um toque (sem horário). Advertências e suspensões são lançadas no perfil.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { escalaService } from '../../api/services';
+import { escalaService, operadoresService } from '../../api/services';
+import { ApiError } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
-import { ItemEscalaConsolidada, SugestaoIncidencia } from '../../api/types';
+import { ItemEscalaConsolidada } from '../../api/types';
 import {
   Carregando,
   Cartao,
@@ -29,25 +29,13 @@ import {
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
+import { confirmar, notificar } from '../../utils/dialogos';
 import {
   DIAS_SEMANA,
   DIAS_SEMANA_CURTO,
   diaSemanaHoje,
   hojeISO,
 } from '../../utils/formato';
-import {
-  RegistrarIncidenciaModal,
-  ValoresIniciaisIncidencia,
-} from './RegistrarIncidenciaModal';
-
-/** Alvo do modal de registro: quem e com quais valores pré-preenchidos. */
-interface AlvoRegistro {
-  colaboradorId: string;
-  nome: string;
-  valoresIniciais?: ValoresIniciaisIncidencia;
-  /** Permite escolher o tipo (lançamento manual); falso no fluxo de sugestão. */
-  permitirEscolherTipo?: boolean;
-}
 
 export function EscalaScreen(): React.ReactElement {
   const navigation =
@@ -57,87 +45,67 @@ export function EscalaScreen(): React.ReactElement {
   const podeRegistrar = podeAcessar('OPERADORES_AUSENCIAS');
   const hoje = diaSemanaHoje();
   const [dia, setDia] = useState<number>(hoje);
-  const [alvo, setAlvo] = useState<AlvoRegistro | null>(null);
-  const [modalVisivel, setModalVisivel] = useState(false);
+  // Colaborador com uma marcação em andamento (desabilita seus botões).
+  const [enviando, setEnviando] = useState<string | null>(null);
 
   const escala = useRequisicao<ItemEscalaConsolidada[]>(
     () => escalaService.consolidada(dia),
     [dia],
   );
 
-  // Sugestões auto-detectadas do ponto de hoje (só para quem gere ausências).
-  // Quando não há permissão, evitamos a chamada resolvendo uma lista vazia.
-  const sugestoes = useRequisicao<SugestaoIncidencia[]>(
-    () =>
-      podeRegistrar
-        ? escalaService.sugestoesIncidencias(hojeISO())
-        : Promise.resolve<SugestaoIncidencia[]>([]),
-    [podeRegistrar],
-  );
+  /** Marca uma falta (ausência) de hoje para o colaborador, com confirmação. */
+  const marcarFalta = async (colaboradorId: string, nome: string): Promise<void> => {
+    const ok = await confirmar(
+      'Marcar falta',
+      `Registrar falta de hoje para ${nome}?`,
+      'Marcar falta',
+    );
+    if (!ok) return;
+    setEnviando(colaboradorId);
+    try {
+      await operadoresService.registrarAusencia(colaboradorId, hojeISO());
+      notificar('Falta registrada', `Falta de hoje registrada para ${nome}.`);
+    } catch (e) {
+      notificar(
+        'Não foi possível registrar',
+        e instanceof ApiError ? e.message : 'Tente novamente.',
+      );
+    } finally {
+      setEnviando(null);
+    }
+  };
 
-  const abrirRegistro = (novoAlvo: AlvoRegistro): void => {
-    setAlvo(novoAlvo);
-    setModalVisivel(true);
+  /** Marca um "não retorno do intervalo" de hoje (sem horário), com confirmação. */
+  const marcarSemRetorno = async (
+    colaboradorId: string,
+    nome: string,
+  ): Promise<void> => {
+    const ok = await confirmar(
+      'Marcar sem retorno',
+      `Registrar "não retorno do intervalo" de hoje para ${nome}?`,
+      'Marcar',
+    );
+    if (!ok) return;
+    setEnviando(colaboradorId);
+    try {
+      await escalaService.registrarIncidencia({
+        colaboradorId,
+        tipo: 'NAO_RETORNO_INTERVALO',
+        data: hojeISO(),
+      });
+      notificar('Registrado', `"Sem retorno" de hoje registrado para ${nome}.`);
+    } catch (e) {
+      notificar(
+        'Não foi possível registrar',
+        e instanceof ApiError ? e.message : 'Tente novamente.',
+      );
+    } finally {
+      setEnviando(null);
+    }
   };
 
   return (
     <Tela aoAtualizar={escala.recarregar} atualizando={escala.atualizando}>
-      {podeRegistrar ? (
-        <Cartao titulo="Não retorno do intervalo — hoje">
-          {sugestoes.carregando ? (
-            <Carregando texto="Detectando..." />
-          ) : sugestoes.erro ? (
-            <MensagemErro
-              mensagem={sugestoes.erro}
-              aoTentarNovamente={sugestoes.recarregar}
-            />
-          ) : !sugestoes.dados || sugestoes.dados.length === 0 ? (
-            <Text style={styles.vazioInline}>
-              Nenhum não retorno detectado hoje.
-            </Text>
-          ) : (
-            sugestoes.dados.map((s) => (
-              <View key={s.colaboradorId} style={styles.sugestaoLinha}>
-                <View style={styles.sugestaoTextos}>
-                  <Text style={styles.sugestaoNome} numberOfLines={1}>
-                    {s.nome}
-                  </Text>
-                  <Text style={styles.sugestaoDetalhe}>
-                    saiu {s.horaSaida ?? '--'} · esperado{' '}
-                    {s.horaEsperadaRetorno ?? '--'}
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={() =>
-                    abrirRegistro({
-                      colaboradorId: s.colaboradorId,
-                      nome: s.nome,
-                      valoresIniciais: {
-                        data: hojeISO(),
-                        horaSaida: s.horaSaida,
-                        horaEsperadaRetorno: s.horaEsperadaRetorno,
-                        origem: 'DETECTADO_PONTO',
-                      },
-                    })
-                  }
-                  style={({ pressed }) => [
-                    styles.botaoRegistrar,
-                    pressed && styles.pressionado,
-                  ]}
-                >
-                  <Ionicons
-                    name="add-circle-outline"
-                    size={16}
-                    color={cores.primaria}
-                  />
-                  <Text style={styles.botaoRegistrarTexto}>Registrar</Text>
-                </Pressable>
-              </View>
-            ))
-          )}
-        </Cartao>
-      ) : null}
-
       <View style={styles.dias}>
         {DIAS_SEMANA_CURTO.map((rotulo, idx) => {
           const ativo = idx === dia;
@@ -170,22 +138,24 @@ export function EscalaScreen(): React.ReactElement {
           const efetiva = item.efetiva;
           const folga = efetiva === 'FOLGA';
           const navegavel = podeVerPerfil && !!item.colaboradorId;
+          const podeMarcar = podeRegistrar && !!item.colaboradorId;
+          const nome = item.nome ?? item.funcionarioId;
+          const ocupado = enviando === item.colaboradorId;
           return (
-            <Pressable
-              key={item.funcionarioId}
-              disabled={!navegavel}
-              onPress={() =>
-                item.colaboradorId &&
-                navigation.navigate('PerfilColaborador', {
-                  colaboradorId: item.colaboradorId,
-                })
-              }
-              style={({ pressed }) => (pressed && navegavel ? { opacity: 0.6 } : null)}
-            >
-              <Cartao>
+            <Cartao key={item.funcionarioId}>
+              <Pressable
+                disabled={!navegavel}
+                onPress={() =>
+                  item.colaboradorId &&
+                  navigation.navigate('PerfilColaborador', {
+                    colaboradorId: item.colaboradorId,
+                  })
+                }
+                style={({ pressed }) => (pressed && navegavel ? { opacity: 0.6 } : null)}
+              >
                 <View style={styles.linhaCabecalho}>
                   <Text style={styles.func} numberOfLines={1}>
-                    {item.nome ?? item.funcionarioId}
+                    {nome}
                   </Text>
                   <View style={styles.direita}>
                     {folga ? (
@@ -207,47 +177,48 @@ export function EscalaScreen(): React.ReactElement {
                     intervalo {efetiva.intervaloMin} min
                   </Text>
                 ) : null}
-                {podeRegistrar && item.colaboradorId ? (
+              </Pressable>
+
+              {podeMarcar ? (
+                <View style={styles.acoes}>
                   <Pressable
+                    disabled={ocupado}
                     onPress={() =>
-                      abrirRegistro({
-                        colaboradorId: item.colaboradorId as string,
-                        nome: item.nome ?? item.funcionarioId,
-                        valoresIniciais: { data: hojeISO(), origem: 'MANUAL' },
-                        permitirEscolherTipo: true,
-                      })
+                      void marcarFalta(item.colaboradorId as string, nome)
                     }
                     style={({ pressed }) => [
-                      styles.acaoCartao,
-                      pressed && styles.pressionado,
+                      styles.botao,
+                      styles.botaoFalta,
+                      (pressed || ocupado) && styles.pressionado,
                     ]}
                   >
-                    <Ionicons
-                      name="time-outline"
-                      size={15}
-                      color={cores.primaria}
-                    />
-                    <Text style={styles.acaoCartaoTexto}>
-                      Registrar ocorrência
+                    <Ionicons name="close-circle-outline" size={16} color={cores.vermelho} />
+                    <Text style={[styles.botaoTexto, { color: cores.vermelho }]}>
+                      Falta
                     </Text>
                   </Pressable>
-                ) : null}
-              </Cartao>
-            </Pressable>
+                  <Pressable
+                    disabled={ocupado}
+                    onPress={() =>
+                      void marcarSemRetorno(item.colaboradorId as string, nome)
+                    }
+                    style={({ pressed }) => [
+                      styles.botao,
+                      styles.botaoSemRetorno,
+                      (pressed || ocupado) && styles.pressionado,
+                    ]}
+                  >
+                    <Ionicons name="time-outline" size={16} color={cores.primaria} />
+                    <Text style={[styles.botaoTexto, { color: cores.primaria }]}>
+                      Sem retorno
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </Cartao>
           );
         })
       )}
-
-      {alvo ? (
-        <RegistrarIncidenciaModal
-          visivel={modalVisivel}
-          aoFechar={() => setModalVisivel(false)}
-          aoSalvar={() => sugestoes.recarregar()}
-          colaboradorId={alvo.colaboradorId}
-          valoresIniciais={alvo.valoresIniciais}
-          permitirEscolherTipo={alvo.permitirEscolherTipo}
-        />
-      ) : null}
     </Tela>
   );
 }
@@ -304,65 +275,35 @@ const styles = StyleSheet.create({
     color: cores.textoSecundario,
     marginTop: espacamento.xs,
   },
-  // Sugestões auto-detectadas
-  vazioInline: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    fontStyle: 'italic',
-  },
-  sugestaoLinha: {
+  // Ações rápidas por colaborador (Falta / Sem retorno).
+  acoes: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: espacamento.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: cores.divisor,
+    gap: espacamento.sm,
+    marginTop: espacamento.sm,
+    paddingTop: espacamento.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: cores.divisor,
   },
-  sugestaoTextos: {
-    flex: 1,
-    paddingRight: espacamento.sm,
-  },
-  sugestaoNome: {
-    ...tipografia.corpo,
-    color: cores.texto,
-    fontWeight: '600',
-  },
-  sugestaoDetalhe: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    marginTop: 2,
-  },
-  botaoRegistrar: {
+  botao: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: espacamento.xs,
     paddingVertical: espacamento.xs,
-    paddingHorizontal: espacamento.sm,
+    paddingHorizontal: espacamento.md,
     borderRadius: raio.sm,
     borderWidth: 1,
+  },
+  botaoFalta: {
+    borderColor: cores.vermelho,
+    backgroundColor: cores.vermelhoFundo,
+  },
+  botaoSemRetorno: {
     borderColor: cores.primaria,
     backgroundColor: cores.primariaClara,
   },
-  botaoRegistrarTexto: {
+  botaoTexto: {
     ...tipografia.rotulo,
-    color: cores.primaria,
-  },
-  acaoCartao: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: espacamento.xs,
-    marginTop: espacamento.sm,
-    paddingVertical: espacamento.xs,
-    paddingHorizontal: espacamento.sm,
-    borderRadius: raio.sm,
-    borderWidth: 1,
-    borderColor: cores.borda,
-  },
-  acaoCartaoTexto: {
-    ...tipografia.legenda,
-    color: cores.primaria,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   pressionado: {
     opacity: 0.6,

@@ -19,6 +19,7 @@ import {
   META_TIPO_INCIDENCIA,
   NivelSaude,
   PerfilColaborador,
+  TIPOS_PERFIL,
   TimelineItem,
 } from '../../api/types';
 import {
@@ -215,6 +216,7 @@ const ROTULO_KIND: Record<TimelineItem['kind'], string> = {
   SAIDA_ANTECIPADA: META_TIPO_INCIDENCIA.SAIDA_ANTECIPADA.rotulo,
   RETORNO_TARDIO: META_TIPO_INCIDENCIA.RETORNO_TARDIO.rotulo,
   ADVERTENCIA: META_TIPO_INCIDENCIA.ADVERTENCIA.rotulo,
+  SUSPENSAO: META_TIPO_INCIDENCIA.SUSPENSAO.rotulo,
 };
 const ICONE_KIND: Record<TimelineItem['kind'], keyof typeof Ionicons.glyphMap> = {
   FALTA: 'close-circle-outline',
@@ -223,6 +225,7 @@ const ICONE_KIND: Record<TimelineItem['kind'], keyof typeof Ionicons.glyphMap> =
   SAIDA_ANTECIPADA: 'exit-outline',
   RETORNO_TARDIO: 'hourglass-outline',
   ADVERTENCIA: 'warning-outline',
+  SUSPENSAO: 'pause-circle-outline',
 };
 
 /** Filtro da linha do tempo: todas, só faltas ou só incidências (qualquer tipo). */
@@ -271,9 +274,19 @@ function HistoricoIncidencias({
     setModalVisivel(true);
   };
 
-  /** Abre o modal de edição para uma incidência (qualquer tipo) da timeline. */
+  /**
+   * Abre o modal de edição para uma incidência lançada no perfil (advertência/
+   * suspensão). O não-retorno é marcado na Escala e aqui **apenas aparece**
+   * (somente leitura), então não é editável a partir do perfil.
+   */
   const editarDaTimeline = (item: TimelineItem): void => {
-    if (!podeEditar || item.kind === 'FALTA') return;
+    if (
+      !podeEditar ||
+      item.kind === 'FALTA' ||
+      META_TIPO_INCIDENCIA[item.kind]?.registro !== 'PERFIL'
+    ) {
+      return;
+    }
     const registro = registros.find(
       (r) => r.data.slice(0, 10) === item.data && r.tipo === item.kind,
     );
@@ -354,7 +367,10 @@ function HistoricoIncidencias({
         <Text style={styles.semDados}>Sem incidências no período.</Text>
       ) : (
         timeline.map((item, i) => {
-          const editavel = podeEditar && item.kind !== 'FALTA';
+          const editavel =
+            podeEditar &&
+            item.kind !== 'FALTA' &&
+            META_TIPO_INCIDENCIA[item.kind]?.registro === 'PERFIL';
           const conteudo = (
             <View style={styles.timelineLinha}>
               <Ionicons
@@ -402,6 +418,7 @@ function HistoricoIncidencias({
           valoresIniciais={valoresCriar ?? undefined}
           podeExcluir={podeEditar}
           permitirEscolherTipo
+          tiposDisponiveis={TIPOS_PERFIL}
         />
       ) : null}
     </Cartao>
