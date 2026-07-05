@@ -26,7 +26,7 @@ import {
   META_TIPO_INCIDENCIA,
   OrigemIncidencia,
   RegistrarIncidenciaInput,
-  TIPOS_INCIDENCIA_MANUAIS,
+  TIPOS_PERFIL,
   TipoIncidenciaEscala,
 } from '../../api/types';
 import { Botao, CampoTexto } from '../../components';
@@ -58,12 +58,13 @@ interface RegistrarIncidenciaModalProps {
   /** Libera o botão "Excluir" no modo de edição. */
   podeExcluir?: boolean;
   /**
-   * Ao criar, permite escolher o tipo da ocorrência (atraso, saída antecipada,
-   * etc.). Quando falso (padrão), o tipo fica fixo em `tipoInicial` — usado no
-   * fluxo de sugestão auto-detectada (não-retorno).
+   * Ao criar, permite escolher o tipo entre `tiposDisponiveis`. Quando falso
+   * (padrão), o tipo fica fixo em `tipoInicial`.
    */
   permitirEscolherTipo?: boolean;
-  /** Tipo inicial ao criar (padrão: não-retorno do intervalo). */
+  /** Tipos oferecidos ao criar (padrão: os do perfil — advertência/suspensão). */
+  tiposDisponiveis?: TipoIncidenciaEscala[];
+  /** Tipo inicial ao criar (padrão: o primeiro de `tiposDisponiveis`). */
   tipoInicial?: TipoIncidenciaEscala;
 }
 
@@ -88,7 +89,8 @@ export function RegistrarIncidenciaModal({
   valoresIniciais,
   podeExcluir = false,
   permitirEscolherTipo = false,
-  tipoInicial = 'NAO_RETORNO_INTERVALO',
+  tiposDisponiveis = TIPOS_PERFIL,
+  tipoInicial = tiposDisponiveis[0] ?? 'ADVERTENCIA',
 }: RegistrarIncidenciaModalProps): React.ReactElement {
   const edicao = !!incidenciaExistente;
 
@@ -227,7 +229,7 @@ export function RegistrarIncidenciaModal({
           >
             {!edicao && permitirEscolherTipo ? (
               <View style={styles.tipos}>
-                {TIPOS_INCIDENCIA_MANUAIS.map((t) => (
+                {tiposDisponiveis.map((t) => (
                   <Text
                     key={t}
                     onPress={() => setTipo(t)}

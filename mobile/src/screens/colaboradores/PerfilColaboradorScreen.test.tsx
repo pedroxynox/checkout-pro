@@ -164,22 +164,22 @@ describe('PerfilColaboradorScreen — histórico de incidências', () => {
     expect(screen.queryByText('Registrar ocorrência')).toBeNull();
   });
 
-  it('abre o modal em modo criar ao pressionar "Registrar ocorrência"', async () => {
+  it('abre o modal em modo criar (só advertência/suspensão, sem horário)', async () => {
     render_();
 
     const botao = await screen.findByText('Registrar ocorrência');
-    // Antes de abrir, o modal (título de criação) não está montado; o único
-    // "Registrar ocorrência" presente é o botão de ação.
+    // Antes de abrir, o único "Registrar ocorrência" presente é o botão de ação.
     expect(screen.getAllByText('Registrar ocorrência')).toHaveLength(1);
 
     fireEvent.press(botao);
 
-    // No modo criar, o modal renderiza o botão "Salvar" e o campo de retorno
-    // real (tipo padrão = não-retorno usa horários) — marcadores exclusivos do
-    // modal (sem incidência existente).
+    // O modal abre com o seletor de tipos do perfil (advertência/suspensão) e
+    // o botão "Salvar". Como esses tipos não usam horário, o campo "Retorno
+    // real" NÃO aparece.
     expect(await screen.findByText('Salvar')).toBeTruthy();
-    expect(screen.getByText('Retorno real')).toBeTruthy();
-    // O modal de criação NÃO deve estar em modo edição: sem título "Editar".
+    expect(screen.getByText('Suspensão')).toBeTruthy();
+    expect(screen.queryByText('Retorno real')).toBeNull();
+    // Modo criação, não edição.
     expect(screen.queryByText('Editar ocorrência')).toBeNull();
   });
 });

@@ -12,6 +12,32 @@
 
 ---
 
+## Marcação de ocorrências: botões na Escala + suspensão (2026-07-05)
+
+**Objetivo:** simplificar o registro do dia a dia. Na **Escala**, cada
+colaborador ganha dois botões diretos — **Falta** e **Sem retorno** — que marcam
+a ocorrência de hoje com um toque (sem horário). O **não-retorno** deixa de ter
+horário e, no perfil, **apenas aparece** (não é registrado nem editado ali). No
+**perfil** passam a ser lançados só **advertência** e **suspensão** (tipo novo).
+Ver **ADR 0011** (revisa parte do 0010). Entrega **aditiva**; backend **299**
+testes / mobile **59**; migração validada contra **PostgreSQL real**.
+
+- **Escala:** botões **Falta** (registra a ausência de hoje) e **Sem retorno**
+  (registra o não-retorno de hoje, sem horário) por colaborador, com
+  confirmação. Removidos da Escala o cartão de sugestões e o modal de registro.
+- **Não-retorno:** sem horário (`usaHorarios=false`), marcado na Escala; no
+  perfil é somente leitura na linha do tempo.
+- **Suspensão (novo):** migração aditiva `9zb_incidencia_suspensao`
+  (`ALTER TYPE ... ADD VALUE`); lançada no perfil como a advertência. O registro
+  no perfil fica limitado a **advertência + suspensão**.
+- **Legado:** atraso, saída antecipada e retorno tardio deixam de ser oferecidos
+  para registro (metadado `registro=null`); seguem no enum/histórico e na
+  analítica (valores de enum não removidos — convenção aditiva).
+- **Score:** inalterado na mecânica; a suspensão é disciplinar e entra na soma
+  ponderada; justificar segue reduzindo o peso (ADR 0009).
+
+---
+
 ## Novos tipos de incidência de escala (2026-07-05)
 
 **Objetivo:** ampliar as incidências de escala — que só tinham "não retorno do
