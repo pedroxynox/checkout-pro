@@ -78,11 +78,16 @@ export interface DeteccaoNaoRetorno {
  *
  * Retorna o horário de início do intervalo + o horário esperado de retorno
  * (derivado de `intervaloMin`), ou `null` quando todo intervalo teve retorno.
+ *
+ * Quando `intervaloMin <= 0` (dia sem intervalo previsto na escala, ou valor
+ * inválido), não pode existir um "não retorno do intervalo": retorna `null`
+ * sem inspecionar o log (Req 4.4).
  */
 export function detectarNaoRetorno(
   transicoes: readonly TransicaoPonto[],
   intervaloMin: number,
 ): DeteccaoNaoRetorno | null {
+  if (!Number.isFinite(intervaloMin) || intervaloMin <= 0) return null;
   for (let i = 0; i < transicoes.length; i++) {
     if (transicoes[i].status !== 'INTERVALO') continue;
     // Verifica se, após este INTERVALO, houve DISPONIVEL antes do próximo
