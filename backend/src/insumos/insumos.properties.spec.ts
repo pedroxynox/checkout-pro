@@ -6,10 +6,15 @@ import {
   deltaConsumo,
   deltaRetiradaFardo,
   estoqueBaixo,
+  garantirSaldoSuficiente,
   resolverDeltaFardo,
   resolverFardo,
+  saldoSuficiente,
 } from './insumos.domain';
-import { FardoNaoReconhecidoError } from './insumos.errors';
+import {
+  EstoqueInsuficienteError,
+  FardoNaoReconhecidoError,
+} from './insumos.errors';
 
 /**
  * Testes de propriedade (fast-check) do Modulo_Insumos.
@@ -139,6 +144,51 @@ describe('Insumos — testes de propriedade', () => {
           return alerta === saldo <= limiteMinimo;
         },
       ),
+      { numRuns: NUM_RUNS },
+    );
+  });
+});
+
+describe('Insumos — saldo suficiente (não permitir estoque negativo)', () => {
+  // Property: garantirSaldoSuficiente lança se e somente se a quantidade
+  // excede o saldo; consumir <= saldo é sempre permitido; nunca gera negativo.
+  it('Property: bloqueia consumo > saldo e permite consumo <= saldo (nunca negativo)', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 100000 }),
+        fc.integer({ min: 1, max: 100000 }),
+        (saldoAtual, quantidade) => {
+          const suficiente = saldoSuficiente(saldoAtual, quantidade);
+          // Coerência: suficiente ⇔ quantidade <= saldo.
+          if (suficiente !== quantidade <= saldoAtual) return false;
+
+          if (suficiente) {
+            // Não lança e o saldo resultante nunca fica negativo.
+            garantirSaldoSuficiente(saldoAtual, quantidade);
+            return saldoAtual - quantidade >= 0;
+          }
+          // Insuficiente: precisa lançar EstoqueInsuficienteError.
+          try {
+            garantirSaldoSuficiente(saldoAtual, quantidade);
+            return false; // deveria ter lançado
+          } catch (e) {
+            return e instanceof EstoqueInsuficienteError;
+          }
+        },
+      ),
+      { numRuns: NUM_RUNS },
+    );
+  });
+
+  // Property: consumir exatamente o saldo (fronteira) é sempre permitido e
+  // resulta em saldo 0.
+  it('Property: consumir exatamente o saldo é permitido (fronteira → 0)', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 100000 }), (saldoAtual) => {
+        if (saldoAtual === 0) return saldoSuficiente(0, 0); // 0<=0
+        garantirSaldoSuficiente(saldoAtual, saldoAtual);
+        return saldoAtual - saldoAtual === 0;
+      }),
       { numRuns: NUM_RUNS },
     );
   });
