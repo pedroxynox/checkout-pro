@@ -122,15 +122,17 @@ export class IncidenciasService {
       throw new DadosIncidenciaInvalidosError('Data da incidência inválida.');
     }
 
-    // Valida a existência do colaborador antes de persistir: sem isso, um id
-    // inválido criaria uma incidência órfã que polui o ranking (nome = id cru)
-    // e a listagem. O erro é 400 (ColaboradorIncidenciaInvalidoError).
+    // O `colaboradorId` é um String sem FK; garante que a ficha existe antes de
+    // persistir para não criar incidências órfãs (que contaminariam ranking e
+    // perfil). Rejeita com 400 quando o colaborador não existe (Req 2.3).
     const colaborador = await this.prisma.colaborador.findUnique({
       where: { id: dto.colaboradorId },
       select: { id: true },
     });
     if (!colaborador) {
-      throw new ColaboradorIncidenciaInvalidoError();
+      throw new ColaboradorIncidenciaInvalidoError(
+        'Colaborador informado não existe.',
+      );
     }
 
     const funcionarioId = await this.resolverFuncionarioId(dto.colaboradorId);

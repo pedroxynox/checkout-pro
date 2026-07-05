@@ -1,0 +1,9 @@
+{
+  "pbtResults": {
+    "6.5 Property test: detección de no-retorno (si un fix toca el dominio)": {
+      "status": "passed",
+      "lastRunTimestamp": 1783219830036
+    }
+  },
+  "executionHistory": {}
+}

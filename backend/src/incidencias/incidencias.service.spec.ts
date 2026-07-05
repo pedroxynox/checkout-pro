@@ -192,16 +192,18 @@ describe('IncidenciasService', () => {
 
   const AUTOR = { id: 'u1', nome: 'Gestor' };
 
-  /** Colaborador mínimo para os testes que exercitam o registro. */
-  const COL_C1 = {
+  // Colaborador base para os casos que exercitam o registro (o serviço agora
+  // valida a existência da ficha antes de persistir).
+  const COLABORADOR_BASE = {
     id: 'c1',
-    nome: 'Colaborador 1',
+    nome: 'Colaborador Um',
     matricula: 'c1',
     usuarioId: null,
+    funcao: 'FISCAL',
   };
 
   it('registra uma incidência manual', async () => {
-    const { service } = criarServico({ colaboradores: [COL_C1] });
+    const { service } = criarServico({ colaboradores: [COLABORADOR_BASE] });
     const inc = await service.registrar(
       {
         colaboradorId: 'c1',
@@ -230,7 +232,7 @@ describe('IncidenciasService', () => {
   });
 
   it('rejeita incidência duplicada (colaborador+tipo+data) com 409', async () => {
-    const { service } = criarServico({ colaboradores: [COL_C1] });
+    const { service } = criarServico({ colaboradores: [COLABORADOR_BASE] });
     const dto = {
       colaboradorId: 'c1',
       tipo: 'NAO_RETORNO_INTERVALO' as const,
@@ -240,6 +242,23 @@ describe('IncidenciasService', () => {
     await expect(service.registrar(dto, AUTOR)).rejects.toBeInstanceOf(
       IncidenciaDuplicadaError,
     );
+  });
+
+  it('rejeita registro com colaborador inexistente (400) e não persiste', async () => {
+    const { service, store } = criarServico();
+    await expect(
+      service.registrar(
+        {
+          colaboradorId: 'colaborador-inexistente-zzz',
+          tipo: 'NAO_RETORNO_INTERVALO',
+          data: '2026-07-03',
+          horaSaida: '12:00',
+        },
+        AUTOR,
+      ),
+    ).rejects.toBeInstanceOf(ColaboradorIncidenciaInvalidoError);
+    // Não deve criar fila órfã (contaminaria ranking/perfil).
+    expect(store).toHaveLength(0);
   });
 
   it('deriva o horário esperado de retorno a partir do intervalo da escala do fiscal', async () => {
@@ -325,7 +344,9 @@ describe('IncidenciasService', () => {
      * exercitar os limites do intervalo `[inicio, fim)` e o filtro por tipo.
      */
     async function comIncidencias(): Promise<IncidenciasService> {
-      const { service, store } = criarServico({ colaboradores: [COL_C1] });
+      const { service, store } = criarServico({
+        colaboradores: [COLABORADOR_BASE],
+      });
       // Semeia direto no store (evita a derivação/validação de `registrar`).
       const semear = (tipo: string, data: Date): void => {
         store.push({
