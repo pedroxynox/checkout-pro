@@ -31,6 +31,7 @@ import { CentroControleScreen } from '../screens/centroControle/CentroControleSc
 import { MetasScreen } from '../screens/metas/MetasScreen';
 import { NaoReconhecidosScreen } from '../screens/indicadores/NaoReconhecidosScreen';
 import { InsumosDadosScreen } from '../screens/centroControle/InsumosDadosScreen';
+import { ReiniciarDadosScreen } from '../screens/centroControle/ReiniciarDadosScreen';
 import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
 import { AlertasFilaScreen } from '../screens/alertasFila/AlertasFilaScreen';
 import { NormativasScreen } from '../screens/normativas/NormativasScreen';
@@ -218,11 +219,18 @@ export function AppNavigator(): React.ReactElement {
         />
       )}
       {podeAcessar('ADMIN_DADOS') && (
-        <Stack.Screen
-          name="InsumosDados"
-          component={InsumosDadosScreen}
-          options={{ title: 'Insumos' }}
-        />
+        <>
+          <Stack.Screen
+            name="InsumosDados"
+            component={InsumosDadosScreen}
+            options={{ title: 'Insumos' }}
+          />
+          <Stack.Screen
+            name="ReiniciarDados"
+            component={ReiniciarDadosScreen}
+            options={{ title: 'Zerar dados operacionais' }}
+          />
+        </>
       )}
     </Stack.Navigator>
   );

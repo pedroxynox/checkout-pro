@@ -29,6 +29,7 @@ import {
   Tela,
   montarFatias,
 } from '../../components';
+import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import {
@@ -204,6 +205,7 @@ function Heatmap({
 }
 
 export function PainelVendasScreen(): React.ReactElement {
+  const { dataInicial } = useConfigSistema();
   const [data, setData] = useState(hojeISO());
   const [periodo, setPeriodo] = useState<PeriodoGrafico>('DIA');
   const [inicioPers, setInicioPers] = useState(hojeISO());
@@ -265,7 +267,12 @@ export function PainelVendasScreen(): React.ReactElement {
       }}
       atualizando={painelReq.atualizando || detalheReq.atualizando}
     >
-      <SeletorData valor={data} aoMudar={setData} rotulo="Data de referência" />
+      <SeletorData
+        valor={data}
+        aoMudar={setData}
+        rotulo="Data de referência"
+        dataMinima={dataInicial}
+      />
 
       {painelReq.carregando ? (
         <Carregando />
@@ -410,8 +417,18 @@ export function PainelVendasScreen(): React.ReactElement {
         <Segmentado opcoes={OPCOES_PERIODO} selecionado={periodo} aoSelecionar={setPeriodo} />
         {periodo === 'PERSONALIZADO' ? (
           <>
-            <SeletorData valor={inicioPers} aoMudar={setInicioPers} rotulo="Início" />
-            <SeletorData valor={fimPers} aoMudar={setFimPers} rotulo="Fim" />
+            <SeletorData
+              valor={inicioPers}
+              aoMudar={setInicioPers}
+              rotulo="Início"
+              dataMinima={dataInicial}
+            />
+            <SeletorData
+              valor={fimPers}
+              aoMudar={setFimPers}
+              rotulo="Fim"
+              dataMinima={dataInicial}
+            />
           </>
         ) : null}
 

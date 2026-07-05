@@ -31,6 +31,7 @@ import {
   SeletorData,
   Tela,
 } from '../../components';
+import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
@@ -277,6 +278,7 @@ function FaltaOperadorRow({ o }: { o: FaltasPorOperador }): React.ReactElement {
 
 export function OperadoresScreen(): React.ReactElement {
   const { podeAcessar, perfil } = useAuth();
+  const { dataInicial } = useConfigSistema();
   const podeProgramarFuturo = perfil
     ? ['GERENTE', 'GERENTE_DESENVOLVEDOR', 'SUPERVISOR'].includes(perfil)
     : false;
@@ -446,7 +448,12 @@ export function OperadoresScreen(): React.ReactElement {
         </Cartao>
       ) : null}
 
-      <SeletorData valor={diaSel} aoMudar={setDiaSel} rotulo="Dia" />
+      <SeletorData
+        valor={diaSel}
+        aoMudar={setDiaSel}
+        rotulo="Dia"
+        dataMinima={dataInicial}
+      />
 
       {/* Fiscais que TRABALHAM hoje (escala) — acima dos operadores.
           Os de folga vão para o card "Folga fiscais" no fim. */}

@@ -37,6 +37,7 @@ export type RootStackParamList = {
   Metas: undefined;
   NaoReconhecidos: undefined;
   InsumosDados: undefined;
+  ReiniciarDados: undefined;
   PerfilColaborador: { colaboradorId: string };
   Usuarios: undefined;
   AlertasFila: undefined;
