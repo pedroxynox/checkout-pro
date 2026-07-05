@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { IncidenciasService } from './incidencias.service';
 import {
+  ColaboradorIncidenciaInvalidoError,
   IncidenciaDuplicadaError,
   IncidenciaNaoEncontradaError,
 } from './incidencias.errors';
@@ -191,8 +192,16 @@ describe('IncidenciasService', () => {
 
   const AUTOR = { id: 'u1', nome: 'Gestor' };
 
+  /** Colaborador mínimo para os testes que exercitam o registro. */
+  const COL_C1 = {
+    id: 'c1',
+    nome: 'Colaborador 1',
+    matricula: 'c1',
+    usuarioId: null,
+  };
+
   it('registra uma incidência manual', async () => {
-    const { service } = criarServico();
+    const { service } = criarServico({ colaboradores: [COL_C1] });
     const inc = await service.registrar(
       {
         colaboradorId: 'c1',
@@ -206,8 +215,22 @@ describe('IncidenciasService', () => {
     expect(inc.origem).toBe('MANUAL');
   });
 
-  it('rejeita incidência duplicada (colaborador+tipo+data) com 409', async () => {
+  it('rejeita incidência para colaborador inexistente com 400', async () => {
     const { service } = criarServico();
+    await expect(
+      service.registrar(
+        {
+          colaboradorId: 'fantasma',
+          tipo: 'NAO_RETORNO_INTERVALO',
+          data: '2026-07-03',
+        },
+        AUTOR,
+      ),
+    ).rejects.toBeInstanceOf(ColaboradorIncidenciaInvalidoError);
+  });
+
+  it('rejeita incidência duplicada (colaborador+tipo+data) com 409', async () => {
+    const { service } = criarServico({ colaboradores: [COL_C1] });
     const dto = {
       colaboradorId: 'c1',
       tipo: 'NAO_RETORNO_INTERVALO' as const,
