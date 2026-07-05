@@ -15,12 +15,14 @@ import { primeiroNome } from '../fiscais/fiscais.domain';
 import {
   AnaliseIncidencias,
   ItemTimeline,
+  TIPOS_DISCIPLINARES,
   TipoIncidencia,
   TransicaoPonto,
   analisarIncidencias,
   derivarHoraEsperadaRetorno,
   detectarNaoRetorno,
   rankingIncidencias,
+  rotuloTipoIncidencia,
   timelineUnificada,
   ItemRankingIncidencias,
 } from './incidencias.domain';
@@ -59,6 +61,14 @@ export interface ListarIncidenciasFiltros {
   tipo?: TipoIncidencia;
   inicio?: string;
   fim?: string;
+}
+
+/** Filtros do ranking (janela + tipo opcional para comparativa por evento). */
+export interface RankingIncidenciasFiltros {
+  inicio: string;
+  fim: string;
+  /** Quando informado, ranqueia apenas esse tipo (senão, todos os tipos). */
+  tipo?: TipoIncidencia;
 }
 
 /** Autor do registro (usuário autenticado). */
@@ -364,16 +374,18 @@ export class IncidenciasService {
 
   /**
    * Ranking de incidências por colaborador na janela [inicio, fim], com o nome
-   * resolvido do colaborador, ordenado de forma decrescente pelo total.
+   * resolvido do colaborador, ordenado de forma decrescente pelo total. Aceita
+   * um `tipo` opcional para comparar um evento específico (senão, soma todos).
    */
   async ranking(
     inicio: string,
     fim: string,
+    tipo?: TipoIncidencia,
   ): Promise<ItemRankingIncidencias[]> {
     const gte = inicioDoDia(new Date(inicio));
     const lte = inicioDoDia(new Date(fim));
     const incidencias = await this.prisma.incidenciaEscala.findMany({
-      where: { data: { gte, lte } },
+      where: { data: { gte, lte }, ...(tipo ? { tipo } : {}) },
       select: { colaboradorId: true },
     });
     if (incidencias.length === 0) return [];
@@ -449,23 +461,27 @@ export class IncidenciasService {
   }
 
   /**
-   * Conta as incidências de "não retorno do intervalo" de um colaborador na
+   * Soma **ponderada** das incidências **disciplinares** de um colaborador na
    * janela `[inicio, fim)` (fim exclusivo). Usada pelo perfil para penalizar a
-   * Disciplina do operador com os não-retornos DENTRO do período avaliado
-   * (diferente do resumo de ~6 meses de `resumoDoColaborador`). Uma única query
-   * `count`, sem tabelas novas.
+   * Disciplina do operador com as incidências DENTRO do período avaliado
+   * (diferente do resumo de ~6 meses de `resumoDoColaborador`).
+   *
+   * Considera todos os tipos disciplinares (`TIPOS_DISCIPLINARES`: não-retorno,
+   * atraso, saída antecipada, retorno tardio, advertência — ver ADR 0010), não
+   * só o não-retorno. Cada incidência contribui com o seu peso conforme a
+   * justificativa: JUSTIFICADA por atestado pesa 2%, outros motivos 10%,
+   * PENDENTE/INJUSTIFICADA pesam integral (ver ADR 0009). Uma única query, sem
+   * tabelas novas.
    */
-  async contarNaoRetornos(
+  async contarIncidenciasPonderadas(
     colaboradorId: string,
     inicio: Date,
     fimExcl: Date,
   ): Promise<number> {
-    // Peso efetivo: não-retornos JUSTIFICADOS pesam menos na Disciplina
-    // conforme o motivo (ver ADR 0009). PENDENTE/INJUSTIFICADO pesam integral.
     const linhas = await this.prisma.incidenciaEscala.findMany({
       where: {
         colaboradorId,
-        tipo: 'NAO_RETORNO_INTERVALO',
+        tipo: { in: [...TIPOS_DISCIPLINARES] },
         data: { gte: inicioDoDia(inicio), lt: fimExcl },
       },
       select: { statusJustificativa: true, motivoJustificativa: true },
@@ -511,7 +527,7 @@ export class IncidenciasService {
       if (gestores.length === 0) return;
       await this.notificacoes.enviar(gestores, {
         titulo: '🔴 Incidências recorrentes na escala',
-        mensagem: `${primeiroNome(col.nome)} já tem ${qtd} incidências de "não retorno do intervalo" neste mês. Vale acompanhar.`,
+        mensagem: `${primeiroNome(col.nome)} já tem ${qtd} incidências de "${rotuloTipoIncidencia(tipo).toLowerCase()}" neste mês. Vale acompanhar.`,
       });
     } catch {
       // defensivo: o aviso nunca deve impedir o registro da incidência.

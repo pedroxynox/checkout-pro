@@ -116,7 +116,7 @@ describe('IncidenciasService', () => {
         findMany: (args?: {
           where?: {
             colaboradorId?: string;
-            tipo?: string;
+            tipo?: string | { in: string[] };
             data?: { gte?: Date; lt?: Date; lte?: Date };
           };
         }) => {
@@ -124,7 +124,14 @@ describe('IncidenciasService', () => {
           const w = args?.where ?? {};
           if (w.colaboradorId)
             lista = lista.filter((i) => i.colaboradorId === w.colaboradorId);
-          if (w.tipo) lista = lista.filter((i) => i.tipo === w.tipo);
+          if (w.tipo) {
+            const filtroTipo = w.tipo;
+            lista = lista.filter((i) =>
+              typeof filtroTipo === 'string'
+                ? i.tipo === filtroTipo
+                : filtroTipo.in.includes(i.tipo),
+            );
+          }
           lista = lista.filter((i) => dentro(i.data, w.data));
           return Promise.resolve(lista);
         },
@@ -338,10 +345,11 @@ describe('IncidenciasService', () => {
     expect(sugestoes[0].tipo).toBe('NAO_RETORNO_INTERVALO');
   });
 
-  describe('contarNaoRetornos', () => {
+  describe('contarIncidenciasPonderadas', () => {
     /**
-     * Prepara três incidências do mesmo colaborador em datas distintas para
-     * exercitar os limites do intervalo `[inicio, fim)` e o filtro por tipo.
+     * Prepara incidências disciplinares do mesmo colaborador em datas distintas
+     * para exercitar os limites do intervalo `[inicio, fim)` e o filtro por
+     * tipos disciplinares (inclui um tipo novo, ATRASO, além do não-retorno).
      */
     async function comIncidencias(): Promise<IncidenciasService> {
       const { service, store } = criarServico({
@@ -368,7 +376,9 @@ describe('IncidenciasService', () => {
       semear('NAO_RETORNO_INTERVALO', new Date(Date.UTC(2026, 6, 1)));
       semear('NAO_RETORNO_INTERVALO', new Date(Date.UTC(2026, 6, 15)));
       semear('NAO_RETORNO_INTERVALO', new Date(Date.UTC(2026, 6, 31)));
-      // Ruído: outro tipo e outro colaborador não devem entrar na contagem.
+      // Tipo disciplinar novo (ADR 0010): também deve entrar na contagem.
+      semear('ATRASO', new Date(Date.UTC(2026, 6, 10)));
+      // Ruído: tipo não-disciplinar e outro colaborador não entram na contagem.
       semear('OUTRO_TIPO', new Date(Date.UTC(2026, 6, 15)));
       store.push({
         id: 'outro',
@@ -388,21 +398,22 @@ describe('IncidenciasService', () => {
       return service;
     }
 
-    it('conta apenas NAO_RETORNO_INTERVALO do colaborador dentro de [inicio, fim)', async () => {
+    it('conta todos os tipos disciplinares do colaborador dentro de [inicio, fim)', async () => {
       const service = await comIncidencias();
-      // Julho inteiro: pega as 3 do colaborador c1 (ignora tipo/colaborador de ruído).
-      const total = await service.contarNaoRetornos(
+      // Julho inteiro: 3 não-retornos + 1 atraso do c1 = 4 (ignora tipo não
+      // disciplinar de ruído e o outro colaborador).
+      const total = await service.contarIncidenciasPonderadas(
         'c1',
         new Date(Date.UTC(2026, 6, 1)),
         new Date(Date.UTC(2026, 7, 1)),
       );
-      expect(total).toBe(3);
+      expect(total).toBe(4);
     });
 
     it('respeita o limite superior EXCLUSIVO (fim não conta) e o inferior inclusivo', async () => {
       const service = await comIncidencias();
-      // [15/07, 31/07): inclui 15, exclui 31 → apenas 1.
-      const total = await service.contarNaoRetornos(
+      // [15/07, 31/07): inclui 15, exclui 31 → apenas 1 (o não-retorno de 15).
+      const total = await service.contarIncidenciasPonderadas(
         'c1',
         new Date(Date.UTC(2026, 6, 15)),
         new Date(Date.UTC(2026, 6, 31)),
@@ -413,7 +424,7 @@ describe('IncidenciasService', () => {
     it('normaliza o início ao começo do dia (inclui incidências do mesmo dia)', async () => {
       const service = await comIncidencias();
       // Início às 23:59 de 01/07 é normalizado para 00:00 → a de 01/07 conta.
-      const total = await service.contarNaoRetornos(
+      const total = await service.contarIncidenciasPonderadas(
         'c1',
         new Date(Date.UTC(2026, 6, 1, 23, 59)),
         new Date(Date.UTC(2026, 6, 2)),

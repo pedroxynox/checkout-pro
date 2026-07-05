@@ -23,8 +23,11 @@ import {
 import { escalaService } from '../../api/services';
 import {
   IncidenciaEscala,
+  META_TIPO_INCIDENCIA,
   OrigemIncidencia,
   RegistrarIncidenciaInput,
+  TIPOS_INCIDENCIA_MANUAIS,
+  TipoIncidenciaEscala,
 } from '../../api/types';
 import { Botao, CampoTexto } from '../../components';
 import { cores, espacamento, raio, tipografia } from '../../theme';
@@ -54,6 +57,14 @@ interface RegistrarIncidenciaModalProps {
   valoresIniciais?: ValoresIniciaisIncidencia;
   /** Libera o botão "Excluir" no modo de edição. */
   podeExcluir?: boolean;
+  /**
+   * Ao criar, permite escolher o tipo da ocorrência (atraso, saída antecipada,
+   * etc.). Quando falso (padrão), o tipo fica fixo em `tipoInicial` — usado no
+   * fluxo de sugestão auto-detectada (não-retorno).
+   */
+  permitirEscolherTipo?: boolean;
+  /** Tipo inicial ao criar (padrão: não-retorno do intervalo). */
+  tipoInicial?: TipoIncidenciaEscala;
 }
 
 /** Aplica uma máscara simples "HH:mm" à medida que o usuário digita. */
@@ -76,9 +87,12 @@ export function RegistrarIncidenciaModal({
   incidenciaExistente,
   valoresIniciais,
   podeExcluir = false,
+  permitirEscolherTipo = false,
+  tipoInicial = 'NAO_RETORNO_INTERVALO',
 }: RegistrarIncidenciaModalProps): React.ReactElement {
   const edicao = !!incidenciaExistente;
 
+  const [tipo, setTipo] = useState<TipoIncidenciaEscala>(tipoInicial);
   const [data, setData] = useState<string>(hojeISO());
   const [horaSaida, setHoraSaida] = useState('');
   const [horaEsperadaRetorno, setHoraEsperadaRetorno] = useState('');
@@ -96,6 +110,7 @@ export function RegistrarIncidenciaModal({
     setErro(null);
     setErroCampo(null);
     if (incidenciaExistente) {
+      setTipo(incidenciaExistente.tipo);
       setData(incidenciaExistente.data.slice(0, 10));
       setHoraSaida(incidenciaExistente.horaSaida ?? '');
       setHoraEsperadaRetorno(incidenciaExistente.horaEsperadaRetorno ?? '');
@@ -103,6 +118,7 @@ export function RegistrarIncidenciaModal({
       setMotivo(incidenciaExistente.motivo ?? '');
       setObservacao(incidenciaExistente.observacao ?? '');
     } else {
+      setTipo(tipoInicial);
       setData(valoresIniciais?.data ?? hojeISO());
       setHoraSaida(valoresIniciais?.horaSaida ?? '');
       setHoraEsperadaRetorno(valoresIniciais?.horaEsperadaRetorno ?? '');
@@ -110,17 +126,20 @@ export function RegistrarIncidenciaModal({
       setMotivo('');
       setObservacao('');
     }
-  }, [visivel, incidenciaExistente, valoresIniciais]);
+  }, [visivel, incidenciaExistente, valoresIniciais, tipoInicial]);
 
   const ocupado = salvando || excluindo;
+  const usaHorarios = META_TIPO_INCIDENCIA[tipo].usaHorarios;
 
   const salvar = async (): Promise<void> => {
     setErro(null);
-    // Validação dos horários informados (todos opcionais).
+    // Validação dos horários informados (todos opcionais). Tipos sem horário
+    // (ex.: advertência) não validam nem enviam horários.
     if (
-      !horaValida(horaSaida) ||
-      !horaValida(horaEsperadaRetorno) ||
-      !horaValida(horaReal)
+      usaHorarios &&
+      (!horaValida(horaSaida) ||
+        !horaValida(horaEsperadaRetorno) ||
+        !horaValida(horaReal))
     ) {
       setErroCampo('Use o formato HH:mm (00:00–23:59).');
       return;
@@ -130,22 +149,26 @@ export function RegistrarIncidenciaModal({
     try {
       const limpo = (v: string): string | undefined =>
         v.trim() === '' ? undefined : v.trim();
+      // Horários só quando o tipo os usa (senão vão como undefined).
+      const horarios = usaHorarios
+        ? {
+            horaSaida: limpo(horaSaida),
+            horaEsperadaRetorno: limpo(horaEsperadaRetorno),
+            horaReal: limpo(horaReal),
+          }
+        : {};
       if (edicao && incidenciaExistente) {
         await escalaService.editarIncidencia(incidenciaExistente.id, {
-          horaSaida: limpo(horaSaida),
-          horaEsperadaRetorno: limpo(horaEsperadaRetorno),
-          horaReal: limpo(horaReal),
+          ...horarios,
           motivo: limpo(motivo),
           observacao: limpo(observacao),
         });
       } else {
         const dto: RegistrarIncidenciaInput = {
           colaboradorId,
-          tipo: 'NAO_RETORNO_INTERVALO',
+          tipo,
           data,
-          horaSaida: limpo(horaSaida),
-          horaEsperadaRetorno: limpo(horaEsperadaRetorno),
-          horaReal: limpo(horaReal),
+          ...horarios,
           motivo: limpo(motivo),
           observacao: limpo(observacao),
         };
@@ -189,54 +212,74 @@ export function RegistrarIncidenciaModal({
         <View style={styles.folha}>
           <View style={styles.topo}>
             <Text style={styles.titulo}>
-              {edicao ? 'Editar incidência' : 'Registrar não retorno'}
+              {edicao ? 'Editar ocorrência' : 'Registrar ocorrência'}
             </Text>
             <Pressable onPress={aoFechar} hitSlop={12} accessibilityLabel="Fechar">
               <Ionicons name="close" size={24} color={cores.texto} />
             </Pressable>
           </View>
 
-          <Text style={styles.subtitulo}>Não retorno do intervalo</Text>
+          <Text style={styles.subtitulo}>{META_TIPO_INCIDENCIA[tipo].rotulo}</Text>
 
           <ScrollView
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+            {!edicao && permitirEscolherTipo ? (
+              <View style={styles.tipos}>
+                {TIPOS_INCIDENCIA_MANUAIS.map((t) => (
+                  <Text
+                    key={t}
+                    onPress={() => setTipo(t)}
+                    style={[styles.chipTipo, tipo === t && styles.chipTipoAtivo]}
+                  >
+                    {META_TIPO_INCIDENCIA[t].rotulo}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+
             <View style={styles.linhaData}>
               <Text style={styles.dataRotulo}>Data</Text>
               <Text style={styles.dataValor}>{formatarData(data)}</Text>
             </View>
 
-            <View style={styles.linhaCampos}>
-              <CampoTexto
-                rotulo="Saída"
-                value={horaSaida}
-                onChangeText={(v) => setHoraSaida(mascararHora(v))}
-                placeholder="HH:mm"
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-                containerStyle={styles.campoMeio}
-              />
-              <CampoTexto
-                rotulo="Esperado"
-                value={horaEsperadaRetorno}
-                onChangeText={(v) => setHoraEsperadaRetorno(mascararHora(v))}
-                placeholder="HH:mm"
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-                containerStyle={styles.campoMeio}
-              />
-              <CampoTexto
-                rotulo="Retorno real"
-                value={horaReal}
-                onChangeText={(v) => setHoraReal(mascararHora(v))}
-                placeholder="HH:mm"
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-                containerStyle={styles.campoMeio}
-              />
-            </View>
-            {erroCampo ? <Text style={styles.erroCampo}>{erroCampo}</Text> : null}
+            {usaHorarios ? (
+              <>
+                <View style={styles.linhaCampos}>
+                  <CampoTexto
+                    rotulo="Saída"
+                    value={horaSaida}
+                    onChangeText={(v) => setHoraSaida(mascararHora(v))}
+                    placeholder="HH:mm"
+                    keyboardType="numbers-and-punctuation"
+                    maxLength={5}
+                    containerStyle={styles.campoMeio}
+                  />
+                  <CampoTexto
+                    rotulo="Esperado"
+                    value={horaEsperadaRetorno}
+                    onChangeText={(v) => setHoraEsperadaRetorno(mascararHora(v))}
+                    placeholder="HH:mm"
+                    keyboardType="numbers-and-punctuation"
+                    maxLength={5}
+                    containerStyle={styles.campoMeio}
+                  />
+                  <CampoTexto
+                    rotulo="Retorno real"
+                    value={horaReal}
+                    onChangeText={(v) => setHoraReal(mascararHora(v))}
+                    placeholder="HH:mm"
+                    keyboardType="numbers-and-punctuation"
+                    maxLength={5}
+                    containerStyle={styles.campoMeio}
+                  />
+                </View>
+                {erroCampo ? (
+                  <Text style={styles.erroCampo}>{erroCampo}</Text>
+                ) : null}
+              </>
+            ) : null}
 
             <CampoTexto
               rotulo="Motivo"
@@ -323,6 +366,25 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginBottom: espacamento.md,
+  },
+  tipos: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espacamento.xs,
+    marginBottom: espacamento.md,
+  },
+  chipTipo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    paddingVertical: espacamento.xs,
+    paddingHorizontal: espacamento.sm,
+    borderRadius: raio.pill,
+    backgroundColor: cores.divisor,
+    overflow: 'hidden',
+  },
+  chipTipoAtivo: {
+    backgroundColor: cores.primaria,
+    color: cores.textoInverso,
   },
   linhaData: {
     flexDirection: 'row',

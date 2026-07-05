@@ -74,6 +74,11 @@ const PERFIL = {
   motivosCancelamento: [],
   insignias: [],
   incidencias: {
+    total: 3,
+    porTipo: [
+      { tipo: 'NAO_RETORNO_INTERVALO', rotulo: 'Não retorno do intervalo', total: 2 },
+      { tipo: 'ATRASO', rotulo: 'Atraso', total: 1 },
+    ],
     totalNaoRetorno: 2,
     ultimoNaoRetorno: '2026-06-20',
     diasConsecutivosSemIncidencia: 5,
@@ -84,6 +89,7 @@ const PERFIL = {
     percentualSobreEscalados: 8,
     timeline: [
       { data: '2026-06-20', kind: 'NAO_RETORNO_INTERVALO' },
+      { data: '2026-06-15', kind: 'ATRASO' },
       { data: '2026-06-10', kind: 'FALTA' },
     ],
   },
@@ -143,36 +149,37 @@ describe('PerfilColaboradorScreen — histórico de incidências', () => {
     });
   });
 
-  it('exibe o botão "Registrar não retorno" quando há permissão', async () => {
+  it('exibe o botão "Registrar ocorrência" quando há permissão', async () => {
     render_();
 
     expect(await screen.findByText('Histórico de incidências')).toBeTruthy();
-    expect(screen.getByText('Registrar não retorno')).toBeTruthy();
+    expect(screen.getByText('Registrar ocorrência')).toBeTruthy();
   });
 
-  it('oculta o botão "Registrar não retorno" sem permissão', async () => {
+  it('oculta o botão "Registrar ocorrência" sem permissão', async () => {
     mockAuth.permitir = false;
     render_();
 
     expect(await screen.findByText('Histórico de incidências')).toBeTruthy();
-    expect(screen.queryByText('Registrar não retorno')).toBeNull();
+    expect(screen.queryByText('Registrar ocorrência')).toBeNull();
   });
 
-  it('abre o modal em modo criar ao pressionar "Registrar não retorno"', async () => {
+  it('abre o modal em modo criar ao pressionar "Registrar ocorrência"', async () => {
     render_();
 
-    const botao = await screen.findByText('Registrar não retorno');
+    const botao = await screen.findByText('Registrar ocorrência');
     // Antes de abrir, o modal (título de criação) não está montado; o único
-    // "Registrar não retorno" presente é o botão de ação.
-    expect(screen.getAllByText('Registrar não retorno')).toHaveLength(1);
+    // "Registrar ocorrência" presente é o botão de ação.
+    expect(screen.getAllByText('Registrar ocorrência')).toHaveLength(1);
 
     fireEvent.press(botao);
 
     // No modo criar, o modal renderiza o botão "Salvar" e o campo de retorno
-    // real — marcadores exclusivos do modal (sem incidência existente).
+    // real (tipo padrão = não-retorno usa horários) — marcadores exclusivos do
+    // modal (sem incidência existente).
     expect(await screen.findByText('Salvar')).toBeTruthy();
     expect(screen.getByText('Retorno real')).toBeTruthy();
     // O modal de criação NÃO deve estar em modo edição: sem título "Editar".
-    expect(screen.queryByText('Editar incidência')).toBeNull();
+    expect(screen.queryByText('Editar ocorrência')).toBeNull();
   });
 });

@@ -13,6 +13,10 @@ import { CONFIG_ARRECADACAO } from '../arrecadacao/arrecadacao.domain';
 import { analisarFaltas } from '../operadores/operadores.domain';
 import { IncidenciasService } from '../incidencias/incidencias.service';
 import {
+  TIPOS_INCIDENCIA,
+  rotuloTipoIncidencia,
+} from '../incidencias/incidencias.domain';
+import {
   ContratosService,
   ResumoContratoColaborador,
 } from '../contratos/contratos.service';
@@ -127,6 +131,11 @@ export interface PerfilColaboradorResposta {
    * (incidências + faltas). Alimentado por `IncidenciasService`.
    */
   incidencias: {
+    /** Total de incidências de TODOS os tipos no período (~6 meses). */
+    total: number;
+    /** Desglose por tipo (rótulo + total), só os tipos com ocorrências. */
+    porTipo: { tipo: string; rotulo: string; total: number }[];
+    /** Retrocompatível: total só de "não retorno do intervalo". */
     totalNaoRetorno: number;
     ultimoNaoRetorno: string | null;
     diasConsecutivosSemIncidencia: number;
@@ -485,12 +494,14 @@ export class PerfilColaboradorService {
       diasUteisMes,
     });
 
-    // Não-retornos do intervalo DENTRO do período [inicio, fim).
-    const naoRetornos = await this.incidenciasService.contarNaoRetornos(
-      id,
-      inicioDia,
-      fimExcl,
-    );
+    // Incidências disciplinares (ponderadas) DENTRO do período [inicio, fim):
+    // não-retorno, atraso, saída antecipada, retorno tardio e advertência.
+    const incidenciasDisciplinares =
+      await this.incidenciasService.contarIncidenciasPonderadas(
+        id,
+        inicioDia,
+        fimExcl,
+      );
 
     return calcularScore({
       taxaFaltas,
@@ -507,7 +518,7 @@ export class PerfilColaboradorService {
         linhaBaseCancelamentos:
           mediaIndicador('CANCELAMENTO_ITENS') +
           mediaIndicador('CANCELAMENTO_CUPOM'),
-        naoRetornos,
+        incidenciasDisciplinares,
       },
     });
   }
@@ -556,7 +567,14 @@ export class PerfilColaboradorService {
   ): Promise<PerfilColaboradorResposta['incidencias']> {
     const { analise, timeline } =
       await this.incidenciasService.resumoDoColaborador(id, fim);
+    const porTipo = TIPOS_INCIDENCIA.map((tipo) => ({
+      tipo,
+      rotulo: rotuloTipoIncidencia(tipo),
+      total: analise.porTipo[tipo] ?? 0,
+    })).filter((t) => t.total > 0);
     return {
+      total: analise.total,
+      porTipo,
       totalNaoRetorno: analise.porTipo.NAO_RETORNO_INTERVALO,
       ultimoNaoRetorno: analise.ultimaPorTipo.NAO_RETORNO_INTERVALO,
       diasConsecutivosSemIncidencia: analise.diasConsecutivosSemIncidencia,

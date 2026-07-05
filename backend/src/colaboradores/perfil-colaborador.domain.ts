@@ -101,8 +101,12 @@ export interface EntradaScore {
     cancelamentos: number;
     /** Linha de base justa: soma das médias da equipe dos dois cancelamentos. */
     linhaBaseCancelamentos: number;
-    /** Contagem de Incidencia_Nao_Retorno do operador no período. */
-    naoRetornos: number;
+    /**
+     * Soma **ponderada** das incidências disciplinares do operador no período
+     * (não-retorno, atraso, saída antecipada, retorno tardio, advertência —
+     * ver ADR 0010). Justificadas pesam menos (ADR 0009).
+     */
+    incidenciasDisciplinares: number;
   };
 
   /** Fiscal: atividade (devoluções + cupons autorizados) vs. média da equipe. */
@@ -125,8 +129,8 @@ const PESO_DISCIPLINA = 0.3;
 const PESO_ATIVIDADE = 0.4;
 /** Sensibilidade da penalização de cancelamentos acima da linha de base. */
 const FATOR_CANCELAMENTO = 50;
-/** Pontos subtraídos da Disciplina por cada não-retorno do intervalo. */
-const PENAL_POR_NAO_RETORNO = 20;
+/** Pontos subtraídos da Disciplina por cada incidência disciplinar (ponderada). */
+const PENAL_POR_INCIDENCIA = 20;
 
 const NOMES_MES = [
   'Jan',
@@ -343,17 +347,18 @@ export function notaContribuicao(
 
 /**
  * Sub-nota de Disciplina (0–100): parte da nota de cancelamentos vs. a linha de
- * base da equipe e aplica a penalidade por não-retornos do intervalo. É um
- * **único** componente (não cria componente separado para o não-retorno).
- * Sempre em [0,100]; vale 100 quando o operador está em/abaixo da linha de base
- * e não teve não-retornos.
+ * base da equipe e aplica a penalidade pelas incidências disciplinares (soma
+ * ponderada de não-retornos, atrasos, saídas antecipadas, retornos tardios e
+ * advertências — ver ADR 0010). É um **único** componente. Sempre em [0,100];
+ * vale 100 quando o operador está em/abaixo da linha de base e não teve
+ * incidências.
  */
 export function notaDisciplina(d: {
   cancelamentos: number;
   linhaBaseCancelamentos: number;
-  naoRetornos: number;
+  incidenciasDisciplinares: number;
 }): number {
-  const { cancelamentos, linhaBaseCancelamentos, naoRetornos } = d;
+  const { cancelamentos, linhaBaseCancelamentos, incidenciasDisciplinares } = d;
   const notaCancel =
     linhaBaseCancelamentos > 0
       ? clamp(
@@ -365,7 +370,11 @@ export function notaDisciplina(d: {
       : cancelamentos > 0
         ? clamp(100 - FATOR_CANCELAMENTO)
         : 100;
-  return clamp(notaCancel - naoRetornos * PENAL_POR_NAO_RETORNO, 0, 100);
+  return clamp(
+    notaCancel - incidenciasDisciplinares * PENAL_POR_INCIDENCIA,
+    0,
+    100,
+  );
 }
 
 /**

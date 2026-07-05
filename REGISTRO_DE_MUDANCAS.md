@@ -12,6 +12,36 @@
 
 ---
 
+## Novos tipos de incidência de escala (2026-07-05)
+
+**Objetivo:** ampliar as incidências de escala — que só tinham "não retorno do
+intervalo" — com **atraso**, **saída antecipada**, **retorno tardio** e
+**advertência**, para dar ao gestor uma visão disciplinar mais completa por
+colaborador. Entrega **apenas aditiva** (sem tabelas novas — o modelo já é
+genérico por `tipo`), validada por property tests (`fast-check`), regressão
+verde (backend **297** / mobile **57**) e migração aplicada contra **PostgreSQL
+real** (sem drift). Ver **ADR 0010**.
+
+- **Tipos (aditivo).** O enum `TipoIncidenciaEscala` ganha `ATRASO`,
+  `SAIDA_ANTECIPADA`, `RETORNO_TARDIO` e `ADVERTENCIA` (migração
+  `9za_incidencia_tipos`, `ALTER TYPE ... ADD VALUE IF NOT EXISTS`). Metadados por
+  tipo numa fonte única (`META_TIPO_INCIDENCIA`: rótulo, se penaliza disciplina,
+  se é auto-detectável, se usa horários), espelhada no app.
+- **Registro.** Só o **não retorno** é auto-detectado do ponto; os demais são
+  lançamentos **manuais** (a tela de Escala e o Perfil abrem um seletor de tipo).
+  A advertência não pede horários. Justificar/reabrir vale para qualquer tipo.
+- **Score (Disciplina).** O perfil passa a penalizar a Disciplina pela **soma
+  ponderada de TODAS as incidências disciplinares** do período
+  (`contarIncidenciasPonderadas`), não só o não-retorno; justificadas pesam menos
+  (reusa ADR 0009). A contagem crua segue no histórico.
+- **Ranking/comparativa.** O ranking de incidências aceita um **tipo** opcional
+  para comparar um evento específico entre colaboradores.
+- **Perfil.** A seção de incidências mostra o **total** e o **desglose por tipo**;
+  a linha do tempo e o filtro (Todas / Faltas / Incidências) cobrem todos os
+  tipos, e qualquer incidência pode ser editada/excluída com permissão.
+
+---
+
 ## Justificativa (abono) de faltas e não-retornos (2026-07-05)
 
 **Objetivo:** poder **justificar uma falta ou não-retorno DEPOIS** de registrado

@@ -16,13 +16,92 @@
  * propriedade (fast-check) sem qualquer infraestrutura.
  */
 
-/** Tipos de incidência de escala (espelho do enum Prisma). */
-export type TipoIncidencia = 'NAO_RETORNO_INTERVALO';
+/**
+ * Tipos de incidência de escala (espelho do enum Prisma). O desenho é genérico
+ * por `tipo` (ver ADR 0007), então novos eventos entram apenas somando um valor
+ * aqui (+ enum Prisma + espelho mobile), sem tabelas novas.
+ */
+export type TipoIncidencia =
+  | 'NAO_RETORNO_INTERVALO'
+  | 'ATRASO'
+  | 'SAIDA_ANTECIPADA'
+  | 'RETORNO_TARDIO'
+  | 'ADVERTENCIA';
 
 /** Todos os tipos conhecidos (fonte única para partições e mapas). */
 export const TIPOS_INCIDENCIA: readonly TipoIncidencia[] = [
   'NAO_RETORNO_INTERVALO',
+  'ATRASO',
+  'SAIDA_ANTECIPADA',
+  'RETORNO_TARDIO',
+  'ADVERTENCIA',
 ] as const;
+
+/** Metadados de um tipo de incidência (fonte única de rótulo/regras). */
+export interface MetaTipoIncidencia {
+  /** Rótulo curto em pt-BR para exibição/avisos. */
+  rotulo: string;
+  /**
+   * Penaliza a **Disciplina** no Score de Saúde do colaborador. Hoje todos os
+   * tipos são disciplinares; a coluna existe para permitir, no futuro, tipos
+   * puramente informativos sem tocar no cálculo do score.
+   */
+  penalizaDisciplina: boolean;
+  /**
+   * Pode ser **auto-detectado** a partir do ponto dos fiscais. Só o não-retorno
+   * do intervalo é derivável do ponto; os demais são lançamentos manuais.
+   */
+  autoDetectavel: boolean;
+  /** Faz uso dos horários (saída/esperado/real). Advertência não usa horário. */
+  usaHorarios: boolean;
+}
+
+/** Mapa de metadados por tipo (partição total de `TIPOS_INCIDENCIA`). */
+export const META_TIPO_INCIDENCIA: Record<TipoIncidencia, MetaTipoIncidencia> =
+  {
+    NAO_RETORNO_INTERVALO: {
+      rotulo: 'Não retorno do intervalo',
+      penalizaDisciplina: true,
+      autoDetectavel: true,
+      usaHorarios: true,
+    },
+    ATRASO: {
+      rotulo: 'Atraso',
+      penalizaDisciplina: true,
+      autoDetectavel: false,
+      usaHorarios: true,
+    },
+    SAIDA_ANTECIPADA: {
+      rotulo: 'Saída antecipada',
+      penalizaDisciplina: true,
+      autoDetectavel: false,
+      usaHorarios: true,
+    },
+    RETORNO_TARDIO: {
+      rotulo: 'Retorno tardio',
+      penalizaDisciplina: true,
+      autoDetectavel: false,
+      usaHorarios: true,
+    },
+    ADVERTENCIA: {
+      rotulo: 'Advertência',
+      penalizaDisciplina: true,
+      autoDetectavel: false,
+      usaHorarios: false,
+    },
+  };
+
+/**
+ * Tipos que penalizam a Disciplina no score (fonte única para a soma ponderada
+ * de incidências do perfil). Derivado de `META_TIPO_INCIDENCIA`.
+ */
+export const TIPOS_DISCIPLINARES: readonly TipoIncidencia[] =
+  TIPOS_INCIDENCIA.filter((t) => META_TIPO_INCIDENCIA[t].penalizaDisciplina);
+
+/** Rótulo curto (pt-BR) de um tipo de incidência. */
+export function rotuloTipoIncidencia(tipo: TipoIncidencia): string {
+  return META_TIPO_INCIDENCIA[tipo]?.rotulo ?? tipo;
+}
 
 const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 

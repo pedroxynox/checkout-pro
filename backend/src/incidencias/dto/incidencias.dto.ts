@@ -127,11 +127,17 @@ export class SugestoesIncidenciaDto {
   data?: string;
 }
 
-/** Janela do ranking de incidências. */
+/** Janela do ranking de incidências (tipo opcional para comparar um evento). */
 export class RankingIncidenciasDto {
   @IsDateString({}, { message: 'A data inicial deve ser uma data válida.' })
   inicio!: string;
 
   @IsDateString({}, { message: 'A data final deve ser uma data válida.' })
   fim!: string;
+
+  @IsOptional()
+  @IsIn(TIPOS_INCIDENCIA as unknown as string[], {
+    message: 'Tipo de incidência inválido.',
+  })
+  tipo?: TipoIncidencia;
 }

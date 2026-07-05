@@ -86,6 +86,10 @@ enum TurnoFiscal {
 // sem novas tabelas. O primeiro evento é "não retornou do intervalo".
 enum TipoIncidenciaEscala {
   NAO_RETORNO_INTERVALO
+  ATRASO
+  SAIDA_ANTECIPADA
+  RETORNO_TARDIO
+  ADVERTENCIA
 }
 
 // ---------------------------- Modelos -------------------------------------

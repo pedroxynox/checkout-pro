@@ -21,13 +21,13 @@ describe('PerfilColaboradorService (wiring do score — Ola B)', () => {
     recargasResolver?: number;
     recargasThrows?: boolean;
     nOperadoresAtivos?: number;
-    naoRetornos?: number;
+    incidenciasDisciplinares?: number;
   }
 
   function criarServico(deps: Deps = {}): {
     service: PerfilColaboradorService;
     metaIndicadorFindUnique: jest.Mock;
-    contarNaoRetornos: jest.Mock;
+    contarIncidenciasPonderadas: jest.Mock;
     resolverRecargas: jest.Mock;
   } {
     const metaIndicadorFindUnique = jest.fn(() => {
@@ -41,8 +41,8 @@ describe('PerfilColaboradorService (wiring do score — Ola B)', () => {
       if (deps.recargasThrows) return Promise.reject(new Error('no table'));
       return Promise.resolve(deps.recargasResolver ?? 2000);
     });
-    const contarNaoRetornos = jest.fn(() =>
-      Promise.resolve(deps.naoRetornos ?? 0),
+    const contarIncidenciasPonderadas = jest.fn(() =>
+      Promise.resolve(deps.incidenciasDisciplinares ?? 0),
     );
 
     const prismaFake = {
@@ -52,7 +52,7 @@ describe('PerfilColaboradorService (wiring do score — Ola B)', () => {
       },
     };
     const metasFake = { resolver: resolverRecargas };
-    const incidenciasFake = { contarNaoRetornos };
+    const incidenciasFake = { contarIncidenciasPonderadas };
     // Contrato não participa do score (informativo). Basta um stub inerte.
     const contratosFake = {
       resumoDoColaborador: jest.fn(() => Promise.resolve({})),
@@ -73,7 +73,7 @@ describe('PerfilColaboradorService (wiring do score — Ola B)', () => {
     return {
       service,
       metaIndicadorFindUnique,
-      contarNaoRetornos,
+      contarIncidenciasPonderadas,
       resolverRecargas,
     };
   }
@@ -161,11 +161,11 @@ describe('PerfilColaboradorService (wiring do score — Ola B)', () => {
     it('monta a EntradaScore com meta individual derivada, cancelamentos e não-retornos', async () => {
       // metaGlobal = 2000 (troco CONFIG) + 2000 (recargas) = 4000; 4 operadores
       // → metaIndividual = 1000. aporteReal = 200 + 300 = 500 → contribuição 50.
-      const { service, contarNaoRetornos } = criarServico({
+      const { service, contarIncidenciasPonderadas } = criarServico({
         metaIndicador: null,
         recargasResolver: 2000,
         nOperadoresAtivos: 4,
-        naoRetornos: 0,
+        incidenciasDisciplinares: 0,
       });
       const { valorIndicador, mediaIndicador } = insumos();
       const score = await chamar(service, [
@@ -188,7 +188,11 @@ describe('PerfilColaboradorService (wiring do score — Ola B)', () => {
       // score = round(100*.4 + 50*.3 + 100*.3) = 85 → BOM
       expect(score.valor).toBe(85);
       expect(score.nivel).toBe('BOM');
-      expect(contarNaoRetornos).toHaveBeenCalledWith('op1', INICIO, FIM_EXCL);
+      expect(contarIncidenciasPonderadas).toHaveBeenCalledWith(
+        'op1',
+        INICIO,
+        FIM_EXCL,
+      );
     });
 
     it('penaliza a Disciplina pelos não-retornos do período', async () => {
@@ -196,7 +200,7 @@ describe('PerfilColaboradorService (wiring do score — Ola B)', () => {
         metaIndicador: null,
         recargasResolver: 2000,
         nOperadoresAtivos: 4,
-        naoRetornos: 2,
+        incidenciasDisciplinares: 2,
       });
       const { valorIndicador, mediaIndicador } = insumos();
       const score = await chamar(service, [
@@ -212,7 +216,7 @@ describe('PerfilColaboradorService (wiring do score — Ola B)', () => {
       const disciplina = score.componentes.find(
         (c: { chave: string }) => c.chave === 'disciplina',
       )?.valor;
-      // 100 - 2 * PENAL_POR_NAO_RETORNO(20) = 60.
+      // 100 - 2 * PENAL_POR_INCIDENCIA(20) = 60.
       expect(disciplina).toBe(60);
     });
 
@@ -221,7 +225,7 @@ describe('PerfilColaboradorService (wiring do score — Ola B)', () => {
         metaIndicador: null,
         recargasResolver: 2000,
         nOperadoresAtivos: 0, // → metaIndividualDerivada = null
-        naoRetornos: 0,
+        incidenciasDisciplinares: 0,
       });
       const { valorIndicador, mediaIndicador } = insumos();
       const score = await chamar(service, [
