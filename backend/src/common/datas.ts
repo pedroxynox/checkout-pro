@@ -49,3 +49,13 @@ export function inicioDoMes(data: Date): Date {
 export function inicioDoProximoMes(data: Date): Date {
   return new Date(Date.UTC(data.getUTCFullYear(), data.getUTCMonth() + 1, 1));
 }
+
+/**
+ * Último dia do mês (00:00 UTC) que contém a data. Útil como limite superior
+ * **inclusivo** para contagens dia-a-dia no mês (ex.: dias escalados no mês).
+ * `Date.UTC(ano, mes + 1, 0)` resolve para o dia 0 do próximo mês, que é o
+ * último dia do mês corrente.
+ */
+export function fimDoMes(data: Date): Date {
+  return new Date(Date.UTC(data.getUTCFullYear(), data.getUTCMonth() + 1, 0));
+}

@@ -319,6 +319,88 @@ describe('IncidenciasService', () => {
     expect(sugestoes[0].tipo).toBe('NAO_RETORNO_INTERVALO');
   });
 
+  describe('contarNaoRetornos', () => {
+    /**
+     * Prepara três incidências do mesmo colaborador em datas distintas para
+     * exercitar os limites do intervalo `[inicio, fim)` e o filtro por tipo.
+     */
+    async function comIncidencias(): Promise<IncidenciasService> {
+      const { service, store } = criarServico({ colaboradores: [COL_C1] });
+      // Semeia direto no store (evita a derivação/validação de `registrar`).
+      const semear = (tipo: string, data: Date): void => {
+        store.push({
+          id: `seed-${store.length}`,
+          colaboradorId: 'c1',
+          funcionarioId: null,
+          tipo,
+          data,
+          horaSaida: null,
+          horaEsperadaRetorno: null,
+          horaReal: null,
+          origem: 'MANUAL',
+          motivo: null,
+          observacao: null,
+          registradoPorId: null,
+          registradoPorNome: null,
+        });
+      };
+      semear('NAO_RETORNO_INTERVALO', new Date(Date.UTC(2026, 6, 1)));
+      semear('NAO_RETORNO_INTERVALO', new Date(Date.UTC(2026, 6, 15)));
+      semear('NAO_RETORNO_INTERVALO', new Date(Date.UTC(2026, 6, 31)));
+      // Ruído: outro tipo e outro colaborador não devem entrar na contagem.
+      semear('OUTRO_TIPO', new Date(Date.UTC(2026, 6, 15)));
+      store.push({
+        id: 'outro',
+        colaboradorId: 'c2',
+        funcionarioId: null,
+        tipo: 'NAO_RETORNO_INTERVALO',
+        data: new Date(Date.UTC(2026, 6, 15)),
+        horaSaida: null,
+        horaEsperadaRetorno: null,
+        horaReal: null,
+        origem: 'MANUAL',
+        motivo: null,
+        observacao: null,
+        registradoPorId: null,
+        registradoPorNome: null,
+      });
+      return service;
+    }
+
+    it('conta apenas NAO_RETORNO_INTERVALO do colaborador dentro de [inicio, fim)', async () => {
+      const service = await comIncidencias();
+      // Julho inteiro: pega as 3 do colaborador c1 (ignora tipo/colaborador de ruído).
+      const total = await service.contarNaoRetornos(
+        'c1',
+        new Date(Date.UTC(2026, 6, 1)),
+        new Date(Date.UTC(2026, 7, 1)),
+      );
+      expect(total).toBe(3);
+    });
+
+    it('respeita o limite superior EXCLUSIVO (fim não conta) e o inferior inclusivo', async () => {
+      const service = await comIncidencias();
+      // [15/07, 31/07): inclui 15, exclui 31 → apenas 1.
+      const total = await service.contarNaoRetornos(
+        'c1',
+        new Date(Date.UTC(2026, 6, 15)),
+        new Date(Date.UTC(2026, 6, 31)),
+      );
+      expect(total).toBe(1);
+    });
+
+    it('normaliza o início ao começo do dia (inclui incidências do mesmo dia)', async () => {
+      const service = await comIncidencias();
+      // Início às 23:59 de 01/07 é normalizado para 00:00 → a de 01/07 conta.
+      const total = await service.contarNaoRetornos(
+        'c1',
+        new Date(Date.UTC(2026, 6, 1, 23, 59)),
+        new Date(Date.UTC(2026, 6, 2)),
+      );
+      expect(total).toBe(1);
+    });
+  });
+
   it('não sugere quando já existe incidência registrada para o dia', async () => {
     const dia = new Date(Date.UTC(2026, 6, 3));
     const { service } = criarServico({
