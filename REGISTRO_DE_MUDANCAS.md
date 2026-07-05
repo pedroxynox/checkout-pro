@@ -12,6 +12,57 @@
 
 ---
 
+## Score de Perfil Abrangente — nota minuciosa e proporcional do operador (2026-07-05)
+
+**Objetivo:** substituir a nota de perfil do operador por um **score abrangente,
+minucioso e proporcional**, transparente e **determinístico (sem IA)**, que reúne
+Contribuição, Disciplina e Assiduidade em uma nota final de **0–100** com
+semáforo. Sem tabelas novas nem migrações (ADR 0007): metas via
+`MetaIndicador`/`MetaMensal` e não-retornos via `IncidenciaEscala`.
+
+- **Novo modelo de pontuação (domínio puro, determinístico).** A nota final
+  combina três componentes com pesos normalizados e é arredondada para 0–100,
+  com semáforo (`>=80 BOM`, `60–79 ATENCAO`, `<60 CRITICO`):
+  - **Contribuição (proporcional à meta individual derivada).** A meta
+    individual do período é derivada da meta global mensal:
+    `meta global mensal ÷ nº de operadores ativos × (dias escalados no período ÷
+    dias úteis do mês)`. A sub-nota é proporcional ao aporte real sobre essa meta
+    (100 quando o aporte alcança a meta), monótona crescente no aporte. Quando a
+    meta não pode ser derivada (qualquer insumo `<= 0`, evitando divisão por
+    zero), a sub-nota fica **neutra (50)**.
+  - **Disciplina (penalizada por cancelamentos + não-retornos).** Parte de uma
+    base de cancelamentos relativa à linha-base da equipe e aplica penalidade por
+    cada **não-retorno do intervalo** do período, sempre limitada a 0–100. É um
+    único componente (não há componente separado de não-retorno).
+  - **Assiduidade.** Decresce de forma monótona conforme a taxa de faltas.
+  - O perfil passa a expor os **componentes transparentes** (sub-notas + pesos),
+    permitindo entender exatamente como a nota foi formada.
+  - Validado por **13 testes de propriedade** (fast-check, ≥100 iterações):
+    derivação da meta, neutralidade sem divisão por zero, contagem de dias
+    escalados, correção/monotonicidade de cada sub-nota, combinação convexa em
+    [0,100], partição do semáforo, monotonicidade global e **determinismo**.
+- **Backend — contagem por período.** Novo
+  `IncidenciasService.contarNaoRetornos(colaboradorId, inicio, fimExcl)` que conta
+  incidências do tipo `NAO_RETORNO_INTERVALO` no intervalo `[inicio, fim)` via
+  `incidenciaEscala.count` (sem tabelas novas).
+- **Backend — wiring do serviço de perfil** (`perfil-colaborador.service.ts`):
+  resolução da meta global por tipo (`RECARGAS_CELULAR` via `MetasService`;
+  `TROCO_SOLIDARIO` via `MetaIndicador` com **fallback** a `CONFIG_ARRECADACAO` e
+  `try/catch` para tabela não migrada), coleta do nº de operadores ativos, dias
+  escalados/dias úteis e não-retornos do período, montando a `EntradaScore` e
+  delegando ao domínio puro.
+- **Mobile — "Registrar não retorno" no perfil do operador**
+  (`PerfilColaboradorScreen`): botão exibido apenas com permissão
+  (`OPERADORES_AUSENCIAS`), **reutilizando** o `RegistrarIncidenciaModal` em modo
+  criar (sem alterá-lo). Sem tabelas novas nem migrações.
+- **Regressão (tudo verde):** backend `build` + `lint` + **222 testes**
+  (47 suítes); mobile `type-check` + `lint` + **44 testes** (14 suítes).
+- **Nota:** **não amerita novo ADR** — é uma evolução do modelo de score, sem
+  mudança de arquitetura nem de tabelas (o desenho genérico do ADR 0007
+  permanece). Apenas esta entrada de bitácora.
+
+---
+
 ## Incidências de Escala — validação E2E + correção (colaborador inexistente) (2026-07-04)
 
 **Objetivo:** validar de ponta a ponta o módulo de Incidências de Escala (PRs
