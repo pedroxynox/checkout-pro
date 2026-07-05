@@ -12,6 +12,28 @@
 
 ---
 
+## Relatório de perfil do operador em PDF (2026-07-05)
+
+**Objetivo:** permitir **imprimir** o perfil de cada operador — uma folha **A4
+por pessoa** — com as estatísticas da tela (score, indicadores, faltas,
+incidências e os **gráficos de barras e pizza**). Ver **ADR 0012**. Entrega só
+no app (sem mudança de backend); type-check + lint + **68** testes + `expo
+export web` OK.
+
+- **Onde:** nova tela **Relatórios** no Centro de Controle.
+- **Período:** **semana atual** (padrão) ou **intervalo** personalizado.
+- **Baixar:** de **todos** os operadores ativos de uma vez (um por página) ou
+  **individual** por operador. Na web, abre o diálogo de impressão (salvar como
+  PDF); no app, a folha de impressão do sistema.
+- **Como:** geração no cliente via `expo-print` a partir de HTML + SVG; a lógica
+  (semana corrente, gráficos replicados, montagem do documento A4) é pura e
+  testada (`utils/relatorioPerfil.ts`). Reusa o endpoint de perfil existente
+  (que já aceita `inicio`/`fim`).
+- **Alcance:** apenas operadores.
+- **Adiado:** envio automático por e-mail (exigirá SMTP no backend).
+
+---
+
 ## Novos tipos de incidência de escala (2026-07-05)
 
 **Objetivo:** ampliar as incidências de escala — que só tinham "não retorno do
