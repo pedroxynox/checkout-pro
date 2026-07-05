@@ -45,3 +45,21 @@ export class QuantidadeInvalidaError extends InsumosError {
     );
   }
 }
+
+/**
+ * Lançado quando um consumo/retirada excederia o saldo disponível — não se
+ * pode registrar a saída de um insumo que não existe em estoque. Mantém o
+ * saldo inalterado (a operação é rejeitada). Consumir exatamente o saldo
+ * (deixando 0) é permitido; só o que passaria a negativo é bloqueado.
+ */
+export class EstoqueInsuficienteError extends InsumosError {
+  readonly statusHttp = HttpStatus.CONFLICT;
+  constructor(saldoAtual?: number, solicitado?: number, unidade?: string) {
+    const u = unidade ? ` ${unidade}${(solicitado ?? 0) === 1 ? '' : 's'}` : '';
+    super(
+      saldoAtual !== undefined && solicitado !== undefined
+        ? `Estoque insuficiente: há ${saldoAtual}${u} em estoque e foram solicitados ${solicitado}${u}. Não é possível registrar consumo além do disponível.`
+        : 'Estoque insuficiente para registrar o consumo.',
+    );
+  }
+}

@@ -6,6 +6,7 @@ import {
   deltaConsumo,
   deltaRetiradaFardo,
   estoqueBaixo,
+  garantirSaldoSuficiente,
   resolverFardo,
   resumoEstoque,
   resumoProativo,
@@ -165,6 +166,10 @@ export class InsumosService {
     if (!fardo) {
       throw new FardoNaoReconhecidoError(entrada.codigoBarras);
     }
+    // Não permite retirar mais sacolas do que há em estoque (saldo não fica
+    // negativo). Rejeita mantendo o saldo inalterado.
+    const saldoAtual = await this.saldo(entrada.insumoId);
+    garantirSaldoSuficiente(saldoAtual, fardo.quantidadeSacolas);
     await this.prisma.movimentoEstoque.create({
       data: {
         insumoId: entrada.insumoId,
@@ -185,8 +190,12 @@ export class InsumosService {
     pdvId: string,
     quantidade: number,
   ): Promise<number> {
+    // Valida a quantidade (inteiro > 0) e o saldo antes de gravar a saída.
+    const delta = deltaConsumo(quantidade);
+    const saldoAtual = await this.saldo(insumoId);
+    garantirSaldoSuficiente(saldoAtual, quantidade);
     await this.prisma.movimentoEstoque.create({
-      data: { insumoId, delta: deltaConsumo(quantidade), pdvId },
+      data: { insumoId, delta, pdvId },
     });
     return this.saldo(insumoId);
   }
@@ -199,8 +208,12 @@ export class InsumosService {
     insumoId: string,
     quantidade: number,
   ): Promise<number> {
+    // Valida a quantidade (inteiro > 0) e o saldo antes de gravar a saída.
+    const delta = deltaConsumo(quantidade);
+    const saldoAtual = await this.saldo(insumoId);
+    garantirSaldoSuficiente(saldoAtual, quantidade);
     await this.prisma.movimentoEstoque.create({
-      data: { insumoId, delta: deltaConsumo(quantidade) },
+      data: { insumoId, delta },
     });
     return this.saldo(insumoId);
   }
@@ -365,10 +378,15 @@ export class InsumosService {
     });
     if (!insumo) throw new NotFoundException('Insumo não encontrado.');
     const base = embalagens * insumo.fatorEmbalagem;
+    // Valida a quantidade e o saldo (em unidade base) antes de gravar a saída —
+    // não deixa o estoque ficar negativo.
+    const delta = deltaConsumo(base);
+    const saldoAtual = await this.saldo(insumoId);
+    garantirSaldoSuficiente(saldoAtual, base, insumo.unidade);
     await this.prisma.movimentoEstoque.create({
       data: {
         insumoId,
-        delta: deltaConsumo(base),
+        delta,
         origem: 'CONSUMO',
         responsavelId,
       },

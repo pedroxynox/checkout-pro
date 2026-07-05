@@ -43,6 +43,32 @@ real** (sem drift). Ver **ADR 0009**.
 
 ---
 
+## Correção: estoque de insumos não fica negativo (2026-07-05)
+
+**Bug:** com saldo 0 (ou insuficiente), a tela de Insumos ainda deixava
+registrar um consumo/retirada, e o saldo do insumo ia a **negativo** (ex.: −1
+álcool, −5 litros). Não se deve poder registrar a saída de algo que não há em
+estoque.
+
+- **Backend (correção central).** Novo erro de domínio `EstoqueInsuficienteError`
+  (HTTP 409) e helpers **puros** `saldoSuficiente`/`garantirSaldoSuficiente`
+  (`insumos.domain`). O `InsumosService` agora **valida o saldo antes de gravar**
+  a saída em **todos** os caminhos — retirada de fardo, consumo de bobina,
+  consumo de insumo e consumo por embalagem —, rejeitando o que passaria a
+  negativo e **mantendo o saldo inalterado**. Consumir **exatamente** o saldo
+  (deixando 0) continua permitido. Sem migração (regra de negócio sobre tabelas
+  existentes).
+- **App (UX).** Nas "Ações rápidas", o botão de consumo fica **desabilitado**
+  (rótulo "Sem estoque") quando não há nem 1 embalagem, e um toque sem saldo
+  mostra um aviso claro em vez de ir ao servidor.
+- **Testes.** Property tests (`fast-check` ≥100 runs) do novo domínio + testes de
+  serviço (consumo > saldo bloqueia e mantém o saldo; saldo 0 bloqueia; consumir
+  exatamente o saldo vai a 0; retirada de fardo > saldo bloqueia). Regressão
+  verde (backend **251** / mobile **52**) e o cenário exato validado contra um
+  **PostgreSQL real** (saldo nunca fica negativo).
+
+---
+
 ## Seção "Contratos" — experiência 45 + 45 dias (2026-07-05)
 
 **Objetivo:** acompanhar o **contrato de experiência** brasileiro (máx. 90 dias,
