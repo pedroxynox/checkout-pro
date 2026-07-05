@@ -90,6 +90,7 @@ enum TipoIncidenciaEscala {
   SAIDA_ANTECIPADA
   RETORNO_TARDIO
   ADVERTENCIA
+  SUSPENSAO
 }
 
 // ---------------------------- Modelos -------------------------------------

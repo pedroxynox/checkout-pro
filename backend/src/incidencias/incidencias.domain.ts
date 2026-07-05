@@ -26,7 +26,8 @@ export type TipoIncidencia =
   | 'ATRASO'
   | 'SAIDA_ANTECIPADA'
   | 'RETORNO_TARDIO'
-  | 'ADVERTENCIA';
+  | 'ADVERTENCIA'
+  | 'SUSPENSAO';
 
 /** Todos os tipos conhecidos (fonte única para partições e mapas). */
 export const TIPOS_INCIDENCIA: readonly TipoIncidencia[] = [
@@ -35,7 +36,17 @@ export const TIPOS_INCIDENCIA: readonly TipoIncidencia[] = [
   'SAIDA_ANTECIPADA',
   'RETORNO_TARDIO',
   'ADVERTENCIA',
+  'SUSPENSAO',
 ] as const;
+
+/**
+ * Onde uma incidência é **registrada** na experiência:
+ * - `ESCALA`: marcada com um toque na tela de Escala (ex.: não-retorno);
+ * - `PERFIL`: lançada no perfil do colaborador (ex.: advertência, suspensão);
+ * - `null`: **legado** — o tipo existe (dados/histórico) mas não é mais
+ *   oferecido para registro em nenhuma tela.
+ */
+export type LocalRegistro = 'ESCALA' | 'PERFIL' | null;
 
 /** Metadados de um tipo de incidência (fonte única de rótulo/regras). */
 export interface MetaTipoIncidencia {
@@ -52,42 +63,59 @@ export interface MetaTipoIncidencia {
    * do intervalo é derivável do ponto; os demais são lançamentos manuais.
    */
   autoDetectavel: boolean;
-  /** Faz uso dos horários (saída/esperado/real). Advertência não usa horário. */
+  /** Faz uso dos horários (saída/esperado/real). Ex.: advertência/suspensão não. */
   usaHorarios: boolean;
+  /** Onde o tipo é registrado (ou `null` se legado/não registrável). */
+  registro: LocalRegistro;
 }
 
 /** Mapa de metadados por tipo (partição total de `TIPOS_INCIDENCIA`). */
 export const META_TIPO_INCIDENCIA: Record<TipoIncidencia, MetaTipoIncidencia> =
   {
+    // Marcado na Escala com um toque ("Sem retorno"); sem horário.
     NAO_RETORNO_INTERVALO: {
       rotulo: 'Não retorno do intervalo',
       penalizaDisciplina: true,
       autoDetectavel: true,
-      usaHorarios: true,
+      usaHorarios: false,
+      registro: 'ESCALA',
     },
+    // Legado (não mais oferecido para registro; mantido para dados/histórico).
     ATRASO: {
       rotulo: 'Atraso',
       penalizaDisciplina: true,
       autoDetectavel: false,
       usaHorarios: true,
+      registro: null,
     },
     SAIDA_ANTECIPADA: {
       rotulo: 'Saída antecipada',
       penalizaDisciplina: true,
       autoDetectavel: false,
       usaHorarios: true,
+      registro: null,
     },
     RETORNO_TARDIO: {
       rotulo: 'Retorno tardio',
       penalizaDisciplina: true,
       autoDetectavel: false,
       usaHorarios: true,
+      registro: null,
     },
+    // Lançadas no perfil do colaborador; sem horário.
     ADVERTENCIA: {
       rotulo: 'Advertência',
       penalizaDisciplina: true,
       autoDetectavel: false,
       usaHorarios: false,
+      registro: 'PERFIL',
+    },
+    SUSPENSAO: {
+      rotulo: 'Suspensão',
+      penalizaDisciplina: true,
+      autoDetectavel: false,
+      usaHorarios: false,
+      registro: 'PERFIL',
     },
   };
 
@@ -97,6 +125,11 @@ export const META_TIPO_INCIDENCIA: Record<TipoIncidencia, MetaTipoIncidencia> =
  */
 export const TIPOS_DISCIPLINARES: readonly TipoIncidencia[] =
   TIPOS_INCIDENCIA.filter((t) => META_TIPO_INCIDENCIA[t].penalizaDisciplina);
+
+/** Tipos lançados no **perfil** do colaborador (advertência, suspensão). */
+export const TIPOS_PERFIL: readonly TipoIncidencia[] = TIPOS_INCIDENCIA.filter(
+  (t) => META_TIPO_INCIDENCIA[t].registro === 'PERFIL',
+);
 
 /** Rótulo curto (pt-BR) de um tipo de incidência. */
 export function rotuloTipoIncidencia(tipo: TipoIncidencia): string {

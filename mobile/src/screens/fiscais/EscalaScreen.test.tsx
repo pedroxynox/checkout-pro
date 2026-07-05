@@ -1,31 +1,31 @@
 /**
- * Testes de componente/snapshot da tela de Escala consolidada (Task 18.5).
+ * Testes de componente da tela de Escala consolidada.
  *
- * Cobre a exibição da escala efetiva por funcionário (Req 4.3.6): horário de
- * entrada/saída e intervalo para quem trabalha, selo "Folga" para quem folga e
- * selo "Especial" para horário individual.
+ * Cobre a exibição da escala efetiva por funcionário (Req 4.3.6) e as ações
+ * rápidas por colaborador — **Falta** e **Sem retorno** — visíveis só para quem
+ * gere ausências (`OPERADORES_AUSENCIAS`), que marcam a ocorrência de hoje com
+ * um toque (sem horário).
  */
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { EscalaScreen } from './EscalaScreen';
 
 jest.mock('../../api/services', () => ({
   escalaService: {
     consolidada: jest.fn(),
-    // Incidências de escala (Fase 2): a tela consulta as sugestões do dia e
-    // pode registrar/editar/remover incidências.
-    sugestoesIncidencias: jest.fn(),
     registrarIncidencia: jest.fn(),
-    editarIncidencia: jest.fn(),
-    removerIncidencia: jest.fn(),
-    listarIncidencias: jest.fn(),
-    rankingIncidencias: jest.fn(),
+  },
+  operadoresService: {
+    registrarAusencia: jest.fn(),
   },
 }));
 
-// A tela passou a permitir abrir o perfil do colaborador: mockamos navegação e
-// auth. `mockAuth.permitir` controla `podeAcessar` (perfil/registro de
-// incidências) por teste — sem permissão o comportamento é neutro.
+// Diálogos: confirmar resolve true (usuário confirma) e notificar é neutro.
+jest.mock('../../utils/dialogos', () => ({
+  confirmar: jest.fn(() => Promise.resolve(true)),
+  notificar: jest.fn(),
+}));
+
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: jest.fn() }),
 }));
@@ -34,21 +34,23 @@ jest.mock('../../auth/AuthContext', () => ({
   useAuth: () => ({ podeAcessar: () => mockAuth.permitir }),
 }));
 
-// "Hoje" determinístico (sexta-feira = 5) para o snapshot não depender do dia
-// real de execução — ver utils/formato (fuso de Brasília).
+// "Hoje" determinístico (sexta = 5) para não depender do dia real.
 jest.mock('../../utils/formato', () => {
   const real = jest.requireActual('../../utils/formato');
   return { ...real, hojeISO: () => '2026-06-19', diaSemanaHoje: () => 5 };
 });
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { escalaService } = require('../../api/services');
+const { escalaService, operadoresService } = require('../../api/services');
 
 const CONSOLIDADA = [
   {
-    funcionarioId: 'Ana Souza',
+    funcionarioId: 'f-ana',
+    colaboradorId: 'c-ana',
+    nome: 'Ana Souza',
+    matricula: '123',
     efetiva: {
-      funcionarioId: 'Ana Souza',
+      funcionarioId: 'f-ana',
       diaSemana: 1,
       entrada: '08:00',
       saida: '16:00',
@@ -58,9 +60,11 @@ const CONSOLIDADA = [
     },
   },
   {
-    funcionarioId: 'Bruno Lima',
+    funcionarioId: 'f-bruno',
+    colaboradorId: 'c-bruno',
+    nome: 'Bruno Lima',
     efetiva: {
-      funcionarioId: 'Bruno Lima',
+      funcionarioId: 'f-bruno',
       diaSemana: 1,
       entrada: '13:00',
       saida: '21:00',
@@ -77,7 +81,8 @@ describe('EscalaScreen', () => {
     jest.clearAllMocks();
     mockAuth.permitir = false;
     escalaService.consolidada.mockResolvedValue(CONSOLIDADA);
-    escalaService.sugestoesIncidencias.mockResolvedValue([]);
+    escalaService.registrarIncidencia.mockResolvedValue({});
+    operadoresService.registrarAusencia.mockResolvedValue({});
   });
 
   it('exibe os horários efetivos e selos de folga/especial', async () => {
@@ -97,35 +102,58 @@ describe('EscalaScreen', () => {
     expect(await screen.findByText('Sem escala')).toBeTruthy();
   });
 
-  it('não busca sugestões nem mostra a seção sem permissão de gestão', async () => {
+  it('não mostra as ações Falta/Sem retorno sem permissão de gestão', async () => {
     render(<EscalaScreen />);
 
     expect(await screen.findByText('Ana Souza')).toBeTruthy();
-    expect(
-      screen.queryByText('Não retorno do intervalo — hoje'),
-    ).toBeNull();
-    expect(escalaService.sugestoesIncidencias).not.toHaveBeenCalled();
+    expect(screen.queryByText('Falta')).toBeNull();
+    expect(screen.queryByText('Sem retorno')).toBeNull();
   });
 
-  it('mostra as sugestões auto-detectadas e a ação de registrar quando há permissão', async () => {
+  it('mostra Falta e Sem retorno por colaborador quando há permissão', async () => {
     mockAuth.permitir = true;
-    escalaService.sugestoesIncidencias.mockResolvedValue([
-      {
-        colaboradorId: 'c1',
-        nome: 'Ana Souza',
-        horaSaida: '12:00',
-        horaEsperadaRetorno: '13:00',
-        origem: 'DETECTADO_PONTO',
-      },
-    ]);
 
     render(<EscalaScreen />);
 
-    expect(
-      await screen.findByText('Não retorno do intervalo — hoje'),
-    ).toBeTruthy();
-    expect(screen.getByText(/saiu 12:00 · esperado 13:00/)).toBeTruthy();
-    expect(screen.getByText('Registrar')).toBeTruthy();
-    expect(escalaService.sugestoesIncidencias).toHaveBeenCalled();
+    expect(await screen.findByText('Ana Souza')).toBeTruthy();
+    // Um par de botões por colaborador com colaboradorId (Ana e Bruno).
+    expect(screen.getAllByText('Falta')).toHaveLength(2);
+    expect(screen.getAllByText('Sem retorno')).toHaveLength(2);
+  });
+
+  it('marca "Sem retorno" (não-retorno, sem horário) ao tocar o botão', async () => {
+    mockAuth.permitir = true;
+
+    render(<EscalaScreen />);
+
+    await screen.findByText('Ana Souza');
+    fireEvent.press(screen.getAllByText('Sem retorno')[0]);
+
+    await waitFor(() =>
+      expect(escalaService.registrarIncidencia).toHaveBeenCalledWith({
+        colaboradorId: 'c-ana',
+        tipo: 'NAO_RETORNO_INTERVALO',
+        data: '2026-06-19',
+      }),
+    );
+    // Não-retorno é marcado sem horário: nenhuma falta é registrada por engano.
+    expect(operadoresService.registrarAusencia).not.toHaveBeenCalled();
+  });
+
+  it('marca "Falta" (ausência de hoje) ao tocar o botão', async () => {
+    mockAuth.permitir = true;
+
+    render(<EscalaScreen />);
+
+    await screen.findByText('Ana Souza');
+    fireEvent.press(screen.getAllByText('Falta')[0]);
+
+    await waitFor(() =>
+      expect(operadoresService.registrarAusencia).toHaveBeenCalledWith(
+        'c-ana',
+        '2026-06-19',
+      ),
+    );
+    expect(escalaService.registrarIncidencia).not.toHaveBeenCalled();
   });
 });

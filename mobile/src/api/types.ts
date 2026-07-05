@@ -657,15 +657,21 @@ export type TipoIncidenciaEscala =
   | 'ATRASO'
   | 'SAIDA_ANTECIPADA'
   | 'RETORNO_TARDIO'
-  | 'ADVERTENCIA';
+  | 'ADVERTENCIA'
+  | 'SUSPENSAO';
+
+/** Onde uma incidência é registrada (ESCALA, PERFIL ou legado = null). */
+export type LocalRegistroIncidencia = 'ESCALA' | 'PERFIL' | null;
 
 /** Metadados de um tipo de incidência (espelho de META_TIPO_INCIDENCIA). */
 export interface MetaTipoIncidencia {
   rotulo: string;
-  /** Faz uso dos horários (saída/esperado/real). Advertência não usa. */
+  /** Faz uso dos horários (saída/esperado/real). Ex.: advertência/suspensão não. */
   usaHorarios: boolean;
   /** Só o não-retorno é auto-detectável do ponto; os demais são manuais. */
   autoDetectavel: boolean;
+  /** Onde o tipo é registrado (ou null se legado/não registrável). */
+  registro: LocalRegistroIncidencia;
 }
 
 /** Rótulos + regras por tipo, na ordem de exibição (espelho do backend). */
@@ -675,24 +681,39 @@ export const META_TIPO_INCIDENCIA: Record<
 > = {
   NAO_RETORNO_INTERVALO: {
     rotulo: 'Não retorno do intervalo',
-    usaHorarios: true,
+    usaHorarios: false,
     autoDetectavel: true,
+    registro: 'ESCALA',
   },
-  ATRASO: { rotulo: 'Atraso', usaHorarios: true, autoDetectavel: false },
+  ATRASO: {
+    rotulo: 'Atraso',
+    usaHorarios: true,
+    autoDetectavel: false,
+    registro: null,
+  },
   SAIDA_ANTECIPADA: {
     rotulo: 'Saída antecipada',
     usaHorarios: true,
     autoDetectavel: false,
+    registro: null,
   },
   RETORNO_TARDIO: {
     rotulo: 'Retorno tardio',
     usaHorarios: true,
     autoDetectavel: false,
+    registro: null,
   },
   ADVERTENCIA: {
     rotulo: 'Advertência',
     usaHorarios: false,
     autoDetectavel: false,
+    registro: 'PERFIL',
+  },
+  SUSPENSAO: {
+    rotulo: 'Suspensão',
+    usaHorarios: false,
+    autoDetectavel: false,
+    registro: 'PERFIL',
   },
 };
 
@@ -703,10 +724,13 @@ export const TIPOS_INCIDENCIA: TipoIncidenciaEscala[] = [
   'SAIDA_ANTECIPADA',
   'RETORNO_TARDIO',
   'ADVERTENCIA',
+  'SUSPENSAO',
 ];
 
-/** Tipos que o usuário pode lançar manualmente (todos, hoje). */
-export const TIPOS_INCIDENCIA_MANUAIS: TipoIncidenciaEscala[] = TIPOS_INCIDENCIA;
+/** Tipos lançados no perfil do colaborador (advertência, suspensão). */
+export const TIPOS_PERFIL: TipoIncidenciaEscala[] = TIPOS_INCIDENCIA.filter(
+  (t) => META_TIPO_INCIDENCIA[t].registro === 'PERFIL',
+);
 
 /** Origem do registro: manual (gestor) ou auto-detectado do ponto. */
 export type OrigemIncidencia = 'MANUAL' | 'DETECTADO_PONTO';
