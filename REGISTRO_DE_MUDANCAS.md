@@ -55,6 +55,44 @@ caso E2E → regressão. Todas as mudanças são **apenas aditivas** (NFR 9.1).
 
 ---
 
+## Incidências de Escala — validação E2E + correção (colaborador inexistente) (2026-07-04)
+
+**Objetivo:** validar de ponta a ponta o módulo de Incidências de Escala (PRs
+#100 backend + #101 mobile) contra um PostgreSQL real e corrigir os defeitos
+encontrados. Executado com Postgres real (migração `prisma migrate deploy`
+aplicada limpa até `9w_incidencia_escala`, `db seed` e API booted), exercitando
+todos os endpoints com `curl` (códigos HTTP, validações e permissões), a
+auto-detecção do ponto, o alerta por limite mensal e o perfil enriquecido.
+
+- **Correção — validação de colaborador no `POST /escala/incidencias`.** Antes,
+  registrar uma incidência com um `colaboradorId` inexistente retornava **201**
+  e criava uma linha órfã que poluía o ranking (`nome` = id cru) e a listagem.
+  Agora o `IncidenciasService.registrar` verifica a existência do colaborador
+  (`colaborador.findUnique`) antes de persistir e, se não existir, lança o
+  `ColaboradorIncidenciaInvalidoError` (**400** — erro que já estava definido em
+  `incidencias.errors.ts`, porém não estava sendo usado). Adicionado teste
+  unitário que fixa o comportamento (`rejeita incidência para colaborador
+  inexistente com 400`); os dois testes de registro passaram a semear o
+  colaborador no `PrismaService` falso.
+- **Resultado da validação (tudo verde):** autorização (401 sem token; 403 para
+  IMPORTADOR em leitura e escrita; 200 para FISCAL que tem `ESCALA_VISUALIZAR`);
+  criação (201 + `origem=MANUAL`), validações de `HH:mm`/tipo/colaborador/data
+  (400), duplicado (409); edição/remoção (200/204 e 404 quando não existe);
+  listagem/ranking (200; 400 sem `inicio`/`fim`); sugestões do ponto
+  (`DETECTADO_PONTO`, `horaSaida`/`horaEsperadaRetorno` derivados do
+  `intervaloMin` da escala — ex.: 15:00 → 17:00 com 120 min; não sugere quem
+  retornou nem incidência já registrada); alerta por limite (uma notificação por
+  gestor ao cruzar 3 no mês, sem repetição na 4ª); e o perfil enriquecido
+  (`GET /colaboradores/:id/perfil`) com a seção `incidencias` completa e a
+  `timeline` unificada (faltas + não-retornos) em ordem decrescente.
+- **Regressão:** backend `build` + `eslint`/`prettier` (arquivos alterados) +
+  **194 testes** (45 suítes) e mobile `type-check` + **41 testes** (14 suítes),
+  todos verdes.
+- **Nota:** não é uma decisão de arquitetura (o desenho genérico por `tipo` do
+  ADR 0007 permanece), portanto sem novo ADR — apenas esta entrada de bitácora.
+
+---
+
 ## Documentação — Estado do projeto e próximos passos (2026-07-03)
 
 Documentação: adicionado docs/ESTADO_Y_PROXIMOS_PASOS.md (estado do projeto + próximos passos consolidados).

@@ -217,6 +217,20 @@ describe('IncidenciasService', () => {
     expect(inc.origem).toBe('MANUAL');
   });
 
+  it('rejeita incidência para colaborador inexistente com 400', async () => {
+    const { service } = criarServico();
+    await expect(
+      service.registrar(
+        {
+          colaboradorId: 'fantasma',
+          tipo: 'NAO_RETORNO_INTERVALO',
+          data: '2026-07-03',
+        },
+        AUTOR,
+      ),
+    ).rejects.toBeInstanceOf(ColaboradorIncidenciaInvalidoError);
+  });
+
   it('rejeita incidência duplicada (colaborador+tipo+data) com 409', async () => {
     const { service } = criarServico({ colaboradores: [COLABORADOR_BASE] });
     const dto = {
