@@ -605,7 +605,12 @@ export function PerfilColaboradorScreen({
             <View style={styles.faltasTopo}>
               <View style={styles.faltaBox}>
                 <Text style={styles.faltaNumero}>{p.faltas.total}</Text>
-                <Text style={styles.faltaRotulo}>faltas no período</Text>
+                <Text style={styles.faltaRotulo}>
+                  faltas no período
+                  {p.faltas.justificadas > 0
+                    ? ` (${p.faltas.justificadas} justif.)`
+                    : ''}
+                </Text>
               </View>
               <View style={styles.faltaBox}>
                 <Text style={styles.faltaNumero}>{p.faltas.taxa}%</Text>

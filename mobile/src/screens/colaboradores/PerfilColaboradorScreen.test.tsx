@@ -64,6 +64,8 @@ const PERFIL = {
   faltas: {
     total: 1,
     taxa: 2,
+    taxaPonderada: 2,
+    justificadas: 0,
     risco: 'BAIXO',
     tendencia: 0,
     porMes: [],

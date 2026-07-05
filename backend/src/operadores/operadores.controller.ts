@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -18,11 +19,12 @@ import {
 } from '../common/decorators/usuario-atual.decorator';
 import {
   ContagemTurnoDto,
+  JustificarAusenciaDto,
   PeriodoAusenciasDto,
   RegistrarAusenciaDto,
 } from './dto/operadores.dto';
 import { ContagemTurno, ItemRelatorioAusencia } from './operadores.domain';
-import { OperadoresService } from './operadores.service';
+import { AusenciaDetalhada, OperadoresService } from './operadores.service';
 
 /** Hoje (ISO yyyy-mm-dd) no fuso de Brasília. */
 function hojeBrasiliaISO(): string {
@@ -79,6 +81,7 @@ export class OperadoresController {
     return this.operadoresService.registrarAusencia(
       dto.pessoaId,
       new Date(dto.data),
+      { id: usuario?.sub, nome: usuario?.nome ?? usuario?.login },
     );
   }
 
@@ -88,6 +91,42 @@ export class OperadoresController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async removerAusencia(@Param('id') id: string): Promise<void> {
     await this.operadoresService.removerAusencia(id);
+  }
+
+  /**
+   * Justifica/reabre/injustifica uma falta DEPOIS do registro (abono). Liberado
+   * a quem lança faltas — inclui o fiscal (`OPERADORES_AUSENCIAS`). Grava quem
+   * justificou e quando (auditoria visível a toda a equipe).
+   */
+  @Patch('ausencias/:id/justificativa')
+  @Funcionalidade('OPERADORES_AUSENCIAS')
+  async justificarAusencia(
+    @Param('id') id: string,
+    @Body() dto: JustificarAusenciaDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<Ausencia> {
+    return this.operadoresService.justificarAusencia(
+      id,
+      { status: dto.status, motivo: dto.motivo, observacao: dto.observacao },
+      { id: usuario?.sub, nome: usuario?.nome ?? usuario?.login },
+    );
+  }
+
+  /**
+   * Lista as faltas de um período com nome + justificativa (estado, motivo,
+   * quem justificou). `?pendentes=true` traz só as pendentes de análise.
+   * Alimenta o painel de justificativas (transparência para toda a equipe).
+   */
+  @Get('ausencias')
+  @Funcionalidade('OPERADORES_AUSENCIAS')
+  async listarAusencias(
+    @Query() periodo: PeriodoAusenciasDto,
+    @Query('pendentes') pendentes?: string,
+  ): Promise<AusenciaDetalhada[]> {
+    return this.operadoresService.listarAusencias(
+      { inicio: new Date(periodo.inicio), fim: new Date(periodo.fim) },
+      pendentes === 'true',
+    );
   }
 
   /** Relatório de ausências por pessoa, filtrado e ordenado (Req 6.3). */

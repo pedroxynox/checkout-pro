@@ -4,6 +4,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { inicioDoDia, inicioDoMes, inicioDoProximoMes } from '../common/datas';
+import {
+  MotivoJustificativa,
+  StatusJustificativa,
+  motivoObrigatorio,
+  somaPonderada,
+} from '../common/justificativas';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 import { primeiroNome } from '../fiscais/fiscais.domain';
 import {
@@ -203,6 +209,48 @@ export class IncidenciasService {
         horaReal: dto.horaReal ?? existente.horaReal,
         motivo: dto.motivo ?? existente.motivo,
         observacao: dto.observacao ?? existente.observacao,
+      },
+    });
+  }
+
+  /**
+   * Justifica/reabre/injustifica um não-retorno DEPOIS do registro (abono),
+   * gravando quem justificou e quando. JUSTIFICADA exige motivo; reabrir/
+   * injustificar limpa o motivo. Reduz o peso no score conforme o motivo (ver
+   * ADR 0009). 404 se não existir.
+   */
+  async justificar(
+    id: string,
+    input: {
+      status: StatusJustificativa;
+      motivo?: MotivoJustificativa | null;
+      observacao?: string | null;
+    },
+    autor: { id?: string; nome?: string } = {},
+  ): Promise<IncidenciaEscala> {
+    const existente = await this.prisma.incidenciaEscala.findUnique({
+      where: { id },
+    });
+    if (!existente) throw new IncidenciaNaoEncontradaError();
+    if (motivoObrigatorio(input.status) && !input.motivo) {
+      throw new DadosIncidenciaInvalidosError(
+        'Para justificar, informe o motivo.',
+      );
+    }
+    const reabrir = input.status === 'PENDENTE';
+    return this.prisma.incidenciaEscala.update({
+      where: { id },
+      data: {
+        statusJustificativa: input.status,
+        motivoJustificativa: reabrir
+          ? null
+          : input.status === 'JUSTIFICADA'
+            ? (input.motivo ?? null)
+            : null,
+        observacaoJustificativa: reabrir ? null : (input.observacao ?? null),
+        justificadaPorId: reabrir ? null : (autor.id ?? null),
+        justificadaPorNome: reabrir ? null : (autor.nome ?? null),
+        justificadaEm: reabrir ? null : new Date(),
       },
     });
   }
@@ -412,13 +460,23 @@ export class IncidenciasService {
     inicio: Date,
     fimExcl: Date,
   ): Promise<number> {
-    return this.prisma.incidenciaEscala.count({
+    // Peso efetivo: não-retornos JUSTIFICADOS pesam menos na Disciplina
+    // conforme o motivo (ver ADR 0009). PENDENTE/INJUSTIFICADO pesam integral.
+    const linhas = await this.prisma.incidenciaEscala.findMany({
       where: {
         colaboradorId,
         tipo: 'NAO_RETORNO_INTERVALO',
         data: { gte: inicioDoDia(inicio), lt: fimExcl },
       },
+      select: { statusJustificativa: true, motivoJustificativa: true },
     });
+    return somaPonderada(
+      linhas.map((l) => ({
+        statusJustificativa: l.statusJustificativa as StatusJustificativa,
+        motivoJustificativa:
+          l.motivoJustificativa as MotivoJustificativa | null,
+      })),
+    );
   }
 
   // -------------------------------------------------------------------------

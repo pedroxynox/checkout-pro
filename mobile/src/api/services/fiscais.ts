@@ -14,9 +14,11 @@ import {
   ItemRankingFiscal,
   HistoricoSemanalFiscal,
   MeuResumoFiscal,
+  MotivoJustificativa,
   RankingIncidencia,
   RegistrarIncidenciaInput,
   StatusFiscal,
+  StatusJustificativa,
   SugestaoIncidencia,
 } from '../types';
 
@@ -114,6 +116,21 @@ export const escalaService = {
   /** Remove uma incidência. */
   removerIncidencia(id: string): Promise<void> {
     return apiClient.delete<void>(`/escala/incidencias/${id}`);
+  },
+
+  /** Justifica/reabre/injustifica um não-retorno DEPOIS do registro (abono). */
+  justificarIncidencia(
+    id: string,
+    dados: {
+      status: StatusJustificativa;
+      motivo?: MotivoJustificativa;
+      observacao?: string;
+    },
+  ): Promise<IncidenciaEscala> {
+    return apiClient.patch<IncidenciaEscala>(
+      `/escala/incidencias/${id}/justificativa`,
+      dados,
+    );
   },
 
   /** Lista incidências pelos filtros informados, mais recentes primeiro. */

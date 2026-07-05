@@ -110,6 +110,10 @@ export interface PerfilColaboradorResposta {
   faltas: {
     total: number;
     taxa: number;
+    /** Absenteísmo EFETIVO (justificadas pesam menos): alimenta o score. */
+    taxaPonderada: number;
+    /** Quantas faltas do período estão justificadas (abonadas). */
+    justificadas: number;
     risco: string;
     tendencia: number;
     porMes: PontoSerie[];
@@ -360,12 +364,13 @@ export class PerfilColaboradorService {
 
     const score = ehFiscal
       ? // Fiscal: o app não controla "quem autorizou" (externo) e as devoluções
-        // são informativas. A saúde foca na assiduidade.
-        calcularScore({ taxaFaltas: faltas.taxa })
+        // são informativas. A saúde foca na assiduidade (efetiva: faltas
+        // justificadas pesam menos).
+        calcularScore({ taxaFaltas: faltas.taxaPonderada })
       : await this.scoreDoOperador(
           id,
           colaborador.folgaDiaSemana ?? -1,
-          faltas.taxa,
+          faltas.taxaPonderada,
           inicioDia,
           fim,
           fimExcl,
@@ -719,7 +724,12 @@ export class PerfilColaboradorService {
     const [ausencias, ausenciasAnterior, ausencias6m] = await Promise.all([
       this.prisma.ausencia.findMany({
         where: { pessoaId: id, data: { gte: inicio, lt: fimExcl } },
-        select: { pessoaId: true, data: true },
+        select: {
+          pessoaId: true,
+          data: true,
+          statusJustificativa: true,
+          motivoJustificativa: true,
+        },
       }),
       this.prisma.ausencia.findMany({
         where: { pessoaId: id, data: { gte: prevInicio, lt: prevFimExcl } },
@@ -755,6 +765,8 @@ export class PerfilColaboradorService {
     return {
       total: analitica.total,
       taxa: detalhe?.taxa ?? analitica.taxaGlobal,
+      taxaPonderada: detalhe?.taxaPonderada ?? analitica.taxaGlobal,
+      justificadas: detalhe?.justificadas ?? 0,
       risco: detalhe?.risco ?? 'BAIXO',
       tendencia:
         detalhe?.tendencia ?? analitica.total - analitica.totalAnterior,

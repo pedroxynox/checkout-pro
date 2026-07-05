@@ -28,6 +28,7 @@ export interface Area {
     | 'Escala'
     | 'Checklist'
     | 'Operadores'
+    | 'Justificativas'
     | 'Colaboradores'
     | 'Contratos'
     | 'CentroControle'
@@ -118,6 +119,13 @@ export const AREAS: Area[] = [
     titulo: 'Colaboradores',
     descricao: 'Perfil de cada operador e fiscal',
     icone: 'id-card-outline',
+    funcionalidade: 'OPERADORES_AUSENCIAS',
+  },
+  {
+    rota: 'Justificativas',
+    titulo: 'Justificativas',
+    descricao: 'Justificar faltas e não-retornos (abono)',
+    icone: 'shield-checkmark-outline',
     funcionalidade: 'OPERADORES_AUSENCIAS',
   },
   {

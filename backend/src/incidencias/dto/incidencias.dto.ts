@@ -5,8 +5,34 @@ import {
   IsOptional,
   IsString,
   Matches,
+  MaxLength,
 } from 'class-validator';
 import { TIPOS_INCIDENCIA, TipoIncidencia } from '../incidencias.domain';
+import {
+  MOTIVOS_JUSTIFICATIVA,
+  MotivoJustificativa,
+  STATUS_JUSTIFICATIVA,
+  StatusJustificativa,
+} from '../../common/justificativas';
+
+/** Justifica (ou reabre) um não-retorno de intervalo. */
+export class JustificarIncidenciaDto {
+  @IsIn(STATUS_JUSTIFICATIVA as unknown as string[], {
+    message: 'Estado de justificativa inválido.',
+  })
+  status!: StatusJustificativa;
+
+  @IsOptional()
+  @IsIn(MOTIVOS_JUSTIFICATIVA as unknown as string[], {
+    message: 'Motivo de justificativa inválido.',
+  })
+  motivo?: MotivoJustificativa;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500, { message: 'A observação é muito longa (máx. 500).' })
+  observacao?: string;
+}
 
 /** Expressão de horário "HH:mm" (00:00–23:59). */
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;

@@ -657,6 +657,36 @@ export type TipoIncidenciaEscala = 'NAO_RETORNO_INTERVALO';
 /** Origem do registro: manual (gestor) ou auto-detectado do ponto. */
 export type OrigemIncidencia = 'MANUAL' | 'DETECTADO_PONTO';
 
+/** Estado de justificativa (abono) de uma ocorrência (falta ou não-retorno). */
+export type StatusJustificativa = 'PENDENTE' | 'JUSTIFICADA' | 'INJUSTIFICADA';
+
+/** Motivo da justificativa (define o peso no score: atestado 2%, outros 10%). */
+export type MotivoJustificativa =
+  | 'ATESTADO_MEDICO'
+  | 'ABONADA'
+  | 'LICENCA'
+  | 'ATRASO_JUSTIFICADO'
+  | 'OUTRO';
+
+/** Campos de justificativa comuns às ocorrências (falta e não-retorno). */
+export interface DadosJustificativa {
+  statusJustificativa: StatusJustificativa;
+  motivoJustificativa?: MotivoJustificativa | null;
+  observacaoJustificativa?: string | null;
+  justificadaPorNome?: string | null;
+  justificadaEm?: string | null;
+}
+
+/** Falta enriquecida com nome + justificativa (painel de justificativas). */
+export interface AusenciaDetalhada extends DadosJustificativa {
+  id: string;
+  pessoaId: string;
+  nome: string;
+  matricula: string | null;
+  data: string;
+  registradaPorNome: string | null;
+}
+
 /**
  * Uma incidência de escala registrada (espelha `IncidenciaEscala` do Prisma).
  */
@@ -673,6 +703,12 @@ export interface IncidenciaEscala {
   motivo?: string | null;
   observacao?: string | null;
   registradoPorNome?: string | null;
+  /** Justificativa (abono) do não-retorno — mesmo modelo das faltas. */
+  statusJustificativa?: StatusJustificativa;
+  motivoJustificativa?: MotivoJustificativa | null;
+  observacaoJustificativa?: string | null;
+  justificadaPorNome?: string | null;
+  justificadaEm?: string | null;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -952,6 +988,9 @@ export interface ColaboradorDia {
   entrada: string | null;
   saida: string | null;
   ausenciaId: string | null;
+  /** Estado da justificativa da falta (só quando status = FALTA). */
+  statusJustificativa?: StatusJustificativa | null;
+  justificadaPorNome?: string | null;
 }
 
 /** Roster de um dia (ordenado por entrada, folga ao fim). */
@@ -1162,6 +1201,10 @@ export interface PerfilColaborador {
   faltas: {
     total: number;
     taxa: number;
+    /** Absenteísmo efetivo (justificadas pesam menos): alimenta o score. */
+    taxaPonderada: number;
+    /** Quantas faltas do período estão justificadas (abonadas). */
+    justificadas: number;
     risco: 'BAIXO' | 'MEDIO' | 'ALTO';
     tendencia: number;
     porMes: PontoSerie[];
