@@ -2,16 +2,25 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FiscaisService } from '../fiscais/fiscais.service';
 import { StatusFiscal } from '../fiscais/fiscais.domain';
-import { inicioDoDia, inicioDoMes, inicioDoProximoDia } from '../common/datas';
+import {
+  fimDoMes,
+  inicioDoDia,
+  inicioDoMes,
+  inicioDoProximoDia,
+} from '../common/datas';
 import { arredondar } from '../common/numeros';
 import { CONFIG_ARRECADACAO } from '../arrecadacao/arrecadacao.domain';
 import { analisarFaltas } from '../operadores/operadores.domain';
 import { IncidenciasService } from '../incidencias/incidencias.service';
+import { MetasService } from '../metas/metas.service';
+import { anoMesDe } from '../metas/metas.domain';
 import { ColaboradorNaoEncontradoError } from './colaboradores.errors';
 import {
   calcularScore,
+  contarDiasEscalados,
   gerarInsignias,
   gerarResumo,
+  metaIndividualDerivada,
   rankingPorValor,
   resolverColaboradorId,
   rotuloMes,
@@ -22,6 +31,9 @@ import {
   type ScoreSaude,
   type SentidoIndicador,
 } from './perfil-colaborador.domain';
+
+/** Indicadores "maior é melhor" cuja meta global mensal alimenta o score. */
+type TipoMetaGlobal = 'TROCO_SOLIDARIO' | 'RECARGAS_CELULAR';
 
 /** Tipos de arrecadação lidos dos arquivos .txt (mesmos do indicador). */
 const TIPOS_ARRECADACAO = [
@@ -144,6 +156,7 @@ export class PerfilColaboradorService {
     private readonly prisma: PrismaService,
     private readonly fiscais: FiscaisService,
     private readonly incidenciasService: IncidenciasService,
+    private readonly metas: MetasService,
   ) {}
 
   async perfil(
@@ -334,33 +347,20 @@ export class PerfilColaboradorService {
     const mediaIndicador = (chave: string): number =>
       indicadores.find((i) => i.chave === chave)?.mediaEquipe ?? 0;
 
-    const score = calcularScore(
-      ehFiscal
-        ? {
-            // Fiscal: o app não controla "quem autorizou" (externo) e as
-            // devoluções são informativas. A saúde foca na assiduidade.
-            taxaFaltas: faltas.taxa,
-          }
-        : {
-            taxaFaltas: faltas.taxa,
-            contribuicao: {
-              valor:
-                valorIndicador('TROCO_SOLIDARIO') +
-                valorIndicador('RECARGAS_CELULAR'),
-              meta:
-                CONFIG_ARRECADACAO.TROCO_SOLIDARIO.meta +
-                CONFIG_ARRECADACAO.RECARGAS_CELULAR.meta,
-            },
-            cancelamentos: {
-              valor:
-                valorIndicador('CANCELAMENTO_ITENS') +
-                valorIndicador('CANCELAMENTO_CUPOM'),
-              media:
-                mediaIndicador('CANCELAMENTO_ITENS') +
-                mediaIndicador('CANCELAMENTO_CUPOM'),
-            },
-          },
-    );
+    const score = ehFiscal
+      ? // Fiscal: o app não controla "quem autorizou" (externo) e as devoluções
+        // são informativas. A saúde foca na assiduidade.
+        calcularScore({ taxaFaltas: faltas.taxa })
+      : await this.scoreDoOperador(
+          id,
+          colaborador.folgaDiaSemana ?? -1,
+          faltas.taxa,
+          inicioDia,
+          fim,
+          fimExcl,
+          valorIndicador,
+          mediaIndicador,
+        );
 
     const resumo = gerarResumo({
       nome: colaborador.nome,
@@ -408,6 +408,121 @@ export class PerfilColaboradorService {
       insignias,
       incidencias,
     };
+  }
+
+  /**
+   * Monta o Score de Saúde de um **operador** a partir dos insumos reais:
+   *  - Contribuição: aporte real (troco + recargas) vs. a **meta individual
+   *    derivada** do período — cota mensal equitativa (meta global mensal ÷ nº
+   *    de operadores ativos) escalada pela fração de dias escalados do período
+   *    sobre os dias do mês (`metaIndividualDerivada`, domínio puro).
+   *  - Disciplina: cancelamentos (itens + cupom) vs. a média da equipe, com
+   *    penalidade pelos não-retornos do intervalo DENTRO do período.
+   *
+   * Toda a matemática vive no domínio puro; aqui apenas coletamos os insumos.
+   */
+  private async scoreDoOperador(
+    id: string,
+    folga: number,
+    taxaFaltas: number,
+    inicioDia: Date,
+    fim: Date,
+    fimExcl: Date,
+    valorIndicador: (chave: string) => number,
+    mediaIndicador: (chave: string) => number,
+  ): Promise<ScoreSaude> {
+    const anoMes = anoMesDe(fim);
+
+    // Metas globais mensais dos indicadores "maior é melhor".
+    const [metaTroco, metaRecargas] = await Promise.all([
+      this.resolverMetaGlobal('TROCO_SOLIDARIO', anoMes),
+      this.resolverMetaGlobal('RECARGAS_CELULAR', anoMes),
+    ]);
+    const metaGlobalMensal = metaTroco + metaRecargas;
+
+    // Insumos de justiça: nº de operadores ativos e dias escalados (período/mês).
+    const nOperadoresAtivos = await this.prisma.colaborador.count({
+      where: { funcao: 'OPERADOR', ativo: true },
+    });
+    // Escala até "hoje" (não conta dias futuros do período como escalados).
+    const agora = new Date();
+    const fimEscala = agora.getTime() < fim.getTime() ? agora : fim;
+    const diasEscaladosPeriodo = contarDiasEscalados(
+      folga,
+      inicioDia,
+      fimEscala,
+    );
+    const diasUteisMes = contarDiasEscalados(
+      folga,
+      inicioDoMes(fim),
+      fimDoMes(fim),
+    );
+
+    const metaIndividualPeriodo = metaIndividualDerivada({
+      metaGlobalMensal,
+      nOperadoresAtivos,
+      diasEscaladosPeriodo,
+      diasUteisMes,
+    });
+
+    // Não-retornos do intervalo DENTRO do período [inicio, fim).
+    const naoRetornos = await this.incidenciasService.contarNaoRetornos(
+      id,
+      inicioDia,
+      fimExcl,
+    );
+
+    return calcularScore({
+      taxaFaltas,
+      contribuicao: {
+        aporteReal:
+          valorIndicador('TROCO_SOLIDARIO') +
+          valorIndicador('RECARGAS_CELULAR'),
+        metaIndividualPeriodo,
+      },
+      disciplina: {
+        cancelamentos:
+          valorIndicador('CANCELAMENTO_ITENS') +
+          valorIndicador('CANCELAMENTO_CUPOM'),
+        linhaBaseCancelamentos:
+          mediaIndicador('CANCELAMENTO_ITENS') +
+          mediaIndicador('CANCELAMENTO_CUPOM'),
+        naoRetornos,
+      },
+    });
+  }
+
+  /**
+   * Resolve a **meta global mensal** de um indicador "maior é melhor":
+   *  - `RECARGAS_CELULAR` é gerido por mês em Centro de Controle ▸ Metas →
+   *    `MetasService.resolver` (que já tem fallback ao padrão);
+   *  - `TROCO_SOLIDARIO` não é gerido por mês → lê a meta global de
+   *    `metaIndicador`, com fallback a `CONFIG_ARRECADACAO[tipo].meta`.
+   *
+   * Envolto em `try/catch` para tolerar a tabela ainda não migrada (fallback à
+   * configuração), espelhando `ArrecadacaoService.metaDe`.
+   */
+  private async resolverMetaGlobal(
+    tipo: TipoMetaGlobal,
+    anoMes: string,
+  ): Promise<number> {
+    if (tipo === 'RECARGAS_CELULAR') {
+      try {
+        return await this.metas.resolver('RECARGAS_CELULAR', anoMes);
+      } catch {
+        return CONFIG_ARRECADACAO.RECARGAS_CELULAR.meta;
+      }
+    }
+    // TROCO_SOLIDARIO: meta global (não mensal), com fallback ao CONFIG.
+    try {
+      const registro = await this.prisma.metaIndicador.findUnique({
+        where: { tipo },
+      });
+      if (registro) return Number(registro.meta);
+    } catch {
+      // Tabela `metas_indicador` ainda não migrada: usa o padrão.
+    }
+    return CONFIG_ARRECADACAO[tipo].meta;
   }
 
   /**
