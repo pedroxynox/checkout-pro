@@ -12,6 +12,10 @@ import { arredondar } from '../common/numeros';
 import { CONFIG_ARRECADACAO } from '../arrecadacao/arrecadacao.domain';
 import { analisarFaltas } from '../operadores/operadores.domain';
 import { IncidenciasService } from '../incidencias/incidencias.service';
+import {
+  ContratosService,
+  ResumoContratoColaborador,
+} from '../contratos/contratos.service';
 import { MetasService } from '../metas/metas.service';
 import { anoMesDe } from '../metas/metas.domain';
 import { ColaboradorNaoEncontradoError } from './colaboradores.errors';
@@ -129,6 +133,12 @@ export interface PerfilColaboradorResposta {
     percentualSobreEscalados: number;
     timeline: { data: string; kind: string }[];
   };
+  /**
+   * Contrato de experiência / **tempo de casa** (dias de casa, admissão, estado
+   * e marcos de 45/90). Puramente **informativo**: NÃO afeta o score. Vazio
+   * (`temAdmissao=false`) quando o colaborador ainda não tem admissão definida.
+   */
+  contrato: ResumoContratoColaborador;
 }
 
 /** Rótulos curtos dos dias da semana (0=Dom..6=Sáb) para as séries. */
@@ -157,6 +167,7 @@ export class PerfilColaboradorService {
     private readonly fiscais: FiscaisService,
     private readonly incidenciasService: IncidenciasService,
     private readonly metas: MetasService,
+    private readonly contratosService: ContratosService,
   ) {}
 
   async perfil(
@@ -379,6 +390,9 @@ export class PerfilColaboradorService {
     // Incidências de escala (resumo analítico + linha do tempo unificada).
     const incidencias = await this.incidenciasDoColaborador(id, fim);
 
+    // Contrato de experiência / tempo de casa (informativo — não afeta o score).
+    const contrato = await this.contratosService.resumoDoColaborador(id, fim);
+
     return {
       colaborador: {
         id: colaborador.id,
@@ -407,6 +421,7 @@ export class PerfilColaboradorService {
       motivosCancelamento,
       insignias,
       incidencias,
+      contrato,
     };
   }
 

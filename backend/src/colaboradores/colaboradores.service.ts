@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AcessosService } from '../acessos/acessos.service';
+import { inicioDoDia } from '../common/datas';
 import {
   gerarEscalaSemanalFiscal,
   temEscalaDefinida,
@@ -49,6 +50,18 @@ function turnoFiscalDe(turno?: TurnoColaborador | null): TurnoFiscal {
   return 'INTERMEDIARIO';
 }
 
+/**
+ * Normaliza a data de admissão para meia-noite UTC (ou null quando ausente).
+ * NÃO valida contra a Data_Inicial_Sistema: admissões históricas são legítimas.
+ */
+function normalizarAdmissao(
+  valor: string | Date | null | undefined,
+): Date | null {
+  if (valor === null || valor === undefined || valor === '') return null;
+  const d = inicioDoDia(new Date(valor));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 /** Dados de cadastro/edição de um colaborador. */
 export interface ColaboradorInput {
   nome: string;
@@ -62,6 +75,8 @@ export interface ColaboradorInput {
   entradaFds?: string | null;
   saidaFds?: string | null;
   folgaDiaSemana?: number | null;
+  /** Data de admissão (base do módulo de Contratos). ISO ou Date; null limpa. */
+  dataAdmissao?: string | Date | null;
   /**
    * Senha de acesso ao app. No cadastro de fiscal/supervisor/gerente é
    * obrigatória (cria a conta com login = matrícula). Na edição, quando
@@ -173,6 +188,7 @@ export class ColaboradoresService {
         entradaFds: input.entradaFds ?? null,
         saidaFds: input.saidaFds ?? null,
         folgaDiaSemana: input.folgaDiaSemana ?? null,
+        dataAdmissao: normalizarAdmissao(input.dataAdmissao),
         usuarioId,
         identificadores: {
           create: [
@@ -293,6 +309,8 @@ export class ColaboradoresService {
     if (input.saidaFds !== undefined) data.saidaFds = input.saidaFds;
     if (input.folgaDiaSemana !== undefined)
       data.folgaDiaSemana = input.folgaDiaSemana;
+    if (input.dataAdmissao !== undefined)
+      data.dataAdmissao = normalizarAdmissao(input.dataAdmissao);
     if (input.ativo !== undefined) data.ativo = input.ativo;
 
     // Conta de acesso (login do app): string vazia/null = desvincular.

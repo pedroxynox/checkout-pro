@@ -48,6 +48,7 @@ const TURNOS: { v: TurnoColaborador; r: string }[] = [
 ];
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 function rotuloFuncao(f: FuncaoColaborador): string {
   return FUNCOES.find((x) => x.v === f)?.r ?? f;
@@ -78,6 +79,7 @@ export function GestaoColaboradoresScreen({
   const [entFds, setEntFds] = useState('');
   const [saiFds, setSaiFds] = useState('');
   const [folga, setFolga] = useState<number | null>(null);
+  const [admissao, setAdmissao] = useState('');
   const [senha, setSenha] = useState('');
   const [gerenteDev, setGerenteDev] = useState(false);
 
@@ -107,6 +109,7 @@ export function GestaoColaboradoresScreen({
     setEntFds('');
     setSaiFds('');
     setFolga(null);
+    setAdmissao('');
     setSenha('');
     setGerenteDev(false);
   };
@@ -144,6 +147,7 @@ export function GestaoColaboradoresScreen({
     setEntFds(c.entradaFds ?? '');
     setSaiFds(c.saidaFds ?? '');
     setFolga(c.folgaDiaSemana);
+    setAdmissao(c.dataAdmissao ? c.dataAdmissao.slice(0, 10) : '');
     setSenha('');
     setGerenteDev(false);
     setFormAberto(true);
@@ -190,6 +194,13 @@ export function GestaoColaboradoresScreen({
         return;
       }
     }
+    if (admissao.trim() && !DATA_ISO.test(admissao.trim())) {
+      notificar(
+        'Data de admissão inválida',
+        'Use o formato AAAA-MM-DD (ex.: 2026-05-01).',
+      );
+      return;
+    }
 
     const input = {
       nome: nome.trim(),
@@ -203,6 +214,7 @@ export function GestaoColaboradoresScreen({
       entradaFds: entFds.trim() || undefined,
       saidaFds: saiFds.trim() || undefined,
       folgaDiaSemana: folga ?? undefined,
+      dataAdmissao: admissao.trim() || undefined,
       // Acesso ao app (apenas funções com acesso).
       senha: temAcesso && senha.trim() ? senha.trim() : undefined,
       gerenteDesenvolvedor: funcao === 'GESTOR' ? gerenteDev : undefined,
@@ -367,6 +379,18 @@ export function GestaoColaboradoresScreen({
               </Text>
             ))}
           </View>
+
+          <CampoTexto
+            rotulo="Data de admissão (contrato)"
+            value={admissao}
+            onChangeText={setAdmissao}
+            placeholder="AAAA-MM-DD (ex.: 2026-05-01)"
+            autoCapitalize="none"
+          />
+          <Text style={styles.ajudaLogin}>
+            Base do tempo de casa e do contrato de experiência (45/90 dias).
+            Pode ser uma data passada. Deixe vazio se ainda não souber.
+          </Text>
 
           <Botao titulo="Salvar" aoPressionar={salvar} carregando={salvando} />
           <Botao

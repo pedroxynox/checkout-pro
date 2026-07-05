@@ -53,6 +53,10 @@ describe('PerfilColaboradorService (wiring do score — Ola B)', () => {
     };
     const metasFake = { resolver: resolverRecargas };
     const incidenciasFake = { contarNaoRetornos };
+    // Contrato não participa do score (informativo). Basta um stub inerte.
+    const contratosFake = {
+      resumoDoColaborador: jest.fn(() => Promise.resolve({})),
+    };
 
     const service = new PerfilColaboradorService(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,6 +67,8 @@ describe('PerfilColaboradorService (wiring do score — Ola B)', () => {
       incidenciasFake as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       metasFake as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      contratosFake as any,
     );
     return {
       service,

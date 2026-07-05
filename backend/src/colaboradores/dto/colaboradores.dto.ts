@@ -74,6 +74,13 @@ export class CadastrarColaboradorDto {
   @Min(0)
   @Max(6)
   folgaDiaSemana?: number;
+
+  @IsOptional()
+  @IsDateString(
+    {},
+    { message: 'A data de admissão deve ser uma data válida (ISO 8601).' },
+  )
+  dataAdmissao?: string;
 }
 
 /** Edição de colaborador — todos os campos opcionais. */
@@ -137,6 +144,13 @@ export class EditarColaboradorDto {
   @Min(0)
   @Max(6)
   folgaDiaSemana?: number;
+
+  @IsOptional()
+  @IsDateString(
+    {},
+    { message: 'A data de admissão deve ser uma data válida (ISO 8601).' },
+  )
+  dataAdmissao?: string;
 
   @IsOptional()
   @IsBoolean()

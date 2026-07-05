@@ -631,6 +631,12 @@ model Colaborador {
   genero    String?
   ativo     Boolean           @default(true)
 
+  // Data de admissão (entrada na casa). Base ÚNICA e determinista do módulo de
+  // Contratos (tempo de casa + marcos de 45/90 dias). Opcional/aditivo: fichas
+  // antigas ficam sem data até o gestor preenchê-la. Pode ser anterior à
+  // Data_Inicial_Sistema (admissões históricas são legítimas — ver ADR 0008).
+  dataAdmissao DateTime?
+
   // Escala (apenas operadores normalmente). Opcional para não obrigar fiscais.
   turno          TurnoColaborador?
   entradaSemana  String?
@@ -663,6 +669,47 @@ model ColaboradorIdentificador {
   @@unique([tipo, valor])
   @@index([colaboradorId])
   @@map("colaborador_identificadores")
+}
+
+
+// --------------------------- Contratos de experiência ----------------------
+// Contrato de experiência brasileiro (máx. 90 dias, partido em 45 + 45). O
+// ESTADO (experiência/efetivado/encerrado) é DERIVADO de `dataAdmissao`
+// (Colaborador) + as DECISÕES persistidas abaixo — nunca gravado. As decisões
+// são dados novos que não se derivam de uma data (ver ADR 0008). Segue o padrão
+// de IDs polimórficos sem FK rígida (ADR 0005): `colaboradorId` é a ficha.
+
+/// Marco (hito) do contrato de experiência: fim da 1ª fase (45 dias) e fim da
+/// 2ª fase (90 dias). Genérico o suficiente para o ciclo 45 + 45.
+enum MarcoContrato {
+  MARCO_45
+  MARCO_90
+}
+
+/// Resultado de uma decisão de contrato num marco.
+enum ResultadoDecisaoContrato {
+  APROVADO
+  REPROVADO
+}
+
+/// Decisão de contrato (aprovar/reprovar) num marco (45/90 dias), com auditoria
+/// (quem e quando). No máximo uma decisão por (colaborador, marco) — regravar
+/// atualiza a mesma linha (upsert). O estado do contrato é derivado destas
+/// decisões + `dataAdmissao`; nada de estado redundante persistido.
+model DecisaoContrato {
+  id              String                   @id @default(uuid())
+  colaboradorId   String
+  marco           MarcoContrato
+  resultado       ResultadoDecisaoContrato
+  decididoPorId   String?
+  decididoPorNome String?
+  observacao      String?
+  criadoEm        DateTime                 @default(now())
+  atualizadoEm    DateTime                 @default(now()) @updatedAt
+
+  @@unique([colaboradorId, marco])
+  @@index([colaboradorId])
+  @@map("decisoes_contrato")
 }
 
 

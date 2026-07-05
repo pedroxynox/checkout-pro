@@ -85,6 +85,22 @@ const PERFIL = {
       { data: '2026-06-10', kind: 'FALTA' },
     ],
   },
+  contrato: {
+    temAdmissao: true,
+    dataAdmissao: '2026-05-01',
+    diasDeCasa: 55,
+    estado: 'EXPERIENCIA',
+    etiqueta: 'experiencia',
+    dataMarco45: '2026-06-15',
+    dataMarco90: '2026-07-30',
+    proximoMarco: 'MARCO_90',
+    dataProximoMarco: '2026-07-30',
+    diasParaProximoMarco: 35,
+    marcoEmAtraso: null,
+    efetivadoPorDecurso: false,
+    decisao45: 'APROVADO',
+    decisao90: null,
+  },
 };
 
 function render_() {
