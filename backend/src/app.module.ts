@@ -21,6 +21,7 @@ import { MetasModule } from './metas/metas.module';
 import { OperadoresModule } from './operadores/operadores.module';
 import { ColaboradoresModule } from './colaboradores/colaboradores.module';
 import { IncidenciasModule } from './incidencias/incidencias.module';
+import { ContratosModule } from './contratos/contratos.module';
 import { LoteApaeModule } from './lote-apae/lote-apae.module';
 import { InsumosModule } from './insumos/insumos.module';
 import { RequisicoesModule } from './requisicoes/requisicoes.module';
@@ -54,6 +55,7 @@ import { ResetOperacionalModule } from './reset-operacional/reset-operacional.mo
     OperadoresModule,
     ColaboradoresModule,
     IncidenciasModule,
+    ContratosModule,
     LoteApaeModule,
     InsumosModule,
     RequisicoesModule,

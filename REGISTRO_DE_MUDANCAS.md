@@ -12,6 +12,50 @@
 
 ---
 
+## Seção "Contratos" — experiência 45 + 45 dias (2026-07-05)
+
+**Objetivo:** acompanhar o **contrato de experiência** brasileiro (máx. 90 dias,
+partido em 45 + 45) dos **operadores**: tempo de casa, marcos de 45/90 dias,
+alertas de vencimento/atraso e a decisão de aprovar/reprovar cada marco. Entrega
+**apenas aditiva**, validada por property tests (`fast-check` ≥100 iterações),
+testes de serviço/cron, regressão verde (backend **272** testes / mobile **55**)
+e a migração aplicada + exercitada contra um **PostgreSQL real**. Ver **ADR 0008**.
+
+- **Fonte de verdade única + estado derivado.** Nova coluna **opcional**
+  `dataAdmissao` em `colaboradores` é a base do **tempo** (dias de casa e marcos
+  = admissão + 45 / + 90). As **decisões** (aprovar/reprovar) vão para a tabela
+  nova **`decisoes_contrato`** (única por `colaborador+marco`, com auditoria de
+  quem/quando). O **estado** (SEM_ADMISSAO / EXPERIÊNCIA / EFETIVADO / ENCERRADO)
+  é **sempre derivado** por funções puras (`contratos.domain`) — nunca gravado.
+  Migração **aditiva** `9y_contratos_experiencia` (coluna + 2 enums + tabela +
+  índices), sem tocar em dados existentes.
+- **Regras (aprovadas).** Reprovar em qualquer marco → **ENCERRADO** (sempre
+  explícito, nunca reprova sozinho). Passar de 90 dias sem reprovação →
+  **EFETIVADO por decurso de prazo**, seguindo a avisar "decisão em atraso" até
+  a decisão do marco de 90 ser registrada; idem para o marco de 45 vencido sem
+  decisão (permanece em EXPERIÊNCIA + atraso). O marco de 90 só pode ser decidido
+  após aprovar o de 45. A `dataAdmissao` **não** sofre o guard de
+  `Data_Inicial_Sistema` (admissões históricas são legítimas).
+- **API (`/contratos`).** `GET /` (cards com etiqueta/urgência/próximo marco),
+  `GET /resumo` (contagens da carteira), `GET /:id` (tempo de casa do perfil) —
+  exigem **`CONTRATOS_VISUALIZAR`** (gerente, gerente-desenvolvedor, supervisor);
+  `PATCH /:id/admissao` e `POST /:id/decisao` — exigem **`CONTRATOS_GERIR`**
+  (gerente e gerente-desenvolvedor). A `dataAdmissao` também pode ser preenchida
+  no cadastro de colaboradores (`OPERADORES_CRUD`). Duas funcionalidades novas na
+  fonte única `acessos.domain.ts`, **espelhadas** em `mobile/.../funcionalidades.ts`.
+- **Alertas por cron.** Cron diário (**08:00 BRT**) avisa os gestores quando um
+  marco está a **≤ 5 dias** de vencer ("faltam X dias") ou já venceu sem decisão
+  ("decisão em atraso"). Roda uma vez por dia (contador 5→0 natural) + `Set` em
+  memória (reset à meia-noite) como rede de segurança — padrão do
+  `FiscaisAlertasService`.
+- **Perfil e app.** O perfil ganha a seção **"Tempo de casa"** (dias, admissão,
+  marcos, decisões, próximo marco/atraso) — **puramente informativa, não afeta o
+  score**. Nova tela **Contratos** (resumo + filtros + cards com semáforo e
+  ações de aprovar/reprovar/definir admissão para quem tem `CONTRATOS_GERIR`) e
+  o campo **Data de admissão** no cadastro de colaboradores.
+
+---
+
 ## Reinício Operacional + Data Inicial do Sistema (2026-07-05)
 
 **Objetivo:** permitir ao gestor (perfil `ADMIN_DADOS`) definir a **data inicial
