@@ -169,6 +169,77 @@ async function seedFiscais(): Promise<void> {
   }
 }
 
+/**
+ * Backfill idempotente das fichas `Colaborador` (funcao FISCAL) a partir dos
+ * fiscais semeados, espelhando a migração `9s_colaboradores_de_fiscais`.
+ *
+ * A migração `9s` roda uma única vez (e, numa base recém-criada, roda ANTES do
+ * seed criar os fiscais, portanto sobre tabela vazia). Sem este passo, um
+ * `migrate deploy` + `db seed` deixa `colaboradores` vazia. Aqui recriamos a
+ * mesma lógica insert-only: usa a matrícula (= login do usuário) como registro
+ * único e vincula a mesma conta de acesso (`usuarioId`). Só cria o que falta
+ * (checagem por `usuarioId` e por `matricula`), de modo que re-execuções não
+ * duplicam fichas nem identificadores.
+ */
+async function seedColaboradoresFiscais(): Promise<void> {
+  const fiscais = await prisma.fiscal.findMany({
+    where: { usuarioId: { not: null } },
+    select: { nome: true, usuarioId: true },
+  });
+
+  for (const f of fiscais) {
+    if (!f.usuarioId) continue;
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: f.usuarioId },
+      select: { login: true },
+    });
+    if (!usuario) continue;
+
+    // Só cria a ficha se ainda não existir (por usuarioId nem por matrícula),
+    // preservando a idempotência do backfill.
+    const jaPorUsuario = await prisma.colaborador.findUnique({
+      where: { usuarioId: f.usuarioId },
+      select: { id: true },
+    });
+    const jaPorMatricula = await prisma.colaborador.findUnique({
+      where: { matricula: usuario.login },
+      select: { id: true },
+    });
+
+    if (!jaPorUsuario && !jaPorMatricula) {
+      await prisma.colaborador.create({
+        data: {
+          matricula: usuario.login,
+          nome: f.nome,
+          funcao: 'FISCAL',
+          usuarioId: f.usuarioId,
+        },
+      });
+    }
+  }
+
+  // Identificador MATRICULA para as fichas que ainda não o têm (idempotente
+  // pela unicidade [tipo, valor]).
+  const colaboradores = await prisma.colaborador.findMany({
+    select: { id: true, matricula: true },
+  });
+  for (const c of colaboradores) {
+    const existente = await prisma.colaboradorIdentificador.findUnique({
+      where: { tipo_valor: { tipo: 'MATRICULA', valor: c.matricula } },
+      select: { id: true },
+    });
+    if (!existente) {
+      await prisma.colaboradorIdentificador.create({
+        data: {
+          colaboradorId: c.id,
+          tipo: 'MATRICULA',
+          valor: c.matricula,
+        },
+      });
+    }
+  }
+}
+
 async function seedGerentes(): Promise<void> {
   for (const g of GERENTES) {
     const login = g.matricula ?? slugLogin(g.nome);
@@ -593,6 +664,7 @@ async function main(): Promise<void> {
   senhaHashInicial = await bcrypt.hash(SENHA_INICIAL, 10);
 
   await seedFiscais();
+  await seedColaboradoresFiscais();
   await seedGerentes();
   await seedOperadores();
   await seedOperadorTurnos();
@@ -605,13 +677,15 @@ async function main(): Promise<void> {
 
   const totalUsuarios = await prisma.usuario.count();
   const totalFiscais = await prisma.fiscal.count();
+  const totalColaboradores = await prisma.colaborador.count();
   const totalOperadores = await prisma.operador.count();
   const totalInsumos = await prisma.insumo.count();
 
   // eslint-disable-next-line no-console
   console.log(
     `Seed concluído: ${totalFiscais} fiscais, ${GERENTES.length} gerentes, ` +
-      `${totalOperadores} operadores, ${totalInsumos} insumos e ${totalUsuarios} usuários (logins individuais).`,
+      `${totalColaboradores} colaboradores, ${totalOperadores} operadores, ` +
+      `${totalInsumos} insumos e ${totalUsuarios} usuários (logins individuais).`,
   );
 }
 

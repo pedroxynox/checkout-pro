@@ -12,6 +12,49 @@
 
 ---
 
+## Incidências de Escala — validação E2E + correção de bugs (2026-07-05)
+
+**Objetivo:** validar o módulo *Incidências de Escala* (backend `incidencias.*` +
+perfil enriquecido) de ponta a ponta contra um PostgreSQL real e corrigir os
+defeitos confirmados no Informe QA
+(`.kiro/specs/validacao-e2e-incidencias-escala/INFORME_QA.md`). Protocolo por
+bug: causa raiz → correção acotada (controller→service→domain) → re-execução do
+caso E2E → regressão. Todas as mudanças são **apenas aditivas** (NFR 9.1).
+
+- **Fix 1 — BUG-1 (E4, Alta): POST com `colaboradorId` inexistente criava a
+  incidência.** `IncidenciasService.registrar` (`backend/src/incidencias/incidencias.service.ts`)
+  passa a validar `prisma.colaborador.findUnique` antes do `create`; quando a
+  ficha não existe, lança `ColaboradorIncidenciaInvalidoError` (400, erro que já
+  existia em `incidencias.errors.ts` e estende `ErroDominio`). Elimina as linhas
+  órfãs que contaminavam o `GET /ranking`. Sem mudança de esquema. (Req 2.3)
+- **Fix 2 — BUG-2 (E14, Média): `sugestoes` com `intervaloMin=0` não omitia a
+  sugestão.** `detectarNaoRetorno` (`incidencias.domain.ts`) retorna `null`
+  quando `intervaloMin<=0` (ou não finito), pois sem intervalo previsto não pode
+  haver "não retorno do intervalo". Lógica pura preservada; ampliada a
+  **Property 2** em `incidencias.properties.spec.ts` (fast-check `numRuns:100`)
+  com o caso `intervaloMin<=0 ⇒ sem detecção`. (Req 4.4)
+- **Fix 3 — Seed passa a criar as fichas `Colaborador` FISCAL.** Nova
+  `seedColaboradoresFiscais()` em `backend/prisma/seed.ts` (insert-only,
+  idempotente, espelho da migração `9s_colaboradores_de_fiscais`): cria o
+  `Colaborador` FISCAL + o `ColaboradorIdentificador` MATRICULA a partir dos
+  fiscais semeados. Assim `migrate deploy` + `db seed` deixam `colaboradores`
+  populada (10) sem o backfill manual F0. Sem migração destrutiva.
+- **Testes.** `incidencias.service.spec.ts` ganhou um teste unitário do caso
+  E4 (400 + não persiste a fila órfã); `incidencias.properties.spec.ts` ganhou
+  a Property 2 dedicada a `intervaloMin<=0`.
+
+**Verificação (executada nesta entrega):**
+- **E2E (PostgreSQL real, API `dist/main.js`):** E4 → **400** + `0` linhas
+  órfãs; E14 → **200 `[]`**; E1 → **201** (`horaEsperadaRetorno=14:00`); E5 →
+  **409**; E11 → ranking desc sem o fantasma. Fix 3: BD limpa → seed → **10**
+  colaboradores FISCAL (idempotente).
+- **Regressão backend:** `npm run build`, `npm run lint`, `npm test` → **195
+  testes** verdes (inclui property tests fast-check).
+- **Regressão mobile:** `npm run type-check`, `npm run lint`, `npm test` →
+  **41 testes** verdes.
+
+---
+
 ## Documentação — Estado do projeto e próximos passos (2026-07-03)
 
 Documentação: adicionado docs/ESTADO_Y_PROXIMOS_PASOS.md (estado do projeto + próximos passos consolidados).

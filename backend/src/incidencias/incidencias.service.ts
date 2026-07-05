@@ -18,6 +18,7 @@ import {
   ItemRankingIncidencias,
 } from './incidencias.domain';
 import {
+  ColaboradorIncidenciaInvalidoError,
   DadosIncidenciaInvalidosError,
   IncidenciaDuplicadaError,
   IncidenciaNaoEncontradaError,
@@ -119,6 +120,19 @@ export class IncidenciasService {
     const data = inicioDoDia(new Date(dto.data));
     if (Number.isNaN(data.getTime())) {
       throw new DadosIncidenciaInvalidosError('Data da incidência inválida.');
+    }
+
+    // O `colaboradorId` é um String sem FK; garante que a ficha existe antes de
+    // persistir para não criar incidências órfãs (que contaminariam ranking e
+    // perfil). Rejeita com 400 quando o colaborador não existe (Req 2.3).
+    const colaborador = await this.prisma.colaborador.findUnique({
+      where: { id: dto.colaboradorId },
+      select: { id: true },
+    });
+    if (!colaborador) {
+      throw new ColaboradorIncidenciaInvalidoError(
+        'Colaborador informado não existe.',
+      );
     }
 
     const funcionarioId = await this.resolverFuncionarioId(dto.colaboradorId);

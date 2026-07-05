@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { IncidenciasService } from './incidencias.service';
 import {
+  ColaboradorIncidenciaInvalidoError,
   IncidenciaDuplicadaError,
   IncidenciaNaoEncontradaError,
 } from './incidencias.errors';
@@ -191,8 +192,18 @@ describe('IncidenciasService', () => {
 
   const AUTOR = { id: 'u1', nome: 'Gestor' };
 
+  // Colaborador base para os casos que exercitam o registro (o serviço agora
+  // valida a existência da ficha antes de persistir).
+  const COLABORADOR_BASE = {
+    id: 'c1',
+    nome: 'Colaborador Um',
+    matricula: 'c1',
+    usuarioId: null,
+    funcao: 'FISCAL',
+  };
+
   it('registra uma incidência manual', async () => {
-    const { service } = criarServico();
+    const { service } = criarServico({ colaboradores: [COLABORADOR_BASE] });
     const inc = await service.registrar(
       {
         colaboradorId: 'c1',
@@ -207,7 +218,7 @@ describe('IncidenciasService', () => {
   });
 
   it('rejeita incidência duplicada (colaborador+tipo+data) com 409', async () => {
-    const { service } = criarServico();
+    const { service } = criarServico({ colaboradores: [COLABORADOR_BASE] });
     const dto = {
       colaboradorId: 'c1',
       tipo: 'NAO_RETORNO_INTERVALO' as const,
@@ -217,6 +228,23 @@ describe('IncidenciasService', () => {
     await expect(service.registrar(dto, AUTOR)).rejects.toBeInstanceOf(
       IncidenciaDuplicadaError,
     );
+  });
+
+  it('rejeita registro com colaborador inexistente (400) e não persiste', async () => {
+    const { service, store } = criarServico();
+    await expect(
+      service.registrar(
+        {
+          colaboradorId: 'colaborador-inexistente-zzz',
+          tipo: 'NAO_RETORNO_INTERVALO',
+          data: '2026-07-03',
+          horaSaida: '12:00',
+        },
+        AUTOR,
+      ),
+    ).rejects.toBeInstanceOf(ColaboradorIncidenciaInvalidoError);
+    // Não deve criar fila órfã (contaminaria ranking/perfil).
+    expect(store).toHaveLength(0);
   });
 
   it('deriva o horário esperado de retorno a partir do intervalo da escala do fiscal', async () => {

@@ -84,7 +84,8 @@ describe('Incidências de Escala — testes de propriedade', () => {
           minLength: 0,
           maxLength: 12,
         }),
-        fc.integer({ min: 0, max: 120 }),
+        // intervaloMin > 0: só nesse caso pode existir "não retorno".
+        fc.integer({ min: 1, max: 120 }),
         (transicoes: TransicaoPonto[], intervaloMin) => {
           // Oráculo de referência: existe INTERVALO sem DISPONIVEL antes de um
           // FORA_EXPEDIENTE ou do fim do log.
@@ -107,6 +108,29 @@ describe('Incidências de Escala — testes de propriedade', () => {
 
           const resultado = detectarNaoRetorno(transicoes, intervaloMin);
           return esperaNaoNulo === (resultado !== null);
+        },
+      ),
+      { numRuns: NUM_RUNS },
+    );
+  });
+
+  // Feature: validacao-e2e-incidencias-escala, Property 2: quando o intervalo
+  // previsto na escala é 0 (ou não-positivo), não pode existir "não retorno do
+  // intervalo", portanto detectarNaoRetorno SEMPRE retorna null — mesmo quando
+  // o log de ponto contém um INTERVALO sem DISPONIVEL posterior (que geraria
+  // detecção com intervaloMin > 0).
+  // Validates: Requirements 4.4
+  it('Property 2: intervaloMin<=0 => sem detecção de não retorno', () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.record({ status: statusArb, hhmm: horarioArb }), {
+          minLength: 0,
+          maxLength: 12,
+        }),
+        // Inclui 0 e valores negativos (dia sem intervalo previsto / inválido).
+        fc.integer({ min: -60, max: 0 }),
+        (transicoes: TransicaoPonto[], intervaloMin) => {
+          return detectarNaoRetorno(transicoes, intervaloMin) === null;
         },
       ),
       { numRuns: NUM_RUNS },
