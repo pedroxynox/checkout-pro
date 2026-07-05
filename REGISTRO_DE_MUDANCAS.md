@@ -12,6 +12,37 @@
 
 ---
 
+## Justificativa (abono) de faltas e não-retornos (2026-07-05)
+
+**Objetivo:** poder **justificar uma falta ou não-retorno DEPOIS** de registrado
+— reduzindo o impacto negativo no score conforme o motivo — e dar
+**transparência** de quem registrou e quem justificou (antes só o gestor sabia).
+Entrega **apenas aditiva**, validada por property tests (`fast-check`), regressão
+verde (backend **286** / mobile **57**) e migração aplicada contra **PostgreSQL
+real** (sem drift). Ver **ADR 0009**.
+
+- **Estado + auditoria (aditivo).** `ausencias` e `incidencias_escala` ganham
+  `statusJustificativa` (**PENDENTE**/JUSTIFICADA/INJUSTIFICADA),
+  `motivoJustificativa`, `observacaoJustificativa` e a auditoria de **quem
+  justificou** (nome/quando). `Ausencia` também passa a gravar **quem registrou**
+  a falta. Migração aditiva `9z_justificativas` (2 enums + colunas + índices).
+- **Peso no score (motivo).** PENDENTE/INJUSTIFICADA pesam integral; **atestado
+  médico = 2%**, **outros motivos justificados = 10%**. A Assiduidade
+  (`taxaPonderada`) e a Disciplina (`contarNaoRetornos` ponderado) usam a soma
+  ponderada; a contagem crua segue no histórico. Justificar **recalcula o score
+  na hora** (inclusive retroativo). Lógica pura em `common/justificativas.ts`.
+- **API.** `PATCH /operadores/ausencias/:id/justificativa` e
+  `PATCH /escala/incidencias/:id/justificativa` (justificar/injustificar/reabrir),
+  liberadas a quem lança faltas — **inclui o fiscal** (`OPERADORES_AUSENCIAS`).
+  `GET /operadores/ausencias` lista as faltas com estado + quem registrou/
+  justificou (`?pendentes=true` para o que falta analisar).
+- **App.** Nova tela **Justificativas** (faltas + não-retornos dos últimos 30
+  dias, pendentes primeiro): estado, quem marcou/justificou e ações de
+  justificar (com motivo), injustificar e reabrir. O perfil mostra quantas
+  faltas estão justificadas.
+
+---
+
 ## Correção: estoque de insumos não fica negativo (2026-07-05)
 
 **Bug:** com saldo 0 (ou insuficiente), a tela de Insumos ainda deixava

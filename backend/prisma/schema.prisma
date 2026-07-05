@@ -468,14 +468,49 @@ model Checklist {
   @@map("checklists")
 }
 
+// Estado de justificativa de uma ocorrência (falta ou não-retorno de intervalo).
+// PENDENTE = ainda não analisada; JUSTIFICADA = abonada (com motivo); 
+// INJUSTIFICADA = analisada e confirmada como falta real.
+enum StatusJustificativa {
+  PENDENTE
+  JUSTIFICADA
+  INJUSTIFICADA
+}
+
+// Motivo da justificativa. Define, de forma determinista, o quanto a ocorrência
+// ainda pesa no score (ver ADR 0009): ATESTADO_MEDICO pesa muito pouco; os
+// demais motivos justificados pesam pouco; PENDENTE/INJUSTIFICADA pesam integral.
+enum MotivoJustificativa {
+  ATESTADO_MEDICO
+  ABONADA
+  LICENCA
+  ATRASO_JUSTIFICADO
+  OUTRO
+}
+
 model Ausencia {
   id       String   @id @default(uuid())
   pessoaId String
   colaboradorId String?
   data     DateTime
 
+  // Quem registrou a falta (auditoria — 10 pessoas lançam faltas no app).
+  registradaPorId   String?
+  registradaPorNome String?
+
+  // Justificativa (abono) da falta, aplicada DEPOIS do registro. O estado é
+  // persistido; o peso no score é derivado do motivo (função pura). Auditoria
+  // de quem justificou e quando.
+  statusJustificativa     StatusJustificativa  @default(PENDENTE)
+  motivoJustificativa     MotivoJustificativa?
+  observacaoJustificativa String?
+  justificadaPorId        String?
+  justificadaPorNome      String?
+  justificadaEm           DateTime?
+
   @@unique([pessoaId, data])
   @@index([colaboradorId])
+  @@index([statusJustificativa])
   @@map("ausencias")
 }
 
@@ -731,6 +766,16 @@ model IncidenciaEscala {
   observacao         String?
   registradoPorId    String?
   registradoPorNome  String?
+  // Justificativa (abono) do não-retorno, aplicada DEPOIS do registro — mesmo
+  // modelo das faltas (Ausencia). Estado persistido; peso no score derivado do
+  // motivo (ver ADR 0009). `motivo`/`observacao` acima são do registro; estes
+  // são específicos da justificativa.
+  statusJustificativa     StatusJustificativa  @default(PENDENTE)
+  motivoJustificativa     MotivoJustificativa?
+  observacaoJustificativa String?
+  justificadaPorId        String?
+  justificadaPorNome      String?
+  justificadaEm           DateTime?
   criadoEm           DateTime             @default(now())
   atualizadoEm       DateTime             @default(now()) @updatedAt
 
@@ -738,5 +783,6 @@ model IncidenciaEscala {
   @@index([colaboradorId, data])
   @@index([tipo, data])
   @@index([data])
+  @@index([statusJustificativa])
   @@map("incidencias_escala")
 }

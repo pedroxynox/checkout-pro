@@ -1,10 +1,37 @@
 import { Type } from 'class-transformer';
 import {
   IsDateString,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
+  MaxLength,
 } from 'class-validator';
+import {
+  MOTIVOS_JUSTIFICATIVA,
+  MotivoJustificativa,
+  STATUS_JUSTIFICATIVA,
+  StatusJustificativa,
+} from '../../common/justificativas';
+
+/** Justifica (ou reabre) uma falta: define o estado e, se JUSTIFICADA, o motivo. */
+export class JustificarAusenciaDto {
+  @IsIn(STATUS_JUSTIFICATIVA as unknown as string[], {
+    message: 'Estado de justificativa inválido.',
+  })
+  status!: StatusJustificativa;
+
+  @IsOptional()
+  @IsIn(MOTIVOS_JUSTIFICATIVA as unknown as string[], {
+    message: 'Motivo de justificativa inválido.',
+  })
+  motivo?: MotivoJustificativa;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500, { message: 'A observação é muito longa (máx. 500).' })
+  observacao?: string;
+}
 
 /** Registro de ausência de uma pessoa (operador/fiscal) numa data (Req 6.2). */
 export class RegistrarAusenciaDto {

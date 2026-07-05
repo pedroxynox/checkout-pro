@@ -2,14 +2,17 @@
 import { apiClient } from '../client';
 import {
   Ausencia,
+  AusenciaDetalhada,
   ContagemTurno,
   AnaliticaFaltas,
   AoVivoOperadores,
   DiaOperadores,
   GradeOperadores,
   ItemRelatorioAusencia,
+  MotivoJustificativa,
   OperadorEscalaDia,
   OperadorTurno,
+  StatusJustificativa,
 } from '../types';
 
 export const operadoresService = {
@@ -24,6 +27,35 @@ export const operadoresService = {
   /** Remove uma ausência registrada (Req 6.2.4). */
   removerAusencia(id: string): Promise<void> {
     return apiClient.delete<void>(`/operadores/ausencias/${id}`);
+  },
+
+  /**
+   * Lista as faltas de um período com nome + justificativa (estado, motivo,
+   * quem justificou). `pendentes=true` traz só as pendentes de análise.
+   */
+  listarAusencias(
+    inicio: string,
+    fim: string,
+    pendentes = false,
+  ): Promise<AusenciaDetalhada[]> {
+    const params: Record<string, string> = { inicio, fim };
+    if (pendentes) params.pendentes = 'true';
+    return apiClient.get<AusenciaDetalhada[]>('/operadores/ausencias', params);
+  },
+
+  /** Justifica/reabre/injustifica uma falta DEPOIS do registro (abono). */
+  justificarAusencia(
+    id: string,
+    dados: {
+      status: StatusJustificativa;
+      motivo?: MotivoJustificativa;
+      observacao?: string;
+    },
+  ): Promise<Ausencia> {
+    return apiClient.patch<Ausencia>(
+      `/operadores/ausencias/${id}/justificativa`,
+      dados,
+    );
   },
 
   /** Relatório de ausências por pessoa, filtrado e ordenado (Req 6.3). */

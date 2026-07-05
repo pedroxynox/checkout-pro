@@ -14,6 +14,11 @@
  */
 
 import { HorarioInvalidoError } from './operadores.errors';
+import {
+  MotivoJustificativa,
+  StatusJustificativa,
+  pesoOcorrencia,
+} from '../common/justificativas';
 
 export type Turno = 'ABERTURA' | 'INTERMEDIARIO' | 'FECHAMENTO';
 
@@ -25,10 +30,17 @@ export interface ContagemTurno {
   total: number;
 }
 
-/** Registro mínimo de uma ausência (pessoa + data). */
+/**
+ * Registro mínimo de uma ausência (pessoa + data). Os campos de justificativa
+ * são opcionais: quando ausentes, a falta conta como PENDENTE (peso integral),
+ * mantendo o comportamento anterior. Quando JUSTIFICADA, pesa menos no score
+ * conforme o motivo (ver `pesoOcorrencia`).
+ */
 export interface AusenciaRegistro {
   pessoaId: string;
   data: Date;
+  statusJustificativa?: StatusJustificativa;
+  motivoJustificativa?: MotivoJustificativa | null;
 }
 
 /** Intervalo de datas inclusivo em ambos os extremos. */
@@ -250,9 +262,17 @@ export interface FaltasOperadorDetalhe {
   id: string;
   nome: string;
   quantidade: number;
+  /** Quantas das faltas do período estão JUSTIFICADAS (abonadas). */
+  justificadas: number;
   diasEscalados: number;
-  /** % de absenteísmo = faltas / dias escalados (0–100, arredondado). */
+  /** % de absenteísmo BRUTO = faltas / dias escalados (0–100, arredondado). */
   taxa: number;
+  /**
+   * % de absenteísmo EFETIVO (justificadas pesam menos, conforme o motivo).
+   * É o que alimenta a Assiduidade no score. Para faltas sem justificativa,
+   * `taxaPonderada === taxa`.
+   */
+  taxaPonderada: number;
   /** Faltas coladas à folga (véspera ou dia seguinte) — "emenda". */
   faltasEmenda: number;
   /** Maior sequência de faltas em dias consecutivos. */
@@ -372,10 +392,10 @@ export function analisarFaltas(params: {
   const { operadores, ausencias, ausenciasAnterior, inicio, fimEscala } =
     params;
 
-  const porOp = new Map<string, Date[]>();
+  const porOp = new Map<string, AusenciaRegistro[]>();
   for (const a of ausencias) {
     const arr = porOp.get(a.pessoaId) ?? [];
-    arr.push(a.data);
+    arr.push(a);
     porOp.set(a.pessoaId, arr);
   }
   const antPorOp = new Map<string, number>();
@@ -395,12 +415,30 @@ export function analisarFaltas(params: {
       fimEscala,
     );
     somaDias += diasEscalados;
-    const datas = porOp.get(op.id) ?? [];
-    if (datas.length === 0) continue; // sem faltas: fora do ranking
+    const regs = porOp.get(op.id) ?? [];
+    if (regs.length === 0) continue; // sem faltas: fora do ranking
+    const datas = regs.map((r) => r.data);
 
-    const quantidade = datas.length;
+    const quantidade = regs.length;
+    const justificadas = regs.filter(
+      (r) => r.statusJustificativa === 'JUSTIFICADA',
+    ).length;
+    // Peso efetivo: justificadas pesam menos conforme o motivo (ver ADR 0009).
+    const pesoTotal = regs.reduce(
+      (acc, r) =>
+        acc +
+        pesoOcorrencia(
+          r.statusJustificativa ?? 'PENDENTE',
+          r.motivoJustificativa,
+        ),
+      0,
+    );
     const taxa =
       diasEscalados > 0 ? Math.round((quantidade / diasEscalados) * 100) : 0;
+    const taxaPonderada =
+      diasEscalados > 0 ? Math.round((pesoTotal / diasEscalados) * 100) : 0;
+    // Quantidade "efetiva" (para o risco): justificadas contam proporcionalmente.
+    const quantidadeEfetiva = Math.round(pesoTotal);
 
     const vespera = dowOffset(op.folgaDiaSemana, -1);
     const seguinte = dowOffset(op.folgaDiaSemana, 1);
@@ -431,9 +469,11 @@ export function analisarFaltas(params: {
 
     const sequenciaMax = maiorSequencia(datas);
     const tendencia = quantidade - (antPorOp.get(op.id) ?? 0);
+    // O risco usa os valores EFETIVOS (justificadas pesam menos), de modo que
+    // um operador com faltas abonadas não fique marcado como alto risco.
     const risco = classificarRisco({
-      taxa,
-      quantidade,
+      taxa: taxaPonderada,
+      quantidade: quantidadeEfetiva,
       faltasEmenda,
       diaRecorrente,
       sequenciaMax,
@@ -444,8 +484,10 @@ export function analisarFaltas(params: {
       id: op.id,
       nome: op.nome,
       quantidade,
+      justificadas,
       diasEscalados,
       taxa,
+      taxaPonderada,
       faltasEmenda,
       sequenciaMax,
       diaRecorrente,

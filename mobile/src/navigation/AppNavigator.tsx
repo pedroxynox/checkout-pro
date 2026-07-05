@@ -24,6 +24,7 @@ import { FiscaisScreen } from '../screens/fiscais/FiscaisScreen';
 import { JornadaFiscaisScreen } from '../screens/fiscais/JornadaFiscaisScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
 import { OperadoresScreen } from '../screens/operadores/OperadoresScreen';
+import { JustificativasScreen } from '../screens/operadores/JustificativasScreen';
 import { ColaboradoresScreen } from '../screens/colaboradores/ColaboradoresScreen';
 import { ContratosScreen } from '../screens/contratos/ContratosScreen';
 import { GestaoColaboradoresScreen } from '../screens/colaboradores/GestaoColaboradoresScreen';
@@ -151,6 +152,13 @@ export function AppNavigator(): React.ReactElement {
           name="Operadores"
           component={OperadoresScreen}
           options={{ title: 'Escalas' }}
+        />
+      )}
+      {podeAcessar('OPERADORES_AUSENCIAS') && (
+        <Stack.Screen
+          name="Justificativas"
+          component={JustificativasScreen}
+          options={{ title: 'Justificativas' }}
         />
       )}
       {podeAcessar('OPERADORES_AUSENCIAS') && (

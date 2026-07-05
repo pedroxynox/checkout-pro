@@ -19,6 +19,7 @@ import {
 import {
   CriarIncidenciaDto,
   EditarIncidenciaDto,
+  JustificarIncidenciaDto,
   ListarIncidenciasDto,
   RankingIncidenciasDto,
   SugestoesIncidenciaDto,
@@ -59,6 +60,21 @@ export class IncidenciasController {
     @Body() dto: EditarIncidenciaDto,
   ): Promise<IncidenciaEscala> {
     return this.incidencias.editar(id, dto);
+  }
+
+  /** Justifica/reabre/injustifica um não-retorno DEPOIS do registro (abono). */
+  @Patch(':id/justificativa')
+  @Funcionalidade('OPERADORES_AUSENCIAS')
+  async justificar(
+    @Param('id') id: string,
+    @Body() dto: JustificarIncidenciaDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<IncidenciaEscala> {
+    return this.incidencias.justificar(
+      id,
+      { status: dto.status, motivo: dto.motivo, observacao: dto.observacao },
+      { id: usuario?.sub, nome: usuario?.nome ?? usuario?.login },
+    );
   }
 
   /** Remove uma incidência (404 se não existir). */

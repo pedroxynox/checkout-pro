@@ -8,6 +8,7 @@ import {
   type AnaliticaFaltasDetalhe,
   type FaltasOperadorDetalhe,
 } from './operadores.domain';
+import { StatusJustificativa } from '../common/justificativas';
 
 export type StatusCelula = 'TRABALHA' | 'FOLGA' | 'FALTA';
 
@@ -86,6 +87,10 @@ export interface ColaboradorDia {
   entrada: string | null;
   saida: string | null;
   ausenciaId: string | null;
+  /** Estado da justificativa da falta (só quando status = FALTA). */
+  statusJustificativa: StatusJustificativa | null;
+  /** Quem justificou a falta (auditoria), quando aplicável. */
+  justificadaPorNome: string | null;
 }
 
 /** Roster de um dia: colaboradores ordenados por entrada (folga ao fim). */
@@ -343,10 +348,15 @@ export class OperadorTurnoService {
               pessoaId: { in: ids },
               data: { gte: diaInicio, lt: diaFim },
             },
-            select: { id: true, pessoaId: true },
+            select: {
+              id: true,
+              pessoaId: true,
+              statusJustificativa: true,
+              justificadaPorNome: true,
+            },
           })
         : [];
-    const mapaAus = new Map(ausencias.map((a) => [a.pessoaId, a.id]));
+    const mapaAus = new Map(ausencias.map((a) => [a.pessoaId, a]));
     const fds = diaSemana === 5 || diaSemana === 6;
 
     const colaboradores: ColaboradorDia[] = operadores.map(
@@ -360,19 +370,25 @@ export class OperadorTurnoService {
             entrada: null,
             saida: null,
             ausenciaId: null,
+            statusJustificativa: null,
+            justificadaPorNome: null,
           };
         }
         const entrada = fds ? op.entradaFds : op.entradaSemana;
         const saida = fds ? op.saidaFds : op.saidaSemana;
-        const ausenciaId = mapaAus.get(op.id) ?? null;
+        const aus = mapaAus.get(op.id) ?? null;
         return {
           id: op.id,
           nome: op.nome,
           genero: op.genero ?? null,
-          status: ausenciaId ? 'FALTA' : 'TRABALHA',
+          status: aus ? 'FALTA' : 'TRABALHA',
           entrada,
           saida,
-          ausenciaId,
+          ausenciaId: aus?.id ?? null,
+          statusJustificativa: aus
+            ? (aus.statusJustificativa as StatusJustificativa)
+            : null,
+          justificadaPorNome: aus?.justificadaPorNome ?? null,
         };
       },
     );

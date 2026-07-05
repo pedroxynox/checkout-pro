@@ -15,7 +15,86 @@ import {
   contagemPorTurno,
   relatorioAusencias,
 } from './operadores.domain';
-import { AusenciaDuplicadaError } from './operadores.errors';
+import {
+  MotivoJustificativa,
+  StatusJustificativa,
+  motivoObrigatorio,
+} from '../common/justificativas';
+import {
+  AusenciaDuplicadaError,
+  AusenciaNaoEncontradaError,
+  JustificativaInvalidaError,
+} from './operadores.errors';
+
+/** Autor de uma ação (usuário autenticado). */
+export interface AutorAcao {
+  id?: string;
+  nome?: string;
+}
+
+/** Dados para justificar (ou reabrir) uma ocorrência. */
+export interface JustificarInput {
+  status: StatusJustificativa;
+  motivo?: MotivoJustificativa | null;
+  observacao?: string | null;
+}
+
+/** Ausência enriquecida (nome + justificativa) para o painel de faltas. */
+export interface AusenciaDetalhada {
+  id: string;
+  pessoaId: string;
+  nome: string;
+  matricula: string | null;
+  data: string;
+  registradaPorNome: string | null;
+  statusJustificativa: StatusJustificativa;
+  motivoJustificativa: MotivoJustificativa | null;
+  observacaoJustificativa: string | null;
+  justificadaPorNome: string | null;
+  justificadaEm: string | null;
+}
+
+/**
+ * Monta os campos de justificativa a gravar a partir do input + autor. Valida
+ * que JUSTIFICADA tem motivo (senão `JustificativaInvalidaError`). Ao reabrir
+ * (PENDENTE) ou injustificar, o motivo é limpo. Determinística salvo `justificadaEm`.
+ */
+function dadosJustificativa(
+  input: JustificarInput,
+  autor: AutorAcao,
+): {
+  statusJustificativa: StatusJustificativa;
+  motivoJustificativa: MotivoJustificativa | null;
+  observacaoJustificativa: string | null;
+  justificadaPorId: string | null;
+  justificadaPorNome: string | null;
+  justificadaEm: Date | null;
+} {
+  if (motivoObrigatorio(input.status) && !input.motivo) {
+    throw new JustificativaInvalidaError();
+  }
+  // PENDENTE = reabrir: limpa toda a justificativa e a auditoria.
+  if (input.status === 'PENDENTE') {
+    return {
+      statusJustificativa: 'PENDENTE',
+      motivoJustificativa: null,
+      observacaoJustificativa: null,
+      justificadaPorId: null,
+      justificadaPorNome: null,
+      justificadaEm: null,
+    };
+  }
+  return {
+    statusJustificativa: input.status,
+    // Motivo só se aplica a JUSTIFICADA; INJUSTIFICADA não tem motivo.
+    motivoJustificativa:
+      input.status === 'JUSTIFICADA' ? (input.motivo ?? null) : null,
+    observacaoJustificativa: input.observacao ?? null,
+    justificadaPorId: autor.id ?? null,
+    justificadaPorNome: autor.nome ?? null,
+    justificadaEm: new Date(),
+  };
+}
 
 /** A partir de quantas faltas no mês os gestores são avisados (RH). */
 const LIMITE_FALTAS_MES = 3;
@@ -48,7 +127,11 @@ export class OperadoresService {
    * 6.2.2). Rejeita uma segunda ausência para a mesma pessoa na mesma data,
    * lançando `AusenciaDuplicadaError` (Req 6.2.3).
    */
-  async registrarAusencia(pessoaId: string, data: Date): Promise<Ausencia> {
+  async registrarAusencia(
+    pessoaId: string,
+    data: Date,
+    autor: AutorAcao = {},
+  ): Promise<Ausencia> {
     // Rejeita datas anteriores à Data_Inicial_Sistema (Req 6.1–6.3).
     await this.validacaoData?.exigirDataPermitida(data);
     const existentes = await this.prisma.ausencia.findMany({
@@ -59,7 +142,13 @@ export class OperadoresService {
       throw new AusenciaDuplicadaError();
     }
     const ausencia = await this.prisma.ausencia.create({
-      data: { pessoaId, data },
+      // Registra quem marcou a falta (auditoria); nasce PENDENTE de análise.
+      data: {
+        pessoaId,
+        data,
+        registradaPorId: autor.id ?? null,
+        registradaPorNome: autor.nome ?? null,
+      },
     });
     // Aviso inteligente: se o operador cruzou o limite de faltas no mês, avisa
     // os gestores (uma única vez, ao atingir o limite). Defensivo: nunca
@@ -108,6 +197,76 @@ export class OperadoresService {
   /** Remove uma ausência registrada (Req 6.2.4). */
   async removerAusencia(ausenciaId: string): Promise<void> {
     await this.prisma.ausencia.delete({ where: { id: ausenciaId } });
+  }
+
+  /**
+   * Justifica (abona), reabre (PENDENTE) ou marca como INJUSTIFICADA uma falta,
+   * DEPOIS de ela ter sido registrada. Grava quem justificou e quando
+   * (auditoria — antes só o gestor "sabia de cabeça" quem tinha justificado).
+   * JUSTIFICADA exige motivo; ao reabrir/injustificar, o motivo é limpo.
+   * 404 se a ausência não existir.
+   */
+  async justificarAusencia(
+    ausenciaId: string,
+    input: JustificarInput,
+    autor: AutorAcao = {},
+  ): Promise<Ausencia> {
+    const existente = await this.prisma.ausencia.findUnique({
+      where: { id: ausenciaId },
+    });
+    if (!existente) throw new AusenciaNaoEncontradaError();
+    return this.prisma.ausencia.update({
+      where: { id: ausenciaId },
+      data: dadosJustificativa(input, autor),
+    });
+  }
+
+  /**
+   * Lista as ausências de um período com o nome do colaborador e os dados da
+   * justificativa (estado, motivo, quem justificou). Alimenta o painel
+   * "Justificativas de faltas" — visível a toda a equipe, resolvendo a falta de
+   * transparência de "só eu sei quem justificou". Mais recentes primeiro;
+   * pendentes no topo.
+   */
+  async listarAusencias(
+    periodo: IntervaloDatas,
+    apenasPendentes = false,
+  ): Promise<AusenciaDetalhada[]> {
+    const ausencias = await this.prisma.ausencia.findMany({
+      where: {
+        data: { gte: periodo.inicio, lte: periodo.fim },
+        ...(apenasPendentes ? { statusJustificativa: 'PENDENTE' } : {}),
+      },
+      orderBy: { data: 'desc' },
+    });
+    const ids = [...new Set(ausencias.map((a) => a.pessoaId))];
+    const colaboradores = await this.prisma.colaborador.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, nome: true, matricula: true },
+    });
+    const nome = new Map(colaboradores.map((c) => [c.id, c]));
+    const linhas: AusenciaDetalhada[] = ausencias.map((a) => ({
+      id: a.id,
+      pessoaId: a.pessoaId,
+      nome: nome.get(a.pessoaId)?.nome ?? a.pessoaId,
+      matricula: nome.get(a.pessoaId)?.matricula ?? null,
+      data: a.data.toISOString().slice(0, 10),
+      registradaPorNome: a.registradaPorNome,
+      statusJustificativa: a.statusJustificativa as StatusJustificativa,
+      motivoJustificativa: a.motivoJustificativa as MotivoJustificativa | null,
+      observacaoJustificativa: a.observacaoJustificativa,
+      justificadaPorNome: a.justificadaPorNome,
+      justificadaEm: a.justificadaEm ? a.justificadaEm.toISOString() : null,
+    }));
+    // Pendentes no topo; dentro de cada grupo, mais recentes primeiro (já ordenado).
+    const ordem: Record<StatusJustificativa, number> = {
+      PENDENTE: 0,
+      INJUSTIFICADA: 1,
+      JUSTIFICADA: 2,
+    };
+    return linhas.sort(
+      (a, b) => ordem[a.statusJustificativa] - ordem[b.statusJustificativa],
+    );
   }
 
   /**

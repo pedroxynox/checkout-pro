@@ -44,6 +44,25 @@ export class AusenciaDuplicadaError extends OperadoresError {
   }
 }
 
+/** Lançado quando a ausência informada (para justificar/remover) não existe. */
+export class AusenciaNaoEncontradaError extends OperadoresError {
+  readonly statusHttp = HttpStatus.NOT_FOUND;
+  constructor(mensagem = 'Ausência não encontrada.') {
+    super(mensagem);
+  }
+}
+
+/**
+ * Lançado quando os dados da justificativa são inconsistentes (ex.: marcar como
+ * JUSTIFICADA sem informar o motivo).
+ */
+export class JustificativaInvalidaError extends OperadoresError {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
+  constructor(mensagem = 'Para justificar, informe o motivo.') {
+    super(mensagem);
+  }
+}
+
 /**
  * Lançado quando um horário de entrada não está no formato esperado "HH:mm"
  * ou representa um horário inválido (usado na classificação de turno).
