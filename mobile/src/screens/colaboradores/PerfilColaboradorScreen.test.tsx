@@ -5,8 +5,12 @@
  * Verifica que o cartão "Histórico de incidências" renderiza o resumo e a
  * linha do tempo (faltas + não retorno) vindos do perfil, e que, com
  * permissão de gestão, os registros completos são buscados (para editar).
+ *
+ * Cobre também (Score de perfil abrangente) a exposição do botão "Registrar
+ * não retorno" no perfil do operador: só aparece com a permissão
+ * `OPERADORES_AUSENCIAS` e abre o modal em modo criar.
  */
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { PerfilColaboradorScreen } from './PerfilColaboradorScreen';
 
@@ -14,14 +18,24 @@ jest.mock('../../api/services', () => ({
   colaboradoresService: { perfil: jest.fn() },
   escalaService: {
     listarIncidencias: jest.fn(),
+    registrarIncidencia: jest.fn(),
     editarIncidencia: jest.fn(),
     removerIncidencia: jest.fn(),
   },
 }));
 
+// Permissão controlável por teste: `mockAuth.permitir` alimenta `podeAcessar`
+// (usado para `OPERADORES_AUSENCIAS`).
+const mockAuth = { permitir: true };
 jest.mock('../../auth/AuthContext', () => ({
-  useAuth: () => ({ podeAcessar: () => true }),
+  useAuth: () => ({ podeAcessar: () => mockAuth.permitir }),
 }));
+
+// "Hoje" determinístico para não depender da data de execução.
+jest.mock('../../utils/formato', () => {
+  const real = jest.requireActual('../../utils/formato');
+  return { ...real, hojeISO: () => '2026-06-25' };
+});
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { colaboradoresService, escalaService } = require('../../api/services');
@@ -32,7 +46,7 @@ const PERFIL = {
     nome: 'Ana Souza',
     matricula: '123',
     login: null,
-    funcao: 'FISCAL',
+    funcao: 'OPERADOR',
     genero: 'F',
     ativo: true,
     turno: null,
@@ -84,6 +98,7 @@ function render_() {
 describe('PerfilColaboradorScreen — histórico de incidências', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuth.permitir = true;
     colaboradoresService.perfil.mockResolvedValue(PERFIL);
     escalaService.listarIncidencias.mockResolvedValue([
       {
@@ -108,5 +123,38 @@ describe('PerfilColaboradorScreen — histórico de incidências', () => {
     expect(escalaService.listarIncidencias).toHaveBeenCalledWith({
       colaboradorId: 'c1',
     });
+  });
+
+  it('exibe o botão "Registrar não retorno" quando há permissão', async () => {
+    render_();
+
+    expect(await screen.findByText('Histórico de incidências')).toBeTruthy();
+    expect(screen.getByText('Registrar não retorno')).toBeTruthy();
+  });
+
+  it('oculta o botão "Registrar não retorno" sem permissão', async () => {
+    mockAuth.permitir = false;
+    render_();
+
+    expect(await screen.findByText('Histórico de incidências')).toBeTruthy();
+    expect(screen.queryByText('Registrar não retorno')).toBeNull();
+  });
+
+  it('abre o modal em modo criar ao pressionar "Registrar não retorno"', async () => {
+    render_();
+
+    const botao = await screen.findByText('Registrar não retorno');
+    // Antes de abrir, o modal (título de criação) não está montado; o único
+    // "Registrar não retorno" presente é o botão de ação.
+    expect(screen.getAllByText('Registrar não retorno')).toHaveLength(1);
+
+    fireEvent.press(botao);
+
+    // No modo criar, o modal renderiza o botão "Salvar" e o campo de retorno
+    // real — marcadores exclusivos do modal (sem incidência existente).
+    expect(await screen.findByText('Salvar')).toBeTruthy();
+    expect(screen.getByText('Retorno real')).toBeTruthy();
+    // O modal de criação NÃO deve estar em modo edição: sem título "Editar".
+    expect(screen.queryByText('Editar incidência')).toBeNull();
   });
 });
