@@ -12,6 +12,20 @@
 
 ---
 
+## Painel de Vendas: cartão "Venda do dia" no topo (2026-07-05)
+
+**Objetivo:** dar destaque ao faturamento **do dia** — a primeira coisa que
+aparece no Painel de Vendas, acima da "Meta do mês".
+
+- Novo cartão **"Venda do dia"** como **primeiro** item do painel: valor do dia
+  em destaque, a data de referência e uma comparação discreta com o mesmo dia do
+  mês anterior (antes R$ X · ↑/↓ %).
+- **Sem mudança de backend:** usa o dado que o painel já entrega
+  (`comparativos.dia`). Só app; mobile type-check + lint + testes + `expo export
+  web` OK.
+
+---
+
 ## Marcação de ocorrências: botões na Escala + suspensão (2026-07-05)
 
 **Objetivo:** simplificar o registro do dia a dia. Na **Escala**, cada
