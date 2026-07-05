@@ -36,6 +36,12 @@ const ITENS: ItemControle[] = [
     icone: 'flag-outline',
   },
   {
+    rota: 'Relatorios',
+    titulo: 'Relatórios',
+    descricao: 'Baixar relatórios dos operadores em PDF (semana ou período)',
+    icone: 'document-text-outline',
+  },
+  {
     rota: 'Usuarios',
     titulo: 'Acesso',
     descricao: 'Quem tem acesso ao app, redefinir senha e revogar',

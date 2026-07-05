@@ -88,5 +88,11 @@ jest.mock('@expo/vector-icons', () => {
   };
 });
 
+// Impressão/PDF: mock leve (não abre diálogo nativo nos testes).
+jest.mock('expo-print', () => ({
+  printAsync: jest.fn(async () => undefined),
+  printToFileAsync: jest.fn(async () => ({ uri: 'file:///relatorio.pdf' })),
+}));
+
 // Silencia avisos previsíveis do ambiente de teste.
 jest.spyOn(console, 'warn').mockImplementation(() => undefined);

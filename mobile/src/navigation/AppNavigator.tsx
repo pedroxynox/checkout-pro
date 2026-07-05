@@ -30,6 +30,7 @@ import { ContratosScreen } from '../screens/contratos/ContratosScreen';
 import { GestaoColaboradoresScreen } from '../screens/colaboradores/GestaoColaboradoresScreen';
 import { PerfilColaboradorScreen } from '../screens/colaboradores/PerfilColaboradorScreen';
 import { CentroControleScreen } from '../screens/centroControle/CentroControleScreen';
+import { RelatoriosScreen } from '../screens/relatorios/RelatoriosScreen';
 import { MetasScreen } from '../screens/metas/MetasScreen';
 import { NaoReconhecidosScreen } from '../screens/indicadores/NaoReconhecidosScreen';
 import { InsumosDadosScreen } from '../screens/centroControle/InsumosDadosScreen';
@@ -193,6 +194,11 @@ export function AppNavigator(): React.ReactElement {
             name="GestaoColaboradores"
             component={GestaoColaboradoresScreen}
             options={{ title: 'Colaboradores (gestão)' }}
+          />
+          <Stack.Screen
+            name="Relatorios"
+            component={RelatoriosScreen}
+            options={{ title: 'Relatórios' }}
           />
           <Stack.Screen
             name="Metas"
