@@ -21,8 +21,8 @@ import {
   ColaboradorDia,
   DiaOperadores,
   FaltasPorOperador,
+  IncidenciaEscala,
   ItemEscalaConsolidada,
-  RankingIncidencia,
 } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import {
@@ -174,16 +174,28 @@ function ColaboradorRow({
   onFalta,
   onSemRetorno,
   podeAcoes,
+  semRetornoAtivo,
 }: {
   c: ColaboradorDia;
   onAbrirPerfil: (c: ColaboradorDia) => void;
   onFalta: (c: ColaboradorDia) => void;
   onSemRetorno: (c: ColaboradorDia) => void;
   podeAcoes: boolean;
+  semRetornoAtivo: boolean;
 }): React.ReactElement {
-  const cor = corStatus(c.status);
   const folga = c.status === 'FOLGA';
   const ehFalta = c.status === 'FALTA';
+  // "Sem retorno" só se aplica a quem trabalha (não folga, não falta).
+  const semRet = semRetornoAtivo && !ehFalta && !folga;
+
+  // Cor/rotulo efetivos: falta (vermelho) > sem retorno (azul) > status.
+  const cor = ehFalta
+    ? { fundo: 'rgba(210,59,59,0.16)', texto: cores.vermelho }
+    : semRet
+      ? { fundo: cores.primariaClara, texto: cores.primaria }
+      : corStatus(c.status);
+  const rotulo = ehFalta ? 'Falta' : semRet ? 'No retorno' : rotuloStatus(c.status);
+
   return (
     <TouchableOpacity
       activeOpacity={0.6}
@@ -205,22 +217,36 @@ function ColaboradorRow({
       <View style={styles.acoesDireita}>
         {folga || !podeAcoes ? (
           <View style={[styles.chip, { backgroundColor: cor.fundo }]}>
-            <Text style={[styles.chipTexto, { color: cor.texto }]}>
-              {rotuloStatus(c.status)}
-            </Text>
+            <Text style={[styles.chipTexto, { color: cor.texto }]}>{rotulo}</Text>
           </View>
         ) : (
           <>
             {!ehFalta ? (
               <TouchableOpacity
                 onPress={() => onSemRetorno(c)}
-                style={[styles.btnAcao, styles.btnSemRetorno]}
+                style={[
+                  styles.btnAcao,
+                  semRet ? styles.btnSemRetornoAtiva : styles.btnSemRetorno,
+                ]}
                 hitSlop={6}
-                accessibilityLabel={`Marcar não retorno do intervalo de ${c.nome}`}
+                accessibilityLabel={
+                  semRet
+                    ? `Remover não retorno de ${c.nome}`
+                    : `Marcar não retorno do intervalo de ${c.nome}`
+                }
               >
-                <Ionicons name="time-outline" size={13} color={cores.primaria} />
-                <Text style={[styles.btnAcaoTexto, { color: cores.primaria }]}>
-                  Sem retorno
+                <Ionicons
+                  name={semRet ? 'time' : 'time-outline'}
+                  size={13}
+                  color={semRet ? cores.textoInverso : cores.primaria}
+                />
+                <Text
+                  style={[
+                    styles.btnAcaoTexto,
+                    { color: semRet ? cores.textoInverso : cores.primaria },
+                  ]}
+                >
+                  {semRet ? 'No retorno' : 'Sem retorno'}
                 </Text>
               </TouchableOpacity>
             ) : null}
@@ -415,14 +441,29 @@ export function OperadoresScreen(): React.ReactElement {
     [],
   );
 
-  // Não-retornos do DIA selecionado (ranking simples por colaborador).
-  const naoRetornosDia = useRequisicao<RankingIncidencia[]>(
+  // Não-retornos do DIA selecionado (incidências com id, para marcar/desmarcar).
+  const naoRetornosDia = useRequisicao<IncidenciaEscala[]>(
     () =>
       escalaService
-        .rankingIncidencias(diaSel, diaSel, 'NAO_RETORNO_INTERVALO')
-        .catch(() => [] as RankingIncidencia[]),
+        .listarIncidencias({
+          tipo: 'NAO_RETORNO_INTERVALO',
+          inicio: diaSel,
+          fim: diaSel,
+        })
+        .catch(() => [] as IncidenciaEscala[]),
     [diaSel],
   );
+
+  // Mapa colaborador → id da incidência de não-retorno do dia (para alternar) e
+  // o conjunto de quem está "sem retorno" hoje (para pintar a linha e contar).
+  const incidenciasDia = naoRetornosDia.dados ?? [];
+  const semRetornoPorColab = new Map<string, string>();
+  for (const i of incidenciasDia) {
+    if (!semRetornoPorColab.has(i.colaboradorId)) {
+      semRetornoPorColab.set(i.colaboradorId, i.id);
+    }
+  }
+  const semRetornoIds = new Set(semRetornoPorColab.keys());
 
   const [ocupado, setOcupado] = useState(false);
 
@@ -503,35 +544,55 @@ export function OperadoresScreen(): React.ReactElement {
     }
   };
 
-  /** Marca "não retorno do intervalo" (sem horário) do operador no dia. */
-  const marcarSemRetorno = async (c: ColaboradorDia) => {
+  /**
+   * Alterna o "não retorno do intervalo" do operador no dia: marca (fica azul,
+   * "No retorno") quando não há; remove quando já está marcado.
+   */
+  const alternarSemRetorno = async (c: ColaboradorDia) => {
     if (ocupado) return;
+    const incidenciaId = semRetornoPorColab.get(c.id);
+
+    // Já marcado → remover.
+    if (incidenciaId) {
+      const ok = await confirmar(
+        'Remover não retorno',
+        `Remover o "não retorno do intervalo" de ${c.nome} em ${formatarData(diaSel)}?`,
+        'Remover',
+      );
+      if (!ok) return;
+      setOcupado(true);
+      try {
+        await escalaService.removerIncidencia(incidenciaId);
+        naoRetornosDia.definir((lista) =>
+          (lista ?? []).filter((i) => i.id !== incidenciaId),
+        );
+        recarregarTudo();
+      } catch (e) {
+        notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao remover.');
+      } finally {
+        setOcupado(false);
+      }
+      return;
+    }
+
+    // Não marcado → registrar.
     const ok = await confirmar(
-      'Marcar sem retorno',
+      'Marcar não retorno',
       `Registrar "não retorno do intervalo" de ${c.nome} em ${formatarData(diaSel)}?`,
       'Marcar',
     );
     if (!ok) return;
     setOcupado(true);
     try {
-      await escalaService.registrarIncidencia({
+      const inc = await escalaService.registrarIncidencia({
         colaboradorId: c.id,
         tipo: 'NAO_RETORNO_INTERVALO',
         data: diaSel,
       });
-      // Atualização otimista do card do dia (reflete na hora); o mês recarrega.
-      naoRetornosDia.definir((lista) => {
-        const atual = lista ?? [];
-        const idx = atual.findIndex((r) => r.colaboradorId === c.id);
-        if (idx >= 0) {
-          const copia = [...atual];
-          copia[idx] = { ...copia[idx], total: copia[idx].total + 1 };
-          return copia;
-        }
-        return [...atual, { colaboradorId: c.id, nome: c.nome, total: 1 }];
-      });
+      // Atualização otimista (reflete na hora); o resto recarrega.
+      naoRetornosDia.definir((lista) => [...(lista ?? []), inc]);
       recarregarTudo();
-      notificar('Registrado', `"Sem retorno" registrado para ${c.nome}.`);
+      notificar('Registrado', `"Não retorno" registrado para ${c.nome}.`);
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar.');
     } finally {
@@ -583,7 +644,9 @@ export function OperadoresScreen(): React.ReactElement {
                       (aoVivo.dados.disponiveis / aoVivo.dados.esperados) * 100,
                     )}%` as `${number}%`,
                     backgroundColor:
-                      aoVivo.dados.faltas > 0 ? cores.amarelo : cores.verde,
+                      aoVivo.dados.faltas > 0 || aoVivo.dados.semRetorno > 0
+                        ? cores.amarelo
+                        : cores.verde,
                   },
                 ]}
               />
@@ -595,11 +658,21 @@ export function OperadoresScreen(): React.ReactElement {
                 .map((f) => f.nome.split(/\s+/)[0])
                 .join(', ')}.`}
             />
-          ) : aoVivo.dados.esperados > 0 ? (
-            <Text style={styles.aoVivoOk}>Todos presentes nesta franja. 👏</Text>
-          ) : (
-            <Text style={styles.aoVivoOk}>Fora do horário de operação.</Text>
-          )}
+          ) : null}
+          {aoVivo.dados.semRetorno > 0 ? (
+            <Aviso
+              texto={`${aoVivo.dados.semRetorno} não retornaram do intervalo (fora do caixa): ${aoVivo.dados.listaSemRetorno
+                .map((f) => f.nome.split(/\s+/)[0])
+                .join(', ')}.`}
+            />
+          ) : null}
+          {aoVivo.dados.faltas === 0 && aoVivo.dados.semRetorno === 0 ? (
+            aoVivo.dados.esperados > 0 ? (
+              <Text style={styles.aoVivoOk}>Todos presentes nesta franja. 👏</Text>
+            ) : (
+              <Text style={styles.aoVivoOk}>Fora do horário de operação.</Text>
+            )
+          ) : null}
         </Cartao>
       ) : null}
 
@@ -644,11 +717,31 @@ export function OperadoresScreen(): React.ReactElement {
               {ehHoje ? 'Hoje · ' : ''}
               {NOMES_DIA_LONGO[dados.diaSemana]}, {formatarData(dados.dataISO)}
             </Text>
-            <View style={styles.resumoLinha}>
-              <Resumo valor={dados.trabalhando} rotulo="Trabalham" cor={cores.verde} />
-              <Resumo valor={dados.faltas} rotulo="Faltas" cor={cores.vermelho} />
-              <Resumo valor={dados.folgas} rotulo="Folgas" cor={cores.textoSecundario} />
-            </View>
+            {(() => {
+              const semRetornoNoDia = dados.colaboradores.filter(
+                (c) => c.status !== 'FALTA' && semRetornoIds.has(c.id),
+              ).length;
+              return (
+                <View style={styles.resumoLinha}>
+                  <Resumo
+                    valor={dados.trabalhando}
+                    rotulo="Trabalham"
+                    cor={cores.verde}
+                  />
+                  <Resumo valor={dados.faltas} rotulo="Faltas" cor={cores.vermelho} />
+                  <Resumo
+                    valor={semRetornoNoDia}
+                    rotulo="Sem retorno"
+                    cor={cores.primaria}
+                  />
+                  <Resumo
+                    valor={dados.folgas}
+                    rotulo="Folgas"
+                    cor={cores.textoSecundario}
+                  />
+                </View>
+              );
+            })()}
 
             {/* Conteo por turno (pela hora de entrada) */}
             <Text style={styles.turnoLabel}>Por turno</Text>
@@ -678,8 +771,8 @@ export function OperadoresScreen(): React.ReactElement {
             ) : null}
             <Text style={styles.dica}>
               Ordenados por hora de entrada · folgas ao fim. Toque no operador
-              para ver o perfil; use "Falta" para marcar/remover falta e "Sem
-              retorno" para o não retorno do intervalo.
+              para ver o perfil; use "Falta" e "Sem retorno" para marcar/remover
+              (quem não retorna fica azul e sai do caixa).
             </Text>
           </Cartao>
 
@@ -701,8 +794,9 @@ export function OperadoresScreen(): React.ReactElement {
                     c={c}
                     onAbrirPerfil={abrirPerfil}
                     onFalta={alternarFalta}
-                    onSemRetorno={marcarSemRetorno}
+                    onSemRetorno={alternarSemRetorno}
                     podeAcoes={podeSemRetorno}
+                    semRetornoAtivo={semRetornoIds.has(c.id)}
                   />
                 ))}
               </View>
@@ -739,27 +833,26 @@ export function OperadoresScreen(): React.ReactElement {
 
           <Cartao titulo="Não-retorno do dia">
             {(() => {
-              const lista = naoRetornosDia.dados ?? [];
-              const total = lista.reduce((s, r) => s + r.total, 0);
-              if (total === 0) {
+              if (incidenciasDia.length === 0) {
                 return (
                   <Text style={styles.dica}>Nenhum não-retorno hoje.</Text>
                 );
               }
+              const nomePorId = new Map(
+                dados.colaboradores.map((c) => [c.id, c.nome]),
+              );
               return (
                 <>
                   <Text style={styles.faltasTotal}>
-                    {total} não-retorno{total === 1 ? '' : 's'}
+                    {incidenciasDia.length} não-retorno
+                    {incidenciasDia.length === 1 ? '' : 's'}
                   </Text>
-                  {lista.map((r) => (
-                    <View key={r.colaboradorId} style={styles.faltaItem}>
+                  {incidenciasDia.map((i) => (
+                    <View key={i.id} style={styles.faltaItem}>
                       <View style={styles.faltaItemInfo}>
                         <Text style={styles.faltaNomeFull} numberOfLines={1}>
-                          {r.nome}
+                          {nomePorId.get(i.colaboradorId) ?? i.colaboradorId}
                         </Text>
-                      </View>
-                      <View style={styles.faltaNums}>
-                        <Text style={styles.faltaQtdFull}>{r.total}</Text>
                       </View>
                     </View>
                   ))}
@@ -1118,6 +1211,10 @@ const styles = StyleSheet.create({
   btnSemRetorno: {
     borderColor: cores.primaria,
     backgroundColor: cores.primariaClara,
+  },
+  btnSemRetornoAtiva: {
+    borderColor: cores.primaria,
+    backgroundColor: cores.primaria,
   },
   btnAcaoTexto: {
     fontSize: 11,
