@@ -12,6 +12,26 @@
 
 ---
 
+## Insumos: fim da reposição automática — nada entra sem aprovação (2026-07-06)
+
+A seção de Insumos estava "se enchendo sozinha": o sistema criava **requisições
+automáticas** quando um insumo chegava a nível crítico (a cada consumo e num
+cron diário). Isso foi **removido**.
+
+- **Nada é criado sozinho:** requisições/entradas de estoque só existem quando o
+  gestor as cria e aprova.
+- O estoque crítico continua **sinalizado**: o app mostra o nível e os gestores
+  recebem um **alerta diário** (07:00) e de ruptura iminente (12:00) — mas isso
+  é só aviso, não cria nada.
+- Removida a auto-reposição em tempo real (no consumo) e a criação automática no
+  cron; ambos viraram apenas alerta.
+
+> Obs.: os "pedidos recorrentes" (se você tiver configurado algum) ainda geram
+> uma *sugestão* semanal para você confirmar. Se também quiser desligar isso,
+> me avise.
+
+---
+
 ## Notificações push (Expo) — avisos chegam ao celular com o app fechado (2026-07-06)
 
 - **App**: pede permissão de notificações e registra o aparelho (token Expo) no

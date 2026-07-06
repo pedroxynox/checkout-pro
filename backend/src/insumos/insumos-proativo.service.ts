@@ -1,21 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { InsumosService } from './insumos.service';
 
 /**
- * Serviço proativo de insumos.
+ * Serviço proativo de insumos — SÓ ALERTAS, nunca cria dados.
  *
- * Crons:
- * 1. Verificação diária (07:00): analisa estoque e gera requisições automáticas
- *    para insumos em nível CRITICO. Notifica gestores.
- * 2. Alerta de ruptura iminente (12:00): notifica se algum insumo vai acabar
- *    em 3 dias ou menos (predicción ponderada).
- *
- * A auto-reposição NÃO substitui a aprovação — cria requisições com status
- * PENDENTE para casos normais (nível CRITICO). O gestor é notificado e pode
- * negar se quiser. Para casos ATENCAO, apenas notifica sem criar requisição.
+ * Nada entra em requisições/estoque sem o gestor solicitar/aprovar. Os crons
+ * apenas AVISAM os gestores:
+ * 1. Diário (07:00): insumos em nível CRITICO — sugere criar a requisição.
+ * 2. Ruptura iminente (12:00): insumos que podem acabar em ≤3 dias.
+ * 3. Relatório semanal (segunda 08:00): resumo de consumo.
  *
  * Fuso: America/Sao_Paulo.
  */
@@ -24,15 +19,13 @@ export class InsumosProativoService {
   private readonly logger = new Logger(InsumosProativoService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
     private readonly insumos: InsumosService,
     private readonly notificacoes: NotificacoesService,
   ) {}
 
   /**
-   * CRON 1: Auto-reposição para insumos em nível CRITICO.
-   * Roda todo dia às 07:00 (antes da abertura).
-   * Cria requisição automática com a quantidade sugerida.
+   * CRON 1: Alerta de estoque crítico (07:00, antes da abertura). Apenas avisa
+   * os gestores — NÃO cria requisição.
    */
   @Cron('0 7 * * *', { timeZone: 'America/Sao_Paulo' })
   async autoReposicao(): Promise<void> {
@@ -40,51 +33,25 @@ export class InsumosProativoService {
     const apenasUrgentes = criticos.filter((i) => i.nivel === 'CRITICO');
 
     if (apenasUrgentes.length === 0) {
-      this.logger.log(
-        'Auto-reposição: todos os insumos em nível OK ou ATENÇÃO.',
-      );
+      this.logger.log('Estoque: nenhum insumo em nível crítico.');
       return;
     }
 
+    // Apenas ALERTA — NÃO cria requisição. Nada entra em requisições/estoque
+    // sem o gestor solicitar/aprovar.
     const gestores = await this.notificacoes.gestores();
-    const linhas: string[] = [];
-
-    for (const insumo of apenasUrgentes) {
-      // Verificar se já existe requisição pendente para esse insumo.
-      const pendente = await this.prisma.requisicao.findFirst({
-        where: { insumoId: insumo.id, status: 'PENDENTE' },
-      });
-      if (pendente) continue; // Já tem requisição pendente, não duplicar.
-
-      // Criar requisição automática.
-      await this.prisma.requisicao.create({
-        data: {
-          insumoId: insumo.id,
-          quantidade: insumo.sugestaoReposicao,
-          status: 'PENDENTE',
-          observacao: `[Auto] Reposição automática — estoque crítico (${insumo.saldo} ${insumo.unidade}s restantes).`,
-          solicitanteNome: 'Sistema (auto-reposição)',
-        },
-      });
-
-      const plural =
-        insumo.sugestaoReposicao === 1
-          ? insumo.embalagem
-          : `${insumo.embalagem}s`;
-      linhas.push(
-        `• ${insumo.nome}: ${insumo.sugestaoReposicao} ${plural} (saldo: ${insumo.saldo})`,
-      );
-      this.logger.log(
-        `Auto-requisição: ${insumo.nome} — ${insumo.sugestaoReposicao} ${plural}.`,
-      );
-    }
-
-    if (linhas.length > 0) {
-      await this.notificacoes.enviar(gestores, {
-        titulo: '📦 Reposição automática criada',
-        mensagem: `Insumos em nível crítico precisam de reposição:\n${linhas.join('\n')}\n\nAprove as requisições para dar entrada no estoque.`,
-      });
-    }
+    const linhas = apenasUrgentes.map(
+      (i) => `• ${i.nome} (saldo: ${i.saldo} ${i.unidade}s)`,
+    );
+    await this.notificacoes.enviar(gestores, {
+      titulo: '📦 Estoque crítico',
+      mensagem: `Estes insumos estão em nível crítico:\n${linhas.join(
+        '\n',
+      )}\n\nCrie a requisição se precisar repor.`,
+    });
+    this.logger.log(
+      `Alerta de estoque crítico: ${apenasUrgentes.length} insumo(s).`,
+    );
   }
 
   /**
