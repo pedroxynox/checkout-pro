@@ -80,7 +80,12 @@ function janela(): { inicio: string; fim: string } {
   return { inicio: ini.toISOString().slice(0, 10), fim: hoje.toISOString().slice(0, 10) };
 }
 
-export function JustificativasScreen(): React.ReactElement {
+/**
+ * Conteúdo das Justificativas (sem `Tela`), para ser embutido em outra tela
+ * (ex.: dentro de Escalas, abaixo do painel de faltas) ou usado pela tela
+ * própria `JustificativasScreen`.
+ */
+export function JustificativasLista(): React.ReactElement {
   const req = useRequisicao<Ocorrencia[]>(async () => {
     const { inicio, fim } = janela();
     const [faltas, incidencias, colaboradores] = await Promise.all([
@@ -182,7 +187,7 @@ export function JustificativasScreen(): React.ReactElement {
   const reabrir = (o: Ocorrencia) => aplicar(o, 'PENDENTE');
 
   return (
-    <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
+    <>
       <View style={styles.chips}>
         {(['PENDENTES', 'TODAS'] as const).map((f) => (
           <Text
@@ -307,6 +312,15 @@ export function JustificativasScreen(): React.ReactElement {
           );
         })
       )}
+    </>
+  );
+}
+
+/** Tela própria de Justificativas (envolve a lista com pull-to-refresh). */
+export function JustificativasScreen(): React.ReactElement {
+  return (
+    <Tela>
+      <JustificativasLista />
     </Tela>
   );
 }
