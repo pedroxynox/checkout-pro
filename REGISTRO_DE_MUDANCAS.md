@@ -12,6 +12,24 @@
 
 ---
 
+## Notificações push (Expo) — avisos chegam ao celular com o app fechado (2026-07-06)
+
+- **App**: pede permissão de notificações e registra o aparelho (token Expo) no
+  servidor ao entrar; some no logout. Notificações também aparecem com o app
+  aberto.
+- **Backend**: nova tabela `push_tokens` (token por usuário) + envio via Expo
+  Push Service embutido no `NotificacoesService.enviar` — ou seja, TODOS os
+  avisos que já existem (faltas, requisições, advertências, cobertura baixa,
+  APAE, etc.) agora também saem como **push**. Envio best-effort (nunca quebra o
+  fluxo) e em lotes de 100.
+- Endpoints: `POST /notificacoes/push-token` (registrar) e
+  `/push-token/remover`.
+- **Pendências para funcionar em produção (Android):** vincular um projeto
+  **Firebase (FCM)** gratuito à conta Expo e **recompilar o APK**. Sem a
+  credencial FCM o push não é entregue no Android (o resto do app segue normal).
+
+---
+
 ## Colaboradores: inativos separados no fim + purga mensal (dia 1º) preservando totais (2026-07-06)
 
 - **Inativos ao final:** na lista de Colaboradores, os desligados aparecem
