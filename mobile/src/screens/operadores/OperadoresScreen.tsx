@@ -409,14 +409,19 @@ export function OperadoresScreen(): React.ReactElement {
     [],
   );
 
-  // Não-retornos do intervalo no mês (ranking por colaborador). Defensivo: em
-  // erro, some (retorna lista vazia) — não quebra a tela.
-  const naoRetornos = useRequisicao<RankingIncidencia[]>(
+  // Não-retornos do MÊS — mesma inteligência/semáforo das faltas do mês.
+  const naoRetornosMes = useRequisicao<AnaliticaFaltas>(
+    () => operadoresService.analiticaNaoRetornos(mes.inicio, mes.fim),
+    [],
+  );
+
+  // Não-retornos do DIA selecionado (ranking simples por colaborador).
+  const naoRetornosDia = useRequisicao<RankingIncidencia[]>(
     () =>
       escalaService
-        .rankingIncidencias(mes.inicio, mes.fim, 'NAO_RETORNO_INTERVALO')
+        .rankingIncidencias(diaSel, diaSel, 'NAO_RETORNO_INTERVALO')
         .catch(() => [] as RankingIncidencia[]),
-    [],
+    [diaSel],
   );
 
   const [ocupado, setOcupado] = useState(false);
@@ -425,7 +430,8 @@ export function OperadoresScreen(): React.ReactElement {
     dia.recarregar();
     aoVivo.recarregar();
     analitica.recarregar();
-    naoRetornos.recarregar();
+    naoRetornosMes.recarregar();
+    naoRetornosDia.recarregar();
     escalaFiscais.recarregar();
   };
 
@@ -513,8 +519,8 @@ export function OperadoresScreen(): React.ReactElement {
         tipo: 'NAO_RETORNO_INTERVALO',
         data: diaSel,
       });
-      // Atualização otimista do contador do mês (reflete na hora).
-      naoRetornos.definir((lista) => {
+      // Atualização otimista do card do dia (reflete na hora); o mês recarrega.
+      naoRetornosDia.definir((lista) => {
         const atual = lista ?? [];
         const idx = atual.findIndex((r) => r.colaboradorId === c.id);
         if (idx >= 0) {
@@ -703,6 +709,65 @@ export function OperadoresScreen(): React.ReactElement {
             );
           })}
 
+          {/* Cards do DIA (faltas e não-retornos do dia selecionado) */}
+          <Cartao titulo="Faltas do dia">
+            {(() => {
+              const faltantes = dados.colaboradores.filter(
+                (c) => c.status === 'FALTA',
+              );
+              if (faltantes.length === 0) {
+                return <Text style={styles.dica}>Nenhuma falta hoje. 👏</Text>;
+              }
+              return (
+                <>
+                  <Text style={styles.faltasTotal}>
+                    {faltantes.length} falta{faltantes.length === 1 ? '' : 's'}
+                  </Text>
+                  {faltantes.map((c) => (
+                    <View key={c.id} style={styles.faltaItem}>
+                      <View style={styles.faltaItemInfo}>
+                        <Text style={styles.faltaNomeFull} numberOfLines={1}>
+                          {c.nome}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              );
+            })()}
+          </Cartao>
+
+          <Cartao titulo="Não-retorno do dia">
+            {(() => {
+              const lista = naoRetornosDia.dados ?? [];
+              const total = lista.reduce((s, r) => s + r.total, 0);
+              if (total === 0) {
+                return (
+                  <Text style={styles.dica}>Nenhum não-retorno hoje.</Text>
+                );
+              }
+              return (
+                <>
+                  <Text style={styles.faltasTotal}>
+                    {total} não-retorno{total === 1 ? '' : 's'}
+                  </Text>
+                  {lista.map((r) => (
+                    <View key={r.colaboradorId} style={styles.faltaItem}>
+                      <View style={styles.faltaItemInfo}>
+                        <Text style={styles.faltaNomeFull} numberOfLines={1}>
+                          {r.nome}
+                        </Text>
+                      </View>
+                      <View style={styles.faltaNums}>
+                        <Text style={styles.faltaQtdFull}>{r.total}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              );
+            })()}
+          </Cartao>
+
           {/* Análise inteligente de faltas do mês */}
           {analitica.dados && analitica.dados.total > 0 ? (
             <Cartao titulo="Faltas do mês">
@@ -754,35 +819,56 @@ export function OperadoresScreen(): React.ReactElement {
             </Cartao>
           ) : null}
 
-          {/* Não-retornos do intervalo no mês (contador + por colaborador) */}
-          {(() => {
-            const lista = naoRetornos.dados ?? [];
-            const total = lista.reduce((s, r) => s + r.total, 0);
-            if (total === 0) return null;
-            return (
-              <Cartao titulo="Não-retornos do mês">
-                <Text style={styles.faltasTotal}>
-                  {total} não-retorno{total === 1 ? '' : 's'}
-                </Text>
-                <Text style={styles.faltasLegenda}>
-                  Não retorno do intervalo registrado neste mês.
-                </Text>
-                <Text style={styles.faltasSubtitulo}>Por colaborador</Text>
-                {lista.map((r) => (
-                  <View key={r.colaboradorId} style={styles.faltaItem}>
-                    <View style={styles.faltaItemInfo}>
-                      <Text style={styles.faltaNomeFull} numberOfLines={1}>
-                        {r.nome}
-                      </Text>
-                    </View>
-                    <View style={styles.faltaNums}>
-                      <Text style={styles.faltaQtdFull}>{r.total}</Text>
-                    </View>
-                  </View>
-                ))}
-              </Cartao>
-            );
-          })()}
+          {/* Análise inteligente de não-retornos do mês (mesmo semáforo das faltas) */}
+          {naoRetornosMes.dados && naoRetornosMes.dados.total > 0 ? (
+            <Cartao titulo="Não-retornos do mês">
+              <View style={styles.faltasTopo}>
+                <View>
+                  <Text style={styles.faltasTotal}>
+                    {naoRetornosMes.dados.total} não-retorno(s)
+                  </Text>
+                  <Text style={styles.faltasLegenda}>
+                    Taxa: {naoRetornosMes.dados.taxaGlobal}%
+                  </Text>
+                </View>
+                {naoRetornosMes.dados.tendenciaPct != null
+                  ? (() => {
+                      const t = naoRetornosMes.dados.tendenciaPct as number;
+                      const corT =
+                        t > 0
+                          ? cores.vermelho
+                          : t < 0
+                            ? cores.verde
+                            : cores.textoSecundario;
+                      const seta = t > 0 ? '▲ +' : t < 0 ? '▼ ' : '';
+                      return (
+                        <Text style={[styles.faltasTend, { color: corT }]}>
+                          {seta}
+                          {t}% vs. período anterior
+                        </Text>
+                      );
+                    })()
+                  : null}
+              </View>
+              {(() => {
+                const pior = [...naoRetornosMes.dados.porDiaSemana].sort(
+                  (a, b) => b.quantidade - a.quantidade,
+                )[0];
+                return pior && pior.quantidade > 0 ? (
+                  <Text style={styles.faltasDica}>
+                    Dia com mais não-retornos: {pior.nome} ({pior.quantidade})
+                  </Text>
+                ) : null;
+              })()}
+              <Text style={styles.faltasSubtitulo}>Quem precisa de atenção</Text>
+              {naoRetornosMes.dados.porOperador.slice(0, 6).map((o) => (
+                <FaltaOperadorRow key={o.id} o={o} />
+              ))}
+              <Text style={styles.faltasRodape}>
+                🔴 alto · 🟡 médio · 🟢 baixo risco — por taxa, padrão e tendência.
+              </Text>
+            </Cartao>
+          ) : null}
 
           {/* Justificativas (faltas + não-retornos) — abaixo do painel de faltas */}
           {podeSemRetorno ? (

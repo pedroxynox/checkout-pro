@@ -198,6 +198,7 @@ export function RegistrarSancaoModal({
           </Text>
 
           <ScrollView
+            style={styles.scroll}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
@@ -363,6 +364,7 @@ const styles = StyleSheet.create({
     color: cores.textoSecundario,
     marginBottom: espacamento.md,
   },
+  scroll: { flexShrink: 1 },
   sugestaoBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',

@@ -51,6 +51,17 @@ export class OperadorTurnoController {
     );
   }
 
+  /** Analítica de "não retorno do intervalo" (mesma inteligência das faltas). */
+  @Get('nao-retornos/analitica')
+  analiticaNaoRetornos(
+    @Query() periodo: PeriodoAusenciasDto,
+  ): Promise<AnaliticaFaltas> {
+    return this.service.analiticaNaoRetornos(
+      new Date(periodo.inicio),
+      new Date(periodo.fim),
+    );
+  }
+
   /** Lista os operadores (turno fixo). Fonte: Cadastro Unificado de Colaboradores. */
   @Get('turnos')
   listar(): Promise<OperadorTurno[]> {

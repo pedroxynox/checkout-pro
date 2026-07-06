@@ -12,6 +12,22 @@
 
 ---
 
+## Escalas: cards do dia (faltas e não-retorno) + não-retornos do mês com semáforo; scroll no seletor de Sanções (2026-07-05)
+
+- **Cards do dia:** na tela Escalas, dois novos cards logo acima de "Faltas do
+  mês": **"Faltas do dia"** e **"Não-retorno do dia"** (do dia selecionado, com
+  o total e quem foi). Atualizam na hora ao marcar.
+- **Não-retornos do mês inteligente:** o card mensal de não-retornos passou a
+  ter a **mesma inteligência das faltas** — semáforo de risco (🔴🟡🟢), taxa,
+  tendência vs. período anterior, dia com mais e "quem precisa de atenção".
+  Reusa o mesmo motor de análise (sem duplicar lógica).
+- **Correção (Sanções):** o seletor de colaborador ao registrar uma sanção
+  agora **rola** para achar quem procurar (antes travava).
+- Backend: novo endpoint de analítica de não-retornos reusando o motor puro das
+  faltas. Sem migração.
+
+---
+
 ## Sanções: seção própria (advertência/suspensão) e perfil só leitura (ADR 0012) (2026-07-05)
 
 **Nova seção "Sanções" (dentro de Colaboradores)** para registrar e acompanhar
