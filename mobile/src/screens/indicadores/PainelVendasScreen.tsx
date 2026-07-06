@@ -238,6 +238,11 @@ export function PainelVendasScreen(): React.ReactElement {
   const corMeta = metaPct >= 100 ? cores.verde : metaPct >= 60 ? cores.amarelo : cores.vermelho;
   const projVar = painel?.projecaoVsMeta ?? null;
 
+  // Venda do dia (destaque no topo) + comparação com o mesmo dia do mês anterior.
+  const varDia = painel?.comparativos.dia.variacao ?? null;
+  const corDia =
+    varDia == null ? cores.textoSecundario : varDia >= 0 ? cores.verde : cores.vermelho;
+
   const dadosCurva = (painel?.curvaHoraria ?? [])
     .filter((c) => c.valor > 0)
     .map((c) => ({ rotulo: `${c.hora}h`, valor: c.valor }));
@@ -280,6 +285,24 @@ export function PainelVendasScreen(): React.ReactElement {
         <MensagemErro mensagem={painelReq.erro} aoTentarNovamente={painelReq.recarregar} />
       ) : painel ? (
         <>
+          {/* ----- Venda do dia (destaque, primeiro) ----- */}
+          <Cartao titulo="Venda do dia">
+            <Text style={styles.vendaDiaValor}>
+              {formatarMoeda(painel.comparativos.dia.atual)}
+            </Text>
+            <Text style={styles.vendaDiaData}>{formatarData(data)}</Text>
+            <View style={styles.vendaDiaComp}>
+              <Text style={styles.vendaDiaAntes}>
+                antes {formatarMoeda(painel.comparativos.dia.anterior)}
+              </Text>
+              <Text style={[styles.vendaDiaVar, { color: corDia }]}>
+                {varDia == null
+                  ? '—'
+                  : `${varDia >= 0 ? '↑' : '↓'} ${formatarPercentual(Math.abs(varDia), 0)}`}
+              </Text>
+            </View>
+          </Cartao>
+
           {/* ----- Panorama: meta + projeção ----- */}
           <Cartao titulo="Meta do mês">
             {painel.metaMensal > 0 ? (
@@ -462,6 +485,34 @@ export function PainelVendasScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
+  // Venda do dia (destaque)
+  vendaDiaValor: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: cores.primaria,
+  },
+  vendaDiaData: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+  },
+  vendaDiaComp: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: espacamento.sm,
+    paddingTop: espacamento.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: cores.divisor,
+  },
+  vendaDiaAntes: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  vendaDiaVar: {
+    ...tipografia.rotulo,
+    fontWeight: '700',
+  },
   metaTopo: {
     flexDirection: 'row',
     alignItems: 'baseline',

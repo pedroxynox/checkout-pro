@@ -85,9 +85,12 @@ describe('PainelVendasScreen', () => {
     expect(vendasService.porHora).toHaveBeenCalled();
   });
 
-  it('mostra o comparativo do dia formatado em reais', async () => {
+  it('mostra a venda do dia em destaque e no comparativo', async () => {
     render(<PainelVendasScreen />);
 
-    expect(await screen.findByText(/12\.345,67/)).toBeTruthy();
+    // "Venda do dia" é o primeiro cartão (destaque no topo).
+    expect(await screen.findByText('Venda do dia')).toBeTruthy();
+    // O valor do dia (R$ 12.345,67) aparece no destaque e no comparativo "Dia".
+    expect((await screen.findAllByText(/12\.345,67/)).length).toBeGreaterThan(1);
   });
 });

@@ -1,0 +1,9 @@
+# Estratégia de merge para arquivos "só de acréscimo" (append-only), onde cada
+# PR adiciona uma entrada nova no topo. A estratégia "union" faz o Git manter
+# automaticamente as linhas dos DOIS lados no merge, em vez de gerar conflito.
+# Isso elimina o conflito recorrente no changelog quando vários PRs adicionam
+# entradas ao mesmo tempo (o gestor não precisa mais resolver conflito manual).
+#
+# Observação: use apenas em arquivos onde manter ambas as versões é sempre o
+# comportamento correto (documentos incrementais). Não usar em código.
+REGISTRO_DE_MUDANCAS.md merge=union
