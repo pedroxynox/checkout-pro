@@ -23,6 +23,25 @@
   no caixa** ("Agora no caixa"), listado à parte — não conta mais como presente.
 - Backend: o "ao vivo" passou a separar os não-retornos dos disponíveis (novo
   campo). Sem migração.
+## Advertência automática por falta não justificada (com aprovação) (ADR 0013) (2026-07-05)
+
+Nova função com **alerta** para o gerente, sem lançar nada sem autorização:
+
+- **Todo dia às 08:00**, o sistema procura faltas que **continuam sem
+  justificar** do dia anterior (ou antes) e cria uma **solicitação de
+  advertência** por desídia para cada uma, avisando o gerente (notificação).
+- A solicitação aparece na seção **Sanções** ("Solicitações de advertência").
+  O gerente **aprova** — e aí a advertência é lançada em Sanções (vinculada à
+  falta) — **ou cancela**, caso o funcionário já tenha justificado e ele tenha
+  esquecido de marcar no app.
+- **Nada é lançado sozinho:** a advertência só entra com a aprovação do gerente.
+- **Inteligente:** se a falta for justificada antes da decisão, a solicitação é
+  cancelada automaticamente (some da lista). Não duplica: uma solicitação por
+  falta.
+- Backend: nova tabela `solicitacoes_advertencia` (migração aditiva), cron
+  diário, endpoints de listar/aprovar/cancelar e a nova permissão
+  `ADVERTENCIAS_DECIDIR` (gerente/supervisor). A advertência é criada pelo mesmo
+  fluxo de Sanções (motivo "Desídia", vínculo com a falta).
 
 ---
 

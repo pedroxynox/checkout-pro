@@ -42,6 +42,8 @@ export const TODAS_FUNCIONALIDADES = [
   'CHECKLIST',
   'OPERADORES_AUSENCIAS',
   'OPERADORES_CRUD',
+  // Decisão de solicitações automáticas de advertência (gerente/supervisor)
+  'ADVERTENCIAS_DECIDIR',
   // Contratos de experiência (tempo de casa + marcos 45/90)
   'CONTRATOS_VISUALIZAR',
   'CONTRATOS_GERIR',
@@ -87,6 +89,7 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] = Object.free
   'FECHAMENTO',
   'FISCAIS_JORNADA',
   'CONTRATOS_VISUALIZAR',
+  'ADVERTENCIAS_DECIDIR',
 ]);
 
 /** Funcionalidades do IMPORTADOR: usuário dedicado só carrega arquivos (Importações). */
@@ -128,6 +131,7 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
   'FISCAIS_JORNADA',
   'CONTRATOS_VISUALIZAR',
   'CONTRATOS_GERIR',
+  'ADVERTENCIAS_DECIDIR',
 ]);
 
 const FUNCIONALIDADES_GERENTE_SET = new Set<string>(FUNCIONALIDADES_GERENTE);
