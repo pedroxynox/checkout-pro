@@ -162,11 +162,17 @@ function contarTurnos(cols: ColaboradorDia[]): {
 function ColaboradorRow({
   c,
   onPress,
+  onSemRetorno,
+  podeSemRetorno,
 }: {
   c: ColaboradorDia;
   onPress: (c: ColaboradorDia) => void;
+  onSemRetorno: (c: ColaboradorDia) => void;
+  podeSemRetorno: boolean;
 }): React.ReactElement {
   const cor = corStatus(c.status);
+  // "Sem retorno" (não retorno do intervalo) só faz sentido para quem trabalha.
+  const mostrarSemRetorno = podeSemRetorno && c.status === 'TRABALHA';
   return (
     <TouchableOpacity
       activeOpacity={c.status === 'FOLGA' ? 1 : 0.6}
@@ -184,8 +190,23 @@ function ColaboradorRow({
           {c.status === 'FOLGA' ? 'Dia de folga' : `${c.entrada} – ${c.saida}`}
         </Text>
       </View>
-      <View style={[styles.chip, { backgroundColor: cor.fundo }]}>
-        <Text style={[styles.chipTexto, { color: cor.texto }]}>{rotuloStatus(c.status)}</Text>
+      <View style={styles.acoesDireita}>
+        <View style={[styles.chip, { backgroundColor: cor.fundo }]}>
+          <Text style={[styles.chipTexto, { color: cor.texto }]}>
+            {rotuloStatus(c.status)}
+          </Text>
+        </View>
+        {mostrarSemRetorno ? (
+          <TouchableOpacity
+            onPress={() => onSemRetorno(c)}
+            style={styles.btnSemRetorno}
+            hitSlop={6}
+            accessibilityLabel={`Marcar não retorno do intervalo de ${c.nome}`}
+          >
+            <Ionicons name="time-outline" size={13} color={cores.primaria} />
+            <Text style={styles.btnSemRetornoTexto}>Sem retorno</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -385,6 +406,31 @@ export function OperadoresScreen(): React.ReactElement {
     }
   };
 
+  /** Marca "não retorno do intervalo" (sem horário) do operador no dia. */
+  const marcarSemRetorno = async (c: ColaboradorDia) => {
+    if (ocupado) return;
+    const ok = await confirmar(
+      'Marcar sem retorno',
+      `Registrar "não retorno do intervalo" de ${c.nome} em ${formatarData(diaSel)}?`,
+      'Marcar',
+    );
+    if (!ok) return;
+    setOcupado(true);
+    try {
+      await escalaService.registrarIncidencia({
+        colaboradorId: c.id,
+        tipo: 'NAO_RETORNO_INTERVALO',
+        data: diaSel,
+      });
+      notificar('Registrado', `"Sem retorno" registrado para ${c.nome}.`);
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar.');
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  const podeSemRetorno = podeAcessar('OPERADORES_AUSENCIAS');
   const ehHoje = diaSel === hojeISO();
   const coberturaBaixa = dados ? dados.trabalhando < COBERTURA_MINIMA : false;
 
@@ -522,7 +568,8 @@ export function OperadoresScreen(): React.ReactElement {
               />
             ) : null}
             <Text style={styles.dica}>
-              Ordenados por hora de entrada · folgas ao fim. Toque para marcar/remover falta.
+              Ordenados por hora de entrada · folgas ao fim. Toque na linha para
+              marcar/remover falta; use "Sem retorno" para o não retorno do intervalo.
             </Text>
           </Cartao>
 
@@ -539,7 +586,13 @@ export function OperadoresScreen(): React.ReactElement {
                   </View>
                 </View>
                 {itens.map((c) => (
-                  <ColaboradorRow key={c.id} c={c} onPress={aoTocarColaborador} />
+                  <ColaboradorRow
+                    key={c.id}
+                    c={c}
+                    onPress={aoTocarColaborador}
+                    onSemRetorno={marcarSemRetorno}
+                    podeSemRetorno={podeSemRetorno}
+                  />
                 ))}
               </View>
             );
@@ -788,6 +841,10 @@ const styles = StyleSheet.create({
     color: cores.textoSecundario,
     marginTop: 1,
   },
+  acoesDireita: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
   chip: {
     paddingHorizontal: espacamento.sm,
     paddingVertical: 3,
@@ -798,6 +855,22 @@ const styles = StyleSheet.create({
   chipTexto: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  btnSemRetorno: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: espacamento.sm,
+    paddingVertical: 3,
+    borderRadius: raio.pill,
+    borderWidth: 1,
+    borderColor: cores.primaria,
+    backgroundColor: cores.primariaClara,
+  },
+  btnSemRetornoTexto: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: cores.primaria,
   },
   // Folga (cards no fim, compactos)
   folgaItem: {
