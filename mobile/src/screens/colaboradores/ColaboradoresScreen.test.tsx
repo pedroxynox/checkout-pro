@@ -12,6 +12,11 @@ jest.mock('../../api/services', () => ({
   colaboradoresService: { listar: jest.fn() },
 }));
 
+// A tela agora exibe o atalho para Contratos conforme a permissão.
+jest.mock('../../auth/AuthContext', () => ({
+  useAuth: () => ({ podeAcessar: () => true }),
+}));
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { colaboradoresService } = require('../../api/services');
 

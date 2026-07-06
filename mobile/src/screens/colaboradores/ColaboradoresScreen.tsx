@@ -10,6 +10,7 @@ import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colaboradoresService } from '../../api/services';
 import { Colaborador, FuncaoColaborador, TurnoColaborador } from '../../api/types';
+import { useAuth } from '../../auth/AuthContext';
 import {
   Carregando,
   CampoTexto,
@@ -42,6 +43,7 @@ function rotuloTurno(t: TurnoColaborador | null): string {
 export function ColaboradoresScreen({
   navigation,
 }: PropsTela<'Colaboradores'>): React.ReactElement {
+  const { podeAcessar } = useAuth();
   const lista = useRequisicao<Colaborador[]>(
     () => colaboradoresService.listar(),
     [],
@@ -88,6 +90,26 @@ export function ColaboradoresScreen({
 
   return (
     <Tela aoAtualizar={lista.recarregar} atualizando={lista.atualizando}>
+      {/* Atalho para Contratos de experiência (tempo de casa e marcos 45/90). */}
+      {podeAcessar('CONTRATOS_VISUALIZAR') && (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('Contratos')}
+          style={styles.cardContratos}
+        >
+          <View style={styles.contratosIcone}>
+            <Ionicons name="document-text-outline" size={20} color={cores.primaria} />
+          </View>
+          <View style={styles.itemInfo}>
+            <Text style={styles.itemNome}>Contratos de experiência</Text>
+            <Text style={styles.itemMeta} numberOfLines={1}>
+              Tempo de casa e marcos de 45/90 dias
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />
+        </TouchableOpacity>
+      )}
+
       <CampoTexto
         rotulo="Buscar"
         value={busca}
@@ -163,6 +185,24 @@ export function ColaboradoresScreen({
 }
 
 const styles = StyleSheet.create({
+  cardContratos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: cores.superficie,
+    borderRadius: raio.md,
+    padding: espacamento.sm,
+    marginBottom: espacamento.sm,
+    borderWidth: 1,
+    borderColor: cores.divisor,
+  },
+  contratosIcone: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: cores.primariaClara,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   contadores: {
     flexDirection: 'row',
     flexWrap: 'wrap',

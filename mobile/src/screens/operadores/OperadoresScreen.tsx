@@ -36,6 +36,7 @@ import {
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
+import { JustificativasLista } from './JustificativasScreen';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, hojeISO } from '../../utils/formato';
@@ -697,6 +698,20 @@ export function OperadoresScreen(): React.ReactElement {
               </Text>
             </Cartao>
           ) : null}
+
+          {/* Justificativas (faltas + não-retornos) — abaixo do painel de faltas */}
+          {podeSemRetorno ? (
+            <View style={styles.justificativasSecao}>
+              <View style={styles.secaoHeader}>
+                <Text style={styles.secaoTitulo}>Justificativas</Text>
+              </View>
+              <Text style={styles.dica}>
+                Faltas e não-retornos dos últimos 30 dias — justifique, injustifique
+                ou reabra.
+              </Text>
+              <JustificativasLista />
+            </View>
+          ) : null}
         </>
       )}
 
@@ -831,6 +846,9 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     fontStyle: 'italic',
+  },
+  justificativasSecao: {
+    marginTop: espacamento.md,
   },
   // Seção (turno)
   secaoHeader: {
