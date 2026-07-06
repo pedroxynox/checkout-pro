@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -24,6 +25,10 @@ import {
   PerfilColaboradorService,
 } from './perfil-colaborador.service';
 import {
+  PurgaInativosService,
+  ResumoPurgaInativos,
+} from './purga-inativos.service';
+import {
   AdicionarIdentificadorDto,
   CadastrarColaboradorDto,
   EditarColaboradorDto,
@@ -43,7 +48,28 @@ export class ColaboradoresController {
   constructor(
     private readonly service: ColaboradoresService,
     private readonly perfilService: PerfilColaboradorService,
+    private readonly purga: PurgaInativosService,
   ) {}
+
+  /**
+   * Purga AGORA todos os colaboradores inativos (mesma ação do cron do dia 1º).
+   * Destrutivo e irreversível: exige `confirmacao: "PURGAR"`. Só desenvolvedor
+   * (`ADMIN_DADOS`). O cron mensal roda sozinho; este endpoint é para rodar sob
+   * demanda. Preserva os totais de arrecadação/APAE.
+   */
+  @Post('purga-inativos')
+  @HttpCode(HttpStatus.OK)
+  @Funcionalidade('ADMIN_DADOS')
+  async purgarInativos(
+    @Body() body: { confirmacao?: string },
+  ): Promise<ResumoPurgaInativos> {
+    if (body?.confirmacao !== 'PURGAR') {
+      throw new BadRequestException(
+        'Confirmação ausente. Envie { "confirmacao": "PURGAR" }.',
+      );
+    }
+    return this.purga.purgarInativos();
+  }
 
   /** Cadastra um colaborador (operador por padrão). */
   @Post()

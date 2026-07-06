@@ -7,6 +7,7 @@ import { MetasModule } from '../metas/metas.module';
 import { ColaboradoresController } from './colaboradores.controller';
 import { ColaboradoresService } from './colaboradores.service';
 import { PerfilColaboradorService } from './perfil-colaborador.service';
+import { PurgaInativosService } from './purga-inativos.service';
 
 /**
  * Cadastro Unificado de Colaboradores: pessoa canônica (matrícula como
@@ -27,7 +28,11 @@ import { PerfilColaboradorService } from './perfil-colaborador.service';
     ContratosModule,
     MetasModule,
   ],
-  providers: [ColaboradoresService, PerfilColaboradorService],
+  providers: [
+    ColaboradoresService,
+    PerfilColaboradorService,
+    PurgaInativosService,
+  ],
   controllers: [ColaboradoresController],
   exports: [ColaboradoresService],
 })

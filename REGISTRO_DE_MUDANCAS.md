@@ -12,6 +12,23 @@
 
 ---
 
+## Colaboradores: inativos separados no fim + purga mensal (dia 1º) preservando totais (2026-07-06)
+
+- **Inativos ao final:** na lista de Colaboradores, os desligados aparecem
+  separados no fim, sob um divisor "Inativos (desligados)".
+- **Purga mensal (dia 1º, 00:00):** um cron remove a ficha e TODO o histórico de
+  RRHH dos colaboradores inativos (faltas, incidências/sanções, solicitações de
+  advertência, decisões de contrato, ponto e escala; identificadores em
+  cascata).
+- **Totais preservados:** o troco solidário, as recargas e os demais
+  indicadores **NÃO** são apagados — continuam somando no **total** da loja;
+  apenas deixam de ser atribuídos individualmente no visual por operador. O lote
+  APAE também é preservado.
+- Também há um endpoint manual (só desenvolvedor, `ADMIN_DADOS`, com confirmação
+  "PURGAR") para rodar a purga sob demanda. Sem migração.
+
+---
+
 ## Perfil: botão para excluir (desligar) o colaborador do quadro (2026-07-06)
 
 - No perfil de cada colaborador, o **gestor** agora tem um botão **"Excluir do
