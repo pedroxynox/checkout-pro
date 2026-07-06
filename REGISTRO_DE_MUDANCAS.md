@@ -12,6 +12,18 @@
 
 ---
 
+## Perfil: botão para excluir (desligar) o colaborador do quadro (2026-07-06)
+
+- No perfil de cada colaborador, o **gestor** agora tem um botão **"Excluir do
+  quadro"** para quem não trabalha mais aqui.
+- É uma **baixa lógica** (não apaga dados): o colaborador **sai das escalas e
+  listas**, mas o **histórico** (faltas, sanções, contratos, indicadores) é
+  **mantido** — e dá para **reativar** depois (o botão vira "Reativar").
+- Pede confirmação antes de excluir. Usa os endpoints que já existiam
+  (`inativar`/`reativar`); só UI. Restrito a `OPERADORES_CRUD`.
+
+---
+
 ## Escalas: "Não retorno" visível (linha azul) + conta e sai do caixa (2026-07-05)
 
 - **Estado visível igual ao da falta:** ao marcar "não retorno", o operador fica
