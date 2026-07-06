@@ -12,6 +12,23 @@
 
 ---
 
+## Escalas: botões reordenados, contador de "não-retornos do mês" e atualização em tempo real (2026-07-05)
+
+**Melhorias na tela Escalas (operadores por turno):**
+
+- **Botões empilhados:** na linha do operador, "Sem retorno" agora fica **acima**
+  de "Falta" (empilhados na vertical, mesmo tamanho), mesmo que a card fique um
+  pouco mais larga.
+- **Contador de não-retornos do mês:** novo card "Não-retornos do mês" (logo
+  abaixo de "Faltas do mês") com o total do mês e a contagem por colaborador —
+  espelhando o painel de faltas.
+- **Atualização na hora:** ao marcar/remover uma falta ou registrar um "sem
+  retorno", a tela reflete a mudança **imediatamente** (atualização otimista) e
+  os contadores são recarregados — antes só atualizava ao recarregar a página.
+- Só app; usa endpoints que já existiam (sem mudança de backend).
+
+---
+
 ## Cluby: janela flutuante, sem robô, e sem selo "IA" no briefing (2026-07-05)
 
 **Melhorias de UX na assistente Cluby:**
