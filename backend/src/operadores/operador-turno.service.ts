@@ -57,14 +57,17 @@ export interface AoVivoOperadores {
   horaLocal: string;
   dataISO: string;
   diaSemana: number;
-  /** Quantos deveriam estar agora e não faltaram. */
+  /** Quantos deveriam estar agora e estão no caixa (não faltaram nem estão sem retorno). */
   disponiveis: number;
   /** Quantos deveriam estar agora mas faltaram. */
   faltas: number;
-  /** Total escalado para esta franja (disponíveis + faltas). */
+  /** Quantos saíram para o intervalo e não retornaram (também não estão no caixa). */
+  semRetorno: number;
+  /** Total escalado para esta franja (disponíveis + faltas + sem retorno). */
   esperados: number;
   listaDisponiveis: OperadorAgora[];
   listaFaltantes: OperadorAgora[];
+  listaSemRetorno: OperadorAgora[];
 }
 
 export interface FaltasPorDiaSemana {
@@ -439,9 +442,24 @@ export class OperadorTurnoService {
         : [];
     const faltou = new Set(ausencias.map((a) => a.pessoaId));
 
+    // Quem saiu para o intervalo e não retornou hoje também sai do caixa.
+    const incidencias =
+      ids.length > 0
+        ? await this.prisma.incidenciaEscala.findMany({
+            where: {
+              colaboradorId: { in: ids },
+              tipo: 'NAO_RETORNO_INTERVALO',
+              data: { gte: diaInicio, lt: diaFim },
+            },
+            select: { colaboradorId: true },
+          })
+        : [];
+    const naoRetornou = new Set(incidencias.map((i) => i.colaboradorId));
+
     const fds = diaSemana === 5 || diaSemana === 6;
     const listaDisponiveis: OperadorAgora[] = [];
     const listaFaltantes: OperadorAgora[] = [];
+    const listaSemRetorno: OperadorAgora[] = [];
 
     for (const op of operadores) {
       if (op.folgaDiaSemana === diaSemana) continue; // folga hoje
@@ -452,9 +470,14 @@ export class OperadorTurnoService {
       if (ent == null || sai == null) continue;
       const cobreAgora = nowMin >= ent && nowMin < sai;
       if (!cobreAgora) continue;
-      if (faltou.has(op.id))
+      if (faltou.has(op.id)) {
         listaFaltantes.push({ nome: op.nome, entrada, saida });
-      else listaDisponiveis.push({ nome: op.nome, entrada, saida });
+      } else if (naoRetornou.has(op.id)) {
+        // Não retornou do intervalo: não conta como disponível no caixa.
+        listaSemRetorno.push({ nome: op.nome, entrada, saida });
+      } else {
+        listaDisponiveis.push({ nome: op.nome, entrada, saida });
+      }
     }
 
     return {
@@ -463,9 +486,14 @@ export class OperadorTurnoService {
       diaSemana,
       disponiveis: listaDisponiveis.length,
       faltas: listaFaltantes.length,
-      esperados: listaDisponiveis.length + listaFaltantes.length,
+      semRetorno: listaSemRetorno.length,
+      esperados:
+        listaDisponiveis.length +
+        listaFaltantes.length +
+        listaSemRetorno.length,
       listaDisponiveis,
       listaFaltantes,
+      listaSemRetorno,
     };
   }
 

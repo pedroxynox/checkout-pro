@@ -12,6 +12,20 @@
 
 ---
 
+## Escalas: "Não retorno" visível (linha azul) + conta e sai do caixa (2026-07-05)
+
+- **Estado visível igual ao da falta:** ao marcar "não retorno", o operador fica
+  **azul** e mostra **"No retorno"** (a falta continua vermelha, "Falta"). O
+  botão vira ativo e permite **desmarcar** — igual ao de falta.
+- **Contadores do dia:** ao lado de "Trabalham / Faltas / Folgas" agora aparece
+  **"Sem retorno"** com a contagem do dia.
+- **Sai do caixa:** quem não retorna do intervalo é **descontado dos disponíveis
+  no caixa** ("Agora no caixa"), listado à parte — não conta mais como presente.
+- Backend: o "ao vivo" passou a separar os não-retornos dos disponíveis (novo
+  campo). Sem migração.
+
+---
+
 ## Advertência automática por falta não justificada (com aprovação) (ADR 0013) (2026-07-05)
 
 Nova função com **alerta** para o gerente, sem lançar nada sem autorização:

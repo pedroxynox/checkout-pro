@@ -1077,9 +1077,12 @@ export interface AoVivoOperadores {
   diaSemana: number;
   disponiveis: number;
   faltas: number;
+  /** Quantos saíram para o intervalo e não retornaram (fora do caixa). */
+  semRetorno: number;
   esperados: number;
   listaDisponiveis: OperadorAgora[];
   listaFaltantes: OperadorAgora[];
+  listaSemRetorno: OperadorAgora[];
 }
 
 export type RiscoFalta = 'BAIXO' | 'MEDIO' | 'ALTO';
