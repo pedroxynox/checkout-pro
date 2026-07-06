@@ -12,6 +12,15 @@
 
 ---
 
+## Favicon: passa a ser o logo "C" da marca (2026-07-05)
+
+**Ajuste:** o favicon da versão web era o ícone **vermelho** (carrinho); agora é
+o **logo "C"** (o mesmo do ícone do app — o azul com o "C"/pulso). Gerado a
+partir de `assets/Appicon.png` (256×256). Só troca de asset
+(`assets/favicon.png`); sem mudança de código nem de backend.
+
+---
+
 ## Correção: relatório de perfil em PDF saía em branco na web (2026-07-05)
 
 **Bug:** ao baixar o relatório de operadores pela **web** (o app roda no
