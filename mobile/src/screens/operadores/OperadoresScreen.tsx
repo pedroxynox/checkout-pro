@@ -9,6 +9,8 @@
  * de operador. Domingo entra depois.
  */
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
@@ -33,6 +35,7 @@ import {
 } from '../../components';
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
+import { RootStackParamList } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, hojeISO } from '../../utils/formato';
@@ -158,26 +161,33 @@ function contarTurnos(cols: ColaboradorDia[]): {
   return c;
 }
 
-/** Linha de um colaborador no roster do dia. */
+/**
+ * Linha de um colaborador no roster do dia. Tocar na linha abre o **perfil**.
+ * A falta só é marcada/removida pelo botão **"Falta"**; o botão **"Sem retorno"**
+ * (mesmo tamanho, discreto) registra o não retorno do intervalo.
+ */
 function ColaboradorRow({
   c,
-  onPress,
+  onAbrirPerfil,
+  onFalta,
   onSemRetorno,
-  podeSemRetorno,
+  podeAcoes,
 }: {
   c: ColaboradorDia;
-  onPress: (c: ColaboradorDia) => void;
+  onAbrirPerfil: (c: ColaboradorDia) => void;
+  onFalta: (c: ColaboradorDia) => void;
   onSemRetorno: (c: ColaboradorDia) => void;
-  podeSemRetorno: boolean;
+  podeAcoes: boolean;
 }): React.ReactElement {
   const cor = corStatus(c.status);
-  // "Sem retorno" (não retorno do intervalo) só faz sentido para quem trabalha.
-  const mostrarSemRetorno = podeSemRetorno && c.status === 'TRABALHA';
+  const folga = c.status === 'FOLGA';
+  const ehFalta = c.status === 'FALTA';
   return (
     <TouchableOpacity
-      activeOpacity={c.status === 'FOLGA' ? 1 : 0.6}
-      onPress={() => onPress(c)}
+      activeOpacity={0.6}
+      onPress={() => onAbrirPerfil(c)}
       style={[styles.linha, { borderLeftColor: cor.texto }]}
+      accessibilityLabel={`Abrir perfil de ${c.nome}`}
     >
       <View style={[styles.avatar, { backgroundColor: cor.fundo }]}>
         <Ionicons name={iconeGenero(c.genero, c.nome)} size={20} color={cor.texto} />
@@ -187,26 +197,55 @@ function ColaboradorRow({
           {c.nome}
         </Text>
         <Text style={styles.horarioInline}>
-          {c.status === 'FOLGA' ? 'Dia de folga' : `${c.entrada} – ${c.saida}`}
+          {folga ? 'Dia de folga' : `${c.entrada} – ${c.saida}`}
         </Text>
       </View>
       <View style={styles.acoesDireita}>
-        <View style={[styles.chip, { backgroundColor: cor.fundo }]}>
-          <Text style={[styles.chipTexto, { color: cor.texto }]}>
-            {rotuloStatus(c.status)}
-          </Text>
-        </View>
-        {mostrarSemRetorno ? (
-          <TouchableOpacity
-            onPress={() => onSemRetorno(c)}
-            style={styles.btnSemRetorno}
-            hitSlop={6}
-            accessibilityLabel={`Marcar não retorno do intervalo de ${c.nome}`}
-          >
-            <Ionicons name="time-outline" size={13} color={cores.primaria} />
-            <Text style={styles.btnSemRetornoTexto}>Sem retorno</Text>
-          </TouchableOpacity>
-        ) : null}
+        {folga || !podeAcoes ? (
+          <View style={[styles.chip, { backgroundColor: cor.fundo }]}>
+            <Text style={[styles.chipTexto, { color: cor.texto }]}>
+              {rotuloStatus(c.status)}
+            </Text>
+          </View>
+        ) : (
+          <>
+            <TouchableOpacity
+              onPress={() => onFalta(c)}
+              style={[styles.btnAcao, ehFalta ? styles.btnFaltaAtiva : styles.btnFalta]}
+              hitSlop={6}
+              accessibilityLabel={
+                ehFalta ? `Remover falta de ${c.nome}` : `Marcar falta de ${c.nome}`
+              }
+            >
+              <Ionicons
+                name={ehFalta ? 'close-circle' : 'close-circle-outline'}
+                size={13}
+                color={ehFalta ? cores.textoInverso : cores.vermelho}
+              />
+              <Text
+                style={[
+                  styles.btnAcaoTexto,
+                  { color: ehFalta ? cores.textoInverso : cores.vermelho },
+                ]}
+              >
+                Falta
+              </Text>
+            </TouchableOpacity>
+            {!ehFalta ? (
+              <TouchableOpacity
+                onPress={() => onSemRetorno(c)}
+                style={[styles.btnAcao, styles.btnSemRetorno]}
+                hitSlop={6}
+                accessibilityLabel={`Marcar não retorno do intervalo de ${c.nome}`}
+              >
+                <Ionicons name="time-outline" size={13} color={cores.primaria} />
+                <Text style={[styles.btnAcaoTexto, { color: cores.primaria }]}>
+                  Sem retorno
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -298,6 +337,8 @@ function FaltaOperadorRow({ o }: { o: FaltasPorOperador }): React.ReactElement {
 }
 
 export function OperadoresScreen(): React.ReactElement {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { podeAcessar, perfil } = useAuth();
   const { dataInicial } = useConfigSistema();
   const podeProgramarFuturo = perfil
@@ -346,7 +387,13 @@ export function OperadoresScreen(): React.ReactElement {
     escalaFiscais.recarregar();
   };
 
-  const aoTocarColaborador = async (c: ColaboradorDia) => {
+  /** Toca na linha → abre o perfil do colaborador (não marca falta). */
+  const abrirPerfil = (c: ColaboradorDia) => {
+    navigation.navigate('PerfilColaborador', { colaboradorId: c.id });
+  };
+
+  /** Alterna a falta do dia (marcar quando trabalha; remover quando já é falta). */
+  const alternarFalta = async (c: ColaboradorDia) => {
     if (c.status === 'FOLGA' || ocupado) return;
 
     if (c.status === 'FALTA' && c.ausenciaId) {
@@ -568,8 +615,9 @@ export function OperadoresScreen(): React.ReactElement {
               />
             ) : null}
             <Text style={styles.dica}>
-              Ordenados por hora de entrada · folgas ao fim. Toque na linha para
-              marcar/remover falta; use "Sem retorno" para o não retorno do intervalo.
+              Ordenados por hora de entrada · folgas ao fim. Toque no operador
+              para ver o perfil; use "Falta" para marcar/remover falta e "Sem
+              retorno" para o não retorno do intervalo.
             </Text>
           </Cartao>
 
@@ -589,9 +637,10 @@ export function OperadoresScreen(): React.ReactElement {
                   <ColaboradorRow
                     key={c.id}
                     c={c}
-                    onPress={aoTocarColaborador}
+                    onAbrirPerfil={abrirPerfil}
+                    onFalta={alternarFalta}
                     onSemRetorno={marcarSemRetorno}
-                    podeSemRetorno={podeSemRetorno}
+                    podeAcoes={podeSemRetorno}
                   />
                 ))}
               </View>
@@ -842,8 +891,9 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   acoesDireita: {
-    alignItems: 'flex-end',
-    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   chip: {
     paddingHorizontal: espacamento.sm,
@@ -856,21 +906,33 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  btnSemRetorno: {
+  // Botões de ação (Falta / Sem retorno) — mesmo tamanho, discretos.
+  btnAcao: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 3,
     paddingHorizontal: espacamento.sm,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: raio.pill,
     borderWidth: 1,
+    minWidth: 82,
+  },
+  btnFalta: {
+    borderColor: cores.vermelho,
+    backgroundColor: 'rgba(210,59,59,0.10)',
+  },
+  btnFaltaAtiva: {
+    borderColor: cores.vermelho,
+    backgroundColor: cores.vermelho,
+  },
+  btnSemRetorno: {
     borderColor: cores.primaria,
     backgroundColor: cores.primariaClara,
   },
-  btnSemRetornoTexto: {
+  btnAcaoTexto: {
     fontSize: 11,
     fontWeight: '700',
-    color: cores.primaria,
   },
   // Folga (cards no fim, compactos)
   folgaItem: {

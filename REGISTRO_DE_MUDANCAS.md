@@ -12,17 +12,18 @@
 
 ---
 
-## "Sem retorno" na tela de Escalas (operadores) (2026-07-05)
+## Escalas (operadores): tocar abre o perfil + botões "Falta" e "Sem retorno" (2026-07-05)
 
-**Ajuste:** o botão de marcar **"não retorno do intervalo"** estava só na tela
-*Escala de fiscais*, mas o gestor marca as faltas na tela **Escalas**
-(operadores por turno). Agora cada operador que trabalha tem, ao lado do status,
-um botão **"Sem retorno"** que registra o não retorno de hoje (sem horário), com
-confirmação — junto do já existente "tocar na linha = marcar/remover falta".
+**Ajuste de UX na tela Escalas (operadores por turno):**
 
-- Só app; usa o endpoint de incidências que já existia (sem mudança de backend).
-- Aparece para quem gere ausências (`OPERADORES_AUSENCIAS`) e só em quem está
-  como "Trabalha".
+- **Tocar no operador abre o perfil** dele (antes, tocar marcava falta).
+- A **falta só é marcada/removida pelo botão "Falta"** — evita marcar falta sem
+  querer.
+- Botão **"Sem retorno"** (registra o não retorno do intervalo de hoje, sem
+  horário), do **mesmo tamanho e estilo discreto** que o "Falta", ao lado dele.
+- Ambos aparecem só para quem gere ausências (`OPERADORES_AUSENCIAS`); em quem
+  já está em falta, o botão "Falta" fica ativo e serve para remover.
+- Só app; usa endpoints que já existiam (sem mudança de backend).
 
 ---
 
