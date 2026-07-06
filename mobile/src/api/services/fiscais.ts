@@ -15,6 +15,7 @@ import {
   HistoricoSemanalFiscal,
   MeuResumoFiscal,
   MotivoJustificativa,
+  PanoramaSancoes,
   RankingIncidencia,
   RegistrarIncidenciaInput,
   StatusFiscal,
@@ -169,5 +170,17 @@ export const escalaService = {
       '/escala/incidencias/ranking',
       params,
     );
+  },
+
+  /**
+   * Panorama de sanções (advertência/suspensão) na janela [inicio, fim]:
+   * contadores, tendência, suspensos hoje e resumo por colaborador com a
+   * sugestão de próximo passo (disciplina progressiva).
+   */
+  panoramaSancoes(inicio: string, fim: string): Promise<PanoramaSancoes> {
+    return apiClient.get<PanoramaSancoes>('/escala/incidencias/sancoes', {
+      inicio,
+      fim,
+    });
   },
 };

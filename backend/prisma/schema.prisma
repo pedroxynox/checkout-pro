@@ -771,6 +771,14 @@ model IncidenciaEscala {
   observacao         String?
   registradoPorId    String?
   registradoPorNome  String?
+  // Sanções disciplinares (ADR 0012). Para SUSPENSAO: duração em dias e a data
+  // final (inclusiva) para saber quem está suspenso "hoje". Vínculo opcional da
+  // sanção à ocorrência que a motivou (causaTipo = FALTA ou um tipo de
+  // incidência; causaData = a data dessa ocorrência) — informativo.
+  diasSuspensao      Int?
+  dataFim            DateTime?
+  causaTipo          String?
+  causaData          DateTime?
   // Justificativa (abono) do não-retorno, aplicada DEPOIS do registro — mesmo
   // modelo das faltas (Ausencia). Estado persistido; peso no score derivado do
   // motivo (ver ADR 0009). `motivo`/`observacao` acima são do registro; estes
@@ -787,6 +795,7 @@ model IncidenciaEscala {
   @@unique([colaboradorId, tipo, data])
   @@index([colaboradorId, data])
   @@index([tipo, data])
+  @@index([tipo, dataFim])
   @@index([data])
   @@index([statusJustificativa])
   @@map("incidencias_escala")

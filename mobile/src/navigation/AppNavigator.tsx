@@ -27,6 +27,7 @@ import { OperadoresScreen } from '../screens/operadores/OperadoresScreen';
 import { JustificativasScreen } from '../screens/operadores/JustificativasScreen';
 import { ColaboradoresScreen } from '../screens/colaboradores/ColaboradoresScreen';
 import { ContratosScreen } from '../screens/contratos/ContratosScreen';
+import { SancoesScreen } from '../screens/colaboradores/SancoesScreen';
 import { GestaoColaboradoresScreen } from '../screens/colaboradores/GestaoColaboradoresScreen';
 import { PerfilColaboradorScreen } from '../screens/colaboradores/PerfilColaboradorScreen';
 import { CentroControleScreen } from '../screens/centroControle/CentroControleScreen';
@@ -181,6 +182,13 @@ export function AppNavigator(): React.ReactElement {
           name="Contratos"
           component={ContratosScreen}
           options={{ title: 'Contratos' }}
+        />
+      )}
+      {podeAcessar('ESCALA_VISUALIZAR') && (
+        <Stack.Screen
+          name="Sancoes"
+          component={SancoesScreen}
+          options={{ title: 'Sanções' }}
         />
       )}
       {podeAcessar('OPERADORES_CRUD') && (

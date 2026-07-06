@@ -446,3 +446,194 @@ export function rankingIncidencias(
     (a, b) => b.total - a.total || a.nome.localeCompare(b.nome),
   );
 }
+
+// ---------------------------------------------------------------------------
+// Sanções disciplinares (advertência/suspensão) — panorama inteligente (ADR
+// 0012). Puro: recebe os registros já resolvidos e devolve os agregados, a
+// sugestão de próximo passo (disciplina progressiva) e quem está suspenso hoje.
+// ---------------------------------------------------------------------------
+
+/** Data (UTC) em ISO "yyyy-mm-dd" (dia civil, sem hora). */
+function isoDia(d: Date): string {
+  return new Date(diaUTC(d)).toISOString().slice(0, 10);
+}
+
+/** Tipos considerados "sanções" (lançados no perfil). */
+export const TIPOS_SANCAO: readonly TipoIncidencia[] = [
+  'ADVERTENCIA',
+  'SUSPENSAO',
+];
+
+/**
+ * Próximo passo sugerido pela **disciplina progressiva** (sugestão, não regra):
+ *  - já houve suspensão no período → avaliar desligamento;
+ *  - 3+ advertências e nenhuma suspensão → suspensão;
+ *  - caso contrário → advertência.
+ */
+export type ProximoPassoDisciplinar =
+  | 'ADVERTENCIA'
+  | 'SUSPENSAO'
+  | 'AVALIAR_DESLIGAMENTO';
+
+export function sugerirProximoPasso(
+  advertencias: number,
+  suspensoes: number,
+): ProximoPassoDisciplinar {
+  if (suspensoes >= 1) return 'AVALIAR_DESLIGAMENTO';
+  if (advertencias >= 3) return 'SUSPENSAO';
+  return 'ADVERTENCIA';
+}
+
+/** Risco disciplinar do colaborador a partir das sanções do período. */
+function riscoSancao(
+  advertencias: number,
+  suspensoes: number,
+): RiscoIncidencia {
+  if (suspensoes >= 1 || advertencias >= 3) return 'ALTO';
+  if (advertencias === 2) return 'MEDIO';
+  return 'BAIXO';
+}
+
+/** Uma sanção já resolvida (com nome do colaborador). */
+export interface SancaoRegistro {
+  colaboradorId: string;
+  nome: string;
+  tipo: TipoIncidencia;
+  data: Date;
+}
+
+/** Uma suspensão com período (início + fim inclusivo). */
+export interface SuspensaoComPeriodo {
+  colaboradorId: string;
+  nome: string;
+  data: Date;
+  dataFim: Date;
+}
+
+/** Linha do panorama por colaborador (contagens + sugestão + risco). */
+export interface ItemSancaoColaborador {
+  colaboradorId: string;
+  nome: string;
+  advertencias: number;
+  suspensoes: number;
+  ultima: { tipo: TipoIncidencia; data: string } | null;
+  proximoPasso: ProximoPassoDisciplinar;
+  risco: RiscoIncidencia;
+}
+
+/** Colaborador suspenso hoje (com dias restantes, inclusivo). */
+export interface ItemSuspensoAgora {
+  colaboradorId: string;
+  nome: string;
+  inicio: string;
+  fim: string;
+  diasRestantes: number;
+}
+
+/** Panorama de sanções do período (contadores + tendência + suspensos hoje). */
+export interface ResumoSancoes {
+  totalAdvertencias: number;
+  totalSuspensoes: number;
+  /** Delta vs. o período anterior de mesmo tamanho (positivo = piorou). */
+  tendenciaAdvertencias: number;
+  tendenciaSuspensoes: number;
+  suspensosAgora: ItemSuspensoAgora[];
+  porColaborador: ItemSancaoColaborador[];
+}
+
+const UM_DIA_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Monta o panorama de sanções: agrega por colaborador (advertências,
+ * suspensões, última e sugestão de próximo passo), calcula os totais e a
+ * tendência vs. o período anterior, e lista quem está suspenso "hoje".
+ *
+ * `atuais`/`anteriores` são as sanções do período e do período anterior (para a
+ * tendência). `suspensoesAtivas` são as suspensões com período que ainda podem
+ * cobrir hoje. Puro e determinístico.
+ */
+export function resumirSancoes(
+  atuais: readonly SancaoRegistro[],
+  anteriores: readonly { tipo: TipoIncidencia }[],
+  suspensoesAtivas: readonly SuspensaoComPeriodo[],
+  hoje: Date,
+): ResumoSancoes {
+  const totalAdvertencias = atuais.filter(
+    (s) => s.tipo === 'ADVERTENCIA',
+  ).length;
+  const totalSuspensoes = atuais.filter((s) => s.tipo === 'SUSPENSAO').length;
+  const antAdv = anteriores.filter((s) => s.tipo === 'ADVERTENCIA').length;
+  const antSus = anteriores.filter((s) => s.tipo === 'SUSPENSAO').length;
+
+  const mapa = new Map<
+    string,
+    {
+      nome: string;
+      advertencias: number;
+      suspensoes: number;
+      ultima: { tipo: TipoIncidencia; data: string } | null;
+    }
+  >();
+  for (const s of atuais) {
+    const at = mapa.get(s.colaboradorId) ?? {
+      nome: s.nome,
+      advertencias: 0,
+      suspensoes: 0,
+      ultima: null,
+    };
+    if (s.tipo === 'ADVERTENCIA') at.advertencias += 1;
+    else if (s.tipo === 'SUSPENSAO') at.suspensoes += 1;
+    const iso = isoDia(s.data);
+    if (at.ultima === null || iso > at.ultima.data) {
+      at.ultima = { tipo: s.tipo, data: iso };
+    }
+    at.nome = s.nome;
+    mapa.set(s.colaboradorId, at);
+  }
+
+  const pesoRisco: Record<RiscoIncidencia, number> = {
+    ALTO: 2,
+    MEDIO: 1,
+    BAIXO: 0,
+  };
+  const porColaborador: ItemSancaoColaborador[] = [...mapa.entries()]
+    .map(([colaboradorId, v]) => ({
+      colaboradorId,
+      nome: v.nome,
+      advertencias: v.advertencias,
+      suspensoes: v.suspensoes,
+      ultima: v.ultima,
+      proximoPasso: sugerirProximoPasso(v.advertencias, v.suspensoes),
+      risco: riscoSancao(v.advertencias, v.suspensoes),
+    }))
+    .sort(
+      (a, b) =>
+        pesoRisco[b.risco] - pesoRisco[a.risco] ||
+        b.advertencias + b.suspensoes - (a.advertencias + a.suspensoes) ||
+        a.nome.localeCompare(b.nome),
+    );
+
+  const hojeUTC = diaUTC(hoje);
+  const suspensosAgora: ItemSuspensoAgora[] = suspensoesAtivas
+    .filter((s) => diaUTC(s.data) <= hojeUTC && diaUTC(s.dataFim) >= hojeUTC)
+    .map((s) => ({
+      colaboradorId: s.colaboradorId,
+      nome: s.nome,
+      inicio: isoDia(s.data),
+      fim: isoDia(s.dataFim),
+      diasRestantes: Math.max(
+        0,
+        Math.round((diaUTC(s.dataFim) - hojeUTC) / UM_DIA_MS) + 1,
+      ),
+    }))
+    .sort((a, b) => a.fim.localeCompare(b.fim) || a.nome.localeCompare(b.nome));
+
+  return {
+    totalAdvertencias,
+    totalSuspensoes,
+    tendenciaAdvertencias: totalAdvertencias - antAdv,
+    tendenciaSuspensoes: totalSuspensoes - antSus,
+    suspensosAgora,
+    porColaborador,
+  };
+}

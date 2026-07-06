@@ -110,6 +110,26 @@ export function ColaboradoresScreen({
         </TouchableOpacity>
       )}
 
+      {/* Atalho para Sanções (advertências e suspensões dos colaboradores). */}
+      {podeAcessar('ESCALA_VISUALIZAR') && (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('Sancoes')}
+          style={styles.cardContratos}
+        >
+          <View style={styles.contratosIcone}>
+            <Ionicons name="shield-outline" size={20} color={cores.primaria} />
+          </View>
+          <View style={styles.itemInfo}>
+            <Text style={styles.itemNome}>Sanções</Text>
+            <Text style={styles.itemMeta} numberOfLines={1}>
+              Advertências e suspensões dos colaboradores
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />
+        </TouchableOpacity>
+      )}
+
       <CampoTexto
         rotulo="Buscar"
         value={busca}

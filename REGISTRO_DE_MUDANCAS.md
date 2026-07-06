@@ -12,6 +12,32 @@
 
 ---
 
+## Sanções: seção própria (advertência/suspensão) e perfil só leitura (ADR 0012) (2026-07-05)
+
+**Nova seção "Sanções" (dentro de Colaboradores)** para registrar e acompanhar
+as sanções disciplinares, tirando o registro do perfil do colaborador:
+
+- **Perfil só leitura:** o perfil deixa de registrar/editar ocorrências — passa
+  a exibir apenas o histórico (o que o colaborador tem). O registro agora é só
+  na seção "Sanções".
+- **Seção "Sanções" inteligente:**
+  - **Suspensos agora:** quem está suspenso hoje, com os dias restantes;
+  - **Contadores do mês:** total de advertências e suspensões + tendência vs. o
+    mês anterior;
+  - **Por colaborador:** ranqueado por risco, com a sugestão de **disciplina
+    progressiva** (advertência → suspensão → avaliar desligamento — sugestão, a
+    decisão é sempre do gestor);
+  - Registro por um botão (busca o colaborador) ou tocando numa linha.
+- **Suspensão com período:** informa a duração em dias e o sistema calcula até
+  quando vai; é isso que alimenta o "suspenso hoje".
+- **Motivo obrigatório** na sanção + observação e **vínculo opcional** com uma
+  falta/não-retorno recente que a motivou.
+- Backend: a tabela de incidências ganhou `diasSuspensao`, `dataFim` e a causa
+  (`causaTipo`/`causaData`) — aditivo, sem migração destrutiva. Novo endpoint de
+  panorama; lógica de agregação/sugestão em função pura (com testes).
+
+---
+
 ## Escalas: botões reordenados, contador de "não-retornos do mês" e atualização em tempo real (2026-07-05)
 
 **Melhorias na tela Escalas (operadores por turno):**

@@ -22,10 +22,11 @@ import {
   JustificarIncidenciaDto,
   ListarIncidenciasDto,
   RankingIncidenciasDto,
+  SancoesDto,
   SugestoesIncidenciaDto,
 } from './dto/incidencias.dto';
 import { IncidenciasService, SugestaoIncidencia } from './incidencias.service';
-import { ItemRankingIncidencias } from './incidencias.domain';
+import { ItemRankingIncidencias, ResumoSancoes } from './incidencias.domain';
 
 /**
  * Controller das Incidências de Escala (Fase 1 — "não retornou do intervalo").
@@ -110,5 +111,12 @@ export class IncidenciasController {
     @Query() dto: RankingIncidenciasDto,
   ): Promise<ItemRankingIncidencias[]> {
     return this.incidencias.ranking(dto.inicio, dto.fim, dto.tipo);
+  }
+
+  /** Panorama de sanções (advertência/suspensão) na janela (?inicio=&fim=). */
+  @Get('sancoes')
+  @Funcionalidade('ESCALA_VISUALIZAR')
+  async sancoes(@Query() dto: SancoesDto): Promise<ResumoSancoes> {
+    return this.incidencias.panoramaSancoes(dto.inicio, dto.fim);
   }
 }

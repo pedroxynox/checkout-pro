@@ -781,6 +781,12 @@ export interface IncidenciaEscala {
   motivo?: string | null;
   observacao?: string | null;
   registradoPorNome?: string | null;
+  /** Sanções: duração da suspensão (dias) e data final inclusiva. */
+  diasSuspensao?: number | null;
+  dataFim?: string | null;
+  /** Vínculo opcional com a ocorrência que motivou a sanção (informativo). */
+  causaTipo?: string | null;
+  causaData?: string | null;
   /** Justificativa (abono) do não-retorno — mesmo modelo das faltas. */
   statusJustificativa?: StatusJustificativa;
   motivoJustificativa?: MotivoJustificativa | null;
@@ -823,6 +829,50 @@ export interface RegistrarIncidenciaInput {
   horaReal?: string;
   motivo?: string;
   observacao?: string;
+  /** Duração da suspensão em dias (só para SUSPENSAO; mínimo 1). */
+  diasSuspensao?: number;
+  /** Vínculo opcional com a ocorrência que motivou a sanção. */
+  causaTipo?: string;
+  causaData?: string;
+}
+
+/** Tipos lançados como sanção (advertência/suspensão). */
+export const TIPOS_SANCAO: TipoIncidenciaEscala[] = ['ADVERTENCIA', 'SUSPENSAO'];
+
+/** Próximo passo sugerido pela disciplina progressiva. */
+export type ProximoPassoDisciplinar =
+  | 'ADVERTENCIA'
+  | 'SUSPENSAO'
+  | 'AVALIAR_DESLIGAMENTO';
+
+/** Linha do panorama de sanções por colaborador. */
+export interface ItemSancaoColaborador {
+  colaboradorId: string;
+  nome: string;
+  advertencias: number;
+  suspensoes: number;
+  ultima: { tipo: TipoIncidenciaEscala; data: string } | null;
+  proximoPasso: ProximoPassoDisciplinar;
+  risco: 'BAIXO' | 'MEDIO' | 'ALTO';
+}
+
+/** Colaborador suspenso hoje (com dias restantes, inclusivo). */
+export interface ItemSuspensoAgora {
+  colaboradorId: string;
+  nome: string;
+  inicio: string;
+  fim: string;
+  diasRestantes: number;
+}
+
+/** Panorama de sanções do período (espelha ResumoSancoes do backend). */
+export interface PanoramaSancoes {
+  totalAdvertencias: number;
+  totalSuspensoes: number;
+  tendenciaAdvertencias: number;
+  tendenciaSuspensoes: number;
+  suspensosAgora: ItemSuspensoAgora[];
+  porColaborador: ItemSancaoColaborador[];
 }
 
 /** Campos editáveis de uma incidência (espelha o EditarIncidenciaDto). */
