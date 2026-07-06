@@ -12,6 +12,22 @@
 
 ---
 
+## Home mais limpa: Justificativas dentro de Escalas + card de Contratos em Colaboradores (2026-07-05)
+
+**Objetivo:** deixar a Home mais enxuta, movendo duas áreas para onde fazem
+sentido:
+
+- **Justificativas** deixa de ser um item da Home e passa a aparecer **dentro de
+  Escalas**, logo **abaixo do painel de faltas** (faltas + não-retornos dos
+  últimos 30 dias, com justificar/injustificar/reabrir). Reaproveita o mesmo
+  componente (extraído como `JustificativasLista`).
+- **Contratos** deixa de ser um item da Home e vira uma **card em Colaboradores**,
+  no topo (antes da contagem), que abre a tela de Contratos (só com
+  `CONTRATOS_VISUALIZAR`).
+- Só app; sem mudança de backend nem de rotas (as telas seguem registradas).
+
+---
+
 ## Escalas (operadores): tocar abre o perfil + botões "Falta" e "Sem retorno" (2026-07-05)
 
 **Ajuste de UX na tela Escalas (operadores por turno):**

@@ -122,20 +122,6 @@ export const AREAS: Area[] = [
     funcionalidade: 'OPERADORES_AUSENCIAS',
   },
   {
-    rota: 'Justificativas',
-    titulo: 'Justificativas',
-    descricao: 'Justificar faltas e não-retornos (abono)',
-    icone: 'shield-checkmark-outline',
-    funcionalidade: 'OPERADORES_AUSENCIAS',
-  },
-  {
-    rota: 'Contratos',
-    titulo: 'Contratos',
-    descricao: 'Tempo de casa e experiência (45/90 dias)',
-    icone: 'document-text-outline',
-    funcionalidade: 'CONTRATOS_VISUALIZAR',
-  },
-  {
     rota: 'CentroControle',
     titulo: 'Centro de Controle',
     descricao: 'Gestão: cadastro de colaboradores e configurações',
