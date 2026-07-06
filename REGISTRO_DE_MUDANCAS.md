@@ -12,6 +12,19 @@
 
 ---
 
+## Cluby: janela flutuante, sem robô, e sem selo "IA" no briefing (2026-07-05)
+
+**Melhorias de UX na assistente Cluby:**
+
+- **Avatar sem robô:** o emoji 🤖 foi trocado pelo ícone de "sparkles" (o mesmo
+  do botão central), no chat e no cabeçalho — visual consistente com a marca.
+- **Janela flutuante:** a Cluby não abre mais em tela cheia. Agora abre como uma
+  **janela flutuante** (por cima da tela atual) com um **"X" para fechar** e
+  fundo escurecido; tocar fora também fecha.
+- **Briefing sem "IA":** removido o selo "IA" do card "Resumo de hoje" (Início);
+  o botão "Conversar com a Cluby" agora abre a janela flutuante e já envia o
+  resumo do dia.
+- Só app; sem mudança de backend.
 ## Home mais limpa: Justificativas dentro de Escalas + card de Contratos em Colaboradores (2026-07-05)
 
 **Objetivo:** deixar a Home mais enxuta, movendo duas áreas para onde fazem
