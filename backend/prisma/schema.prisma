@@ -76,6 +76,15 @@ enum StatusRequisicao {
   NEGADA
 }
 
+// Estado de uma solicitação automática de advertência (por falta não
+// justificada). PENDENTE = aguarda decisão do gerente; APROVADA = advertência
+// carregada em Sanções; CANCELADA = descartada (ex.: falta foi justificada).
+enum StatusSolicitacaoAdvertencia {
+  PENDENTE
+  APROVADA
+  CANCELADA
+}
+
 enum TurnoFiscal {
   ABERTURA
   INTERMEDIARIO
@@ -382,6 +391,34 @@ model Requisicao {
 
   @@index([status])
   @@map("requisicoes")
+}
+
+// Solicitação automática de advertência por falta NÃO justificada (ADR 0013).
+// Um cron diário (08:00) cria uma solicitação PENDENTE para cada falta que
+// segue sem justificar do dia anterior ou antes, notificando o gerente. A
+// advertência NÃO é lançada sem autorização: o gerente APROVA (cria a
+// advertência em Sanções, `incidenciaId`) ou CANCELA (ex.: a falta foi
+// justificada e ele esqueceu de marcar no app). `ausenciaId` é único para
+// garantir uma única solicitação por falta (idempotência do cron).
+model SolicitacaoAdvertencia {
+  id              String                       @id @default(uuid())
+  colaboradorId   String
+  ausenciaId      String                       @unique
+  dataFalta       DateTime
+  motivo          String                       @default("Desídia (falta injustificada)")
+  status          StatusSolicitacaoAdvertencia @default(PENDENTE)
+  criadaEm        DateTime                     @default(now())
+  decididaPorId   String?
+  decididaPorNome String?
+  decididaEm      DateTime?
+  // Advertência (IncidenciaEscala) criada quando aprovada.
+  incidenciaId    String?
+  // Motivo/observação da decisão (ex.: "Falta justificada").
+  motivoDecisao   String?
+
+  @@index([status])
+  @@index([colaboradorId])
+  @@map("solicitacoes_advertencia")
 }
 
 /// Marca idempotente de que o fechamento de um dia foi concluído (e notificado).

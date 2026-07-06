@@ -22,12 +22,18 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { colaboradoresService, escalaService } from '../../api/services';
+import {
+  advertenciasService,
+  colaboradoresService,
+  escalaService,
+} from '../../api/services';
+import { ApiError } from '../../api/client';
 import {
   Colaborador,
   ItemSancaoColaborador,
   PanoramaSancoes,
   ProximoPassoDisciplinar,
+  SolicitacaoAdvertencia,
 } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import {
@@ -40,6 +46,7 @@ import {
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
+import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData } from '../../utils/formato';
 import { RegistrarSancaoModal } from './RegistrarSancaoModal';
 
@@ -80,12 +87,23 @@ interface Alvo {
 export function SancoesScreen(): React.ReactElement {
   const { podeAcessar } = useAuth();
   const podeRegistrar = podeAcessar('OPERADORES_AUSENCIAS');
+  const podeDecidir = podeAcessar('ADVERTENCIAS_DECIDIR');
   const mes = useMemo(() => mesAtualISO(), []);
 
   const panorama = useRequisicao<PanoramaSancoes>(
     () => escalaService.panoramaSancoes(mes.inicio, mes.fim),
     [mes.inicio, mes.fim],
   );
+
+  // Solicitações automáticas de advertência (falta não justificada), pendentes.
+  const solicitacoes = useRequisicao<SolicitacaoAdvertencia[]>(
+    () =>
+      podeDecidir
+        ? advertenciasService.listarPendentes().catch(() => [])
+        : Promise.resolve([]),
+    [podeDecidir],
+  );
+  const [decidindo, setDecidindo] = useState(false);
   const colaboradores = useRequisicao<Colaborador[]>(
     () => (podeRegistrar ? colaboradoresService.listar({ ativo: true }) : Promise.resolve([])),
     [podeRegistrar],
@@ -119,6 +137,49 @@ export function SancoesScreen(): React.ReactElement {
     panorama.recarregar();
   };
 
+  /** Aprova uma solicitação de advertência: lança a advertência em Sanções. */
+  const aprovarSolicitacao = async (s: SolicitacaoAdvertencia): Promise<void> => {
+    if (decidindo) return;
+    const ok = await confirmar(
+      'Aprovar advertência',
+      `Lançar advertência por desídia para ${s.colaboradorNome} (falta em ${formatarData(s.dataFalta)})?`,
+      'Aprovar',
+    );
+    if (!ok) return;
+    setDecidindo(true);
+    try {
+      await advertenciasService.aprovar(s.id);
+      solicitacoes.recarregar();
+      panorama.recarregar();
+      notificar('Advertência lançada', `Registrada em Sanções para ${s.colaboradorNome}.`);
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao aprovar.');
+      solicitacoes.recarregar();
+    } finally {
+      setDecidindo(false);
+    }
+  };
+
+  /** Cancela uma solicitação (ex.: a falta já foi justificada). */
+  const cancelarSolicitacao = async (s: SolicitacaoAdvertencia): Promise<void> => {
+    if (decidindo) return;
+    const ok = await confirmar(
+      'Cancelar solicitação',
+      `Descartar a solicitação de advertência de ${s.colaboradorNome}? (ex.: a falta já foi justificada)`,
+      'Cancelar solicitação',
+    );
+    if (!ok) return;
+    setDecidindo(true);
+    try {
+      await advertenciasService.cancelar(s.id);
+      solicitacoes.recarregar();
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao cancelar.');
+    } finally {
+      setDecidindo(false);
+    }
+  };
+
   const tendenciaTexto = (delta: number): React.ReactElement | null => {
     if (delta === 0) return null;
     const piorou = delta > 0;
@@ -135,8 +196,15 @@ export function SancoesScreen(): React.ReactElement {
     );
   };
 
+  const recarregarTudo = (): void => {
+    panorama.recarregar();
+    solicitacoes.recarregar();
+  };
+
+  const listaSolicitacoes = solicitacoes.dados ?? [];
+
   return (
-    <Tela aoAtualizar={panorama.recarregar} atualizando={panorama.atualizando}>
+    <Tela aoAtualizar={recarregarTudo} atualizando={panorama.atualizando}>
       {podeRegistrar ? (
         <TouchableOpacity
           activeOpacity={0.85}
@@ -146,6 +214,47 @@ export function SancoesScreen(): React.ReactElement {
           <Ionicons name="add-circle-outline" size={20} color={cores.textoInverso} />
           <Text style={styles.btnRegistrarTexto}>Registrar sanção</Text>
         </TouchableOpacity>
+      ) : null}
+
+      {/* Solicitações automáticas de advertência (falta não justificada) */}
+      {podeDecidir && listaSolicitacoes.length > 0 ? (
+        <Cartao titulo={`Solicitações de advertência (${listaSolicitacoes.length})`}>
+          <Text style={styles.solicitacaoIntro}>
+            Faltas sem justificar geraram pedido de advertência por desídia.
+            Aprove para lançar em Sanções, ou cancele se a falta já foi
+            justificada.
+          </Text>
+          {listaSolicitacoes.map((s) => (
+            <View key={s.id} style={styles.solicitacaoItem}>
+              <View style={styles.flex1}>
+                <Text style={styles.colNome} numberOfLines={1}>
+                  {s.colaboradorNome}
+                </Text>
+                <Text style={styles.colMeta} numberOfLines={1}>
+                  Falta em {formatarData(s.dataFalta)} · sem justificar
+                </Text>
+              </View>
+              <View style={styles.solicitacaoAcoes}>
+                <TouchableOpacity
+                  onPress={() => void cancelarSolicitacao(s)}
+                  disabled={decidindo}
+                  style={[styles.btnMini, styles.btnMiniCancelar]}
+                  hitSlop={6}
+                >
+                  <Text style={styles.btnMiniCancelarTexto}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => void aprovarSolicitacao(s)}
+                  disabled={decidindo}
+                  style={[styles.btnMini, styles.btnMiniAprovar]}
+                  hitSlop={6}
+                >
+                  <Text style={styles.btnMiniAprovarTexto}>Aprovar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </Cartao>
       ) : null}
 
       {panorama.carregando ? (
@@ -341,6 +450,48 @@ const styles = StyleSheet.create({
   },
   btnRegistrarTexto: {
     ...tipografia.corpo,
+    color: cores.textoInverso,
+    fontWeight: '700',
+  },
+  // Solicitações de advertência
+  solicitacaoIntro: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginBottom: espacamento.sm,
+  },
+  solicitacaoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    paddingVertical: espacamento.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: cores.divisor,
+  },
+  solicitacaoAcoes: {
+    flexDirection: 'row',
+    gap: espacamento.xs,
+  },
+  btnMini: {
+    paddingVertical: espacamento.xs,
+    paddingHorizontal: espacamento.sm,
+    borderRadius: raio.pill,
+    borderWidth: 1,
+  },
+  btnMiniCancelar: {
+    borderColor: cores.divisor,
+    backgroundColor: cores.superficie,
+  },
+  btnMiniCancelarTexto: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    fontWeight: '700',
+  },
+  btnMiniAprovar: {
+    borderColor: cores.vermelho,
+    backgroundColor: cores.vermelho,
+  },
+  btnMiniAprovarTexto: {
+    ...tipografia.legenda,
     color: cores.textoInverso,
     fontWeight: '700',
   },

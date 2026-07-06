@@ -15,6 +15,7 @@ export type { ImagemSelecionada } from './checklist';
 export { operadoresService } from './operadores';
 export { colaboradoresService } from './colaboradores';
 export type { FiltroColaboradores } from './colaboradores';
+export { advertenciasService } from './advertencias';
 export { contratosService } from './contratos';
 export type { FiltroContratos } from './contratos';
 export { usuariosService } from './usuarios';
