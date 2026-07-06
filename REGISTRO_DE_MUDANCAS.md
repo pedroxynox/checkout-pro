@@ -12,6 +12,20 @@
 
 ---
 
+## "Sem retorno" na tela de Escalas (operadores) (2026-07-05)
+
+**Ajuste:** o botão de marcar **"não retorno do intervalo"** estava só na tela
+*Escala de fiscais*, mas o gestor marca as faltas na tela **Escalas**
+(operadores por turno). Agora cada operador que trabalha tem, ao lado do status,
+um botão **"Sem retorno"** que registra o não retorno de hoje (sem horário), com
+confirmação — junto do já existente "tocar na linha = marcar/remover falta".
+
+- Só app; usa o endpoint de incidências que já existia (sem mudança de backend).
+- Aparece para quem gere ausências (`OPERADORES_AUSENCIAS`) e só em quem está
+  como "Trabalha".
+
+---
+
 ## Correção: relatório de perfil em PDF saía em branco na web (2026-07-05)
 
 **Bug:** ao baixar o relatório de operadores pela **web** (o app roda no
