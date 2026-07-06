@@ -23,6 +23,9 @@
   no caixa** ("Agora no caixa"), listado à parte — não conta mais como presente.
 - Backend: o "ao vivo" passou a separar os não-retornos dos disponíveis (novo
   campo). Sem migração.
+
+---
+
 ## Advertência automática por falta não justificada (com aprovação) (ADR 0013) (2026-07-05)
 
 Nova função com **alerta** para o gerente, sem lançar nada sem autorização:
