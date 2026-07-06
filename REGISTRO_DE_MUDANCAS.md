@@ -12,6 +12,15 @@
 
 ---
 
+## Favicon: passa a ser o logo "C" da marca (2026-07-05)
+
+**Ajuste:** o favicon da versão web era o ícone **vermelho** (carrinho); agora é
+o **logo "C"** (o mesmo do ícone do app — o azul com o "C"/pulso). Gerado a
+partir de `assets/Appicon.png` (256×256). Só troca de asset
+(`assets/favicon.png`); sem mudança de código nem de backend.
+
+---
+
 ## Painel de Vendas: cartão "Venda do dia" no topo (2026-07-05)
 
 **Objetivo:** dar destaque ao faturamento **do dia** — a primeira coisa que
