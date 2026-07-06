@@ -12,6 +12,19 @@
 
 ---
 
+## Correção: relatório de perfil em PDF saía em branco na web (2026-07-05)
+
+**Bug:** ao baixar o relatório de operadores pela **web** (o app roda no
+navegador), o PDF saía **em branco**. Causa: a impressão era disparada antes de
+o conteúdo (HTML + gráficos SVG) terminar de renderizar no iframe.
+
+- **Correção (só app):** na web, o relatório passa a ser montado num `iframe`
+  fora da tela e a impressão só dispara **após o `load`** (com uma pequena
+  espera para os gráficos), garantindo o conteúdo na folha. No **nativo**
+  segue via `expo-print`. Sem mudança de backend.
+
+---
+
 ## Painel de Vendas: cartão "Venda do dia" no topo (2026-07-05)
 
 **Objetivo:** dar destaque ao faturamento **do dia** — a primeira coisa que
