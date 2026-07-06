@@ -53,13 +53,25 @@ export function ColaboradoresScreen({
   const filtrados = useMemo(() => {
     const dados = lista.dados ?? [];
     const b = busca.trim().toLowerCase();
-    if (!b) return dados;
-    return dados.filter(
-      (c) =>
-        c.nome.toLowerCase().includes(b) ||
-        c.matricula.toLowerCase().includes(b),
+    const base = !b
+      ? dados
+      : dados.filter(
+          (c) =>
+            c.nome.toLowerCase().includes(b) ||
+            c.matricula.toLowerCase().includes(b),
+        );
+    // Ativos primeiro; inativos (desligados) ao final. Ordenação estável:
+    // mantém a ordem do backend (função/nome) dentro de cada grupo.
+    return [...base].sort((a, b2) =>
+      a.ativo === b2.ativo ? 0 : a.ativo ? -1 : 1,
     );
   }, [lista.dados, busca]);
+
+  // Índice do primeiro inativo (para o divisor "Inativos" na lista).
+  const primeiroInativoIdx = useMemo(
+    () => filtrados.findIndex((c) => !c.ativo),
+    [filtrados],
+  );
 
   // Conteo do quadro (somente colaboradores ATIVOS): total, fiscais e por
   // turno. Os turnos (Abertura/Intermediário/Fechamento/Apoio) contam APENAS
@@ -171,9 +183,16 @@ export function ColaboradoresScreen({
           descricao="Os colaboradores cadastrados aparecerão aqui."
         />
       ) : (
-        filtrados.map((c) => (
+        filtrados.map((c, i) => (
+          <React.Fragment key={c.id}>
+            {i === primeiroInativoIdx ? (
+              <View style={styles.divisorInativos}>
+                <Text style={styles.divisorInativosTexto}>
+                  Inativos (desligados)
+                </Text>
+              </View>
+            ) : null}
           <TouchableOpacity
-            key={c.id}
             activeOpacity={0.7}
             onPress={() =>
               navigation.navigate('PerfilColaborador', { colaboradorId: c.id })
@@ -198,6 +217,7 @@ export function ColaboradoresScreen({
             </View>
             <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />
           </TouchableOpacity>
+          </React.Fragment>
         ))
       )}
     </Tela>
@@ -214,6 +234,18 @@ const styles = StyleSheet.create({
     marginBottom: espacamento.sm,
     borderWidth: 1,
     borderColor: cores.divisor,
+  },
+  divisorInativos: {
+    marginTop: espacamento.md,
+    marginBottom: espacamento.xs,
+    paddingTop: espacamento.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: cores.divisor,
+  },
+  divisorInativosTexto: {
+    ...tipografia.rotulo,
+    fontWeight: '700',
+    color: cores.textoSecundario,
   },
   contratosIcone: {
     width: 38,
