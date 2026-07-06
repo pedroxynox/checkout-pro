@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "637623578974",
+    "project_id": "checkout-pro-695a3",
+    "storage_bucket": "checkout-pro-695a3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:637623578974:android:9728716c12da81c1f35fcf",
+        "android_client_info": {
+          "package_name": "center.stok.frentedecaixa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDciE4U72K6qJF_g40rqrU9k9i67kj37oc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

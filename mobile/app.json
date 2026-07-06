@@ -26,6 +26,7 @@
     },
     "android": {
       "package": "center.stok.frentedecaixa",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/Appicon.png",
         "backgroundColor": "#0F4C81"
