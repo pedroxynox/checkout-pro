@@ -6,7 +6,7 @@
  * de digitação, limpar conversa) e o "briefing" pedido por outras telas via
  * AssistenteContext (abre aqui já com a pergunta).
  */
-import { Send, Trash2 } from 'lucide-react-native';
+import { Send, Sparkles, Trash2, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -34,7 +34,15 @@ function idLocal(): string {
   return `local-${Date.now()}-${contadorLocal}`;
 }
 
-export function MensagensScreen(): React.ReactElement {
+/**
+ * Chat da Cluby (assistente). Usado dentro de uma **janela flutuante** (modal)
+ * sobre as abas. Quando `onFechar` é fornecido, mostra um "X" para fechar.
+ */
+export function ClubyChat({
+  onFechar,
+}: {
+  onFechar?: () => void;
+}): React.ReactElement {
   const [carregando, setCarregando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [configurado, setConfigurado] = useState<boolean | null>(null);
@@ -222,20 +230,27 @@ export function MensagensScreen(): React.ReactElement {
       <View style={styles.cabecalho}>
         <View style={styles.cabecalhoTitulo}>
           <View style={styles.avatarCabecalho}>
-            <Text style={styles.avatarEmojiGrande}>🤖</Text>
+            <Sparkles size={20} color={cores.primaria} />
           </View>
           <View>
             <Text style={styles.titulo}>Cluby</Text>
             <Text style={styles.subtitulo}>Sua super assistente do mercado</Text>
           </View>
         </View>
-        <Pressable
-          onPress={() => void limpar()}
-          hitSlop={10}
-          accessibilityLabel="Limpar conversa"
-        >
-          <Trash2 size={20} color={cores.textoSecundario} />
-        </Pressable>
+        <View style={styles.cabecalhoAcoes}>
+          <Pressable
+            onPress={() => void limpar()}
+            hitSlop={10}
+            accessibilityLabel="Limpar conversa"
+          >
+            <Trash2 size={20} color={cores.textoSecundario} />
+          </Pressable>
+          {onFechar ? (
+            <Pressable onPress={onFechar} hitSlop={10} accessibilityLabel="Fechar a Cluby">
+              <X size={22} color={cores.texto} />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       {configurado === false && (
@@ -257,7 +272,7 @@ export function MensagensScreen(): React.ReactElement {
           <ActivityIndicator color={cores.primaria} style={{ marginTop: espacamento.xl }} />
         ) : mensagens.length === 0 ? (
           <View style={styles.vazio}>
-            <Text style={styles.vazioEmoji}>🤖</Text>
+            <Sparkles size={40} color={cores.primaria} />
             <Text style={styles.vazioTitulo}>Oi! Eu sou a Cluby</Text>
             <Text style={styles.vazioTexto}>
               Sua super assistente do mercado. Pergunte sobre caixa, fechamento,
@@ -278,7 +293,7 @@ export function MensagensScreen(): React.ReactElement {
             ) : (
               <View key={m.id} style={styles.linhaIA}>
                 <View style={styles.avatar}>
-                  <Text style={styles.avatarEmoji}>🤖</Text>
+                  <Sparkles size={16} color={cores.primaria} />
                 </View>
                 <View
                   style={[
@@ -308,7 +323,7 @@ export function MensagensScreen(): React.ReactElement {
         {enviando && !animando && (
           <View style={styles.linhaIA}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarEmoji}>🤖</Text>
+              <Sparkles size={16} color={cores.primaria} />
             </View>
             <View style={[styles.bolha, styles.bolhaIA]}>
               <Text style={styles.digitando}>Cluby está digitando…</Text>
@@ -365,6 +380,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: espacamento.sm,
   },
+  cabecalhoAcoes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.md,
+  },
   avatarCabecalho: {
     width: 38,
     height: 38,
@@ -372,9 +392,6 @@ const styles = StyleSheet.create({
     backgroundColor: cores.primariaClara,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarEmojiGrande: {
-    fontSize: 20,
   },
   titulo: {
     ...tipografia.subtitulo,
@@ -405,9 +422,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: espacamento.xl,
     paddingTop: espacamento.xxl,
     gap: espacamento.sm,
-  },
-  vazioEmoji: {
-    fontSize: 44,
   },
   vazioTitulo: {
     ...tipografia.subtitulo,
@@ -441,9 +455,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
-  },
-  avatarEmoji: {
-    fontSize: 16,
   },
   bolhaUsuario: {
     backgroundColor: cores.primaria,
@@ -511,4 +522,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MensagensScreen;
+export default ClubyChat;

@@ -9,7 +9,6 @@
  * continuam na pilha (AppNavigator), empurradas por cima das abas.
  */
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Bell,
@@ -18,13 +17,14 @@ import {
   Sparkles,
   User,
 } from 'lucide-react-native';
-import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAssistente } from '../assistente/AssistenteContext';
 import { useAuth } from '../auth/AuthContext';
 import { useNotificacoes } from '../notificacoes/NotificacoesContext';
 import { HomeScreen } from '../screens/HomeScreen';
-import { MensagensScreen } from '../screens/mensagens/MensagensScreen';
+import { ClubyChat } from '../screens/mensagens/MensagensScreen';
 import { NotificacoesScreen } from '../screens/notificacoes/NotificacoesScreen';
 import { PerfilScreen } from '../screens/perfil/PerfilScreen';
 import { TarefasScreen } from '../screens/tarefas/TarefasScreen';
@@ -34,15 +34,14 @@ import { MainTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-/** Botão central elevado da Cluby (assistente de IA). */
-function BotaoCluby(): React.ReactElement {
-  const navigation = useNavigation();
+/** Botão central elevado da Cluby (abre a janela flutuante do chat). */
+function BotaoCluby({ onAbrir }: { onAbrir: () => void }): React.ReactElement {
   return (
     <View style={styles.clubyContainer} pointerEvents="box-none">
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Abrir a Cluby"
-        onPress={() => navigation.navigate('Mensagens' as never)}
+        onPress={onAbrir}
         style={({ pressed }) => [styles.clubyPressable, pressed && styles.clubyPress]}
       >
         <LinearGradient
@@ -60,9 +59,21 @@ function BotaoCluby(): React.ReactElement {
   );
 }
 
+/** Slot vazio da aba central: a Cluby não é uma aba, abre como janela flutuante. */
+function TelaVazia(): null {
+  return null;
+}
+
 export function MainTabs(): React.ReactElement {
   const { perfil, podeAcessar } = useAuth();
   const { naoLidas } = useNotificacoes();
+  // Janela flutuante da Cluby (modal por cima das abas).
+  const [clubyAberta, setClubyAberta] = useState(false);
+  const { pedido } = useAssistente();
+  // Quando outra tela pede um briefing (ex.: Resumo do Dia), abre a Cluby.
+  useEffect(() => {
+    if (pedido) setClubyAberta(true);
+  }, [pedido]);
   // Selo de pendências na aba Tarefas (defensivo, por regras).
   const { totalPendencias } = usePulsoDoDia(perfil, podeAcessar);
   // Respeita a área segura inferior (barra de gestos no Android/iOS e a barra
@@ -70,7 +81,8 @@ export function MainTabs(): React.ReactElement {
   const insets = useSafeAreaInsets();
 
   return (
-    <Tab.Navigator
+    <>
+      <Tab.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: cores.primaria },
         headerTintColor: cores.textoInverso,
@@ -133,11 +145,11 @@ export function MainTabs(): React.ReactElement {
       />
       <Tab.Screen
         name="Mensagens"
-        component={MensagensScreen}
+        component={TelaVazia}
         options={{
           headerShown: false,
           title: 'Cluby',
-          tabBarButton: () => <BotaoCluby />,
+          tabBarButton: () => <BotaoCluby onAbrir={() => setClubyAberta(true)} />,
         }}
       />
       <Tab.Screen
@@ -158,10 +170,41 @@ export function MainTabs(): React.ReactElement {
         }}
       />
     </Tab.Navigator>
+
+      <Modal
+        visible={clubyAberta}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setClubyAberta(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setClubyAberta(false)}
+            accessibilityLabel="Fechar a Cluby"
+          />
+          <View style={styles.modalCard}>
+            <ClubyChat onFechar={() => setClubyAberta(false)} />
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(10, 37, 64, 0.45)',
+  },
+  modalCard: {
+    height: '88%',
+    backgroundColor: cores.fundo,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
   clubyContainer: {
     flex: 1,
     alignItems: 'center',

@@ -496,20 +496,13 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
       <View style={styles.briefingCard}>
         <View style={styles.briefingHeader}>
           <View style={styles.briefingIcone}>
-            <Text style={styles.briefingEmoji}>🤖</Text>
+            <Sparkles size={14} color={cores.primaria} />
           </View>
           <Text style={styles.briefingTitulo}>Resumo de hoje</Text>
-          <View style={styles.iaBadge}>
-            <Sparkles size={9} color={cores.textoInverso} />
-            <Text style={styles.iaBadgeTexto}>IA</Text>
-          </View>
         </View>
         <Text style={styles.briefingNarrativa}>{resumoNarrativo}</Text>
         <Pressable
-          onPress={() => {
-            pedirBriefing(perguntaBriefing);
-            aoNavegar('Mensagens');
-          }}
+          onPress={() => pedirBriefing(perguntaBriefing)}
           style={({ pressed }) => [styles.briefingAcao, pressed && styles.briefingPress]}
           accessibilityRole="button"
           accessibilityLabel="Conversar com a Cluby sobre o resumo"
@@ -740,31 +733,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...sombra.cartao,
   },
-  briefingEmoji: {
-    fontSize: 14,
-  },
   briefingTitulo: {
     ...tipografia.corpo,
     fontSize: 12,
     fontWeight: '800',
     color: cores.primariaEscura,
     flex: 1,
-  },
-  iaBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: cores.primaria,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: raio.pill,
-  },
-  iaBadgeTexto: {
-    fontFamily: 'Inter_800ExtraBold',
-    color: cores.textoInverso,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
   },
   briefingNarrativa: {
     ...tipografia.corpo,
