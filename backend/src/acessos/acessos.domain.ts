@@ -60,6 +60,8 @@ export const TODAS_FUNCIONALIDADES = [
   'CHECKLIST',
   'OPERADORES_AUSENCIAS',
   'OPERADORES_CRUD',
+  // Decisão de solicitações automáticas de advertência (gerente/supervisor)
+  'ADVERTENCIAS_DECIDIR',
   // Contratos de experiência (tempo de casa + marcos 45/90)
   'CONTRATOS_VISUALIZAR',
   'CONTRATOS_GERIR',
@@ -114,6 +116,8 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] =
     'FISCAIS_JORNADA',
     // Contratos: o supervisor acompanha (visualiza), mas não decide os marcos.
     'CONTRATOS_VISUALIZAR',
+    // Decide as solicitações de advertência por falta não justificada.
+    'ADVERTENCIAS_DECIDIR',
   ]);
 
 /**
@@ -166,6 +170,8 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
     // Contratos de experiência: o gerente visualiza e decide os marcos.
     'CONTRATOS_VISUALIZAR',
     'CONTRATOS_GERIR',
+    // Decide as solicitações de advertência por falta não justificada.
+    'ADVERTENCIAS_DECIDIR',
   ],
 );
 

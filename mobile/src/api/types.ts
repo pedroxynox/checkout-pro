@@ -865,6 +865,18 @@ export interface ItemSuspensoAgora {
   diasRestantes: number;
 }
 
+/** Solicitação automática de advertência por falta não justificada. */
+export interface SolicitacaoAdvertencia {
+  id: string;
+  colaboradorId: string;
+  colaboradorNome: string;
+  ausenciaId: string;
+  dataFalta: string;
+  motivo: string;
+  status: 'PENDENTE' | 'APROVADA' | 'CANCELADA';
+  criadaEm: string;
+}
+
 /** Panorama de sanções do período (espelha ResumoSancoes do backend). */
 export interface PanoramaSancoes {
   totalAdvertencias: number;
