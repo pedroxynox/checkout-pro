@@ -23,6 +23,7 @@ import { ApiError, registrarAoExpirarSessao } from '../api/client';
 import { acessosService } from '../api/services';
 import { tokenStorage } from '../api/tokenStorage';
 import { Perfil, UsuarioAutenticado } from '../api/types';
+import { registrarPush, removerPushRegistrado } from '../push/push';
 import { podeAcessar } from './funcionalidades';
 
 /**
@@ -66,9 +67,17 @@ export function AuthProvider({
   const [usuario, setUsuario] = useState<UsuarioAutenticado | null>(null);
 
   const sair = useCallback(async () => {
+    await removerPushRegistrado();
     await tokenStorage.limparToken();
     setUsuario(null);
   }, []);
+
+  // Com sessão ativa, registra o aparelho para notificações push (best-effort).
+  useEffect(() => {
+    if (usuario) {
+      void registrarPush();
+    }
+  }, [usuario]);
 
   // Restaura a sessão ao iniciar: se houver token, busca o usuário atual.
   useEffect(() => {

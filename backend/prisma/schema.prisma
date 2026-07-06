@@ -572,6 +572,23 @@ model Notificacao {
   @@map("notificacoes")
 }
 
+// Token de push (Expo) de um dispositivo, vinculado ao usuário que o registrou.
+// Um usuário pode ter vários dispositivos; um token pertence a um usuário (o
+// último que fez login nele). Usado para enviar push (Expo Push Service) além
+// da entrega in-app/WebSocket. `usuarioId` é um id "solto" (sem FK rígida),
+// seguindo o padrão do schema (ADR 0005).
+model PushToken {
+  id           String   @id @default(uuid())
+  token        String   @unique
+  usuarioId    String
+  plataforma   String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @default(now()) @updatedAt
+
+  @@index([usuarioId])
+  @@map("push_tokens")
+}
+
 // Mensagem de uma conversa com o assistente de IA (chat flutuante). Cada
 // usuário tem o seu próprio fio (isolado por `usuarioId`). As conversas são
 // efêmeras: ficam guardadas por 24h (para o usuário recuperar a conversa caso

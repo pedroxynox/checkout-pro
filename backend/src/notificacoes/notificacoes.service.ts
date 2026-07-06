@@ -66,7 +66,84 @@ export class NotificacoesService {
         criadaEm: criada.criadaEm,
       });
     }
+    // Entrega PUSH (Expo) aos dispositivos registrados — best-effort.
+    await this.enviarPush(
+      destinatarios.map((d) => d.id),
+      conteudo,
+    );
     return criadas;
+  }
+
+  /**
+   * Registra/atualiza o token de push (Expo) de um dispositivo para o usuário.
+   * Idempotente por token: se o token já existia (mesmo aparelho), apenas
+   * reaponta para o usuário atual (útil quando trocam de login no aparelho).
+   */
+  async registrarPushToken(
+    usuarioId: string,
+    token: string,
+    plataforma?: string,
+  ): Promise<void> {
+    const t = token.trim();
+    if (!t) return;
+    await this.prisma.pushToken.upsert({
+      where: { token: t },
+      update: { usuarioId, plataforma: plataforma ?? null },
+      create: { token: t, usuarioId, plataforma: plataforma ?? null },
+    });
+  }
+
+  /** Remove um token de push (ex.: logout do aparelho). */
+  async removerPushToken(token: string): Promise<void> {
+    await this.prisma.pushToken.deleteMany({ where: { token: token.trim() } });
+  }
+
+  /**
+   * Envia a notificação como PUSH aos dispositivos dos destinatários via Expo
+   * Push Service. Best-effort: qualquer falha (rede/servidor Expo) é engolida —
+   * nunca quebra o fluxo que gerou o aviso. Envia em lotes de 100 (limite da
+   * API do Expo).
+   */
+  private async enviarPush(
+    usuarioIds: readonly string[],
+    conteudo: ConteudoNotificacao,
+  ): Promise<void> {
+    try {
+      const ids = [...new Set(usuarioIds)];
+      if (ids.length === 0) return;
+      const registros = await this.prisma.pushToken.findMany({
+        where: { usuarioId: { in: ids } },
+        select: { token: true },
+      });
+      // Só tokens no formato do Expo (evita lixo/entradas inválidas).
+      const tokens = registros
+        .map((r) => r.token)
+        .filter(
+          (t) =>
+            t.startsWith('ExponentPushToken') || t.startsWith('ExpoPushToken'),
+        );
+      if (tokens.length === 0) return;
+
+      const mensagens = tokens.map((to) => ({
+        to,
+        title: conteudo.titulo,
+        body: conteudo.mensagem,
+        sound: 'default',
+      }));
+      for (let i = 0; i < mensagens.length; i += 100) {
+        const lote = mensagens.slice(i, i + 100);
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(lote),
+        });
+      }
+    } catch {
+      // Best-effort: o push nunca deve derrubar o envio da notificação in-app.
+    }
   }
 
   /** Fiscais online no momento — alvo dos alertas de checklist (Req 5.3.3). */
