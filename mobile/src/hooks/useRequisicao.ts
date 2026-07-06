@@ -12,6 +12,12 @@ interface EstadoRequisicao<T> {
   atualizando: boolean;
   erro: string | null;
   recarregar: () => void;
+  /**
+   * Atualiza os dados localmente (atualização otimista), sem ir ao servidor.
+   * Útil para refletir uma ação na tela na hora e depois reconciliar com um
+   * `recarregar()`.
+   */
+  definir: (atualizador: (atual: T | null) => T | null) => void;
 }
 
 function mensagemDeErro(erro: unknown): string {
@@ -64,5 +70,12 @@ export function useRequisicao<T>(
     void executar(true);
   }, [executar]);
 
-  return { dados, carregando, atualizando, erro, recarregar };
+  const definir = useCallback(
+    (atualizador: (atual: T | null) => T | null) => {
+      setDados((prev) => atualizador(prev));
+    },
+    [],
+  );
+
+  return { dados, carregando, atualizando, erro, recarregar, definir };
 }

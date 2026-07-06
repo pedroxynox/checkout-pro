@@ -22,6 +22,7 @@ import {
   DiaOperadores,
   FaltasPorOperador,
   ItemEscalaConsolidada,
+  RankingIncidencia,
 } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import {
@@ -210,6 +211,19 @@ function ColaboradorRow({
           </View>
         ) : (
           <>
+            {!ehFalta ? (
+              <TouchableOpacity
+                onPress={() => onSemRetorno(c)}
+                style={[styles.btnAcao, styles.btnSemRetorno]}
+                hitSlop={6}
+                accessibilityLabel={`Marcar não retorno do intervalo de ${c.nome}`}
+              >
+                <Ionicons name="time-outline" size={13} color={cores.primaria} />
+                <Text style={[styles.btnAcaoTexto, { color: cores.primaria }]}>
+                  Sem retorno
+                </Text>
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
               onPress={() => onFalta(c)}
               style={[styles.btnAcao, ehFalta ? styles.btnFaltaAtiva : styles.btnFalta]}
@@ -232,19 +246,6 @@ function ColaboradorRow({
                 Falta
               </Text>
             </TouchableOpacity>
-            {!ehFalta ? (
-              <TouchableOpacity
-                onPress={() => onSemRetorno(c)}
-                style={[styles.btnAcao, styles.btnSemRetorno]}
-                hitSlop={6}
-                accessibilityLabel={`Marcar não retorno do intervalo de ${c.nome}`}
-              >
-                <Ionicons name="time-outline" size={13} color={cores.primaria} />
-                <Text style={[styles.btnAcaoTexto, { color: cores.primaria }]}>
-                  Sem retorno
-                </Text>
-              </TouchableOpacity>
-            ) : null}
           </>
         )}
       </View>
@@ -337,6 +338,35 @@ function FaltaOperadorRow({ o }: { o: FaltasPorOperador }): React.ReactElement {
   );
 }
 
+/**
+ * Aplica localmente (atualização otimista) a mudança de status de um
+ * colaborador no roster do dia e recalcula os contadores (trabalham/faltas/
+ * folgas), para a tela refletir a ação na hora — sem esperar o servidor.
+ */
+function aplicarStatusLocal(
+  d: DiaOperadores | null,
+  id: string,
+  novo: ColaboradorDia['status'],
+): DiaOperadores | null {
+  if (!d) return d;
+  const colaboradores = d.colaboradores.map((x) =>
+    x.id === id
+      ? {
+          ...x,
+          status: novo,
+          ausenciaId: novo === 'FALTA' ? (x.ausenciaId ?? '__otimista') : null,
+        }
+      : x,
+  );
+  return {
+    ...d,
+    colaboradores,
+    trabalhando: colaboradores.filter((c) => c.status === 'TRABALHA').length,
+    faltas: colaboradores.filter((c) => c.status === 'FALTA').length,
+    folgas: colaboradores.filter((c) => c.status === 'FOLGA').length,
+  };
+}
+
 export function OperadoresScreen(): React.ReactElement {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -379,12 +409,23 @@ export function OperadoresScreen(): React.ReactElement {
     [],
   );
 
+  // Não-retornos do intervalo no mês (ranking por colaborador). Defensivo: em
+  // erro, some (retorna lista vazia) — não quebra a tela.
+  const naoRetornos = useRequisicao<RankingIncidencia[]>(
+    () =>
+      escalaService
+        .rankingIncidencias(mes.inicio, mes.fim, 'NAO_RETORNO_INTERVALO')
+        .catch(() => [] as RankingIncidencia[]),
+    [],
+  );
+
   const [ocupado, setOcupado] = useState(false);
 
   const recarregarTudo = () => {
     dia.recarregar();
     aoVivo.recarregar();
     analitica.recarregar();
+    naoRetornos.recarregar();
     escalaFiscais.recarregar();
   };
 
@@ -407,6 +448,7 @@ export function OperadoresScreen(): React.ReactElement {
       setOcupado(true);
       try {
         await operadoresService.removerAusencia(c.ausenciaId);
+        dia.definir((d) => aplicarStatusLocal(d, c.id, 'TRABALHA'));
         recarregarTudo();
       } catch (e) {
         notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao remover.');
@@ -437,6 +479,7 @@ export function OperadoresScreen(): React.ReactElement {
     try {
       await operadoresService.registrarAusencia(c.id, diaSel);
       const restante = dados ? dados.trabalhando - 1 : null;
+      dia.definir((d) => aplicarStatusLocal(d, c.id, 'FALTA'));
       recarregarTudo();
       if (restante != null) {
         const abaixo = restante < COBERTURA_MINIMA;
@@ -470,6 +513,18 @@ export function OperadoresScreen(): React.ReactElement {
         tipo: 'NAO_RETORNO_INTERVALO',
         data: diaSel,
       });
+      // Atualização otimista do contador do mês (reflete na hora).
+      naoRetornos.definir((lista) => {
+        const atual = lista ?? [];
+        const idx = atual.findIndex((r) => r.colaboradorId === c.id);
+        if (idx >= 0) {
+          const copia = [...atual];
+          copia[idx] = { ...copia[idx], total: copia[idx].total + 1 };
+          return copia;
+        }
+        return [...atual, { colaboradorId: c.id, nome: c.nome, total: 1 }];
+      });
+      recarregarTudo();
       notificar('Registrado', `"Sem retorno" registrado para ${c.nome}.`);
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar.');
@@ -699,6 +754,36 @@ export function OperadoresScreen(): React.ReactElement {
             </Cartao>
           ) : null}
 
+          {/* Não-retornos do intervalo no mês (contador + por colaborador) */}
+          {(() => {
+            const lista = naoRetornos.dados ?? [];
+            const total = lista.reduce((s, r) => s + r.total, 0);
+            if (total === 0) return null;
+            return (
+              <Cartao titulo="Não-retornos do mês">
+                <Text style={styles.faltasTotal}>
+                  {total} não-retorno{total === 1 ? '' : 's'}
+                </Text>
+                <Text style={styles.faltasLegenda}>
+                  Não retorno do intervalo registrado neste mês.
+                </Text>
+                <Text style={styles.faltasSubtitulo}>Por colaborador</Text>
+                {lista.map((r) => (
+                  <View key={r.colaboradorId} style={styles.faltaItem}>
+                    <View style={styles.faltaItemInfo}>
+                      <Text style={styles.faltaNomeFull} numberOfLines={1}>
+                        {r.nome}
+                      </Text>
+                    </View>
+                    <View style={styles.faltaNums}>
+                      <Text style={styles.faltaQtdFull}>{r.total}</Text>
+                    </View>
+                  </View>
+                ))}
+              </Cartao>
+            );
+          })()}
+
           {/* Justificativas (faltas + não-retornos) — abaixo do painel de faltas */}
           {podeSemRetorno ? (
             <View style={styles.justificativasSecao}>
@@ -909,9 +994,9 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   acoesDireita: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 4,
   },
   chip: {
     paddingHorizontal: espacamento.sm,
