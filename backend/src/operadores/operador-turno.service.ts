@@ -534,6 +534,98 @@ export class OperadorTurnoService {
     });
   }
 
+  /**
+   * Analítica de "não retorno do intervalo" num período — mesma inteligência
+   * das faltas (ranking, risco/semáforo, dia recorrente e tendência), mas sobre
+   * as incidências do tipo NAO_RETORNO_INTERVALO em vez das ausências. Reusa o
+   * mesmo motor puro (`analisarFaltas`) e o mesmo formato de resposta.
+   */
+  async analiticaNaoRetornos(
+    inicio: Date,
+    fim: Date,
+  ): Promise<AnaliticaFaltas> {
+    const operadores = (
+      await this.prisma.colaborador.findMany({
+        where: { funcao: 'OPERADOR' },
+        select: { id: true, nome: true, folgaDiaSemana: true },
+      })
+    ).map((o) => ({
+      id: o.id,
+      nome: o.nome,
+      folgaDiaSemana: o.folgaDiaSemana ?? -1,
+    }));
+    const ids = operadores.map((o) => o.id);
+    if (ids.length === 0) {
+      return {
+        total: 0,
+        totalAnterior: 0,
+        tendenciaPct: null,
+        taxaGlobal: 0,
+        porOperador: [],
+        porDiaSemana: NOMES_DIA.map((nome, diaSemana) => ({
+          diaSemana,
+          nome,
+          quantidade: 0,
+        })),
+      };
+    }
+
+    // Janela anterior de igual duração, imediatamente antes (para a tendência).
+    const UM_DIA = 24 * 60 * 60 * 1000;
+    const prevFim = new Date(inicio.getTime() - UM_DIA);
+    const prevInicio = new Date(
+      prevFim.getTime() - (fim.getTime() - inicio.getTime()),
+    );
+
+    const selecao = {
+      colaboradorId: true,
+      data: true,
+      statusJustificativa: true,
+      motivoJustificativa: true,
+    };
+    const [atuais, anteriores] = await Promise.all([
+      this.prisma.incidenciaEscala.findMany({
+        where: {
+          colaboradorId: { in: ids },
+          tipo: 'NAO_RETORNO_INTERVALO',
+          data: { gte: inicio, lte: fim },
+        },
+        select: selecao,
+      }),
+      this.prisma.incidenciaEscala.findMany({
+        where: {
+          colaboradorId: { in: ids },
+          tipo: 'NAO_RETORNO_INTERVALO',
+          data: { gte: prevInicio, lte: prevFim },
+        },
+        select: selecao,
+      }),
+    ]);
+
+    // Não-retorno não tem "dia escalado" próprio; usamos a mesma janela das
+    // faltas para a taxa (dias escalados até hoje).
+    const agora = new Date();
+    const fimEscala = agora.getTime() < fim.getTime() ? agora : fim;
+
+    return analisarFaltas({
+      operadores,
+      ausencias: atuais.map((i) => ({
+        pessoaId: i.colaboradorId,
+        data: i.data,
+        statusJustificativa: i.statusJustificativa,
+        motivoJustificativa: i.motivoJustificativa,
+      })),
+      ausenciasAnterior: anteriores.map((i) => ({
+        pessoaId: i.colaboradorId,
+        data: i.data,
+        statusJustificativa: i.statusJustificativa,
+        motivoJustificativa: i.motivoJustificativa,
+      })),
+      inicio,
+      fimEscala,
+    });
+  }
+
   /** Operadores que deveriam trabalhar num dia da semana (não estão de folga). */
   private async escaladosNoDia(diaSemana: number): Promise<OperadorTurno[]> {
     const operadores = await this.listar();

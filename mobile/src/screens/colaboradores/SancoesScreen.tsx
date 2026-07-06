@@ -16,6 +16,7 @@ import React, { useMemo, useState } from 'react';
 import {
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -279,8 +280,12 @@ export function SancoesScreen(): React.ReactElement {
             {colaboradores.carregando ? (
               <Carregando />
             ) : (
-              <View style={styles.seletorLista}>
-                {filtrados.slice(0, 40).map((c) => (
+              <ScrollView
+                style={styles.seletorLista}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {filtrados.map((c) => (
                   <TouchableOpacity
                     key={c.id}
                     activeOpacity={0.7}
@@ -301,7 +306,7 @@ export function SancoesScreen(): React.ReactElement {
                 {filtrados.length === 0 ? (
                   <Text style={styles.vazio}>Nenhum colaborador encontrado.</Text>
                 ) : null}
-              </View>
+              </ScrollView>
             )}
           </View>
         </View>
@@ -416,7 +421,7 @@ const styles = StyleSheet.create({
     marginBottom: espacamento.sm,
   },
   seletorTitulo: { ...tipografia.subtitulo, color: cores.texto },
-  seletorLista: { marginTop: espacamento.xs },
+  seletorLista: { marginTop: espacamento.xs, flexShrink: 1 },
   seletorItem: {
     flexDirection: 'row',
     alignItems: 'center',

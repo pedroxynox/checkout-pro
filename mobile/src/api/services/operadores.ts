@@ -107,6 +107,17 @@ export const operadoresService = {
     });
   },
 
+  /**
+   * Analítica de "não retorno do intervalo" num período — mesma inteligência
+   * (ranking, risco/semáforo, dia recorrente e tendência) que as faltas.
+   */
+  analiticaNaoRetornos(inicio: string, fim: string): Promise<AnaliticaFaltas> {
+    return apiClient.get<AnaliticaFaltas>(
+      '/quadro-operadores/nao-retornos/analitica',
+      { inicio, fim },
+    );
+  },
+
   /** Lista os operadores (escala derivada do Cadastro de Colaboradores). */
   listarTurnos(): Promise<OperadorTurno[]> {
     return apiClient.get<OperadorTurno[]>('/quadro-operadores/turnos');
