@@ -1,16 +1,12 @@
 /**
  * Teste do histórico unificado de incidências no Perfil do Colaborador
- * (Fase 2 — faltas + "não retorno do intervalo").
+ * (faltas + "não retorno do intervalo" + sanções) — **somente leitura**.
  *
  * Verifica que o cartão "Histórico de incidências" renderiza o resumo e a
- * linha do tempo (faltas + não retorno) vindos do perfil, e que, com
- * permissão de gestão, os registros completos são buscados (para editar).
- *
- * Cobre também (Score de perfil abrangente) a exposição do botão "Registrar
- * não retorno" no perfil do operador: só aparece com a permissão
- * `OPERADORES_AUSENCIAS` e abre o modal em modo criar.
+ * linha do tempo, e que o registro/edição de ocorrências NÃO é mais exposto
+ * no perfil (foi movido para a seção "Sanções").
  */
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { PerfilColaboradorScreen } from './PerfilColaboradorScreen';
 
@@ -143,43 +139,16 @@ describe('PerfilColaboradorScreen — histórico de incidências', () => {
     expect(await screen.findByText('Histórico de incidências')).toBeTruthy();
     expect(screen.getByText('Não retorno do intervalo')).toBeTruthy();
     expect(screen.getByText('Falta')).toBeTruthy();
-    // Com permissão de gestão, busca os registros completos (para editar).
-    expect(escalaService.listarIncidencias).toHaveBeenCalledWith({
-      colaboradorId: 'c1',
-    });
   });
 
-  it('exibe o botão "Registrar ocorrência" quando há permissão', async () => {
+  it('é somente leitura: não expõe registro/edição de ocorrências no perfil', async () => {
     render_();
 
     expect(await screen.findByText('Histórico de incidências')).toBeTruthy();
-    expect(screen.getByText('Registrar ocorrência')).toBeTruthy();
-  });
-
-  it('oculta o botão "Registrar ocorrência" sem permissão', async () => {
-    mockAuth.permitir = false;
-    render_();
-
-    expect(await screen.findByText('Histórico de incidências')).toBeTruthy();
+    // O registro de sanções foi movido para a seção "Sanções".
     expect(screen.queryByText('Registrar ocorrência')).toBeNull();
-  });
-
-  it('abre o modal em modo criar (só advertência/suspensão, sem horário)', async () => {
-    render_();
-
-    const botao = await screen.findByText('Registrar ocorrência');
-    // Antes de abrir, o único "Registrar ocorrência" presente é o botão de ação.
-    expect(screen.getAllByText('Registrar ocorrência')).toHaveLength(1);
-
-    fireEvent.press(botao);
-
-    // O modal abre com o seletor de tipos do perfil (advertência/suspensão) e
-    // o botão "Salvar". Como esses tipos não usam horário, o campo "Retorno
-    // real" NÃO aparece.
-    expect(await screen.findByText('Salvar')).toBeTruthy();
-    expect(screen.getByText('Suspensão')).toBeTruthy();
-    expect(screen.queryByText('Retorno real')).toBeNull();
-    // Modo criação, não edição.
     expect(screen.queryByText('Editar ocorrência')).toBeNull();
+    // O perfil não busca mais os registros completos (só exibe a timeline).
+    expect(escalaService.listarIncidencias).not.toHaveBeenCalled();
   });
 });

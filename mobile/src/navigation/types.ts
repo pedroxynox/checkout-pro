@@ -34,6 +34,7 @@ export type RootStackParamList = {
   Justificativas: undefined;
   Colaboradores: undefined;
   Contratos: undefined;
+  Sancoes: undefined;
   CentroControle: undefined;
   Relatorios: undefined;
   GestaoColaboradores: { matriculaInicial?: string; nomeInicial?: string } | undefined;

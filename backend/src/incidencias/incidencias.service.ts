@@ -15,6 +15,8 @@ import { primeiroNome } from '../fiscais/fiscais.domain';
 import {
   AnaliseIncidencias,
   ItemTimeline,
+  META_TIPO_INCIDENCIA,
+  ResumoSancoes,
   TIPOS_DISCIPLINARES,
   TipoIncidencia,
   TransicaoPonto,
@@ -22,6 +24,7 @@ import {
   derivarHoraEsperadaRetorno,
   detectarNaoRetorno,
   rankingIncidencias,
+  resumirSancoes,
   rotuloTipoIncidencia,
   timelineUnificada,
   ItemRankingIncidencias,
@@ -44,6 +47,11 @@ export interface RegistrarIncidenciaInput {
   horaReal?: string;
   motivo?: string;
   observacao?: string;
+  /** Duração da suspensão em dias (só para SUSPENSAO; mínimo 1). */
+  diasSuspensao?: number;
+  /** Vínculo opcional com a ocorrência que motivou a sanção (informativo). */
+  causaTipo?: string;
+  causaData?: string;
 }
 
 /** Campos editáveis de uma incidência. */
@@ -169,6 +177,29 @@ export class IncidenciasService {
       horaEsperadaRetorno = derivada || null;
     }
 
+    // Sanção (advertência/suspensão): o motivo é obrigatório.
+    const ehSancao = META_TIPO_INCIDENCIA[dto.tipo]?.registro === 'PERFIL';
+    if (ehSancao && !dto.motivo?.trim()) {
+      throw new DadosIncidenciaInvalidosError('Informe o motivo da sanção.');
+    }
+
+    // Suspensão com período: guarda a duração (dias) e a data final inclusiva.
+    let diasSuspensao: number | null = null;
+    let dataFim: Date | null = null;
+    if (dto.tipo === 'SUSPENSAO') {
+      const dias =
+        Number.isFinite(dto.diasSuspensao) && (dto.diasSuspensao as number) > 0
+          ? Math.floor(dto.diasSuspensao as number)
+          : 1;
+      diasSuspensao = dias;
+      dataFim = new Date(data.getTime() + (dias - 1) * 24 * 60 * 60 * 1000);
+    }
+
+    // Vínculo opcional com a ocorrência que motivou a sanção (informativo).
+    const causaTipo = dto.causaTipo?.trim() || null;
+    const causaData =
+      causaTipo && dto.causaData ? inicioDoDia(new Date(dto.causaData)) : null;
+
     try {
       const criada = await this.prisma.incidenciaEscala.create({
         data: {
@@ -184,6 +215,10 @@ export class IncidenciasService {
           observacao: dto.observacao ?? null,
           registradoPorId: autor?.id ?? null,
           registradoPorNome: autor?.nome ?? null,
+          diasSuspensao,
+          dataFim,
+          causaTipo,
+          causaData,
         },
       });
       await this.verificarLimiteMes(dto.colaboradorId, dto.tipo, data);
@@ -408,6 +443,84 @@ export class IncidenciasService {
       }),
     );
     return rankingIncidencias(linhas);
+  }
+
+  /**
+   * Panorama de **sanções** (advertência/suspensão) na janela [inicio, fim]:
+   * contadores do período, tendência vs. o período anterior de mesmo tamanho,
+   * quem está suspenso hoje (com dias restantes) e o resumo por colaborador com
+   * a sugestão de próximo passo (disciplina progressiva). A lógica de agregação
+   * é pura (`resumirSancoes`); aqui ficam só as consultas.
+   */
+  async panoramaSancoes(
+    inicio: string,
+    fim: string,
+    hoje: Date = new Date(),
+  ): Promise<ResumoSancoes> {
+    const gte = inicioDoDia(new Date(inicio));
+    const lte = inicioDoDia(new Date(fim));
+    // Período anterior de mesmo tamanho (para a tendência).
+    const tamanhoDias = Math.max(
+      0,
+      Math.round((lte.getTime() - gte.getTime()) / (24 * 60 * 60 * 1000)),
+    );
+    const antLte = new Date(gte.getTime() - 24 * 60 * 60 * 1000);
+    const antGte = new Date(
+      antLte.getTime() - tamanhoDias * 24 * 60 * 60 * 1000,
+    );
+    const inicioHoje = inicioDoDia(hoje);
+    const SANCOES: TipoIncidencia[] = ['ADVERTENCIA', 'SUSPENSAO'];
+
+    const [atuais, anteriores, suspensoesAtivas] = await Promise.all([
+      this.prisma.incidenciaEscala.findMany({
+        where: { tipo: { in: SANCOES }, data: { gte, lte } },
+        select: { colaboradorId: true, tipo: true, data: true },
+        orderBy: { data: 'desc' },
+        take: LIMITE_LISTAGEM,
+      }),
+      this.prisma.incidenciaEscala.findMany({
+        where: { tipo: { in: SANCOES }, data: { gte: antGte, lte: antLte } },
+        select: { tipo: true },
+        take: LIMITE_LISTAGEM,
+      }),
+      this.prisma.incidenciaEscala.findMany({
+        where: {
+          tipo: 'SUSPENSAO',
+          data: { lte: inicioHoje },
+          dataFim: { gte: inicioHoje },
+        },
+        select: { colaboradorId: true, data: true, dataFim: true },
+      }),
+    ]);
+
+    const ids = new Set<string>();
+    for (const a of atuais) ids.add(a.colaboradorId);
+    for (const s of suspensoesAtivas) ids.add(s.colaboradorId);
+    const colaboradores = await this.prisma.colaborador.findMany({
+      where: { id: { in: [...ids] } },
+      select: { id: true, nome: true },
+    });
+    const nomePorId = new Map(colaboradores.map((c) => [c.id, c.nome]));
+    const nome = (id: string): string => nomePorId.get(id) ?? id;
+
+    return resumirSancoes(
+      atuais.map((a) => ({
+        colaboradorId: a.colaboradorId,
+        nome: nome(a.colaboradorId),
+        tipo: a.tipo as TipoIncidencia,
+        data: a.data,
+      })),
+      anteriores.map((a) => ({ tipo: a.tipo as TipoIncidencia })),
+      suspensoesAtivas
+        .filter((s) => s.dataFim)
+        .map((s) => ({
+          colaboradorId: s.colaboradorId,
+          nome: nome(s.colaboradorId),
+          data: s.data,
+          dataFim: s.dataFim as Date,
+        })),
+      hoje,
+    );
   }
 
   /**
