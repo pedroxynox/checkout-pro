@@ -250,28 +250,32 @@ function ColaboradorRow({
                 </Text>
               </TouchableOpacity>
             ) : null}
-            <TouchableOpacity
-              onPress={() => onFalta(c)}
-              style={[styles.btnAcao, ehFalta ? styles.btnFaltaAtiva : styles.btnFalta]}
-              hitSlop={6}
-              accessibilityLabel={
-                ehFalta ? `Remover falta de ${c.nome}` : `Marcar falta de ${c.nome}`
-              }
-            >
-              <Ionicons
-                name={ehFalta ? 'close-circle' : 'close-circle-outline'}
-                size={13}
-                color={ehFalta ? cores.textoInverso : cores.vermelho}
-              />
-              <Text
-                style={[
-                  styles.btnAcaoTexto,
-                  { color: ehFalta ? cores.textoInverso : cores.vermelho },
-                ]}
+            {/* Ao marcar "no retorno", esconde "Falta" (e vice-versa) — como já
+                acontece com a falta, que esconde o "Sem retorno". */}
+            {!semRet ? (
+              <TouchableOpacity
+                onPress={() => onFalta(c)}
+                style={[styles.btnAcao, ehFalta ? styles.btnFaltaAtiva : styles.btnFalta]}
+                hitSlop={6}
+                accessibilityLabel={
+                  ehFalta ? `Remover falta de ${c.nome}` : `Marcar falta de ${c.nome}`
+                }
               >
-                Falta
-              </Text>
-            </TouchableOpacity>
+                <Ionicons
+                  name={ehFalta ? 'close-circle' : 'close-circle-outline'}
+                  size={13}
+                  color={ehFalta ? cores.textoInverso : cores.vermelho}
+                />
+                <Text
+                  style={[
+                    styles.btnAcaoTexto,
+                    { color: ehFalta ? cores.textoInverso : cores.vermelho },
+                  ]}
+                >
+                  Falta
+                </Text>
+              </TouchableOpacity>
+            ) : null}
           </>
         )}
       </View>
