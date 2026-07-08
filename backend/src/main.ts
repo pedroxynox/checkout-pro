@@ -15,6 +15,22 @@ async function bootstrap(): Promise<void> {
   // (backend/assets), portanto persistem entre os deploys do Render.
   app.useStaticAssets(join(__dirname, '..', 'assets'), { prefix: '/assets/' });
 
+  // Serve os arquivos ENVIADOS pelos usuários (ex.: as FOTOS dos checklists),
+  // gravados em disco pelo LocalDiskStorage sob STORAGE_DIR e expostos no
+  // prefixo STORAGE_PUBLIC_URL (padrão "/arquivos"). Sem este registro, a URL
+  // da imagem do checklist retornava 404 e a foto nunca aparecia/abria. Só
+  // registramos quando o prefixo é um caminho local (começa com "/"); se
+  // apontar para um storage externo (http...), a entrega é feita por ele.
+  const storageDir = process.env.STORAGE_DIR ?? 'uploads';
+  const storagePublicUrl = process.env.STORAGE_PUBLIC_URL ?? '/arquivos';
+  if (storagePublicUrl.startsWith('/')) {
+    app.useStaticAssets(join(process.cwd(), storageDir), {
+      prefix: storagePublicUrl.endsWith('/')
+        ? storagePublicUrl
+        : `${storagePublicUrl}/`,
+    });
+  }
+
   // Cabeçalhos de segurança HTTP (helmet). CORP definido como "cross-origin"
   // para que as imagens estáticas em /assets possam ser carregadas pelo app
   // web hospedado em outro domínio (ex.: checkout-pro-web.onrender.com).

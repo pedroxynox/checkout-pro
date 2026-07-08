@@ -11,7 +11,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
-import { Alert, Image, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { API_BASE_URL } from '../../api/config';
 import { checklistService } from '../../api/services';
@@ -62,12 +62,14 @@ function ChecklistCard({
   estado,
   data,
   aoEnviar,
+  aoAbrirFoto,
 }: {
   tipo: TipoChecklist;
   titulo: string;
   estado: ChecklistEstado;
   data: string;
   aoEnviar: () => void;
+  aoAbrirFoto: (url: string) => void;
 }): React.ReactElement {
   const [enviando, setEnviando] = useState(false);
   const v = visual(estado.statusVisual);
@@ -137,11 +139,22 @@ function ChecklistCard({
             </Text>
           </View>
           {estado.imagemUrl ? (
-            <Image
-              source={{ uri: urlImagem(estado.imagemUrl) }}
-              style={styles.thumbnail}
-              resizeMode="cover"
-            />
+            <Pressable
+              style={styles.thumbnailWrap}
+              onPress={() => aoAbrirFoto(urlImagem(estado.imagemUrl as string))}
+              accessibilityRole="imagebutton"
+              accessibilityLabel="Ampliar a foto do checklist"
+            >
+              <Image
+                source={{ uri: urlImagem(estado.imagemUrl) }}
+                style={styles.thumbnail}
+                resizeMode="cover"
+              />
+              <View style={styles.ampliarSelo}>
+                <Ionicons name="expand-outline" size={13} color={cores.textoInverso} />
+                <Text style={styles.ampliarSeloTexto}>Toque para ampliar</Text>
+              </View>
+            </Pressable>
           ) : null}
           {estado.duplicado ? (
             <Aviso texto="Atenção: este print é idêntico a outro já enviado. Verifique se é do dia." />
@@ -192,6 +205,8 @@ export function ChecklistScreen(): React.ReactElement {
   };
 
   const est = estadoReq.dados;
+  // Foto aberta em tela cheia (visualizador). null = fechado.
+  const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
 
   return (
     <Tela
@@ -241,6 +256,7 @@ export function ChecklistScreen(): React.ReactElement {
             estado={est.abertura}
             data={data}
             aoEnviar={recarregar}
+            aoAbrirFoto={setFotoAmpliada}
           />
           <ChecklistCard
             tipo="FECHAMENTO"
@@ -248,6 +264,7 @@ export function ChecklistScreen(): React.ReactElement {
             estado={est.fechamento}
             data={data}
             aoEnviar={recarregar}
+            aoAbrirFoto={setFotoAmpliada}
           />
         </>
       ) : null}
@@ -278,6 +295,36 @@ export function ChecklistScreen(): React.ReactElement {
           </Text>
         </Cartao>
       ) : null}
+
+      {/* Visualizador de foto em tela cheia (toque na miniatura) */}
+      <Modal
+        visible={!!fotoAmpliada}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFotoAmpliada(null)}
+      >
+        <Pressable
+          style={styles.fotoBackdrop}
+          onPress={() => setFotoAmpliada(null)}
+        >
+          <Pressable
+            style={styles.fotoFechar}
+            onPress={() => setFotoAmpliada(null)}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Fechar"
+          >
+            <Ionicons name="close" size={28} color={cores.textoInverso} />
+          </Pressable>
+          {fotoAmpliada ? (
+            <Image
+              source={{ uri: fotoAmpliada }}
+              style={styles.fotoAmpliada}
+              resizeMode="contain"
+            />
+          ) : null}
+        </Pressable>
+      </Modal>
     </Tela>
   );
 }
@@ -334,12 +381,55 @@ const styles = StyleSheet.create({
     color: cores.texto,
     fontWeight: '600',
   },
+  thumbnailWrap: {
+    position: 'relative',
+    marginBottom: espacamento.sm,
+  },
   thumbnail: {
     width: '100%',
     height: 180,
     borderRadius: raio.md,
     backgroundColor: cores.superficieAlternativa,
-    marginBottom: espacamento.sm,
+  },
+  ampliarSelo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: raio.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  ampliarSeloTexto: {
+    color: cores.textoInverso,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  fotoBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fotoAmpliada: {
+    width: '100%',
+    height: '82%',
+  },
+  fotoFechar: {
+    position: 'absolute',
+    top: 44,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
   },
   botoes: {
     flexDirection: 'row',
