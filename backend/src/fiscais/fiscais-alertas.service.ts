@@ -147,6 +147,13 @@ export class FiscaisAlertasService {
       orderBy: { em: 'asc' },
     });
 
+    // Sem NENHUM registro de ponto no dia, ninguém iniciou o expediente — a
+    // seção de fiscais pode nem estar em uso ainda. Não faz sentido alertar
+    // "cobertura insuficiente" quando não há operação a cobrir: isso gerava um
+    // falso alarme recorrente. Assim que os fiscais começarem a bater ponto, o
+    // monitoramento volta a valer automaticamente (sem precisar religar nada).
+    if (registros.length === 0) return;
+
     const ultimoStatus = new Map<string, StatusFiscal>();
     for (const r of registros) {
       ultimoStatus.set(r.fiscalId, r.status as StatusFiscal);
