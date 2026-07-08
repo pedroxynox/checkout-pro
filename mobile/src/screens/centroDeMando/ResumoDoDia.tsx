@@ -94,28 +94,32 @@ interface Props {
   aoNavegar: (rota: RotaAtalho) => void;
 }
 
-/** Conjunto de temas relevantes para cada perfil. */
+/**
+ * Conjunto de temas relevantes para cada perfil.
+ *
+ * Por decisão de negócio, o Briefing e a NOTA DE SAÚDE são IGUAIS para todos os
+ * perfis que usam pessoas (gerente, gerente desenvolvedor, supervisor e fiscal):
+ * todos enxergam os mesmos temas, então a nota é a mesma para todos. O fiscal
+ * lê o tema "carga" via permissão somente-leitura (`CARGA_STATUS_VISUALIZAR`),
+ * sem que a seção de Importações/Fechamento apareça no menu dele.
+ *
+ * O IMPORTADOR (conta dedicada apenas à carga de arquivos) segue vendo somente
+ * a carga do dia.
+ */
 function temasDoPerfil(perfil: Perfil | null): Set<Tema> {
-  if (perfil === 'GERENTE_DESENVOLVEDOR') {
-    return new Set<Tema>([
-      'checklist',
-      'insumos',
-      'indicadores',
-      'faltas',
-      'cobertura',
-      'carga',
-      'ventas',
-      'metaVendas',
-    ]);
-  }
-  if (perfil === 'GERENTE' || perfil === 'SUPERVISOR') {
-    return new Set<Tema>(['ventas', 'metaVendas']);
-  }
   if (perfil === 'IMPORTADOR') {
     return new Set<Tema>(['carga']);
   }
-  // FISCAL (e padrão): rotina operacional do dia.
-  return new Set<Tema>(['checklist', 'insumos', 'indicadores', 'faltas', 'cobertura']);
+  return new Set<Tema>([
+    'checklist',
+    'insumos',
+    'indicadores',
+    'faltas',
+    'cobertura',
+    'carga',
+    'ventas',
+    'metaVendas',
+  ]);
 }
 
 /** Data de ontem (ISO), a partir de "hoje". */

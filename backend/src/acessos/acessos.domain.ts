@@ -41,6 +41,10 @@ export const TODAS_FUNCIONALIDADES = [
   // Carga e fechamento do dia
   'IMPORTACOES',
   'FECHAMENTO',
+  // Leitura do status de carga do dia (somente leitura, SEM área de menu):
+  // permite ao fiscal ver o tema "carga" no Briefing sem liberar as seções de
+  // Importações/Fechamento no menu dele.
+  'CARGA_STATUS_VISUALIZAR',
   // Indicadores e vendas
   'INDICADORES_VISUALIZAR',
   'PAINEL_VENDAS_VISUALIZAR',
@@ -99,6 +103,10 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
   'PAINEL_VENDAS_EDITAR',
   'INDICADOR_QUEBRA',
   'OPERADORES_AUSENCIAS',
+  // Somente leitura do status de carga do dia, para o Briefing ter a MESMA
+  // nota de saúde de gerentes/supervisores. Não abre nenhuma seção no menu do
+  // fiscal (não há área associada a esta funcionalidade).
+  'CARGA_STATUS_VISUALIZAR',
 ]);
 
 /**
