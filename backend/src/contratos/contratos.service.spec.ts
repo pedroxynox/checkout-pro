@@ -176,10 +176,10 @@ describe('ContratosService', () => {
       ];
       const { service } = criar(colaboradores, decisoes);
       const cards = await service.listar({}, HOJE);
-      // Ciclo automático: 'venc' (42d) e 'exp' (10d) estão em EXPERIÊNCIA
-      // (ATENÇÃO), 'ok' (200d) EFETIVADO (OK). Entre os de experiência, o
-      // desempate é pelo nome (Ana < Bia): exp, venc, depois ok.
-      expect(cards.map((c) => c.colaboradorId)).toEqual(['exp', 'venc', 'ok']);
+      // 'venc' (42d) e 'exp' (10d) estão em EXPERIÊNCIA (ATENÇÃO), 'ok' (200d)
+      // EFETIVADO (OK). Entre os de experiência, o desempate é por quem está
+      // mais perto dos 90 dias: 'venc' (faltam 48) antes de 'exp' (faltam 80).
+      expect(cards.map((c) => c.colaboradorId)).toEqual(['venc', 'exp', 'ok']);
 
       const soExp = await service.listar({ etiqueta: 'experiencia' }, HOJE);
       expect(soExp.every((c) => c.etiqueta === 'experiencia')).toBe(true);
@@ -188,14 +188,27 @@ describe('ContratosService', () => {
   });
 
   describe('avaliarAlertasDoDia', () => {
-    it('não gera alertas: os marcos resolvem-se automaticamente', async () => {
+    it('não gera alertas fora da janela de vencimento (nem "decisão em atraso")', async () => {
       const { service } = criar([
-        { id: 'c1', nome: 'Ana', matricula: '1', dataAdmissao: admissaoHa(42) }, // dentro dos 90
-        { id: 'c2', nome: 'Bia', matricula: '2', dataAdmissao: admissaoHa(50) }, // passou do 45
+        { id: 'c1', nome: 'Ana', matricula: '1', dataAdmissao: admissaoHa(42) }, // faltam 48 p/ 90
+        { id: 'c2', nome: 'Bia', matricula: '2', dataAdmissao: admissaoHa(50) }, // faltam 40 p/ 90
         { id: 'c3', nome: 'Cid', matricula: '3', dataAdmissao: admissaoHa(95) }, // efetivado
       ]);
       const alertas = await service.avaliarAlertasDoDia(HOJE);
       expect(alertas).toHaveLength(0);
+    });
+
+    it('avisa 5 dias antes de completar 90 dias (vencimento do contrato)', async () => {
+      const { service } = criar([
+        { id: 'c1', nome: 'Ana', matricula: '1', dataAdmissao: admissaoHa(87) }, // faltam 3 p/ 90
+      ]);
+      const alertas = await service.avaliarAlertasDoDia(HOJE);
+      expect(alertas).toHaveLength(1);
+      expect(alertas[0].alerta).toEqual({
+        tipo: 'VENCIMENTO',
+        marco: 'MARCO_90',
+        dias: 3,
+      });
     });
   });
 });
