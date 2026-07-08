@@ -17,7 +17,7 @@
  * vírgula decimal (ex.: ",50" = 0,50) e é interpretado por `parseValor`
  * (reaproveitado do parser de importações).
  */
-import { parseValor } from '../importacoes/importacoes.parser';
+import { parseValor } from '../common/numeros';
 
 export interface LinhaArrecadacao {
   nome: string;
