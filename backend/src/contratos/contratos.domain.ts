@@ -17,6 +17,9 @@
  *    aprovação/reprovação manual.
  *  - A partir do dia 91 (mais de 90 dias de casa): vira EFETIVADO
  *    automaticamente.
+ *  - Aviso de vencimento: nos 5 dias antes de completar 90 dias, um alerta por
+ *    dia (consecutivo) para o gestor decidir se encerra antes da efetivação
+ *    automática.
  *  - Não há mais decisão manual de marcos (nada a aprovar/reprovar na tela).
  *    Uma reprovação explícita registrada via API (para casos históricos) ainda
  *    encerra o contrato; o encerramento operacional de um colaborador é feito
@@ -212,16 +215,17 @@ export function derivarResumoContrato(
     };
   }
 
-  // Dentro dos 90 dias → EXPERIÊNCIA. O marco de 45 é aprovado por decurso
-  // (nunca "em atraso") e a efetivação acontece sozinha no dia 91. Não há
-  // decisão manual: nenhum marco a aprovar/reprovar.
+  // Dentro dos 90 dias → EXPERIÊNCIA. O marco de 45 aprova-se por decurso (nunca
+  // "em atraso") e a efetivação acontece sozinha no dia 91. Não há decisão
+  // manual. O "próximo marco" aponta para os 90 dias APENAS para o aviso de
+  // vencimento (5 dias antes, diariamente) e o semáforo de urgência.
   return {
     ...base,
     estado: 'EXPERIENCIA',
     etiqueta: 'experiencia',
-    proximoMarco: null,
-    dataProximoMarco: null,
-    diasParaProximoMarco: null,
+    proximoMarco: 'MARCO_90',
+    dataProximoMarco: dataMarco90,
+    diasParaProximoMarco: diffEmDias(hoje, dataMarco90),
     marcoEmAtraso: null,
     efetivadoPorDecurso: false,
   };

@@ -13,6 +13,9 @@ jest.mock('../../api/services', () => ({
     definirAdmissao: jest.fn(),
     decidir: jest.fn(),
   },
+  colaboradoresService: {
+    inativar: jest.fn(() => Promise.resolve()),
+  },
 }));
 
 const mockAuth = { permitir: true };
@@ -75,13 +78,14 @@ describe('ContratosScreen', () => {
     ).toBeTruthy();
   });
 
-  it('com CONTRATOS_GERIR, NÃO exibe botões de decisão (ciclo automático) e permite editar admissão', async () => {
+  it('com CONTRATOS_GERIR, NÃO exibe botões de decisão (ciclo automático) mas permite editar admissão e encerrar contrato', async () => {
     mockAuth.permitir = true;
     render_();
     await screen.findByText('Bia Vence');
     expect(screen.queryByText('Aprovar 45 dias')).toBeNull();
     expect(screen.queryByText('Reprovar')).toBeNull();
     expect(screen.getByText('Editar admissão')).toBeTruthy();
+    expect(screen.getByText('Encerrar contrato')).toBeTruthy();
   });
 
   it('sem permissão de gestão, NÃO exibe botões de decisão', async () => {

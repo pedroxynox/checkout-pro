@@ -1,5 +1,6 @@
 import * as fc from 'fast-check';
 import {
+  ANTECEDENCIA_ALERTA_DIAS,
   DIAS_MARCO_90,
   DecisaoRegistro,
   EstadoContrato,
@@ -102,9 +103,9 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
     );
   });
 
-  // Property 4: dentro dos 90 dias sem decisão → EXPERIÊNCIA, sem marco
-  // pendente e sem atraso (o de 45 aprova-se por decurso).
-  it('Property 4: 0..90 dias → EXPERIÊNCIA sem decisões pendentes', () => {
+  // Property 4: dentro dos 90 dias → EXPERIÊNCIA, sem atraso, apontando para o
+  // marco de 90 (usado só para o aviso de vencimento e o semáforo).
+  it('Property 4: 0..90 dias → EXPERIÊNCIA apontando para o marco de 90', () => {
     fc.assert(
       fc.property(
         dataArb,
@@ -117,9 +118,10 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
           );
           return (
             r.estado === 'EXPERIENCIA' &&
-            r.proximoMarco === null &&
+            r.proximoMarco === 'MARCO_90' &&
             r.marcoEmAtraso === null &&
-            r.efetivadoPorDecurso === false
+            r.efetivadoPorDecurso === false &&
+            r.diasParaProximoMarco === DIAS_MARCO_90 - offset
           );
         },
       ),
@@ -198,9 +200,9 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
     );
   });
 
-  // Property 8: não há mais alerta de decisão — avaliarAlerta é sempre null
-  // (os marcos resolvem-se automaticamente).
-  it('Property 8: avaliarAlerta é sempre null (ciclo automático)', () => {
+  // Property 8: nunca há "decisão em atraso" (ciclo automático); o único alerta
+  // possível é VENCIMENTO do marco de 90, nos 5 dias antes de completá-lo.
+  it('Property 8: só há alerta de VENCIMENTO (marco de 90) nos 5 dias antes', () => {
     fc.assert(
       fc.property(
         fc.option(dataArb, { nil: null }),
@@ -208,7 +210,15 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
         dataArb,
         (dataAdmissao, decisoes, hoje) => {
           const r = derivarResumoContrato({ dataAdmissao, decisoes }, hoje);
-          return avaliarAlerta(r) === null;
+          const a = avaliarAlerta(r);
+          if (a === null) return true;
+          if (a.tipo === 'DECISAO_ATRASO') return false;
+          return (
+            a.tipo === 'VENCIMENTO' &&
+            a.marco === 'MARCO_90' &&
+            a.dias >= 0 &&
+            a.dias <= ANTECEDENCIA_ALERTA_DIAS
+          );
         },
       ),
       { numRuns: NUM_RUNS },
@@ -230,6 +240,14 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
             return u === 'INATIVO';
           }
           if (r.estado === 'EFETIVADO') return u === 'OK';
+          // EXPERIÊNCIA: crítico nos 5 dias antes dos 90; senão atenção.
+          if (
+            r.diasParaProximoMarco !== null &&
+            r.diasParaProximoMarco >= 0 &&
+            r.diasParaProximoMarco <= ANTECEDENCIA_ALERTA_DIAS
+          ) {
+            return u === 'CRITICO';
+          }
           return u === 'ATENCAO';
         },
       ),
@@ -261,8 +279,10 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
             c.total === resumos.length &&
             c.emExperiencia + c.efetivados + c.encerrados + c.semAdmissao ===
               c.total &&
+            // Nunca há decisão pendente no ciclo automático.
             c.decisaoPendente === 0 &&
-            c.vencendoSemana === 0
+            c.vencendoSemana >= 0 &&
+            c.vencendoSemana <= c.emExperiencia
           );
         },
       ),

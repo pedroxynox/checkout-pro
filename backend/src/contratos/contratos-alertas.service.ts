@@ -92,11 +92,11 @@ function montarMensagem(
   }
   const prazo =
     alerta.dias === 0
-      ? 'vence hoje'
-      : `vence em ${alerta.dias} dia${alerta.dias === 1 ? '' : 's'}`;
+      ? 'hoje'
+      : `em ${alerta.dias} dia${alerta.dias === 1 ? '' : 's'}`;
   return {
     titulo: '⏳ Contrato de experiência vencendo',
-    mensagem: `O contrato de experiência de ${nome} ${prazo} (marco de ${marco}). Prepare a decisão.`,
+    mensagem: `O contrato de experiência de ${nome} completa ${marco} ${prazo} e será efetivado automaticamente. Se pretende encerrar, faça antes.`,
   };
 }
 
