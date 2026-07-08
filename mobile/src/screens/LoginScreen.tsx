@@ -308,8 +308,11 @@ export function LoginScreen(): React.ReactElement {
             </Svg>
           </View>
 
-          {/* Corpo branco com o cartão de acesso */}
+          {/* Corpo branco com o cartão de acesso. `corpoInner` limita a largura
+              e centraliza em telas largas (PC/web) — no celular fica igual, pois
+              a tela é mais estreita que o teto. */}
           <View style={styles.corpo}>
+            <View style={styles.corpoInner}>
             <View style={styles.card}>
               {lembrado ? (
                 <View style={styles.boasVindasRow}>
@@ -480,6 +483,7 @@ export function LoginScreen(): React.ReactElement {
                 Check-out Pro · Versão {versao} · 2026
               </Text>
             </View>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -515,6 +519,13 @@ const styles = StyleSheet.create({
   corpo: {
     paddingHorizontal: 22,
     marginTop: -48,
+  },
+  // Limita a largura do cartão/rodapé e centraliza em telas largas (PC/web).
+  // No celular não tem efeito (a tela é mais estreita que o teto).
+  corpoInner: {
+    width: '100%',
+    maxWidth: 460,
+    alignSelf: 'center',
   },
 
   // Marca — logo horizontal completo (já inclui o nome)
