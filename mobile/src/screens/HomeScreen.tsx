@@ -34,7 +34,15 @@ import {
   Users,
 } from 'lucide-react-native';
 import React from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../auth/AuthContext';
@@ -126,6 +134,12 @@ export function HomeScreen({
             : 'Fiscal';
   const nome = primeiroNome;
 
+  // Layout adaptativo: em telas largas (PC/notebook) usamos um layout de
+  // "app de escritório" — menu lateral fixo à esquerda + painel do dia à
+  // direita. No celular, tudo segue exatamente como antes.
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1000;
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -170,44 +184,98 @@ export function HomeScreen({
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.conteudo}>
-        {/* Resumo inteligente do dia (mantido no topo) */}
-        <ResumoDoDia aoNavegar={(rota) => navigation.navigate(rota as never)} />
-
-        {/* Acessos rápidos (áreas) em grade */}
-        <Text style={styles.secao}>Acessos rápidos</Text>
-        <View style={styles.grade}>
-          {areasOrdenadas.map((area) => {
-            const corModulo = coresModulos[area.rota] ?? cores.primaria;
-            const Icone = ICONES_MODULO[area.rota] ?? LayoutGrid;
-            const pendencias = pendenciasPorModulo[area.rota] ?? 0;
-            return (
-              <Pressable
-                key={area.rota}
-                style={({ pressed }) => [
-                  styles.tile,
-                  pressed && styles.tilePressionado,
-                ]}
-                onPress={() => navigation.navigate(area.rota)}
-              >
-                <View
-                  style={[styles.tileIcone, { backgroundColor: `${corModulo}1A` }]}
-                >
-                  <Icone size={26} color={corModulo} />
-                  {pendencias > 0 && (
-                    <View style={styles.tileBadge}>
-                      <Text style={styles.tileBadgeTexto}>{pendencias}</Text>
+      {isDesktop ? (
+        /* ===== Layout de ESCRITÓRIO (PC/notebook): menu lateral + painel ===== */
+        <View style={styles.desktopBody}>
+          {/* Menu lateral com os acessos (vertical, estilo app de desktop) */}
+          <View style={styles.sidebar}>
+            <Text style={styles.sidebarTitulo}>Acessos</Text>
+            <ScrollView contentContainerStyle={styles.sidebarLista}>
+              {areasOrdenadas.map((area) => {
+                const corModulo = coresModulos[area.rota] ?? cores.primaria;
+                const Icone = ICONES_MODULO[area.rota] ?? LayoutGrid;
+                const pendencias = pendenciasPorModulo[area.rota] ?? 0;
+                return (
+                  <Pressable
+                    key={area.rota}
+                    style={({ pressed }) => [
+                      styles.sidebarItem,
+                      pressed && styles.sidebarItemPressionado,
+                    ]}
+                    onPress={() => navigation.navigate(area.rota)}
+                  >
+                    <View
+                      style={[styles.sidebarIcone, { backgroundColor: `${corModulo}1A` }]}
+                    >
+                      <Icone size={20} color={corModulo} />
                     </View>
-                  )}
-                </View>
-                <Text style={styles.tileTitulo} numberOfLines={2}>
-                  {area.titulo}
-                </Text>
-              </Pressable>
-            );
-          })}
+                    <Text style={styles.sidebarLabel} numberOfLines={1}>
+                      {area.titulo}
+                    </Text>
+                    {pendencias > 0 && (
+                      <View style={styles.sidebarBadge}>
+                        <Text style={styles.tileBadgeTexto}>{pendencias}</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {/* Área principal: painel inteligente do dia */}
+          <ScrollView
+            style={styles.desktopMain}
+            contentContainerStyle={styles.desktopMainConteudo}
+          >
+            <View style={styles.desktopMainInner}>
+              <ResumoDoDia
+                aoNavegar={(rota) => navigation.navigate(rota as never)}
+              />
+            </View>
+          </ScrollView>
         </View>
-      </ScrollView>
+      ) : (
+        /* ===== Layout de CELULAR (inalterado): painel + grade de acessos ===== */
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.conteudo}>
+          {/* Resumo inteligente do dia (mantido no topo) */}
+          <ResumoDoDia aoNavegar={(rota) => navigation.navigate(rota as never)} />
+
+          {/* Acessos rápidos (áreas) em grade */}
+          <Text style={styles.secao}>Acessos rápidos</Text>
+          <View style={styles.grade}>
+            {areasOrdenadas.map((area) => {
+              const corModulo = coresModulos[area.rota] ?? cores.primaria;
+              const Icone = ICONES_MODULO[area.rota] ?? LayoutGrid;
+              const pendencias = pendenciasPorModulo[area.rota] ?? 0;
+              return (
+                <Pressable
+                  key={area.rota}
+                  style={({ pressed }) => [
+                    styles.tile,
+                    pressed && styles.tilePressionado,
+                  ]}
+                  onPress={() => navigation.navigate(area.rota)}
+                >
+                  <View
+                    style={[styles.tileIcone, { backgroundColor: `${corModulo}1A` }]}
+                  >
+                    <Icone size={26} color={corModulo} />
+                    {pendencias > 0 && (
+                      <View style={styles.tileBadge}>
+                        <Text style={styles.tileBadgeTexto}>{pendencias}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.tileTitulo} numberOfLines={2}>
+                    {area.titulo}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -296,6 +364,83 @@ const styles = StyleSheet.create({
     // (sem isto, ele cresce com o conteúdo e a página inteira rola, levando o
     // header junto).
     minHeight: 0,
+  },
+  // ----- Layout de escritório (PC/notebook) -----
+  desktopBody: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: cores.fundo,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+    minHeight: 0,
+  },
+  sidebar: {
+    width: 288,
+    backgroundColor: cores.superficie,
+    borderRightWidth: 1,
+    borderRightColor: cores.divisor,
+    paddingVertical: 18,
+    minHeight: 0,
+  },
+  sidebarTitulo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    paddingHorizontal: 18,
+    marginBottom: 10,
+  },
+  sidebarLista: {
+    paddingHorizontal: 12,
+    gap: 4,
+    paddingBottom: 20,
+  },
+  sidebarItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: raio.md,
+  },
+  sidebarItemPressionado: {
+    backgroundColor: cores.fundo,
+  },
+  sidebarIcone: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sidebarLabel: {
+    ...tipografia.rotulo,
+    fontSize: 14,
+    color: cores.texto,
+    flex: 1,
+  },
+  sidebarBadge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    borderRadius: 10,
+    backgroundColor: cores.vermelho,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  desktopMain: {
+    flex: 1,
+    minHeight: 0,
+  },
+  desktopMainConteudo: {
+    padding: 28,
+    minHeight: '100%',
+  },
+  desktopMainInner: {
+    width: '100%',
+    maxWidth: 900,
+    alignSelf: 'center',
   },
   conteudo: {
     backgroundColor: cores.fundo,
