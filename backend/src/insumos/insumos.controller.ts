@@ -181,4 +181,19 @@ export class InsumosController {
   async zerarEstoque(): Promise<{ removidos: number }> {
     return { removidos: await this.insumosService.zerarEstoque() };
   }
+
+  /**
+   * Zera o estoque de UM insumo (remove os movimentos apenas dele). O saldo
+   * daquele insumo volta a 0; os demais não mudam. Permite corrigir um
+   * lançamento errado sem zerar todo o almoxarifado. Administrativa
+   * (`ADMIN_DADOS`). Rota distinta de `DELETE /insumos/movimentos` (que zera
+   * todos), pois inclui o `:id` do insumo.
+   */
+  @Delete(':id/movimentos')
+  @Funcionalidade('ADMIN_DADOS')
+  async zerarEstoqueInsumo(
+    @Param('id') id: string,
+  ): Promise<{ removidos: number }> {
+    return { removidos: await this.insumosService.zerarEstoqueInsumo(id) };
+  }
 }
