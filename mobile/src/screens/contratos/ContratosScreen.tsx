@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
-import { contratosService } from '../../api/services';
+import { colaboradoresService, contratosService } from '../../api/services';
 import {
   ContratoCard,
   EtiquetaContrato,
@@ -32,7 +32,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { notificar } from '../../utils/dialogos';
+import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData } from '../../utils/formato';
 
 const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -136,6 +136,30 @@ export function ContratosScreen({
       req.recarregar();
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  /**
+   * Encerra o contrato de experiência: é uma baixa lógica (mesma ação de
+   * "excluir do quadro" no perfil) — o colaborador sai das listas/escalas, mas
+   * o histórico é preservado e pode ser reativado depois.
+   */
+  const encerrarContrato = async (c: ContratoCard) => {
+    const ok = await confirmar(
+      'Encerrar contrato',
+      `Encerrar o contrato de ${c.nome}? Ele sai do quadro e das escalas. O histórico é mantido e você pode reativar depois no perfil.`,
+      'Encerrar',
+    );
+    if (!ok) return;
+    setOcupado(true);
+    try {
+      await colaboradoresService.inativar(c.colaboradorId);
+      notificar('Contrato encerrado', `${c.nome} saiu do quadro.`);
+      req.recarregar();
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao encerrar.');
     } finally {
       setOcupado(false);
     }
@@ -266,14 +290,24 @@ export function ContratosScreen({
                       aoPressionar={() => abrirAdmissao(c)}
                     />
                   ) : (
-                    <TouchableOpacity
-                      onPress={() => abrirAdmissao(c)}
-                      hitSlop={8}
-                      style={styles.editarAdmissao}
-                    >
-                      <Ionicons name="calendar-outline" size={14} color={cores.textoSecundario} />
-                      <Text style={styles.editarAdmissaoTxt}>Editar admissão</Text>
-                    </TouchableOpacity>
+                    <>
+                      <TouchableOpacity
+                        onPress={() => abrirAdmissao(c)}
+                        hitSlop={8}
+                        style={styles.editarAdmissao}
+                      >
+                        <Ionicons name="calendar-outline" size={14} color={cores.textoSecundario} />
+                        <Text style={styles.editarAdmissaoTxt}>Editar admissão</Text>
+                      </TouchableOpacity>
+                      {c.estado !== 'ENCERRADO' && (
+                        <Botao
+                          titulo="Encerrar contrato"
+                          variante="perigo"
+                          aoPressionar={() => void encerrarContrato(c)}
+                          carregando={ocupado}
+                        />
+                      )}
+                    </>
                   )}
                 </View>
               )}
