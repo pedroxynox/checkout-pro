@@ -623,8 +623,13 @@ const styles = StyleSheet.create({
     gap: espacamento.sm,
   },
   acaoBtn: {
-    flex: 1,
-    minWidth: '45%',
+    // Largura por coluna via flexBasis percentual (2 por linha), em vez de
+    // `flex: 1`. Com `flex: 1` (flexBasis 0%) dentro de um container com
+    // `flexWrap`, o Yoga calcula a altura da grade só como 1 linha — o que fazia
+    // a seção seguinte ("Gestão") se sobrepor às ações rápidas quando havia mais
+    // de 2 insumos. Um flexBasis percentual definido corrige o cálculo de altura.
+    flexGrow: 1,
+    flexBasis: '45%',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
