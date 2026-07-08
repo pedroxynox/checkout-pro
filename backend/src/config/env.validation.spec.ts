@@ -11,7 +11,7 @@ describe('validateEnv', () => {
     expect(validated.NODE_ENV).toBe(Ambiente.Development);
     expect(validated.PORT).toBe(3000);
     expect(validated.HORARIO_FIM_DO_DIA).toBe('22:50');
-    expect(validated.GEMINI_MODEL).toBe('gemini-2.5-flash');
+    expect(validated.GEMINI_MODEL).toBe('gemini-2.5-flash-lite');
   });
 
   it('lança quando NODE_ENV=production e JWT_SECRET está ausente', () => {

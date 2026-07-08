@@ -55,7 +55,7 @@ traduzidos a HTTP por um filtro global (`common/filters`).
 | Camada | Tecnologias |
 | --- | --- |
 | Backend | Node.js, NestJS, TypeScript, Prisma, PostgreSQL, JWT, WebSocket, `@nestjs/schedule` |
-| IA | Google Gemini (`gemini-2.5-flash`) via REST |
+| IA | Google Gemini (`gemini-2.5-flash-lite`) via REST |
 | Mobile | React Native, Expo SDK 52, TypeScript, React Navigation (native-stack) |
 | Testes | Jest (backend e mobile), fast-check (property-based), Testing Library |
 | Qualidade | ESLint, Prettier, TypeScript em modo `strict` (ambos os pacotes) |
@@ -121,7 +121,7 @@ EXPO_PUBLIC_API_URL=http://localhost:3000 npm run start
 | `NODE_ENV` | não | `development` | `development` \| `test` \| `production` |
 | `HORARIO_FIM_DO_DIA` | não | `18:00` | Horário (HH:mm) para alertas de importações pendentes |
 | `GEMINI_API_KEY` | não | — | Chave do Google Gemini (assistente Cluby). Sem ela, o assistente responde "não configurado" |
-| `GEMINI_MODEL` | não | `gemini-2.5-flash` | Modelo Gemini usado pela Cluby |
+| `GEMINI_MODEL` | não | `gemini-2.5-flash-lite` | Modelo Gemini usado pela Cluby (mais barato e maior cota gratuita) |
 | `CORS_ORIGINS` | não | — | Lista de origens permitidas para CORS, separadas por vírgula (ex.: `https://checkout-pro-web.onrender.com`). Se vazia, a API reflete a origem da requisição — **defina-a em produção** |
 
 > ⚠️ **Segurança:** em **produção** o `JWT_SECRET` é **obrigatório** — a API **não

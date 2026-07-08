@@ -21,7 +21,7 @@
 - **Monorepo** npm workspaces: `backend/` (NestJS 10 + Prisma + PostgreSQL) y `mobile/` (Expo SDK 52 / React Native 0.76 + react-native-web).
 - **Patrón por módulo:** `*.controller.ts` (HTTP) → `*.service.ts` (orquestación/persistencia) → `*.domain.ts` (lógica pura, testeada con **property-based testing** / fast-check). DTOs con class-validator; errores de dominio (`ErroDominio` con `statusHttp`) traducidos por un filtro global.
 - **Autenticación:** JWT Bearer (30 días) con `tokenVersion` para revocación. **Autorización:** allowlist por funcionalidad (`@Funcionalidade` + `PerfilGuard`); fuente única en `acessos.domain.ts`.
-- **Tiempo real:** Socket.IO (estado de fiscales, notificaciones in-app). **Cron:** alertas y limpieza. **IA:** Gemini (`gemini-2.5-flash`) con timeout y concurrencia acotada.
+- **Tiempo real:** Socket.IO (estado de fiscales, notificaciones in-app). **Cron:** alertas y limpieza. **IA:** Gemini (`gemini-2.5-flash-lite`) con timeout y concurrencia acotada.
 - **Perfiles:** GERENTE_DESENVOLVEDOR, GERENTE, SUPERVISOR, FISCAL, IMPORTADOR.
 
 ## 3. Funcionalidades (por módulo)
@@ -39,7 +39,7 @@
 | `DATABASE_URL` | **Sí (prod)** | Cadena PostgreSQL. La API no arranca sin ella en prod. |
 | `CORS_ORIGINS` | Recomendada | Orígenes permitidos separados por coma (ej. la URL de la web). Si falta, refleja cualquier origen. |
 | `GEMINI_API_KEY` | Para la Cluby | Sin ella, el asistente responde "no configurado". |
-| `GEMINI_MODEL` | No | Default `gemini-2.5-flash`. |
+| `GEMINI_MODEL` | No | Default `gemini-2.5-flash-lite` (más barato y con mayor cota gratuita). |
 | `JWT_EXPIRES_IN` | No | Default `30d`. |
 | `HORARIO_FIM_DO_DIA` | No | Default `22:50`. |
 | `SENHA_INICIAL` | Sí (seed) | Contraseña inicial de los usuarios del seed. En `render.yaml` es secreto (`sync: false`) — cargar en el panel. |

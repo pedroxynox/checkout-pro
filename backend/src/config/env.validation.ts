@@ -67,12 +67,14 @@ export class EnvironmentVariables {
   @IsOptional()
   GEMINI_API_KEY?: string;
 
-  // Modelo Gemini usado pelo assistente. Padrão: gemini-2.5-flash (rápido e
-  // com camada gratuita ativa; o gemini-2.0-flash foi descontinuado em
-  // jun/2026 e ficou sem cota gratuita).
+  // Modelo Gemini usado pelo assistente. Padrão: gemini-2.5-flash-lite — o mais
+  // barato e com a MAIOR cota gratuita da família 2.5 (na camada gratuita:
+  // ~15 req/min e 1.000 req/dia, contra 10/min e 250/dia do gemini-2.5-flash),
+  // ideal para vários fiscais usando ao mesmo tempo. (O gemini-2.0-flash foi
+  // descontinuado em jun/2026 e ficou sem cota gratuita.)
   @IsString()
   @IsOptional()
-  GEMINI_MODEL = 'gemini-2.5-flash';
+  GEMINI_MODEL = 'gemini-2.5-flash-lite';
 
   // Lista de origens permitidas para CORS (separadas por vírgula). Ex.:
   // "https://checkout-pro-web.onrender.com". Se vazio, em dev reflete a origem.

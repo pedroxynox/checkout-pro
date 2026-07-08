@@ -70,7 +70,7 @@ mobile/ (Expo / React Native)  --HTTPS + JWT Bearer-->  backend/ (NestJS)
 | Capa | Tecnologías |
 | --- | --- |
 | Backend | Node.js ≥18, NestJS 10, TypeScript strict, Prisma 5, PostgreSQL, JWT, Socket.IO, `@nestjs/schedule` |
-| IA | Google Gemini (`gemini-2.5-flash`) vía REST |
+| IA | Google Gemini (`gemini-2.5-flash-lite` — más barato y con mayor cota gratuita) vía REST |
 | Mobile | React Native 0.76, Expo SDK 52, TypeScript, React Navigation 7 (native-stack) |
 | Parsing | papaparse, xlsx (flujos antiguos) + parsers `.txt` propios (flujo actual) |
 | Tests | Jest (backend y mobile), fast-check (property-based, ≥100 iter.), Testing Library |
@@ -221,8 +221,13 @@ meses de retención antes de purgar inactivos). Mobile: `EXPO_PUBLIC_API_URL`.
   mobile (`type-check` + `lint` + `jest` + `expo export --platform web`).
 
 ### Pendientes / deuda técnica
-1. **Gemini tier pago (URGENTE multiusuario):** la capa gratuita (~20 req/min) es
-   insuficiente para ~15 fiscales (`RESOURCE_EXHAUSTED`).
+1. **Gemini tier (multiusuario):** el modelo por defecto pasó a
+   `gemini-2.5-flash-lite` (mayor cota gratuita: ~15 req/min y 1.000 req/día,
+   vs 10/min y 250/día de `gemini-2.5-flash`), lo que alivia el
+   `RESOURCE_EXHAUSTED` para ~15 fiscales sin costo. Si aun así se queda corto,
+   el paso siguiente es pasar Gemini a tier pago. **Importante:** si
+   `GEMINI_MODEL` está fijado en Render, cambiarlo allí a
+   `gemini-2.5-flash-lite` (o quitarlo para usar el nuevo default).
 2. **Migrar la BD de Render a plan pago** antes de que expire (~30 días).
 3. **Normativas de Cluby (RAG con fotos):** DESACTIVADAS por
    `PROCEDIMENTOS_ATIVOS = false` en

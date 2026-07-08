@@ -12,7 +12,7 @@
   (NO renombrar = se perderían datos). ⚠️ **El plan free expira ~30 días** →
   migrar a plan pago antes de esa fecha para no perder datos.
 - **Secretos en Render (no en el repo):** `JWT_SECRET` (auto-generado, seguro),
-  `GEMINI_API_KEY`, `DATABASE_URL`, `GEMINI_MODEL=gemini-2.5-flash`,
+  `GEMINI_API_KEY`, `DATABASE_URL`, `GEMINI_MODEL=gemini-2.5-flash-lite`,
   `JWT_EXPIRES_IN=30d`, `HORARIO_FIM_DO_DIA=22:50`, `SENHA_INICIAL`.
 - **Servicios creados a mano** (el Blueprint fue desconectado). `render.yaml`
   quedó como documentación; no maneja los servicios.
@@ -41,7 +41,7 @@
   cálculo de jornada (trabajando/intervalo/carga), log para gestores
   (`FISCAIS_JORNADA`), falta del día. Backend: `RegistroPontoFiscal` reemplazó a
   `SessaoFiscal` (migración `9g`).
-- **Cluby (asistente IA):** chat flotante (Gemini `gemini-2.5-flash`), conversación
+- **Cluby (asistente IA):** chat flotante (Gemini `gemini-2.5-flash-lite`), conversación
   24h, efecto de escritura, markdown. Enfocada en gestión inteligente de
   supermercados **Brasil + Rio Grande do Sul** (fiscal NF-e/NFC-e/SAT, ICMS-ST,
   SEFAZ-RS, KPIs).
@@ -140,6 +140,20 @@ PRs mergeados esta sesión: **#83, #84, #85, #86, #87** (todos en `main`).
   asociar) y `GestaoColaboradoresScreen.test.tsx` (prellenado).
 - **Verificación final de la sesión:** backend `build` + **156 tests**; mobile
   `type-check` + **37 tests**; lint OK. Sin migraciones nuevas (siguen hasta `9s`).
+
+### Actualización — IA más barata / más gratuita (sesión 2026-07-08)
+
+- **Modelo por defecto de Cluby cambiado de `gemini-2.5-flash` a
+  `gemini-2.5-flash-lite`** (el más barato y con mayor cota gratuita de la
+  familia 2.5: ~15 req/min y 1.000 req/día, vs 10/min y 250/día). Reduce el
+  `RESOURCE_EXHAUSTED` con ~15 fiscales sin costo. `thinkingBudget: 0` ya estaba
+  desactivado, así que no cambia el comportamiento de respuesta.
+- Cambiado en: `env.validation.ts` (default + spec), `gemini.client.ts`
+  (fallback), `backend/.env.example` y docs (README, PROJECT_UNDERSTANDING,
+  `docs/ESTADO_Y_PROXIMOS_PASOS.md`).
+- **Acción manual del usuario:** si la variable `GEMINI_MODEL` está fijada en
+  Render, cambiarla allí a `gemini-2.5-flash-lite` (o borrarla para heredar el
+  nuevo default). Si no está fijada, el cambio ya aplica solo.
 
 ### Actualización — auditoría, limpieza de legacy y ventana de retención (sesión 2026-07-08)
 
