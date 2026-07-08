@@ -11,13 +11,16 @@
  * gravado —, o que mantém a fonte de verdade única e o cálculo testável por
  * propriedades (fast-check) sem qualquer infraestrutura. Ver ADR 0008.
  *
- * Regras de negócio (aprovadas):
- *  - 45 dias sem decisão: permanece em EXPERIÊNCIA e passa a "decisão em
- *    atraso" (nunca reprova sozinho).
- *  - 90 dias sem reprovação: vira EFETIVADO por **decurso de prazo** (lei
- *    brasileira), mas segue sinalizando "decisão em atraso" até a decisão do
- *    marco de 90 ser registrada.
- *  - Reprovar em qualquer marco encerra o contrato (ação sempre explícita).
+ * Regras de negócio (aprovadas) — ciclo AUTOMÁTICO, sem decisão manual:
+ *  - Dentro dos 90 dias: EXPERIÊNCIA. O marco de 45 dias é aprovado
+ *    automaticamente por decurso — nunca gera "decisão em atraso" nem pede
+ *    aprovação/reprovação manual.
+ *  - A partir do dia 91 (mais de 90 dias de casa): vira EFETIVADO
+ *    automaticamente.
+ *  - Não há mais decisão manual de marcos (nada a aprovar/reprovar na tela).
+ *    Uma reprovação explícita registrada via API (para casos históricos) ainda
+ *    encerra o contrato; o encerramento operacional de um colaborador é feito
+ *    por "excluir do quadro".
  */
 import { inicioDoDia } from '../common/datas';
 
@@ -177,7 +180,9 @@ export function derivarResumoContrato(
     decisao90,
   };
 
-  // Reprovação em qualquer marco encerra o contrato.
+  // Reprovação explícita (registrada via API — casos históricos) encerra o
+  // contrato. Não há mais botão de reprovar; o encerramento operacional é por
+  // "excluir do quadro".
   if (decisao45 === 'REPROVADO' || decisao90 === 'REPROVADO') {
     return {
       ...base,
@@ -191,8 +196,9 @@ export function derivarResumoContrato(
     };
   }
 
-  // Aprovação explícita no marco de 90 → efetivado.
-  if (decisao90 === 'APROVADO') {
+  // EFETIVADO: automaticamente ao passar de 90 dias (a partir do dia 91) ou por
+  // aprovação explícita já registrada no marco de 90. Sem decisões pendentes.
+  if (diasDeCasa > DIAS_MARCO_90 || decisao90 === 'APROVADO') {
     return {
       ...base,
       estado: 'EFETIVADO',
@@ -201,51 +207,22 @@ export function derivarResumoContrato(
       dataProximoMarco: null,
       diasParaProximoMarco: null,
       marcoEmAtraso: null,
-      efetivadoPorDecurso: false,
+      // "por decurso" quando a efetivação veio do tempo (sem aprovação manual).
+      efetivadoPorDecurso: decisao90 !== 'APROVADO',
     };
   }
 
-  // Passou de 90 dias sem reprovação → efetivado por decurso de prazo. Segue
-  // sinalizando "decisão em atraso" até a decisão do marco de 90 ser registrada.
-  if (diasDeCasa >= DIAS_MARCO_90) {
-    // O marco em atraso é o PRIMEIRO ainda não decidido (o de 90 só pode ser
-    // decidido depois de aprovar o de 45 — ver `podeDecidirMarco`).
-    return {
-      ...base,
-      estado: 'EFETIVADO',
-      etiqueta: 'efetivado',
-      proximoMarco: null,
-      dataProximoMarco: null,
-      diasParaProximoMarco: null,
-      marcoEmAtraso: decisao45 === 'APROVADO' ? 'MARCO_90' : 'MARCO_45',
-      efetivadoPorDecurso: true,
-    };
-  }
-
-  // Em experiência: define o marco ativo. Aprovado no 45 → aguarda o 90.
-  if (decisao45 === 'APROVADO') {
-    return {
-      ...base,
-      estado: 'EXPERIENCIA',
-      etiqueta: 'experiencia',
-      proximoMarco: 'MARCO_90',
-      dataProximoMarco: dataMarco90,
-      diasParaProximoMarco: diffEmDias(hoje, dataMarco90),
-      marcoEmAtraso: null,
-      efetivadoPorDecurso: false,
-    };
-  }
-
-  // Marco de 45 ainda não decidido (pode já ter vencido → decisão em atraso).
-  const venceu45 = diasDeCasa >= DIAS_MARCO_45;
+  // Dentro dos 90 dias → EXPERIÊNCIA. O marco de 45 é aprovado por decurso
+  // (nunca "em atraso") e a efetivação acontece sozinha no dia 91. Não há
+  // decisão manual: nenhum marco a aprovar/reprovar.
   return {
     ...base,
     estado: 'EXPERIENCIA',
     etiqueta: 'experiencia',
-    proximoMarco: 'MARCO_45',
-    dataProximoMarco: dataMarco45,
-    diasParaProximoMarco: diffEmDias(hoje, dataMarco45),
-    marcoEmAtraso: venceu45 ? 'MARCO_45' : null,
+    proximoMarco: null,
+    dataProximoMarco: null,
+    diasParaProximoMarco: null,
+    marcoEmAtraso: null,
     efetivadoPorDecurso: false,
   };
 }

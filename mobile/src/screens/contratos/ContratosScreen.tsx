@@ -2,9 +2,10 @@
  * Seção "Contratos" — contrato de experiência (45 + 45 dias) dos operadores.
  *
  * Mostra um resumo da carteira, filtros por etiqueta e um card por operador com
- * o tempo de casa, a etiqueta (experiência/efetivado/encerrado) e o semáforo de
- * urgência. Quem tem `CONTRATOS_GERIR` (gerente) pode definir/editar a admissão
- * e aprovar/reprovar cada marco. Tocar no card abre o perfil do colaborador.
+ * o tempo de casa, a etiqueta (experiência/efetivado) e o semáforo de urgência.
+ * O ciclo é AUTOMÁTICO: dentro dos 90 dias fica "experiência" e, a partir do dia
+ * 91, "efetivado" — não há decisão manual de marcos. Quem tem `CONTRATOS_GERIR`
+ * (gerente) apenas define/edita a data de admissão. Tocar no card abre o perfil.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
@@ -14,8 +15,6 @@ import { contratosService } from '../../api/services';
 import {
   ContratoCard,
   EtiquetaContrato,
-  MarcoContrato,
-  ResultadoDecisao,
   ResumoCarteiraContratos,
   UrgenciaContrato,
 } from '../../api/types';
@@ -33,7 +32,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { confirmar, notificar } from '../../utils/dialogos';
+import { notificar } from '../../utils/dialogos';
 import { formatarData } from '../../utils/formato';
 
 const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -43,11 +42,6 @@ const ROTULO_ETIQUETA: Record<EtiquetaContrato, string> = {
   efetivado: 'Efetivado',
   encerrado: 'Encerrado',
   sem_admissao: 'Sem admissão',
-};
-
-const ROTULO_MARCO: Record<MarcoContrato, string> = {
-  MARCO_45: '45 dias',
-  MARCO_90: '90 dias',
 };
 
 /** Cor do selo a partir da urgência (semáforo). */
@@ -73,20 +67,13 @@ const FILTROS: { v: EtiquetaContrato | 'todas'; r: string }[] = [
   { v: 'sem_admissao', r: 'Sem admissão' },
 ];
 
-/** Frase de status do contrato para o card. */
+/** Frase de status do contrato para o card (ciclo automático). */
 function statusDoCard(c: ContratoCard): string {
   if (c.estado === 'SEM_ADMISSAO') return 'Defina a data de admissão.';
-  if (c.marcoEmAtraso) {
-    return `Decisão do marco de ${ROTULO_MARCO[c.marcoEmAtraso]} em atraso.`;
-  }
-  if (c.estado === 'EFETIVADO') return 'Efetivado.';
+  if (c.estado === 'EFETIVADO') return 'Efetivado (mais de 90 dias de casa).';
   if (c.estado === 'ENCERRADO') return 'Contrato encerrado.';
-  if (c.proximoMarco && c.diasParaProximoMarco !== null) {
-    const marco = ROTULO_MARCO[c.proximoMarco];
-    if (c.diasParaProximoMarco === 0) return `Marco de ${marco} vence hoje.`;
-    return `Marco de ${marco} em ${c.diasParaProximoMarco} dia${c.diasParaProximoMarco === 1 ? '' : 's'}.`;
-  }
-  return '';
+  // EXPERIÊNCIA: efetiva sozinho ao passar de 90 dias.
+  return `Em experiência · ${c.diasDeCasa} de 90 dias de casa.`;
 }
 
 interface DadosContratos {
@@ -154,37 +141,12 @@ export function ContratosScreen({
     }
   };
 
-  const decidir = async (
-    c: ContratoCard,
-    marco: MarcoContrato,
-    resultado: ResultadoDecisao,
-  ) => {
-    const acao = resultado === 'APROVADO' ? 'Aprovar' : 'Reprovar';
-    const ok = await confirmar(
-      `${acao} contrato`,
-      `${acao} o marco de ${ROTULO_MARCO[marco]} de ${c.nome}?` +
-        (resultado === 'REPROVADO' ? ' Isso encerra o contrato.' : ''),
-      acao,
-    );
-    if (!ok) return;
-    setOcupado(true);
-    try {
-      await contratosService.decidir(c.colaboradorId, marco, resultado);
-      req.recarregar();
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao decidir.');
-    } finally {
-      setOcupado(false);
-    }
-  };
-
   const resumo = req.dados?.resumo;
   const cardsResumo = resumo
     ? [
         { rotulo: 'Experiência', valor: resumo.emExperiencia, destaque: true },
-        { rotulo: 'Vencendo', valor: resumo.vencendoSemana },
-        { rotulo: 'A decidir', valor: resumo.decisaoPendente },
         { rotulo: 'Efetivados', valor: resumo.efetivados },
+        { rotulo: 'Total', valor: resumo.total },
       ]
     : [];
 
@@ -267,7 +229,6 @@ export function ContratosScreen({
       ) : (
         cardsFiltrados.map((c) => {
           const { cor, fundo } = coresUrgencia(c.urgencia);
-          const marcoDecidivel = c.proximoMarco ?? c.marcoEmAtraso;
           return (
             <View key={c.colaboradorId} style={styles.card}>
               <TouchableOpacity
@@ -305,40 +266,14 @@ export function ContratosScreen({
                       aoPressionar={() => abrirAdmissao(c)}
                     />
                   ) : (
-                    <>
-                      {marcoDecidivel && c.estado !== 'ENCERRADO' && (
-                        <View style={styles.botoesDecisao}>
-                          <TouchableOpacity
-                            disabled={ocupado}
-                            onPress={() => void decidir(c, marcoDecidivel, 'APROVADO')}
-                            style={[styles.btnDecisao, styles.btnAprovar]}
-                          >
-                            <Ionicons name="checkmark" size={16} color={cores.verde} />
-                            <Text style={[styles.btnDecisaoTxt, { color: cores.verde }]}>
-                              Aprovar {ROTULO_MARCO[marcoDecidivel]}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            disabled={ocupado}
-                            onPress={() => void decidir(c, marcoDecidivel, 'REPROVADO')}
-                            style={[styles.btnDecisao, styles.btnReprovar]}
-                          >
-                            <Ionicons name="close" size={16} color={cores.vermelho} />
-                            <Text style={[styles.btnDecisaoTxt, { color: cores.vermelho }]}>
-                              Reprovar
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
-                      <TouchableOpacity
-                        onPress={() => abrirAdmissao(c)}
-                        hitSlop={8}
-                        style={styles.editarAdmissao}
-                      >
-                        <Ionicons name="calendar-outline" size={14} color={cores.textoSecundario} />
-                        <Text style={styles.editarAdmissaoTxt}>Editar admissão</Text>
-                      </TouchableOpacity>
-                    </>
+                    <TouchableOpacity
+                      onPress={() => abrirAdmissao(c)}
+                      hitSlop={8}
+                      style={styles.editarAdmissao}
+                    >
+                      <Ionicons name="calendar-outline" size={14} color={cores.textoSecundario} />
+                      <Text style={styles.editarAdmissaoTxt}>Editar admissão</Text>
+                    </TouchableOpacity>
                   )}
                 </View>
               )}
@@ -421,20 +356,6 @@ const styles = StyleSheet.create({
     borderTopColor: cores.divisor,
     paddingTop: espacamento.sm,
   },
-  botoesDecisao: { flexDirection: 'row', gap: espacamento.xs },
-  btnDecisao: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: espacamento.sm,
-    borderRadius: raio.md,
-    borderWidth: 1,
-  },
-  btnAprovar: { borderColor: cores.verde, backgroundColor: cores.verdeFundo },
-  btnReprovar: { borderColor: cores.vermelho, backgroundColor: cores.vermelhoFundo },
-  btnDecisaoTxt: { ...tipografia.legenda, fontWeight: '700' },
   editarAdmissao: {
     flexDirection: 'row',
     alignItems: 'center',
