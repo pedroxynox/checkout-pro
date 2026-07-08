@@ -1,11 +1,10 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { Notificacao, Usuario } from '@prisma/client';
+import { Notificacao, Perfil, Usuario } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacaoEventos } from './notificacoes.eventos';
 import {
   ConteudoNotificacao,
   UsuarioRef,
-  destinatariosAlertaChecklist,
   montarEntregas,
 } from './notificacoes.domain';
 
@@ -146,45 +145,58 @@ export class NotificacoesService {
     }
   }
 
-  /** Fiscais online no momento — alvo dos alertas de checklist (Req 5.3.3). */
-  async fiscaisOnline(): Promise<Usuario[]> {
-    return this.prisma.usuario.findMany({
-      where: { online: true, perfil: 'FISCAL' },
-    });
-  }
+  /**
+   * Perfis operacionais que recebem TODOS os avisos do sistema (decisão de
+   * negócio): fiscal, supervisor, gerente e gerente desenvolvedor. O perfil
+   * IMPORTADOR fica de fora de propósito. Este é o ÚNICO ponto a ajustar caso,
+   * no futuro, queiramos voltar a segmentar os avisos por perfil.
+   */
+  private static readonly PERFIS_QUE_RECEBEM_AVISOS: Perfil[] = [
+    Perfil.FISCAL,
+    Perfil.SUPERVISOR,
+    Perfil.GERENTE,
+    Perfil.GERENTE_DESENVOLVEDOR,
+  ];
 
   /**
-   * Login(s) gerencial(is) — alvo sempre presente dos alertas (Req 5.3.4),
-   * independentemente de estar online.
+   * Destinatários de qualquer aviso: todos os usuários dos perfis operacionais
+   * (fiscal, supervisor, gerente e gerente desenvolvedor). Fonte ÚNICA de
+   * verdade — os demais métodos de alvo delegam aqui, de modo que todo aviso do
+   * sistema chegue aos quatro perfis.
    */
-  async loginGerencial(): Promise<Usuario[]> {
-    return this.prisma.usuario.findMany({
-      where: { perfil: 'GERENTE' },
-    });
-  }
-
-  /**
-   * Gestores: gerentes (comum e desenvolvedor) e supervisores. Alvo de avisos
-   * de gestão (ex.: fechamento concluído, novas requisições).
-   */
-  async gestores(): Promise<Usuario[]> {
+  async destinatariosGerais(): Promise<Usuario[]> {
     return this.prisma.usuario.findMany({
       where: {
-        perfil: { in: ['GERENTE', 'GERENTE_DESENVOLVEDOR', 'SUPERVISOR'] },
+        perfil: { in: [...NotificacoesService.PERFIS_QUE_RECEBEM_AVISOS] },
       },
     });
   }
 
   /**
-   * Calcula os destinatários do alerta de checklist (Req 5.3.3, 5.3.4): união
-   * dos fiscais online com o login gerencial (sempre presente).
+   * Alvo dos avisos de gestão (fechamento, insumos, vendas, contratos, faltas,
+   * advertências, etc.). Por decisão de negócio atual, todos os perfis
+   * operacionais recebem esses avisos — delega a `destinatariosGerais`.
+   */
+  async gestores(): Promise<Usuario[]> {
+    return this.destinatariosGerais();
+  }
+
+  /**
+   * Alvo do alerta de importações pendentes. Por decisão de negócio atual, o
+   * aviso vai a todos os perfis operacionais — delega a `destinatariosGerais`.
+   */
+  async loginGerencial(): Promise<Usuario[]> {
+    return this.destinatariosGerais();
+  }
+
+  /**
+   * Destinatários do alerta de checklist (Req 5.3.3, 5.3.4). Por decisão de
+   * negócio atual, o alerta vai a todos os perfis operacionais (fiscal,
+   * supervisor, gerente e gerente desenvolvedor) — e não apenas aos fiscais
+   * online. Delega a `destinatariosGerais`.
    */
   async destinatariosAlertaChecklist(): Promise<Usuario[]> {
-    const [fiscais, gerenciais] = await Promise.all([
-      this.fiscaisOnline(),
-      this.loginGerencial(),
-    ]);
-    return destinatariosAlertaChecklist(fiscais, gerenciais);
+    return this.destinatariosGerais();
   }
 
   /**

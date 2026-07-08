@@ -127,13 +127,6 @@ function ontemISO(): string {
 
 const QUEDA_VENDAS_RELEVANTE = 10;
 
-/**
- * Hora (Brasília, aprox.) a partir da qual os arquivos do dia ainda pendentes
- * passam a PESAR na nota de saúde. Antes disso é normal que nem todos tenham
- * chegado (eles são carregados ao longo do dia), então não penalizamos.
- */
-const HORA_PESA_ARQUIVOS_PENDENTES = 18;
-
 function classificar(nota: number): ResumoSaude {
   if (nota >= 80) {
     return { nota, cor: cores.verde, fundo: cores.verdeFundo, rotulo: 'Tudo em ordem' };
@@ -207,11 +200,15 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
     const semVendas = !t.has('ventas') && !t.has('metaVendas');
     const [arrec, vendaStatus, painelOntem, insumos, atencao, ckAb, ckFe, opDia] =
       await Promise.all([
+        // Carga de arquivos: verificamos o DIA ANTERIOR, não o de hoje. Os
+        // arquivos do dia são importados só à noite (~23h), então durante o dia
+        // os de "hoje" ainda não chegaram — cobrá-los seria falso alarme. O que
+        // é uma pendência real é o dia anterior não ter sido carregado.
         t.has('carga')
-          ? arrecadacaoService.status(hoje).catch(() => null as StatusArrecadacao | null)
+          ? arrecadacaoService.status(ontem).catch(() => null as StatusArrecadacao | null)
           : Promise.resolve(null as StatusArrecadacao | null),
         t.has('carga')
-          ? vendasService.status(hoje).catch(() => null as StatusVendas | null)
+          ? vendasService.status(ontem).catch(() => null as StatusVendas | null)
           : Promise.resolve(null as StatusVendas | null),
         semVendas
           ? Promise.resolve(null as PainelVendas | null)
@@ -316,7 +313,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
   if (pendentesLabels.length > 0) {
     acoes.push({
       prioridade: 'alta',
-      titulo: `Falta carregar ${pendentesLabels.length} arquivo(s) hoje`,
+      titulo: `Falta carregar ${pendentesLabels.length} arquivo(s) de ontem`,
       detalhe: pendentesLabels.slice(0, 3).join(', '),
       rota: 'Importacoes',
       funcionalidade: 'IMPORTACOES',
@@ -379,10 +376,10 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
   // pontos de atenção ≠ negócio em colapso). Cada categoria tira no máximo o
   // seu teto, mesmo quando há muitos itens (ex.: vários insumos baixos).
   //
-  // Arquivos pendentes só pesam a partir de HORA_PESA_ARQUIVOS_PENDENTES —
-  // antes disso é normal que ainda não tenham chegado (chegam ao longo do dia).
-  const arquivosAtrasados =
-    horaAgora >= HORA_PESA_ARQUIVOS_PENDENTES ? pendentesLabels.length : 0;
+  // Arquivos pendentes referem-se ao DIA ANTERIOR (ver busca acima). Como esses
+  // já deveriam ter sido carregados à noite, uma pendência é problema real e
+  // pesa na nota a qualquer hora do dia.
+  const arquivosAtrasados = pendentesLabels.length;
   const penalidade =
     (aberturaNaoFeita ? 15 : 0) +
     (fechamentoNaoFeito ? 15 : 0) +

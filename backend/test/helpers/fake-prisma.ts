@@ -81,15 +81,18 @@ export class FakePrisma {
   // ----- prisma.usuario -----
   usuario = {
     findMany: async (args?: {
-      where?: { online?: boolean; perfil?: string };
+      where?: { online?: boolean; perfil?: string | { in: string[] } };
     }) => {
       const where = args?.where ?? {};
       return this.usuarios.filter((u) => {
         if (where.online !== undefined && u.online !== where.online) {
           return false;
         }
-        if (where.perfil !== undefined && u.perfil !== where.perfil) {
-          return false;
+        if (where.perfil !== undefined) {
+          const p = where.perfil;
+          if (typeof p === 'string' ? u.perfil !== p : !p.in.includes(u.perfil)) {
+            return false;
+          }
         }
         return true;
       });

@@ -4,8 +4,9 @@
  * Exercita o `NotificacoesService` real com o Prisma falso em memória e um
  * **provedor de push simulado** (mock) que representa a integração de
  * infraestrutura (FCM/APNs). Verifica:
- *  - o alvo do alerta de checklist é a união dos fiscais online com o login
- *    gerencial, sempre presente (Req 5.3.3, 5.3.4);
+ *  - o alvo dos avisos é o conjunto de todos os perfis operacionais (fiscal,
+ *    supervisor, gerente e gerente desenvolvedor), por decisão de negócio
+ *    atual (Req 5.3.3, 5.3.4);
  *  - cada destinatário recebe a entrega pelos dois canais — push e in-app
  *    (Req 7.3.2).
  */
@@ -30,7 +31,7 @@ function semear(fake: FakePrisma): void {
 }
 
 describe('Entrega de notificações ponta a ponta (Tarefa 20.3)', () => {
-  it('alerta de checklist atinge fiscais online ∪ gerencial, em dois canais', async () => {
+  it('alerta de checklist atinge todos os perfis operacionais, em dois canais', async () => {
     const { fake, prisma } = criarFakePrisma();
     semear(fake);
     const service = new NotificacoesService(prisma);
@@ -41,9 +42,9 @@ describe('Entrega de notificações ponta a ponta (Tarefa 20.3)', () => {
       mensagem: 'O checklist de abertura ainda não foi concluído.',
     });
 
-    // Alvo: fiscais online (f1, f3) + gerencial (g1). Fiscal offline (f2) fora.
+    // Alvo: todos os fiscais (online ou não: f1, f2, f3) + gerente (g1).
     const alvo = criadas.map((n) => n.usuarioId).sort();
-    expect(alvo).toEqual(['f1', 'f3', 'g1']);
+    expect(alvo).toEqual(['f1', 'f2', 'f3', 'g1']);
 
     // Dual canal: cada entrega marcada para push e in-app (Req 7.3.2).
     for (const n of criadas) {
@@ -55,15 +56,16 @@ describe('Entrega de notificações ponta a ponta (Tarefa 20.3)', () => {
     for (const n of criadas.filter((x) => x.canalPush)) {
       push.enviar(n.usuarioId, n.titulo);
     }
-    expect(push.enviar).toHaveBeenCalledTimes(3);
+    expect(push.enviar).toHaveBeenCalledTimes(4);
     expect(push.enviados.map((e) => e.usuarioId).sort()).toEqual([
       'f1',
+      'f2',
       'f3',
       'g1',
     ]);
   });
 
-  it('o login gerencial é alvo mesmo quando nenhum fiscal está online', async () => {
+  it('o aviso chega a fiscais e gerentes mesmo com todos offline', async () => {
     const { fake, prisma } = criarFakePrisma();
     fake.usuarios = [
       { id: 'g1', login: 'gerente', perfil: 'GERENTE', online: false },
@@ -76,7 +78,7 @@ describe('Entrega de notificações ponta a ponta (Tarefa 20.3)', () => {
       mensagem: 'Pendência de fechamento.',
     });
 
-    expect(criadas.map((n) => n.usuarioId)).toEqual(['g1']);
+    expect(criadas.map((n) => n.usuarioId).sort()).toEqual(['f1', 'g1']);
   });
 
   it('registra histórico por usuário, mais recentes primeiro', async () => {
