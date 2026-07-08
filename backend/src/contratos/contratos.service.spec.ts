@@ -176,7 +176,10 @@ describe('ContratosService', () => {
       ];
       const { service } = criar(colaboradores, decisoes);
       const cards = await service.listar({}, HOJE);
-      expect(cards.map((c) => c.colaboradorId)).toEqual(['venc', 'exp', 'ok']);
+      // Ciclo automático: 'venc' (42d) e 'exp' (10d) estão em EXPERIÊNCIA
+      // (ATENÇÃO), 'ok' (200d) EFETIVADO (OK). Entre os de experiência, o
+      // desempate é pelo nome (Ana < Bia): exp, venc, depois ok.
+      expect(cards.map((c) => c.colaboradorId)).toEqual(['exp', 'venc', 'ok']);
 
       const soExp = await service.listar({ etiqueta: 'experiencia' }, HOJE);
       expect(soExp.every((c) => c.etiqueta === 'experiencia')).toBe(true);
@@ -185,27 +188,14 @@ describe('ContratosService', () => {
   });
 
   describe('avaliarAlertasDoDia', () => {
-    it('retorna alerta de vencimento quando faltam <= 5 dias', async () => {
+    it('não gera alertas: os marcos resolvem-se automaticamente', async () => {
       const { service } = criar([
-        { id: 'c1', nome: 'Ana', matricula: '1', dataAdmissao: admissaoHa(42) }, // faltam 3 p/ 45
+        { id: 'c1', nome: 'Ana', matricula: '1', dataAdmissao: admissaoHa(42) }, // dentro dos 90
+        { id: 'c2', nome: 'Bia', matricula: '2', dataAdmissao: admissaoHa(50) }, // passou do 45
+        { id: 'c3', nome: 'Cid', matricula: '3', dataAdmissao: admissaoHa(95) }, // efetivado
       ]);
       const alertas = await service.avaliarAlertasDoDia(HOJE);
-      expect(alertas).toHaveLength(1);
-      expect(alertas[0].alerta).toEqual({
-        tipo: 'VENCIMENTO',
-        marco: 'MARCO_45',
-        dias: 3,
-      });
-    });
-
-    it('retorna decisão em atraso quando o marco venceu sem decisão', async () => {
-      const { service } = criar([
-        { id: 'c1', nome: 'Ana', matricula: '1', dataAdmissao: admissaoHa(50) }, // passou do 45
-      ]);
-      const alertas = await service.avaliarAlertasDoDia(HOJE);
-      expect(alertas[0].alerta.tipo).toBe('DECISAO_ATRASO');
-      expect(alertas[0].alerta.marco).toBe('MARCO_45');
-      expect(alertas[0].alerta.dias).toBe(5);
+      expect(alertas).toHaveLength(0);
     });
   });
 });

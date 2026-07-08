@@ -70,15 +70,18 @@ describe('ContratosScreen', () => {
     expect(await screen.findByText('Bia Vence')).toBeTruthy();
     // "Experiência" aparece como chip de filtro e como selo do card.
     expect(screen.getAllByText('Experiência').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Marco de 45 dias em 3 dias.')).toBeTruthy();
+    expect(
+      screen.getByText('Em experiência · 42 de 90 dias de casa.'),
+    ).toBeTruthy();
   });
 
-  it('com CONTRATOS_GERIR, exibe os botões de decisão', async () => {
+  it('com CONTRATOS_GERIR, NÃO exibe botões de decisão (ciclo automático) e permite editar admissão', async () => {
     mockAuth.permitir = true;
     render_();
     await screen.findByText('Bia Vence');
-    expect(screen.getByText('Aprovar 45 dias')).toBeTruthy();
-    expect(screen.getByText('Reprovar')).toBeTruthy();
+    expect(screen.queryByText('Aprovar 45 dias')).toBeNull();
+    expect(screen.queryByText('Reprovar')).toBeNull();
+    expect(screen.getByText('Editar admissão')).toBeTruthy();
   });
 
   it('sem permissão de gestão, NÃO exibe botões de decisão', async () => {
