@@ -3,9 +3,9 @@
  *
  * Gera um relatório imprimível (uma folha A4 por operador) com as estatísticas
  * do perfil — score, indicadores, faltas, incidências, gráficos de barras e
- * pizza. Permite escolher o período (semana em curso por padrão ou um intervalo
- * personalizado) e baixar o relatório de **todos** os operadores ativos de uma
- * vez ou de **um** operador individualmente.
+ * pizza. Permite escolher o período (mês corrente por padrão — igual à tela de
+ * perfil — ou um intervalo personalizado) e baixar o relatório de **todos** os
+ * operadores ativos de uma vez ou de **um** operador individualmente.
  *
  * A geração é feita no cliente (expo-print) a partir dos dados do perfil que a
  * API já entrega; não há mudança de backend. O envio automático por e-mail fica
@@ -32,9 +32,9 @@ import { cores, espacamento, raio, tipografia } from '../../theme';
 import { notificar } from '../../utils/dialogos';
 import { hojeISO } from '../../utils/formato';
 import { imprimirRelatorio } from '../../utils/impressao';
-import { htmlRelatorio, rotuloPeriodo, semanaAtual } from '../../utils/relatorioPerfil';
+import { htmlRelatorio, mesAtual, rotuloPeriodo } from '../../utils/relatorioPerfil';
 
-type ModoPeriodo = 'SEMANA' | 'PERIODO';
+type ModoPeriodo = 'MES' | 'PERIODO';
 
 export function RelatoriosScreen(): React.ReactElement {
   const operadores = useRequisicao<Colaborador[]>(
@@ -42,14 +42,14 @@ export function RelatoriosScreen(): React.ReactElement {
     [],
   );
 
-  const [modo, setModo] = useState<ModoPeriodo>('SEMANA');
-  const [inicio, setInicio] = useState<string>(() => semanaAtual(hojeISO()).inicio);
-  const [fim, setFim] = useState<string>(() => semanaAtual(hojeISO()).fim);
+  const [modo, setModo] = useState<ModoPeriodo>('MES');
+  const [inicio, setInicio] = useState<string>(() => mesAtual(hojeISO()).inicio);
+  const [fim, setFim] = useState<string>(() => mesAtual(hojeISO()).fim);
   // id do operador com PDF em geração (ou 'TODOS'); null = nada gerando.
   const [gerando, setGerando] = useState<string | null>(null);
 
   const periodo = useMemo(
-    () => (modo === 'SEMANA' ? semanaAtual(hojeISO()) : { inicio, fim }),
+    () => (modo === 'MES' ? mesAtual(hojeISO()) : { inicio, fim }),
     [modo, inicio, fim],
   );
 
@@ -90,13 +90,13 @@ export function RelatoriosScreen(): React.ReactElement {
       <Cartao titulo="Período">
         <Segmentado<ModoPeriodo>
           opcoes={[
-            { valor: 'SEMANA', rotulo: 'Semana atual' },
+            { valor: 'MES', rotulo: 'Mês atual' },
             { valor: 'PERIODO', rotulo: 'Escolher período' },
           ]}
           selecionado={modo}
           aoSelecionar={setModo}
         />
-        {modo === 'SEMANA' ? (
+        {modo === 'MES' ? (
           <Text style={styles.periodoInfo}>
             {rotuloPeriodo(periodo.inicio, periodo.fim)}
           </Text>

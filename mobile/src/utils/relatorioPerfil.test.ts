@@ -4,6 +4,7 @@ import {
   htmlPaginaOperador,
   htmlPizza,
   htmlRelatorio,
+  mesAtual,
   rotuloPeriodo,
   semanaAtual,
   svgBarras,
@@ -132,6 +133,19 @@ describe('relatorioPerfil', () => {
           86400000;
         expect(dias).toBe(6);
       }
+    });
+  });
+
+  describe('mesAtual', () => {
+    it('devolve do dia 1º do mês até a data informada', () => {
+      expect(mesAtual('2026-07-08')).toEqual({
+        inicio: '2026-07-01',
+        fim: '2026-07-08',
+      });
+      expect(mesAtual('2026-02-15')).toEqual({
+        inicio: '2026-02-01',
+        fim: '2026-02-15',
+      });
     });
   });
 
