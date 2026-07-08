@@ -30,14 +30,20 @@ describe('NotificacoesService', () => {
         findMany: ({
           where,
         }: {
-          where: { online?: boolean; perfil?: string };
+          where: { online?: boolean; perfil?: string | { in: string[] } };
         }) =>
           Promise.resolve(
-            usuarios.filter(
-              (u) =>
-                (where.online === undefined || u.online === where.online) &&
-                (where.perfil === undefined || u.perfil === where.perfil),
-            ),
+            usuarios.filter((u) => {
+              const onlineOk =
+                where.online === undefined || u.online === where.online;
+              const perfilOk =
+                where.perfil === undefined
+                  ? true
+                  : typeof where.perfil === 'string'
+                    ? u.perfil === where.perfil
+                    : where.perfil.in.includes(u.perfil);
+              return onlineOk && perfilOk;
+            }),
           ),
       },
       notificacao: {
@@ -89,16 +95,17 @@ describe('NotificacoesService', () => {
     }
   });
 
-  it('alvo do alerta = fiscais online + login gerencial (sempre presente)', async () => {
+  it('alvo dos avisos = todos os perfis operacionais (fiscal, supervisor, gerente, gerente dev); importador de fora', async () => {
     const { service } = criarServico([
       { id: 'f1', perfil: 'FISCAL', online: true },
       { id: 'f2', perfil: 'FISCAL', online: false },
       { id: 'g1', perfil: 'GERENTE', online: false },
+      { id: 'i1', perfil: 'IMPORTADOR', online: true },
     ]);
     const destinatarios = await service.destinatariosAlertaChecklist();
     const ids = destinatarios.map((u) => u.id).sort();
-    // f1 (online) + g1 (gerencial, offline mas sempre presente); f2 offline fora.
-    expect(ids).toEqual(['f1', 'g1']);
+    // Todos os fiscais (online ou não) e gerentes recebem; IMPORTADOR fica fora.
+    expect(ids).toEqual(['f1', 'f2', 'g1']);
   });
 
   it('mantém o histórico por usuário ordenado do mais recente ao mais antigo (Req 7.3.3)', async () => {

@@ -56,14 +56,20 @@ describe('AlertasService (cron com relógio injetável)', () => {
         findMany: ({
           where,
         }: {
-          where?: { online?: boolean; perfil?: string };
+          where?: { online?: boolean; perfil?: string | { in: string[] } };
         }) =>
           Promise.resolve(
-            usuarios.filter(
-              (u) =>
-                (where?.online === undefined || u.online === where.online) &&
-                (where?.perfil === undefined || u.perfil === where.perfil),
-            ),
+            usuarios.filter((u) => {
+              const onlineOk =
+                where?.online === undefined || u.online === where.online;
+              const perfilOk =
+                where?.perfil === undefined
+                  ? true
+                  : typeof where.perfil === 'string'
+                    ? u.perfil === where.perfil
+                    : where.perfil.in.includes(u.perfil);
+              return onlineOk && perfilOk;
+            }),
           ),
       },
       notificacao: {
@@ -120,9 +126,10 @@ describe('AlertasService (cron com relógio injetável)', () => {
       const disparou = await service.dispararAlertaChecklist('ABERTURA');
 
       expect(disparou).toBe(true);
-      // Seleção de destinatários: fiscal online (f1) + login gerencial (g1).
+      // Destinatários: todos os perfis operacionais (fiscais g1... e f1/f2,
+      // online ou não). Aqui: g1 (gerente) + f1 e f2 (fiscais).
       const destinatarios = criadas.map((c) => c.usuarioId).sort();
-      expect(destinatarios).toEqual(['f1', 'g1']);
+      expect(destinatarios).toEqual(['f1', 'f2', 'g1']);
       // Entrega em duplo canal.
       expect(criadas.every((c) => c.canalPush && c.canalInApp)).toBe(true);
     });
@@ -153,7 +160,7 @@ describe('AlertasService (cron com relógio injetável)', () => {
   });
 
   describe('alerta de importações pendentes', () => {
-    it('notifica o login gerencial quando há pendentes', async () => {
+    it('notifica todos os perfis operacionais quando há pendentes', async () => {
       const { service, criadas } = montar({
         agora: new Date('2024-03-10T18:00:00.000Z'),
         pendentesImportacao: ['CANCELAMENTO_ITENS', 'DEVOLUCOES'],
@@ -162,7 +169,12 @@ describe('AlertasService (cron com relógio injetável)', () => {
       const pendentes = await service.dispararAlertaImportacoesPendentes();
 
       expect(pendentes).toEqual(['CANCELAMENTO_ITENS', 'DEVOLUCOES']);
-      expect(criadas.map((c) => c.usuarioId)).toEqual(['g1']);
+      // Um único aviso, entregue a todos os perfis operacionais (g1, f1, f2).
+      expect(criadas.map((c) => c.usuarioId).sort()).toEqual([
+        'f1',
+        'f2',
+        'g1',
+      ]);
       expect(criadas[0].titulo).toBe('Importações pendentes');
     });
 
