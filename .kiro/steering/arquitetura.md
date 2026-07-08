@@ -34,9 +34,20 @@ Deploy (Render):
 - `vendas` — **vendas por hora** a partir de .txt (ver fluxo abaixo).
 - `metas` — metas mensais por indicador (`MetaMensal`), exibidas no Centro de
   Controle ▸ Metas (vendas, cancelamentos, recargas, devoluções, Sacolas APAE).
-- `indicadores` — fluxo ANTIGO (cálculo de %/cor, rankings, registro manual de
-  venda). Endpoints existem, mas a UI atual NÃO os usa. Mantido por compat.
-- `importacoes` — fluxo ANTIGO de importação CSV/XLSX. Idem: não usado pela UI.
+- `incidencias` — incidências de escala / sanções (domínio puro genérico por
+  `tipo`, ADR 0007): linha do tempo unificada (faltas + incidências), ranking e
+  analítica de risco. Rota `escala/incidencias`.
+- `advertencias` — solicitações de advertência (ex.: falta não justificada);
+  cron com janela retroativa. Rota `advertencias`.
+- `contratos` — contrato de experiência (45+45). Estado SEMPRE derivado de
+  `dataAdmissao` + decisões (ADR 0008); domínio puro testado. Rota `contratos`.
+- `data-inicial` — `Data_Inicial_Sistema` (config global singleton). Rota
+  `config/data-inicial`.
+- `reset-operacional` — plano de reinício administrativo (apagar/zerar dados
+  operacionais). Rota `admin/reset-operacional`.
+- Os fluxos ANTIGOS `indicadores`/`importacoes` (CSV/XLSX) foram REMOVIDOS. A
+  única função viva (`parseValor`) foi movida para `common/numeros.ts` (usada
+  pelos parsers de `arrecadacao` e `vendas`).
 - `fiscais` — status dos fiscais (gateway WebSocket) e **escala** de trabalho
   (a escala do fiscal vem do cadastro do colaborador — Opção A).
 - `operadores` — Quadro de Operadores (escala + ausências). A **escala lê de
@@ -101,7 +112,15 @@ distribuídos nos cards acima e em Sacolas APAE).
 ## Banco de dados
 - Prisma (`backend/prisma/schema.prisma`). Migrações numeradas em
   `backend/prisma/migrations/`. No deploy roda `prisma migrate deploy` + seed.
+  A última migração é `9zf_colaborador_desligado_em`; nomear a próxima para
+  ordenar DEPOIS dela.
 - Só guardamos dados essenciais (não os arquivos .txt).
+- **Purga mensal de inativos** (`colaboradores/purga-inativos.service.ts`, cron
+  dia 1º 00:00 Brasília): apaga ficha + histórico de RRHH dos colaboradores
+  desligados há mais de `RETENCAO_INATIVOS_MESES` meses (env, padrão 12) —
+  janela de retenção que protege o histórico disciplinar/trabalhista recente.
+  `Colaborador.desligadoEm` marca a data de baixa. Preserva os totais de
+  arrecadação e do lote APAE.
 
 ## Verificação (rodar antes de qualquer push)
 - Backend: `npm run build` + `npm test` (152 testes) + `npm run lint`.

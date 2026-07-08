@@ -141,6 +141,47 @@ PRs mergeados esta sesión: **#83, #84, #85, #86, #87** (todos en `main`).
 - **Verificación final de la sesión:** backend `build` + **156 tests**; mobile
   `type-check` + **37 tests**; lint OK. Sin migraciones nuevas (siguen hasta `9s`).
 
+### Actualización — auditoría, limpieza de legacy y ventana de retención (sesión 2026-07-08)
+
+- **Auditoría técnica completa** (backend + mobile): proyecto sano. Build OK,
+  0 `any`/`@ts-ignore`/`TODO`, sin catch vacíos. Solo diferencias de prettier
+  (las auto-corrige el CI). Verificación: backend **59 suites / 300 tests**;
+  mobile **20 suites / 68 tests** (el `type-check` marca errores solo en
+  archivos `.test` por instalación aislada de dependencias —los `@types/jest` se
+  resuelven vía hoisting del workspace en `npm install` desde la raíz—; NO es un
+  fallo del código de producción, que type-checkea limpio).
+- **Limpieza de código muerto (legacy):** se eliminaron por completo las carpetas
+  `backend/src/importacoes/` e `backend/src/indicadores/`. Lo único vivo era
+  `parseValor` (lo usan los parsers de `arrecadacao` y `vendas`): se movió a
+  `backend/src/common/numeros.ts` y se actualizaron los 2 imports. Los tipos de
+  error `ColunaAusenteError`/`ValorVendaInvalidoError` solo se usaban como
+  fixtures en `dominio-exception.filter.spec.ts` (el filtro es genérico vía la
+  base `ErroDominio`, NO los referencia); se quitaron esos 2 casos del spec (el
+  mapeo 400 sigue cubierto por otros errores). Sin cambios de comportamiento.
+  Nota: `operador-turno.*` (`/quadro-operadores/*`) NO es legacy —lo usa el mobile
+  (`listarTurnos`, grade/dia/ao-vivo/faltas)— y se conservó.
+- **Ventana de retención en la purga mensual de inactivos** (protección legal):
+  antes, al marcar un colaborador `ativo=false`, el 1º del mes siguiente se
+  borraba PARA SIEMPRE su ficha y todo el histórico de RRHH (advertencias,
+  incidencias/sanciones, decisiones de contrato, ponto, escala). Ahora:
+  - Nuevo campo `Colaborador.desligadoEm` (migración `9zf_colaborador_desligado_em`,
+    aditiva; backfill de inactivos existentes a `now()`).
+  - `colaboradores.service` marca `desligadoEm` al pasar a inactivo y la limpia al
+    reactivar (en `editar` y `definirAtivo`).
+  - La purga solo borra a quien fue dado de baja hace más de
+    **`RETENCAO_INATIVOS_MESES`** meses (env, **def. 12**, mín. 1). Fichas
+    inactivas sin `desligadoEm` (legado) NO se purgan por seguridad. Se sigue
+    preservando `registros_arrecadacao` y el lote APAE (totales intactos).
+  - **Decisión pendiente del usuario:** confirmar el nº de meses (12 por defecto).
+    Si el requisito legal del cliente es mayor (ej. 24 meses), setear
+    `RETENCAO_INATIVOS_MESES` en Render.
+- **Documentación actualizada** (`PROJECT_UNDERSTANDING.md` + este steering +
+  `arquitetura.md`): se documentaron los módulos de RRHH que faltaban
+  (`incidencias`, `advertencias`, `contratos`, `data-inicial`, `reset-operacional`)
+  y los push tokens en `notificacoes`.
+- **Migraciones:** la última pasa a ser `9zf_colaborador_desligado_em`; nombrar la
+  próxima para ordenar DESPUÉS de ella.
+
 ### Incidente de deploy resuelto (2026-06-27)
 
 - Síntoma: build OK pero deploy "Failed/Timed Out" con **"Port scan timeout, no

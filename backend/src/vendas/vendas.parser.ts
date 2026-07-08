@@ -10,7 +10,7 @@
  * A linha de TOTAL é ignorada (o total é a soma das horas). O valor usa
  * vírgula decimal (ex.: "1.234,56") e é lido por `parseValor`.
  */
-import { parseValor } from '../importacoes/importacoes.parser';
+import { parseValor } from '../common/numeros';
 
 export interface LinhaVendaHora {
   hora: number;

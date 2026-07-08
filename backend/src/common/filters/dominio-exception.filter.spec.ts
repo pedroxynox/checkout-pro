@@ -8,8 +8,6 @@ import {
   FiscalNaoEncontradoError,
   StatusInvalidoError,
 } from '../../fiscais/fiscais.errors';
-import { ColunaAusenteError } from '../../importacoes/importacoes.errors';
-import { ValorVendaInvalidoError } from '../../indicadores/indicadores.errors';
 import {
   FardoNaoReconhecidoError,
   QuantidadeInvalidaError,
@@ -90,16 +88,6 @@ describe('DominioExceptionFilter', () => {
     [
       'Fiscais: status inválido (400)',
       new StatusInvalidoError('X'),
-      HttpStatus.BAD_REQUEST,
-    ],
-    [
-      'Importações: coluna ausente (400)',
-      new ColunaAusenteError(['valor']),
-      HttpStatus.BAD_REQUEST,
-    ],
-    [
-      'Indicadores: venda inválida (400)',
-      new ValorVendaInvalidoError(-1),
       HttpStatus.BAD_REQUEST,
     ],
     [

@@ -7,11 +7,15 @@
 >
 > Idioma de trabajo: español · UI/dominio: portugués (Brasil).
 >
-> Última revisión: 2026-06-27 (fila de "Não reconhecidos" —total cuenta a todos,
-> bandeja para asociar/crear—; Fechamento inteligente Fase 1 —resumen del día con
-> pendencias y alertas—; deprecados los modelos viejos `Operador`/`OperadorTurno`;
-> branding ya integrado y limpieza del rojo viejo muerto. Meta del usuario: dejar
-> la app 100% operativa antes de escalar; multi-tenancy parqueado).
+> Última revisión: 2026-07-08 (módulos de RRHH añadidos y documentados:
+> **incidencias** de escala/sanciones, **advertencias**, **contratos** de
+> experiencia 45+45, **data-inicial**, **reset-operacional** y **push tokens** en
+> notificaciones; purga mensual de inactivos ahora con **ventana de retención**
+> configurable (`RETENCAO_INATIVOS_MESES`, def. 12) para proteger el histórico
+> disciplinar/laboral; eliminadas las carpetas legacy `importacoes/` e
+> `indicadores/` —`parseValor` reubicado en `common/numeros.ts`—. Verificación:
+> backend 59 suites / 300 tests, mobile 20 suites / 68 tests. Meta del usuario:
+> dejar la app 100% operativa antes de escalar; multi-tenancy parqueado).
 
 ---
 
@@ -92,20 +96,23 @@ mobile/ (Expo / React Native)  --HTTPS + JWT Bearer-->  backend/ (NestJS)
 | --- | --- |
 | `acessos` | Login (matrícula + senha) + JWT; mapa de permisos por perfil (`acessos.domain.ts`). |
 | `usuarios` | CRUD de logins/accesos del app. |
-| `colaboradores` | **Cadastro Unificado** (fuente única de personas): cadastro/edición con unicidad de matrícula/login, login creado en el cadastro, `resolverColaboradorId` y **perfil inteligente** (`perfil-colaborador.*`). |
+| `colaboradores` | **Cadastro Unificado** (fuente única de personas): cadastro/edición con unicidad de matrícula/login, login creado en el cadastro, `resolverColaboradorId` y **perfil inteligente** (`perfil-colaborador.*`). **Purga mensual de inactivos** (`purga-inativos.service.ts`) con **ventana de retención** (`RETENCAO_INATIVOS_MESES`, def. 12 meses): solo borra ficha + histórico de RRHH de quien fue dado de baja hace más de N meses; preserva los totales de arrecadación. |
 | `arrecadacao` | Indicadores desde `.txt` (parser por tipo) + `indicadores-inteligente` / `indicadores-resumo` + **"não reconhecidos"** (total cuenta a todos; bandeja para asociar/crear). **(flujo actual)** |
 | `fechamento` | Cierre del día: `estaCompleto`/notificación + **resumo inteligente** (`fechamento.domain` puro + `GET /fechamento/resumo`: pendencias y alertas). |
 | `vendas` | Ventas por hora desde `.txt`; espeja el total diario en `VendaDiaria`. |
 | `metas` | Metas mensuales por indicador (`MetaMensal`): vendas, cancelamientos, recargas, devoluções y Sacolas APAE. Mostradas en Centro de Controle ▸ Metas. |
-| `indicadores` | Flujo **ANTIGUO** (% / color / rankings, registro manual). No usado por la UI; mantenido por compat. |
-| `importacoes` | Flujo **ANTIGUO** CSV/XLSX. No usado por la UI; mantenido por compat. |
+| `incidencias` | Incidencias de escala / sanciones (ej.: no retorno del intervalo). Dominio puro genérico por `tipo` (ADR 0007): línea de tiempo unificada (faltas + incidencias), ranking y analítica de riesgo. Ruta `escala/incidencias`. |
+| `advertencias` | Solicitudes de advertencia (ej.: por falta no justificada); cron con ventana retroactiva. Ruta `advertencias`. |
+| `contratos` | Contrato de experiencia brasileño (45+45 días). Estado (experiencia/efetivado/encerrado) **siempre derivado** de `dataAdmissao` + decisiones de 45/90 días (ADR 0008); dominio puro testeado. Ruta `contratos`. |
+| `data-inicial` | `Data_Inicial_Sistema`: config global *singleton* (id `'sistema'`), valida fecha mínima. Ruta `config/data-inicial`. |
+| `reset-operacional` | "Plan de reinicio" administrativo: borra/zera datos operativos según un plan tipado (qué apagar, en qué orden, qué conservar). Dominio puro. Ruta `admin/reset-operacional`. |
 | `insumos` | Stock como suma de `MovimentoEstoque`; fardos por código de barras; alertas de stock bajo. |
 | `requisicoes` | Requisiciones de insumos (aprobación) + pedidos recurrentes / sugerencias. |
 | `lote-apae` | Sacolas APAE por lote, histórico, config de precio/meta. |
 | `fiscais` | Estado en tiempo real (WebSocket) + jornada (`RegistroPontoFiscal`) + escala (la escala del fiscal viene del cadastro del colaborador — Opción A). |
 | `checklist` | Apertura/cierre con imagen, ventanas fijas, hash anti-fraude. |
 | `operadores` | Cuadro de turnos y ausencias. La **escala lee de `Colaborador`** (funcao OPERADOR); `OperadorTurno` quedó `[DEPRECADO]` (no se lee ni escribe). |
-| `notificacoes` | In-app + WebSocket (toast + badge). Sin push real de dispositivo aún. |
+| `notificacoes` | In-app + WebSocket (toast + badge). Registro/baja de **push tokens** de dispositivo (Expo) preparado (`registrarPushToken`/`removerPushToken`); el envío push real es paso siguiente. |
 | `assistente` | Chat Cluby (Gemini) + procedimientos guiados (desactivados por flag). |
 | `alertas` | Cron jobs: checklist (08:55 / 13:55) e importaciones (fin del día). |
 | `common` / `config` / `prisma` / `storage` | Guards, decorators, filtros; validación de env; acceso a BD; almacenamiento. |
@@ -166,7 +173,8 @@ Dev: `jest-expo`, `@testing-library/react-native`, ESLint, TypeScript.
 Render (hosting API/Web/BD), Google Gemini (asistente), EAS Build (APK).
 Secretos en Render (no en el repo): `DATABASE_URL`, `JWT_SECRET`,
 `GEMINI_API_KEY`, `GEMINI_MODEL`, `JWT_EXPIRES_IN`, `HORARIO_FIM_DO_DIA`,
-`CORS_ORIGINS`, `SENHA_INICIAL`. Mobile: `EXPO_PUBLIC_API_URL`.
+`CORS_ORIGINS`, `SENHA_INICIAL`, `RETENCAO_INATIVOS_MESES` (opcional, def. 12 —
+meses de retención antes de purgar inactivos). Mobile: `EXPO_PUBLIC_API_URL`.
 
 ---
 
@@ -208,7 +216,7 @@ Secretos en Render (no en el repo): `DATABASE_URL`, `JWT_SECRET`,
   Fix de "Saúde do negócio" (topes por categoría; archivos pendientes pesan tras 18h).
 
 ### Verificación
-- Backend: **35** suites `.spec.ts` / **156** tests. Mobile: **13** suites / **37** tests.
+- Backend: **59** suites `.spec.ts` / **300** tests. Mobile: **20** suites / **68** tests.
 - Comandos: backend (`prisma generate` + `validate` + `build` + `lint` + `jest`);
   mobile (`type-check` + `lint` + `jest` + `expo export --platform web`).
 
@@ -229,8 +237,10 @@ Secretos en Render (no en el repo): `DATABASE_URL`, `JWT_SECRET`,
    **Indicador de Quebra**.
 
 ### Riesgos / observaciones técnicas
-- Coexistencia de flujos **antiguos** (`indicadores`, `importacoes` CSV/XLSX) sin
-  uso por la UI → candidatos a documentar/deprecar.
+- Los flujos **antiguos** (`indicadores`, `importacoes` CSV/XLSX) ya fueron
+  **eliminados** (carpetas borradas). Lo único vivo que quedaba —la función
+  `parseValor`— se reubicó en `common/numeros.ts` (la usan los parsers de
+  `arrecadacao` y `vendas`).
 - Acoplamiento implícito: `vendas` → `VendaDiaria` → % de indicadores.
 - `pessoaId` en `Ausencia`/`EscalaEntry` ahora apunta al `Colaborador` (id); se
   añadió `colaboradorId` (nullable) para el vínculo. Convive con datos históricos

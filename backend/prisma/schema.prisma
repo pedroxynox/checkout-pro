@@ -725,6 +725,13 @@ model Colaborador {
   genero    String?
   ativo     Boolean           @default(true)
 
+  // Data do desligamento (quando `ativo` passou a false). Base da JANELA DE
+  // RETENÇÃO: a purga mensal de inativos só apaga a ficha e o histórico de RRHH
+  // depois de decorridos RETENCAO_INATIVOS_MESES meses desde esta data — assim o
+  // histórico disciplinar/trabalhista de um desligado recente é preservado
+  // (proteção legal). Null enquanto o colaborador estiver ativo.
+  desligadoEm DateTime?
+
   // Data de admissão (entrada na casa). Base ÚNICA e determinista do módulo de
   // Contratos (tempo de casa + marcos de 45/90 dias). Opcional/aditivo: fichas
   // antigas ficam sem data até o gestor preenchê-la. Pode ser anterior à

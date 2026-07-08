@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
+
+/** Janela de retenção padrão (meses) caso a env não esteja configurada. */
+const RETENCAO_PADRAO_MESES = 12;
 
 /** Resumo do que a purga apagou (por entidade). */
 export interface ResumoPurgaInativos {
@@ -21,6 +25,11 @@ export interface ResumoPurgaInativos {
  * solicitações de advertência, decisões de contrato, ponto e escala). Os
  * identificadores são removidos em cascata com a ficha.
  *
+ * **Janela de retenção (proteção legal):** só entram na purga os colaboradores
+ * desligados há mais de `RETENCAO_INATIVOS_MESES` meses (padrão 12). O histórico
+ * disciplinar/trabalhista de um desligado recente é preservado durante toda a
+ * janela — importante para eventuais disputas trabalhistas.
+ *
  * **Preserva os totais dos indicadores:** NÃO apaga `registros_arrecadacao`
  * (troco solidário, recargas, cancelamentos, devoluções) nem os movimentos do
  * lote APAE. Esses lançamentos continuam somando no total da loja — apenas
@@ -31,7 +40,27 @@ export interface ResumoPurgaInativos {
 export class PurgaInativosService {
   private readonly logger = new Logger(PurgaInativosService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
+
+  /** Meses de retenção configurados (env `RETENCAO_INATIVOS_MESES`), com piso 1. */
+  private mesesRetencao(): number {
+    const bruto = Number(
+      this.config.get('RETENCAO_INATIVOS_MESES', RETENCAO_PADRAO_MESES),
+    );
+    return Number.isFinite(bruto) && bruto >= 1
+      ? Math.floor(bruto)
+      : RETENCAO_PADRAO_MESES;
+  }
+
+  /** Data-limite: só purga quem foi desligado ATÉ esta data (inclusive). */
+  private dataLimite(agora = new Date()): Date {
+    const limite = new Date(agora);
+    limite.setMonth(limite.getMonth() - this.mesesRetencao());
+    return limite;
+  }
 
   /** Cron: 1º dia de cada mês, 00:00 (Brasília). Best-effort (não derruba). */
   @Cron('0 0 1 * *', { timeZone: 'America/Sao_Paulo' })
@@ -49,13 +78,18 @@ export class PurgaInativosService {
   }
 
   /**
-   * Apaga, numa única transação, a ficha e o histórico de RRHH de todos os
-   * colaboradores inativos. Conserva `registros_arrecadacao` e
+   * Apaga, numa única transação, a ficha e o histórico de RRHH dos colaboradores
+   * inativos DESLIGADOS HÁ MAIS DE `RETENCAO_INATIVOS_MESES` meses (janela de
+   * retenção). Fichas inativas sem `desligadoEm` (dados legados) NÃO são
+   * purgadas por segurança. Conserva `registros_arrecadacao` e
    * `movimentos_lote_apae` (totais preservados). Idempotente.
    */
   async purgarInativos(): Promise<ResumoPurgaInativos> {
     const inativos = await this.prisma.colaborador.findMany({
-      where: { ativo: false },
+      where: {
+        ativo: false,
+        desligadoEm: { not: null, lte: this.dataLimite() },
+      },
       select: { id: true },
     });
     const ids = inativos.map((c) => c.id);

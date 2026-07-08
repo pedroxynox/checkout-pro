@@ -311,7 +311,17 @@ export class ColaboradoresService {
       data.folgaDiaSemana = input.folgaDiaSemana;
     if (input.dataAdmissao !== undefined)
       data.dataAdmissao = normalizarAdmissao(input.dataAdmissao);
-    if (input.ativo !== undefined) data.ativo = input.ativo;
+    if (input.ativo !== undefined) {
+      data.ativo = input.ativo;
+      // Marca/limpa a data de desligamento (base da janela de retenção da
+      // purga mensal). Só marca na transição ativo -> inativo (não reinicia o
+      // relógio se já estava inativo); reativar limpa a data.
+      if (input.ativo === false && atual.ativo) {
+        data.desligadoEm = new Date();
+      } else if (input.ativo === true) {
+        data.desligadoEm = null;
+      }
+    }
 
     // Conta de acesso (login do app): string vazia/null = desvincular.
     if (input.usuarioId !== undefined) {
@@ -556,6 +566,14 @@ export class ColaboradoresService {
   private async definirAtivo(id: string, ativo: boolean): Promise<Colaborador> {
     const atual = await this.prisma.colaborador.findUnique({ where: { id } });
     if (!atual) throw new ColaboradorNaoEncontradoError();
-    return this.prisma.colaborador.update({ where: { id }, data: { ativo } });
+    // Mantém `desligadoEm` coerente (base da janela de retenção da purga):
+    // marca na transição ativo -> inativo; reativar limpa a data.
+    const data: Prisma.ColaboradorUpdateInput = { ativo };
+    if (ativo === false && atual.ativo) {
+      data.desligadoEm = new Date();
+    } else if (ativo === true) {
+      data.desligadoEm = null;
+    }
+    return this.prisma.colaborador.update({ where: { id }, data });
   }
 }
