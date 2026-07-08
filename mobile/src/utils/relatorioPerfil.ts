@@ -60,6 +60,18 @@ export function semanaAtual(hojeISO: string): { inicio: string; fim: string } {
   };
 }
 
+/**
+ * Início (dia 1º) e fim (o próprio dia) do mês civil que contém `hojeISO`.
+ *
+ * Espelha o padrão do backend do perfil (mês corrente **até hoje**), de modo
+ * que o relatório em PDF mostre exatamente os MESMOS indicadores acumulados que
+ * a tela de perfil do colaborador — evitando um PDF com números "vazios" por
+ * cobrir só a semana em curso.
+ */
+export function mesAtual(hojeISO: string): { inicio: string; fim: string } {
+  return { inicio: `${hojeISO.slice(0, 7)}-01`, fim: hojeISO };
+}
+
 /** Rótulo "dd/mm/aaaa a dd/mm/aaaa" de um período. */
 export function rotuloPeriodo(inicio: string, fim: string): string {
   return `${formatarData(inicio)} a ${formatarData(fim)}`;
