@@ -92,4 +92,32 @@ describe('ChecklistController', () => {
       controller.enviarImagem({ tipo: 'ABERTURA' }, {}, undefined, usuario),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it('historico-mes delega ao serviço com a data informada', async () => {
+    const historicoMesMock = jest.fn<Promise<never[]>, [Date]>(() =>
+      Promise.resolve([]),
+    );
+    const controller = new ChecklistController(
+      { historicoMes: historicoMesMock } as unknown as ChecklistService,
+      {} as unknown as ObjectStorage,
+    );
+    await controller.historicoMes({ data: '2026-07-15' });
+    expect(historicoMesMock).toHaveBeenCalledTimes(1);
+    expect(historicoMesMock.mock.calls[0][0].toISOString().slice(0, 10)).toBe(
+      '2026-07-15',
+    );
+  });
+
+  it('historico-mes usa a data atual quando nenhuma é informada', async () => {
+    const historicoMesMock = jest.fn<Promise<never[]>, [Date]>(() =>
+      Promise.resolve([]),
+    );
+    const controller = new ChecklistController(
+      { historicoMes: historicoMesMock } as unknown as ChecklistService,
+      {} as unknown as ObjectStorage,
+    );
+    await controller.historicoMes({});
+    expect(historicoMesMock).toHaveBeenCalledTimes(1);
+    expect(historicoMesMock.mock.calls[0][0]).toBeInstanceOf(Date);
+  });
 });

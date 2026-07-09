@@ -123,6 +123,16 @@ export class ChecklistController {
     return this.checklistService.historico(n);
   }
 
+  /** Histórico do MÊS da data informada (calendário). Padrão: mês atual. */
+  @Get('historico-mes')
+  historicoMes(
+    @Query() dto: ChecklistDataDto,
+  ): Promise<ChecklistHistoricoDia[]> {
+    return this.checklistService.historicoMes(
+      dto.data ? new Date(dto.data) : new Date(),
+    );
+  }
+
   /** Status atual do checklist do dia (Req 5.1.5). */
   @Get(':tipo/status')
   async status(

@@ -394,6 +394,62 @@ export class ChecklistService {
     const registros = await this.prisma.checklist.findMany({
       where: { data: { gte: inicio, lt: fim } },
     });
+    const nomeDe = await this.resolverNomeDe(registros);
+
+    const lista: ChecklistHistoricoDia[] = [];
+    for (let i = 0; i < dias; i++) {
+      lista.push(
+        this.montarDiaHistorico(
+          addDias(hojeDate, -i),
+          registros,
+          nomeDe,
+          agora,
+        ),
+      );
+    }
+    return lista;
+  }
+
+  /**
+   * Histórico do MÊS da data informada (todos os dias do mês civil, com abertura
+   * e fechamento por dia). Alimenta o calendário mensal do app. Dias futuros do
+   * mês corrente saem como PENDENTE (ainda não venceram) — ver `minutosRelativos`.
+   */
+  async historicoMes(data: Date): Promise<ChecklistHistoricoDia[]> {
+    const agora = agoraBrasilia();
+    const ref = inicioDoDia(data);
+    const ano = ref.getUTCFullYear();
+    const mes = ref.getUTCMonth();
+    const inicio = new Date(Date.UTC(ano, mes, 1));
+    const fim = new Date(Date.UTC(ano, mes + 1, 1)); // exclusivo (1º do mês seguinte)
+    const totalDias = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate();
+
+    const registros = await this.prisma.checklist.findMany({
+      where: { data: { gte: inicio, lt: fim } },
+    });
+    const nomeDe = await this.resolverNomeDe(registros);
+
+    const lista: ChecklistHistoricoDia[] = [];
+    for (let dia = 1; dia <= totalDias; dia++) {
+      lista.push(
+        this.montarDiaHistorico(
+          new Date(Date.UTC(ano, mes, dia)),
+          registros,
+          nomeDe,
+          agora,
+        ),
+      );
+    }
+    return lista;
+  }
+
+  /**
+   * Resolve o nome de quem enviou cada checklist (id → nome/login). Busca os
+   * usuários referenciados uma única vez para todos os registros.
+   */
+  private async resolverNomeDe(
+    registros: Checklist[],
+  ): Promise<(id: string | null) => string | null> {
     const ids = registros
       .map((r) => r.enviadoPor)
       .filter((x): x is string => !!x);
@@ -403,42 +459,45 @@ export class ChecklistService {
           select: { id: true, nome: true, login: true },
         })
       : [];
-    const nomeDe = (id: string | null): string | null => {
+    return (id: string | null): string | null => {
       if (!id) return null;
       const u = usuarios.find((x) => x.id === id);
       return u ? (u.nome ?? u.login) : id;
     };
+  }
 
-    const lista: ChecklistHistoricoDia[] = [];
-    for (let i = 0; i < dias; i++) {
-      const d = addDias(hojeDate, -i);
-      const iso = d.toISOString().slice(0, 10);
-      const minutos = minutosRelativos(iso, agora);
-      const mk = (tipo: TipoChecklist): ChecklistHistoricoTipo | null => {
-        const r = registros.find(
-          (x) => x.tipo === tipo && x.data.toISOString().slice(0, 10) === iso,
-        );
-        const status = (r?.status as StatusChecklist) ?? 'PENDENTE';
-        return {
-          statusVisual: derivarStatusVisual(
-            status,
-            r?.noPrazo ?? null,
-            minutos,
-            tipo,
-          ),
-          imagemUrl: r?.imagemUrl ?? null,
-          enviadoPor: nomeDe(r?.enviadoPor ?? null),
-          enviadoEm: r?.enviadoEm ? r.enviadoEm.toISOString() : null,
-        };
+  /** Monta o resumo (abertura + fechamento) de UM dia para o histórico. */
+  private montarDiaHistorico(
+    d: Date,
+    registros: Checklist[],
+    nomeDe: (id: string | null) => string | null,
+    agora: { dataISO: string; minutos: number },
+  ): ChecklistHistoricoDia {
+    const iso = d.toISOString().slice(0, 10);
+    const minutos = minutosRelativos(iso, agora);
+    const mk = (tipo: TipoChecklist): ChecklistHistoricoTipo | null => {
+      const r = registros.find(
+        (x) => x.tipo === tipo && x.data.toISOString().slice(0, 10) === iso,
+      );
+      const status = (r?.status as StatusChecklist) ?? 'PENDENTE';
+      return {
+        statusVisual: derivarStatusVisual(
+          status,
+          r?.noPrazo ?? null,
+          minutos,
+          tipo,
+        ),
+        imagemUrl: r?.imagemUrl ?? null,
+        enviadoPor: nomeDe(r?.enviadoPor ?? null),
+        enviadoEm: r?.enviadoEm ? r.enviadoEm.toISOString() : null,
       };
-      lista.push({
-        dataISO: iso,
-        diaSemana: d.getUTCDay(),
-        abertura: mk('ABERTURA'),
-        fechamento: mk('FECHAMENTO'),
-      });
-    }
-    return lista;
+    };
+    return {
+      dataISO: iso,
+      diaSemana: d.getUTCDay(),
+      abertura: mk('ABERTURA'),
+      fechamento: mk('FECHAMENTO'),
+    };
   }
 
   /**
