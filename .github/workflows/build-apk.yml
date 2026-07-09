@@ -3,6 +3,10 @@ name: Build APK (Android)
 # Gera o APK do app pelo EAS Build, rodando nos runners do GitHub (com internet)
 # contra os servidores do Expo. O token do Expo fica como secret do repositório
 # (EXPO_TOKEN) — nunca no código. Dispare manualmente pela aba "Actions".
+#
+# Observação: este repositório é um monorepo com npm workspaces (backend + mobile),
+# e o package-lock.json fica na raiz. Por isso as dependências são instaladas na
+# raiz (npm install), e só o passo do build do EAS roda dentro de "mobile".
 
 on:
   workflow_dispatch:
@@ -20,9 +24,6 @@ jobs:
   build:
     name: EAS Build Android
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mobile
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,8 +32,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: mobile/package-lock.json
 
       - name: Setup EAS
         uses: expo/expo-github-action@v8
@@ -40,8 +39,9 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Instalar dependências
+      - name: Instalar dependências (workspaces)
         run: npm install
 
       - name: Build APK (aguarda e mostra o link no log)
         run: eas build --platform android --profile ${{ github.event.inputs.profile }} --non-interactive
+        working-directory: mobile
