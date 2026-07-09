@@ -18,7 +18,10 @@ import {
   janelaTexto,
   minutosDoDia,
 } from './checklist.domain';
-import { ArquivoNaoImagemError } from './checklist.errors';
+import {
+  ArquivoNaoImagemError,
+  ChecklistDiaPassadoError,
+} from './checklist.errors';
 
 function addDias(data: Date, dias: number): Date {
   const d = inicioDoDia(data);
@@ -168,6 +171,11 @@ export class ChecklistService {
     await this.validacaoData?.exigirDataPermitida(data);
     const dia = inicioDoDia(data);
     const agora = agoraBrasilia();
+    // Integridade: não permite carregar o checklist de um dia que já passou —
+    // uma vez encerrado o dia, não dá para preenchê-lo retroativamente.
+    if (dia.toISOString().slice(0, 10) < agora.dataISO) {
+      throw new ChecklistDiaPassadoError();
+    }
     // Pontualidade: enviado dentro da janela (só faz sentido no mesmo dia).
     const noPrazo =
       agora.dataISO === dia.toISOString().slice(0, 10)
