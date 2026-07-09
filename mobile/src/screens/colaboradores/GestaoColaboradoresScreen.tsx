@@ -27,6 +27,7 @@ import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
+import { dataBRParaISO, isoParaDataBR, mascaraDataBR } from '../../utils/formato';
 
 const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -48,7 +49,6 @@ const TURNOS: { v: TurnoColaborador; r: string }[] = [
 ];
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
-const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 function rotuloFuncao(f: FuncaoColaborador): string {
   return FUNCOES.find((x) => x.v === f)?.r ?? f;
@@ -65,6 +65,7 @@ export function GestaoColaboradoresScreen({
   const [busca, setBusca] = useState('');
   const [formAberto, setFormAberto] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [editAtivo, setEditAtivo] = useState(true);
   const [salvando, setSalvando] = useState(false);
 
   // Campos do formulário.
@@ -147,7 +148,8 @@ export function GestaoColaboradoresScreen({
     setEntFds(c.entradaFds ?? '');
     setSaiFds(c.saidaFds ?? '');
     setFolga(c.folgaDiaSemana);
-    setAdmissao(c.dataAdmissao ? c.dataAdmissao.slice(0, 10) : '');
+    setAdmissao(c.dataAdmissao ? isoParaDataBR(c.dataAdmissao) : '');
+    setEditAtivo(c.ativo);
     setSenha('');
     setGerenteDev(false);
     setFormAberto(true);
@@ -194,12 +196,17 @@ export function GestaoColaboradoresScreen({
         return;
       }
     }
-    if (admissao.trim() && !DATA_ISO.test(admissao.trim())) {
-      notificar(
-        'Data de admissão inválida',
-        'Use o formato AAAA-MM-DD (ex.: 2026-05-01).',
-      );
-      return;
+    let admissaoISO: string | undefined;
+    if (admissao.trim()) {
+      const iso = dataBRParaISO(admissao.trim());
+      if (!iso) {
+        notificar(
+          'Data de admissão inválida',
+          'Use o formato dd/mm/aaaa (ex.: 01/05/2026).',
+        );
+        return;
+      }
+      admissaoISO = iso;
     }
 
     const input = {
@@ -214,7 +221,7 @@ export function GestaoColaboradoresScreen({
       entradaFds: entFds.trim() || undefined,
       saidaFds: saiFds.trim() || undefined,
       folgaDiaSemana: folga ?? undefined,
-      dataAdmissao: admissao.trim() || undefined,
+      dataAdmissao: admissaoISO,
       // Acesso ao app (apenas funções com acesso).
       senha: temAcesso && senha.trim() ? senha.trim() : undefined,
       gerenteDesenvolvedor: funcao === 'GESTOR' ? gerenteDev : undefined,
@@ -234,6 +241,35 @@ export function GestaoColaboradoresScreen({
       lista.recarregar();
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  /** Excluir do quadro (baixa lógica) / reativar — a partir do formulário de edição. */
+  const excluirOuReativar = async () => {
+    if (!editId) return;
+    const ok = await confirmar(
+      editAtivo ? 'Excluir do quadro' : 'Reativar colaborador',
+      editAtivo
+        ? `Excluir ${nome} do quadro? Sai das escalas e das listas. O histórico é mantido e você pode reativar depois.`
+        : `Reativar ${nome}? Volta a aparecer nas listas e escalas.`,
+      editAtivo ? 'Excluir' : 'Reativar',
+    );
+    if (!ok) return;
+    setSalvando(true);
+    try {
+      if (editAtivo) await colaboradoresService.inativar(editId);
+      else await colaboradoresService.reativar(editId);
+      notificar(
+        editAtivo ? 'Excluído do quadro' : 'Reativado',
+        `${nome} ${editAtivo ? 'saiu do quadro' : 'voltou ao quadro'}.`,
+      );
+      setFormAberto(false);
+      limparForm();
+      lista.recarregar();
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha na operação.');
     } finally {
       setSalvando(false);
     }
@@ -383,8 +419,9 @@ export function GestaoColaboradoresScreen({
           <CampoTexto
             rotulo="Data de admissão (contrato)"
             value={admissao}
-            onChangeText={setAdmissao}
-            placeholder="AAAA-MM-DD (ex.: 2026-05-01)"
+            onChangeText={(t) => setAdmissao(mascaraDataBR(t))}
+            placeholder="dd/mm/aaaa (ex.: 01/05/2026)"
+            keyboardType="number-pad"
             autoCapitalize="none"
           />
           <Text style={styles.ajudaLogin}>
@@ -401,6 +438,14 @@ export function GestaoColaboradoresScreen({
               limparForm();
             }}
           />
+          {editId ? (
+            <Botao
+              titulo={editAtivo ? 'Excluir do quadro' : 'Reativar colaborador'}
+              variante={editAtivo ? 'perigo' : 'secundario'}
+              aoPressionar={excluirOuReativar}
+              carregando={salvando}
+            />
+          ) : null}
         </Cartao>
       ) : (
         <>
