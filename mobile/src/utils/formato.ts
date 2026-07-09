@@ -57,6 +57,40 @@ export function formatarData(valor: string | Date): string {
   }).format(data);
 }
 
+/**
+ * Máscara de data brasileira (dd/mm/aaaa) aplicada ENQUANTO se digita: mantém
+ * só os dígitos (até 8) e insere as barras automaticamente. Ex.: "01052026" →
+ * "01/05/2026"; "0105" → "01/05".
+ */
+export function mascaraDataBR(texto: string): string {
+  const d = texto.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+
+/**
+ * Converte "dd/mm/aaaa" para ISO "yyyy-mm-dd". Retorna null quando incompleta
+ * ou inválida (dia/mês fora de faixa ou data inexistente, ex.: 31/02/2026).
+ */
+export function dataBRParaISO(dmy: string): string | null {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dmy.trim());
+  if (!m) return null;
+  const dia = Number(m[1]);
+  const mes = Number(m[2]);
+  if (mes < 1 || mes > 12 || dia < 1 || dia > 31) return null;
+  const iso = `${m[3]}-${m[2]}-${m[1]}`;
+  const d = new Date(`${iso}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime()) || d.getUTCDate() !== dia) return null;
+  return iso;
+}
+
+/** Converte uma data ISO (yyyy-mm-dd, com ou sem hora) para "dd/mm/aaaa". */
+export function isoParaDataBR(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.slice(0, 10));
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+
 /** Formata uma data ISO/Date para dd/mm/aaaa HH:mm (horário local). */
 export function formatarDataHora(valor: string | Date): string {
   const data = typeof valor === 'string' ? new Date(valor) : valor;

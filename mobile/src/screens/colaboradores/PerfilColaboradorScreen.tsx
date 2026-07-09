@@ -9,8 +9,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ApiError } from '../../api/client';
+import { StyleSheet, Text, View } from 'react-native';
 import { colaboradoresService } from '../../api/services';
 import {
   FuncaoColaborador,
@@ -20,7 +19,6 @@ import {
   PerfilColaborador,
   TimelineItem,
 } from '../../api/types';
-import { useAuth } from '../../auth/AuthContext';
 import {
   Carregando,
   Cartao,
@@ -34,7 +32,6 @@ import {
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, formatarDuracao } from '../../utils/formato';
 import { ROTULO_STATUS_FISCAL } from '../../utils/rotulos';
 
@@ -328,52 +325,17 @@ function HistoricoIncidencias({
 
 export function PerfilColaboradorScreen({
   route,
-  navigation,
 }: PropsTela<'PerfilColaborador'>): React.ReactElement {
   const { colaboradorId } = route.params;
-  const { podeAcessar } = useAuth();
-  const podeGerir = podeAcessar('OPERADORES_CRUD');
-  const [ocupado, setOcupado] = useState(false);
   const req = useRequisicao<PerfilColaborador>(
     () => colaboradoresService.perfil(colaboradorId),
     [colaboradorId],
   );
   const p = req.dados;
 
-  /**
-   * Desliga (exclui do quadro) ou reativa o colaborador. É uma baixa LÓGICA:
-   * some das listas/escalas mas o histórico (faltas, sanções, contratos) é
-   * preservado — e pode ser revertido reativando.
-   */
-  const alternarVinculo = async (): Promise<void> => {
-    if (!p || ocupado) return;
-    const ativo = p.colaborador.ativo;
-    const nome = p.colaborador.nome;
-    const ok = await confirmar(
-      ativo ? 'Excluir do quadro' : 'Reativar colaborador',
-      ativo
-        ? `Excluir ${nome} do quadro? Sai das escalas e das listas. O histórico é mantido e você pode reativar depois.`
-        : `Reativar ${nome}? Volta a aparecer no quadro e nas escalas.`,
-      ativo ? 'Excluir' : 'Reativar',
-    );
-    if (!ok) return;
-    setOcupado(true);
-    try {
-      if (ativo) {
-        await colaboradoresService.inativar(colaboradorId);
-        notificar('Colaborador excluído', `${nome} saiu do quadro. O histórico foi mantido.`);
-        navigation.goBack();
-      } else {
-        await colaboradoresService.reativar(colaboradorId);
-        notificar('Colaborador reativado', `${nome} voltou ao quadro.`);
-        req.recarregar();
-      }
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Não foi possível concluir.');
-    } finally {
-      setOcupado(false);
-    }
-  };
+  // A ação de "Excluir do quadro" (baixa lógica) foi movida para o formulário de
+  // edição do colaborador em Centro de Controle ▸ Colaboradores. O perfil é
+  // somente leitura.
 
   return (
     <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
@@ -707,46 +669,6 @@ export function PerfilColaboradorScreen({
             </View>
           </Cartao>
 
-          {/* Excluir do quadro / reativar (baixa lógica — só gestor) */}
-          {podeGerir ? (
-            <TouchableOpacity
-              onPress={() => void alternarVinculo()}
-              disabled={ocupado}
-              activeOpacity={0.8}
-              style={[
-                styles.btnVinculo,
-                p.colaborador.ativo ? styles.btnExcluir : styles.btnReativar,
-                ocupado && { opacity: 0.6 },
-              ]}
-            >
-              <Ionicons
-                name={
-                  p.colaborador.ativo
-                    ? 'person-remove-outline'
-                    : 'person-add-outline'
-                }
-                size={18}
-                color={p.colaborador.ativo ? cores.vermelho : cores.verde}
-              />
-              <Text
-                style={[
-                  styles.btnVinculoTexto,
-                  { color: p.colaborador.ativo ? cores.vermelho : cores.verde },
-                ]}
-              >
-                {p.colaborador.ativo
-                  ? 'Excluir do quadro'
-                  : 'Reativar colaborador'}
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-          {podeGerir ? (
-            <Text style={styles.btnVinculoDica}>
-              {p.colaborador.ativo
-                ? 'Sai das escalas e listas; o histórico é mantido e pode ser reativado.'
-                : 'Este colaborador está fora do quadro.'}
-            </Text>
-          ) : null}
         </>
       )}
     </Tela>

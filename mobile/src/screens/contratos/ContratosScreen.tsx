@@ -33,9 +33,12 @@ import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
-import { formatarData } from '../../utils/formato';
-
-const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+import {
+  dataBRParaISO,
+  formatarData,
+  isoParaDataBR,
+  mascaraDataBR,
+} from '../../utils/formato';
 
 const ROTULO_ETIQUETA: Record<EtiquetaContrato, string> = {
   experiencia: 'Experiência',
@@ -119,18 +122,19 @@ export function ContratosScreen({
 
   const abrirAdmissao = (c: ContratoCard) => {
     setEditandoId(c.colaboradorId);
-    setAdmissaoInput(c.dataAdmissao ? c.dataAdmissao.slice(0, 10) : '');
+    setAdmissaoInput(c.dataAdmissao ? isoParaDataBR(c.dataAdmissao) : '');
   };
 
   const salvarAdmissao = async () => {
     if (!editandoId) return;
-    if (!DATA_ISO.test(admissaoInput.trim())) {
-      notificar('Data inválida', 'Use o formato AAAA-MM-DD (ex.: 2026-05-01).');
+    const iso = dataBRParaISO(admissaoInput.trim());
+    if (!iso) {
+      notificar('Data inválida', 'Use o formato dd/mm/aaaa (ex.: 01/05/2026).');
       return;
     }
     setOcupado(true);
     try {
-      await contratosService.definirAdmissao(editandoId, admissaoInput.trim());
+      await contratosService.definirAdmissao(editandoId, iso);
       setEditandoId(null);
       setAdmissaoInput('');
       req.recarregar();
@@ -180,10 +184,11 @@ export function ContratosScreen({
       {editandoId && (
         <Cartao titulo="Data de admissão">
           <CampoTexto
-            rotulo="Admissão (AAAA-MM-DD)"
+            rotulo="Admissão (dd/mm/aaaa)"
             value={admissaoInput}
-            onChangeText={setAdmissaoInput}
-            placeholder="Ex.: 2026-05-01"
+            onChangeText={(t) => setAdmissaoInput(mascaraDataBR(t))}
+            placeholder="Ex.: 01/05/2026"
+            keyboardType="number-pad"
             autoCapitalize="none"
           />
           <Text style={styles.ajuda}>
@@ -269,10 +274,9 @@ export function ContratosScreen({
                     {c.nome}
                   </Text>
                   <Text style={styles.cardMeta} numberOfLines={1}>
-                    Mat. {c.matricula}
                     {c.dataAdmissao
-                      ? ` · desde ${formatarData(c.dataAdmissao)} · ${c.diasDeCasa} dias de casa`
-                      : ''}
+                      ? `Desde ${formatarData(c.dataAdmissao)} · ${c.diasDeCasa} dias de casa`
+                      : 'Sem data de admissão'}
                   </Text>
                   <Text style={styles.cardStatus} numberOfLines={2}>
                     {statusDoCard(c)}
