@@ -70,9 +70,16 @@ describe('Upload de imagem de checklist ponta a ponta (Tarefa 20.2)', () => {
   });
 
   it('armazena a imagem no object storage e marca o checklist como FEITO', async () => {
+    // O checklist só pode ser carregado no próprio dia — usamos HOJE (Brasília).
+    const hoje = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
     const resultado = await controller.enviarImagem(
       { tipo: 'ABERTURA' },
-      { data: '2024-03-10' },
+      { data: hoje },
       arquivo('image/jpeg', 'abertura.jpg', 'conteudo-jpeg'),
       fiscal,
     );
@@ -90,7 +97,7 @@ describe('Upload de imagem de checklist ponta a ponta (Tarefa 20.2)', () => {
     // O status consultado posteriormente também é FEITO (persistido).
     const status = await controller.status(
       { tipo: 'ABERTURA' },
-      { data: '2024-03-10' },
+      { data: hoje },
     );
     expect(status.status).toBe('FEITO');
   });

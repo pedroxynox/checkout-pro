@@ -47,6 +47,9 @@ function urlImagem(caminho: string): string {
   return `${API_BASE_URL.replace(/\/$/, '')}${caminho}`;
 }
 
+/** Cor dos dias FUTUROS ("a fazer") — azul, para não confundir com atrasado. */
+const COR_FUTURO = '#60A5FA';
+
 /** Cor do ponto de status no calendário (🟢/🟡/🔴/⚪). */
 function corStatus(t?: StatusVisualChecklist): string {
   if (!t) return cores.divisor;
@@ -75,6 +78,8 @@ function ChecklistCard({
   data,
   aoEnviar,
   aoAbrirFoto,
+  podeCarregar,
+  mensagemBloqueio,
 }: {
   tipo: TipoChecklist;
   titulo: string;
@@ -82,6 +87,8 @@ function ChecklistCard({
   data: string;
   aoEnviar: () => void;
   aoAbrirFoto: (url: string) => void;
+  podeCarregar: boolean;
+  mensagemBloqueio: string | null;
 }): React.ReactElement {
   const [enviando, setEnviando] = useState(false);
   const v = visual(estado.statusVisual);
@@ -174,21 +181,32 @@ function ChecklistCard({
         </>
       ) : null}
 
-      <View style={styles.botoes}>
-        <Botao
-          titulo={estado.status === 'FEITO' ? 'Reenviar (foto)' : 'Tirar foto'}
-          aoPressionar={() => void enviar('camera')}
-          carregando={enviando}
-          estilo={styles.botaoFlex}
-        />
-        <Botao
-          titulo="Da galeria"
-          variante="secundario"
-          aoPressionar={() => void enviar('galeria')}
-          carregando={enviando}
-          estilo={styles.botaoFlex}
-        />
-      </View>
+      {podeCarregar ? (
+        <View style={styles.botoes}>
+          <Botao
+            titulo={estado.status === 'FEITO' ? 'Reenviar (foto)' : 'Tirar foto'}
+            aoPressionar={() => void enviar('camera')}
+            carregando={enviando}
+            estilo={styles.botaoFlex}
+          />
+          <Botao
+            titulo="Da galeria"
+            variante="secundario"
+            aoPressionar={() => void enviar('galeria')}
+            carregando={enviando}
+            estilo={styles.botaoFlex}
+          />
+        </View>
+      ) : (
+        <View style={styles.bloqueio}>
+          <Ionicons
+            name="lock-closed-outline"
+            size={16}
+            color={cores.textoSecundario}
+          />
+          <Text style={styles.bloqueioTexto}>{mensagemBloqueio}</Text>
+        </View>
+      )}
     </Cartao>
   );
 }
@@ -222,6 +240,15 @@ export function ChecklistScreen(): React.ReactElement {
   const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
 
   const hoje = hojeISO();
+  // Só é possível carregar o checklist NO PRÓPRIO DIA. Dias passados ficam
+  // travados (não dá para preencher retroativamente) e dias futuros ainda não
+  // chegaram. A regra também é garantida no backend.
+  const podeCarregar = data === hoje;
+  const mensagemBloqueio = podeCarregar
+    ? null
+    : data < hoje
+      ? 'Este dia já passou — o checklist não pode mais ser carregado.'
+      : 'Este dia ainda não chegou.';
 
   /** Navega para o mês anterior/seguinte, sem sair dos limites permitidos. */
   const mudarMes = (delta: number) => {
@@ -283,6 +310,8 @@ export function ChecklistScreen(): React.ReactElement {
             data={data}
             aoEnviar={recarregar}
             aoAbrirFoto={setFotoAmpliada}
+            podeCarregar={podeCarregar}
+            mensagemBloqueio={mensagemBloqueio}
           />
           <ChecklistCard
             tipo="FECHAMENTO"
@@ -291,6 +320,8 @@ export function ChecklistScreen(): React.ReactElement {
             data={data}
             aoEnviar={recarregar}
             aoAbrirFoto={setFotoAmpliada}
+            podeCarregar={podeCarregar}
+            mensagemBloqueio={mensagemBloqueio}
           />
         </>
       ) : null}
@@ -419,7 +450,11 @@ function CalendarioMes({
         {dias.map((d) => {
           const numero = Number(d.dataISO.slice(8, 10));
           const selecionavel = d.dataISO >= dataInicial && d.dataISO <= hoje;
+          const futuro = d.dataISO > hoje;
           const sel = d.dataISO === selecionado;
+          // Dias futuros ("a fazer") usam azul, para não parecerem atrasados.
+          const corAb = futuro ? COR_FUTURO : corStatus(d.abertura?.statusVisual);
+          const corFe = futuro ? COR_FUTURO : corStatus(d.fechamento?.statusVisual);
           const conteudo = (
             <>
               <Text
@@ -432,12 +467,8 @@ function CalendarioMes({
                 {numero}
               </Text>
               <View style={styles.calPontos}>
-                <View
-                  style={[styles.calPonto, { backgroundColor: corStatus(d.abertura?.statusVisual) }]}
-                />
-                <View
-                  style={[styles.calPonto, { backgroundColor: corStatus(d.fechamento?.statusVisual) }]}
-                />
+                <View style={[styles.calPonto, { backgroundColor: corAb }]} />
+                <View style={[styles.calPonto, { backgroundColor: corFe }]} />
               </View>
             </>
           );
@@ -458,7 +489,7 @@ function CalendarioMes({
       </View>
 
       <Text style={styles.histLegenda}>
-        🟢 no prazo · 🟡 atrasado/pendente · 🔴 não feito · ⚪ sem dado
+        🟢 no prazo · 🟡 atrasado/pendente · 🔴 não feito · 🔵 a fazer · ⚪ sem dado
       </Text>
       <Text style={styles.calLegendaTipos}>
         Em cada dia: 1º ponto = abertura · 2º ponto = fechamento
@@ -564,6 +595,20 @@ const styles = StyleSheet.create({
     marginTop: espacamento.xs,
   },
   botaoFlex: {
+    flex: 1,
+  },
+  bloqueio: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+    marginTop: espacamento.xs,
+    padding: espacamento.sm,
+    backgroundColor: cores.superficieAlternativa,
+    borderRadius: raio.md,
+  },
+  bloqueioTexto: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
     flex: 1,
   },
   // Métricas

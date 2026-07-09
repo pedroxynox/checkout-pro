@@ -1,6 +1,23 @@
 import { ChecklistService } from './checklist.service';
-import { ArquivoNaoImagemError } from './checklist.errors';
+import {
+  ArquivoNaoImagemError,
+  ChecklistDiaPassadoError,
+} from './checklist.errors';
 import { janela } from './checklist.domain';
+
+/**
+ * Data de HOJE (Brasília) num horário "HH:mm" — usada nos testes de envio, pois
+ * o checklist só pode ser carregado no próprio dia (dias passados são rejeitados).
+ */
+function hojeBrasiliaAs(hhmm: string): Date {
+  const iso = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  return new Date(`${iso}T${hhmm}:00Z`);
+}
 
 /**
  * Testes de exemplo (unitários) do `ChecklistService`, incluindo a verificação
@@ -98,17 +115,31 @@ describe('ChecklistService', () => {
 
   it('marca o checklist como FEITO ao enviar uma imagem válida (Req 5.1.2)', async () => {
     const service = criarServico();
-    const data = new Date('2024-03-10T08:20:00Z');
+    const data = hojeBrasiliaAs('08:20');
     const c = await service.enviarImagem(
       'ABERTURA',
       data,
       { mimeType: 'image/png', url: 's3://img.png' },
       'user-1',
-      new Date('2024-03-10T08:20:00Z'),
+      data,
     );
     expect(c.status).toBe('FEITO');
     expect(c.enviadoPor).toBe('user-1');
     expect(await service.status('ABERTURA', data)).toBe('FEITO');
+  });
+
+  it('rejeita carregar o checklist de um dia que já passou', async () => {
+    const service = criarServico();
+    const ontem = hojeBrasiliaAs('08:20');
+    ontem.setUTCDate(ontem.getUTCDate() - 1);
+    await expect(
+      service.enviarImagem(
+        'ABERTURA',
+        ontem,
+        { mimeType: 'image/png' },
+        'user-1',
+      ),
+    ).rejects.toBeInstanceOf(ChecklistDiaPassadoError);
   });
 
   it('rejeita arquivo não-imagem mantendo o status pendente (Req 5.1.4)', async () => {
@@ -138,14 +169,14 @@ describe('ChecklistService', () => {
 
   it('não dispara alerta quando o checklist já foi feito', async () => {
     const service = criarServico();
-    const data = new Date('2024-03-10T08:30:00Z');
+    const data = hojeBrasiliaAs('08:30');
     await service.enviarImagem(
       'ABERTURA',
       data,
       { mimeType: 'image/jpeg' },
       'user-1',
     );
-    const limite = new Date('2024-03-10T08:55:00Z');
+    const limite = hojeBrasiliaAs('08:55');
     expect(await service.verificarAlerta('ABERTURA', limite)).toBe(false);
   });
 });

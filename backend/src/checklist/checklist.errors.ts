@@ -30,3 +30,17 @@ export class ArquivoNaoImagemError extends ChecklistError {
     );
   }
 }
+
+/**
+ * Lançado ao tentar carregar o checklist de um dia que já passou. Por
+ * integridade, o checklist só pode ser enviado no próprio dia — depois que o dia
+ * encerra, não é possível preenchê-lo retroativamente.
+ */
+export class ChecklistDiaPassadoError extends ChecklistError {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
+  constructor() {
+    super(
+      'Este dia já passou. O checklist só pode ser carregado no próprio dia.',
+    );
+  }
+}
