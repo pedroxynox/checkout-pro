@@ -35,12 +35,24 @@ import {
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { formatarData, formatarHora, hojeISO } from '../../utils/formato';
+import { formatarHora, hojeISO } from '../../utils/formato';
 
 const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const NOMES_MES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
 
 function urlImagem(caminho: string): string {
   return `${API_BASE_URL.replace(/\/$/, '')}${caminho}`;
+}
+
+/** Cor do ponto de status no calendário (🟢/🟡/🔴/⚪). */
+function corStatus(t?: StatusVisualChecklist): string {
+  if (!t) return cores.divisor;
+  if (t === 'FEITO_NO_PRAZO') return cores.verde;
+  if (t === 'NAO_FEITO') return cores.vermelho;
+  return cores.amarelo; // ATRASADO / PENDENTE
 }
 
 function visual(status: StatusVisualChecklist): { rotulo: string; cor: string; fundo: string } {
@@ -193,20 +205,34 @@ export function ChecklistScreen(): React.ReactElement {
     () => checklistService.metricas(data),
     [data],
   );
-  const historico = useRequisicao<ChecklistHistoricoDia[]>(
-    () => checklistService.historico(14),
-    [],
+  // Calendário: histórico do MÊS da data selecionada (recarrega ao trocar de mês).
+  const calendarioReq = useRequisicao<ChecklistHistoricoDia[]>(
+    () => checklistService.historicoMes(data),
+    [data.slice(0, 7)],
   );
 
   const recarregar = () => {
     estadoReq.recarregar();
     metricas.recarregar();
-    historico.recarregar();
+    calendarioReq.recarregar();
   };
 
   const est = estadoReq.dados;
   // Foto aberta em tela cheia (visualizador). null = fechado.
   const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
+
+  const hoje = hojeISO();
+
+  /** Navega para o mês anterior/seguinte, sem sair dos limites permitidos. */
+  const mudarMes = (delta: number) => {
+    const [a, m] = data.split('-').map(Number);
+    const primeiro = new Date(Date.UTC(a, m - 1 + delta, 1))
+      .toISOString()
+      .slice(0, 10);
+    // Mantém dentro de [Data_Inicial_Sistema, hoje].
+    const iso = primeiro < dataInicial ? dataInicial : primeiro > hoje ? hoje : primeiro;
+    setData(iso);
+  };
 
   return (
     <Tela
@@ -269,31 +295,23 @@ export function ChecklistScreen(): React.ReactElement {
         </>
       ) : null}
 
-      {/* Histórico dos últimos dias */}
-      {historico.dados && historico.dados.length > 0 ? (
-        <Cartao titulo="Histórico (14 dias)">
-          <View style={styles.histCabecalho}>
-            <Text style={styles.histColData}>Dia</Text>
-            <Text style={styles.histColTipo}>Abertura</Text>
-            <Text style={styles.histColTipo}>Fechamento</Text>
-          </View>
-          {historico.dados.map((d) => (
-            <View key={d.dataISO} style={styles.histLinha}>
-              <Text style={styles.histData}>
-                {NOMES_DIA[d.diaSemana]} {formatarData(d.dataISO).slice(0, 5)}
-              </Text>
-              <View style={styles.histColTipo}>
-                <HistPonto t={d.abertura?.statusVisual} />
-              </View>
-              <View style={styles.histColTipo}>
-                <HistPonto t={d.fechamento?.statusVisual} />
-              </View>
-            </View>
-          ))}
-          <Text style={styles.histLegenda}>
-            🟢 no prazo · 🟡 atrasado/pendente · 🔴 não feito
-          </Text>
-        </Cartao>
+      {/* Calendário do mês: abertura + fechamento por dia (toque num dia para vê-lo) */}
+      {calendarioReq.carregando ? (
+        <Carregando />
+      ) : calendarioReq.erro ? (
+        <MensagemErro
+          mensagem={calendarioReq.erro}
+          aoTentarNovamente={calendarioReq.recarregar}
+        />
+      ) : calendarioReq.dados && calendarioReq.dados.length > 0 ? (
+        <CalendarioMes
+          dias={calendarioReq.dados}
+          selecionado={data}
+          dataInicial={dataInicial}
+          hoje={hoje}
+          aoSelecionarDia={setData}
+          aoMudarMes={mudarMes}
+        />
       ) : null}
 
       {/* Visualizador de foto em tela cheia (toque na miniatura) */}
@@ -329,15 +347,124 @@ export function ChecklistScreen(): React.ReactElement {
   );
 }
 
-function HistPonto({ t }: { t?: StatusVisualChecklist }): React.ReactElement {
-  const cor = !t
-    ? cores.divisor
-    : t === 'FEITO_NO_PRAZO'
-      ? cores.verde
-      : t === 'NAO_FEITO'
-        ? cores.vermelho
-        : cores.amarelo;
-  return <View style={[styles.histPonto, { backgroundColor: cor }]} />;
+/** Calendário mensal com o status de abertura e fechamento por dia. */
+function CalendarioMes({
+  dias,
+  selecionado,
+  dataInicial,
+  hoje,
+  aoSelecionarDia,
+  aoMudarMes,
+}: {
+  dias: ChecklistHistoricoDia[];
+  selecionado: string;
+  dataInicial: string;
+  hoje: string;
+  aoSelecionarDia: (iso: string) => void;
+  aoMudarMes: (delta: number) => void;
+}): React.ReactElement {
+  const primeiro = dias[0];
+  const [ano, mes] = primeiro.dataISO.split('-');
+  const rotulo = `${NOMES_MES[Number(mes) - 1]} ${ano}`;
+  // Células vazias antes do dia 1, para alinhar ao dia da semana.
+  const vazias = Array.from({ length: primeiro.diaSemana }, (_, i) => i);
+  const primeiroDoMes = `${ano}-${mes}-01`;
+  const podeVoltar = primeiroDoMes > dataInicial;
+  const podeAvancar = primeiroDoMes < `${hoje.slice(0, 7)}-01`;
+
+  return (
+    <Cartao>
+      <View style={styles.calCabecalho}>
+        <Pressable
+          onPress={() => aoMudarMes(-1)}
+          disabled={!podeVoltar}
+          hitSlop={10}
+          style={styles.calSeta}
+          accessibilityLabel="Mês anterior"
+        >
+          <Ionicons
+            name="chevron-back"
+            size={22}
+            color={podeVoltar ? cores.primaria : cores.divisor}
+          />
+        </Pressable>
+        <Text style={styles.calTitulo}>{rotulo}</Text>
+        <Pressable
+          onPress={() => aoMudarMes(1)}
+          disabled={!podeAvancar}
+          hitSlop={10}
+          style={styles.calSeta}
+          accessibilityLabel="Mês seguinte"
+        >
+          <Ionicons
+            name="chevron-forward"
+            size={22}
+            color={podeAvancar ? cores.primaria : cores.divisor}
+          />
+        </Pressable>
+      </View>
+
+      <View style={styles.calSemana}>
+        {NOMES_DIA.map((n) => (
+          <Text key={n} style={styles.calSemanaTxt}>
+            {n}
+          </Text>
+        ))}
+      </View>
+
+      <View style={styles.calGrade}>
+        {vazias.map((v) => (
+          <View key={`v${v}`} style={styles.calCelula} />
+        ))}
+        {dias.map((d) => {
+          const numero = Number(d.dataISO.slice(8, 10));
+          const selecionavel = d.dataISO >= dataInicial && d.dataISO <= hoje;
+          const sel = d.dataISO === selecionado;
+          const conteudo = (
+            <>
+              <Text
+                style={[
+                  styles.calDiaNum,
+                  sel && styles.calDiaNumSel,
+                  !selecionavel && styles.calDiaNumInativo,
+                ]}
+              >
+                {numero}
+              </Text>
+              <View style={styles.calPontos}>
+                <View
+                  style={[styles.calPonto, { backgroundColor: corStatus(d.abertura?.statusVisual) }]}
+                />
+                <View
+                  style={[styles.calPonto, { backgroundColor: corStatus(d.fechamento?.statusVisual) }]}
+                />
+              </View>
+            </>
+          );
+          return selecionavel ? (
+            <Pressable
+              key={d.dataISO}
+              onPress={() => aoSelecionarDia(d.dataISO)}
+              style={[styles.calCelula, sel && styles.calCelulaSel]}
+            >
+              {conteudo}
+            </Pressable>
+          ) : (
+            <View key={d.dataISO} style={styles.calCelula}>
+              {conteudo}
+            </View>
+          );
+        })}
+      </View>
+
+      <Text style={styles.histLegenda}>
+        🟢 no prazo · 🟡 atrasado/pendente · 🔴 não feito · ⚪ sem dado
+      </Text>
+      <Text style={styles.calLegendaTipos}>
+        Em cada dia: 1º ponto = abertura · 2º ponto = fechamento
+      </Text>
+    </Cartao>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -461,44 +588,84 @@ const styles = StyleSheet.create({
     color: cores.textoSecundario,
     textAlign: 'center',
   },
-  // Histórico
-  histCabecalho: {
+  // Calendário mensal
+  calCabecalho: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: espacamento.sm,
+  },
+  calSeta: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calTitulo: {
+    ...tipografia.subtitulo,
+    color: cores.texto,
+    fontWeight: '700',
+  },
+  calSemana: {
+    flexDirection: 'row',
     marginBottom: espacamento.xs,
   },
-  histColData: {
-    width: 96,
+  calSemanaTxt: {
+    width: '14.2857%',
+    textAlign: 'center',
     ...tipografia.legenda,
-    fontWeight: '700',
     color: cores.textoSecundario,
+    fontWeight: '700',
   },
-  histColTipo: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  histLinha: {
+  calGrade: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: espacamento.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: cores.divisor,
+    flexWrap: 'wrap',
   },
-  histData: {
-    width: 96,
+  calCelula: {
+    width: '14.2857%',
+    minHeight: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: espacamento.xs,
+    borderRadius: raio.md,
+  },
+  calCelulaSel: {
+    backgroundColor: cores.primariaClara,
+  },
+  calDiaNum: {
     ...tipografia.legenda,
     color: cores.texto,
+    fontWeight: '600',
   },
-  histPonto: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+  calDiaNumSel: {
+    color: cores.primaria,
+    fontWeight: '800',
+  },
+  calDiaNumInativo: {
+    color: cores.textoSecundario,
+    opacity: 0.5,
+  },
+  calPontos: {
+    flexDirection: 'row',
+    gap: 3,
+    marginTop: 3,
+  },
+  calPonto: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
   },
   histLegenda: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginTop: espacamento.sm,
     textAlign: 'center',
+  },
+  calLegendaTipos: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    textAlign: 'center',
+    marginTop: 2,
   },
 });
 

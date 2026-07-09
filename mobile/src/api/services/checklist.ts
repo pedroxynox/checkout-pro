@@ -71,4 +71,12 @@ export const checklistService = {
       dias: String(dias),
     });
   },
+
+  /** Histórico do MÊS da data informada (calendário). Padrão: mês atual. */
+  historicoMes(data?: string): Promise<ChecklistHistoricoDia[]> {
+    return apiClient.get<ChecklistHistoricoDia[]>(
+      '/checklist/historico-mes',
+      data ? { data } : undefined,
+    );
+  },
 };
