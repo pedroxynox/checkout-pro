@@ -12,6 +12,36 @@
 
 ---
 
+## Auditoria completa + verificação de ponta a ponta (2026-07-10)
+
+Revisão geral do projeto com **dependências instaladas** e a bateria completa de
+verificação **executada** neste ambiente (rede aberta):
+
+- **Backend:** `prisma generate` + `nest build` OK; **302 testes** (59 suítes)
+  verdes; `eslint` (sem `--fix`) sem erros.
+- **Mobile:** `tsc --noEmit` OK; `eslint` sem erros; **69 testes** (20 suítes)
+  verdes; `expo export --platform web` conclui sem erros.
+- **Auditoria de código:** 0 `any`, 0 `TODO/FIXME`, 0 `@ts-ignore` no código de
+  produção; repositório limpo. **Não há código morto seguro para remover** — os
+  modelos legados (`Operador`, `RegistroOperacional`, `RegistroImportacao`,
+  `OperadorTurno`) e a coluna `Insumo.saldo` permanecem de propósito (a remoção
+  exige migração destrutiva; adiada para proteger os dados de produção).
+- **Dependências:** os alertas do `npm audit` do backend só se resolvem com o
+  upgrade maior para **NestJS 11** (multer/lodash/uuid transitivos); os do mobile
+  estão nas ferramentas de build do Expo. **Não** rodar `npm audit fix` — o Expo
+  SDK 52 fixa versões e um `fix` quebraria o build. Upgrade adiado de propósito.
+- **DX (aditivo, sem mudar comportamento):** adicionados scripts na raiz
+  `npm run verify` (`verify:backend` + `verify:mobile`) para rodar toda a
+  verificação com um único comando.
+- **Docs:** novo `docs/AUDITORIA_2026-07-10.md` (resumo executivo em linguagem
+  simples para o dono do produto, com riscos priorizados e próximo passo).
+
+Conclusão: projeto **maduro, saudável e verificado**. Os riscos remanescentes são
+de **infraestrutura/negócio** (BD free do Render que expira, tier pago do Gemini)
+e um upgrade técnico (NestJS 11), não defeitos de código.
+
+---
+
 ## Insumos: fim da reposição automática — nada entra sem aprovação (2026-07-06)
 
 A seção de Insumos estava "se enchendo sozinha": o sistema criava **requisições
