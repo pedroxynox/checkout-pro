@@ -5,6 +5,7 @@ import { Relogio } from '../common/relogio';
 import { ArrecadacaoService } from '../arrecadacao/arrecadacao.service';
 import type { StatusArrecadacao } from '../arrecadacao/arrecadacao.service';
 import { TIPOS_ARRECADACAO } from '../arrecadacao/arrecadacao.domain';
+import { FechamentoService } from '../fechamento/fechamento.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { AlertasService, expressaoCronDiaria } from './alertas.service';
 
@@ -36,6 +37,7 @@ describe('AlertasService (cron com relógio injetável)', () => {
     agora: Date;
     statusChecklist?: 'PENDENTE' | 'FEITO';
     pendentesImportacao?: string[];
+    fechamentoCompleto?: boolean;
   }) {
     const usuarios: UsuarioFake[] = [
       { id: 'g1', perfil: 'GERENTE', online: false },
@@ -94,6 +96,12 @@ describe('AlertasService (cron com relógio injetável)', () => {
         return Promise.resolve(status);
       }),
     } as unknown as ArrecadacaoService;
+    // Simula o estado do fechamento do dia: completo ou pendente.
+    const fechamentoServiceFake = {
+      estaCompleto: jest.fn(() =>
+        Promise.resolve(opts.fechamentoCompleto ?? false),
+      ),
+    } as unknown as FechamentoService;
     const relogio: Relogio = { agora: () => opts.agora };
     const config = {
       get: (chave: string) =>
@@ -107,13 +115,20 @@ describe('AlertasService (cron com relógio injetável)', () => {
     const service = new AlertasService(
       checklistService,
       arrecadacaoServiceFake,
+      fechamentoServiceFake,
       notificacoesService,
       config,
       scheduler,
       relogio,
     );
 
-    return { service, criadas, arrecadacaoServiceFake, scheduler };
+    return {
+      service,
+      criadas,
+      arrecadacaoServiceFake,
+      fechamentoServiceFake,
+      scheduler,
+    };
   }
 
   describe('alerta de checklist', () => {
@@ -187,6 +202,39 @@ describe('AlertasService (cron com relógio injetável)', () => {
       const pendentes = await service.dispararAlertaImportacoesPendentes();
 
       expect(pendentes).toEqual([]);
+      expect(criadas).toHaveLength(0);
+    });
+  });
+
+  describe('lembrete de fechamento (22:20)', () => {
+    it('avisa todos os perfis operacionais quando o fechamento está pendente', async () => {
+      const { service, criadas } = montar({
+        agora: new Date('2024-03-10T22:20:00.000Z'),
+        fechamentoCompleto: false,
+      });
+
+      const disparou = await service.dispararLembreteFechamentoArquivos();
+
+      expect(disparou).toBe(true);
+      // Aviso único, entregue a todos os perfis operacionais (g1, f1, f2).
+      expect(criadas.map((c) => c.usuarioId).sort()).toEqual([
+        'f1',
+        'f2',
+        'g1',
+      ]);
+      expect(criadas[0].titulo).toBe('Fechamento pendente');
+      expect(criadas.every((c) => c.canalPush && c.canalInApp)).toBe(true);
+    });
+
+    it('não incomoda ninguém quando o fechamento já está completo', async () => {
+      const { service, criadas } = montar({
+        agora: new Date('2024-03-10T22:20:00.000Z'),
+        fechamentoCompleto: true,
+      });
+
+      const disparou = await service.dispararLembreteFechamentoArquivos();
+
+      expect(disparou).toBe(false);
       expect(criadas).toHaveLength(0);
     });
   });

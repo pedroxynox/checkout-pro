@@ -12,6 +12,28 @@
 
 ---
 
+## Checklist: confirmação de envio + lembrete de fechamento às 22:20 (2026-07-10)
+
+Dois novos avisos, entregues pelo pipeline padrão de notificações (in-app + push
++ tempo real), a todos os perfis operacionais:
+
+- **Confirmação ao carregar o checklist:** ao enviar a imagem do checklist
+  (abertura ou fechamento), a equipe recebe "Checklist da abertura feito com
+  sucesso" quando enviado dentro da janela, ou "...feito com atraso" quando fora
+  da janela. Envio best-effort (não bloqueia nem quebra o upload da imagem).
+  Implementado em `ChecklistService.enviarImagem` (novo `avisarChecklistEnviado`).
+- **Lembrete de fechamento (22:20):** novo cron diário (`America/Sao_Paulo`) em
+  `AlertasService.dispararLembreteFechamentoArquivos`. Se o fechamento do dia
+  ainda NÃO está completo (faltam arrecadações e/ou vendas), avisa todos para
+  carregarem os arquivos do dia; se já foi concluído, não incomoda ninguém.
+  `AlertasModule` passou a importar `FechamentoModule`.
+
+Testes: +4 (checklist sucesso/atraso; lembrete 22:20 dispara/silencia). Suíte do
+backend: 306 testes verdes. Sem mudanças no app (as notificações são renderizadas
+pelo sistema de avisos existente).
+
+---
+
 ## Auditoria completa + verificação de ponta a ponta (2026-07-10)
 
 Revisão geral do projeto com **dependências instaladas** e a bateria completa de

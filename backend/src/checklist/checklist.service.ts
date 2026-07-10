@@ -209,7 +209,43 @@ export class ChecklistService {
     if (arquivo.hash) {
       void this.avisarFotoRepetida(tipo, arquivo.hash, salvo.id);
     }
+    // Confirmação para a equipe: checklist carregado com SUCESSO (dentro da
+    // janela) ou com ATRASO (fora da janela). Best-effort — não bloqueia nem
+    // quebra o envio da imagem (mesmo padrão do aviso de foto repetida).
+    void this.avisarChecklistEnviado(tipo, noPrazo);
     return salvo;
+  }
+
+  /**
+   * Notifica os perfis operacionais quando um checklist é carregado, indicando
+   * se foi feito com SUCESSO (dentro da janela) ou com ATRASO (fora da janela).
+   * O texto reflete a pontualidade (`noPrazo`): `false` = atraso; caso
+   * contrário (dentro da janela ou dia futuro) = sucesso. Best-effort: qualquer
+   * falha é apenas registrada e nunca interrompe o envio da imagem.
+   */
+  private async avisarChecklistEnviado(
+    tipo: TipoChecklist,
+    noPrazo: boolean | null,
+  ): Promise<void> {
+    if (!this.notificacoes) return;
+    try {
+      const destinatarios =
+        await this.notificacoes.destinatariosAlertaChecklist();
+      if (destinatarios.length === 0) return;
+      const artigo = tipo === 'ABERTURA' ? 'da' : 'do';
+      const rotulo = tipo === 'ABERTURA' ? 'abertura' : 'fechamento';
+      const comAtraso = noPrazo === false;
+      await this.notificacoes.enviar(destinatarios, {
+        titulo: comAtraso
+          ? 'Checklist concluído com atraso'
+          : 'Checklist concluído',
+        mensagem: `Checklist ${artigo} ${rotulo} feito com ${
+          comAtraso ? 'atraso' : 'sucesso'
+        }.`,
+      });
+    } catch (erro) {
+      this.logger.warn(`Falha ao notificar checklist enviado: ${String(erro)}`);
+    }
   }
 
   /** Notifica gestores quando a mesma foto (hash) já foi usada antes. */
