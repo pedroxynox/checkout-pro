@@ -31,6 +31,9 @@ Dois novos avisos, entregues pelo pipeline padrão de notificações (in-app + p
 Testes: +4 (checklist sucesso/atraso; lembrete 22:20 dispara/silencia). Suíte do
 backend: 306 testes verdes. Sem mudanças no app (as notificações são renderizadas
 pelo sistema de avisos existente).
+
+---
+
 ## Auditoria completa + verificação de ponta a ponta (2026-07-10)
 
 Revisão geral do projeto com **dependências instaladas** e a bateria completa de
