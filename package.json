@@ -11,7 +11,10 @@
     "build": "npm run build --workspace=backend",
     "start": "npm run start --workspace=backend",
     "lint": "npm run lint --workspace=backend",
-    "test": "npm run test --workspace=backend"
+    "test": "npm run test --workspace=backend",
+    "verify:backend": "npm run build --workspace=@checkout-pro/backend && npm run test --workspace=@checkout-pro/backend",
+    "verify:mobile": "npm run type-check --workspace=@checkout-pro/mobile && npm run lint --workspace=@checkout-pro/mobile && npm run test --workspace=@checkout-pro/mobile",
+    "verify": "npm run verify:backend && npm run verify:mobile"
   },
   "engines": {
     "node": ">=18"
