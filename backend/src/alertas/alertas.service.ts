@@ -7,6 +7,7 @@ import { RELOGIO, Relogio } from '../common/relogio';
 import { ChecklistService } from '../checklist/checklist.service';
 import { TipoChecklist } from '../checklist/checklist.domain';
 import { ArrecadacaoService } from '../arrecadacao/arrecadacao.service';
+import { FechamentoService } from '../fechamento/fechamento.service';
 import {
   CONFIG_ARRECADACAO,
   TIPOS_ARRECADACAO,
@@ -54,6 +55,7 @@ export class AlertasService implements OnModuleInit {
   constructor(
     private readonly checklistService: ChecklistService,
     private readonly arrecadacaoService: ArrecadacaoService,
+    private readonly fechamentoService: FechamentoService,
     private readonly notificacoesService: NotificacoesService,
     private readonly config: ConfigService,
     private readonly scheduler: SchedulerRegistry,
@@ -122,6 +124,18 @@ export class AlertasService implements OnModuleInit {
   })
   async alertaChecklistFechamento(): Promise<boolean> {
     return this.dispararAlertaChecklist('FECHAMENTO');
+  }
+
+  /**
+   * Lembrete de fim de expediente (22:20): avisa a todos que os arquivos do dia
+   * precisam ser carregados para concluir o fechamento.
+   */
+  @Cron('20 22 * * *', {
+    name: 'lembrete-fechamento-arquivos',
+    timeZone: FUSO_BRASILIA,
+  })
+  async lembreteFechamentoArquivos(): Promise<boolean> {
+    return this.dispararLembreteFechamentoArquivos();
   }
 
   /**
@@ -203,6 +217,30 @@ export class AlertasService implements OnModuleInit {
       `Alerta de importações pendentes disparado: ${pendentes.join(', ')}.`,
     );
     return pendentes;
+  }
+
+  /**
+   * Lembrete das 22:20 para concluir o fechamento do dia. Se o fechamento ainda
+   * NÃO está completo (falta enviar arrecadações e/ou vendas), avisa todos os
+   * perfis operacionais para carregarem os arquivos do dia. Se o fechamento já
+   * foi concluído, não incomoda ninguém. Retorna `true` quando o lembrete foi
+   * disparado.
+   */
+  async dispararLembreteFechamentoArquivos(): Promise<boolean> {
+    const agora = this.relogio.agora();
+    const completo = await this.fechamentoService.estaCompleto(agora);
+    if (completo) {
+      return false;
+    }
+    const destinatarios = await this.notificacoesService.destinatariosGerais();
+    await this.notificacoesService.enviar(destinatarios, {
+      titulo: 'Fechamento pendente',
+      mensagem:
+        'Não esqueça de carregar os arquivos do dia (arrecadações e vendas) ' +
+        'para concluir o fechamento.',
+    });
+    this.logger.warn('Lembrete de fechamento (22:20) disparado.');
+    return true;
   }
 
   /** Notificações geradas pelo último alerta — utilitário para testes/depuração. */

@@ -179,4 +179,87 @@ describe('ChecklistService', () => {
     const limite = hojeBrasiliaAs('08:55');
     expect(await service.verificarAlerta('ABERTURA', limite)).toBe(false);
   });
+
+  describe('notificação ao carregar o checklist (sucesso/atraso)', () => {
+    // A pontualidade (`noPrazo`) é derivada do relógio real de Brasília; por
+    // isso fixamos o horário do sistema para exercitar cada ramo de forma
+    // determinística.
+    afterEach(() => jest.useRealTimers());
+
+    /** Drena a fila de microtasks (a notificação é disparada em best-effort). */
+    const flush = async (): Promise<void> => {
+      for (let i = 0; i < 10; i++) await Promise.resolve();
+    };
+
+    function criarComNotificacoes() {
+      const enviados: {
+        destinatarios: { id: string }[];
+        conteudo: { titulo: string; mensagem: string };
+      }[] = [];
+      const prismaFake = {
+        checklist: {
+          upsert: ({ create }: { create: Record<string, unknown> }) =>
+            Promise.resolve({ id: 'c1', ...create }),
+        },
+      };
+      const notificacoesFake = {
+        destinatariosAlertaChecklist: () =>
+          Promise.resolve([{ id: 'g1' }, { id: 'f1' }]),
+        enviar: (
+          destinatarios: { id: string }[],
+          conteudo: { titulo: string; mensagem: string },
+        ) => {
+          enviados.push({ destinatarios, conteudo });
+          return Promise.resolve([]);
+        },
+      };
+      const service = new ChecklistService(
+        prismaFake as never,
+        notificacoesFake as never,
+      );
+      return { service, enviados };
+    }
+
+    it('avisa "feito com sucesso" quando enviado dentro da janela', async () => {
+      // 11:30 UTC = 08:30 em Brasília (dentro da janela de abertura 08:15–09:15).
+      jest.useFakeTimers({ now: new Date('2024-03-10T11:30:00.000Z') });
+      const { service, enviados } = criarComNotificacoes();
+
+      await service.enviarImagem(
+        'ABERTURA',
+        new Date('2024-03-10T11:30:00.000Z'),
+        { mimeType: 'image/png' },
+        'user-1',
+      );
+      await flush();
+
+      expect(enviados).toHaveLength(1);
+      expect(enviados[0].destinatarios.map((d) => d.id).sort()).toEqual([
+        'f1',
+        'g1',
+      ]);
+      expect(enviados[0].conteudo.mensagem).toBe(
+        'Checklist da abertura feito com sucesso.',
+      );
+    });
+
+    it('avisa "feito com atraso" quando enviado fora da janela', async () => {
+      // 13:30 UTC = 10:30 em Brasília (após o fim da janela de abertura 09:15).
+      jest.useFakeTimers({ now: new Date('2024-03-10T13:30:00.000Z') });
+      const { service, enviados } = criarComNotificacoes();
+
+      await service.enviarImagem(
+        'ABERTURA',
+        new Date('2024-03-10T13:30:00.000Z'),
+        { mimeType: 'image/png' },
+        'user-1',
+      );
+      await flush();
+
+      expect(enviados).toHaveLength(1);
+      expect(enviados[0].conteudo.mensagem).toBe(
+        'Checklist da abertura feito com atraso.',
+      );
+    });
+  });
 });
