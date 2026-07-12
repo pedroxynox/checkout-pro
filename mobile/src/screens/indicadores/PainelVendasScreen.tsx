@@ -22,10 +22,12 @@ import {
   Cartao,
   EstadoVazio,
   GraficoBarrasVerticais,
+  GraficoPizza,
   MensagemErro,
   Segmentado,
   SeletorData,
   Tela,
+  montarFatias,
 } from '../../components';
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
@@ -233,11 +235,15 @@ export function PainelVendasScreen(): React.ReactElement {
   const dadosBarras = horas.map((h) => ({ rotulo: `${h.hora}h`, valor: h.valor }));
 
   const horasDia = porHoraDia?.horas ?? [];
-  // Horas do dia ordenadas da que MAIS vendeu para a que MENOS vendeu.
-  const dadosHorasTop = [...horasDia]
-    .filter((h) => h.valor > 0)
-    .sort((a, b) => b.valor - a.valor)
-    .map((h) => ({ rotulo: `${h.hora}h`, valor: h.valor }));
+  // Fatias do gráfico de pizza, ordenadas da hora que MAIS vendeu para a que
+  // MENOS vendeu (montarFatias preserva a ordem dos itens recebidos).
+  const fatiasDia = montarFatias(
+    [...horasDia]
+      .filter((h) => h.valor > 0)
+      .sort((a, b) => b.valor - a.valor)
+      .map((h) => ({ rotulo: `${h.hora}h às ${h.hora + 1}h`, valor: h.valor })),
+    24,
+  );
 
   return (
     <Tela
@@ -326,12 +332,16 @@ export function PainelVendasScreen(): React.ReactElement {
               <Carregando />
             ) : diaReq.erro ? (
               <MensagemErro mensagem={diaReq.erro} aoTentarNovamente={diaReq.recarregar} />
-            ) : dadosHorasTop.length > 0 ? (
+            ) : fatiasDia.length > 0 ? (
               <>
                 <Text style={styles.totalPeriodo}>
                   Total do dia: {formatarMoeda(porHoraDia?.total ?? 0)}
                 </Text>
-                <GraficoBarrasVerticais dados={dadosHorasTop} />
+                <GraficoPizza
+                  fatias={fatiasDia}
+                  mostrarValor
+                  formatarValor={formatarMoeda}
+                />
                 <Text style={styles.metaNota}>
                   Da hora que mais vendeu para a que menos vendeu.
                 </Text>
