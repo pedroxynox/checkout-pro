@@ -33,7 +33,7 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react-native';
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Image,
   Pressable,
@@ -103,11 +103,20 @@ export function HomeScreen({
       // card na Home, para seguir carregando os arquivos do dia.
       !(a.rota === 'Importacoes' && podeAcessar('OPERADORES_CRUD')),
   );
-  // Ordena por relevância: módulos com mais pendências primeiro; em empate,
-  // mantém a ordem original (sort estável). Apenas reordena a exibição.
-  const areasOrdenadas = [...areasVisiveis].sort(
-    (a, b) =>
-      (pendenciasPorModulo[b.rota] ?? 0) - (pendenciasPorModulo[a.rota] ?? 0),
+  // Ordena SEMPRE pelo nº de notificações (pendências): os módulos com mais
+  // avisos ficam no topo. Em empate (ex.: dois módulos sem pendência), mantém
+  // uma ordem fixa e intencional (a ordem de trabalho definida em AREAS) — NUNCA
+  // alfabética. O `useMemo` evita reordenar a cada render.
+  const areasOrdenadas = useMemo(
+    () =>
+      [...areasVisiveis].sort((a, b) => {
+        const na = pendenciasPorModulo[a.rota] ?? 0;
+        const nb = pendenciasPorModulo[b.rota] ?? 0;
+        if (nb !== na) return nb - na; // 1º: mais notificações primeiro
+        // 2º (empate): ordem de trabalho original, não alfabética
+        return areasVisiveis.indexOf(a) - areasVisiveis.indexOf(b);
+      }),
+    [areasVisiveis, pendenciasPorModulo],
   );
 
   // Nome a exibir: usa o nome do usuário (quando houver); senão, deriva do
