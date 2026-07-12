@@ -618,6 +618,39 @@ export class IncidenciasService {
     );
   }
 
+  /**
+   * Não-retornos do intervalo de um colaborador na janela `[inicio, fim)`:
+   * a soma **ponderada** (justificados pesam menos — ADR 0009) e a **contagem
+   * dos não justificados** (PENDENTE/INJUSTIFICADA). O ponderado pesa na
+   * Assiduidade e Disciplina do score; a contagem de não justificados bloqueia
+   * as medalhas de "assíduo"/"disciplinado".
+   */
+  async naoRetornosDoPeriodo(
+    colaboradorId: string,
+    inicio: Date,
+    fimExcl: Date,
+  ): Promise<{ ponderado: number; naoJustificados: number }> {
+    const linhas = await this.prisma.incidenciaEscala.findMany({
+      where: {
+        colaboradorId,
+        tipo: 'NAO_RETORNO_INTERVALO',
+        data: { gte: inicioDoDia(inicio), lt: fimExcl },
+      },
+      select: { statusJustificativa: true, motivoJustificativa: true },
+    });
+    const ponderado = somaPonderada(
+      linhas.map((l) => ({
+        statusJustificativa: l.statusJustificativa as StatusJustificativa,
+        motivoJustificativa:
+          l.motivoJustificativa as MotivoJustificativa | null,
+      })),
+    );
+    const naoJustificados = linhas.filter(
+      (l) => l.statusJustificativa !== 'JUSTIFICADA',
+    ).length;
+    return { ponderado, naoJustificados };
+  }
+
   // -------------------------------------------------------------------------
   // Auxiliares (efeitos colaterais / resolução)
   // -------------------------------------------------------------------------
