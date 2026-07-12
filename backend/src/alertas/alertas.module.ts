@@ -5,6 +5,7 @@ import { ArrecadacaoModule } from '../arrecadacao/arrecadacao.module';
 import { FechamentoModule } from '../fechamento/fechamento.module';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { AlertasService } from './alertas.service';
+import { SaudacaoDiariaService } from './saudacao-diaria.service';
 
 /**
  * Módulo de alertas agendados (Tarefa 15). Reúne os serviços de checklist,
@@ -20,7 +21,11 @@ import { AlertasService } from './alertas.service';
     FechamentoModule,
     NotificacoesModule,
   ],
-  providers: [AlertasService, { provide: RELOGIO, useClass: RelogioSistema }],
+  providers: [
+    AlertasService,
+    SaudacaoDiariaService,
+    { provide: RELOGIO, useClass: RelogioSistema },
+  ],
   exports: [AlertasService],
 })
 export class AlertasModule {}
