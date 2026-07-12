@@ -152,3 +152,33 @@ describe('PerfilColaboradorScreen — histórico de incidências', () => {
     expect(escalaService.listarIncidencias).not.toHaveBeenCalled();
   });
 });
+
+describe('PerfilColaboradorScreen — marcos do contrato', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAuth.permitir = true;
+    escalaService.listarIncidencias.mockResolvedValue([]);
+  });
+
+  it('efetivado (mais de 90 dias): marcos de 45 e 90 aparecem como Aprovado', async () => {
+    colaboradoresService.perfil.mockResolvedValue({
+      ...PERFIL,
+      contrato: {
+        ...PERFIL.contrato,
+        diasDeCasa: 120,
+        estado: 'EFETIVADO',
+        etiqueta: 'efetivado',
+        proximoMarco: null,
+        dataProximoMarco: null,
+        diasParaProximoMarco: null,
+        efetivadoPorDecurso: true,
+        decisao45: null,
+        decisao90: null,
+      },
+    });
+    render_();
+    await screen.findByText('Tempo de casa');
+    // Sem decisão manual, ambos os marcos já cumpridos contam como aprovados.
+    expect(screen.getAllByText(/Aprovado/).length).toBeGreaterThanOrEqual(2);
+  });
+});
