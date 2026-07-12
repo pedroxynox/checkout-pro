@@ -198,7 +198,20 @@ export class AlertasService implements OnModuleInit {
    */
   async dispararAlertaImportacoesPendentes(): Promise<TipoArrecadacao[]> {
     const agora = this.relogio.agora();
-    const status = await this.arrecadacaoService.status(agora);
+    // O disparo ocorre no fim do dia (ex.: 22:50 em Brasília). As datas dos
+    // arquivos são gravadas pelo DIA OPERACIONAL de Brasília; o servidor roda em
+    // UTC (3h à frente). Sem ajustar o fuso, ao fim do dia cairíamos já no dia
+    // SEGUINTE (UTC) — vazio —, alertando "pendentes" mesmo com o fechamento do
+    // dia concluído. Por isso avaliamos o dia em Brasília (UTC−3).
+    const diaOperacional = new Date(agora.getTime() - 3 * 60 * 60 * 1000);
+
+    // Se o fechamento do dia já foi concluído, todos os arquivos do dia estão
+    // carregados — não há o que alertar.
+    if (await this.fechamentoService.estaCompleto(diaOperacional)) {
+      return [];
+    }
+
+    const status = await this.arrecadacaoService.status(diaOperacional);
     const pendentes = TIPOS_ARRECADACAO.filter(
       (tipo) => status[tipo] === 'PENDENTE',
     );

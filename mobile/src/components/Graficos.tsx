@@ -210,7 +210,12 @@ export function GraficoBarrasVerticais({
                   },
                 ]}
               />
-              <Text style={styles.barraRotulo} numberOfLines={1}>
+              <Text
+                style={styles.barraRotulo}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {d.rotulo}
               </Text>
             </View>
@@ -324,5 +329,9 @@ const styles = StyleSheet.create({
   barraRotulo: {
     fontSize: 9,
     color: cores.textoSecundario,
+    // Ocupa a largura toda da coluna e centraliza, para o rótulo (ex.: "10h")
+    // caber sem cortar — o auto-ajuste de fonte encolhe só quando necessário.
+    alignSelf: 'stretch',
+    textAlign: 'center',
   },
 });

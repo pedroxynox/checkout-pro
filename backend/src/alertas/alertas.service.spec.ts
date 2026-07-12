@@ -204,6 +204,38 @@ describe('AlertasService (cron com relógio injetável)', () => {
       expect(pendentes).toEqual([]);
       expect(criadas).toHaveLength(0);
     });
+
+    it('não notifica quando o fechamento do dia já está concluído', async () => {
+      const { service, criadas } = montar({
+        agora: new Date('2024-03-10T18:00:00.000Z'),
+        pendentesImportacao: ['DEVOLUCOES'],
+        fechamentoCompleto: true,
+      });
+
+      const pendentes = await service.dispararAlertaImportacoesPendentes();
+
+      expect(pendentes).toEqual([]);
+      expect(criadas).toHaveLength(0);
+    });
+
+    it('avalia o DIA OPERACIONAL de Brasília (não o dia seguinte em UTC)', async () => {
+      // 01:50 UTC do dia 11 == 22:50 de Brasília do dia 10 (o dia operacional).
+      const { service, fechamentoServiceFake, arrecadacaoServiceFake } = montar({
+        agora: new Date('2024-03-11T01:50:00.000Z'),
+        pendentesImportacao: ['DEVOLUCOES'],
+      });
+
+      await service.dispararAlertaImportacoesPendentes();
+
+      const diaFechamento = (
+        fechamentoServiceFake.estaCompleto as jest.Mock
+      ).mock.calls[0][0] as Date;
+      const diaStatus = (arrecadacaoServiceFake.status as jest.Mock).mock
+        .calls[0][0] as Date;
+      // Deve consultar o dia 10 (Brasília), e não o dia 11 (UTC).
+      expect(diaFechamento.getUTCDate()).toBe(10);
+      expect(diaStatus.getUTCDate()).toBe(10);
+    });
   });
 
   describe('lembrete de fechamento (22:20)', () => {
