@@ -212,7 +212,7 @@ export class ChecklistService {
     // Confirmação para a equipe: checklist carregado com SUCESSO (dentro da
     // janela) ou com ATRASO (fora da janela). Best-effort — não bloqueia nem
     // quebra o envio da imagem (mesmo padrão do aviso de foto repetida).
-    void this.avisarChecklistEnviado(tipo, noPrazo);
+    void this.avisarChecklistEnviado(tipo, noPrazo, usuarioId);
     return salvo;
   }
 
@@ -226,12 +226,23 @@ export class ChecklistService {
   private async avisarChecklistEnviado(
     tipo: TipoChecklist,
     noPrazo: boolean | null,
+    usuarioId: string,
   ): Promise<void> {
     if (!this.notificacoes) return;
     try {
       const destinatarios =
         await this.notificacoes.destinatariosAlertaChecklist();
       if (destinatarios.length === 0) return;
+      // Nome de quem concluiu (para a equipe saber quem enviou). Defensivo:
+      // se não resolver, o aviso vai sem o "por ...".
+      const usuario = await this.prisma.usuario
+        .findUnique({
+          where: { id: usuarioId },
+          select: { nome: true, login: true },
+        })
+        .catch(() => null);
+      const nome = usuario?.nome ?? usuario?.login ?? null;
+      const porQuem = nome ? ` por ${nome}` : '';
       const artigo = tipo === 'ABERTURA' ? 'da' : 'do';
       const rotulo = tipo === 'ABERTURA' ? 'abertura' : 'fechamento';
       const comAtraso = noPrazo === false;
@@ -241,7 +252,7 @@ export class ChecklistService {
           : 'Checklist concluído',
         mensagem: `Checklist ${artigo} ${rotulo} feito com ${
           comAtraso ? 'atraso' : 'sucesso'
-        }.`,
+        }${porQuem}.`,
       });
     } catch (erro) {
       this.logger.warn(`Falha ao notificar checklist enviado: ${String(erro)}`);
