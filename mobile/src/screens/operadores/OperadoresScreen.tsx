@@ -12,7 +12,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { ApiError } from '../../api/client';
 import { escalaService, operadoresService } from '../../api/services';
 import {
@@ -27,6 +35,7 @@ import {
 import { useAuth } from '../../auth/AuthContext';
 import {
   Aviso,
+  Botao,
   Carregando,
   Cartao,
   EstadoVazio,
@@ -38,7 +47,7 @@ import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
 import { JustificativasLista } from './JustificativasScreen';
-import { cores, espacamento, raio, tipografia } from '../../theme';
+import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, hojeISO } from '../../utils/formato';
 
@@ -365,6 +374,165 @@ function FaltaOperadorRow({ o }: { o: FaltasPorOperador }): React.ReactElement {
         <Text style={styles.faltaTaxa}>{o.taxa}%</Text>
       </View>
     </View>
+  );
+}
+
+/** Tendência (▲ +x% / ▼ x%) vs. período anterior. Verde cai, vermelho sobe. */
+function TendenciaTexto({
+  pct,
+}: {
+  pct: number | null | undefined;
+}): React.ReactElement | null {
+  if (pct == null) return null;
+  const corT =
+    pct > 0 ? cores.vermelho : pct < 0 ? cores.verde : cores.textoSecundario;
+  const seta = pct > 0 ? '▲ +' : pct < 0 ? '▼ ' : '';
+  return (
+    <Text style={[styles.faltasTend, { color: corT }]}>
+      {seta}
+      {pct}% vs. período anterior
+    </Text>
+  );
+}
+
+/** Cabeçalho comum (total + taxa + tendência) do painel mensal. */
+function ResumoAnaliticaTopo({
+  dados,
+  unidade,
+  rotuloTaxa,
+  rotuloDiaPior,
+}: {
+  dados: AnaliticaFaltas;
+  unidade: string;
+  rotuloTaxa: string;
+  rotuloDiaPior: string;
+}): React.ReactElement {
+  const pior = [...dados.porDiaSemana].sort(
+    (a, b) => b.quantidade - a.quantidade,
+  )[0];
+  return (
+    <>
+      <View style={styles.faltasTopo}>
+        <View>
+          <Text style={styles.faltasTotal}>
+            {dados.total} {unidade}
+          </Text>
+          <Text style={styles.faltasLegenda}>
+            {rotuloTaxa}: {dados.taxaGlobal}%
+          </Text>
+        </View>
+        <TendenciaTexto pct={dados.tendenciaPct} />
+      </View>
+      {pior && pior.quantidade > 0 ? (
+        <Text style={styles.faltasDica}>
+          {rotuloDiaPior}: {pior.nome} ({pior.quantidade})
+        </Text>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Painel de análise mensal (faltas ou não-retornos). Mostra um resumo tocável
+ * (prévia dos 6 que mais precisam de atenção). Ao tocar, abre um cartão
+ * flutuante (modal) com o MÊS INTEIRO — todos os operadores, com rolagem —,
+ * fechável pelo botão "Voltar", pelo X ou pelo toque no fundo.
+ */
+function PainelAnaliticaMes({
+  titulo,
+  dados,
+  unidade,
+  rotuloTaxa,
+  rotuloDiaPior,
+}: {
+  titulo: string;
+  dados: AnaliticaFaltas;
+  unidade: string;
+  rotuloTaxa: string;
+  rotuloDiaPior: string;
+}): React.ReactElement {
+  const [aberto, setAberto] = useState(false);
+  const fechar = (): void => setAberto(false);
+
+  return (
+    <>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => setAberto(true)}
+        accessibilityRole="button"
+        accessibilityHint="Abre o mês inteiro"
+      >
+        <Cartao titulo={titulo}>
+          <ResumoAnaliticaTopo
+            dados={dados}
+            unidade={unidade}
+            rotuloTaxa={rotuloTaxa}
+            rotuloDiaPior={rotuloDiaPior}
+          />
+          <Text style={styles.faltasSubtitulo}>Quem precisa de atenção</Text>
+          {dados.porOperador.slice(0, 6).map((o) => (
+            <FaltaOperadorRow key={o.id} o={o} />
+          ))}
+          <View style={styles.painelAbrir}>
+            <Ionicons name="expand-outline" size={14} color={cores.primaria} />
+            <Text style={styles.painelAbrirTexto}>Toque para ver o mês todo</Text>
+          </View>
+        </Cartao>
+      </TouchableOpacity>
+
+      <Modal
+        visible={aberto}
+        transparent
+        animationType="fade"
+        onRequestClose={fechar}
+      >
+        <Pressable style={styles.modalFundo} onPress={fechar}>
+          {/* Cartão flutuante — o onPress vazio impede que o toque feche ao tocar dentro. */}
+          <Pressable style={styles.modalCartao} onPress={() => {}}>
+            <View style={styles.modalCabecalho}>
+              <TouchableOpacity
+                onPress={fechar}
+                hitSlop={10}
+                accessibilityLabel="Voltar"
+              >
+                <Ionicons name="arrow-back" size={22} color={cores.texto} />
+              </TouchableOpacity>
+              <Text style={styles.modalTitulo} numberOfLines={1}>
+                {titulo}
+              </Text>
+              <TouchableOpacity
+                onPress={fechar}
+                hitSlop={10}
+                accessibilityLabel="Fechar"
+              >
+                <Ionicons name="close" size={24} color={cores.texto} />
+              </TouchableOpacity>
+            </View>
+
+            <ResumoAnaliticaTopo
+              dados={dados}
+              unidade={unidade}
+              rotuloTaxa={rotuloTaxa}
+              rotuloDiaPior={rotuloDiaPior}
+            />
+
+            <ScrollView
+              style={styles.modalLista}
+              contentContainerStyle={{ paddingVertical: espacamento.xs }}
+            >
+              {dados.porOperador.map((o) => (
+                <FaltaOperadorRow key={o.id} o={o} />
+              ))}
+            </ScrollView>
+
+            <Text style={styles.faltasRodape}>
+              🔴 alto · 🟡 médio · 🟢 baixo risco — por taxa, padrão e tendência.
+            </Text>
+            <Botao titulo="Voltar" variante="secundario" aoPressionar={fechar} />
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
@@ -865,106 +1033,26 @@ export function OperadoresScreen(): React.ReactElement {
             })()}
           </Cartao>
 
-          {/* Análise inteligente de faltas do mês */}
+          {/* Análise inteligente de faltas do mês (toque abre o mês inteiro) */}
           {analitica.dados && analitica.dados.total > 0 ? (
-            <Cartao titulo="Faltas do mês">
-              <View style={styles.faltasTopo}>
-                <View>
-                  <Text style={styles.faltasTotal}>
-                    {analitica.dados.total} falta(s)
-                  </Text>
-                  <Text style={styles.faltasLegenda}>
-                    Absenteísmo: {analitica.dados.taxaGlobal}%
-                  </Text>
-                </View>
-                {analitica.dados.tendenciaPct != null
-                  ? (() => {
-                      const t = analitica.dados.tendenciaPct as number;
-                      const corT =
-                        t > 0
-                          ? cores.vermelho
-                          : t < 0
-                            ? cores.verde
-                            : cores.textoSecundario;
-                      const seta = t > 0 ? '▲ +' : t < 0 ? '▼ ' : '';
-                      return (
-                        <Text style={[styles.faltasTend, { color: corT }]}>
-                          {seta}
-                          {t}% vs. período anterior
-                        </Text>
-                      );
-                    })()
-                  : null}
-              </View>
-              {(() => {
-                const pior = [...analitica.dados.porDiaSemana].sort(
-                  (a, b) => b.quantidade - a.quantidade,
-                )[0];
-                return pior && pior.quantidade > 0 ? (
-                  <Text style={styles.faltasDica}>
-                    Dia com mais faltas: {pior.nome} ({pior.quantidade})
-                  </Text>
-                ) : null;
-              })()}
-              <Text style={styles.faltasSubtitulo}>Quem precisa de atenção</Text>
-              {analitica.dados.porOperador.slice(0, 6).map((o) => (
-                <FaltaOperadorRow key={o.id} o={o} />
-              ))}
-              <Text style={styles.faltasRodape}>
-                🔴 alto · 🟡 médio · 🟢 baixo risco — por taxa, padrão e tendência.
-              </Text>
-            </Cartao>
+            <PainelAnaliticaMes
+              titulo="Faltas do mês"
+              dados={analitica.dados}
+              unidade="falta(s)"
+              rotuloTaxa="Absenteísmo"
+              rotuloDiaPior="Dia com mais faltas"
+            />
           ) : null}
 
-          {/* Análise inteligente de não-retornos do mês (mesmo semáforo das faltas) */}
+          {/* Análise inteligente de não-retornos do mês (toque abre o mês inteiro) */}
           {naoRetornosMes.dados && naoRetornosMes.dados.total > 0 ? (
-            <Cartao titulo="Não-retornos do mês">
-              <View style={styles.faltasTopo}>
-                <View>
-                  <Text style={styles.faltasTotal}>
-                    {naoRetornosMes.dados.total} não-retorno(s)
-                  </Text>
-                  <Text style={styles.faltasLegenda}>
-                    Taxa: {naoRetornosMes.dados.taxaGlobal}%
-                  </Text>
-                </View>
-                {naoRetornosMes.dados.tendenciaPct != null
-                  ? (() => {
-                      const t = naoRetornosMes.dados.tendenciaPct as number;
-                      const corT =
-                        t > 0
-                          ? cores.vermelho
-                          : t < 0
-                            ? cores.verde
-                            : cores.textoSecundario;
-                      const seta = t > 0 ? '▲ +' : t < 0 ? '▼ ' : '';
-                      return (
-                        <Text style={[styles.faltasTend, { color: corT }]}>
-                          {seta}
-                          {t}% vs. período anterior
-                        </Text>
-                      );
-                    })()
-                  : null}
-              </View>
-              {(() => {
-                const pior = [...naoRetornosMes.dados.porDiaSemana].sort(
-                  (a, b) => b.quantidade - a.quantidade,
-                )[0];
-                return pior && pior.quantidade > 0 ? (
-                  <Text style={styles.faltasDica}>
-                    Dia com mais não-retornos: {pior.nome} ({pior.quantidade})
-                  </Text>
-                ) : null;
-              })()}
-              <Text style={styles.faltasSubtitulo}>Quem precisa de atenção</Text>
-              {naoRetornosMes.dados.porOperador.slice(0, 6).map((o) => (
-                <FaltaOperadorRow key={o.id} o={o} />
-              ))}
-              <Text style={styles.faltasRodape}>
-                🔴 alto · 🟡 médio · 🟢 baixo risco — por taxa, padrão e tendência.
-              </Text>
-            </Cartao>
+            <PainelAnaliticaMes
+              titulo="Não-retornos do mês"
+              dados={naoRetornosMes.dados}
+              unidade="não-retorno(s)"
+              rotuloTaxa="Taxa"
+              rotuloDiaPior="Dia com mais não-retornos"
+            />
           ) : null}
 
           {/* Justificativas (faltas + não-retornos) — abaixo do painel de faltas */}
@@ -1329,6 +1417,45 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     fontStyle: 'italic',
+    marginTop: espacamento.sm,
+  },
+  // Painel mensal (resumo tocável + modal flutuante)
+  painelAbrir: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: espacamento.xs,
+    marginTop: espacamento.sm,
+  },
+  painelAbrirTexto: {
+    ...tipografia.rotulo,
+    color: cores.primaria,
+  },
+  modalFundo: {
+    flex: 1,
+    backgroundColor: 'rgba(10,37,64,0.45)',
+    justifyContent: 'center',
+    padding: espacamento.lg,
+  },
+  modalCartao: {
+    backgroundColor: cores.superficie,
+    borderRadius: raio.lg,
+    padding: espacamento.lg,
+    maxHeight: '82%',
+    ...sombra.flutuante,
+  },
+  modalCabecalho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.md,
+    marginBottom: espacamento.md,
+  },
+  modalTitulo: {
+    ...tipografia.subtitulo,
+    color: cores.texto,
+    flex: 1,
+  },
+  modalLista: {
     marginTop: espacamento.sm,
   },
   // Gestão
