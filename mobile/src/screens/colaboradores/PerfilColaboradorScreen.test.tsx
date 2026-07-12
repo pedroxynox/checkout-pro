@@ -86,7 +86,8 @@ const PERFIL = {
     timeline: [
       { data: '2026-06-20', kind: 'NAO_RETORNO_INTERVALO' },
       { data: '2026-06-15', kind: 'ATRASO' },
-      { data: '2026-06-10', kind: 'FALTA' },
+      { data: '2026-06-12', kind: 'FALTA', justificada: true },
+      { data: '2026-06-10', kind: 'FALTA', justificada: false },
     ],
   },
   contrato: {
@@ -138,7 +139,9 @@ describe('PerfilColaboradorScreen — histórico de incidências', () => {
 
     expect(await screen.findByText('Histórico de incidências')).toBeTruthy();
     expect(screen.getByText('Não retorno do intervalo')).toBeTruthy();
+    // Falta injustificada aparece como "Falta"; a justificada, com o rótulo próprio.
     expect(screen.getByText('Falta')).toBeTruthy();
+    expect(screen.getByText('Falta + justificação')).toBeTruthy();
   });
 
   it('é somente leitura: não expõe registro/edição de ocorrências no perfil', async () => {

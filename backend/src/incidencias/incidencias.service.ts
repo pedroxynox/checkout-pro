@@ -553,7 +553,7 @@ export class IncidenciasService {
       }),
       this.prisma.ausencia.findMany({
         where: { pessoaId: colaboradorId, data: { gte: inicio, lt: fimExcl } },
-        select: { data: true },
+        select: { data: true, statusJustificativa: true },
       }),
     ]);
 
@@ -569,7 +569,13 @@ export class IncidenciasService {
       data: i.data,
     }));
     const analise = analisarIncidencias(regs, diasEscalados, hoje);
-    const timeline = timelineUnificada(ausencias, regs);
+    const timeline = timelineUnificada(
+      ausencias.map((a) => ({
+        data: a.data,
+        justificada: a.statusJustificativa === 'JUSTIFICADA',
+      })),
+      regs,
+    );
     return { analise, timeline };
   }
 
