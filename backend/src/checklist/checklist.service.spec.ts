@@ -201,6 +201,10 @@ describe('ChecklistService', () => {
           upsert: ({ create }: { create: Record<string, unknown> }) =>
             Promise.resolve({ id: 'c1', ...create }),
         },
+        usuario: {
+          findUnique: () =>
+            Promise.resolve({ nome: 'Fulano', login: 'user-1' }),
+        },
       };
       const notificacoesFake = {
         destinatariosAlertaChecklist: () =>
@@ -239,7 +243,7 @@ describe('ChecklistService', () => {
         'g1',
       ]);
       expect(enviados[0].conteudo.mensagem).toBe(
-        'Checklist da abertura feito com sucesso.',
+        'Checklist da abertura feito com sucesso por Fulano.',
       );
     });
 
@@ -258,7 +262,7 @@ describe('ChecklistService', () => {
 
       expect(enviados).toHaveLength(1);
       expect(enviados[0].conteudo.mensagem).toBe(
-        'Checklist da abertura feito com atraso.',
+        'Checklist da abertura feito com atraso por Fulano.',
       );
     });
   });
