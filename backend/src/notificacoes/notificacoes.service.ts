@@ -210,6 +210,20 @@ export class NotificacoesService {
     return this.enviar(destinatarios, conteudo);
   }
 
+  /**
+   * Envia um aviso a TODOS os perfis operacionais (fiscal, supervisor, gerente
+   * e gerente desenvolvedor). Atalho semântico para avisos que devem chegar a
+   * todos — ex.: falta ou não-retorno do intervalo do dia. Sem destinatários,
+   * não faz nada.
+   */
+  async notificarTodos(
+    conteudo: ConteudoNotificacao,
+  ): Promise<Notificacao[]> {
+    const destinatarios = await this.destinatariosGerais();
+    if (destinatarios.length === 0) return [];
+    return this.enviar(destinatarios, conteudo);
+  }
+
   /** Histórico de notificações de um usuário (Req 7.3.3), mais recentes primeiro. */
   async historico(usuarioId: string): Promise<Notificacao[]> {
     return this.prisma.notificacao.findMany({

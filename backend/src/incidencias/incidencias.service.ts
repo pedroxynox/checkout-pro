@@ -222,6 +222,10 @@ export class IncidenciasService {
         },
       });
       await this.verificarLimiteMes(dto.colaboradorId, dto.tipo, data);
+      // Aviso imediato a TODOS quando alguém não retorna do intervalo.
+      if (dto.tipo === 'NAO_RETORNO_INTERVALO') {
+        await this.avisarNaoRetorno(dto.colaboradorId, data);
+      }
       return criada;
     } catch (e) {
       if (
@@ -641,6 +645,36 @@ export class IncidenciasService {
       await this.notificacoes.enviar(gestores, {
         titulo: '🔴 Incidências recorrentes na escala',
         mensagem: `${primeiroNome(col.nome)} já tem ${qtd} incidências de "${rotuloTipoIncidencia(tipo).toLowerCase()}" neste mês. Vale acompanhar.`,
+      });
+    } catch {
+      // defensivo: o aviso nunca deve impedir o registro da incidência.
+    }
+  }
+
+  /**
+   * Avisa TODOS os perfis operacionais assim que um não-retorno de intervalo é
+   * registrado ("Fulano não retornou do intervalo hoje."). Best-effort: nunca
+   * bloqueia o registro.
+   */
+  private async avisarNaoRetorno(
+    colaboradorId: string,
+    data: Date,
+  ): Promise<void> {
+    if (!this.notificacoes) return;
+    try {
+      const col = await this.prisma.colaborador.findUnique({
+        where: { id: colaboradorId },
+        select: { nome: true },
+      });
+      if (!col) return;
+      const ehHoje =
+        inicioDoDia(data).getTime() === inicioDoDia(new Date()).getTime();
+      const dd = String(data.getUTCDate()).padStart(2, '0');
+      const mm = String(data.getUTCMonth() + 1).padStart(2, '0');
+      const quando = ehHoje ? 'hoje' : `em ${dd}/${mm}`;
+      await this.notificacoes.notificarTodos({
+        titulo: '🟠 Não retornou do intervalo',
+        mensagem: `${col.nome} não retornou do intervalo ${quando}.`,
       });
     } catch {
       // defensivo: o aviso nunca deve impedir o registro da incidência.
