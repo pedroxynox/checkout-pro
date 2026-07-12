@@ -3,6 +3,7 @@ import { Ausencia } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
+import { inicioDoDia } from '../common/datas';
 import {
   AusenciaRegistro,
   ContagemTurno,
@@ -99,6 +100,13 @@ function dadosJustificativa(
 /** A partir de quantas faltas no mês os gestores são avisados (RH). */
 const LIMITE_FALTAS_MES = 3;
 
+/** Formata uma data (UTC) como "dd/mm" para textos de aviso. */
+function formatarDiaMes(data: Date): string {
+  const dd = String(data.getUTCDate()).padStart(2, '0');
+  const mm = String(data.getUTCMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}`;
+}
+
 /**
  * Serviço do Modulo_Operadores: cadastro de operadores com unicidade de nome
  * (Req 6.1), registro/remoção de ausências com unicidade por pessoa/dia
@@ -150,11 +158,44 @@ export class OperadoresService {
         registradaPorNome: autor.nome ?? null,
       },
     });
+    // Aviso imediato a TODOS: alguém foi marcado como ausente (Req: alerta de
+    // falta para todos). Defensivo: nunca bloqueia o registro da falta.
+    await this.avisarAusenciaRegistrada(pessoaId, data);
     // Aviso inteligente: se o operador cruzou o limite de faltas no mês, avisa
     // os gestores (uma única vez, ao atingir o limite). Defensivo: nunca
     // bloqueia o registro da falta.
     await this.verificarLimiteFaltasMes(pessoaId, data);
     return ausencia;
+  }
+
+  /**
+   * Avisa TODOS os perfis operacionais assim que uma falta é registrada
+   * ("Hoje está ausente Fulano."). Para faltas programadas (data futura), o
+   * texto informa a data. Best-effort: qualquer falha é engolida.
+   */
+  private async avisarAusenciaRegistrada(
+    pessoaId: string,
+    data: Date,
+  ): Promise<void> {
+    if (!this.notificacoes) return;
+    try {
+      const p = await this.prisma.colaborador.findUnique({
+        where: { id: pessoaId },
+        select: { nome: true },
+      });
+      if (!p) return; // não é um colaborador (registro antigo) — sem nome, sem aviso
+      const ehHoje =
+        inicioDoDia(data).getTime() === inicioDoDia(new Date()).getTime();
+      const mensagem = ehHoje
+        ? `Hoje está ausente ${p.nome}.`
+        : `Falta registrada para ${p.nome} em ${formatarDiaMes(data)}.`;
+      await this.notificacoes.notificarTodos({
+        titulo: '🔴 Falta registrada',
+        mensagem,
+      });
+    } catch {
+      // best-effort: o aviso nunca deve impedir o registro da falta.
+    }
   }
 
   /**

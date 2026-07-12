@@ -118,16 +118,19 @@ function ehApoio(c: ColaboradorDia): boolean {
  * Classifica o turno pela hora de ENTRADA (com o apoio à parte):
  *  - Apoio: entra antes das 14h e cumpre ~6h de carga (jornada reduzida);
  *  - Abertura: entrada antes das 10:00 (06:50–09:00);
- *  - Intermediário: das 10:00 às 12:59;
- *  - Fechamento: das 13:00 em diante.
+ *  - Fechamento: das 10:00 às 12:59;
+ *  - Intermediário: das 13:00 em diante.
+ *
+ * Obs.: pela convenção da loja, quem entra das 13:00 em diante é do turno
+ * INTERMEDIÁRIO e quem entra das 10:00 às 12:59 é do FECHAMENTO (não inverter).
  */
 function turnoDe(c: ColaboradorDia): string {
   if (c.status === 'FOLGA' || !c.entrada) return 'FOLGA';
   if (ehApoio(c)) return 'APOIO';
   const min = minutos(c.entrada);
   if (min < 10 * 60) return 'ABERTURA';
-  if (min < 13 * 60) return 'INTERMEDIARIO';
-  return 'FECHAMENTO';
+  if (min < 13 * 60) return 'FECHAMENTO';
+  return 'INTERMEDIARIO';
 }
 
 /** Ícone de avatar por gênero ('M'/'F'); fallback simples pelo nome. */
