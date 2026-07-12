@@ -80,6 +80,13 @@ export interface EntradaScore {
   taxaFaltas: number;
 
   /**
+   * Não-retornos do intervalo (ponderados pela justificativa) no período. Um
+   * não-retorno é presença incompleta: além de pesar na Disciplina, reduz a
+   * Assiduidade — nenhuma das duas fica perfeita quando há não-retorno.
+   */
+  naoRetornosPonderados?: number;
+
+  /**
    * Operador — Contribuição (indicadores "maior é melhor"):
    * aporte real (troco + recargas) e a meta individual derivada do período.
    * `metaIndividualPeriodo` é calculada pelo serviço (ou pelo helper puro
@@ -131,6 +138,12 @@ const PESO_ATIVIDADE = 0.4;
 const FATOR_CANCELAMENTO = 50;
 /** Pontos subtraídos da Disciplina por cada incidência disciplinar (ponderada). */
 const PENAL_POR_INCIDENCIA = 20;
+/**
+ * Pontos subtraídos da Assiduidade por cada não-retorno do intervalo
+ * (ponderado). Um não-retorno é presença incompleta: pesa (menos que na
+ * Disciplina) também na Assiduidade — assim nenhuma das duas fica perfeita.
+ */
+const PENAL_ASSIDUIDADE_NAO_RETORNO = 8;
 
 const NOMES_MES = [
   'Jan',
@@ -378,11 +391,22 @@ export function notaDisciplina(d: {
 }
 
 /**
- * Sub-nota de Assiduidade (0–100) a partir da taxa de faltas (%). Monótona
- * decrescente na taxa; sempre limitada a [0,100].
+ * Sub-nota de Assiduidade (0–100) a partir da taxa de faltas (%) e dos
+ * não-retornos do intervalo (ponderados). Monótona decrescente em ambos;
+ * sempre limitada a [0,100]. Com `naoRetornosPonderados = 0` equivale ao
+ * cálculo antigo (só faltas).
  */
-export function notaAssiduidade(taxaFaltas: number): number {
-  return clamp(100 - taxaFaltas * 3, 0, 100);
+export function notaAssiduidade(
+  taxaFaltas: number,
+  naoRetornosPonderados = 0,
+): number {
+  return clamp(
+    100 -
+      taxaFaltas * 3 -
+      naoRetornosPonderados * PENAL_ASSIDUIDADE_NAO_RETORNO,
+    0,
+    100,
+  );
 }
 
 /**
@@ -397,7 +421,9 @@ export function calcularScore(e: EntradaScore): ScoreSaude {
   componentes.push({
     chave: 'assiduidade',
     rotulo: 'Assiduidade',
-    valor: Math.round(notaAssiduidade(e.taxaFaltas)),
+    valor: Math.round(
+      notaAssiduidade(e.taxaFaltas, e.naoRetornosPonderados ?? 0),
+    ),
     peso: PESO_ASSIDUIDADE,
   });
 
@@ -464,6 +490,8 @@ export interface EntradaResumo {
   score: ScoreSaude;
   indicadores: IndicadorPerfil[];
   faltas: { total: number; taxa: number; risco: string };
+  /** Não-retornos do intervalo NÃO justificados no período. */
+  naoRetornos: number;
 }
 
 /**
@@ -536,9 +564,14 @@ export function gerarResumo(e: EntradaResumo): string[] {
     frases.push(`${subindo.titulo} em alta vs. o período anterior.`);
   }
 
-  // 5) Assiduidade.
-  if (e.faltas.total === 0) {
-    frases.push('Sem faltas no período — assiduidade exemplar.');
+  // 5) Assiduidade (faltas + não-retornos do intervalo). Só é "exemplar"
+  // quando não houve faltas NEM não-retornos.
+  if (e.faltas.total === 0 && e.naoRetornos === 0) {
+    frases.push(
+      'Sem faltas nem não-retornos no período — assiduidade exemplar.',
+    );
+  } else if (e.faltas.total === 0) {
+    frases.push('Sem faltas no período.');
   } else if (e.faltas.risco === 'ALTO') {
     frases.push(
       `Risco ALTO de faltas: ${e.faltas.total} no período (${e.faltas.taxa}% de absenteísmo).`,
@@ -546,6 +579,13 @@ export function gerarResumo(e: EntradaResumo): string[] {
   } else {
     frases.push(
       `${e.faltas.total} falta(s) no período (${e.faltas.taxa}% de absenteísmo).`,
+    );
+  }
+
+  // 6) Não-retornos do intervalo (indisciplina de presença) — ponto de atenção.
+  if (e.naoRetornos > 0) {
+    frases.push(
+      `${e.naoRetornos} não-retorno(s) do intervalo no período — atenção à disciplina.`,
     );
   }
 
@@ -557,6 +597,8 @@ export interface EntradaInsignias {
   score: ScoreSaude;
   indicadores: IndicadorPerfil[];
   faltas: { total: number; risco: string };
+  /** Não-retornos do intervalo NÃO justificados no período. */
+  naoRetornos: number;
 }
 
 /**
@@ -566,11 +608,13 @@ export interface EntradaInsignias {
 export function gerarInsignias(e: EntradaInsignias): Insignia[] {
   const insignias: Insignia[] = [];
 
-  if (e.faltas.total === 0) {
+  // "Assíduo" exige presença completa: nenhuma falta E nenhum não-retorno do
+  // intervalo (não justificado) no período.
+  if (e.faltas.total === 0 && e.naoRetornos === 0) {
     insignias.push({
       id: 'assiduo',
       titulo: 'Assíduo',
-      descricao: 'Nenhuma falta no período.',
+      descricao: 'Nenhuma falta nem não-retorno no período.',
       icone: 'checkmark-done-circle',
     });
   }
@@ -595,18 +639,20 @@ export function gerarInsignias(e: EntradaInsignias): Insignia[] {
     }
   }
 
-  // Disciplina: cancelamentos abaixo da média (bom).
+  // Disciplina: cancelamentos abaixo da média (bom) E sem não-retornos do
+  // intervalo. Cancelamentos baixos NÃO bastam — não-retorno é indisciplina.
   const disciplina = e.indicadores.filter(
     (i) => i.sentido === 'MENOR_MELHOR' && i.mediaEquipe > 0,
   );
   if (
+    e.naoRetornos === 0 &&
     disciplina.length > 0 &&
     disciplina.every((i) => i.valor <= i.mediaEquipe)
   ) {
     insignias.push({
       id: 'disciplinado',
       titulo: 'Disciplinado',
-      descricao: 'Cancelamentos abaixo da média da equipe.',
+      descricao: 'Cancelamentos abaixo da média e sem não-retornos.',
       icone: 'shield-checkmark',
     });
   }

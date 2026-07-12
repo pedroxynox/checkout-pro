@@ -377,11 +377,33 @@ export class PerfilColaboradorService {
     const mediaIndicador = (chave: string): number =>
       indicadores.find((i) => i.chave === chave)?.mediaEquipe ?? 0;
 
+    // Não-retornos do intervalo no período: pesam na Assiduidade e Disciplina
+    // (ponderado) e bloqueiam medalhas quando NÃO justificados.
+    const naoRetorno = await this.incidenciasService.naoRetornosDoPeriodo(
+      id,
+      inicioDia,
+      fimExcl,
+    );
+
     const score = ehFiscal
       ? // Fiscal: o app não controla "quem autorizou" (externo) e as devoluções
-        // são informativas. A saúde foca na assiduidade (efetiva: faltas
-        // justificadas pesam menos).
-        calcularScore({ taxaFaltas: faltas.taxaPonderada })
+        // são informativas. A saúde foca na assiduidade e na disciplina do
+        // próprio fiscal (não-retornos e advertências), que o app controla —
+        // assim um não-retorno também derruba a nota do fiscal.
+        calcularScore({
+          taxaFaltas: faltas.taxaPonderada,
+          naoRetornosPonderados: naoRetorno.ponderado,
+          disciplina: {
+            cancelamentos: 0,
+            linhaBaseCancelamentos: 0,
+            incidenciasDisciplinares:
+              await this.incidenciasService.contarIncidenciasPonderadas(
+                id,
+                inicioDia,
+                fimExcl,
+              ),
+          },
+        })
       : await this.scoreDoOperador(
           id,
           colaborador.folgaDiaSemana ?? -1,
@@ -391,6 +413,7 @@ export class PerfilColaboradorService {
           fimExcl,
           valorIndicador,
           mediaIndicador,
+          naoRetorno.ponderado,
         );
 
     const resumo = gerarResumo({
@@ -399,12 +422,14 @@ export class PerfilColaboradorService {
       score,
       indicadores,
       faltas: { total: faltas.total, taxa: faltas.taxa, risco: faltas.risco },
+      naoRetornos: naoRetorno.naoJustificados,
     });
 
     const insignias = gerarInsignias({
       score,
       indicadores,
       faltas: { total: faltas.total, risco: faltas.risco },
+      naoRetornos: naoRetorno.naoJustificados,
     });
 
     // Incidências de escala (resumo analítico + linha do tempo unificada).
@@ -465,6 +490,7 @@ export class PerfilColaboradorService {
     fimExcl: Date,
     valorIndicador: (chave: string) => number,
     mediaIndicador: (chave: string) => number,
+    naoRetornosPonderados = 0,
   ): Promise<ScoreSaude> {
     const anoMes = anoMesDe(fim);
 
@@ -511,6 +537,7 @@ export class PerfilColaboradorService {
 
     return calcularScore({
       taxaFaltas,
+      naoRetornosPonderados,
       contribuicao: {
         aporteReal:
           valorIndicador('TROCO_SOLIDARIO') +
