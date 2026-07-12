@@ -33,7 +33,7 @@ import {
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
-import { formatarData } from '../../utils/formato';
+import { formatarData, hojeISO } from '../../utils/formato';
 
 /** Tipo de ocorrência justificável. */
 type TipoOcorrencia = 'FALTA' | 'NAO_RETORNO';
@@ -73,11 +73,16 @@ function coresStatus(s: StatusJustificativa): { cor: string; fundo: string; rotu
   return { cor: cores.amarelo, fundo: cores.amareloFundo, rotulo: 'Pendente' };
 }
 
-/** Últimos 30 dias (ISO yyyy-mm-dd). */
+/**
+ * Últimos 30 dias (ISO yyyy-mm-dd), em dia-calendário de Brasília. Usar o dia
+ * de Brasília (e não o UTC) garante que uma falta marcada no fim da noite (ex.:
+ * 23h) apareça no MESMO dia — antes o fim da janela usava a data UTC.
+ */
 function janela(): { inicio: string; fim: string } {
-  const hoje = new Date();
-  const ini = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
-  return { inicio: ini.toISOString().slice(0, 10), fim: hoje.toISOString().slice(0, 10) };
+  const fim = hojeISO();
+  const d = new Date(`${fim}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() - 30);
+  return { inicio: d.toISOString().slice(0, 10), fim };
 }
 
 /**
@@ -85,7 +90,12 @@ function janela(): { inicio: string; fim: string } {
  * (ex.: dentro de Escalas, abaixo do painel de faltas) ou usado pela tela
  * própria `JustificativasScreen`.
  */
-export function JustificativasLista(): React.ReactElement {
+export function JustificativasLista({
+  versao,
+}: {
+  /** Muda para forçar recarregar em tempo real (ex.: após marcar uma falta). */
+  versao?: number;
+} = {}): React.ReactElement {
   const req = useRequisicao<Ocorrencia[]>(async () => {
     const { inicio, fim } = janela();
     const [faltas, incidencias, colaboradores] = await Promise.all([
@@ -122,7 +132,7 @@ export function JustificativasLista(): React.ReactElement {
     return [...deFaltas, ...deIncidencias].sort(
       (a, b) => ordem[a.status] - ordem[b.status] || b.data.localeCompare(a.data),
     );
-  }, []);
+  }, [versao]);
 
   const [filtro, setFiltro] = useState<'PENDENTES' | 'TODAS'>('PENDENTES');
   const [abertoId, setAbertoId] = useState<string | null>(null);

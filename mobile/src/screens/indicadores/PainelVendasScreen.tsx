@@ -22,12 +22,10 @@ import {
   Cartao,
   EstadoVazio,
   GraficoBarrasVerticais,
-  GraficoPizza,
   MensagemErro,
   Segmentado,
   SeletorData,
   Tela,
-  montarFatias,
 } from '../../components';
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
@@ -97,29 +95,6 @@ function BarraProgresso({
   return (
     <View style={styles.barraTrilha}>
       <View style={[styles.barraPreenchida, { width: largura, backgroundColor: cor }]} />
-    </View>
-  );
-}
-
-/** Mini-gráfico de tendência (sparkline) em barras finas. */
-function Sparkline({ valores }: { valores: number[] }): React.ReactElement | null {
-  if (valores.length === 0) return null;
-  const max = Math.max(1, ...valores);
-  return (
-    <View style={styles.sparkline}>
-      {valores.map((v, i) => {
-        const altura = `${Math.max(4, (v / max) * 100)}%` as `${number}%`;
-        return (
-          <View key={i} style={styles.sparkColuna}>
-            <View
-              style={[
-                styles.sparkBarra,
-                { height: altura, backgroundColor: v > 0 ? cores.verde : cores.divisor },
-              ]}
-            />
-          </View>
-        );
-      })}
     </View>
   );
 }
@@ -258,10 +233,11 @@ export function PainelVendasScreen(): React.ReactElement {
   const dadosBarras = horas.map((h) => ({ rotulo: `${h.hora}h`, valor: h.valor }));
 
   const horasDia = porHoraDia?.horas ?? [];
-  const fatiasDia = montarFatias(
-    horasDia.map((h) => ({ rotulo: `${h.hora}h às ${h.hora + 1}h`, valor: h.valor })),
-    24,
-  );
+  // Horas do dia ordenadas da que MAIS vendeu para a que MENOS vendeu.
+  const dadosHorasTop = [...horasDia]
+    .filter((h) => h.valor > 0)
+    .sort((a, b) => b.valor - a.valor)
+    .map((h) => ({ rotulo: `${h.hora}h`, valor: h.valor }));
 
   return (
     <Tela
@@ -343,6 +319,32 @@ export function PainelVendasScreen(): React.ReactElement {
             </Text>
           </Cartao>
 
+          {/* ----- Horas que mais venderam (do dia, da maior para a menor) ----- */}
+          <Cartao titulo="Horas que mais venderam">
+            <Text style={styles.periodoTexto}>{formatarData(data)}</Text>
+            {diaReq.carregando ? (
+              <Carregando />
+            ) : diaReq.erro ? (
+              <MensagemErro mensagem={diaReq.erro} aoTentarNovamente={diaReq.recarregar} />
+            ) : dadosHorasTop.length > 0 ? (
+              <>
+                <Text style={styles.totalPeriodo}>
+                  Total do dia: {formatarMoeda(porHoraDia?.total ?? 0)}
+                </Text>
+                <GraficoBarrasVerticais dados={dadosHorasTop} />
+                <Text style={styles.metaNota}>
+                  Da hora que mais vendeu para a que menos vendeu.
+                </Text>
+              </>
+            ) : (
+              <EstadoVazio
+                icone="bar-chart-outline"
+                titulo="Sem vendas no dia"
+                descricao="As vendas são carregadas na seção Importações."
+              />
+            )}
+          </Cartao>
+
           {/* ----- Comparativos por data ----- */}
           <Cartao titulo="Comparativos">
             <LinhaComparativo
@@ -368,13 +370,6 @@ export function PainelVendasScreen(): React.ReactElement {
               anteriores.
             </Text>
           </Cartao>
-
-          {/* ----- Tendência ----- */}
-          {painel.tendencia.some((t) => t.valor > 0) && (
-            <Cartao titulo="Tendência (30 dias)">
-              <Sparkline valores={painel.tendencia.map((t) => t.valor)} />
-            </Cartao>
-          )}
 
           {/* ----- Curva horária típica ----- */}
           {dadosCurva.length > 0 && (
@@ -406,32 +401,6 @@ export function PainelVendasScreen(): React.ReactElement {
             </Cartao>
           )}
 
-          {/* ----- Horas que mais venderam (dia) ----- */}
-          <Cartao titulo="Horas que mais venderam">
-            <Text style={styles.periodoTexto}>{formatarData(data)}</Text>
-            {diaReq.carregando ? (
-              <Carregando />
-            ) : diaReq.erro ? (
-              <MensagemErro mensagem={diaReq.erro} aoTentarNovamente={diaReq.recarregar} />
-            ) : horasDia.length > 0 ? (
-              <>
-                <Text style={styles.totalPeriodo}>
-                  Total do dia: {formatarMoeda(porHoraDia?.total ?? 0)}
-                </Text>
-                <GraficoPizza
-                  fatias={fatiasDia}
-                  mostrarValor
-                  formatarValor={formatarMoeda}
-                />
-              </>
-            ) : (
-              <EstadoVazio
-                icone="bar-chart-outline"
-                titulo="Sem vendas no dia"
-                descricao="As vendas são carregadas na seção Importações."
-              />
-            )}
-          </Cartao>
         </>
       ) : null}
 
@@ -594,22 +563,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     width: 72,
     textAlign: 'right',
-  },
-  // Sparkline
-  sparkline: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    height: 48,
-    gap: 2,
-  },
-  sparkColuna: {
-    flex: 1,
-    height: '100%',
-    justifyContent: 'flex-end',
-  },
-  sparkBarra: {
-    width: '100%',
-    borderRadius: 2,
   },
   // Heatmap
   heatLinha: {
