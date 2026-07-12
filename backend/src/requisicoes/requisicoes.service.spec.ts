@@ -79,6 +79,9 @@ describe('RequisicoesService', () => {
       25, // 5 caixas/galões × fator 5 = 25 unidades base
       'REQUISICAO',
       'g1',
+      undefined, // data
+      'Fulano', // aprovador (decididaPorNome)
+      undefined, // requisitante (solicitanteNome ausente neste caso)
     );
     expect(r.status).toBe('APROVADA');
     expect(notificacoes.enviar).toHaveBeenCalledTimes(1);

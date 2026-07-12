@@ -172,13 +172,18 @@ export class RequisicoesService {
       where: { id: req.insumoId },
     });
     const base = req.quantidade * (insumo?.fatorEmbalagem ?? 1);
+    const decididaPorNome = await this.nomeDe(decisorId);
+    // A entrada gerada guarda quem REQUISITOU e quem APROVOU (para o histórico
+    // de movimentos mostrar ambos na entrada).
     await this.insumos.registrarEntrada(
       req.insumoId,
       base,
       'REQUISICAO',
       decisorId,
+      undefined,
+      decididaPorNome ?? undefined,
+      req.solicitanteNome ?? undefined,
     );
-    const decididaPorNome = await this.nomeDe(decisorId);
     const atualizada = await this.prisma.requisicao.update({
       where: { id },
       data: {

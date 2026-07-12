@@ -26,6 +26,7 @@ import {
   InsumoComResumo,
   InsumoProativo,
   EntradaResumo,
+  AnaliseInsumo,
 } from './insumos.service';
 
 /**
@@ -62,7 +63,18 @@ export class InsumosController {
       dto.insumoId,
       dto.embalagens,
       usuario?.sub,
+      usuario?.nome ?? usuario?.login,
     );
+  }
+
+  /**
+   * Análise de utilização do insumo vs. vendas: consumo por dia (últimos ~30
+   * dias) alinhado à venda diária, mais o consumo da semana e do mês. Alimenta
+   * o gráfico e o resumo do detalhe do insumo.
+   */
+  @Get(':id/analise')
+  async analise(@Param('id') id: string): Promise<AnaliseInsumo> {
+    return this.insumosService.analiseInsumo(id);
   }
 
   /** Lista as entradas recentes de estoque (Controle de requisição). */
