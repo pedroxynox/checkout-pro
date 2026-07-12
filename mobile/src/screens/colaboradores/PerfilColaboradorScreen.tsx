@@ -316,20 +316,40 @@ function HistoricoIncidencias({
       {timeline.length === 0 ? (
         <Text style={styles.semDados}>Sem incidências no período.</Text>
       ) : (
-        timeline.map((item, i) => (
-          <View
-            key={`${item.data}-${item.kind}-${i}`}
-            style={styles.timelineLinha}
-          >
-            <Ionicons
-              name={ICONE_KIND[item.kind]}
-              size={18}
-              color={item.kind === 'FALTA' ? cores.vermelho : cores.amarelo}
-            />
-            <Text style={styles.timelineTexto}>{ROTULO_KIND[item.kind]}</Text>
-            <Text style={styles.timelineData}>{formatarData(item.data)}</Text>
-          </View>
-        ))
+        timeline.map((item, i) => {
+          // Falta justificada (abonada): destaca em verde e sinaliza no rótulo.
+          const faltaJustificada = item.kind === 'FALTA' && item.justificada;
+          const cor = faltaJustificada
+            ? cores.verde
+            : item.kind === 'FALTA'
+              ? cores.vermelho
+              : cores.amarelo;
+          return (
+            <View
+              key={`${item.data}-${item.kind}-${i}`}
+              style={styles.timelineLinha}
+            >
+              <Ionicons
+                name={
+                  faltaJustificada
+                    ? 'checkmark-circle-outline'
+                    : ICONE_KIND[item.kind]
+                }
+                size={18}
+                color={cor}
+              />
+              <Text
+                style={[
+                  styles.timelineTexto,
+                  faltaJustificada && { color: cores.verde },
+                ]}
+              >
+                {faltaJustificada ? 'Falta + justificação' : ROTULO_KIND[item.kind]}
+              </Text>
+              <Text style={styles.timelineData}>{formatarData(item.data)}</Text>
+            </View>
+          );
+        })
       )}
     </Cartao>
   );

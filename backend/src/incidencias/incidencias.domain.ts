@@ -410,6 +410,11 @@ export interface ItemTimeline {
   data: Date;
   /** 'FALTA' para ausências; o próprio tipo para incidências. */
   kind: 'FALTA' | TipoIncidencia;
+  /**
+   * Só para `kind === 'FALTA'`: `true` quando a falta foi justificada (abonada).
+   * Faltas pendentes ou injustificadas ficam `false`.
+   */
+  justificada?: boolean;
 }
 
 /**
@@ -418,11 +423,15 @@ export interface ItemTimeline {
  * a contagem total (= ausências + incidências).
  */
 export function timelineUnificada(
-  ausencias: readonly { data: Date }[],
+  ausencias: readonly { data: Date; justificada?: boolean }[],
   incidencias: readonly IncidenciaRegistro[],
 ): ItemTimeline[] {
   const itens: ItemTimeline[] = [
-    ...ausencias.map((a) => ({ data: a.data, kind: 'FALTA' as const })),
+    ...ausencias.map((a) => ({
+      data: a.data,
+      kind: 'FALTA' as const,
+      justificada: a.justificada ?? false,
+    })),
     ...incidencias.map((i) => ({ data: i.data, kind: i.tipo })),
   ];
   return itens.sort((a, b) => b.data.getTime() - a.data.getTime());

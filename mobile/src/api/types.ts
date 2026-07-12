@@ -911,6 +911,8 @@ export interface FiltroIncidencias {
 export interface TimelineItem {
   data: string;
   kind: 'FALTA' | TipoIncidenciaEscala;
+  /** Só para faltas: `true` quando foi justificada (abonada). */
+  justificada?: boolean;
 }
 
 // ----- Checklist (Req 5.x) -----

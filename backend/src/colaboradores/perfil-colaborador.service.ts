@@ -144,7 +144,7 @@ export interface PerfilColaboradorResposta {
     porDiaSemana: PontoSerie[];
     frequenciaMensal: number;
     percentualSobreEscalados: number;
-    timeline: { data: string; kind: string }[];
+    timeline: { data: string; kind: string; justificada?: boolean }[];
   };
   /**
    * Contrato de experiência / **tempo de casa** (dias de casa, admissão, estado
@@ -589,6 +589,7 @@ export class PerfilColaboradorService {
       timeline: timeline.map((t) => ({
         data: t.data.toISOString().slice(0, 10),
         kind: t.kind,
+        justificada: t.justificada,
       })),
     };
   }
