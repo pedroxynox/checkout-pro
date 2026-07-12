@@ -695,6 +695,9 @@ export function OperadoresScreen(): React.ReactElement {
   }
 
   const [ocupado, setOcupado] = useState(false);
+  // Sinal para recarregar a lista de Justificativas em tempo real (ao marcar
+  // uma falta / não-retorno, o item aparece logo abaixo para justificar).
+  const [versaoJustificativas, setVersaoJustificativas] = useState(0);
 
   const recarregarTudo = () => {
     dia.recarregar();
@@ -704,6 +707,7 @@ export function OperadoresScreen(): React.ReactElement {
     naoRetornosDia.recarregar();
     faltasDia.recarregar();
     escalaFiscais.recarregar();
+    setVersaoJustificativas((v) => v + 1);
   };
 
   /** Toca na linha → abre o perfil do colaborador (não marca falta). */
@@ -1153,7 +1157,7 @@ export function OperadoresScreen(): React.ReactElement {
                 Faltas e não-retornos dos últimos 30 dias — justifique, injustifique
                 ou reabra.
               </Text>
-              <JustificativasLista />
+              <JustificativasLista versao={versaoJustificativas} />
             </View>
           ) : null}
         </>
