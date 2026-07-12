@@ -68,17 +68,27 @@ describe('ContratosScreen', () => {
     contratosService.resumo.mockResolvedValue(RESUMO);
   });
 
-  it('mostra o card com etiqueta e o status de vencimento', async () => {
+  it('mostra o card com a etapa (45D) e o status da 1ª etapa', async () => {
     render_();
     expect(await screen.findByText('Bia Vence')).toBeTruthy();
-    // "Experiência" aparece como chip de filtro e como selo do card.
-    expect(screen.getAllByText('Experiência').length).toBeGreaterThanOrEqual(1);
+    // Com 42 dias de casa está na 1ª etapa: o selo mostra "45D".
+    expect(screen.getByText('45D')).toBeTruthy();
     expect(
-      screen.getByText('Em experiência · 42 de 90 dias de casa.'),
+      screen.getByText('Em experiência · 42 de 45 dias (1ª etapa).'),
     ).toBeTruthy();
   });
 
-  it('com CONTRATOS_GERIR, NÃO exibe botões de decisão (ciclo automático) mas permite editar admissão e encerrar contrato', async () => {
+  it('mostra a etapa "90D" quando já passou dos 45 dias', async () => {
+    contratosService.listar.mockResolvedValue([
+      { ...CARD_VENCENDO, diasDeCasa: 70, proximoMarco: 'MARCO_90' },
+    ]);
+    render_();
+    await screen.findByText('Bia Vence');
+    expect(screen.getByText('90D')).toBeTruthy();
+    expect(screen.getByText('Em experiência · 70 de 90 dias.')).toBeTruthy();
+  });
+
+  it('com CONTRATOS_GERIR, permite editar admissão e encerrar um contrato em experiência', async () => {
     mockAuth.permitir = true;
     render_();
     await screen.findByText('Bia Vence');
@@ -86,6 +96,27 @@ describe('ContratosScreen', () => {
     expect(screen.queryByText('Reprovar')).toBeNull();
     expect(screen.getByText('Editar admissão')).toBeTruthy();
     expect(screen.getByText('Encerrar contrato')).toBeTruthy();
+  });
+
+  it('NÃO exibe "Encerrar contrato" para colaborador já efetivado', async () => {
+    contratosService.listar.mockResolvedValue([
+      {
+        ...CARD_VENCENDO,
+        diasDeCasa: 120,
+        estado: 'EFETIVADO',
+        etiqueta: 'efetivado',
+        urgencia: 'OK',
+        proximoMarco: null,
+        dataProximoMarco: null,
+        diasParaProximoMarco: null,
+        efetivadoPorDecurso: true,
+      },
+    ]);
+    mockAuth.permitir = true;
+    render_();
+    await screen.findByText('Bia Vence');
+    expect(screen.getByText('Editar admissão')).toBeTruthy();
+    expect(screen.queryByText('Encerrar contrato')).toBeNull();
   });
 
   it('sem permissão de gestão, NÃO exibe botões de decisão', async () => {

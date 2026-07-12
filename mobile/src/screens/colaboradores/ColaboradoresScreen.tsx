@@ -113,7 +113,7 @@ export function ColaboradoresScreen({
             <Ionicons name="document-text-outline" size={20} color={cores.primaria} />
           </View>
           <View style={styles.itemInfo}>
-            <Text style={styles.itemNome}>Contratos de experiência</Text>
+            <Text style={styles.itemNome}>Contratos</Text>
             <Text style={styles.itemMeta} numberOfLines={1}>
               Tempo de casa e marcos de 45/90 dias
             </Text>
