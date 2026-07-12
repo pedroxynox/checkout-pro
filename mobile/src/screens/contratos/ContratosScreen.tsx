@@ -70,13 +70,30 @@ const FILTROS: { v: EtiquetaContrato | 'todas'; r: string }[] = [
   { v: 'sem_admissao', r: 'Sem admissão' },
 ];
 
+/** Duração da 1ª etapa da experiência (dias). Até aqui conta "45D"; depois "90D". */
+const DIAS_ETAPA_45 = 45;
+
+/**
+ * Rótulo curto (selo) do card. Na experiência mostra a ETAPA atual: "45D"
+ * enquanto está dentro dos 45 dias e "90D" depois de passar dos 45 (até efetivar
+ * aos 90). Nos demais estados usa a etiqueta normal.
+ */
+function rotuloSeloCard(c: ContratoCard): string {
+  if (c.estado === 'EXPERIENCIA') {
+    return c.diasDeCasa <= DIAS_ETAPA_45 ? '45D' : '90D';
+  }
+  return ROTULO_ETIQUETA[c.etiqueta];
+}
+
 /** Frase de status do contrato para o card (ciclo automático). */
 function statusDoCard(c: ContratoCard): string {
   if (c.estado === 'SEM_ADMISSAO') return 'Defina a data de admissão.';
   if (c.estado === 'EFETIVADO') return 'Efetivado (mais de 90 dias de casa).';
   if (c.estado === 'ENCERRADO') return 'Contrato encerrado.';
-  // EXPERIÊNCIA: efetiva sozinho ao passar de 90 dias.
-  return `Em experiência · ${c.diasDeCasa} de 90 dias de casa.`;
+  // EXPERIÊNCIA: 1ª etapa até 45 dias; depois conta para os 90 (efetivação).
+  return c.diasDeCasa <= DIAS_ETAPA_45
+    ? `Em experiência · ${c.diasDeCasa} de 45 dias (1ª etapa).`
+    : `Em experiência · ${c.diasDeCasa} de 90 dias.`;
 }
 
 interface DadosContratos {
@@ -282,7 +299,7 @@ export function ContratosScreen({
                     {statusDoCard(c)}
                   </Text>
                 </View>
-                <Selo texto={ROTULO_ETIQUETA[c.etiqueta]} cor={cor} fundo={fundo} />
+                <Selo texto={rotuloSeloCard(c)} cor={cor} fundo={fundo} />
               </TouchableOpacity>
 
               {podeGerir && (
@@ -303,7 +320,7 @@ export function ContratosScreen({
                         <Ionicons name="calendar-outline" size={14} color={cores.textoSecundario} />
                         <Text style={styles.editarAdmissaoTxt}>Editar admissão</Text>
                       </TouchableOpacity>
-                      {c.estado !== 'ENCERRADO' && (
+                      {c.estado === 'EXPERIENCIA' && (
                         <Botao
                           titulo="Encerrar contrato"
                           variante="perigo"
