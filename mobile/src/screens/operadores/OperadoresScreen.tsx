@@ -561,12 +561,39 @@ function DetalheColaboradorMes({
   }
   const itens = detalhe.dados ?? [];
   const substantivo = tipo === 'FALTA' ? 'falta' : 'não-retorno';
+  // Resumo do colaborador (mesmos números da prévia da card principal).
+  const resumoTags: string[] = [];
+  if (colaborador.diaRecorrente)
+    resumoTags.push(`${colaborador.diaRecorrente.nome} recorrente`);
+  if (colaborador.tendencia > 0)
+    resumoTags.push(`▲ ${colaborador.tendencia} vs. mês anterior`);
 
   return (
     <ScrollView
       style={styles.modalLista}
       contentContainerStyle={{ paddingVertical: espacamento.xs }}
     >
+      {/* Resumo do mês do colaborador: dias, emendas e dias seguidos. */}
+      <View style={styles.detalheResumo}>
+        <View style={styles.detalheChip}>
+          <Text style={styles.detalheChipNum}>{colaborador.quantidade}</Text>
+          <Text style={styles.detalheChipLabel}>
+            {tipo === 'FALTA' ? 'faltas' : 'não-retornos'}
+          </Text>
+        </View>
+        <View style={styles.detalheChip}>
+          <Text style={styles.detalheChipNum}>{colaborador.faltasEmenda}</Text>
+          <Text style={styles.detalheChipLabel}>em emenda</Text>
+        </View>
+        <View style={styles.detalheChip}>
+          <Text style={styles.detalheChipNum}>{colaborador.sequenciaMax}</Text>
+          <Text style={styles.detalheChipLabel}>dias seguidos</Text>
+        </View>
+      </View>
+      {resumoTags.length > 0 ? (
+        <Text style={styles.detalheResumoTags}>{resumoTags.join(' · ')}</Text>
+      ) : null}
+
       {itens.length === 0 ? (
         <EstadoVazio
           titulo={`Sem ${substantivo}s no mês`}
@@ -1820,6 +1847,33 @@ const styles = StyleSheet.create({
     marginTop: espacamento.sm,
   },
   // Detalhe do colaborador no painel mensal (drill-down)
+  detalheResumo: {
+    flexDirection: 'row',
+    gap: espacamento.sm,
+    marginBottom: espacamento.xs,
+  },
+  detalheChip: {
+    flex: 1,
+    backgroundColor: cores.fundo,
+    borderRadius: raio.md,
+    paddingVertical: espacamento.sm,
+    alignItems: 'center',
+  },
+  detalheChipNum: {
+    ...tipografia.subtitulo,
+    fontWeight: '700',
+    color: cores.texto,
+  },
+  detalheChipLabel: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    textAlign: 'center',
+  },
+  detalheResumoTags: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginBottom: espacamento.sm,
+  },
   detalheItem: {
     paddingVertical: espacamento.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
