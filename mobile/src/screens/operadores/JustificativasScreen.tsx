@@ -2,9 +2,9 @@
  * Justificativas de escala — faltas e não-retornos de intervalo.
  *
  * Reúne, num só lugar visível a toda a equipe, as ocorrências recentes com o
- * seu estado (pendente/justificada/injustificada), QUEM registrou e QUEM
+ * seu estado (pendente/justificada/não justificada), QUEM registrou e QUEM
  * justificou (auditoria). Quem lança faltas (inclui fiscal) pode justificar,
- * reabrir ou marcar como injustificada — resolvendo o "só eu sei quem
+ * reabrir ou marcar como não justificada — resolvendo o "só eu sei quem
  * justificou". Justificar reduz o impacto no score conforme o motivo.
  */
 import { Ionicons } from '@expo/vector-icons';
@@ -69,7 +69,7 @@ function coresStatus(s: StatusJustificativa): { cor: string; fundo: string; rotu
   if (s === 'JUSTIFICADA')
     return { cor: cores.verde, fundo: cores.verdeFundo, rotulo: 'Justificada' };
   if (s === 'INJUSTIFICADA')
-    return { cor: cores.vermelho, fundo: cores.vermelhoFundo, rotulo: 'Injustificada' };
+    return { cor: cores.vermelho, fundo: cores.vermelhoFundo, rotulo: 'Não justificada' };
   return { cor: cores.amarelo, fundo: cores.amareloFundo, rotulo: 'Pendente' };
 }
 
@@ -187,8 +187,8 @@ export function JustificativasLista({
 
   const injustificar = async (o: Ocorrencia) => {
     const ok = await confirmar(
-      'Marcar como injustificada',
-      `Confirmar que a ${o.tipo === 'FALTA' ? 'falta' : 'ocorrência'} de ${o.nome} é injustificada?`,
+      'Marcar como não justificada',
+      `Confirmar que a ${o.tipo === 'FALTA' ? 'falta' : 'ocorrência'} de ${o.nome} não está justificada?`,
       'Confirmar',
     );
     if (ok) await aplicar(o, 'INJUSTIFICADA');
@@ -303,7 +303,7 @@ export function JustificativasLista({
                       style={[styles.btn, styles.btnInjust]}
                     >
                       <Ionicons name="close-circle-outline" size={16} color={cores.vermelho} />
-                      <Text style={[styles.btnTxt, { color: cores.vermelho }]}>Injustificar</Text>
+                      <Text style={[styles.btnTxt, { color: cores.vermelho }]}>Não justificar</Text>
                     </Pressable>
                   )}
                   {o.status !== 'PENDENTE' && (
