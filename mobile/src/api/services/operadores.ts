@@ -30,6 +30,26 @@ export const operadoresService = {
   },
 
   /**
+   * Ausência a prazo: ausenta um colaborador por um período, criando faltas
+   * JUSTIFICADAS em cada dia da escala (a folga é ignorada). Retorna quantos
+   * dias foram marcados.
+   */
+  registrarAusenciaPeriodo(input: {
+    pessoaId: string;
+    inicio: string;
+    fim: string;
+    motivo: MotivoJustificativa;
+    observacao?: string;
+  }): Promise<{
+    dias: number;
+    criadas: number;
+    atualizadas: number;
+    folgasIgnoradas: number;
+  }> {
+    return apiClient.post('/operadores/ausencias/periodo', input);
+  },
+
+  /**
    * Lista as faltas de um período com nome + justificativa (estado, motivo,
    * quem justificou). `pendentes=true` traz só as pendentes de análise.
    */

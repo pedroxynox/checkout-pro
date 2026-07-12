@@ -22,9 +22,14 @@ import {
   JustificarAusenciaDto,
   PeriodoAusenciasDto,
   RegistrarAusenciaDto,
+  RegistrarAusenciaPeriodoDto,
 } from './dto/operadores.dto';
 import { ContagemTurno, ItemRelatorioAusencia } from './operadores.domain';
-import { AusenciaDetalhada, OperadoresService } from './operadores.service';
+import {
+  AusenciaDetalhada,
+  OperadoresService,
+  ResultadoAusenciaPeriodo,
+} from './operadores.service';
 
 /** Hoje (ISO yyyy-mm-dd) no fuso de Brasília. */
 function hojeBrasiliaISO(): string {
@@ -81,6 +86,36 @@ export class OperadoresController {
     return this.operadoresService.registrarAusencia(
       dto.pessoaId,
       new Date(dto.data),
+      { id: usuario?.sub, nome: usuario?.nome ?? usuario?.login },
+    );
+  }
+
+  /**
+   * Ausência a prazo: ausenta um colaborador por um período, criando faltas
+   * justificadas em cada dia da escala (folga é ignorada). Programar um período
+   * que termina no futuro exige perfil gerente ou supervisor.
+   */
+  @Post('ausencias/periodo')
+  @Funcionalidade('OPERADORES_AUSENCIAS')
+  async registrarAusenciaPeriodo(
+    @Body() dto: RegistrarAusenciaPeriodoDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<ResultadoAusenciaPeriodo> {
+    const fimISO = dto.fim.slice(0, 10);
+    const ehFutura = fimISO > hojeBrasiliaISO();
+    if (
+      ehFutura &&
+      !PERFIS_AUTORIZA_FUTURO.includes(usuario?.perfil as string)
+    ) {
+      throw new ForbiddenException(
+        'Apenas gerente ou supervisor pode programar uma ausência futura.',
+      );
+    }
+    return this.operadoresService.registrarAusenciaPeriodo(
+      dto.pessoaId,
+      new Date(dto.inicio),
+      new Date(dto.fim),
+      { motivo: dto.motivo, observacao: dto.observacao },
       { id: usuario?.sub, nome: usuario?.nome ?? usuario?.login },
     );
   }

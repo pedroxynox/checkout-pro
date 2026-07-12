@@ -48,6 +48,7 @@ import {
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
+import { AusenciasAPrazoCard } from './AusenciasAPrazo';
 import { JustificativasLista } from './JustificativasScreen';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
@@ -917,6 +918,13 @@ export function OperadoresScreen(): React.ReactElement {
         rotulo="Dia"
         dataMinima={dataInicial}
       />
+
+      {/* Ausências a prazo: ausentar um colaborador por um período (férias/
+          licença) — cria faltas justificadas em cada dia da escala. Programar
+          um período futuro é ação de gestão. */}
+      {podeProgramarFuturo ? (
+        <AusenciasAPrazoCard aoRegistrado={recarregarTudo} />
+      ) : null}
 
       {/* Fiscais que TRABALHAM hoje (escala) — acima dos operadores.
           Os de folga vão para o card "Folga fiscais" no fim. */}
