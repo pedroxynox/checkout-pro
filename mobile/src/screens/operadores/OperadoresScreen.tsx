@@ -26,11 +26,13 @@ import { escalaService, operadoresService } from '../../api/services';
 import {
   AnaliticaFaltas,
   AoVivoOperadores,
+  AusenciaDetalhada,
   ColaboradorDia,
   DiaOperadores,
   FaltasPorOperador,
   IncidenciaEscala,
   ItemEscalaConsolidada,
+  StatusCelula,
 } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import {
@@ -295,8 +297,41 @@ function ColaboradorRow({
   );
 }
 
-/** Linha de um fiscal na escala do dia. */
-function FiscalRow({ f }: { f: ItemEscalaConsolidada }): React.ReactElement {
+/**
+ * Converte um fiscal da escala consolidada num `ColaboradorDia`, para ser
+ * exibido e tratado EXATAMENTE como um operador (abrir perfil, marcar falta e
+ * marcar "não retorno"). Retorna null quando o fiscal não tem ficha de
+ * colaborador vinculada — sem id não há como agir nem abrir o perfil.
+ */
+function fiscalComoColaboradorDia(
+  f: ItemEscalaConsolidada,
+  ausenciaId: string | null,
+): ColaboradorDia | null {
+  if (!f.colaboradorId) return null;
+  const ef = f.efetiva;
+  const folga = ef === 'FOLGA';
+  const status: StatusCelula = folga
+    ? 'FOLGA'
+    : ausenciaId
+      ? 'FALTA'
+      : 'TRABALHA';
+  return {
+    id: f.colaboradorId,
+    nome: f.nome ?? f.funcionarioId,
+    genero: null,
+    status,
+    entrada: folga ? null : (ef.entrada ?? null),
+    saida: folga ? null : (ef.saida ?? null),
+    ausenciaId,
+  };
+}
+
+/** Linha de um fiscal SEM ficha de colaborador (só leitura, sem ações). */
+function FiscalSemFichaRow({
+  f,
+}: {
+  f: ItemEscalaConsolidada;
+}): React.ReactElement {
   const ef = f.efetiva;
   const folga = ef === 'FOLGA';
   const cor = folga ? cores.textoSecundario : cores.primaria;
@@ -304,7 +339,7 @@ function FiscalRow({ f }: { f: ItemEscalaConsolidada }): React.ReactElement {
   return (
     <View style={[styles.linha, { borderLeftColor: cor }]}>
       <View style={[styles.avatar, { backgroundColor: fundo }]}>
-        <Ionicons name="shield-checkmark" size={20} color={cor} />
+        <Ionicons name={iconeGenero(null, f.nome ?? '')} size={20} color={cor} />
       </View>
       <View style={styles.linhaInfo}>
         <Text style={styles.nomeColaborador} numberOfLines={1}>
@@ -316,9 +351,9 @@ function FiscalRow({ f }: { f: ItemEscalaConsolidada }): React.ReactElement {
             : `${ef.entrada ?? '--'} – ${ef.saida ?? '--'}`}
         </Text>
       </View>
-      <View style={[styles.chip, { backgroundColor: fundo }]}>
-        <Text style={[styles.chipTexto, { color: cor }]}>
-          {folga ? 'Folga' : 'Fiscal'}
+      <View style={[styles.chip, { backgroundColor: cores.divisor }]}>
+        <Text style={[styles.chipTexto, { color: cores.textoSecundario }]}>
+          Sem ficha
         </Text>
       </View>
     </View>
@@ -629,6 +664,17 @@ export function OperadoresScreen(): React.ReactElement {
     [diaSel],
   );
 
+  // Faltas do DIA selecionado (de QUALQUER colaborador, inclusive fiscais) —
+  // usado para refletir/alternar a falta dos fiscais na escala, já que eles não
+  // fazem parte do roster de operadores.
+  const faltasDia = useRequisicao<AusenciaDetalhada[]>(
+    () =>
+      podeAcessar('OPERADORES_AUSENCIAS')
+        ? operadoresService.listarAusencias(diaSel, diaSel).catch(() => [])
+        : Promise.resolve([] as AusenciaDetalhada[]),
+    [diaSel],
+  );
+
   // Mapa colaborador → id da incidência de não-retorno do dia (para alternar) e
   // o conjunto de quem está "sem retorno" hoje (para pintar a linha e contar).
   const incidenciasDia = naoRetornosDia.dados ?? [];
@@ -640,6 +686,13 @@ export function OperadoresScreen(): React.ReactElement {
   }
   const semRetornoIds = new Set(semRetornoPorColab.keys());
 
+  // Mapa colaboradorId → id da ausência do dia (para alternar a falta dos
+  // fiscais, que não estão no roster de operadores).
+  const ausenciaPorColab = new Map<string, string>();
+  for (const a of faltasDia.dados ?? []) {
+    if (!ausenciaPorColab.has(a.pessoaId)) ausenciaPorColab.set(a.pessoaId, a.id);
+  }
+
   const [ocupado, setOcupado] = useState(false);
 
   const recarregarTudo = () => {
@@ -648,6 +701,7 @@ export function OperadoresScreen(): React.ReactElement {
     analitica.recarregar();
     naoRetornosMes.recarregar();
     naoRetornosDia.recarregar();
+    faltasDia.recarregar();
     escalaFiscais.recarregar();
   };
 
@@ -700,9 +754,13 @@ export function OperadoresScreen(): React.ReactElement {
     setOcupado(true);
     try {
       await operadoresService.registrarAusencia(c.id, diaSel);
-      const restante = dados ? dados.trabalhando - 1 : null;
-      dia.definir((d) => aplicarStatusLocal(d, c.id, 'FALTA'));
+      // Fiscais não estão no roster de operadores: a atualização otimista e o
+      // aviso de cobertura só valem para operadores. Para fiscais, o recarregar
+      // reflete a falta e mostramos um aviso simples.
+      const noRoster = !!dados?.colaboradores.some((x) => x.id === c.id);
+      if (noRoster) dia.definir((d) => aplicarStatusLocal(d, c.id, 'FALTA'));
       recarregarTudo();
+      const restante = noRoster && dados ? dados.trabalhando - 1 : null;
       if (restante != null) {
         const abaixo = restante < COBERTURA_MINIMA;
         notificar(
@@ -711,6 +769,8 @@ export function OperadoresScreen(): React.ReactElement {
             abaixo ? ` — abaixo do mínimo (${COBERTURA_MINIMA})!` : '.'
           }`,
         );
+      } else {
+        notificar(futura ? 'Ausência programada' : 'Falta marcada', `${c.nome}.`);
       }
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao marcar falta.');
@@ -868,9 +928,26 @@ export function OperadoresScreen(): React.ReactElement {
               <Text style={styles.secaoBadgeTexto}>{fiscaisTrabalham.length}</Text>
             </View>
           </View>
-          {fiscaisTrabalham.map((f) => (
-            <FiscalRow key={f.funcionarioId} f={f} />
-          ))}
+          {fiscaisTrabalham.map((f) => {
+            const cd = fiscalComoColaboradorDia(
+              f,
+              f.colaboradorId
+                ? (ausenciaPorColab.get(f.colaboradorId) ?? null)
+                : null,
+            );
+            if (!cd) return <FiscalSemFichaRow key={f.funcionarioId} f={f} />;
+            return (
+              <ColaboradorRow
+                key={f.funcionarioId}
+                c={cd}
+                onAbrirPerfil={abrirPerfil}
+                onFalta={alternarFalta}
+                onSemRetorno={alternarSemRetorno}
+                podeAcoes={podeSemRetorno}
+                semRetornoAtivo={semRetornoIds.has(cd.id)}
+              />
+            );
+          })}
         </View>
       ) : null}
 

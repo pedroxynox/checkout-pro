@@ -294,6 +294,9 @@ export class PerfilColaboradorService {
     };
 
     const indicadores: IndicadorPerfil[] = [];
+    // O fiscal mantém o seu indicador próprio (devoluções que ele autoriza) e
+    // passa a ver, ADEMAIS, os mesmos indicadores do operador — pois também
+    // opera caixa (troco, recargas e cancelamentos). O operador vê só os seus.
     if (ehFiscal) {
       indicadores.push(
         montarIndicador(
@@ -306,46 +309,45 @@ export class PerfilColaboradorService {
           teamAnterior.get('DEVOLUCOES') ?? new Map(),
         ),
       );
-    } else {
-      indicadores.push(
-        montarIndicador(
-          'TROCO_SOLIDARIO',
-          CONFIG_ARRECADACAO.TROCO_SOLIDARIO.titulo,
-          'MOEDA',
-          'MAIOR_MELHOR',
-          false,
-          teamAtual.get('TROCO_SOLIDARIO') ?? new Map(),
-          teamAnterior.get('TROCO_SOLIDARIO') ?? new Map(),
-        ),
-        montarIndicador(
-          'RECARGAS_CELULAR',
-          CONFIG_ARRECADACAO.RECARGAS_CELULAR.titulo,
-          'MOEDA',
-          'MAIOR_MELHOR',
-          false,
-          teamAtual.get('RECARGAS_CELULAR') ?? new Map(),
-          teamAnterior.get('RECARGAS_CELULAR') ?? new Map(),
-        ),
-        montarIndicador(
-          'CANCELAMENTO_ITENS',
-          CONFIG_ARRECADACAO.CANCELAMENTO_ITENS.titulo,
-          'MOEDA',
-          'MENOR_MELHOR',
-          true,
-          teamAtual.get('CANCELAMENTO_ITENS') ?? new Map(),
-          teamAnterior.get('CANCELAMENTO_ITENS') ?? new Map(),
-        ),
-        montarIndicador(
-          'CANCELAMENTO_CUPOM',
-          CONFIG_ARRECADACAO.CANCELAMENTO_CUPOM.titulo,
-          'MOEDA',
-          'MENOR_MELHOR',
-          true,
-          teamAtual.get('CANCELAMENTO_CUPOM') ?? new Map(),
-          teamAnterior.get('CANCELAMENTO_CUPOM') ?? new Map(),
-        ),
-      );
     }
+    indicadores.push(
+      montarIndicador(
+        'TROCO_SOLIDARIO',
+        CONFIG_ARRECADACAO.TROCO_SOLIDARIO.titulo,
+        'MOEDA',
+        'MAIOR_MELHOR',
+        false,
+        teamAtual.get('TROCO_SOLIDARIO') ?? new Map(),
+        teamAnterior.get('TROCO_SOLIDARIO') ?? new Map(),
+      ),
+      montarIndicador(
+        'RECARGAS_CELULAR',
+        CONFIG_ARRECADACAO.RECARGAS_CELULAR.titulo,
+        'MOEDA',
+        'MAIOR_MELHOR',
+        false,
+        teamAtual.get('RECARGAS_CELULAR') ?? new Map(),
+        teamAnterior.get('RECARGAS_CELULAR') ?? new Map(),
+      ),
+      montarIndicador(
+        'CANCELAMENTO_ITENS',
+        CONFIG_ARRECADACAO.CANCELAMENTO_ITENS.titulo,
+        'MOEDA',
+        'MENOR_MELHOR',
+        true,
+        teamAtual.get('CANCELAMENTO_ITENS') ?? new Map(),
+        teamAnterior.get('CANCELAMENTO_ITENS') ?? new Map(),
+      ),
+      montarIndicador(
+        'CANCELAMENTO_CUPOM',
+        CONFIG_ARRECADACAO.CANCELAMENTO_CUPOM.titulo,
+        'MOEDA',
+        'MENOR_MELHOR',
+        true,
+        teamAtual.get('CANCELAMENTO_CUPOM') ?? new Map(),
+        teamAnterior.get('CANCELAMENTO_CUPOM') ?? new Map(),
+      ),
+    );
 
     // Faltas inteligentes (reaproveita a analítica de domínio para 1 pessoa).
     const faltas = await this.faltasDoColaborador(
@@ -360,10 +362,14 @@ export class PerfilColaboradorService {
       meses,
     );
 
-    // Motivos dos cancelamentos de cupom do colaborador (pizza) — operador.
-    const motivosCancelamento = ehFiscal
-      ? []
-      : this.motivosDeCupom(regsAtual, id, mapaMatricula, mapaLogin);
+    // Motivos dos cancelamentos de cupom do colaborador (pizza) — operador e,
+    // agora, também o fiscal (que opera caixa).
+    const motivosCancelamento = this.motivosDeCupom(
+      regsAtual,
+      id,
+      mapaMatricula,
+      mapaLogin,
+    );
 
     // Score de Saúde.
     const valorIndicador = (chave: string): number =>
