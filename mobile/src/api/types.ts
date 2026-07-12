@@ -474,6 +474,27 @@ export interface MovimentoEstoque {
   destino: string | null;
   pdvId: string | null;
   origem?: string | null;
+  /** Quem registrou a saída (ou aprovou a entrada de requisição). */
+  responsavelNome?: string | null;
+  /** Quem requisitou (só em entradas vindas de requisição). */
+  requisitanteNome?: string | null;
+}
+
+/** Um ponto do gráfico de utilização do insumo vs. vendas (por dia). */
+export interface PontoAnaliseDia {
+  /** Dia (ISO yyyy-mm-dd). */
+  data: string;
+  /** Consumo do dia em unidade base. */
+  consumo: number;
+  /** Venda do dia (R$). */
+  venda: number;
+}
+
+/** Análise de um insumo: consumo por dia vs. vendas + resumos semana/mês. */
+export interface AnaliseInsumo {
+  consumoSemana: number;
+  consumoMes: number;
+  porDia: PontoAnaliseDia[];
 }
 
 /** Uma entrada de estoque (movimento com delta > 0) — Controle de requisição. */

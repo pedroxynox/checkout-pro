@@ -362,6 +362,11 @@ model MovimentoEstoque {
   // Origem do movimento para o "Controle de requisição" (ex.: ENTRADA,
   // REQUISICAO, COMPRA, AJUSTE, CONSUMO, FARDO). Entradas têm delta > 0.
   origem        String?
+  // Nomes (snapshot, mesmo padrão de auditoria de Requisicao) para exibição:
+  // - responsavelNome: quem REGISTROU o movimento (saída) ou quem APROVOU (entrada de requisição).
+  // - requisitanteNome: quem SOLICITOU (apenas em entradas vindas de requisição).
+  responsavelNome  String?
+  requisitanteNome String?
 
   insumo      Insumo   @relation(fields: [insumoId], references: [id])
   responsavel Usuario? @relation("ResponsavelMovimento", fields: [responsavelId], references: [id])

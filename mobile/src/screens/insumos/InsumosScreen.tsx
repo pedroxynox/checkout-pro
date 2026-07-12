@@ -13,7 +13,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { insumosService, requisicoesService } from '../../api/services';
 import { InsumoProativo, NivelEstoque, SugestaoPedido } from '../../api/types';
@@ -28,7 +28,7 @@ import {
   Tela,
 } from '../../components';
 import { PropsTela } from '../../navigation/types';
-import { cores, espacamento, raio, tipografia } from '../../theme';
+import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarNumero } from '../../utils/formato';
 
@@ -96,6 +96,10 @@ export function InsumosScreen({
   const [consumindo, setConsumindo] = useState<string | null>(null);
   const [confirmandoPedido, setConfirmandoPedido] = useState(false);
 
+  // Card flutuante de saída: insumo selecionado + quantidade (começa em 1).
+  const [saidaInsumo, setSaidaInsumo] = useState<InsumoProativo | null>(null);
+  const [qtdSaida, setQtdSaida] = useState(1);
+
   // Gestão: entrada
   const [entradaAberta, setEntradaAberta] = useState(false);
   const [insumoEntrada, setInsumoEntrada] = useState<string | null>(null);
@@ -146,31 +150,45 @@ export function InsumosScreen({
 
   // ==================== Ações rápidas ====================
 
-  const consumirRapido = async (insumo: InsumoProativo) => {
-    const nomeEmb = capitalizar(insumo.embalagem);
-    // Não deixa registrar consumo do que não há em estoque (o backend também
-    // bloqueia; aqui evitamos a ida ao servidor e damos um aviso claro).
+  // Máximo de embalagens que dá para retirar (não deixa o estoque negativo).
+  const maxSaida = saidaInsumo
+    ? Math.max(1, Math.floor(saidaInsumo.saldo / saidaInsumo.fatorEmbalagem))
+    : 1;
+
+  /** Abre o card flutuante de saída para o insumo (quantidade começa em 1). */
+  const abrirSaida = (insumo: InsumoProativo) => {
     if (insumo.saldo < insumo.fatorEmbalagem) {
       notificar(
         'Sem estoque',
-        `Não há ${nomeEmb} de ${insumo.nome} em estoque para registrar consumo.`,
+        `Não há ${capitalizar(insumo.embalagem)} de ${insumo.nome} em estoque para registrar saída.`,
       );
       return;
     }
-    const ok = await confirmar(
-      `Usar 1 ${nomeEmb}`,
-      `Registrar consumo de 1 ${nomeEmb} de ${insumo.nome}?`,
-      'Confirmar',
-    );
-    if (!ok) return;
+    setQtdSaida(1);
+    setSaidaInsumo(insumo);
+  };
 
+  /** Ajusta a quantidade a retirar, sempre entre 1 e o máximo do estoque. */
+  const ajustarSaida = (delta: number) => {
+    setQtdSaida((q) => Math.min(maxSaida, Math.max(1, q + delta)));
+  };
+
+  /** Confirma a saída de `qtdSaida` embalagens do insumo selecionado. */
+  const confirmarSaida = async () => {
+    if (!saidaInsumo) return;
+    const insumo = saidaInsumo;
+    const qtd = qtdSaida;
     setConsumindo(insumo.id);
     try {
-      const { saldo } = await insumosService.consumirEmbalagem(insumo.id, 1);
+      const { saldo } = await insumosService.consumirEmbalagem(insumo.id, qtd);
+      setSaidaInsumo(null);
       await buscar();
-      notificar('Consumo registrado', `Novo saldo: ${formatarNumero(saldo)} ${insumo.unidade}s.`);
+      notificar(
+        'Saída registrada',
+        `${qtd} ${pluralEmbalagem(insumo.embalagem, qtd)} de ${insumo.nome}. Novo saldo: ${formatarNumero(saldo)} ${insumo.unidade}${saldo === 1 ? '' : 's'}.`,
+      );
     } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar consumo.');
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar saída.');
     } finally {
       setConsumindo(null);
     }
@@ -396,20 +414,20 @@ export function InsumosScreen({
       {insumos.length > 0 && (
         <>
           <Text style={styles.secaoTitulo}>Ações rápidas</Text>
-          <Text style={styles.secaoSubtitulo}>Registrar consumo de 1 embalagem</Text>
+          <Text style={styles.secaoSubtitulo}>
+            Registrar saída (escolha a quantidade)
+          </Text>
 
           <View style={styles.acoesGrid}>
             {insumos.map((i) => {
-              const loading = consumindo === i.id;
               // Sem saldo para nem 1 embalagem: botão desabilitado e apagado.
               const semSaldo = i.saldo < i.fatorEmbalagem;
-              const inativo = loading || semSaldo;
               return (
                 <Pressable
                   key={i.id}
-                  onPress={() => void consumirRapido(i)}
-                  disabled={consumindo !== null || semSaldo}
-                  style={[styles.acaoBtn, inativo && styles.acaoBtnLoading]}
+                  onPress={() => abrirSaida(i)}
+                  disabled={semSaldo}
+                  style={[styles.acaoBtn, semSaldo && styles.acaoBtnLoading]}
                 >
                   <Ionicons
                     name={
@@ -422,13 +440,13 @@ export function InsumosScreen({
                             : 'cube-outline'
                     }
                     size={28}
-                    color={inativo ? cores.textoSecundario : cores.primaria}
+                    color={semSaldo ? cores.textoSecundario : cores.primaria}
                   />
-                  <Text style={[styles.acaoBtnTexto, inativo && { color: cores.textoSecundario }]}>
-                    1 {capitalizar(i.embalagem)}
+                  <Text style={[styles.acaoBtnTexto, semSaldo && { color: cores.textoSecundario }]}>
+                    {capitalizar(i.nome)}
                   </Text>
                   <Text style={styles.acaoBtnSub}>
-                    {semSaldo ? 'Sem estoque' : capitalizar(i.nome)}
+                    {semSaldo ? 'Sem estoque' : capitalizar(i.embalagem)}
                   </Text>
                 </Pressable>
               );
@@ -517,6 +535,76 @@ export function InsumosScreen({
           )}
         </Cartao>
       )}
+
+      {/* ===== Card flutuante: registrar saída com quantidade ajustável ===== */}
+      <Modal
+        visible={saidaInsumo !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSaidaInsumo(null)}
+      >
+        <Pressable style={styles.saidaFundo} onPress={() => setSaidaInsumo(null)}>
+          <Pressable style={styles.saidaCartao} onPress={() => {}}>
+            <View style={styles.saidaCabecalho}>
+              <Text style={styles.saidaTitulo} numberOfLines={1}>
+                {saidaInsumo ? capitalizar(saidaInsumo.nome) : ''}
+              </Text>
+              <Pressable
+                onPress={() => setSaidaInsumo(null)}
+                hitSlop={10}
+                accessibilityLabel="Fechar"
+              >
+                <Ionicons name="close" size={24} color={cores.texto} />
+              </Pressable>
+            </View>
+            {saidaInsumo ? (
+              <Text style={styles.saidaSub}>
+                Quantas {pluralEmbalagem(saidaInsumo.embalagem, 2)} saíram?
+              </Text>
+            ) : null}
+
+            <View style={styles.stepper}>
+              <Pressable
+                onPress={() => ajustarSaida(-1)}
+                disabled={qtdSaida <= 1}
+                style={[styles.stepBtn, qtdSaida <= 1 && styles.stepBtnInativo]}
+                hitSlop={8}
+                accessibilityLabel="Diminuir"
+              >
+                <Ionicons name="remove" size={24} color={cores.primaria} />
+              </Pressable>
+              <View style={styles.stepValorBox}>
+                <Text style={styles.stepValor}>{qtdSaida}</Text>
+                <Text style={styles.stepValorSub}>
+                  {saidaInsumo ? pluralEmbalagem(saidaInsumo.embalagem, qtdSaida) : ''}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => ajustarSaida(1)}
+                disabled={qtdSaida >= maxSaida}
+                style={[styles.stepBtn, qtdSaida >= maxSaida && styles.stepBtnInativo]}
+                hitSlop={8}
+                accessibilityLabel="Aumentar"
+              >
+                <Ionicons name="add" size={24} color={cores.primaria} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.saidaMax}>Disponível: {maxSaida} no estoque</Text>
+
+            <Botao
+              titulo={`Registrar saída de ${qtdSaida}`}
+              aoPressionar={() => void confirmarSaida()}
+              carregando={consumindo !== null}
+            />
+            <Botao
+              titulo="Cancelar"
+              variante="texto"
+              aoPressionar={() => setSaidaInsumo(null)}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Tela>
   );
 }
@@ -791,6 +879,60 @@ const styles = StyleSheet.create({
   pedidoBtnConfirmarTexto: {
     ...tipografia.rotulo,
     color: cores.textoInverso,
+  },
+  // Card flutuante de saída
+  saidaFundo: {
+    flex: 1,
+    backgroundColor: 'rgba(10,37,64,0.45)',
+    justifyContent: 'center',
+    padding: espacamento.lg,
+  },
+  saidaCartao: {
+    backgroundColor: cores.superficie,
+    borderRadius: raio.lg,
+    padding: espacamento.lg,
+    ...sombra.flutuante,
+  },
+  saidaCabecalho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: espacamento.md,
+  },
+  saidaTitulo: { ...tipografia.subtitulo, color: cores.texto, flex: 1 },
+  saidaSub: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: espacamento.xs,
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: espacamento.lg,
+    marginVertical: espacamento.md,
+  },
+  stepBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: raio.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: cores.primariaClara,
+  },
+  stepBtnInativo: { opacity: 0.4 },
+  stepValorBox: { alignItems: 'center', minWidth: 90 },
+  stepValor: {
+    ...tipografia.titulo,
+    fontSize: 36,
+    color: cores.primaria,
+  },
+  stepValorSub: { ...tipografia.legenda, color: cores.textoSecundario },
+  saidaMax: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    textAlign: 'center',
+    marginBottom: espacamento.sm,
   },
 });
 

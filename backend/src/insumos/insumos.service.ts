@@ -13,6 +13,12 @@ import {
 } from './insumos.domain';
 import { FardoNaoReconhecidoError } from './insumos.errors';
 import { QuantidadeInvalidaError } from './insumos.errors';
+import {
+  inicioDoDia,
+  inicioDoMes,
+  inicioDoProximoDia,
+} from '../common/datas';
+import { arredondar } from '../common/numeros';
 
 /** Parâmetros de uma retirada de fardo de sacolas (Req 3.1.1). */
 export interface RetiradaFardoInput {
@@ -40,6 +46,26 @@ export interface InsumoProativo extends Insumo {
   diasAteRuptura: number | null;
   nivel: NivelEstoque;
   sugestaoReposicao: number;
+}
+
+/** Um ponto do gráfico de utilização vs. vendas (por dia). */
+export interface PontoAnaliseDia {
+  /** Dia (ISO yyyy-mm-dd). */
+  data: string;
+  /** Consumo do dia em unidade base (>= 0). */
+  consumo: number;
+  /** Venda do dia (R$). */
+  venda: number;
+}
+
+/** Análise de um insumo: consumo por dia vs. vendas + resumos semana/mês. */
+export interface AnaliseInsumo {
+  /** Consumo dos últimos 7 dias (unidade base). */
+  consumoSemana: number;
+  /** Consumo do mês corrente (unidade base). */
+  consumoMes: number;
+  /** Série por dia (mais antigo → mais recente). */
+  porDia: PontoAnaliseDia[];
 }
 
 /** Uma entrada de estoque (movimento com delta > 0) para o "Controle de requisição". */
@@ -278,6 +304,8 @@ export class InsumosService {
     origem = 'ENTRADA',
     responsavelId?: string,
     data?: Date,
+    responsavelNome?: string,
+    requisitanteNome?: string,
   ): Promise<number> {
     if (!Number.isInteger(quantidade) || quantidade <= 0) {
       throw new QuantidadeInvalidaError(quantidade);
@@ -288,10 +316,81 @@ export class InsumosService {
         delta: quantidade,
         origem,
         responsavelId,
+        responsavelNome: responsavelNome ?? null,
+        requisitanteNome: requisitanteNome ?? null,
         ...(data ? { dataHora: data } : {}),
       },
     });
     return this.saldo(insumoId);
+  }
+
+  /**
+   * Análise de utilização de um insumo cruzada com as vendas do dia: consumo
+   * por dia (últimos `dias` dias) alinhado à venda diária, mais o consumo da
+   * semana (7 dias) e do mês corrente. Alimenta o gráfico "usou mais nos dias
+   * que vendeu mais" e o resumo semanal/mensal do detalhe do insumo.
+   */
+  async analiseInsumo(insumoId: string, dias = 30): Promise<AnaliseInsumo> {
+    const insumo = await this.prisma.insumo.findUnique({
+      where: { id: insumoId },
+    });
+    if (!insumo) throw new NotFoundException('Insumo não encontrado.');
+
+    const hoje = inicioDoDia(new Date());
+    const inicioJanela = new Date(hoje.getTime() - (dias - 1) * 86400000);
+    const fimExcl = inicioDoProximoDia(hoje);
+
+    const [movs, vendas] = await Promise.all([
+      this.prisma.movimentoEstoque.findMany({
+        where: {
+          insumoId,
+          delta: { lt: 0 },
+          dataHora: { gte: inicioJanela, lt: fimExcl },
+        },
+        select: { delta: true, dataHora: true },
+      }),
+      this.prisma.vendaDiaria.findMany({
+        where: { data: { gte: inicioJanela, lt: fimExcl } },
+        select: { data: true, valor: true },
+      }),
+    ]);
+
+    const consumoPorDia = new Map<string, number>();
+    for (const m of movs) {
+      const key = inicioDoDia(m.dataHora).toISOString().slice(0, 10);
+      consumoPorDia.set(key, (consumoPorDia.get(key) ?? 0) + -m.delta);
+    }
+    const vendaPorDia = new Map<string, number>();
+    for (const v of vendas) {
+      vendaPorDia.set(v.data.toISOString().slice(0, 10), Number(v.valor));
+    }
+
+    const porDia: PontoAnaliseDia[] = [];
+    for (let i = dias - 1; i >= 0; i--) {
+      const d = new Date(hoje.getTime() - i * 86400000);
+      const key = d.toISOString().slice(0, 10);
+      porDia.push({
+        data: key,
+        consumo: consumoPorDia.get(key) ?? 0,
+        venda: arredondar(vendaPorDia.get(key) ?? 0),
+      });
+    }
+
+    // Resumos de consumo por período (aggregate direto, para exatidão mesmo
+    // fora da janela do gráfico).
+    const somaConsumo = async (gte: Date): Promise<number> => {
+      const r = await this.prisma.movimentoEstoque.aggregate({
+        where: { insumoId, delta: { lt: 0 }, dataHora: { gte, lt: fimExcl } },
+        _sum: { delta: true },
+      });
+      return -Number(r._sum.delta ?? 0);
+    };
+    const [consumoSemana, consumoMes] = await Promise.all([
+      somaConsumo(new Date(hoje.getTime() - 6 * 86400000)),
+      somaConsumo(inicioDoMes(hoje)),
+    ]);
+
+    return { consumoSemana, consumoMes, porDia };
   }
 
   /**
@@ -382,6 +481,7 @@ export class InsumosService {
     insumoId: string,
     embalagens: number,
     responsavelId?: string,
+    responsavelNome?: string,
   ): Promise<{ saldo: number }> {
     const insumo = await this.prisma.insumo.findUnique({
       where: { id: insumoId },
@@ -399,6 +499,7 @@ export class InsumosService {
         delta,
         origem: 'CONSUMO',
         responsavelId,
+        responsavelNome: responsavelNome ?? null,
       },
     });
     // Sem reposição automática: NADA é criado sem aprovação do gestor. O

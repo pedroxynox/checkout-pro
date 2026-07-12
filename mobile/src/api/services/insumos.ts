@@ -1,6 +1,7 @@
 /** Serviço de Insumos (Req 3.x): saldo, retirada de fardo e consumos. */
 import { apiClient } from '../client';
 import {
+  AnaliseInsumo,
   CategoriaInsumo,
   EntradaInsumo,
   Insumo,
@@ -152,5 +153,13 @@ export const insumosService = {
   /** Histórico de movimentos/consumo de um insumo (Req 3.1.6, 3.2.4). */
   historico(insumoId: string): Promise<MovimentoEstoque[]> {
     return apiClient.get<MovimentoEstoque[]>(`/insumos/${insumoId}/historico`);
+  },
+
+  /**
+   * Análise de utilização do insumo vs. vendas (consumo por dia + resumo
+   * semanal/mensal). Alimenta o gráfico "usou mais nos dias que vendeu mais".
+   */
+  analise(insumoId: string): Promise<AnaliseInsumo> {
+    return apiClient.get<AnaliseInsumo>(`/insumos/${insumoId}/analise`);
   },
 };

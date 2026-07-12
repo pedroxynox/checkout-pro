@@ -10,12 +10,12 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { insumosService } from '../../api/services';
-import { InsumoProativo } from '../../api/types';
+import { AnaliseInsumo, InsumoProativo, MovimentoEstoque } from '../../api/types';
 import {
   Carregando,
   Cartao,
   EstadoVazio,
-  LinhaInfo,
+  GraficoBarrasVerticais,
   MensagemErro,
   Selo,
   Tela,
@@ -23,7 +23,36 @@ import {
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, tipografia } from '../../theme';
-import { formatarDataHora, formatarNumero } from '../../utils/formato';
+import { formatarData, formatarNumero } from '../../utils/formato';
+
+/** Primeiro nome (para exibir quem registrou/requisitou/aprovou). */
+function primeiroNome(nome?: string | null): string {
+  return nome ? nome.trim().split(/\s+/)[0] : '';
+}
+
+/** Agrupa movimentos por dia (ISO yyyy-mm-dd), preservando a ordem (desc). */
+function agruparPorDia(
+  movimentos: MovimentoEstoque[],
+): { dia: string; movs: MovimentoEstoque[] }[] {
+  const grupos: { dia: string; movs: MovimentoEstoque[] }[] = [];
+  for (const m of movimentos) {
+    const dia = m.dataHora.slice(0, 10);
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.dia === dia) ultimo.movs.push(m);
+    else grupos.push({ dia, movs: [m] });
+  }
+  return grupos;
+}
+
+/** Só os últimos `dias` dias de movimentos (não sobrecarregar a tela). */
+function movimentosRecentes(
+  movimentos: MovimentoEstoque[] | null | undefined,
+  dias = 30,
+): MovimentoEstoque[] {
+  if (!movimentos) return [];
+  const limite = Date.now() - dias * 24 * 60 * 60 * 1000;
+  return movimentos.filter((m) => new Date(m.dataHora).getTime() >= limite);
+}
 
 /** Plural do nome da embalagem (fardo→fardos, galão→galões). */
 function pluralEmbalagem(embalagem: string, qtd: number): string {
@@ -75,15 +104,37 @@ export function InsumoDetalheScreen({
     () => insumosService.historico(insumoId),
     [insumoId],
   );
+  const analise = useRequisicao<AnaliseInsumo>(
+    () => insumosService.analise(insumoId),
+    [insumoId],
+  );
 
   const recarregar = () => {
     resumo.recarregar();
     historico.recarregar();
+    analise.recarregar();
   };
 
   const insumo = resumo.dados;
   const fator = insumo && insumo.fatorEmbalagem > 0 ? insumo.fatorEmbalagem : 1;
   const qtdEmb = insumo ? Math.round(insumo.saldo / fator) : 0;
+
+  // Gráfico "uso vs. vendas": últimos 14 dias, consumo (unidade) e venda (R$)
+  // no mesmo eixo de datas — os dias que vendeu mais são os que mais consumiu.
+  const porDia = (analise.dados?.porDia ?? []).slice(-14);
+  const consumoBars = porDia.map((p) => ({
+    rotulo: p.data.slice(8, 10),
+    valor: p.consumo,
+  }));
+  const vendaBars = porDia.map((p) => ({
+    rotulo: p.data.slice(8, 10),
+    valor: p.venda,
+  }));
+  const temUso = porDia.some((p) => p.consumo > 0);
+  const temVenda = porDia.some((p) => p.venda > 0);
+
+  // Movimentos agrupados por dia (últimos 30 dias) para não lotar a tela.
+  const gruposMov = agruparPorDia(movimentosRecentes(historico.dados, 30));
 
   return (
     <Tela aoAtualizar={recarregar} atualizando={resumo.atualizando}>
@@ -116,53 +167,131 @@ export function InsumoDetalheScreen({
         )}
       </Cartao>
 
-      <Text style={styles.tituloSecao}>Movimentos</Text>
+      {/* Gráfico de utilização por data associado às vendas */}
+      <Text style={styles.tituloSecao}>Uso vs. vendas (14 dias)</Text>
+      <Cartao>
+        {analise.carregando ? (
+          <Carregando />
+        ) : !temUso && !temVenda ? (
+          <Text style={styles.vazioInline}>
+            Ainda sem dados de consumo e vendas no período.
+          </Text>
+        ) : (
+          <>
+            <Text style={styles.graficoLegenda}>
+              Consumo por dia{insumo ? ` (${insumo.unidade})` : ''}
+            </Text>
+            {temUso ? (
+              <GraficoBarrasVerticais dados={consumoBars} altura={120} />
+            ) : (
+              <Text style={styles.vazioInline}>Sem consumo no período.</Text>
+            )}
+            <Text style={[styles.graficoLegenda, { marginTop: espacamento.md }]}>
+              Vendas por dia (R$)
+            </Text>
+            {temVenda ? (
+              <GraficoBarrasVerticais dados={vendaBars} altura={120} />
+            ) : (
+              <Text style={styles.vazioInline}>Sem vendas no período.</Text>
+            )}
+            <Text style={styles.graficoDica}>
+              Compare as barras: os dias de maior venda costumam ser os de maior
+              uso do insumo.
+            </Text>
+          </>
+        )}
+      </Cartao>
+
+      {/* Histórico de movimento por dia (últimos 30 dias) */}
+      <Text style={styles.tituloSecao}>Movimentos por dia</Text>
       {historico.carregando ? (
         <Carregando />
       ) : historico.erro ? (
         <MensagemErro mensagem={historico.erro} aoTentarNovamente={historico.recarregar} />
-      ) : !historico.dados || historico.dados.length === 0 ? (
+      ) : gruposMov.length === 0 ? (
         <EstadoVazio
           icone="swap-vertical-outline"
           titulo="Sem movimentos"
-          descricao="Retiradas e consumos aparecerão aqui."
+          descricao="Retiradas e consumos dos últimos 30 dias aparecerão aqui."
         />
       ) : (
-        historico.dados.map((m) => {
-          const emb = m.delta / fator;
-          const embLabel = insumo
-            ? `${emb < 0 ? '-' : '+'}${formatarEmbalagens(emb)} ${pluralEmbalagem(insumo.embalagem, emb)}`
-            : `${m.delta > 0 ? `+${m.delta}` : m.delta}`;
-          return (
-            <Cartao key={m.id}>
-              <View style={styles.movTopo}>
-                <Ionicons
-                  name={m.delta < 0 ? 'arrow-down-circle' : 'arrow-up-circle'}
-                  size={20}
-                  color={m.delta < 0 ? cores.vermelho : cores.verde}
-                />
-                <Text
-                  style={[
-                    styles.movDelta,
-                    { color: m.delta < 0 ? cores.vermelho : cores.verde },
-                  ]}
-                >
-                  {embLabel}
-                </Text>
-              </View>
-              {insumo ? (
-                <LinhaInfo
-                  rotulo="Quantidade"
-                  valor={`${formatarNumero(Math.abs(m.delta))} ${insumo.unidade}${Math.abs(m.delta) === 1 ? '' : 's'}`}
-                />
-              ) : null}
-              <LinhaInfo rotulo="Data/hora" valor={formatarDataHora(m.dataHora)} />
-              {m.destino ? <LinhaInfo rotulo="Destino" valor={m.destino} /> : null}
-              {m.pdvId ? <LinhaInfo rotulo="PDV" valor={m.pdvId} /> : null}
-            </Cartao>
-          );
-        })
+        gruposMov.map((g) => (
+          <Cartao key={g.dia}>
+            <Text style={styles.diaCabecalho}>{formatarData(g.dia)}</Text>
+            {g.movs.map((m) => {
+              const emb = m.delta / fator;
+              const saida = m.delta < 0;
+              const embLabel = insumo
+                ? `${saida ? '-' : '+'}${formatarEmbalagens(emb)} ${pluralEmbalagem(insumo.embalagem, emb)}`
+                : `${m.delta > 0 ? `+${m.delta}` : m.delta}`;
+              // Autoria: saída → quem registrou; entrada de requisição → quem
+              // requisitou + quem aprovou; demais entradas → quem registrou.
+              const autoria = saida
+                ? m.responsavelNome
+                  ? `Registrou: ${primeiroNome(m.responsavelNome)}`
+                  : null
+                : m.origem === 'REQUISICAO'
+                  ? `Requisitou: ${primeiroNome(m.requisitanteNome) || '—'} · Aprovou: ${primeiroNome(m.responsavelNome) || '—'}`
+                  : m.responsavelNome
+                    ? `Registrou: ${primeiroNome(m.responsavelNome)}`
+                    : null;
+              return (
+                <View key={m.id} style={styles.movLinha}>
+                  <Ionicons
+                    name={saida ? 'arrow-down-circle' : 'arrow-up-circle'}
+                    size={18}
+                    color={saida ? cores.vermelho : cores.verde}
+                  />
+                  <View style={styles.flex1}>
+                    <Text
+                      style={[
+                        styles.movDelta,
+                        { color: saida ? cores.vermelho : cores.verde },
+                      ]}
+                    >
+                      {embLabel}
+                    </Text>
+                    {autoria ? (
+                      <Text style={styles.movAutor}>{autoria}</Text>
+                    ) : null}
+                    {insumo ? (
+                      <Text style={styles.movBase}>
+                        {formatarNumero(Math.abs(m.delta))} {insumo.unidade}
+                        {Math.abs(m.delta) === 1 ? '' : 's'}
+                        {m.destino ? ` · ${m.destino}` : ''}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+              );
+            })}
+          </Cartao>
+        ))
       )}
+
+      {/* Resumo de consumo (semana e mês) */}
+      {analise.dados ? (
+        <Cartao titulo="Resumo de consumo">
+          <View style={styles.resumoLinha}>
+            <View style={styles.resumoBox}>
+              <Text style={styles.resumoNum}>
+                {formatarNumero(analise.dados.consumoSemana)}
+              </Text>
+              <Text style={styles.resumoRot}>
+                {insumo ? `${insumo.unidade}s` : ''} · semana
+              </Text>
+            </View>
+            <View style={styles.resumoBox}>
+              <Text style={styles.resumoNum}>
+                {formatarNumero(analise.dados.consumoMes)}
+              </Text>
+              <Text style={styles.resumoRot}>
+                {insumo ? `${insumo.unidade}s` : ''} · mês
+              </Text>
+            </View>
+          </View>
+        </Cartao>
+      ) : null}
     </Tela>
   );
 }
@@ -200,7 +329,70 @@ const styles = StyleSheet.create({
     marginBottom: espacamento.xs,
   },
   movDelta: {
+    ...tipografia.rotulo,
+    fontWeight: '700',
+  },
+  vazioInline: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    paddingVertical: espacamento.xs,
+  },
+  graficoLegenda: {
+    ...tipografia.rotulo,
+    color: cores.textoSecundario,
+    marginBottom: espacamento.xs,
+  },
+  graficoDica: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    fontStyle: 'italic',
+    marginTop: espacamento.sm,
+  },
+  diaCabecalho: {
+    ...tipografia.rotulo,
+    fontWeight: '700',
+    color: cores.texto,
+    marginBottom: espacamento.xs,
+  },
+  movLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    paddingVertical: espacamento.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: cores.divisor,
+  },
+  flex1: { flex: 1 },
+  movAutor: {
+    ...tipografia.legenda,
+    color: cores.texto,
+    marginTop: 1,
+  },
+  movBase: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 1,
+  },
+  resumoLinha: {
+    flexDirection: 'row',
+    gap: espacamento.sm,
+  },
+  resumoBox: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: cores.superficieAlternativa,
+    borderRadius: 12,
+    paddingVertical: espacamento.md,
+  },
+  resumoNum: {
     ...tipografia.subtitulo,
+    color: cores.primaria,
+    fontWeight: '700',
+  },
+  resumoRot: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
   },
 });
 
