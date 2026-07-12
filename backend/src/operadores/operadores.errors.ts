@@ -64,6 +64,17 @@ export class JustificativaInvalidaError extends OperadoresError {
 }
 
 /**
+ * Lançado quando o período de uma "ausência a prazo" é inválido (data final
+ * antes da inicial ou intervalo longo demais).
+ */
+export class PeriodoAusenciaInvalidoError extends OperadoresError {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
+  constructor(mensagem = 'Período de ausência inválido.') {
+    super(mensagem);
+  }
+}
+
+/**
  * Lançado quando um horário de entrada não está no formato esperado "HH:mm"
  * ou representa um horário inválido (usado na classificação de turno).
  */

@@ -1,5 +1,8 @@
 import { OperadoresService } from './operadores.service';
-import { AusenciaDuplicadaError } from './operadores.errors';
+import {
+  AusenciaDuplicadaError,
+  PeriodoAusenciaInvalidoError,
+} from './operadores.errors';
 
 /**
  * Testes de exemplo (unitários) do `OperadoresService`. Usam um
@@ -54,6 +57,12 @@ describe('OperadoresService', () => {
           ausencias.push(nova);
           return Promise.resolve(nova);
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        update: ({ where: { id }, data }: { where: { id: string }; data: any }) => {
+          const a = ausencias.find((x) => x.id === id);
+          if (a) Object.assign(a, data);
+          return Promise.resolve(a ?? {});
+        },
         delete: ({ where: { id } }: { where: { id: string } }) => {
           const idx = ausencias.findIndex((a) => a.id === id);
           if (idx >= 0) {
@@ -62,11 +71,49 @@ describe('OperadoresService', () => {
           return Promise.resolve({});
         },
       },
+      // Colaborador (para a ausência a prazo): sem folga cadastrada por padrão.
+      colaborador: {
+        findUnique: () =>
+          Promise.resolve({ nome: 'Teste', folgaDiaSemana: null }),
+      },
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return new OperadoresService(prismaFake as any);
   }
+
+  describe('ausência a prazo (por período)', () => {
+    it('cria falta justificada por dia e converte dias que já tinham falta', async () => {
+      const service = criarServico();
+      // Já existe uma falta (pendente) no meio do período.
+      await service.registrarAusencia('p1', new Date(Date.UTC(2026, 2, 10)));
+
+      const r = await service.registrarAusenciaPeriodo(
+        'p1',
+        new Date(Date.UTC(2026, 2, 9)),
+        new Date(Date.UTC(2026, 2, 11)),
+        { motivo: 'ATESTADO_MEDICO', observacao: 'Atestado de 3 dias' },
+        { id: 'u1', nome: 'Gestor' },
+      );
+
+      expect(r.criadas).toBe(2); // dias 9 e 11 (novos)
+      expect(r.atualizadas).toBe(1); // dia 10 (já existia → justificado)
+      expect(r.dias).toBe(3);
+      expect(r.folgasIgnoradas).toBe(0);
+    });
+
+    it('rejeita período com a data final antes da inicial', async () => {
+      const service = criarServico();
+      await expect(
+        service.registrarAusenciaPeriodo(
+          'p1',
+          new Date(Date.UTC(2026, 2, 11)),
+          new Date(Date.UTC(2026, 2, 9)),
+          { motivo: 'LICENCA' },
+        ),
+      ).rejects.toBeInstanceOf(PeriodoAusenciaInvalidoError);
+    });
+  });
 
   describe('ausências', () => {
     it('registra e permite remover uma ausência', async () => {

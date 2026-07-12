@@ -46,6 +46,38 @@ export class RegistrarAusenciaDto {
   data!: string;
 }
 
+/**
+ * Ausência a prazo: ausenta um colaborador por um período [inicio, fim] com uma
+ * justificativa (o motivo é obrigatório, pois vira falta JUSTIFICADA).
+ */
+export class RegistrarAusenciaPeriodoDto {
+  @IsString()
+  @IsNotEmpty({ message: 'O identificador da pessoa é obrigatório.' })
+  pessoaId!: string;
+
+  @IsDateString(
+    {},
+    { message: 'A data inicial deve estar em formato válido (ISO 8601).' },
+  )
+  inicio!: string;
+
+  @IsDateString(
+    {},
+    { message: 'A data final deve estar em formato válido (ISO 8601).' },
+  )
+  fim!: string;
+
+  @IsIn(MOTIVOS_JUSTIFICATIVA as unknown as string[], {
+    message: 'Motivo de justificativa inválido.',
+  })
+  motivo!: MotivoJustificativa;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500, { message: 'A observação é muito longa (máx. 500).' })
+  observacao?: string;
+}
+
 /** Filtro por período do relatório de ausências (Req 6.3). */
 export class PeriodoAusenciasDto {
   @IsDateString({}, { message: 'A data inicial deve ser uma data válida.' })

@@ -25,6 +25,7 @@ import {
   AusenciaDuplicadaError,
   AusenciaNaoEncontradaError,
   JustificativaInvalidaError,
+  PeriodoAusenciaInvalidoError,
 } from './operadores.errors';
 
 /** Autor de uma ação (usuário autenticado). */
@@ -99,6 +100,24 @@ function dadosJustificativa(
 
 /** A partir de quantas faltas no mês os gestores são avisados (RH). */
 const LIMITE_FALTAS_MES = 3;
+
+/** Máximo de dias que uma "ausência a prazo" pode cobrir (defensivo). */
+const MAX_DIAS_AUSENCIA_PRAZO = 186; // ~6 meses
+
+/** Um dia em milissegundos (passo entre meias-noites UTC — sem DST em Brasília). */
+const UM_DIA_MS = 24 * 60 * 60 * 1000;
+
+/** Resultado de registrar uma ausência a prazo (por período). */
+export interface ResultadoAusenciaPeriodo {
+  /** Faltas justificadas efetivamente marcadas (criadas + atualizadas). */
+  dias: number;
+  /** Faltas novas criadas no período. */
+  criadas: number;
+  /** Dias que já tinham falta e foram convertidos em justificada. */
+  atualizadas: number;
+  /** Dias de folga do colaborador ignorados (não são "escala"). */
+  folgasIgnoradas: number;
+}
 
 /** Formata uma data (UTC) como "dd/mm" para textos de aviso. */
 function formatarDiaMes(data: Date): string {
@@ -232,6 +251,119 @@ export class OperadoresService {
       });
     } catch {
       // defensivo: o aviso nunca deve impedir o registro da falta.
+    }
+  }
+
+  /**
+   * Ausência a prazo (por período): marca o colaborador como **falta
+   * justificada** em cada dia do intervalo [inicio, fim], com o mesmo motivo/
+   * observação de uma justificativa comum. Os dias de folga do colaborador são
+   * ignorados (não fazem parte da escala). Dias que já tinham falta são
+   * convertidos em justificada (não duplica). Envia um único aviso (não um por
+   * dia). O motivo é obrigatório (é uma falta JUSTIFICADA).
+   */
+  async registrarAusenciaPeriodo(
+    pessoaId: string,
+    inicio: Date,
+    fim: Date,
+    input: { motivo: MotivoJustificativa; observacao?: string | null },
+    autor: AutorAcao = {},
+  ): Promise<ResultadoAusenciaPeriodo> {
+    if (!input.motivo) throw new JustificativaInvalidaError();
+    const d0 = inicioDoDia(inicio);
+    const d1 = inicioDoDia(fim);
+    if (d1.getTime() < d0.getTime()) {
+      throw new PeriodoAusenciaInvalidoError(
+        'A data final deve ser igual ou posterior à inicial.',
+      );
+    }
+    const totalDias = Math.round((d1.getTime() - d0.getTime()) / UM_DIA_MS) + 1;
+    if (totalDias > MAX_DIAS_AUSENCIA_PRAZO) {
+      throw new PeriodoAusenciaInvalidoError(
+        `O período é muito longo (máx. ${MAX_DIAS_AUSENCIA_PRAZO} dias).`,
+      );
+    }
+    // Rejeita datas anteriores à Data_Inicial_Sistema (valida a mais antiga).
+    await this.validacaoData?.exigirDataPermitida(d0);
+
+    const colaborador = await this.prisma.colaborador.findUnique({
+      where: { id: pessoaId },
+      select: { nome: true, folgaDiaSemana: true },
+    });
+    const folga = colaborador?.folgaDiaSemana ?? -1;
+
+    // Faltas já existentes no período (para justificar em vez de duplicar).
+    const existentes = await this.prisma.ausencia.findMany({
+      where: { pessoaId, data: { gte: d0, lte: d1 } },
+      select: { id: true, data: true },
+    });
+    const idPorDia = new Map<number, string>();
+    for (const a of existentes) {
+      idPorDia.set(inicioDoDia(a.data).getTime(), a.id);
+    }
+
+    const justificativa = {
+      statusJustificativa: 'JUSTIFICADA' as StatusJustificativa,
+      motivoJustificativa: input.motivo,
+      observacaoJustificativa: input.observacao ?? null,
+      justificadaPorId: autor.id ?? null,
+      justificadaPorNome: autor.nome ?? null,
+      justificadaEm: new Date(),
+    };
+
+    let criadas = 0;
+    let atualizadas = 0;
+    let folgasIgnoradas = 0;
+    for (let t = d0.getTime(); t <= d1.getTime(); t += UM_DIA_MS) {
+      const dia = new Date(t);
+      // Pula o dia de folga do colaborador: não é dia de escala.
+      if (folga >= 0 && dia.getUTCDay() === folga) {
+        folgasIgnoradas += 1;
+        continue;
+      }
+      const existId = idPorDia.get(t);
+      if (existId) {
+        await this.prisma.ausencia.update({
+          where: { id: existId },
+          data: justificativa,
+        });
+        atualizadas += 1;
+      } else {
+        await this.prisma.ausencia.create({
+          data: {
+            pessoaId,
+            data: dia,
+            registradaPorId: autor.id ?? null,
+            registradaPorNome: autor.nome ?? null,
+            ...justificativa,
+          },
+        });
+        criadas += 1;
+      }
+    }
+
+    const dias = criadas + atualizadas;
+    // Um único aviso a todos (evita spamar um por dia).
+    await this.avisarAusenciaPeriodo(colaborador?.nome ?? null, d0, d1, dias);
+
+    return { dias, criadas, atualizadas, folgasIgnoradas };
+  }
+
+  /** Aviso único (a todos) de uma ausência a prazo. Best-effort. */
+  private async avisarAusenciaPeriodo(
+    nome: string | null,
+    inicio: Date,
+    fim: Date,
+    dias: number,
+  ): Promise<void> {
+    if (!this.notificacoes || dias <= 0 || !nome) return;
+    try {
+      await this.notificacoes.notificarTodos({
+        titulo: '🔴 Ausência a prazo',
+        mensagem: `${nome} ausente (justificado) de ${formatarDiaMes(inicio)} a ${formatarDiaMes(fim)} — ${dias} dia(s).`,
+      });
+    } catch {
+      // best-effort: o aviso nunca deve impedir o registro.
     }
   }
 
