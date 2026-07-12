@@ -6,7 +6,7 @@
  * "Centro de Controle ▸ Colaboradores" (apenas gestor).
  */
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colaboradoresService } from '../../api/services';
 import { Colaborador, FuncaoColaborador, TurnoColaborador } from '../../api/types';
@@ -36,9 +36,8 @@ const TURNOS: Record<TurnoColaborador, string> = {
   APOIO: 'Apoio',
 };
 
-function rotuloTurno(t: TurnoColaborador | null): string {
-  return t ? TURNOS[t] : '—';
-}
+/** Filtro ativo pelos cards de contagem (Total = todos). */
+type FiltroCard = 'TOTAL' | 'FISCAIS' | TurnoColaborador;
 
 export function ColaboradoresScreen({
   navigation,
@@ -49,23 +48,39 @@ export function ColaboradoresScreen({
     [],
   );
   const [busca, setBusca] = useState('');
+  // Filtro pelos cards de contagem. Começa em "Total" e volta a "Total" ao
+  // sair da tela (ver efeito abaixo).
+  const [filtroCard, setFiltroCard] = useState<FiltroCard>('TOTAL');
+
+  // Ao sair da tela (blur), reseta o filtro para "Total" — na próxima visita
+  // a lista volta ao padrão. addListener já devolve a função de limpeza.
+  useEffect(
+    () => navigation.addListener('blur', () => setFiltroCard('TOTAL')),
+    [navigation],
+  );
 
   const filtrados = useMemo(() => {
     const dados = lista.dados ?? [];
     const b = busca.trim().toLowerCase();
-    const base = !b
-      ? dados
-      : dados.filter(
-          (c) =>
-            c.nome.toLowerCase().includes(b) ||
-            c.matricula.toLowerCase().includes(b),
-        );
+    const passaCard = (c: Colaborador): boolean => {
+      if (filtroCard === 'TOTAL') return true;
+      if (filtroCard === 'FISCAIS') return c.funcao === 'FISCAL';
+      // Turnos contam apenas operadores (fiscais têm o seu próprio card).
+      return c.funcao === 'OPERADOR' && c.turno === filtroCard;
+    };
+    const base = dados.filter(
+      (c) =>
+        passaCard(c) &&
+        (!b ||
+          c.nome.toLowerCase().includes(b) ||
+          c.matricula.toLowerCase().includes(b)),
+    );
     // Ativos primeiro; inativos (desligados) ao final. Ordenação estável:
     // mantém a ordem do backend (função/nome) dentro de cada grupo.
     return [...base].sort((a, b2) =>
       a.ativo === b2.ativo ? 0 : a.ativo ? -1 : 1,
     );
-  }, [lista.dados, busca]);
+  }, [lista.dados, busca, filtroCard]);
 
   // Índice do primeiro inativo (para o divisor "Inativos" na lista).
   const primeiroInativoIdx = useMemo(
@@ -91,13 +106,13 @@ export function ColaboradoresScreen({
     };
   }, [lista.dados]);
 
-  const cardsContagem: { rotulo: string; valor: number; destaque?: boolean }[] = [
-    { rotulo: 'Total', valor: contagem.total, destaque: true },
-    { rotulo: 'Fiscais', valor: contagem.FISCAIS },
-    { rotulo: 'Abertura', valor: contagem.ABERTURA },
-    { rotulo: 'Intermediário', valor: contagem.INTERMEDIARIO },
-    { rotulo: 'Fechamento', valor: contagem.FECHAMENTO },
-    { rotulo: 'Apoio', valor: contagem.APOIO },
+  const cardsContagem: { chave: FiltroCard; rotulo: string; valor: number }[] = [
+    { chave: 'TOTAL', rotulo: 'Total', valor: contagem.total },
+    { chave: 'FISCAIS', rotulo: 'Fiscais', valor: contagem.FISCAIS },
+    { chave: 'ABERTURA', rotulo: 'Abertura', valor: contagem.ABERTURA },
+    { chave: 'INTERMEDIARIO', rotulo: 'Intermediário', valor: contagem.INTERMEDIARIO },
+    { chave: 'FECHAMENTO', rotulo: 'Fechamento', valor: contagem.FECHAMENTO },
+    { chave: 'APOIO', rotulo: 'Apoio', valor: contagem.APOIO },
   ];
 
   return (
@@ -151,24 +166,32 @@ export function ColaboradoresScreen({
 
       {!lista.carregando && !lista.erro && (lista.dados?.length ?? 0) > 0 && (
         <View style={styles.contadores}>
-          {cardsContagem.map((c) => (
-            <View
-              key={c.rotulo}
-              style={[styles.cardConta, c.destaque && styles.cardContaDestaque]}
-            >
-              <Text
-                style={[
-                  styles.cardContaNum,
-                  c.destaque && styles.cardContaNumDestaque,
-                ]}
+          {cardsContagem.map((c) => {
+            const ativo = filtroCard === c.chave;
+            return (
+              <TouchableOpacity
+                key={c.rotulo}
+                activeOpacity={0.7}
+                onPress={() => setFiltroCard(c.chave)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: ativo }}
+                accessibilityLabel={`Filtrar por ${c.rotulo}`}
+                style={[styles.cardConta, ativo && styles.cardContaDestaque]}
               >
-                {c.valor}
-              </Text>
-              <Text style={styles.cardContaRotulo} numberOfLines={1}>
-                {c.rotulo}
-              </Text>
-            </View>
-          ))}
+                <Text
+                  style={[
+                    styles.cardContaNum,
+                    ativo && styles.cardContaNumDestaque,
+                  ]}
+                >
+                  {c.valor}
+                </Text>
+                <Text style={styles.cardContaRotulo} numberOfLines={1}>
+                  {c.rotulo}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       )}
 
@@ -212,7 +235,9 @@ export function ColaboradoresScreen({
                 {!c.ativo ? ' (inativo)' : ''}
               </Text>
               <Text style={styles.itemMeta} numberOfLines={1}>
-                Mat. {c.matricula} · {FUNCOES[c.funcao]} · {rotuloTurno(c.turno)}
+                {[FUNCOES[c.funcao], c.turno ? TURNOS[c.turno] : null]
+                  .filter(Boolean)
+                  .join(' · ')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />

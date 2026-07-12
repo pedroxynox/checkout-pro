@@ -4,7 +4,7 @@
  * operadores (fiscais não entram nos turnos). Também valida que a contagem
  * considera apenas colaboradores ATIVOS.
  */
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { ColaboradoresScreen } from './ColaboradoresScreen';
 
@@ -50,7 +50,8 @@ function colab(
 }
 
 function navFake() {
-  return { navigate: jest.fn() } as never;
+  // addListener devolve a função de "unsubscribe" (usada na limpeza do efeito).
+  return { navigate: jest.fn(), addListener: jest.fn(() => jest.fn()) } as never;
 }
 
 describe('ColaboradoresScreen — contagem do quadro', () => {
@@ -79,6 +80,29 @@ describe('ColaboradoresScreen — contagem do quadro', () => {
     // Fiscais = 2, e é o ÚNICO card com o número 2 — ou seja, nenhum card de
     // turno contou os fiscais (Abertura/Fechamento operadores = 1 cada).
     expect(screen.getAllByText('2')).toHaveLength(1);
+  });
+
+  it('filtra a lista ao tocar num card (Fiscais some os operadores)', async () => {
+    colaboradoresService.listar.mockResolvedValue([
+      colab({ nome: 'Olivia Operadora', funcao: 'OPERADOR', turno: 'ABERTURA' }),
+      colab({ nome: 'Fabio Fiscal', funcao: 'FISCAL' }),
+    ]);
+    render(<ColaboradoresScreen navigation={navFake()} route={{} as never} />);
+
+    await screen.findByText('Total');
+    // Sem filtro (Total): ambos aparecem.
+    expect(screen.getByText('Olivia Operadora')).toBeTruthy();
+    expect(screen.getByText('Fabio Fiscal')).toBeTruthy();
+
+    // Toca no card "Fiscais": só o fiscal permanece na lista.
+    fireEvent.press(screen.getByLabelText('Filtrar por Fiscais'));
+    expect(screen.queryByText('Olivia Operadora')).toBeNull();
+    expect(screen.getByText('Fabio Fiscal')).toBeTruthy();
+
+    // Volta ao Total: os dois voltam a aparecer.
+    fireEvent.press(screen.getByLabelText('Filtrar por Total'));
+    expect(screen.getByText('Olivia Operadora')).toBeTruthy();
+    expect(screen.getByText('Fabio Fiscal')).toBeTruthy();
   });
 
   it('mostra estado vazio (e sem contadores) quando não há colaboradores', async () => {
