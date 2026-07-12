@@ -16,7 +16,7 @@ import { IncidenciaDuplicadaError } from '../incidencias/incidencias.errors';
 import { inicioDoDia } from '../common/datas';
 
 /** Motivo padrão de uma advertência por falta não justificada. */
-const MOTIVO_DESIDIA = 'Desídia (falta injustificada)';
+const MOTIVO_DESIDIA = 'Desídia (falta não justificada)';
 
 /**
  * Janela retroativa (dias) que o cron considera ao procurar faltas ainda
