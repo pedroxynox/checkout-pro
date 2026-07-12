@@ -12,6 +12,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colaboradoresService } from '../../api/services';
 import {
+  EstadoContrato,
   FuncaoColaborador,
   IndicadorPerfil,
   META_TIPO_INCIDENCIA,
@@ -74,10 +75,21 @@ function pilulaContrato(
   };
 }
 
-/** Rótulo de uma decisão de marco. */
-function rotuloDecisao(d: 'APROVADO' | 'REPROVADO' | null): string {
-  if (d === 'APROVADO') return 'Aprovado';
-  if (d === 'REPROVADO') return 'Reprovado';
+/**
+ * Rótulo de um marco do contrato. No ciclo automático não há decisão manual:
+ * um marco já cumprido (o tempo de casa já passou da data do marco) com o
+ * contrato ativo/efetivado é considerado APROVADO por decurso. Uma decisão
+ * explícita (histórica, via API) tem prioridade.
+ */
+function rotuloMarco(
+  decisao: 'APROVADO' | 'REPROVADO' | null,
+  estado: EstadoContrato,
+  diasDeCasa: number,
+  diasDoMarco: number,
+): string {
+  if (decisao === 'APROVADO') return 'Aprovado';
+  if (decisao === 'REPROVADO') return 'Reprovado';
+  if (estado !== 'ENCERRADO' && diasDeCasa >= diasDoMarco) return 'Aprovado';
   return 'Pendente';
 }
 
@@ -603,7 +615,7 @@ export function PerfilColaboradorScreen({
                 <Text style={styles.escalaRotulo}>Marco de 45 dias</Text>
                 <Text style={styles.escalaValor}>
                   {p.contrato.dataMarco45
-                    ? `${formatarData(p.contrato.dataMarco45)} · ${rotuloDecisao(p.contrato.decisao45)}`
+                    ? `${formatarData(p.contrato.dataMarco45)} · ${rotuloMarco(p.contrato.decisao45, p.contrato.estado, p.contrato.diasDeCasa, 45)}`
                     : '—'}
                 </Text>
               </View>
@@ -611,7 +623,7 @@ export function PerfilColaboradorScreen({
                 <Text style={styles.escalaRotulo}>Marco de 90 dias</Text>
                 <Text style={styles.escalaValor}>
                   {p.contrato.dataMarco90
-                    ? `${formatarData(p.contrato.dataMarco90)} · ${rotuloDecisao(p.contrato.decisao90)}`
+                    ? `${formatarData(p.contrato.dataMarco90)} · ${rotuloMarco(p.contrato.decisao90, p.contrato.estado, p.contrato.diasDeCasa, 90)}`
                     : '—'}
                 </Text>
               </View>
