@@ -202,8 +202,19 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
     const hoje = hojeISO();
     const ontem = ontemISO();
     const semVendas = !t.has('ventas') && !t.has('metaVendas');
-    const [arrec, vendaStatus, painelOntem, insumos, atencao, ckAb, ckFe, opDia] =
-      await Promise.all([
+    const temVendas = !semVendas;
+    const [
+      arrec,
+      vendaStatus,
+      painelOntem,
+      painelHoje,
+      statusVendasHoje,
+      insumos,
+      atencao,
+      ckAb,
+      ckFe,
+      opDia,
+    ] = await Promise.all([
         // Carga de arquivos: verificamos o DIA ANTERIOR, não o de hoje. Os
         // arquivos do dia são importados só à noite (~23h), então durante o dia
         // os de "hoje" ainda não chegaram — cobrá-los seria falso alarme. O que
@@ -217,6 +228,14 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
         semVendas
           ? Promise.resolve(null as PainelVendas | null)
           : vendasService.painel(ontem).catch(() => null as PainelVendas | null),
+        // Vendas de HOJE: painel + status do arquivo. Se o arquivo do dia já foi
+        // carregado, o card passa a mostrar "hoje"; senão, mostra "ontem".
+        temVendas
+          ? vendasService.painel(hoje).catch(() => null as PainelVendas | null)
+          : Promise.resolve(null as PainelVendas | null),
+        temVendas
+          ? vendasService.status(hoje).catch(() => null as StatusVendas | null)
+          : Promise.resolve(null as StatusVendas | null),
         t.has('insumos')
           ? insumosService.listarProativo().catch(() => [] as InsumoProativo[])
           : Promise.resolve([] as InsumoProativo[]),
@@ -233,7 +252,18 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           ? operadoresService.dia(hoje).catch(() => null as DiaOperadores | null)
           : Promise.resolve(null as DiaOperadores | null),
       ]);
-    return { arrec, vendaStatus, painelOntem, insumos, atencao, ckAb, ckFe, opDia };
+    return {
+      arrec,
+      vendaStatus,
+      painelOntem,
+      painelHoje,
+      statusVendasHoje,
+      insumos,
+      atencao,
+      ckAb,
+      ckFe,
+      opDia,
+    };
   }, [perfil]);
 
   const dados = req.dados;
@@ -241,7 +271,18 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
     return null;
   }
 
-  const { arrec, vendaStatus, painelOntem, insumos, atencao, ckAb, ckFe, opDia } = dados;
+  const {
+    arrec,
+    vendaStatus,
+    painelOntem,
+    painelHoje,
+    statusVendasHoje,
+    insumos,
+    atencao,
+    ckAb,
+    ckFe,
+    opDia,
+  } = dados;
   const horaAgora = new Date().getHours();
 
   // ----- Sinais (somente os relevantes ao perfil têm dados) -----
@@ -271,23 +312,32 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
   // Sinaliza cobertura "apertada" quando há faltas e poucos no turno.
   const coberturaApertada = temCobertura && faltas > 0 && trabalhando <= faltas;
 
-  const vendasOntem = painelOntem?.comparativos?.dia ?? null;
-  const variacaoOntem = vendasOntem?.variacao ?? null;
+  // Dia de referência das vendas: HOJE se o arquivo do dia já foi carregado;
+  // senão, ONTEM. Depois da virada do dia (00h), "hoje" muda e o que estava
+  // carregado passa a contar como "ontem" — sem precisar recarregar nada. Só
+  // volta a "hoje" quando o arquivo do novo dia for carregado.
+  const vendasEhHoje = !!statusVendasHoje?.enviado && !!painelHoje;
+  const painelVendas = vendasEhHoje ? painelHoje : painelOntem;
+  const rotuloVendasCurto = vendasEhHoje ? 'hoje' : 'ontem';
+  const rotuloVendasTitulo = vendasEhHoje ? 'Hoje' : 'Ontem';
+
+  const vendasDia = painelVendas?.comparativos?.dia ?? null;
+  const variacaoDia = vendasDia?.variacao ?? null;
   const vendasCairam =
-    variacaoOntem != null && variacaoOntem <= -QUEDA_VENDAS_RELEVANTE;
+    variacaoDia != null && variacaoDia <= -QUEDA_VENDAS_RELEVANTE;
   const metaAbaixo =
-    painelOntem != null &&
-    painelOntem.projecaoVsMeta != null &&
-    painelOntem.projecaoVsMeta < 0;
+    painelVendas != null &&
+    painelVendas.projecaoVsMeta != null &&
+    painelVendas.projecaoVsMeta < 0;
 
   // Recomendação extra (gestão): "ritmo da meta" — quanto ainda falta vender
   // por dia, em média, para fechar a meta do mês. Ajuda a decidir o foco do dia.
   const ritmoMeta = (() => {
-    if (!temas.has('metaVendas') || !painelOntem || painelOntem.metaMensal <= 0) {
+    if (!temas.has('metaVendas') || !painelVendas || painelVendas.metaMensal <= 0) {
       return null;
     }
-    const faltam = painelOntem.metaMensal - painelOntem.arrecadadoMes;
-    const diasRestantes = Math.max(1, painelOntem.diasNoMes - painelOntem.diasComVenda);
+    const faltam = painelVendas.metaMensal - painelVendas.arrecadadoMes;
+    const diasRestantes = Math.max(1, painelVendas.diasNoMes - painelVendas.diasComVenda);
     if (faltam <= 0) {
       return { batida: true as const, porDia: 0, diasRestantes };
     }
@@ -323,10 +373,10 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
       funcionalidade: 'IMPORTACOES',
     });
   }
-  if (vendasCairam && variacaoOntem != null) {
+  if (vendasCairam && variacaoDia != null) {
     acoes.push({
       prioridade: 'alta',
-      titulo: `Vendas de ontem caíram ${Math.abs(Math.round(variacaoOntem))}%`,
+      titulo: `Vendas de ${rotuloVendasCurto} caíram ${Math.abs(Math.round(variacaoDia))}%`,
       detalhe: 'Abra o Painel de Vendas para entender.',
       rota: 'PainelVendas',
       funcionalidade: 'PAINEL_VENDAS_VISUALIZAR',
@@ -359,12 +409,12 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
       funcionalidade: 'OPERADORES_AUSENCIAS',
     });
   }
-  if (metaAbaixo && painelOntem) {
-    const faltam = Math.abs(Math.round(painelOntem.projecaoVsMeta ?? 0));
+  if (metaAbaixo && painelVendas) {
+    const faltam = Math.abs(Math.round(painelVendas.projecaoVsMeta ?? 0));
     acoes.push({
       prioridade: 'media',
       titulo: `Projeção ${faltam}% abaixo da meta do mês`,
-      detalhe: `${Math.round(painelOntem.metaProgresso * 100)}% da meta já atingido`,
+      detalhe: `${Math.round(painelVendas.metaProgresso * 100)}% da meta já atingido`,
       rota: 'PainelVendas',
       funcionalidade: 'PAINEL_VENDAS_VISUALIZAR',
     });
@@ -409,20 +459,20 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
       ? 'Sem pendências relevantes para você hoje.'
       : `Pesa na nota: ${motivos.join(', ')}.`;
 
-  const subiu = variacaoOntem != null && variacaoOntem >= 0;
+  const subiu = variacaoDia != null && variacaoDia >= 0;
   const corVar =
-    variacaoOntem == null ? cores.textoSecundario : subiu ? cores.verde : cores.vermelho;
+    variacaoDia == null ? cores.textoSecundario : subiu ? cores.verde : cores.vermelho;
 
   // Briefing da Cluby: monta uma pergunta com os números do dia para que a
   // Cluby (IA) devolva um resumo curto e diga o que priorizar.
   const perguntaBriefing = (() => {
     const partes: string[] = [`saúde do negócio ${saude.nota}/100`];
-    if (vendasOntem) {
+    if (vendasDia) {
       partes.push(
-        `vendas de ontem ${formatarMoeda(vendasOntem.atual)}${
-          variacaoOntem != null
-            ? ` (${variacaoOntem >= 0 ? '+' : ''}${Math.round(
-                variacaoOntem,
+        `vendas de ${rotuloVendasCurto} ${formatarMoeda(vendasDia.atual)}${
+          variacaoDia != null
+            ? ` (${variacaoDia >= 0 ? '+' : ''}${Math.round(
+                variacaoDia,
               )}% vs. mesmo dia da semana passada)`
             : ''
         }`,
@@ -457,11 +507,11 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
     horaAgora < 12 ? 'Bom dia' : horaAgora < 18 ? 'Boa tarde' : 'Boa noite';
   const resumoNarrativo = (() => {
     const fatos: string[] = [];
-    if (vendasOntem) {
-      const base = `Ontem: ${formatarMoeda(vendasOntem.atual)}`;
+    if (vendasDia) {
+      const base = `${rotuloVendasTitulo}: ${formatarMoeda(vendasDia.atual)}`;
       fatos.push(
-        variacaoOntem != null
-          ? `${base} (${variacaoOntem >= 0 ? '+' : ''}${Math.round(variacaoOntem)}% vs. semana passada)`
+        variacaoDia != null
+          ? `${base} (${variacaoDia >= 0 ? '+' : ''}${Math.round(variacaoDia)}% vs. semana passada)`
           : base,
       );
     }
@@ -513,15 +563,18 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
         </Pressable>
       </View>
 
-      {/* Vendas de ontem — destaque para perfis de gestão */}
-      {temas.has('ventas') && vendasOntem ? (
+      {/* Vendas do dia de referência (hoje se já carregado; senão, ontem) —
+          destaque para perfis de gestão */}
+      {temas.has('ventas') && vendasDia ? (
         <Cartao estilo={styles.cartaoCompacto}>
           <View style={styles.vendasTopo}>
             <View>
-              <Text style={styles.saudeMini}>VENDAS DE ONTEM</Text>
-              <Text style={styles.vendasValor}>{formatarMoeda(vendasOntem.atual)}</Text>
+              <Text style={styles.saudeMini}>
+                {`VENDAS DE ${vendasEhHoje ? 'HOJE' : 'ONTEM'}`}
+              </Text>
+              <Text style={styles.vendasValor}>{formatarMoeda(vendasDia.atual)}</Text>
             </View>
-            {variacaoOntem != null ? (
+            {variacaoDia != null ? (
               <View
                 style={[
                   styles.vendasPill,
@@ -535,17 +588,17 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
                 )}
                 <Text style={[styles.vendasPillTexto, { color: corVar }]}>
                   {subiu ? '+' : ''}
-                  {Math.round(variacaoOntem)}%
+                  {Math.round(variacaoDia)}%
                 </Text>
               </View>
             ) : null}
           </View>
           <Text style={styles.vendasNota}>
-            {variacaoOntem != null
+            {variacaoDia != null
               ? `${subiu ? 'Acima' : 'Abaixo'} do mesmo dia da semana passada.`
               : 'Sem comparação disponível.'}
-            {painelOntem?.mediaDiaria
-              ? `  ·  Média diária do mês: ${formatarMoeda(painelOntem.mediaDiaria)}`
+            {painelVendas?.mediaDiaria
+              ? `  ·  Média diária do mês: ${formatarMoeda(painelVendas.mediaDiaria)}`
               : ''}
           </Text>
           {ritmoMeta ? (
