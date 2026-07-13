@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PessoaPonto } from './ponto.service';
-import { LeitorComprovanteService } from './leitor-comprovante.service';
 import { interpretarComprovante, normalizarTexto } from './ponto-ocr.parser';
 import { LerComprovanteDto } from './dto/ponto.dto';
 
@@ -17,31 +16,26 @@ export interface RespostaLeituraComprovante {
 }
 
 /**
- * Orquestra a leitura do comprovante (Fase B): obtém o texto (já pronto, vindo do
- * ML Kit do Android, ou via OCR do nosso servidor para a web), interpreta
- * nome/data/hora e sugere os colaboradores correspondentes. O usuário sempre
- * confirma antes de gravar a batida (o registro em si é feito pelo endpoint de
- * batidas da Fase A).
+ * Interpreta o comprovante (Fase B): recebe o **texto já lido no aparelho**
+ * (ML Kit, no APK), extrai nome/data/hora e sugere os colaboradores
+ * correspondentes. O usuário sempre confirma antes de gravar a batida (o
+ * registro em si é feito pelo endpoint de batidas da Fase A).
+ *
+ * A leitura da IMAGEM no servidor (OCR) foi desativada — só o APK lê o
+ * comprovante (no aparelho); na web o registro é manual. Assim o servidor não
+ * carrega trabalho pesado de OCR.
  */
 @Injectable()
 export class PontoOcrService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly leitor: LeitorComprovanteService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async lerComprovante(
     dto: LerComprovanteDto,
   ): Promise<RespostaLeituraComprovante> {
-    const temTexto = dto.texto && dto.texto.trim().length > 0;
-    if (!temTexto && !dto.imagem) {
-      throw new BadRequestException(
-        'Envie o texto lido ou a imagem do comprovante.',
-      );
+    const texto = (dto.texto ?? '').trim();
+    if (!texto) {
+      throw new BadRequestException('Envie o texto lido do comprovante.');
     }
-    const texto = temTexto
-      ? (dto.texto as string)
-      : await this.leitor.extrairTexto(dto.imagem as string);
 
     const interpretado = interpretarComprovante(texto);
     const candidatos = interpretado.nome

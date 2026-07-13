@@ -8,7 +8,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { pontoService } from '../../api/services';
 import {
@@ -150,23 +150,23 @@ export function RegistroPontoScreen(): React.ReactElement {
   }
 
   /**
-   * Lê o comprovante: no Android a câmera lê no aparelho (ML Kit); na web tira foto
-   * e o servidor faz o OCR. Preenche a hora e sugere o colaborador; o usuário
-   * confirma antes de gravar.
+   * Lê o comprovante: no APK a câmera lê o texto NO APARELHO (ML Kit). Preenche
+   * a hora e sugere o colaborador; o usuário confirma antes de gravar. (Na web
+   * não há leitor: o registro é manual.)
    */
   async function lerComprovante(): Promise<void> {
     setErro(null);
-    let captura: { texto?: string; imagem?: string } | null;
+    let captura: { texto?: string } | null;
     try {
       captura = await capturarComprovante();
     } catch {
-      setErro('Não foi possível abrir a câmera/galeria.');
+      setErro('Não foi possível abrir a câmera.');
       return;
     }
-    if (!captura) return;
+    if (!captura || !captura.texto) return;
     setLendo(true);
     try {
-      const r = await pontoService.lerComprovante(captura);
+      const r = await pontoService.lerComprovante({ texto: captura.texto });
       setLeituraInfo({ nome: r.nome, hora: r.hora });
       if (r.data) setData(r.data);
       if (pessoa) {
@@ -283,21 +283,26 @@ export function RegistroPontoScreen(): React.ReactElement {
         </Text>
       ) : null}
 
-      {/* Leitor do comprovante: câmera no app (ML Kit) / foto na web (servidor). */}
-      <Botao
-        titulo="Ler comprovante do ponto (foto)"
-        variante="secundario"
-        aoPressionar={() => void lerComprovante()}
-        carregando={lendo}
-      />
-      {leituraInfo ? (
-        <View style={styles.leituraBanner}>
-          <Ionicons name="scan-outline" size={16} color={cores.primaria} />
-          <Text style={styles.leituraTexto}>
-            Lido: {leituraInfo.nome ?? 'nome não identificado'}
-            {leituraInfo.hora ? ` · ${leituraInfo.hora}` : ' · sem hora'}
-          </Text>
-        </View>
+      {/* Leitor do comprovante: só no APK (lê no aparelho com ML Kit). Na web,
+          sem leitor on-device, o registro é feito manualmente. */}
+      {Platform.OS !== 'web' ? (
+        <>
+          <Botao
+            titulo="Ler comprovante do ponto (foto)"
+            variante="secundario"
+            aoPressionar={() => void lerComprovante()}
+            carregando={lendo}
+          />
+          {leituraInfo ? (
+            <View style={styles.leituraBanner}>
+              <Ionicons name="scan-outline" size={16} color={cores.primaria} />
+              <Text style={styles.leituraTexto}>
+                Lido: {leituraInfo.nome ?? 'nome não identificado'}
+                {leituraInfo.hora ? ` · ${leituraInfo.hora}` : ' · sem hora'}
+              </Text>
+            </View>
+          ) : null}
+        </>
       ) : null}
 
       {/* Seleção do colaborador */}

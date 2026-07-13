@@ -51,13 +51,10 @@ export const pontoService = {
   },
 
   /**
-   * Lê o comprovante: envia o texto (já lido no Android) ou a imagem (OCR no
-   * servidor, na web) e recebe nome/data/hora + colaboradores sugeridos.
+   * Lê o comprovante: envia o texto lido no aparelho (ML Kit, no APK) e recebe
+   * nome/data/hora + colaboradores sugeridos.
    */
-  lerComprovante(input: {
-    texto?: string;
-    imagem?: string;
-  }): Promise<LeituraComprovante> {
+  lerComprovante(input: { texto: string }): Promise<LeituraComprovante> {
     return apiClient.post<LeituraComprovante>('/ponto/ocr', input);
   },
 };
