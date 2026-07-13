@@ -14,10 +14,21 @@ import { FiscaisService } from '../fiscais/fiscais.service';
 import { StatusFiscal } from '../fiscais/fiscais.domain';
 import { EditarBatidaDto, RegistrarBatidaDto } from './dto/ponto.dto';
 
+// As batidas são gravadas com a HORA DO COMPROVANTE (hora de parede de Brasília)
+// rotulada como UTC (ex.: "09:00" → "...T09:00:00Z"). Para medir o segmento
+// "em curso" (quando falta a próxima batida) o "agora" precisa estar na MESMA
+// referência de hora de parede de Brasília — senão o relógio conta 3h a mais
+// (fuso UTC−3). O Brasil não tem horário de verão desde 2019, então o
+// deslocamento é fixo.
+const OFFSET_BRASILIA_MS = -3 * 60 * 60 * 1000;
+function agoraNaBrasilia(): Date {
+  return new Date(Date.now() + OFFSET_BRASILIA_MS);
+}
+
 /**
- * Diferença entre a hora da batida (relógio de Brasília, gravada como horário
- * "de parede" rotulado Z) e o UTC real. Ao alimentar o log de fiscais, somamos
- * 3h para que `calcularJornada` (que usa `new Date()` real) fique correto.
+ * Sentido inverso do offset acima: a hora da batida está em Brasília rotulada
+ * como Z, então somamos 3h para obter o instante em UTC real. Usado na ponte
+ * batidas → status do fiscal, cujo `calcularJornada` usa `new Date()` real.
  */
 const OFFSET_BRASILIA_PARA_UTC_MS = 3 * 60 * 60 * 1000;
 
@@ -168,7 +179,7 @@ export class PontoService {
     });
     const j = calcularJornadaDia(
       batidas.map((b) => ({ id: b.id, hora: b.hora })),
-      new Date(),
+      agoraNaBrasilia(),
       dia.getUTCDay(),
     );
     return {
