@@ -22,6 +22,7 @@ import { InsumoDetalheScreen } from '../screens/insumos/InsumoDetalheScreen';
 import { RequisicoesScreen } from '../screens/insumos/RequisicoesScreen';
 import { FiscaisScreen } from '../screens/fiscais/FiscaisScreen';
 import { JornadaFiscaisScreen } from '../screens/fiscais/JornadaFiscaisScreen';
+import { RegistroPontoScreen } from '../screens/ponto/RegistroPontoScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
 import { OperadoresScreen } from '../screens/operadores/OperadoresScreen';
 import { JustificativasScreen } from '../screens/operadores/JustificativasScreen';
@@ -140,6 +141,13 @@ export function AppNavigator(): React.ReactElement {
           name="JornadaFiscais"
           component={JornadaFiscaisScreen}
           options={{ title: 'Jornada da equipe' }}
+        />
+      )}
+      {podeAcessar('PONTO_VISUALIZAR') && (
+        <Stack.Screen
+          name="RegistroPonto"
+          component={RegistroPontoScreen}
+          options={{ title: 'Registro de Ponto' }}
         />
       )}
       {podeAcessar('CHECKLIST') && (

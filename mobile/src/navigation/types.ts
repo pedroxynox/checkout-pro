@@ -28,6 +28,7 @@ export type RootStackParamList = {
   Requisicoes: undefined;
   Fiscais: undefined;
   JornadaFiscais: undefined;
+  RegistroPonto: undefined;
   Escala: undefined;
   Checklist: undefined;
   Operadores: undefined;

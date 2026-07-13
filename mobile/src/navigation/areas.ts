@@ -25,6 +25,7 @@ export interface Area {
     | 'LoteApae'
     | 'Insumos'
     | 'Fiscais'
+    | 'RegistroPonto'
     | 'Escala'
     | 'Checklist'
     | 'Operadores'
@@ -106,6 +107,13 @@ export const AREAS: Area[] = [
     descricao: 'Abertura e fechamento com imagem',
     icone: 'checkbox-outline',
     funcionalidade: 'CHECKLIST',
+  },
+  {
+    rota: 'RegistroPonto',
+    titulo: 'Registro de Ponto',
+    descricao: 'Batidas do papelito, jornada e horas extras',
+    icone: 'time-outline',
+    funcionalidade: 'PONTO_VISUALIZAR',
   },
   {
     rota: 'Operadores',

@@ -1469,3 +1469,65 @@ export interface ResumoCarteiraContratos {
   vencendoSemana: number;
   decisaoPendente: number;
 }
+
+
+// ---------------------------------------------------------------------------
+// Registro de Ponto (leitor de papelito) — Fase A
+// ---------------------------------------------------------------------------
+
+/** Tipo de cada batida do dia (pela ordem: 1ª entrada ... 4ª encerramento). */
+export type TipoBatida =
+  | 'ENTRADA'
+  | 'SAIDA_INTERVALO'
+  | 'RETORNO_INTERVALO'
+  | 'ENCERRAMENTO'
+  | 'EXTRA';
+
+/** Estado da jornada do dia. */
+export type StatusJornadaPonto =
+  | 'SEM_REGISTRO'
+  | 'TRABALHANDO'
+  | 'EM_INTERVALO'
+  | 'ENCERRADO'
+  | 'INCOMPLETO';
+
+/** Uma batida como exibida no app. */
+export interface BatidaPontoView {
+  id: string;
+  /** Hora da batida (ISO). A hora que vale é a do papelito. */
+  hora: string;
+  tipo: TipoBatida;
+  origem: string;
+  registradoPorNome: string | null;
+}
+
+/** Jornada do dia calculada a partir das batidas. */
+export interface JornadaPontoView {
+  trabalhadoMs: number;
+  intervaloMs: number;
+  status: StatusJornadaPonto;
+  baseMs: number;
+  horasExtrasMs: number;
+  horasExtras50Ms: number;
+  horasExtras100Ms: number;
+  alertaIminente: boolean;
+  tac: boolean;
+  motivosTac: string[];
+  faltando: string[];
+}
+
+/** Resposta do dia: pessoa, jornada e batidas. */
+export interface JornadaDiaPonto {
+  pessoaId: string;
+  tipoPessoa: string;
+  data: string;
+  jornada: JornadaPontoView;
+  batidas: BatidaPontoView[];
+}
+
+/** Pessoa selecionável para registrar o ponto. */
+export interface PessoaPonto {
+  id: string;
+  nome: string;
+  tipoPessoa: 'FISCAL' | 'OPERADOR';
+}
