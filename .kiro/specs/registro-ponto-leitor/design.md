@@ -111,9 +111,8 @@ Funções sem I/O (fáceis de testar):
     ainda trabalhando (não encerrado). Dispara os avisos de "vai exceder".
   - `tac`: boolean e `motivosTac: string[]` — vira **TAC** quando:
     - `horasExtrasMs > LIMITE_EXTRAS_MS` (passou de 1h50), OU
-    - `intervaloMs < INTERVALO_MINIMO_MS` (intervalo menor que 1h).
-  - `intervaloAcimaMaximo`: boolean = `intervaloMs > INTERVALO_MAXIMO_MS` (3h) —
-    intervalo fora do permitido (sinalizar).
+    - `intervaloMs < INTERVALO_MINIMO_MS` (intervalo menor que 1h), OU
+    - `intervaloMs > INTERVALO_MAXIMO_MS` (intervalo maior que 3h).
   - `faltando`: lista do que falta (ex.: "retorno do intervalo").
 - Reusa `jornadaEsperadaMs(diaSemana)` de `fiscais.domain.ts` como **base** (ou
   move para um util compartilhado).
@@ -129,18 +128,19 @@ Funções sem I/O (fáceis de testar):
   - `LIMITE_EXTRAS_MS` = 1h50 (6 600 000 ms) — acima disso é TAC.
   - `INTERVALO_ESPERADO_MS` = 2h (7 200 000 ms).
   - `INTERVALO_MINIMO_MS` = 1h (3 600 000 ms) — abaixo disso é TAC.
-  - `INTERVALO_MAXIMO_MS` = 3h (10 800 000 ms) — acima disso é irregular.
+  - `INTERVALO_MAXIMO_MS` = 3h (10 800 000 ms) — acima disso é TAC.
   - Base = `jornadaEsperadaMs(diaSemana)` (Dom 7h20, Seg–Qui 7h, Sex–Sáb 8h).
 
-> **TAC** = classificação/rótulo que o usuário usa para marcar o dia como
-> irregular (excesso de extras ou intervalo curto). O termo é mantido como está;
-> o significado/legenda pode ser ajustado.
+> **TAC** = **Termo de Ajustamento de Conduta**. Quando um dia é classificado
+> como TAC, o sistema **notifica todos os usuários** (com o nome do colaborador
+> e o motivo).
 
 ### 3.1 Alertas de excesso (serviço agendado)
 `backend/src/ponto/ponto-alertas.service.ts` — cron **a cada 1 minuto**: para
 cada colaborador **ainda trabalhando hoje** com `horasExtrasMs >= 1h45`, envia
-notificação ("Fulano vai exceder o horário diário permitido"). O colaborador
-**continua podendo bater/carregar papelito**; ao passar de 1h50 o dia fica TAC.
+notificação **a todos os fiscais** ("Fulano vai exceder o horário diário
+permitido"). O colaborador **continua podendo bater/carregar papelito**; ao
+passar de 1h50 o dia fica TAC e o sistema **notifica todos os usuários**.
 Reaproveita `NotificacoesModule` (mesmo padrão de `fiscais-horario.service.ts`).
 
 ## 4. Backend — módulo `ponto`
@@ -211,7 +211,7 @@ Espelhar as duas strings em `mobile/src/auth/funcionalidades.ts` (ADR 0002).
   **O intervalo não conta como jornada** (3h + 2h intervalo + 4h = 7h).
 - Sem intervalo (2 batidas) = última − primeira.
 - Intervalo = retorno − saída_intervalo. Permitido **1h a 3h** (esperado 2h);
-  **< 1h → TAC**; **> 3h → irregular**.
+  **< 1h → TAC**; **> 3h → TAC**.
 - Extra = max(0, trabalhado − base_do_dia).
 - Base do dia: Dom 7h20 · Seg–Qui 7h · Sex–Sáb 8h.
 - **Adicional das extras:** Seg–Sáb = 50% · Domingo = 100%.
