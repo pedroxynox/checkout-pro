@@ -95,12 +95,17 @@ function temCabecalho(linhaNormalizada: string): boolean {
   return linhaNormalizada.split(' ').some((t) => CABECALHOS.includes(t));
 }
 
-/** Só letras (com acento) e espaços, 2+ palavras, sem cabeçalho. */
+/**
+ * Só letras (com acento) e espaços, sem cabeçalho, e com pelo menos DUAS
+ * palavras "de verdade" (3+ letras). Isso evita que ruído do OCR (ex.: "WINS
+ * NT", "VA RAL") seja mostrado como se fosse um nome — nesses casos é melhor
+ * não sugerir nada e deixar o usuário buscar.
+ */
 function pareceNome(linha: string): boolean {
   const limpa = linha.trim();
-  if (limpa.length < 5) return false;
+  if (limpa.length < 6) return false;
   if (!/^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s]+$/.test(limpa)) return false;
-  const palavras = limpa.split(/\s+/).filter((p) => p.length >= 2);
+  const palavras = limpa.split(/\s+/).filter((p) => p.length >= 3);
   if (palavras.length < 2) return false;
   return !temCabecalho(normalizarTexto(limpa));
 }
