@@ -11,6 +11,17 @@ import {
 } from './ponto.domain';
 import { EditarBatidaDto, RegistrarBatidaDto } from './dto/ponto.dto';
 
+// As batidas são gravadas com a HORA DO COMPROVANTE (hora de parede de Brasília)
+// rotulada como UTC (ex.: "09:00" → "...T09:00:00Z"). Para medir o segmento
+// "em curso" (quando falta a próxima batida) o "agora" precisa estar na MESMA
+// referência de hora de parede de Brasília — senão o relógio conta 3h a mais
+// (fuso UTC−3). O Brasil não tem horário de verão desde 2019, então o
+// deslocamento é fixo.
+const OFFSET_BRASILIA_MS = -3 * 60 * 60 * 1000;
+function agoraNaBrasilia(): Date {
+  return new Date(Date.now() + OFFSET_BRASILIA_MS);
+}
+
 /** Uma batida como exibida ao app. */
 export interface BatidaView {
   id: string;
@@ -142,7 +153,7 @@ export class PontoService {
     });
     const j = calcularJornadaDia(
       batidas.map((b) => ({ id: b.id, hora: b.hora })),
-      new Date(),
+      agoraNaBrasilia(),
       dia.getUTCDay(),
     );
     return {
