@@ -32,6 +32,7 @@ import { ChecklistModule } from './checklist/checklist.module';
 import { NotificacoesModule } from './notificacoes/notificacoes.module';
 import { AssistenteModule } from './assistente/assistente.module';
 import { DataInicialModule } from './data-inicial/data-inicial.module';
+import { EscalaDomingoModule } from './escala-domingo/escala-domingo.module';
 import { ResetOperacionalModule } from './reset-operacional/reset-operacional.module';
 
 @Module({
@@ -69,6 +70,7 @@ import { ResetOperacionalModule } from './reset-operacional/reset-operacional.mo
     AssistenteModule,
     AlertasModule,
     DataInicialModule,
+    EscalaDomingoModule,
     ResetOperacionalModule,
   ],
   controllers: [AppController],

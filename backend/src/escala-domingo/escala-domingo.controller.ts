@@ -1,0 +1,38 @@
+import { Body, Controller, Get, Put } from '@nestjs/common';
+import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
+import {
+  UsuarioAtual,
+  UsuarioAutenticado,
+} from '../common/decorators/usuario-atual.decorator';
+import { DefinirAncoraDomingoDto } from './dto/escala-domingo.dto';
+import {
+  EscalaDomingoConfig,
+  EscalaDomingoService,
+} from './escala-domingo.service';
+
+/**
+ * Controller do rodízio de domingo (`config/escala-domingo`).
+ *
+ * - `GET`: leitura autenticada (âncora + preview dos próximos domingos).
+ * - `PUT`: define o ponto de partida (restrito a `OPERADORES_CRUD` — gestor).
+ */
+@Controller('config/escala-domingo')
+export class EscalaDomingoController {
+  constructor(private readonly service: EscalaDomingoService) {}
+
+  /** Configuração vigente do rodízio + preview dos próximos domingos. */
+  @Get()
+  obter(): Promise<EscalaDomingoConfig> {
+    return this.service.obter();
+  }
+
+  /** Define o ponto de partida do rodízio (somente gestor). */
+  @Put()
+  @Funcionalidade('OPERADORES_CRUD')
+  definir(
+    @Body() dto: DefinirAncoraDomingoDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<EscalaDomingoConfig> {
+    return this.service.definir(dto.ancoraData, dto.ancoraGrupo, usuario?.sub);
+  }
+}
