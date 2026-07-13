@@ -34,6 +34,7 @@ import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, formatarDuracao, hojeISO } from '../../utils/formato';
 import { capturarComprovante } from './leitorComprovante';
+import { LeitorComprovanteAoVivo } from './leitorAoVivo';
 
 const ROTULO_TIPO: Record<TipoBatida, string> = {
   ENTRADA: 'Entrada',
@@ -102,6 +103,7 @@ export function RegistroPontoScreen(): React.ReactElement {
   const [sessao, setSessao] = useState(0);
 
   // Leitura do comprovante (Fase B): estado do OCR e o que foi lido.
+  const [scannerAberto, setScannerAberto] = useState(false);
   const [lendo, setLendo] = useState(false);
   const [leituraInfo, setLeituraInfo] = useState<{
     nome: string | null;
@@ -184,23 +186,14 @@ export function RegistroPontoScreen(): React.ReactElement {
   }
 
   /**
-   * Lê o comprovante: no APK a câmera lê o texto NO APARELHO (ML Kit). Preenche
-   * a hora e sugere o colaborador; o usuário confirma antes de gravar. (Na web
-   * não há leitor: o registro é manual.)
+   * Interpreta no servidor o texto lido (pelo leitor ao vivo ou pela foto):
+   * preenche a hora e sugere o colaborador; o usuário confirma antes de gravar.
    */
-  async function lerComprovante(): Promise<void> {
-    setErro(null);
-    let captura: { texto?: string } | null;
-    try {
-      captura = await capturarComprovante();
-    } catch {
-      setErro('Não foi possível abrir a câmera.');
-      return;
-    }
-    if (!captura || !captura.texto) return;
+  async function processarTextoLido(texto: string): Promise<void> {
     setLendo(true);
+    setErro(null);
     try {
-      const r = await pontoService.lerComprovante({ texto: captura.texto });
+      const r = await pontoService.lerComprovante({ texto });
       setLeituraInfo({ nome: r.nome, hora: r.hora });
       if (r.data) setData(r.data);
       if (pessoa) {
@@ -223,6 +216,20 @@ export function RegistroPontoScreen(): React.ReactElement {
     } finally {
       setLendo(false);
     }
+  }
+
+  /** Reforço manual: tira uma única foto e lê (fallback do leitor ao vivo). */
+  async function tirarFoto(): Promise<void> {
+    setErro(null);
+    let captura: { texto?: string } | null;
+    try {
+      captura = await capturarComprovante();
+    } catch {
+      setErro('Não foi possível abrir a câmera.');
+      return;
+    }
+    if (!captura || !captura.texto) return;
+    await processarTextoLido(captura.texto);
   }
 
   function trocarPessoa(): void {
@@ -350,16 +357,20 @@ export function RegistroPontoScreen(): React.ReactElement {
         </Text>
       ) : null}
 
-      {/* Leitor do comprovante: só no APK (lê no aparelho com ML Kit). Na web,
-          sem leitor on-device, o registro é feito manualmente. */}
+      {/* Leitor do comprovante: só no APK (lê no aparelho com ML Kit). A câmera
+          escaneia sozinha e captura quando a leitura fica boa; a foto única é
+          um reforço manual. Na web, sem leitor on-device, o registro é manual. */}
       {Platform.OS !== 'web' ? (
         <>
           <Botao
-            titulo="Ler comprovante do ponto (foto)"
-            variante="secundario"
-            aoPressionar={() => void lerComprovante()}
+            titulo="Ler comprovante (automático)"
+            aoPressionar={() => setScannerAberto(true)}
             carregando={lendo}
           />
+          <Pressable onPress={() => void tirarFoto()} style={styles.linkFoto}>
+            <Ionicons name="camera-outline" size={16} color={cores.primaria} />
+            <Text style={styles.linkFotoTexto}>Tirar foto do comprovante</Text>
+          </Pressable>
           {leituraInfo ? (
             <View style={styles.leituraBanner}>
               <Ionicons name="scan-outline" size={16} color={cores.primaria} />
@@ -369,6 +380,15 @@ export function RegistroPontoScreen(): React.ReactElement {
               </Text>
             </View>
           ) : null}
+
+          <LeitorComprovanteAoVivo
+            visivel={scannerAberto}
+            aoLer={(texto) => {
+              setScannerAberto(false);
+              void processarTextoLido(texto);
+            }}
+            aoCancelar={() => setScannerAberto(false)}
+          />
         </>
       ) : null}
 
@@ -582,6 +602,19 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginBottom: espacamento.sm,
+  },
+  linkFoto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: espacamento.xs,
+    marginTop: espacamento.sm,
+    marginBottom: espacamento.sm,
+  },
+  linkFotoTexto: {
+    ...tipografia.rotulo,
+    color: cores.primaria,
+    fontWeight: '600',
   },
   leituraBanner: {
     flexDirection: 'row',

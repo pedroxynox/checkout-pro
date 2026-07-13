@@ -30,6 +30,11 @@ jest.mock('./leitorComprovante', () => ({
   capturarComprovante: jest.fn(),
 }));
 
+// Leitor ao vivo (câmera): neutro nos testes de tela (é exercitado no APK).
+jest.mock('./leitorAoVivo', () => ({
+  LeitorComprovanteAoVivo: () => null,
+}));
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { capturarComprovante } = require('./leitorComprovante');
 
@@ -115,7 +120,7 @@ describe('RegistroPontoScreen', () => {
     });
 
     render(<RegistroPontoScreen />);
-    fireEvent.press(screen.getByText('Ler comprovante do ponto (foto)'));
+    fireEvent.press(screen.getByText('Tirar foto do comprovante'));
 
     // Sugere o colaborador lido; ao escolher, abre o formulário com a hora.
     fireEvent.press(await screen.findByText('Ana Souza'));
