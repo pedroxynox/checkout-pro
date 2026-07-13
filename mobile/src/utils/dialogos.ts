@@ -1,47 +1,100 @@
 /**
- * Diálogos multiplataforma (móvel + web).
+ * Diálogos do app (móvel + web) com visual próprio.
  *
- * O `Alert` do React Native **não é implementado pelo react-native-web**: na
- * web, `Alert.alert(...)` com botões é um no-op e os callbacks (`onPress`)
- * nunca disparam. Por isso, ações que dependem de confirmação (ex.: limpar
- * histórico) não funcionavam no app web.
+ * Antes usávamos o `Alert` do React Native (que nem funciona na web) e o
+ * `window.confirm/alert` do navegador — sem identidade visual. Agora estas
+ * funções publicam um "pedido de diálogo" para um único componente host
+ * (`DialogHost`, montado na raiz do app), que exibe uma janela bonita e
+ * padronizada. A API continua a mesma (baseada em Promise), então nenhuma tela
+ * precisou mudar.
  *
- * Estas funções usam o `confirm`/`alert` nativos do navegador na web e o
- * `Alert` do RN no celular, com uma API baseada em Promise.
+ * Dois formatos:
+ *  - `confirmar(...)` → janela de **confirmação** (Cancelar / Confirmar);
+ *  - `notificar(...)` → janela de **aviso** (um botão OK), com tom de sucesso
+ *    ou de erro inferido pelo título.
  */
-import { Alert, Platform } from 'react-native';
+
+export type TipoDialogo = 'confirmar' | 'notificar';
+export type TomDialogo = 'sucesso' | 'erro';
+
+/** Um pedido de diálogo a ser exibido pelo host. */
+export interface PedidoDialogo {
+  id: number;
+  tipo: TipoDialogo;
+  titulo: string;
+  mensagem: string;
+  textoConfirmar: string;
+  tom: TomDialogo;
+  resolver: (confirmado: boolean) => void;
+}
+
+type Ouvinte = (pedido: PedidoDialogo | null) => void;
+
+let ouvinte: Ouvinte | null = null;
+let ativo: PedidoDialogo | null = null;
+const fila: PedidoDialogo[] = [];
+let sequencia = 0;
+
+/** O `DialogHost` registra-se aqui para receber o pedido ativo (ou null). */
+export function registrarOuvinteDialogo(fn: Ouvinte | null): void {
+  ouvinte = fn;
+  if (fn) fn(ativo);
+}
+
+function emitir(): void {
+  if (ouvinte) ouvinte(ativo);
+}
+
+function enfileirar(pedido: Omit<PedidoDialogo, 'id'>): void {
+  const completo: PedidoDialogo = { ...pedido, id: ++sequencia };
+  if (ativo) {
+    fila.push(completo);
+  } else {
+    ativo = completo;
+    emitir();
+  }
+}
+
+/** Chamado pelo host quando o usuário responde (fecha a janela atual). */
+export function responderDialogo(confirmado: boolean): void {
+  const atual = ativo;
+  ativo = fila.shift() ?? null;
+  emitir();
+  atual?.resolver(confirmado);
+}
 
 /**
  * Pede confirmação ao usuário. Resolve `true` se confirmou, `false` caso
- * contrário. Funciona tanto no app móvel quanto na web.
+ * contrário.
  */
 export function confirmar(
   titulo: string,
   mensagem: string,
   textoConfirmar = 'Confirmar',
 ): Promise<boolean> {
-  if (Platform.OS === 'web') {
-    const ok =
-      typeof window !== 'undefined' && typeof window.confirm === 'function'
-        ? window.confirm(`${titulo}\n\n${mensagem}`)
-        : true;
-    return Promise.resolve(ok);
-  }
   return new Promise((resolve) => {
-    Alert.alert(titulo, mensagem, [
-      { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
-      { text: textoConfirmar, style: 'destructive', onPress: () => resolve(true) },
-    ]);
+    enfileirar({
+      tipo: 'confirmar',
+      titulo,
+      mensagem,
+      textoConfirmar,
+      tom: 'sucesso',
+      resolver: resolve,
+    });
   });
 }
 
-/** Exibe um aviso simples (informativo), funcionando no móvel e na web. */
+// Títulos que indicam erro/validação → janela com tom de alerta (vermelho).
+const RE_ERRO = /erro|falha|obrigat|inv[aá]lid|curta|permiss|negad|n[ãa]o /i;
+
+/** Exibe um aviso simples (informativo). Sucesso (verde) ou erro (vermelho). */
 export function notificar(titulo: string, mensagem: string): void {
-  if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined' && typeof window.alert === 'function') {
-      window.alert(`${titulo}\n\n${mensagem}`);
-    }
-    return;
-  }
-  Alert.alert(titulo, mensagem);
+  enfileirar({
+    tipo: 'notificar',
+    titulo,
+    mensagem,
+    textoConfirmar: 'OK',
+    tom: RE_ERRO.test(titulo) ? 'erro' : 'sucesso',
+    resolver: () => {},
+  });
 }

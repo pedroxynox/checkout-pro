@@ -29,6 +29,7 @@ import { AuthProvider } from './src/auth/AuthContext';
 import { ConfigSistemaProvider } from './src/config/ConfigSistemaContext';
 import { OfflineProvider } from './src/offline/OfflineContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { DialogHost } from './src/components';
 import { cores } from './src/theme';
 import { useProtecaoTela } from './src/utils/protecaoTela';
 
@@ -104,6 +105,7 @@ export default function App(): React.ReactElement {
         <ConfigSistemaProvider>
           <OfflineProvider>
             <RootNavigator />
+            <DialogHost />
           </OfflineProvider>
         </ConfigSistemaProvider>
       </AuthProvider>

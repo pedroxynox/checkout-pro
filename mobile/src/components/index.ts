@@ -16,3 +16,4 @@ export {
 export type { FatiaGrafico, BarraVertical } from './Graficos';
 export { LeitorCodigoBarras } from './LeitorCodigoBarras';
 export { ToastNotificacao } from './ToastNotificacao';
+export { DialogHost } from './DialogHost';
