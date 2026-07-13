@@ -13,8 +13,13 @@ import {
   UsuarioAtual,
   UsuarioAutenticado,
 } from '../common/decorators/usuario-atual.decorator';
-import { EditarBatidaDto, RegistrarBatidaDto } from './dto/ponto.dto';
+import {
+  EditarBatidaDto,
+  LerPapelitoDto,
+  RegistrarBatidaDto,
+} from './dto/ponto.dto';
 import { JornadaDiaResposta, PessoaPonto, PontoService } from './ponto.service';
+import { PontoOcrService, RespostaLeituraPapelito } from './ponto-ocr.service';
 
 /**
  * API do Registro de Ponto (leitor de papelito) — Fase A.
@@ -24,7 +29,21 @@ import { JornadaDiaResposta, PessoaPonto, PontoService } from './ponto.service';
  */
 @Controller('ponto')
 export class PontoController {
-  constructor(private readonly service: PontoService) {}
+  constructor(
+    private readonly service: PontoService,
+    private readonly ocr: PontoOcrService,
+  ) {}
+
+  /**
+   * Lê o papelito (Fase B): recebe o texto já lido (ML Kit no Android) OU a
+   * imagem (OCR no nosso servidor, para a web) e devolve nome/data/hora e os
+   * colaboradores sugeridos, para o usuário confirmar antes de gravar.
+   */
+  @Post('ocr')
+  @Funcionalidade('PONTO_REGISTRAR')
+  lerPapelito(@Body() dto: LerPapelitoDto): Promise<RespostaLeituraPapelito> {
+    return this.ocr.lerPapelito(dto);
+  }
 
   /** Busca pessoas (fiscais) por nome para escolher de quem é o papelito. */
   @Get('pessoas')

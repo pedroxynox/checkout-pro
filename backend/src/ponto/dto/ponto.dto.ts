@@ -41,6 +41,17 @@ export class RegistrarBatidaDto {
   comprovanteUrl?: string;
 }
 
+/** Leitura do papelito: texto (já lido no app) OU imagem (OCR no servidor). */
+export class LerPapelitoDto {
+  @IsOptional()
+  @IsString()
+  texto?: string;
+
+  @IsOptional()
+  @IsString()
+  imagem?: string;
+}
+
 /** Corrige uma batida: a hora (reclassifica o dia) e/ou o tipo. */
 export class EditarBatidaDto {
   @IsOptional()
