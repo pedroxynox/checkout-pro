@@ -52,17 +52,17 @@ export interface PessoaPonto {
 }
 
 /**
- * Registro de Ponto (leitor de papelito) — Fase A.
+ * Registro de Ponto (leitor de comprovante) — Fase A.
  *
  * Grava as batidas do relógio físico (uma linha por batida), classifica-as
  * pela ordem cronológica do dia e calcula a jornada (delegando a matemática ao
- * domínio puro `ponto.domain`). A hora que vale é a do papelito.
+ * domínio puro `ponto.domain`). A hora que vale é a do comprovante.
  */
 @Injectable()
 export class PontoService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Busca fiscais por nome (para escolher de quem é o papelito). */
+  /** Busca fiscais por nome (para escolher de quem é o comprovante). */
   async buscarPessoas(busca?: string): Promise<PessoaPonto[]> {
     const where: Prisma.FiscalWhereInput =
       busca && busca.trim()

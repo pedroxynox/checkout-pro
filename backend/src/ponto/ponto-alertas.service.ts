@@ -12,7 +12,7 @@ import { PontoService } from './ponto.service';
  * - quando as horas extras chegam a 1h45 (ainda trabalhando), envia um aviso
  *   **a todos os fiscais** de que a pessoa vai exceder o horário diário — o
  *   aviso repete a cada minuto enquanto o alerta estiver ativo (o fiscal pode
- *   continuar batendo/carregando o papelito);
+ *   continuar batendo/carregando o comprovante);
  * - quando o dia é classificado como **TAC** (Termo de Ajustamento de Conduta:
  *   extras acima de 1h50, ou intervalo menor que 1h ou maior que 3h), notifica
  *   **todos os usuários** — uma única vez por dia por colaborador.

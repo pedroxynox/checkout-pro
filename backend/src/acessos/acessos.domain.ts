@@ -60,7 +60,7 @@ export const TODAS_FUNCIONALIDADES = [
   'FISCAIS_JORNADA',
   'ESCALA_VISUALIZAR',
   'ESCALA_EDITAR',
-  // Registro de Ponto (leitor de papelito): registrar/editar batidas e ver o
+  // Registro de Ponto (leitor de comprovante): registrar/editar batidas e ver o
   // painel de jornada.
   'PONTO_REGISTRAR',
   'PONTO_VISUALIZAR',
@@ -107,7 +107,7 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
   'PAINEL_VENDAS_EDITAR',
   'INDICADOR_QUEBRA',
   'OPERADORES_AUSENCIAS',
-  // Registro de ponto: o fiscal pode ler o papelito de qualquer colaborador e
+  // Registro de ponto: o fiscal pode ler o comprovante de qualquer colaborador e
   // ver o painel de jornada.
   'PONTO_REGISTRAR',
   'PONTO_VISUALIZAR',
@@ -183,7 +183,7 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
     'FISCAIS_STATUS',
     // Log de jornada dos fiscais (horas trabalhadas e intervalos).
     'FISCAIS_JORNADA',
-    // Registro de ponto (leitor de papelito).
+    // Registro de ponto (leitor de comprovante).
     'PONTO_REGISTRAR',
     'PONTO_VISUALIZAR',
     // Contratos de experiência: o gerente visualiza e decide os marcos.

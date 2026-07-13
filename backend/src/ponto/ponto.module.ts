@@ -5,16 +5,16 @@ import { PontoService } from './ponto.service';
 import { PontoAlertasService } from './ponto-alertas.service';
 import { PontoOcrService } from './ponto-ocr.service';
 import {
-  LeitorPapelitoService,
+  LeitorComprovanteService,
   OcrServidorService,
-} from './leitor-papelito.service';
+} from './leitor-comprovante.service';
 
 /**
- * Módulo do Registro de Ponto (leitor de papelito) — Fase A.
+ * Módulo do Registro de Ponto (leitor de comprovante) — Fase A.
  *
  * Registro manual das batidas do relógio físico + cálculo da jornada do dia +
  * alerta de excesso (a cada minuto). O `PrismaService` é global. A Fase B (OCR
- * do papelito) entra em serviços complementares.
+ * do comprovante) entra em serviços complementares.
  */
 @Module({
   imports: [NotificacoesModule],
@@ -23,7 +23,7 @@ import {
     PontoService,
     PontoAlertasService,
     PontoOcrService,
-    { provide: LeitorPapelitoService, useClass: OcrServidorService },
+    { provide: LeitorComprovanteService, useClass: OcrServidorService },
   ],
   exports: [PontoService],
 })

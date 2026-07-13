@@ -2,10 +2,10 @@ import {
   extrairData,
   extrairHora,
   extrairNome,
-  interpretarPapelito,
+  interpretarComprovante,
 } from './ponto-ocr.parser';
 
-const PAPELITO = [
+const COMPROVANTE = [
   'COMPROVANTE DE REGISTRO ELETRONICO DE PONTO',
   'SUPERMERCADO EXEMPLO LTDA',
   'CNPJ 12.345.678/0001-90',
@@ -15,7 +15,7 @@ const PAPELITO = [
   'DATA 12/07/2026  HORA 07:56',
 ].join('\n');
 
-describe('parser do papelito', () => {
+describe('parser do comprovante', () => {
   it('extrai a hora em HH:mm', () => {
     expect(extrairHora('... HORA 07:56')).toBe('07:56');
     expect(extrairHora('bateu 7h05')).toBe('07:05');
@@ -29,17 +29,17 @@ describe('parser do papelito', () => {
   });
 
   it('extrai o nome pelo rótulo', () => {
-    expect(extrairNome(PAPELITO)).toBe('ANA SOUZA SILVA');
+    expect(extrairNome(COMPROVANTE)).toBe('ANA SOUZA SILVA');
   });
 
   it('não confunde a empresa/cabeçalho com o nome', () => {
-    const nome = extrairNome(PAPELITO);
+    const nome = extrairNome(COMPROVANTE);
     expect(nome).not.toContain('LTDA');
     expect(nome).not.toContain('CNPJ');
   });
 
-  it('interpreta o papelito completo', () => {
-    const r = interpretarPapelito(PAPELITO);
+  it('interpreta o comprovante completo', () => {
+    const r = interpretarComprovante(COMPROVANTE);
     expect(r).toMatchObject({
       nome: 'ANA SOUZA SILVA',
       data: '2026-07-12',
@@ -48,7 +48,7 @@ describe('parser do papelito', () => {
   });
 
   it('devolve nulos quando não encontra', () => {
-    const r = interpretarPapelito('texto ilegível 123 %%%');
+    const r = interpretarComprovante('texto ilegível 123 %%%');
     expect(r.nome).toBeNull();
     expect(r.data).toBeNull();
     expect(r.hora).toBeNull();

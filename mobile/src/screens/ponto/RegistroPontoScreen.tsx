@@ -1,9 +1,9 @@
 /**
- * Registro de Ponto (leitor de papelito) — Fase A.
+ * Registro de Ponto (leitor de comprovante) — Fase A.
  *
  * Permite escolher um colaborador (fiscal), ver a jornada do dia calculada a
  * partir das batidas e registrar/corrigir/remover batidas manualmente (a hora
- * do papelito). Há um "modo lote" para registrar vários papelitos em sequência.
+ * do comprovante). Há um "modo lote" para registrar vários comprovantes em sequência.
  * A leitura automática por câmera/OCR entra na Fase B.
  */
 import { Ionicons } from '@expo/vector-icons';
@@ -31,7 +31,7 @@ import {
 } from '../../components';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { formatarData, formatarDuracao, hojeISO } from '../../utils/formato';
-import { capturarPapelito } from './leitorPapelito';
+import { capturarComprovante } from './leitorComprovante';
 
 const ROTULO_TIPO: Record<TipoBatida, string> = {
   ENTRADA: 'Entrada',
@@ -56,7 +56,7 @@ function seloStatus(s: StatusJornadaPonto): { texto: string; cor: string; fundo:
   }
 }
 
-/** Hora "HH:mm" a partir do ISO gravado (a hora do papelito, sem fuso). */
+/** Hora "HH:mm" a partir do ISO gravado (a hora do comprovante, sem fuso). */
 function horaLabel(iso: string): string {
   return iso.slice(11, 16);
 }
@@ -90,11 +90,11 @@ export function RegistroPontoScreen(): React.ReactElement {
   const [salvando, setSalvando] = useState(false);
   const [erroForm, setErroForm] = useState<string | null>(null);
 
-  // Modo lote (vários papelitos em sequência) + contador da sessão.
+  // Modo lote (vários comprovantes em sequência) + contador da sessão.
   const [loteAtivo, setLoteAtivo] = useState(false);
   const [sessao, setSessao] = useState(0);
 
-  // Leitura do papelito (Fase B): estado do OCR e o que foi lido.
+  // Leitura do comprovante (Fase B): estado do OCR e o que foi lido.
   const [lendo, setLendo] = useState(false);
   const [leituraInfo, setLeituraInfo] = useState<{
     nome: string | null;
@@ -141,7 +141,7 @@ export function RegistroPontoScreen(): React.ReactElement {
     setBusca('');
     setResultados([]);
     setErro(null);
-    // Se a hora veio do papelito, já abre o formulário preenchido.
+    // Se a hora veio do comprovante, já abre o formulário preenchido.
     if (horaPendente) {
       setHoraTexto(horaPendente);
       setHoraPendente(null);
@@ -150,15 +150,15 @@ export function RegistroPontoScreen(): React.ReactElement {
   }
 
   /**
-   * Lê o papelito: no Android a câmera lê no aparelho (ML Kit); na web tira foto
+   * Lê o comprovante: no Android a câmera lê no aparelho (ML Kit); na web tira foto
    * e o servidor faz o OCR. Preenche a hora e sugere o colaborador; o usuário
    * confirma antes de gravar.
    */
-  async function lerPapelito(): Promise<void> {
+  async function lerComprovante(): Promise<void> {
     setErro(null);
     let captura: { texto?: string; imagem?: string } | null;
     try {
-      captura = await capturarPapelito();
+      captura = await capturarComprovante();
     } catch {
       setErro('Não foi possível abrir a câmera/galeria.');
       return;
@@ -166,7 +166,7 @@ export function RegistroPontoScreen(): React.ReactElement {
     if (!captura) return;
     setLendo(true);
     try {
-      const r = await pontoService.lerPapelito(captura);
+      const r = await pontoService.lerComprovante(captura);
       setLeituraInfo({ nome: r.nome, hora: r.hora });
       if (r.data) setData(r.data);
       if (pessoa) {
@@ -181,7 +181,11 @@ export function RegistroPontoScreen(): React.ReactElement {
         setErro('Não identifiquei o colaborador. Busque pelo nome e registre a hora.');
       }
     } catch (e) {
-      setErro(e instanceof ApiError ? e.message : 'Não foi possível ler o papelito.');
+      setErro(
+        e instanceof ApiError
+          ? e.message
+          : 'Não foi possível ler o comprovante do ponto.',
+      );
     } finally {
       setLendo(false);
     }
@@ -270,7 +274,7 @@ export function RegistroPontoScreen(): React.ReactElement {
           color={loteAtivo ? cores.primaria : cores.textoSecundario}
         />
         <Text style={styles.loteTexto}>
-          Modo lote (registrar vários papelitos em sequência)
+          Modo lote (registrar vários comprovantes em sequência)
         </Text>
       </Pressable>
       {loteAtivo && sessao > 0 ? (
@@ -279,11 +283,11 @@ export function RegistroPontoScreen(): React.ReactElement {
         </Text>
       ) : null}
 
-      {/* Leitor do papelito: câmera no app (ML Kit) / foto na web (servidor). */}
+      {/* Leitor do comprovante: câmera no app (ML Kit) / foto na web (servidor). */}
       <Botao
-        titulo="Ler papelito (foto)"
+        titulo="Ler comprovante do ponto (foto)"
         variante="secundario"
-        aoPressionar={() => void lerPapelito()}
+        aoPressionar={() => void lerComprovante()}
         carregando={lendo}
       />
       {leituraInfo ? (
@@ -300,7 +304,7 @@ export function RegistroPontoScreen(): React.ReactElement {
       {!pessoa ? (
         <Cartao>
           <CampoTexto
-            rotulo="Colaborador (nome do papelito)"
+            rotulo="Colaborador (nome no comprovante do ponto)"
             placeholder="Digite o nome…"
             value={busca}
             onChangeText={setBusca}
@@ -382,7 +386,7 @@ export function RegistroPontoScreen(): React.ReactElement {
           ) : dados ? (
             <EstadoVazio
               titulo="Sem batidas neste dia"
-              descricao="Registre a primeira batida (entrada) do papelito."
+              descricao="Registre a primeira batida (entrada) do comprovante."
             />
           ) : null}
 
@@ -393,7 +397,7 @@ export function RegistroPontoScreen(): React.ReactElement {
                 {editandoId ? 'Corrigir hora da batida' : 'Registrar batida'}
               </Text>
               <CampoTexto
-                rotulo="Hora do papelito (HH:mm)"
+                rotulo="Hora do comprovante (HH:mm)"
                 placeholder="07:56"
                 value={horaTexto}
                 onChangeText={(t) => setHoraTexto(mascaraHora(t))}

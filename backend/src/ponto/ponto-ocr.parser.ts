@@ -1,5 +1,5 @@
 /**
- * Interpretação do texto do papelito do relógio de ponto — Fase B.
+ * Interpretação do texto do comprovante do relógio de ponto — Fase B.
  *
  * Função pura (sem I/O), fácil de testar: recebe o texto extraído (por OCR no
  * app Android com ML Kit, ou pelo OCR do nosso servidor na web) e tenta achar
@@ -8,7 +8,7 @@
  * confirma/corrige, e o nome é apenas usado para sugerir o colaborador.
  */
 
-export interface PapelitoInterpretado {
+export interface ComprovanteInterpretado {
   /** Texto bruto lido (para auditoria/depuração). */
   texto: string;
   /** Nome do colaborador, se identificado (em maiúsculas). */
@@ -117,8 +117,8 @@ export function extrairNome(texto: string): string | null {
   return normalizarTexto(candidatas[0]);
 }
 
-/** Interpreta o papelito: nome + data + hora. */
-export function interpretarPapelito(texto: string): PapelitoInterpretado {
+/** Interpreta o comprovante: nome + data + hora. */
+export function interpretarComprovante(texto: string): ComprovanteInterpretado {
   return {
     texto,
     nome: extrairNome(texto),

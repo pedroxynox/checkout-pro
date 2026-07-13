@@ -1,5 +1,5 @@
 /**
- * Lógica pura do Registro de Ponto (leitor de papelito) — Fase A.
+ * Lógica pura do Registro de Ponto (leitor de comprovante) — Fase A.
  *
  * A partir das batidas do dia (uma por marcação do relógio físico), classifica
  * cada uma pela ordem cronológica (1=entrada, 2=saída p/ intervalo, 3=retorno,
@@ -8,7 +8,7 @@
  * adicional 50%/100%), alerta de excesso e classificação TAC.
  *
  * Sem efeitos colaterais — testável sem banco. A hora que vale é sempre a do
- * papelito (a hora da batida), nunca a de carregamento.
+ * comprovante (a hora da batida), nunca a de carregamento.
  */
 import { jornadaEsperadaMs } from '../fiscais/fiscais.domain';
 

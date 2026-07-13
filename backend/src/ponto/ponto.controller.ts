@@ -15,14 +15,17 @@ import {
 } from '../common/decorators/usuario-atual.decorator';
 import {
   EditarBatidaDto,
-  LerPapelitoDto,
+  LerComprovanteDto,
   RegistrarBatidaDto,
 } from './dto/ponto.dto';
 import { JornadaDiaResposta, PessoaPonto, PontoService } from './ponto.service';
-import { PontoOcrService, RespostaLeituraPapelito } from './ponto-ocr.service';
+import {
+  PontoOcrService,
+  RespostaLeituraComprovante,
+} from './ponto-ocr.service';
 
 /**
- * API do Registro de Ponto (leitor de papelito) — Fase A.
+ * API do Registro de Ponto (leitor de comprovante) — Fase A.
  *
  * Registrar/editar/remover batidas exige `PONTO_REGISTRAR` (o fiscal pode
  * fazer isso para qualquer colaborador). Ver o painel exige `PONTO_VISUALIZAR`.
@@ -35,17 +38,19 @@ export class PontoController {
   ) {}
 
   /**
-   * Lê o papelito (Fase B): recebe o texto já lido (ML Kit no Android) OU a
+   * Lê o comprovante (Fase B): recebe o texto já lido (ML Kit no Android) OU a
    * imagem (OCR no nosso servidor, para a web) e devolve nome/data/hora e os
    * colaboradores sugeridos, para o usuário confirmar antes de gravar.
    */
   @Post('ocr')
   @Funcionalidade('PONTO_REGISTRAR')
-  lerPapelito(@Body() dto: LerPapelitoDto): Promise<RespostaLeituraPapelito> {
-    return this.ocr.lerPapelito(dto);
+  lerComprovante(
+    @Body() dto: LerComprovanteDto,
+  ): Promise<RespostaLeituraComprovante> {
+    return this.ocr.lerComprovante(dto);
   }
 
-  /** Busca pessoas (fiscais) por nome para escolher de quem é o papelito. */
+  /** Busca pessoas (fiscais) por nome para escolher de quem é o comprovante. */
   @Get('pessoas')
   @Funcionalidade('PONTO_REGISTRAR')
   buscarPessoas(@Query('busca') busca?: string): Promise<PessoaPonto[]> {
@@ -67,7 +72,7 @@ export class PontoController {
     );
   }
 
-  /** Registra uma batida (hora do papelito) para um colaborador. */
+  /** Registra uma batida (hora do comprovante) para um colaborador. */
   @Post('batidas')
   @Funcionalidade('PONTO_REGISTRAR')
   registrarBatida(

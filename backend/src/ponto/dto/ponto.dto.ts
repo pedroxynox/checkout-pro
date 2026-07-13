@@ -12,7 +12,7 @@ type TipoPessoa = (typeof TIPOS_PESSOA)[number];
 const ORIGENS = ['MANUAL', 'LEITOR', 'EDITADO'] as const;
 type Origem = (typeof ORIGENS)[number];
 
-/** Registra uma batida do dia (hora do papelito) para um colaborador. */
+/** Registra uma batida do dia (hora do comprovante) para um colaborador. */
 export class RegistrarBatidaDto {
   @IsString()
   @IsNotEmpty({ message: 'A pessoa é obrigatória.' })
@@ -41,8 +41,8 @@ export class RegistrarBatidaDto {
   comprovanteUrl?: string;
 }
 
-/** Leitura do papelito: texto (já lido no app) OU imagem (OCR no servidor). */
-export class LerPapelitoDto {
+/** Leitura do comprovante: texto (já lido no app) OU imagem (OCR no servidor). */
+export class LerComprovanteDto {
   @IsOptional()
   @IsString()
   texto?: string;

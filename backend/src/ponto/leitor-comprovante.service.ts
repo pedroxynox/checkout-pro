@@ -2,11 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { createWorker } from 'tesseract.js';
 
 /**
- * Contrato do leitor do papelito (OCR): recebe a imagem (base64) e devolve o
+ * Contrato do leitor do comprovante (OCR): recebe a imagem (base64) e devolve o
  * texto lido. Fica atrás de uma interface para poder trocar a implementação
  * (nosso servidor, nuvem, etc.) sem mexer no resto.
  */
-export abstract class LeitorPapelitoService {
+export abstract class LeitorComprovanteService {
   abstract extrairTexto(imagemBase64: string): Promise<string>;
 }
 
@@ -16,7 +16,7 @@ export abstract class LeitorPapelitoService {
  * lido no aparelho (ML Kit) e enviado já pronto, sem passar por aqui.
  */
 @Injectable()
-export class OcrServidorService extends LeitorPapelitoService {
+export class OcrServidorService extends LeitorComprovanteService {
   private readonly logger = new Logger(OcrServidorService.name);
 
   async extrairTexto(imagemBase64: string): Promise<string> {
@@ -27,7 +27,7 @@ export class OcrServidorService extends LeitorPapelitoService {
       const { data } = await worker.recognize(buffer);
       return data.text ?? '';
     } catch (e) {
-      this.logger.error(`Falha no OCR do papelito: ${String(e)}`);
+      this.logger.error(`Falha no OCR do comprovante: ${String(e)}`);
       return '';
     } finally {
       await worker.terminate();
