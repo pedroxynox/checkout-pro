@@ -88,8 +88,9 @@ Critérios de aceitação:
    batida, tempo trabalhado, tempo de intervalo e status atual (ex.: "em
    intervalo desde 12:30", "trabalhando", "encerrado").
 2. QUANDO a carga horária esperada do dia é conhecida, ENTÃO o sistema DEVE
-   exibir **horas extras** (tempo trabalhado acima do esperado) e destacar
-   quando ultrapassar o **limite diário** configurado.
+   exibir **horas extras** (tempo trabalhado acima da base do dia) e **destacar
+   quando ultrapassarem 1h50** (limite de extras, igual em todos os dias). Base:
+   Seg–Qui 7h, Sex–Sáb 8h, Dom 7h20. Intervalo esperado: 2h em todos os dias.
 3. SE falta alguma batida (ex.: encerrou sem registrar retorno), ENTÃO o sistema
    DEVE sinalizar a jornada como **incompleta** e indicar o que falta.
 4. QUANDO o dia não tem batidas, ENTÃO o sistema DEVE mostrar estado vazio claro.

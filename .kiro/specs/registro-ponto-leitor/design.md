@@ -102,11 +102,24 @@ Funções sem I/O (fáceis de testar):
   - `intervaloMs` = retorno − saídaIntervalo.
   - `status`: SEM_REGISTRO | TRABALHANDO | EM_INTERVALO | ENCERRADO | INCOMPLETO.
   - `horasExtrasMs` = max(0, trabalhadoMs − esperadoMs).
-  - `acimaDoLimite`: boolean vs `LIMITE_DIARIO_MS` (constante configurável).
+  - `acimaDoLimiteExtras`: boolean = `horasExtrasMs > LIMITE_EXTRAS_MS`.
+  - `intervaloForaDoEsperado`: boolean = `intervaloMs` diverge de
+    `INTERVALO_ESPERADO_MS` (para sinalizar intervalo curto/longo).
   - `faltando`: lista do que falta (ex.: "retorno do intervalo").
 - Reusa `jornadaEsperadaMs(diaSemana)` de `fiscais.domain.ts` (ou move para um
   util compartilhado se fizer sentido).
-- Constante `LIMITE_DIARIO_MS` (ex.: 10h) — documentada e ajustável.
+- Parâmetros por dia (constantes documentadas e ajustáveis):
+
+  | Dia          | Base trabalhada | Máx. horas extras | Intervalo esperado |
+  |--------------|-----------------|-------------------|--------------------|
+  | Seg–Qui      | 7h00            | 1h50              | 2h00               |
+  | Sex–Sáb      | 8h00            | 1h50              | 2h00               |
+  | Dom          | 7h20            | 1h50              | 2h00               |
+
+  - `LIMITE_EXTRAS_MS` = 1h50 (6 600 000 ms), igual em todos os dias.
+  - `INTERVALO_ESPERADO_MS` = 2h (7 200 000 ms), igual em todos os dias.
+  - Base = `jornadaEsperadaMs(diaSemana)` já existente (Dom 7h20, Seg–Qui 7h,
+    Sex–Sáb 8h).
 
 ## 4. Backend — módulo `ponto`
 
@@ -171,9 +184,10 @@ Espelhar as duas strings em `mobile/src/auth/funcionalidades.ts` (ADR 0002).
 - Trabalhado = (saída_intervalo − entrada) + (encerramento − retorno).
 - Sem intervalo (2 batidas) = última − primeira.
 - Intervalo = retorno − saída_intervalo.
-- Extra = max(0, trabalhado − esperado_do_dia).
-- Esperado do dia: constantes já existentes (Dom 7h20, Seg–Qui 7h, Sex–Sáb 8h).
-- Limite diário: constante configurável (padrão sugerido 10h) com destaque.
+- Extra = max(0, trabalhado − base_do_dia).
+- Base do dia: Dom 7h20 · Seg–Qui 7h · Sex–Sáb 8h (constantes já existentes).
+- Máximo de horas extras: **1h50** em todos os dias — acima disso, destacar/avisar.
+- Intervalo esperado: **2h** em todos os dias — sinalizar quando divergir.
 
 ## 8. Testes
 - `ponto.domain.spec.ts`: classificação das 4 batidas, cálculo de trabalhado/
