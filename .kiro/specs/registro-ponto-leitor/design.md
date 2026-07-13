@@ -96,30 +96,52 @@ Funções sem I/O (fáceis de testar):
 - `classificarBatidas(batidas): BatidaClassificada[]` — ordena por `hora` e
   atribui ENTRADA/SAIDA_INTERVALO/RETORNO_INTERVALO/ENCERRAMENTO à 1ª..4ª;
   as demais viram EXTRA.
-- `calcularJornadaDia(batidas, agora, esperadoMs): JornadaPonto` retornando:
+- `calcularJornadaDia(batidas, agora, base): JornadaPonto` retornando:
   - `trabalhadoMs` = (saídaIntervalo − entrada) + (encerramento − retorno);
-    se só há entrada aberta, conta até `agora`.
+    se só há entrada aberta, conta até `agora`. **O intervalo NÃO conta como
+    jornada** (ex.: 3h + 2h intervalo + 4h = 7h trabalhadas).
   - `intervaloMs` = retorno − saídaIntervalo.
   - `status`: SEM_REGISTRO | TRABALHANDO | EM_INTERVALO | ENCERRADO | INCOMPLETO.
-  - `horasExtrasMs` = max(0, trabalhadoMs − esperadoMs).
-  - `acimaDoLimiteExtras`: boolean = `horasExtrasMs > LIMITE_EXTRAS_MS`.
-  - `intervaloForaDoEsperado`: boolean = `intervaloMs` diverge de
-    `INTERVALO_ESPERADO_MS` (para sinalizar intervalo curto/longo).
+  - `horasExtrasMs` = max(0, trabalhadoMs − base).
+  - **Classificação das extras (adicional):**
+    - `horasExtras50Ms` — extras de **Seg a Sáb** (adicional de 50%).
+    - `horasExtras100Ms` — extras de **Domingo** (adicional de 100%).
+    (num mesmo dia só uma das duas é > 0, conforme o dia da semana.)
+  - `alertaIminente`: boolean = `horasExtrasMs >= ALERTA_EXTRAS_MS` (1h45) e
+    ainda trabalhando (não encerrado). Dispara os avisos de "vai exceder".
+  - `tac`: boolean e `motivosTac: string[]` — vira **TAC** quando:
+    - `horasExtrasMs > LIMITE_EXTRAS_MS` (passou de 1h50), OU
+    - `intervaloMs < INTERVALO_MINIMO_MS` (intervalo menor que 1h).
+  - `intervaloAcimaMaximo`: boolean = `intervaloMs > INTERVALO_MAXIMO_MS` (3h) —
+    intervalo fora do permitido (sinalizar).
   - `faltando`: lista do que falta (ex.: "retorno do intervalo").
-- Reusa `jornadaEsperadaMs(diaSemana)` de `fiscais.domain.ts` (ou move para um
-  util compartilhado se fizer sentido).
+- Reusa `jornadaEsperadaMs(diaSemana)` de `fiscais.domain.ts` como **base** (ou
+  move para um util compartilhado).
 - Parâmetros por dia (constantes documentadas e ajustáveis):
 
-  | Dia          | Base trabalhada | Máx. horas extras | Intervalo esperado |
-  |--------------|-----------------|-------------------|--------------------|
-  | Seg–Qui      | 7h00            | 1h50              | 2h00               |
-  | Sex–Sáb      | 8h00            | 1h50              | 2h00               |
-  | Dom          | 7h20            | 1h50              | 2h00               |
+  | Dia     | Base trabalhada | Alerta a partir de | Limite extras (→TAC) | Adicional extras | Intervalo (min–máx / esperado) |
+  |---------|-----------------|--------------------|----------------------|------------------|--------------------------------|
+  | Seg–Qui | 7h00            | 1h45               | 1h50                 | 50%              | 1h – 3h / 2h                   |
+  | Sex–Sáb | 8h00            | 1h45               | 1h50                 | 50%              | 1h – 3h / 2h                   |
+  | Dom     | 7h20            | 1h45               | 1h50                 | 100%             | 1h – 3h / 2h                   |
 
-  - `LIMITE_EXTRAS_MS` = 1h50 (6 600 000 ms), igual em todos os dias.
-  - `INTERVALO_ESPERADO_MS` = 2h (7 200 000 ms), igual em todos os dias.
-  - Base = `jornadaEsperadaMs(diaSemana)` já existente (Dom 7h20, Seg–Qui 7h,
-    Sex–Sáb 8h).
+  - `ALERTA_EXTRAS_MS` = 1h45 (6 300 000 ms) — início dos avisos por minuto.
+  - `LIMITE_EXTRAS_MS` = 1h50 (6 600 000 ms) — acima disso é TAC.
+  - `INTERVALO_ESPERADO_MS` = 2h (7 200 000 ms).
+  - `INTERVALO_MINIMO_MS` = 1h (3 600 000 ms) — abaixo disso é TAC.
+  - `INTERVALO_MAXIMO_MS` = 3h (10 800 000 ms) — acima disso é irregular.
+  - Base = `jornadaEsperadaMs(diaSemana)` (Dom 7h20, Seg–Qui 7h, Sex–Sáb 8h).
+
+> **TAC** = classificação/rótulo que o usuário usa para marcar o dia como
+> irregular (excesso de extras ou intervalo curto). O termo é mantido como está;
+> o significado/legenda pode ser ajustado.
+
+### 3.1 Alertas de excesso (serviço agendado)
+`backend/src/ponto/ponto-alertas.service.ts` — cron **a cada 1 minuto**: para
+cada colaborador **ainda trabalhando hoje** com `horasExtrasMs >= 1h45`, envia
+notificação ("Fulano vai exceder o horário diário permitido"). O colaborador
+**continua podendo bater/carregar papelito**; ao passar de 1h50 o dia fica TAC.
+Reaproveita `NotificacoesModule` (mesmo padrão de `fiscais-horario.service.ts`).
 
 ## 4. Backend — módulo `ponto`
 
@@ -181,13 +203,19 @@ Espelhar as duas strings em `mobile/src/auth/funcionalidades.ts` (ADR 0002).
 
 ## 7. Cálculo de horas (resumo)
 
+- **A hora que vale é a do papelito** (`hora` da batida), NÃO a hora em que foi
+  carregada/registrada (`criadoEm`). Ex.: bate às 12:10 e carrega às 12:15 → o
+  sistema grava a saída às **12:10** e conta o trabalho até 12:10. O relógio do
+  dia começa a andar a partir da 1ª batida (ex.: entrada 07:56 conta desde 07:56).
 - Trabalhado = (saída_intervalo − entrada) + (encerramento − retorno).
+  **O intervalo não conta como jornada** (3h + 2h intervalo + 4h = 7h).
 - Sem intervalo (2 batidas) = última − primeira.
-- Intervalo = retorno − saída_intervalo.
+- Intervalo = retorno − saída_intervalo. Permitido **1h a 3h** (esperado 2h);
+  **< 1h → TAC**; **> 3h → irregular**.
 - Extra = max(0, trabalhado − base_do_dia).
-- Base do dia: Dom 7h20 · Seg–Qui 7h · Sex–Sáb 8h (constantes já existentes).
-- Máximo de horas extras: **1h50** em todos os dias — acima disso, destacar/avisar.
-- Intervalo esperado: **2h** em todos os dias — sinalizar quando divergir.
+- Base do dia: Dom 7h20 · Seg–Qui 7h · Sex–Sáb 8h.
+- **Adicional das extras:** Seg–Sáb = 50% · Domingo = 100%.
+- Alerta "vai exceder" a partir de **1h45** (a cada minuto); **> 1h50 → TAC**.
 
 ## 8. Testes
 - `ponto.domain.spec.ts`: classificação das 4 batidas, cálculo de trabalhado/
