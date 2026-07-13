@@ -1,78 +1,91 @@
 # Tarefas — Registro de Ponto (leitor de comprovante do ponto)
 
-Cada bloco marcado como PR vira um Pull Request separado (o usuário faz o merge).
+> **Estado (2026-07-13):** Fase A e Fase B **concluídas e mescladas** na `main`
+> (PRs #174–#181). Falta apenas **validar em campo** o leitor on-device do APK
+> (ML Kit) e, com mais fotos reais, seguir afinando o interpretador. A Fase C
+> (operadores e importação do arquivo AFD) fica para o futuro. Ver o resumo
+> completo em `REGISTRO_DE_MUDANCAS.md`.
 
-## Fase A — Base (registro manual + painel)
+Cada bloco marcado como PR virou um Pull Request separado.
 
-- [ ] 1. **Modelo de dados + migração** (Requisitos 1, 7)
-  - [ ] 1.1 Adicionar enums `TipoBatida`, `OrigemBatida`, `TipoPessoaPonto` e o
-        modelo `BatidaPonto` em `schema.prisma`.
-  - [ ] 1.2 Criar migração aditiva `prisma/migrations/<n>_registro_ponto/migration.sql`.
-  - PR: "Ponto: modelo de batidas de ponto + migração".
+## Fase A — Base (registro manual + painel) — ✅ concluída
 
-- [ ] 2. **Domínio puro de jornada** (Requisitos 1, 4, 9, 10, 11, 12)
-  - [ ] 2.1 `backend/src/ponto/ponto.domain.ts`: `classificarBatidas`,
-        `calcularJornadaDia` (usa a hora do comprovante do ponto; intervalo não conta como
+- [x] 1. **Modelo de dados + migração** (Requisitos 1, 7) — PR #174
+  - [x] 1.1 Enums `TipoBatida`, `OrigemBatida`, `TipoPessoaPonto` e o modelo
+        `BatidaPonto` em `schema.prisma`.
+  - [x] 1.2 Migração aditiva `prisma/migrations/9zh_registro_ponto/migration.sql`.
+
+- [x] 2. **Domínio puro de jornada** (Requisitos 1, 4, 9, 10, 11, 12) — PR #174
+  - [x] 2.1 `backend/src/ponto/ponto.domain.ts`: `classificarBatidas`,
+        `calcularJornadaDia` (usa a hora do comprovante; intervalo não conta como
         jornada), status, faltando.
-  - [ ] 2.2 Extras + adicional (Seg–Sáb 50% / Dom 100%): `horasExtras50Ms`,
+  - [x] 2.2 Extras + adicional (Seg–Sáb 50% / Dom 100%): `horasExtras50Ms`,
         `horasExtras100Ms`.
-  - [ ] 2.3 Regras de intervalo (1h–3h) e classificação **TAC** (extras > 1h50
-        OU intervalo < 1h) com motivos; `alertaIminente` (≥ 1h45).
-  - [ ] 2.4 Constantes: `ALERTA_EXTRAS_MS`, `LIMITE_EXTRAS_MS`,
+  - [x] 2.3 Regras de intervalo (1h–3h) e classificação **TAC** (extras > 1h50,
+        ou intervalo < 1h, ou intervalo > 3h) com motivos; `alertaIminente` (≥ 1h45).
+  - [x] 2.4 Constantes `ALERTA_EXTRAS_MS`, `LIMITE_EXTRAS_MS`,
         `INTERVALO_ESPERADO_MS`, `INTERVALO_MINIMO_MS`, `INTERVALO_MAXIMO_MS`;
         base via `jornadaEsperadaMs`.
-  - [ ] 2.5 `ponto.domain.spec.ts` (incluindo testes de propriedade).
-  - PR: "Ponto: domínio de cálculo de jornada + TAC + extras + testes".
+  - [x] 2.5 `ponto.domain.spec.ts` (inclui testes de propriedade).
 
-- [ ] 3. **Permissões** (Requisito 6)
-  - [ ] 3.1 Adicionar `PONTO_REGISTRAR` e `PONTO_VISUALIZAR` em `acessos.domain.ts`
-        e nos allowlists de fiscal/supervisor/gerente.
-  - [ ] 3.2 Espelhar em `mobile/src/auth/funcionalidades.ts` (ADR 0002).
-  - PR: pode ir junto com a tarefa 4.
+- [x] 3. **Permissões** (Requisito 6) — PR #174
+  - [x] 3.1 `PONTO_REGISTRAR` e `PONTO_VISUALIZAR` em `acessos.domain.ts`
+        (fiscal, supervisor, gerente).
+  - [x] 3.2 Espelhado em `mobile/src/auth/funcionalidades.ts` (ADR 0002).
 
-- [ ] 4. **Backend: serviço + controller** (Requisitos 1, 2, 4, 5)
-  - [ ] 4.1 `ponto.service.ts` (gravar/editar/remover/reclassificar; jornada;
+- [x] 4. **Backend: serviço + controller** (Requisitos 1, 2, 4, 5) — PR #174
+  - [x] 4.1 `ponto.service.ts` (gravar/editar/remover/reclassificar; jornada;
         buscar pessoas; validações de data/duplicidade).
-  - [ ] 4.2 `ponto.controller.ts` + `dto/ponto.dto.ts` com `@Funcionalidade`.
-  - [ ] 4.3 `ponto.module.ts` e registro no `AppModule`.
-  - [ ] 4.4 Testes do serviço.
-  - PR: "Ponto: API de batidas e jornada (registro manual)".
+  - [x] 4.2 `ponto.controller.ts` + `dto/ponto.dto.ts` com `@Funcionalidade`.
+  - [x] 4.3 `ponto.module.ts` e registro no `AppModule`.
+  - [x] 4.4 Testes do serviço/domínio.
 
-- [ ] 5. **Mobile: serviço + tipos** (Requisitos 1, 2, 4)
-  - [ ] 5.1 `mobile/src/api/services/ponto.ts` e tipos em `api/types.ts`.
-  - PR: junto com a tarefa 6.
+- [x] 5. **Mobile: serviço + tipos** (Requisitos 1, 2, 4) — PR #176
+  - [x] 5.1 `mobile/src/api/services/ponto.ts` e tipos em `api/types.ts`.
 
-- [ ] 5b. **Backend: alerta de excesso (cron 1 min)** (Requisito 12)
-  - [ ] 5b.1 `ponto-alertas.service.ts`: a cada minuto, notifica colaboradores
-        ainda trabalhando com extras ≥ 1h45 ("vai exceder o horário diário").
-  - [ ] 5b.2 Reusa `NotificacoesModule` (padrão de `fiscais-horario.service.ts`).
-  - PR: "Ponto: alerta de excesso de jornada (a cada minuto)".
+- [x] 5b. **Backend: alerta de excesso (cron 1 min)** (Requisito 12) — PR #175
+  - [x] 5b.1 `ponto-alertas.service.ts`: a cada minuto, avisa **todos os fiscais**
+        quando alguém (ainda trabalhando) passa de 1h45 de extras; TAC notifica
+        **todos os usuários** (uma vez por dia).
+  - [x] 5b.2 Reusa `NotificacoesModule` (padrão de `fiscais-horario.service.ts`).
 
-- [ ] 6. **Mobile: tela de Registro de Ponto** (Requisitos 1–5, 9–12)
-  - [ ] 6.1 `screens/ponto/RegistroPontoScreen.tsx`: busca/seleção de colaborador,
+- [x] 6. **Mobile: tela de Registro de Ponto** (Requisitos 1–5, 9–12) — PR #176
+  - [x] 6.1 `screens/ponto/RegistroPontoScreen.tsx`: busca/seleção de colaborador,
         painel de jornada do dia, lista de batidas (editar/remover).
-  - [ ] 6.2 `RegistrarBatidaModal` (registro manual: data/hora + confirmar; avisos
-        de data ≠ hoje e duplicidade).
-  - [ ] 6.3 Modo **lote** (repetir registro + resumo da sessão).
-  - [ ] 6.4 Registrar rota/área/navegação/deep link e testes de tela.
-  - PR: "Ponto: tela de registro de ponto e painel de jornada (fiscais)".
+  - [x] 6.2 Registro manual (data/hora + confirmar; aviso de data ≠ hoje).
+  - [x] 6.3 Modo **lote** (registrar vários comprovantes + resumo da sessão).
+  - [x] 6.4 Rota/área/navegação/deep link e teste de tela.
 
-## Fase B — Leitor do comprovante do ponto (OCR)
+## Fase B — Leitor do comprovante do ponto (OCR) — ✅ concluída
 
-- [ ] 7. **Backend: OCR + parser** (Requisito 8)
-  - [ ] 7.1 Interface `LeitorComprovante do pontoService` + implementação de nuvem
-        (configurável por chave), atrás de interface.
-  - [ ] 7.2 Parser puro do formato do comprovante do ponto (nome/data/hora) + testes.
-  - [ ] 7.3 `POST /ponto/ocr` retornando texto extraído + candidatos.
-  - PR: "Ponto: leitura do comprovante do ponto por OCR (backend)".
+- [x] 7. **Backend: OCR + parser** (Requisito 8) — PR #177, #180, #181
+  - [x] 7.1 Interface `LeitorComprovanteService` + implementação no **nosso
+        servidor** (`OcrServidorService`, tesseract.js) atrás da interface.
+  - [x] 7.2 Parser puro (`ponto-ocr.parser.ts`) do formato real (rótulos
+        `NOME:`/`DATA:`/`HORA:`, nome quebrado em 2 linhas, ignora CNPJ/PIS e
+        ruído do OCR) + testes com o comprovante real (IDCLASS/Zaffari).
+  - [x] 7.3 `POST /ponto/ocr` (texto do Android OU imagem da web) → nome/data/
+        hora + colaboradores sugeridos.
+  - [x] 7.4 Pré-tratamento da imagem no servidor (jimp: cinza/contraste/escala)
+        + PSM de bloco no tesseract (melhora a leitura web) — PR #180.
 
-- [ ] 8. **Mobile/Web: captura e integração** (Requisito 8)
-  - [ ] 8.1 Captura ao vivo no app (padrão `LeitorCodigoBarras`) e por foto na web.
-  - [ ] 8.2 Integrar no `RegistrarBatidaModal`: chama `/ponto/ocr`, pré-preenche
-        colaborador + hora, confirmação/edição, fallback manual.
-  - [ ] 8.3 Comprovante opcional (guardar imagem).
-  - PR: "Ponto: leitor do comprovante do ponto no app/web (câmera + OCR)".
+- [x] 8. **Mobile/Web: captura e integração** (Requisito 8) — PR #178
+  - [x] 8.1 Android: `leitorComprovante.native.ts` (câmera + **ML Kit** no
+        aparelho, com fallback ao OCR do servidor). Web: `leitorComprovante.ts`
+        (foto → OCR do servidor).
+  - [x] 8.2 Botão "Ler comprovante do ponto (foto)" na tela: chama `/ponto/ocr`,
+        pré-preenche hora + sugere colaborador, com confirmação/edição e fallback
+        manual.
+
+> **Renomeação (PR #179):** a palavra informal "papelito" foi trocada por
+> **"comprovante do ponto"** em todo o código, textos visíveis e neste spec.
+
+### Pendências de validação (não são código)
+- [ ] Validar o leitor **on-device do APK (ML Kit)** num aparelho real (não é
+      possível compilar/rodar o APK no ambiente de desenvolvimento).
+- [ ] Com mais fotos de comprovantes reais, seguir afinando o interpretador (o
+      OCR da **web** é o caminho mais fraco; o do APK tende a ser bem melhor).
 
 ## Fase C — Futuro (não agora)
-- [ ] 9. Estender a operadores (reusa `pessoaId`/`tipoPessoa`).
-- [ ] 10. Importar arquivo eletrônico do relógio (AFD) para cierre exato.
+- [ ] 9. Estender a **operadores** (o modelo já é polimórfico: `pessoaId`/`tipoPessoa`).
+- [ ] 10. Importar o **arquivo eletrônico do relógio (AFD)** para fechamento exato.
