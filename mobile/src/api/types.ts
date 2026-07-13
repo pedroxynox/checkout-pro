@@ -1531,3 +1531,12 @@ export interface PessoaPonto {
   nome: string;
   tipoPessoa: 'FISCAL' | 'OPERADOR';
 }
+
+/** Resultado da leitura do papelito (Fase B): nome/data/hora + sugestões. */
+export interface LeituraPapelito {
+  texto: string;
+  nome: string | null;
+  data: string | null;
+  hora: string | null;
+  candidatos: PessoaPonto[];
+}

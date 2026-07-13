@@ -18,8 +18,16 @@ jest.mock('../../api/services', () => ({
     registrarBatida: jest.fn(),
     editarBatida: jest.fn(),
     removerBatida: jest.fn(),
+    lerPapelito: jest.fn(),
   },
 }));
+
+jest.mock('./leitorPapelito', () => ({
+  capturarPapelito: jest.fn(),
+}));
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { capturarPapelito } = require('./leitorPapelito');
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { pontoService } = require('../../api/services');
@@ -87,5 +95,26 @@ describe('RegistroPontoScreen', () => {
     );
     const arg = pontoService.registrarBatida.mock.calls[0][0];
     expect(arg.hora).toMatch(/T07:56:00/);
+  });
+
+  it('lê o papelito, sugere o colaborador e pré-preenche a hora', async () => {
+    capturarPapelito.mockResolvedValue({ texto: 'FUNCIONARIO ANA SOUZA 07:56' });
+    pontoService.lerPapelito.mockResolvedValue({
+      texto: 'FUNCIONARIO ANA SOUZA 07:56',
+      nome: 'ANA SOUZA',
+      data: null,
+      hora: '07:56',
+      candidatos: [{ id: 'f1', nome: 'Ana Souza', tipoPessoa: 'FISCAL' }],
+    });
+
+    render(<RegistroPontoScreen />);
+    fireEvent.press(screen.getByText('Ler papelito (foto)'));
+
+    // Sugere o colaborador lido; ao escolher, abre o formulário com a hora.
+    fireEvent.press(await screen.findByText('Ana Souza'));
+    expect(await screen.findByText('Registrar batida')).toBeTruthy();
+    expect(pontoService.lerPapelito).toHaveBeenCalledWith({
+      texto: 'FUNCIONARIO ANA SOUZA 07:56',
+    });
   });
 });
