@@ -27,6 +27,7 @@ import { LoteApaeModule } from './lote-apae/lote-apae.module';
 import { InsumosModule } from './insumos/insumos.module';
 import { RequisicoesModule } from './requisicoes/requisicoes.module';
 import { FiscaisModule } from './fiscais/fiscais.module';
+import { PontoModule } from './ponto/ponto.module';
 import { ChecklistModule } from './checklist/checklist.module';
 import { NotificacoesModule } from './notificacoes/notificacoes.module';
 import { AssistenteModule } from './assistente/assistente.module';
@@ -62,6 +63,7 @@ import { ResetOperacionalModule } from './reset-operacional/reset-operacional.mo
     InsumosModule,
     RequisicoesModule,
     FiscaisModule,
+    PontoModule,
     ChecklistModule,
     NotificacoesModule,
     AssistenteModule,

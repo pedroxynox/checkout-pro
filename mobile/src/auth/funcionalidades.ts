@@ -42,6 +42,9 @@ export const TODAS_FUNCIONALIDADES = [
   'FISCAIS_JORNADA',
   'ESCALA_VISUALIZAR',
   'ESCALA_EDITAR',
+  // Registro de Ponto (leitor de papelito)
+  'PONTO_REGISTRAR',
+  'PONTO_VISUALIZAR',
   // Operação diária
   'CHECKLIST',
   'OPERADORES_AUSENCIAS',
@@ -83,6 +86,10 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
   'PAINEL_VENDAS_EDITAR',
   'INDICADOR_QUEBRA',
   'OPERADORES_AUSENCIAS',
+  // Registro de ponto: o fiscal pode ler o papelito de qualquer colaborador e
+  // ver o painel de jornada.
+  'PONTO_REGISTRAR',
+  'PONTO_VISUALIZAR',
   // Somente leitura do status de carga do dia, para o Briefing ter a MESMA
   // nota de saúde de gerentes/supervisores. Não abre nenhuma seção no menu do
   // fiscal (não há área associada a esta funcionalidade).
@@ -137,6 +144,8 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
   'OPERADORES_AUSENCIAS',
   'FISCAIS_STATUS',
   'FISCAIS_JORNADA',
+  'PONTO_REGISTRAR',
+  'PONTO_VISUALIZAR',
   'CONTRATOS_VISUALIZAR',
   'CONTRATOS_GERIR',
   'ADVERTENCIAS_DECIDIR',
