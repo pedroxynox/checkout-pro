@@ -4,7 +4,7 @@
  * É a cara da "gestão inteligente": aparece acima de todas as áreas e mostra
  *  1. Saúde do negócio — nota 0–100 num **medidor circular**, com o porquê.
  *  2. Vendas de ontem — destaque (para perfis de gestão).
- *  3. As 3 coisas de hoje — prioridades **personalizadas por perfil**.
+ *  3. Pontos de atenção — prioridades **personalizadas por perfil**.
  *
  * Prioridades por perfil (a pedido):
  *  - FISCAL: checklist (se não feito), insumos, indicadores (metas), faltas e
@@ -344,7 +344,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
     return { batida: false as const, porDia: faltam / diasRestantes, diasRestantes };
   })();
 
-  // ----- Prioridades (As 3 coisas de hoje) -----
+  // ----- Prioridades (Pontos de atenção) -----
   const acoes: AcaoPrioritaria[] = [];
   if (aberturaNaoFeita) {
     acoes.push({
@@ -667,8 +667,8 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
         </Cartao>
       ) : null}
 
-      {/* As 3 coisas de hoje */}
-      <Cartao estilo={styles.cartaoCompacto} titulo="As 3 coisas de hoje">
+      {/* Pontos de atenção */}
+      <Cartao estilo={styles.cartaoCompacto} titulo="Pontos de atenção">
         {top3.length === 0 ? (
           <View style={styles.tudoOk}>
             <CheckCircle2 size={15} color={cores.verde} />
