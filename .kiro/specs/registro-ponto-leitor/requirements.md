@@ -142,6 +142,54 @@ Critérios de aceitação:
 5. NÃO FAZ PARTE deste spec integrar diretamente com o arquivo eletrônico do
    relógio (AFD) — fica registrado como evolução futura.
 
+## Requisito 9 — A hora do papelito é a que vale
+
+**História:** Como colaborador, quero que conte a hora impressa no papelito e
+não a hora em que carreguei, para que o cálculo seja justo.
+
+Critérios de aceitação:
+1. QUANDO uma batida é registrada, ENTÃO o sistema DEVE gravar como hora da
+   batida a **hora do papelito** (ex.: 12:10), ainda que o carregamento ocorra
+   depois (ex.: 12:15).
+2. O relógio do dia DEVE começar a contar a partir da **1ª batida** (ex.:
+   entrada 07:56 conta desde 07:56).
+3. O tempo trabalhado DEVE ser contado entre as horas das batidas (da 1ª à 2ª,
+   etc.), usando sempre a hora do papelito.
+
+## Requisito 10 — Intervalo (regras e cálculo)
+
+Critérios de aceitação:
+1. O tempo de intervalo NÃO conta como jornada (ex.: 3h + 2h de intervalo + 4h
+   = **7h trabalhadas**).
+2. O intervalo permitido é de **1h a 3h** (esperado 2h).
+3. SE o intervalo for **menor que 1h**, ENTÃO o dia DEVE ser classificado como
+   **TAC**.
+4. SE o intervalo for **maior que 3h**, ENTÃO o sistema DEVE sinalizar como
+   irregular (fora do permitido).
+
+## Requisito 11 — Horas extras 50% / 100%
+
+Critérios de aceitação:
+1. QUANDO o tempo trabalhado ultrapassa a base do dia, ENTÃO o excedente é
+   **hora extra**.
+2. As horas extras de **segunda a sábado** DEVEM ser classificadas como **50%**.
+3. As horas extras de **domingo** DEVEM ser classificadas como **100%**.
+
+## Requisito 12 — Alerta de excesso e classificação TAC
+
+**História:** Como responsável, quero ser avisado quando um colaborador estiver
+prestes a exceder o limite diário, para agir a tempo.
+
+Critérios de aceitação:
+1. QUANDO um colaborador (ainda trabalhando) atinge **1h45 de horas extras** no
+   dia, ENTÃO o sistema DEVE enviar um alerta **a cada 1 minuto** avisando que
+   ele vai exceder o horário diário permitido.
+2. O colaborador PODE continuar batendo/carregando o papelito normalmente.
+3. QUANDO as horas extras passam de **1h50**, ENTÃO o dia DEVE ser classificado
+   como **TAC**.
+4. QUANDO o dia é classificado como TAC, ENTÃO o sistema DEVE indicar o(s)
+   motivo(s) (ex.: "excedeu 1h50 de extras", "intervalo abaixo de 1h").
+
 ---
 
 ## Fora de escopo (agora)

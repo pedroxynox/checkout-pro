@@ -10,12 +10,19 @@ Cada bloco marcado como PR vira um Pull Request separado (o usuário faz o merge
   - [ ] 1.2 Criar migração aditiva `prisma/migrations/<n>_registro_ponto/migration.sql`.
   - PR: "Ponto: modelo de batidas de ponto + migração".
 
-- [ ] 2. **Domínio puro de jornada** (Requisitos 1, 4)
+- [ ] 2. **Domínio puro de jornada** (Requisitos 1, 4, 9, 10, 11, 12)
   - [ ] 2.1 `backend/src/ponto/ponto.domain.ts`: `classificarBatidas`,
-        `calcularJornadaDia`, status, extras, limite, faltando.
-  - [ ] 2.2 Reusar/compartilhar `jornadaEsperadaMs` de `fiscais.domain.ts`.
-  - [ ] 2.3 `ponto.domain.spec.ts` (incluindo testes de propriedade).
-  - PR: "Ponto: domínio de cálculo de jornada + testes".
+        `calcularJornadaDia` (usa a hora do papelito; intervalo não conta como
+        jornada), status, faltando.
+  - [ ] 2.2 Extras + adicional (Seg–Sáb 50% / Dom 100%): `horasExtras50Ms`,
+        `horasExtras100Ms`.
+  - [ ] 2.3 Regras de intervalo (1h–3h) e classificação **TAC** (extras > 1h50
+        OU intervalo < 1h) com motivos; `alertaIminente` (≥ 1h45).
+  - [ ] 2.4 Constantes: `ALERTA_EXTRAS_MS`, `LIMITE_EXTRAS_MS`,
+        `INTERVALO_ESPERADO_MS`, `INTERVALO_MINIMO_MS`, `INTERVALO_MAXIMO_MS`;
+        base via `jornadaEsperadaMs`.
+  - [ ] 2.5 `ponto.domain.spec.ts` (incluindo testes de propriedade).
+  - PR: "Ponto: domínio de cálculo de jornada + TAC + extras + testes".
 
 - [ ] 3. **Permissões** (Requisito 6)
   - [ ] 3.1 Adicionar `PONTO_REGISTRAR` e `PONTO_VISUALIZAR` em `acessos.domain.ts`
@@ -35,7 +42,13 @@ Cada bloco marcado como PR vira um Pull Request separado (o usuário faz o merge
   - [ ] 5.1 `mobile/src/api/services/ponto.ts` e tipos em `api/types.ts`.
   - PR: junto com a tarefa 6.
 
-- [ ] 6. **Mobile: tela de Registro de Ponto** (Requisitos 1–5)
+- [ ] 5b. **Backend: alerta de excesso (cron 1 min)** (Requisito 12)
+  - [ ] 5b.1 `ponto-alertas.service.ts`: a cada minuto, notifica colaboradores
+        ainda trabalhando com extras ≥ 1h45 ("vai exceder o horário diário").
+  - [ ] 5b.2 Reusa `NotificacoesModule` (padrão de `fiscais-horario.service.ts`).
+  - PR: "Ponto: alerta de excesso de jornada (a cada minuto)".
+
+- [ ] 6. **Mobile: tela de Registro de Ponto** (Requisitos 1–5, 9–12)
   - [ ] 6.1 `screens/ponto/RegistroPontoScreen.tsx`: busca/seleção de colaborador,
         painel de jornada do dia, lista de batidas (editar/remover).
   - [ ] 6.2 `RegistrarBatidaModal` (registro manual: data/hora + confirmar; avisos
