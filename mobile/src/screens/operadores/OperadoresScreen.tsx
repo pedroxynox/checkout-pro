@@ -121,22 +121,23 @@ function ehApoio(c: ColaboradorDia): boolean {
 }
 
 /**
- * Classifica o turno pela hora de ENTRADA (com o apoio à parte):
+ * Classifica o turno pela hora de ENTRADA (com o apoio à parte), igual ao
+ * backend (`classificarTurnoOperador`) e ao spec (Req 6.6.2–6.6.4):
  *  - Apoio: entra antes das 14h e cumpre ~6h de carga (jornada reduzida);
- *  - Abertura: entrada antes das 10:00 (06:50–09:00);
- *  - Fechamento: das 10:00 às 12:59;
- *  - Intermediário: das 13:00 em diante.
+ *  - Abertura: entrada antes das 10:00;
+ *  - Intermediário: das 10:00 às 12:59;
+ *  - Fechamento: das 13:00 em diante.
  *
- * Obs.: pela convenção da loja, quem entra das 13:00 em diante é do turno
- * INTERMEDIÁRIO e quem entra das 10:00 às 12:59 é do FECHAMENTO (não inverter).
+ * Fonte da verdade: `backend/src/operadores/operadores.domain.ts`. Não inverter
+ * intermediário/fechamento (já foi invertido por engano e contava errado).
  */
 function turnoDe(c: ColaboradorDia): string {
   if (c.status === 'FOLGA' || !c.entrada) return 'FOLGA';
   if (ehApoio(c)) return 'APOIO';
   const min = minutos(c.entrada);
   if (min < 10 * 60) return 'ABERTURA';
-  if (min < 13 * 60) return 'FECHAMENTO';
-  return 'INTERMEDIARIO';
+  if (min < 13 * 60) return 'INTERMEDIARIO';
+  return 'FECHAMENTO';
 }
 
 /** Ícone de avatar por gênero ('M'/'F'); fallback simples pelo nome. */
