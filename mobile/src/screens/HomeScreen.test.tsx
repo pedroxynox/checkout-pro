@@ -120,7 +120,6 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     // Áreas operacionais visíveis (inclui Escalas para fiscais e operadores).
     expect(screen.getByText('Insumos')).toBeTruthy();
     expect(screen.getByText('Checklist')).toBeTruthy();
-    expect(screen.getByText('Fiscais')).toBeTruthy();
     expect(screen.getByText('Escalas')).toBeTruthy();
 
     // Área restrita ao gerente (gestão de pessoas/acessos) não aparece.

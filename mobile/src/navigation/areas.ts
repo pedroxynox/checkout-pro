@@ -24,9 +24,7 @@ export interface Area {
     | 'PainelVendas'
     | 'LoteApae'
     | 'Insumos'
-    | 'Fiscais'
     | 'RegistroPonto'
-    | 'Escala'
     | 'Checklist'
     | 'Operadores'
     | 'Justificativas'
@@ -93,13 +91,6 @@ export const AREAS: Area[] = [
     descricao: 'Saldos, fardos e consumo',
     icone: 'cube-outline',
     funcionalidade: 'INSUMOS',
-  },
-  {
-    rota: 'Fiscais',
-    titulo: 'Fiscais',
-    descricao: 'Painel em tempo real e check-in/out',
-    icone: 'people-outline',
-    funcionalidade: 'FISCAIS_STATUS',
   },
   {
     rota: 'Checklist',

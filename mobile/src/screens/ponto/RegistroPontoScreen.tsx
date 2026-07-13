@@ -10,10 +10,11 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
-import { pontoService } from '../../api/services';
+import { fiscaisService, pontoService } from '../../api/services';
 import {
   BatidaPontoView,
   JornadaDiaPonto,
+  MeuResumoFiscal,
   PessoaPonto,
   StatusJornadaPonto,
   TipoBatida,
@@ -30,6 +31,7 @@ import {
   Tela,
 } from '../../components';
 import { cores, espacamento, raio, tipografia } from '../../theme';
+import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, formatarDuracao, hojeISO } from '../../utils/formato';
 import { capturarComprovante } from './leitorComprovante';
 
@@ -73,6 +75,11 @@ const HORA_VALIDA = /^([01]\d|2[0-3]):([0-5]\d)$/;
 export function RegistroPontoScreen(): React.ReactElement {
   const [data, setData] = useState(hojeISO());
 
+  // Autosserviço do fiscal logado: se o usuário atual é fiscal, pode informar
+  // a própria falta de hoje (antes ficava na aba Fiscais, removida). Fica null
+  // quando o usuário não é fiscal — aí o card nem aparece.
+  const [meuFiscal, setMeuFiscal] = useState<MeuResumoFiscal | null>(null);
+
   // Busca/seleção do colaborador.
   const [busca, setBusca] = useState('');
   const [resultados, setResultados] = useState<PessoaPonto[]>([]);
@@ -101,6 +108,33 @@ export function RegistroPontoScreen(): React.ReactElement {
     hora: string | null;
   } | null>(null);
   const [horaPendente, setHoraPendente] = useState<string | null>(null);
+
+  // Descobre se o usuário logado é fiscal (para o autosserviço de falta).
+  useEffect(() => {
+    fiscaisService
+      .meuResumo()
+      .then(setMeuFiscal)
+      .catch(() => setMeuFiscal(null));
+  }, []);
+
+  async function informarMinhaFalta(): Promise<void> {
+    const ok = await confirmar(
+      'Informar falta',
+      'Deseja informar sua falta de hoje? Os gestores serão avisados.',
+      'Confirmar',
+    );
+    if (!ok) return;
+    try {
+      await fiscaisService.informarFalta();
+      setMeuFiscal((m) => (m ? { ...m, faltaHoje: true } : m));
+      notificar('Falta registrada', 'Os gestores foram avisados.');
+    } catch (e) {
+      notificar(
+        'Erro',
+        e instanceof ApiError ? e.message : 'Não foi possível registrar.',
+      );
+    }
+  }
 
   // Busca de colaboradores (debounce) enquanto nenhum está selecionado.
   useEffect(() => {
@@ -259,6 +293,39 @@ export function RegistroPontoScreen(): React.ReactElement {
 
   return (
     <Tela aoAtualizar={pessoa ? carregarJornada : undefined} atualizando={carregando}>
+      {/* Autosserviço do fiscal logado: informar a própria falta de hoje. */}
+      {meuFiscal && data === hojeISO() ? (
+        meuFiscal.folgaHoje ? (
+          <View style={[styles.minhaFaltaInfo, { backgroundColor: '#EEF2FF' }]}>
+            <Ionicons name="bed-outline" size={18} color="#6366F1" />
+            <Text style={[styles.minhaFaltaTexto, { color: '#4338CA' }]}>
+              Hoje é seu dia de folga.
+            </Text>
+          </View>
+        ) : meuFiscal.faltaHoje ? (
+          <View
+            style={[styles.minhaFaltaInfo, { backgroundColor: cores.vermelhoFundo }]}
+          >
+            <Ionicons name="information-circle" size={18} color={cores.vermelho} />
+            <Text style={[styles.minhaFaltaTexto, { color: cores.vermelho }]}>
+              Você informou falta hoje. Os gestores foram avisados.
+            </Text>
+          </View>
+        ) : (
+          <Cartao>
+            <Text style={styles.secaoTitulo}>Minha jornada</Text>
+            <Text style={styles.minhaAjuda}>
+              Não vai trabalhar hoje? Avise sua falta para os gestores.
+            </Text>
+            <Botao
+              titulo="Informar minha falta de hoje"
+              variante="secundario"
+              aoPressionar={() => void informarMinhaFalta()}
+            />
+          </Cartao>
+        )
+      ) : null}
+
       <SeletorData valor={data} aoMudar={setData} rotulo="Dia" />
 
       {/* Modo lote */}
@@ -590,6 +657,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: cores.texto,
     marginBottom: espacamento.sm,
+  },
+  minhaAjuda: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginBottom: espacamento.sm,
+  },
+  minhaFaltaInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    borderRadius: raio.md,
+    padding: espacamento.md,
+    marginBottom: espacamento.sm,
+  },
+  minhaFaltaTexto: {
+    ...tipografia.rotulo,
+    flex: 1,
   },
   metricas: {
     flexDirection: 'row',

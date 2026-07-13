@@ -60,7 +60,6 @@ const linking: LinkingOptions<RootStackParamList> = {
       Insumos: 'insumos',
       InsumoDetalhe: 'insumos/detalhe/:insumoId',
       Requisicoes: 'requisicoes',
-      Fiscais: 'fiscais',
       JornadaFiscais: 'fiscais/jornada',
       RegistroPonto: 'ponto',
       Checklist: 'checklist',

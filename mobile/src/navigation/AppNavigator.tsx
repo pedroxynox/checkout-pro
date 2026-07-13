@@ -20,7 +20,6 @@ import { LoteApaeScreen } from '../screens/loteApae/LoteApaeScreen';
 import { InsumosScreen } from '../screens/insumos/InsumosScreen';
 import { InsumoDetalheScreen } from '../screens/insumos/InsumoDetalheScreen';
 import { RequisicoesScreen } from '../screens/insumos/RequisicoesScreen';
-import { FiscaisScreen } from '../screens/fiscais/FiscaisScreen';
 import { JornadaFiscaisScreen } from '../screens/fiscais/JornadaFiscaisScreen';
 import { RegistroPontoScreen } from '../screens/ponto/RegistroPontoScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
@@ -128,13 +127,6 @@ export function AppNavigator(): React.ReactElement {
             options={{ title: 'Requisições' }}
           />
         </>
-      )}
-      {podeAcessar('FISCAIS_STATUS') && (
-        <Stack.Screen
-          name="Fiscais"
-          component={FiscaisScreen}
-          options={{ title: 'Fiscais' }}
-        />
       )}
       {podeAcessar('FISCAIS_JORNADA') && (
         <Stack.Screen

@@ -1185,6 +1185,19 @@ export function OperadoresScreen(): React.ReactElement {
 
   return (
     <Tela aoAtualizar={recarregarTudo} atualizando={dia.atualizando}>
+      {/* Acesso ao log de jornada de toda a equipe (só gestores). Antes ficava
+          na aba Fiscais (removida); agora vive aqui, junto da escala. */}
+      {podeAcessar('FISCAIS_JORNADA') ? (
+        <Pressable
+          onPress={() => navigation.navigate('JornadaFiscais')}
+          style={styles.linkJornada}
+        >
+          <Ionicons name="time-outline" size={20} color={cores.primaria} />
+          <Text style={styles.linkJornadaTexto}>Ver jornada da equipe</Text>
+          <Ionicons name="chevron-forward" size={18} color={cores.textoSecundario} />
+        </Pressable>
+      ) : null}
+
       {/* Tablero "ao vivo": quem deveria estar agora */}
       {aoVivo.dados ? (
         <Cartao titulo="Agora no caixa">
@@ -1707,6 +1720,20 @@ const styles = StyleSheet.create({
   statusVivoTexto: {
     ...tipografia.legenda,
     fontWeight: '700',
+  },
+  linkJornada: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    backgroundColor: cores.superficie,
+    borderRadius: raio.lg,
+    padding: espacamento.lg,
+    marginBottom: espacamento.md,
+  },
+  linkJornadaTexto: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    flex: 1,
   },
   acoesDireita: {
     flexDirection: 'column',
