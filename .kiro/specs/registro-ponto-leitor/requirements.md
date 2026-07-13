@@ -164,8 +164,8 @@ Critérios de aceitação:
 2. O intervalo permitido é de **1h a 3h** (esperado 2h).
 3. SE o intervalo for **menor que 1h**, ENTÃO o dia DEVE ser classificado como
    **TAC**.
-4. SE o intervalo for **maior que 3h**, ENTÃO o sistema DEVE sinalizar como
-   irregular (fora do permitido).
+4. SE o intervalo for **maior que 3h**, ENTÃO o dia DEVE ser classificado como
+   **TAC**.
 
 ## Requisito 11 — Horas extras 50% / 100%
 
@@ -180,15 +180,18 @@ Critérios de aceitação:
 **História:** Como responsável, quero ser avisado quando um colaborador estiver
 prestes a exceder o limite diário, para agir a tempo.
 
+**TAC** = **Termo de Ajustamento de Conduta**.
+
 Critérios de aceitação:
 1. QUANDO um colaborador (ainda trabalhando) atinge **1h45 de horas extras** no
-   dia, ENTÃO o sistema DEVE enviar um alerta **a cada 1 minuto** avisando que
-   ele vai exceder o horário diário permitido.
+   dia, ENTÃO o sistema DEVE enviar um alerta **a cada 1 minuto**, **para todos
+   os fiscais**, avisando que ele vai exceder o horário diário permitido.
 2. O colaborador PODE continuar batendo/carregando o papelito normalmente.
-3. QUANDO as horas extras passam de **1h50**, ENTÃO o dia DEVE ser classificado
-   como **TAC**.
-4. QUANDO o dia é classificado como TAC, ENTÃO o sistema DEVE indicar o(s)
-   motivo(s) (ex.: "excedeu 1h50 de extras", "intervalo abaixo de 1h").
+3. QUANDO as horas extras passam de **1h50** (ou o intervalo fica < 1h ou > 3h),
+   ENTÃO o dia DEVE ser classificado como **TAC**.
+4. QUANDO o dia é classificado como TAC, ENTÃO o sistema DEVE **notificar todos
+   os usuários** com o nome do colaborador e o(s) motivo(s) (ex.: "excedeu 1h50
+   de extras", "intervalo abaixo de 1h", "intervalo acima de 3h").
 
 ---
 
