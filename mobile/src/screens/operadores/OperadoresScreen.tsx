@@ -11,7 +11,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -22,7 +22,7 @@ import {
   View,
 } from 'react-native';
 import { ApiError } from '../../api/client';
-import { escalaService, operadoresService } from '../../api/services';
+import { escalaService, fiscaisService, operadoresService } from '../../api/services';
 import {
   AnaliticaFaltas,
   AoVivoOperadores,
@@ -34,8 +34,11 @@ import {
   ItemEscalaConsolidada,
   MotivoJustificativa,
   StatusCelula,
+  StatusFiscal,
   StatusJustificativa,
 } from '../../api/types';
+import { ConexaoFiscais, conectarPainelFiscais } from '../../api/socket';
+import { ROTULO_STATUS_FISCAL } from '../../utils/rotulos';
 import { useAuth } from '../../auth/AuthContext';
 import {
   Aviso,
@@ -80,6 +83,13 @@ function rotuloStatus(status: ColaboradorDia['status']): string {
   if (status === 'TRABALHA') return 'Trabalha';
   if (status === 'FALTA') return 'Falta';
   return 'Folga';
+}
+
+/** Cor do status AO VIVO do fiscal (derivado das batidas do ponto). */
+function corStatusFiscal(status: StatusFiscal): string {
+  if (status === 'DISPONIVEL') return cores.verde;
+  if (status === 'INTERVALO') return cores.amarelo;
+  return cores.textoSecundario;
 }
 
 /** Primeiro e último dia do mês atual (ISO). */
@@ -194,6 +204,7 @@ function ColaboradorRow({
   onSemRetorno,
   podeAcoes,
   semRetornoAtivo,
+  statusAoVivo,
 }: {
   c: ColaboradorDia;
   onAbrirPerfil: (c: ColaboradorDia) => void;
@@ -201,6 +212,11 @@ function ColaboradorRow({
   onSemRetorno: (c: ColaboradorDia) => void;
   podeAcoes: boolean;
   semRetornoAtivo: boolean;
+  /**
+   * Status AO VIVO do fiscal (Disponível/Intervalo/Fora), vindo das batidas do
+   * ponto. Só é passado para fiscais e quando o dia exibido é hoje.
+   */
+  statusAoVivo?: StatusFiscal | null;
 }): React.ReactElement {
   const folga = c.status === 'FOLGA';
   const ehFalta = c.status === 'FALTA';
@@ -232,6 +248,22 @@ function ColaboradorRow({
         <Text style={styles.horarioInline}>
           {folga ? 'Dia de folga' : `${c.entrada} – ${c.saida}`}
         </Text>
+        {/* Status ao vivo do fiscal (só hoje). Complementa o selo de escala. */}
+        {statusAoVivo ? (
+          <View style={styles.statusVivoLinha}>
+            <View
+              style={[
+                styles.statusVivoDot,
+                { backgroundColor: corStatusFiscal(statusAoVivo) },
+              ]}
+            />
+            <Text
+              style={[styles.statusVivoTexto, { color: corStatusFiscal(statusAoVivo) }]}
+            >
+              {ROTULO_STATUS_FISCAL[statusAoVivo]}
+            </Text>
+          </View>
+        ) : null}
       </View>
       <View style={styles.acoesDireita}>
         {folga || !podeAcoes ? (
@@ -902,6 +934,40 @@ export function OperadoresScreen(): React.ReactElement {
     [diaSel],
   );
 
+  // Status AO VIVO dos fiscais (fiscalId → status), derivado das batidas do
+  // ponto (ponte de status). Carrega o painel e assina atualizações em tempo
+  // real; o selo só é exibido quando o dia selecionado é hoje.
+  const [statusFiscais, setStatusFiscais] = useState<
+    Record<string, StatusFiscal>
+  >({});
+  const conexaoFiscaisRef = useRef<ConexaoFiscais | null>(null);
+  useEffect(() => {
+    let ativo = true;
+    fiscaisService
+      .painel()
+      .then((p) => {
+        if (!ativo) return;
+        const mapa: Record<string, StatusFiscal> = {};
+        for (const f of p) mapa[f.fiscalId] = f.status;
+        setStatusFiscais(mapa);
+      })
+      .catch(() => {
+        /* status ao vivo é complementar; falha não quebra a escala */
+      });
+    void conectarPainelFiscais({
+      aoAtualizarStatus: (ev) =>
+        setStatusFiscais((prev) => ({ ...prev, [ev.fiscalId]: ev.status })),
+    }).then((c) => {
+      if (ativo) conexaoFiscaisRef.current = c;
+      else c.desconectar();
+    });
+    return () => {
+      ativo = false;
+      conexaoFiscaisRef.current?.desconectar();
+      conexaoFiscaisRef.current = null;
+    };
+  }, []);
+
   const aoVivo = useRequisicao<AoVivoOperadores>(() => operadoresService.aoVivo(), []);
 
   const mes = mesAtualISO();
@@ -1221,6 +1287,7 @@ export function OperadoresScreen(): React.ReactElement {
                 onSemRetorno={alternarSemRetorno}
                 podeAcoes={podeSemRetorno}
                 semRetornoAtivo={semRetornoIds.has(cd.id)}
+                statusAoVivo={ehHoje ? (statusFiscais[f.funcionarioId] ?? null) : null}
               />
             );
           })}
@@ -1625,6 +1692,21 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginTop: 1,
+  },
+  statusVivoLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 3,
+  },
+  statusVivoDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  statusVivoTexto: {
+    ...tipografia.legenda,
+    fontWeight: '700',
   },
   acoesDireita: {
     flexDirection: 'column',
