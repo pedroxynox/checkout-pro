@@ -437,6 +437,55 @@ model FechamentoConcluido {
   @@map("fechamentos_concluidos")
 }
 
+// Registro de Ponto (leitor de papelito): tipo de cada batida do dia, na ordem
+// 1=entrada, 2=saída p/ intervalo, 3=retorno, 4=encerramento; extras a partir
+// da 5ª.
+enum TipoBatida {
+  ENTRADA
+  SAIDA_INTERVALO
+  RETORNO_INTERVALO
+  ENCERRAMENTO
+  EXTRA
+}
+
+// Origem da batida: MANUAL (digitada/confirmada), LEITOR (OCR do papelito) ou
+// EDITADO (corrigida depois).
+enum OrigemBatida {
+  MANUAL
+  LEITOR
+  EDITADO
+}
+
+// Tipo da pessoa dona da batida (padrão polimórfico, para estender a operadores).
+enum TipoPessoaPonto {
+  FISCAL
+  OPERADOR
+}
+
+// Uma batida de ponto lida do relógio físico (papelito). Uma linha por batida;
+// o tipo é derivado da ordem cronológica no dia. A hora que vale é a do
+// papelito (`hora`), não a de carregamento (`criadoEm`).
+model BatidaPonto {
+  id                String          @id @default(uuid())
+  pessoaId          String
+  tipoPessoa        TipoPessoaPonto @default(FISCAL)
+  colaboradorId     String?
+  data              DateTime
+  hora              DateTime
+  tipo              TipoBatida
+  origem            OrigemBatida    @default(MANUAL)
+  confianca         Float?
+  comprovanteUrl    String?
+  registradoPor     String
+  registradoPorNome String?
+  criadoEm          DateTime        @default(now())
+  atualizadoEm      DateTime        @updatedAt
+
+  @@index([pessoaId, data])
+  @@index([colaboradorId])
+  @@map("batidas_ponto")
+}
+
 // Registro de ponto/jornada dos fiscais: cada transição de status (entrar =
 // DISPONIVEL, sair para INTERVALO, voltar = DISPONIVEL, encerrar =
 // FORA_EXPEDIENTE). O status atual de um fiscal é o do último registro do dia;
