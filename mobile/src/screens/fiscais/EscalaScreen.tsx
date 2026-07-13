@@ -5,19 +5,24 @@
  * escala efetiva (horário de entrada/saída, intervalo e se é especial) ou
  * "Folga". O dia da semana é selecionável.
  *
+ * Quando o dia selecionado é HOJE, os fiscais mostram também o seu status AO
+ * VIVO (Disponível / Em intervalo / Fora de expediente), derivado das batidas
+ * do ponto e atualizado em tempo real por WebSocket (Fase 3).
+ *
  * Para quem gere ausências (`OPERADORES_AUSENCIAS`), cada colaborador ganha dois
  * botões diretos — **Falta** e **Sem retorno** — que marcam a ocorrência de hoje
  * com um toque (sem horário). Advertências e suspensões são lançadas no perfil.
  */
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { escalaService, operadoresService } from '../../api/services';
+import { escalaService, fiscaisService, operadoresService } from '../../api/services';
 import { ApiError } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
-import { ItemEscalaConsolidada } from '../../api/types';
+import { ItemEscalaConsolidada, StatusFiscal } from '../../api/types';
+import { ConexaoFiscais, conectarPainelFiscais } from '../../api/socket';
 import {
   Carregando,
   Cartao,
@@ -30,12 +35,30 @@ import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
+import { ROTULO_STATUS_FISCAL } from '../../utils/rotulos';
 import {
   DIAS_SEMANA,
   DIAS_SEMANA_CURTO,
   diaSemanaHoje,
   hojeISO,
 } from '../../utils/formato';
+
+const VERDE = cores.sucesso ?? '#1FA463';
+const AMARELO = cores.amarelo ?? '#B7791F';
+
+/** Cor do texto do selo de status ao vivo. */
+function corStatusFiscal(status: StatusFiscal): string {
+  if (status === 'DISPONIVEL') return VERDE;
+  if (status === 'INTERVALO') return AMARELO;
+  return cores.textoSecundario;
+}
+
+/** Cor de fundo do selo de status ao vivo. */
+function corFundoStatusFiscal(status: StatusFiscal): string {
+  if (status === 'DISPONIVEL') return cores.verdeFundo ?? '#E4F6EC';
+  if (status === 'INTERVALO') return cores.amareloFundo ?? '#FBF3DA';
+  return cores.superficieAlternativa;
+}
 
 export function EscalaScreen(): React.ReactElement {
   const navigation =
@@ -47,11 +70,53 @@ export function EscalaScreen(): React.ReactElement {
   const [dia, setDia] = useState<number>(hoje);
   // Colaborador com uma marcação em andamento (desabilita seus botões).
   const [enviando, setEnviando] = useState<string | null>(null);
+  // Status ao vivo dos fiscais (fiscalId → status), só relevante para hoje.
+  const [statusFiscais, setStatusFiscais] = useState<
+    Record<string, StatusFiscal>
+  >({});
+  const conexaoRef = useRef<ConexaoFiscais | null>(null);
+  const vendoHoje = dia === hoje;
 
   const escala = useRequisicao<ItemEscalaConsolidada[]>(
     () => escalaService.consolidada(dia),
     [dia],
   );
+
+  // Carrega o status atual dos fiscais e assina atualizações em tempo real.
+  // O painel reflete as batidas do ponto (ponte da Fase 1); o selo de status
+  // só é exibido quando o dia selecionado é hoje.
+  useEffect(() => {
+    let ativo = true;
+    fiscaisService
+      .painel()
+      .then((p) => {
+        if (!ativo) return;
+        const mapa: Record<string, StatusFiscal> = {};
+        for (const f of p) mapa[f.fiscalId] = f.status;
+        setStatusFiscais(mapa);
+      })
+      .catch(() => {
+        /* status ao vivo é complementar; ignora falha silenciosamente */
+      });
+
+    void conectarPainelFiscais({
+      aoAtualizarStatus: (ev) => {
+        setStatusFiscais((prev) => ({ ...prev, [ev.fiscalId]: ev.status }));
+      },
+    }).then((c) => {
+      if (ativo) {
+        conexaoRef.current = c;
+      } else {
+        c.desconectar();
+      }
+    });
+
+    return () => {
+      ativo = false;
+      conexaoRef.current?.desconectar();
+      conexaoRef.current = null;
+    };
+  }, []);
 
   /** Marca uma falta (ausência) de hoje para o colaborador, com confirmação. */
   const marcarFalta = async (colaboradorId: string, nome: string): Promise<void> => {
@@ -158,6 +223,14 @@ export function EscalaScreen(): React.ReactElement {
                     {nome}
                   </Text>
                   <View style={styles.direita}>
+                    {/* Status ao vivo do fiscal (só hoje, e só se houver). */}
+                    {vendoHoje && statusFiscais[item.funcionarioId] ? (
+                      <Selo
+                        texto={ROTULO_STATUS_FISCAL[statusFiscais[item.funcionarioId]]}
+                        cor={corStatusFiscal(statusFiscais[item.funcionarioId])}
+                        fundo={corFundoStatusFiscal(statusFiscais[item.funcionarioId])}
+                      />
+                    ) : null}
                     {folga ? (
                       <Selo texto="Folga" cor={cores.textoSecundario} fundo={cores.superficieAlternativa} />
                     ) : efetiva.especial ? (

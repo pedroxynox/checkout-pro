@@ -18,6 +18,16 @@ jest.mock('../../api/services', () => ({
   operadoresService: {
     registrarAusencia: jest.fn(),
   },
+  fiscaisService: {
+    painel: jest.fn(),
+  },
+}));
+
+// Painel de fiscais em tempo real (status ao vivo na escala): conexão neutra.
+jest.mock('../../api/socket', () => ({
+  conectarPainelFiscais: jest.fn(() =>
+    Promise.resolve({ socket: {}, desconectar: jest.fn() }),
+  ),
 }));
 
 // Diálogos: confirmar resolve true (usuário confirma) e notificar é neutro.
@@ -41,7 +51,7 @@ jest.mock('../../utils/formato', () => {
 });
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { escalaService, operadoresService } = require('../../api/services');
+const { escalaService, operadoresService, fiscaisService } = require('../../api/services');
 
 const CONSOLIDADA = [
   {
@@ -83,6 +93,7 @@ describe('EscalaScreen', () => {
     escalaService.consolidada.mockResolvedValue(CONSOLIDADA);
     escalaService.registrarIncidencia.mockResolvedValue({});
     operadoresService.registrarAusencia.mockResolvedValue({});
+    fiscaisService.painel.mockResolvedValue([]);
   });
 
   it('exibe os horários efetivos e selos de folga/especial', async () => {
@@ -92,6 +103,19 @@ describe('EscalaScreen', () => {
     expect(screen.getByText(/08:00 às 16:00/)).toBeTruthy();
     expect(screen.getByText('Folga')).toBeTruthy();
     expect(screen.getByText('Especial')).toBeTruthy();
+  });
+
+  it('exibe o status ao vivo do fiscal quando o dia é hoje', async () => {
+    fiscaisService.painel.mockResolvedValue([
+      { fiscalId: 'f-ana', primeiroNome: 'Ana', status: 'DISPONIVEL', desde: null },
+      { fiscalId: 'f-bruno', primeiroNome: 'Bruno', status: 'INTERVALO', desde: null },
+    ]);
+
+    render(<EscalaScreen />);
+
+    expect(await screen.findByText('Ana Souza')).toBeTruthy();
+    expect(await screen.findByText('Disponível')).toBeTruthy();
+    expect(screen.getByText('Em intervalo')).toBeTruthy();
   });
 
   it('exibe estado vazio quando não há escala no dia', async () => {
