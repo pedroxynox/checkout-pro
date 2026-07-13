@@ -8,6 +8,12 @@ import {
   proximosDomingos,
 } from './escala-domingo.domain';
 
+/** Âncora vigente do rodízio (domingo de referência + grupo que folga). */
+export interface AncoraDomingo {
+  data: Date;
+  grupo: GrupoDomingo;
+}
+
 /** Um domingo do preview com o grupo que folga nele. */
 export interface DomingoPreview {
   /** Data do domingo (ISO yyyy-mm-dd). */
@@ -37,6 +43,23 @@ const PREVIEW_QTD = 8;
 @Injectable()
 export class EscalaDomingoService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Âncora vigente (domingo de referência + grupo que folga), ou null se o
+   * rodízio ainda não foi configurado. Usada por quem resolve a escala de um
+   * domingo específico (quadro de operadores).
+   */
+  async obterAncora(): Promise<AncoraDomingo | null> {
+    const cfg = await this.prisma.configSistema.findUnique({
+      where: { id: 'sistema' },
+    });
+    const data = cfg?.domingoAncoraData ?? null;
+    const grupo = ehGrupoValido(cfg?.domingoAncoraGrupo)
+      ? cfg!.domingoAncoraGrupo
+      : null;
+    if (!data || !grupo) return null;
+    return { data, grupo };
+  }
 
   /** Configuração vigente + preview dos próximos domingos. */
   async obter(): Promise<EscalaDomingoConfig> {

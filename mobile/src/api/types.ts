@@ -1167,6 +1167,8 @@ export interface DiaOperadores {
   folgas: number;
   faltas: number;
   colaboradores: ColaboradorDia[];
+  /** Só no domingo: grupo que folga (G1/G2/G3) pelo rodízio, ou null. */
+  grupoFolgaDomingo?: string | null;
 }
 
 // ----- Notificações (Req 7.3) -----
