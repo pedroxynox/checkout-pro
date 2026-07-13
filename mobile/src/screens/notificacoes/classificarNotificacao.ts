@@ -85,10 +85,10 @@ const REGRAS: Regra[] = [
   },
   {
     palavras: ['fiscal', 'jornada', 'ponto', 'comprovante', 'cobertura', 'hora extra'],
-    rota: 'Fiscais',
-    modulo: 'Fiscais',
-    icone: 'people-outline',
-    acao: 'Ver fiscal',
+    rota: 'RegistroPonto',
+    modulo: 'Registro de Ponto',
+    icone: 'time-outline',
+    acao: 'Ver ponto',
   },
   {
     palavras: ['escala', 'folga'],

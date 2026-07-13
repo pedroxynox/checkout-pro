@@ -20,6 +20,10 @@ jest.mock('../../api/services', () => ({
     removerBatida: jest.fn(),
     lerComprovante: jest.fn(),
   },
+  fiscaisService: {
+    meuResumo: jest.fn(),
+    informarFalta: jest.fn(),
+  },
 }));
 
 jest.mock('./leitorComprovante', () => ({
@@ -30,7 +34,7 @@ jest.mock('./leitorComprovante', () => ({
 const { capturarComprovante } = require('./leitorComprovante');
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { pontoService } = require('../../api/services');
+const { pontoService, fiscaisService } = require('../../api/services');
 
 const JORNADA_VAZIA = {
   pessoaId: 'f1',
@@ -60,6 +64,9 @@ describe('RegistroPontoScreen', () => {
     ]);
     pontoService.jornadaDoDia.mockResolvedValue(JORNADA_VAZIA);
     pontoService.registrarBatida.mockResolvedValue(JORNADA_VAZIA);
+    // Por padrão o usuário do teste não é fiscal (card de falta não aparece).
+    fiscaisService.meuResumo.mockResolvedValue(null);
+    fiscaisService.informarFalta.mockResolvedValue(undefined);
   });
 
   it('busca, seleciona o colaborador e mostra a jornada', async () => {
