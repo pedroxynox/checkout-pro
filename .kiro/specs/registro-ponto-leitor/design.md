@@ -1,4 +1,4 @@
-# Design — Registro de Ponto (leitor de papelito)
+# Design — Registro de Ponto (leitor de comprovante do ponto)
 
 ## 1. Arquitetura geral
 
@@ -7,7 +7,7 @@ Captura no telefone → leitura/validação no backend → persistência → pai
 ```
 [App/Web]  câmera/foto (Fase B) ou entrada manual (Fase A)
     │
-    ├── (Fase B) POST /ponto/ocr  { imagem }  ──► OCR na nuvem + parser do papelito
+    ├── (Fase B) POST /ponto/ocr  { imagem }  ──► OCR na nuvem + parser do comprovante do ponto
     │                                            devolve { nome, data, hora, confianca }
     │
     └── POST /ponto/batidas  { pessoaId, tipoPessoa, data, hora, origem, comprovante? }
@@ -47,7 +47,7 @@ enum TipoBatida {
 
 enum OrigemBatida {
   MANUAL   // Fase A: digitada/confirmada
-  LEITOR   // Fase B: extraída do papelito por OCR
+  LEITOR   // Fase B: extraída do comprovante do ponto por OCR
   EDITADO  // corrigida depois
 }
 
@@ -66,7 +66,7 @@ model BatidaPonto {
   tipo           TipoBatida
   origem         OrigemBatida    @default(MANUAL)
   confianca      Float?          // confiança do OCR (Fase B)
-  comprovanteUrl String?         // imagem do papelito (opcional)
+  comprovanteUrl String?         // imagem do comprovante do ponto (opcional)
   registradoPor  String          // usuarioId de quem registrou
   registradoPorNome String?
   criadoEm       DateTime        @default(now())
@@ -139,7 +139,7 @@ Funções sem I/O (fáceis de testar):
 `backend/src/ponto/ponto-alertas.service.ts` — cron **a cada 1 minuto**: para
 cada colaborador **ainda trabalhando hoje** com `horasExtrasMs >= 1h45`, envia
 notificação **a todos os fiscais** ("Fulano vai exceder o horário diário
-permitido"). O colaborador **continua podendo bater/carregar papelito**; ao
+permitido"). O colaborador **continua podendo bater/carregar comprovante do ponto**; ao
 passar de 1h50 o dia fica TAC e o sistema **notifica todos os usuários**.
 Reaproveita `NotificacoesModule` (mesmo padrão de `fiscais-horario.service.ts`).
 
@@ -159,13 +159,13 @@ Endpoints (base `/ponto`):
 - `GET /ponto/pessoas?busca=` — busca colaboradores por nome/matrícula para
   seleção (reusa dados de `Colaborador`/`Fiscal`). `PONTO_REGISTRAR`.
 - **(Fase B)** `POST /ponto/ocr` — recebe imagem, chama o serviço de OCR,
-  aplica o parser do formato do papelito e devolve `{ nome, data, hora,
+  aplica o parser do formato do comprovante do ponto e devolve `{ nome, data, hora,
   confianca, candidatosColaborador[] }`. `PONTO_REGISTRAR`.
 
-Serviço de OCR (Fase B): interface `LeitorPapelitoService` com implementação
+Serviço de OCR (Fase B): interface `LeitorComprovante do pontoService` com implementação
 `OcrNuvemService` (provedor de nuvem via chave). Interface permite trocar por
 implementação local/servidor próprio sem mudar o controller. O **parser do
-formato do papelito** é uma função pura testável (regex sobre o texto extraído:
+formato do comprovante do ponto** é uma função pura testável (regex sobre o texto extraído:
 nome, `dd/mm/aaaa`, `HH:mm`).
 
 ## 5. Permissões
@@ -181,7 +181,7 @@ Espelhar as duas strings em `mobile/src/auth/funcionalidades.ts` (ADR 0002).
 
 - **Serviço:** `mobile/src/api/services/ponto.ts` (`pontoService`): `registrarBatida`,
   `editarBatida`, `removerBatida`, `jornadaDoDia`, `buscarPessoas`, e (Fase B)
-  `lerPapelito(imagem)`.
+  `lerComprovante do ponto(imagem)`.
 - **Tipos:** adicionar em `mobile/src/api/types.ts` (`BatidaPonto`, `TipoBatida`,
   `JornadaPonto`, etc.).
 - **Navegação:** nova entrada em `mobile/src/navigation/areas.ts`
@@ -203,7 +203,7 @@ Espelhar as duas strings em `mobile/src/auth/funcionalidades.ts` (ADR 0002).
 
 ## 7. Cálculo de horas (resumo)
 
-- **A hora que vale é a do papelito** (`hora` da batida), NÃO a hora em que foi
+- **A hora que vale é a do comprovante do ponto** (`hora` da batida), NÃO a hora em que foi
   carregada/registrada (`criadoEm`). Ex.: bate às 12:10 e carrega às 12:15 → o
   sistema grava a saída às **12:10** e conta o trabalho até 12:10. O relógio do
   dia começa a andar a partir da 1ª batida (ex.: entrada 07:56 conta desde 07:56).
@@ -220,12 +220,12 @@ Espelhar as duas strings em `mobile/src/auth/funcionalidades.ts` (ADR 0002).
 ## 8. Testes
 - `ponto.domain.spec.ts`: classificação das 4 batidas, cálculo de trabalhado/
   intervalo/extra, casos incompletos, batidas fora de ordem, extras.
-- Parser do papelito (Fase B): testes de exemplos de texto do papelito.
+- Parser do comprovante do ponto (Fase B): testes de exemplos de texto do comprovante do ponto.
 - Mobile: teste da screen (render, seleção, registro manual) com serviço mockado.
 
 ## 9. Riscos e mitigações
 - **OCR nunca é 100%** → confirmação/edição manual sempre disponível; parser
-  focado no formato fixo do papelito aumenta muito o acerto.
+  focado no formato fixo do comprovante do ponto aumenta muito o acerto.
 - **Chave da nuvem (Fase B)** → depende de conta/credencial do usuário;
   isolada atrás de interface para trocar por servidor próprio se preferir.
 - **iPhone/Safari** → captura por foto (não ao vivo); mesmo endpoint de OCR.

@@ -1,14 +1,14 @@
-/** Serviço do Registro de Ponto (leitor de papelito) — Fase A. */
+/** Serviço do Registro de Ponto (leitor de comprovante) — Fase A. */
 import { apiClient } from '../client';
 import {
   JornadaDiaPonto,
-  LeituraPapelito,
+  LeituraComprovante,
   PessoaPonto,
   TipoBatida,
 } from '../types';
 
 export const pontoService = {
-  /** Busca pessoas (fiscais) por nome para escolher de quem é o papelito. */
+  /** Busca pessoas (fiscais) por nome para escolher de quem é o comprovante. */
   buscarPessoas(busca?: string): Promise<PessoaPonto[]> {
     return apiClient.get<PessoaPonto[]>('/ponto/pessoas', { busca });
   },
@@ -26,7 +26,7 @@ export const pontoService = {
     });
   },
 
-  /** Registra uma batida (hora do papelito) para um colaborador. */
+  /** Registra uma batida (hora do comprovante) para um colaborador. */
   registrarBatida(input: {
     pessoaId: string;
     tipoPessoa?: 'FISCAL' | 'OPERADOR';
@@ -51,13 +51,13 @@ export const pontoService = {
   },
 
   /**
-   * Lê o papelito: envia o texto (já lido no Android) ou a imagem (OCR no
+   * Lê o comprovante: envia o texto (já lido no Android) ou a imagem (OCR no
    * servidor, na web) e recebe nome/data/hora + colaboradores sugeridos.
    */
-  lerPapelito(input: {
+  lerComprovante(input: {
     texto?: string;
     imagem?: string;
-  }): Promise<LeituraPapelito> {
-    return apiClient.post<LeituraPapelito>('/ponto/ocr', input);
+  }): Promise<LeituraComprovante> {
+    return apiClient.post<LeituraComprovante>('/ponto/ocr', input);
   },
 };

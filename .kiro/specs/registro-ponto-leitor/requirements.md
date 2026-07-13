@@ -1,22 +1,22 @@
-# Requisitos — Registro de Ponto (leitor de papelito)
+# Requisitos — Registro de Ponto (leitor de comprovante do ponto)
 
 ## Visão geral
 
 Nova seção **Registro de Ponto** no Check-out Pro. Hoje o fiscal marca
 manualmente "disponível / intervalo / disponível / encerrar" dentro do app. O
-objetivo é registrar o ponto a partir do **papelito impresso pelo relógio de
+objetivo é registrar o ponto a partir do **comprovante do ponto impresso pelo relógio de
 ponto** (biométrico) da empresa, que contém nome completo, data e hora.
 
 Cada dia tem **4 batidas**, na ordem: **1) entrada**, **2) saída para
 intervalo**, **3) retorno do intervalo**, **4) encerramento**. O sistema captura
-a batida, associa ao colaborador dono do papelito e calcula jornada, intervalo,
+a batida, associa ao colaborador dono do comprovante do ponto e calcula jornada, intervalo,
 horas trabalhadas, horas extras, limite diário e carga horária esperada.
 
 O trabalho é dividido em duas fases:
 
 - **Fase A (este ciclo):** toda a base funcionando com **registro manual** da
   hora (digitar/confirmar). Entrega valor e é testável sem depender de OCR.
-- **Fase B (próximo ciclo):** **leitor do papelito** (câmera + OCR na nuvem) que
+- **Fase B (próximo ciclo):** **leitor do comprovante do ponto** (câmera + OCR na nuvem) que
   preenche a hora sozinho; o usuário só confirma.
 
 Escopo inicial: **apenas fiscais**. A modelagem já deve permitir estender a
@@ -27,15 +27,15 @@ Escopo inicial: **apenas fiscais**. A modelagem já deve permitir estender a
   para funcionar igual em **Android (APK)** e **iPhone (web/Safari)**. Requer
   internet (o app já exige internet para tudo).
 - Um **fiscal pode registrar o ponto de qualquer colaborador** (não só o seu).
-- Existe um **modo lote** para ler vários papelitos em sequência.
-- A hora do papelito é sempre **editável**, com registro de quem alterou.
+- Existe um **modo lote** para ler vários comprovante do pontos em sequência.
+- A hora do comprovante do ponto é sempre **editável**, com registro de quem alterou.
 
 ---
 
 ## Requisito 1 — Registrar uma batida de ponto
 
 **História:** Como fiscal, quero registrar uma batida de ponto de um colaborador
-a partir dos dados do papelito, para que a hora oficial do relógio fique gravada
+a partir dos dados do comprovante do ponto, para que a hora oficial do relógio fique gravada
 no sistema.
 
 Critérios de aceitação:
@@ -46,8 +46,8 @@ Critérios de aceitação:
    para intervalo, 3ª = retorno do intervalo, 4ª = encerramento.
 3. SE o usuário tenta registrar uma **5ª batida** no mesmo dia, ENTÃO o sistema
    DEVE avisar e permitir gravar como batida extra (sem quebrar o cálculo).
-4. SE a data do papelito **não for o dia atual**, ENTÃO o sistema DEVE avisar
-   antes de gravar (proteção contra papelito antigo), mas permitir confirmar.
+4. SE a data do comprovante do ponto **não for o dia atual**, ENTÃO o sistema DEVE avisar
+   antes de gravar (proteção contra comprovante do ponto antigo), mas permitir confirmar.
 5. SE já existe uma batida com a **mesma hora** para o mesmo colaborador no dia,
    ENTÃO o sistema DEVE avisar sobre possível duplicidade.
 6. QUANDO uma batida é gravada, ENTÃO o sistema DEVE registrar **quem** a
@@ -56,7 +56,7 @@ Critérios de aceitação:
 ## Requisito 2 — Registrar o ponto de qualquer colaborador
 
 **História:** Como fiscal (ou perfil superior), quero registrar o ponto de
-qualquer colaborador, porque eu leio os papelitos de vários colegas.
+qualquer colaborador, porque eu leio os comprovante do pontos de vários colegas.
 
 Critérios de aceitação:
 1. QUANDO o usuário busca por nome ou matrícula, ENTÃO o sistema DEVE listar os
@@ -68,7 +68,7 @@ Critérios de aceitação:
 
 ## Requisito 3 — Modo lote
 
-**História:** Como responsável, quero ler vários papelitos em sequência, para
+**História:** Como responsável, quero ler vários comprovante do pontos em sequência, para
 registrar o ponto de toda a equipe de uma vez.
 
 Critérios de aceitação:
@@ -125,13 +125,13 @@ Critérios de aceitação:
    `colaboradorId`), para permitir estender a operadores sem migração
    estrutural.
 
-## Requisito 8 — Leitor do papelito (Fase B)
+## Requisito 8 — Leitor do comprovante do ponto (Fase B)
 
-**História:** Como fiscal, quero apenas mostrar/fotografar o papelito e ter a
+**História:** Como fiscal, quero apenas mostrar/fotografar o comprovante do ponto e ter a
 hora preenchida automaticamente.
 
 Critérios de aceitação:
-1. QUANDO o usuário aponta a câmera para o papelito (ou tira uma foto), ENTÃO o
+1. QUANDO o usuário aponta a câmera para o comprovante do ponto (ou tira uma foto), ENTÃO o
    sistema DEVE enviar a imagem ao backend e receber nome, data e hora extraídos.
 2. QUANDO o texto é extraído, ENTÃO o sistema DEVE pré-selecionar o colaborador
    correspondente (por nome/matrícula) e preencher a hora, deixando o usuário
@@ -142,19 +142,19 @@ Critérios de aceitação:
 5. NÃO FAZ PARTE deste spec integrar diretamente com o arquivo eletrônico do
    relógio (AFD) — fica registrado como evolução futura.
 
-## Requisito 9 — A hora do papelito é a que vale
+## Requisito 9 — A hora do comprovante do ponto é a que vale
 
-**História:** Como colaborador, quero que conte a hora impressa no papelito e
+**História:** Como colaborador, quero que conte a hora impressa no comprovante do ponto e
 não a hora em que carreguei, para que o cálculo seja justo.
 
 Critérios de aceitação:
 1. QUANDO uma batida é registrada, ENTÃO o sistema DEVE gravar como hora da
-   batida a **hora do papelito** (ex.: 12:10), ainda que o carregamento ocorra
+   batida a **hora do comprovante do ponto** (ex.: 12:10), ainda que o carregamento ocorra
    depois (ex.: 12:15).
 2. O relógio do dia DEVE começar a contar a partir da **1ª batida** (ex.:
    entrada 07:56 conta desde 07:56).
 3. O tempo trabalhado DEVE ser contado entre as horas das batidas (da 1ª à 2ª,
-   etc.), usando sempre a hora do papelito.
+   etc.), usando sempre a hora do comprovante do ponto.
 
 ## Requisito 10 — Intervalo (regras e cálculo)
 
@@ -186,7 +186,7 @@ Critérios de aceitação:
 1. QUANDO um colaborador (ainda trabalhando) atinge **1h45 de horas extras** no
    dia, ENTÃO o sistema DEVE enviar um alerta **a cada 1 minuto**, **para todos
    os fiscais**, avisando que ele vai exceder o horário diário permitido.
-2. O colaborador PODE continuar batendo/carregando o papelito normalmente.
+2. O colaborador PODE continuar batendo/carregando o comprovante do ponto normalmente.
 3. QUANDO as horas extras passam de **1h50** (ou o intervalo fica < 1h ou > 3h),
    ENTÃO o dia DEVE ser classificado como **TAC**.
 4. QUANDO o dia é classificado como TAC, ENTÃO o sistema DEVE **notificar todos

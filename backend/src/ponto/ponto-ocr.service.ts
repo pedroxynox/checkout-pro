@@ -1,12 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PessoaPonto } from './ponto.service';
-import { LeitorPapelitoService } from './leitor-papelito.service';
-import { interpretarPapelito, normalizarTexto } from './ponto-ocr.parser';
-import { LerPapelitoDto } from './dto/ponto.dto';
+import { LeitorComprovanteService } from './leitor-comprovante.service';
+import { interpretarComprovante, normalizarTexto } from './ponto-ocr.parser';
+import { LerComprovanteDto } from './dto/ponto.dto';
 
-/** Resultado da leitura do papelito, para o app confirmar/corrigir. */
-export interface RespostaLeituraPapelito {
+/** Resultado da leitura do comprovante, para o app confirmar/corrigir. */
+export interface RespostaLeituraComprovante {
   /** Texto bruto lido (auditoria). */
   texto: string;
   nome: string | null;
@@ -17,7 +17,7 @@ export interface RespostaLeituraPapelito {
 }
 
 /**
- * Orquestra a leitura do papelito (Fase B): obtém o texto (já pronto, vindo do
+ * Orquestra a leitura do comprovante (Fase B): obtém o texto (já pronto, vindo do
  * ML Kit do Android, ou via OCR do nosso servidor para a web), interpreta
  * nome/data/hora e sugere os colaboradores correspondentes. O usuário sempre
  * confirma antes de gravar a batida (o registro em si é feito pelo endpoint de
@@ -27,21 +27,23 @@ export interface RespostaLeituraPapelito {
 export class PontoOcrService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly leitor: LeitorPapelitoService,
+    private readonly leitor: LeitorComprovanteService,
   ) {}
 
-  async lerPapelito(dto: LerPapelitoDto): Promise<RespostaLeituraPapelito> {
+  async lerComprovante(
+    dto: LerComprovanteDto,
+  ): Promise<RespostaLeituraComprovante> {
     const temTexto = dto.texto && dto.texto.trim().length > 0;
     if (!temTexto && !dto.imagem) {
       throw new BadRequestException(
-        'Envie o texto lido ou a imagem do papelito.',
+        'Envie o texto lido ou a imagem do comprovante.',
       );
     }
     const texto = temTexto
       ? (dto.texto as string)
       : await this.leitor.extrairTexto(dto.imagem as string);
 
-    const interpretado = interpretarPapelito(texto);
+    const interpretado = interpretarComprovante(texto);
     const candidatos = interpretado.nome
       ? await this.buscarCandidatos(interpretado.nome)
       : [];

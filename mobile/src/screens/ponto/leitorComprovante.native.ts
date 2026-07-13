@@ -1,5 +1,5 @@
 /**
- * Captura do papelito — implementação ANDROID/iOS (APK).
+ * Captura do comprovante — implementação ANDROID/iOS (APK).
  *
  * Tira a foto e lê o texto NO APARELHO com o ML Kit (o "modelo bom", rápido e
  * sem internet para a leitura). Se o leitor on-device falhar por algum motivo,
@@ -9,12 +9,12 @@
 import * as ImagePicker from 'expo-image-picker';
 import TextRecognition from '@react-native-ml-kit/text-recognition';
 
-export interface CapturaPapelito {
+export interface CapturaComprovante {
   texto?: string;
   imagem?: string;
 }
 
-export async function capturarPapelito(): Promise<CapturaPapelito | null> {
+export async function capturarComprovante(): Promise<CapturaComprovante | null> {
   const perm = await ImagePicker.requestCameraPermissionsAsync();
   if (!perm.granted) return null;
   const res = await ImagePicker.launchCameraAsync({ quality: 0.6, base64: true });

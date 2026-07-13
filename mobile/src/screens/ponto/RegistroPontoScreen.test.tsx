@@ -18,16 +18,16 @@ jest.mock('../../api/services', () => ({
     registrarBatida: jest.fn(),
     editarBatida: jest.fn(),
     removerBatida: jest.fn(),
-    lerPapelito: jest.fn(),
+    lerComprovante: jest.fn(),
   },
 }));
 
-jest.mock('./leitorPapelito', () => ({
-  capturarPapelito: jest.fn(),
+jest.mock('./leitorComprovante', () => ({
+  capturarComprovante: jest.fn(),
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { capturarPapelito } = require('./leitorPapelito');
+const { capturarComprovante } = require('./leitorComprovante');
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { pontoService } = require('../../api/services');
@@ -97,9 +97,9 @@ describe('RegistroPontoScreen', () => {
     expect(arg.hora).toMatch(/T07:56:00/);
   });
 
-  it('lê o papelito, sugere o colaborador e pré-preenche a hora', async () => {
-    capturarPapelito.mockResolvedValue({ texto: 'FUNCIONARIO ANA SOUZA 07:56' });
-    pontoService.lerPapelito.mockResolvedValue({
+  it('lê o comprovante, sugere o colaborador e pré-preenche a hora', async () => {
+    capturarComprovante.mockResolvedValue({ texto: 'FUNCIONARIO ANA SOUZA 07:56' });
+    pontoService.lerComprovante.mockResolvedValue({
       texto: 'FUNCIONARIO ANA SOUZA 07:56',
       nome: 'ANA SOUZA',
       data: null,
@@ -108,12 +108,12 @@ describe('RegistroPontoScreen', () => {
     });
 
     render(<RegistroPontoScreen />);
-    fireEvent.press(screen.getByText('Ler papelito (foto)'));
+    fireEvent.press(screen.getByText('Ler comprovante do ponto (foto)'));
 
     // Sugere o colaborador lido; ao escolher, abre o formulário com a hora.
     fireEvent.press(await screen.findByText('Ana Souza'));
     expect(await screen.findByText('Registrar batida')).toBeTruthy();
-    expect(pontoService.lerPapelito).toHaveBeenCalledWith({
+    expect(pontoService.lerComprovante).toHaveBeenCalledWith({
       texto: 'FUNCIONARIO ANA SOUZA 07:56',
     });
   });

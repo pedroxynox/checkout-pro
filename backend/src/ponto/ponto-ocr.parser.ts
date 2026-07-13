@@ -1,14 +1,21 @@
 /**
- * Interpretação do texto do papelito do relógio de ponto — Fase B.
+ * Interpretação do texto do comprovante do relógio de ponto — Fase B.
  *
  * Função pura (sem I/O), fácil de testar: recebe o texto extraído (por OCR no
  * app Android com ML Kit, ou pelo OCR do nosso servidor na web) e tenta achar
- * o **nome**, a **data** e a **hora** da batida. A hora e a data são
- * determinísticas (regex); o nome é uma heurística tolerante — o usuário sempre
- * confirma/corrige, e o nome é apenas usado para sugerir o colaborador.
+ * o **nome**, a **data** e a **hora** da batida.
+ *
+ * Ajustado ao formato real do relógio (ex.: IDCLASS BIO PROX — "COMPROVANTE DE
+ * REGISTRO DE PONTO DO TRABALHADOR"), que traz rótulos `NOME:`, `DATA:` e
+ * `HORA:`. Dois cuidados importantes desse formato:
+ *  - o **nome** pode ser quebrado em duas linhas (ex.: "...CASTELLANO RE" +
+ *    "YES" = "REYES"), então juntamos a continuação;
+ *  - há muitos números com pontos (CNPJ, PIS), então a data/hora são buscadas
+ *    prioritariamente **pelos rótulos** `DATA:`/`HORA:` para não confundir.
+ * A data e a hora são determinísticas; o nome é heurístico (o usuário confirma).
  */
 
-export interface PapelitoInterpretado {
+export interface ComprovanteInterpretado {
   /** Texto bruto lido (para auditoria/depuração). */
   texto: string;
   /** Nome do colaborador, se identificado (em maiúsculas). */
@@ -19,13 +26,18 @@ export interface PapelitoInterpretado {
   hora: string | null;
 }
 
-// Hora: 07:56, 7:56, 07h56, 07.56 ...
-const RE_HORA = /\b([01]?\d|2[0-3])[:hH.]([0-5]\d)\b/;
-// Data: 12/07/2026, 12-07-26, 12.07.2026 ...
-const RE_DATA = /\b(\d{2})[/.\-](\d{2})[/.\-](\d{2,4})\b/;
-// Rótulos que costumam anteceder o nome do funcionário no comprovante.
-const RE_ROTULO_NOME = /(NOME|FUNCIONARIO|COLABORADOR)\s*:?\s*(.+)/;
-// Palavras de cabeçalho que NÃO são o nome do funcionário.
+// Hora pelo rótulo (após normalizar, "HORA:13:18" ou "HORA 07:56").
+const RE_HORA_ROTULO = /HORA\s*:?\s*([01]?\d|2[0-3])[:H]([0-5]\d)/;
+// Hora genérica (só ":" ou "H" — sem ".", que apareceria em CNPJ/PIS).
+const RE_HORA = /\b([01]?\d|2[0-3])[:H]([0-5]\d)\b/;
+// Data pelo rótulo ("DATA:10/07/2026" ou "DATA 12/07/2026").
+const RE_DATA_ROTULO = /DATA\s*:?\s*(\d{2})\/(\d{2})\/(\d{2,4})/;
+// Data genérica (fallback), varrida com validação para pular CNPJ etc.
+const RE_DATA = /(\d{2})[/.\-](\d{2})[/.\-](\d{2,4})/g;
+// Rótulos que antecedem o nome do trabalhador.
+const RE_ROTULO_NOME = /^(?:NOME|FUNCIONARIO|COLABORADOR)\s*:?\s*(.+)$/;
+
+// Palavras de cabeçalho que NÃO são o nome do trabalhador.
 const CABECALHOS = [
   'CNPJ',
   'CPF',
@@ -33,20 +45,28 @@ const CABECALHOS = [
   'NSR',
   'CEI',
   'CAEPF',
-  'EMPREGADOR',
-  'EMPRESA',
+  'NREP',
+  'MODELO',
+  'IDCLASS',
+  'BIO',
+  'PROX',
+  'RSOCIAL',
   'RAZAO',
   'SOCIAL',
+  'LOCAL',
+  'BAIRRO',
+  'EMPREGADOR',
+  'EMPRESA',
   'COMPROVANTE',
   'REGISTRO',
   'ELETRONICO',
+  'TRABALHADOR',
   'PONTO',
   'INSCRICAO',
   'HORA',
   'DATA',
   'NUMERO',
   'LTDA',
-  'ME',
   'EPP',
 ];
 
@@ -60,65 +80,91 @@ export function normalizarTexto(s: string): string {
     .trim();
 }
 
-/** Só letras (com acento) e espaços — candidato a nome de pessoa. */
-function pareceNome(linha: string): boolean {
-  const limpa = linha.trim();
-  if (limpa.length < 5) return false;
-  if (!/^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s.]+$/.test(limpa)) return false;
-  const palavras = limpa.split(/\s+/).filter((p) => p.length >= 2);
-  if (palavras.length < 2) return false;
-  // Não pode ser uma linha de cabeçalho (empresa, rótulos etc.).
-  const norm = normalizarTexto(limpa);
-  const tokens = norm.split(' ');
-  const cabecalho = tokens.filter((t) => CABECALHOS.includes(t)).length;
-  return cabecalho === 0;
-}
-
-/** Extrai a hora (HH:mm) do texto, se houver. */
-export function extrairHora(texto: string): string | null {
-  const m = RE_HORA.exec(texto);
-  if (!m) return null;
-  return `${m[1].padStart(2, '0')}:${m[2]}`;
-}
-
-/** Extrai a data (yyyy-mm-dd) do texto, se houver e for plausível. */
-export function extrairData(texto: string): string | null {
-  const m = RE_DATA.exec(texto);
-  if (!m) return null;
+/** Monta yyyy-mm-dd a partir de [_, dd, mm, aa(aa)] se for uma data plausível. */
+function montarData(m: RegExpMatchArray): string | null {
   const dia = Number(m[1]);
   const mes = Number(m[2]);
   let ano = Number(m[3]);
   if (m[3].length === 2) ano += 2000;
   if (dia < 1 || dia > 31 || mes < 1 || mes > 12) return null;
-  const dd = String(dia).padStart(2, '0');
-  const mm = String(mes).padStart(2, '0');
-  return `${ano}-${mm}-${dd}`;
+  return `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
 }
 
-/** Extrai o nome do colaborador (heurística tolerante). */
+/** true se a linha contém alguma palavra de cabeçalho. */
+function temCabecalho(linhaNormalizada: string): boolean {
+  return linhaNormalizada.split(' ').some((t) => CABECALHOS.includes(t));
+}
+
+/** Só letras (com acento) e espaços, 2+ palavras, sem cabeçalho. */
+function pareceNome(linha: string): boolean {
+  const limpa = linha.trim();
+  if (limpa.length < 5) return false;
+  if (!/^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s]+$/.test(limpa)) return false;
+  const palavras = limpa.split(/\s+/).filter((p) => p.length >= 2);
+  if (palavras.length < 2) return false;
+  return !temCabecalho(normalizarTexto(limpa));
+}
+
+/** Extrai a hora (HH:mm): primeiro pelo rótulo `HORA:`, depois genérica. */
+export function extrairHora(texto: string): string | null {
+  const norm = normalizarTexto(texto);
+  const m = RE_HORA_ROTULO.exec(norm) ?? RE_HORA.exec(norm);
+  if (!m) return null;
+  return `${m[1].padStart(2, '0')}:${m[2]}`;
+}
+
+/** Extrai a data (yyyy-mm-dd): primeiro pelo rótulo `DATA:`, depois a 1ª válida. */
+export function extrairData(texto: string): string | null {
+  const norm = normalizarTexto(texto);
+  const rot = RE_DATA_ROTULO.exec(norm);
+  if (rot) {
+    const d = montarData(rot);
+    if (d) return d;
+  }
+  for (const m of norm.matchAll(RE_DATA)) {
+    const d = montarData(m);
+    if (d) return d;
+  }
+  return null;
+}
+
+/**
+ * Extrai o nome do trabalhador. Usa o rótulo `NOME:`/`FUNCIONÁRIO:` e junta a
+ * continuação quando o nome quebra de linha (ex.: "...RE" + "YES" = "REYES").
+ */
 export function extrairNome(texto: string): string | null {
   const linhas = texto
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean);
 
-  // 1) Linha com rótulo explícito ("Nome: ...", "Funcionário: ...").
-  for (const linha of linhas) {
-    const m = RE_ROTULO_NOME.exec(normalizarTexto(linha));
-    if (m && m[2] && pareceNome(m[2])) {
-      return normalizarTexto(m[2]);
+  for (let i = 0; i < linhas.length; i++) {
+    const m = RE_ROTULO_NOME.exec(normalizarTexto(linhas[i]));
+    if (!m || !m[1]) continue;
+
+    let nome = m[1].trim();
+    // Continuação: linhas seguintes só com letras (nome quebrado no meio da
+    // palavra), até chegar num rótulo/dado numérico (ex.: "PIS:...").
+    for (let j = i + 1; j < linhas.length; j++) {
+      const cont = normalizarTexto(linhas[j]);
+      if (!cont || /[:0-9]/.test(cont)) break;
+      if (!/^[A-Z ]+$/.test(cont) || temCabecalho(cont)) break;
+      nome += cont; // junta sem espaço (o relógio quebra no meio da palavra)
+      if (nome.length > 60) break;
     }
+    nome = normalizarTexto(nome);
+    if (pareceNome(nome)) return nome;
   }
 
-  // 2) Sem rótulo: a maior linha que "parece nome" (2+ palavras, sem cabeçalho).
+  // Fallback: a maior linha que "parece nome".
   const candidatas = linhas.filter(pareceNome);
   if (candidatas.length === 0) return null;
   candidatas.sort((a, b) => b.length - a.length);
   return normalizarTexto(candidatas[0]);
 }
 
-/** Interpreta o papelito: nome + data + hora. */
-export function interpretarPapelito(texto: string): PapelitoInterpretado {
+/** Interpreta o comprovante: nome + data + hora. */
+export function interpretarComprovante(texto: string): ComprovanteInterpretado {
   return {
     texto,
     nome: extrairNome(texto),

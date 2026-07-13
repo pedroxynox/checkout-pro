@@ -1472,7 +1472,7 @@ export interface ResumoCarteiraContratos {
 
 
 // ---------------------------------------------------------------------------
-// Registro de Ponto (leitor de papelito) — Fase A
+// Registro de Ponto (leitor de comprovante) — Fase A
 // ---------------------------------------------------------------------------
 
 /** Tipo de cada batida do dia (pela ordem: 1ª entrada ... 4ª encerramento). */
@@ -1494,7 +1494,7 @@ export type StatusJornadaPonto =
 /** Uma batida como exibida no app. */
 export interface BatidaPontoView {
   id: string;
-  /** Hora da batida (ISO). A hora que vale é a do papelito. */
+  /** Hora da batida (ISO). A hora que vale é a do comprovante. */
   hora: string;
   tipo: TipoBatida;
   origem: string;
@@ -1532,8 +1532,8 @@ export interface PessoaPonto {
   tipoPessoa: 'FISCAL' | 'OPERADOR';
 }
 
-/** Resultado da leitura do papelito (Fase B): nome/data/hora + sugestões. */
-export interface LeituraPapelito {
+/** Resultado da leitura do comprovante (Fase B): nome/data/hora + sugestões. */
+export interface LeituraComprovante {
   texto: string;
   nome: string | null;
   data: string | null;

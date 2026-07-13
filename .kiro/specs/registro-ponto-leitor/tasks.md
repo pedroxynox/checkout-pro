@@ -1,4 +1,4 @@
-# Tarefas — Registro de Ponto (leitor de papelito)
+# Tarefas — Registro de Ponto (leitor de comprovante do ponto)
 
 Cada bloco marcado como PR vira um Pull Request separado (o usuário faz o merge).
 
@@ -12,7 +12,7 @@ Cada bloco marcado como PR vira um Pull Request separado (o usuário faz o merge
 
 - [ ] 2. **Domínio puro de jornada** (Requisitos 1, 4, 9, 10, 11, 12)
   - [ ] 2.1 `backend/src/ponto/ponto.domain.ts`: `classificarBatidas`,
-        `calcularJornadaDia` (usa a hora do papelito; intervalo não conta como
+        `calcularJornadaDia` (usa a hora do comprovante do ponto; intervalo não conta como
         jornada), status, faltando.
   - [ ] 2.2 Extras + adicional (Seg–Sáb 50% / Dom 100%): `horasExtras50Ms`,
         `horasExtras100Ms`.
@@ -57,21 +57,21 @@ Cada bloco marcado como PR vira um Pull Request separado (o usuário faz o merge
   - [ ] 6.4 Registrar rota/área/navegação/deep link e testes de tela.
   - PR: "Ponto: tela de registro de ponto e painel de jornada (fiscais)".
 
-## Fase B — Leitor do papelito (OCR)
+## Fase B — Leitor do comprovante do ponto (OCR)
 
 - [ ] 7. **Backend: OCR + parser** (Requisito 8)
-  - [ ] 7.1 Interface `LeitorPapelitoService` + implementação de nuvem
+  - [ ] 7.1 Interface `LeitorComprovante do pontoService` + implementação de nuvem
         (configurável por chave), atrás de interface.
-  - [ ] 7.2 Parser puro do formato do papelito (nome/data/hora) + testes.
+  - [ ] 7.2 Parser puro do formato do comprovante do ponto (nome/data/hora) + testes.
   - [ ] 7.3 `POST /ponto/ocr` retornando texto extraído + candidatos.
-  - PR: "Ponto: leitura do papelito por OCR (backend)".
+  - PR: "Ponto: leitura do comprovante do ponto por OCR (backend)".
 
 - [ ] 8. **Mobile/Web: captura e integração** (Requisito 8)
   - [ ] 8.1 Captura ao vivo no app (padrão `LeitorCodigoBarras`) e por foto na web.
   - [ ] 8.2 Integrar no `RegistrarBatidaModal`: chama `/ponto/ocr`, pré-preenche
         colaborador + hora, confirmação/edição, fallback manual.
   - [ ] 8.3 Comprovante opcional (guardar imagem).
-  - PR: "Ponto: leitor do papelito no app/web (câmera + OCR)".
+  - PR: "Ponto: leitor do comprovante do ponto no app/web (câmera + OCR)".
 
 ## Fase C — Futuro (não agora)
 - [ ] 9. Estender a operadores (reusa `pessoaId`/`tipoPessoa`).

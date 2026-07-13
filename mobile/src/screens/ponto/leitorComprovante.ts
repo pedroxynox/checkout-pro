@@ -1,5 +1,5 @@
 /**
- * Captura do papelito — implementação WEB (e padrão).
+ * Captura do comprovante — implementação WEB (e padrão).
  *
  * Na web, tira/seleciona uma foto e devolve a imagem (base64); o OCR roda no
  * NOSSO servidor (tesseract), pois o navegador não tem o leitor on-device. No
@@ -7,14 +7,14 @@
  */
 import * as ImagePicker from 'expo-image-picker';
 
-export interface CapturaPapelito {
+export interface CapturaComprovante {
   /** Texto já lido no aparelho (Android/ML Kit). */
   texto?: string;
   /** Imagem em base64 para o OCR do servidor (web/fallback). */
   imagem?: string;
 }
 
-export async function capturarPapelito(): Promise<CapturaPapelito | null> {
+export async function capturarComprovante(): Promise<CapturaComprovante | null> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) return null;
   const res = await ImagePicker.launchImageLibraryAsync({
