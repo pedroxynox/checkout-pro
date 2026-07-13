@@ -10,6 +10,7 @@ export { loteApaeService } from './loteApae';
 export { insumosService } from './insumos';
 export { requisicoesService } from './requisicoes';
 export { fiscaisService, escalaService } from './fiscais';
+export { pontoService } from './ponto';
 export { checklistService } from './checklist';
 export type { ImagemSelecionada } from './checklist';
 export { operadoresService } from './operadores';
