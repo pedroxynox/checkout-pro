@@ -26,12 +26,23 @@ export interface ComprovanteInterpretado {
   hora: string | null;
 }
 
-// Hora pelo rótulo (após normalizar, "HORA:13:18" ou "HORA 07:56").
-const RE_HORA_ROTULO = /HORA\s*:?\s*([01]?\d|2[0-3])[:H]([0-5]\d)/;
+// "Dígito" tolerante ao OCR: além de 0-9, aceita as letras que o leitor mais
+// confunde com números (O/Q/D→0, I/L→1, Z→2, S→5, G→6, B→8). Só é usada nos
+// VALORES de hora/data — sempre ancorados nos rótulos HORA:/DATA: e validados
+// por faixa depois —, então não vira falso positivo em CNPJ/PIS.
+const D = '[0-9OQDILZSBG]';
+// Hora pelo rótulo, tolerante: casa "HORA:15:34", "HORA 07H56", "HORA:1S:34"
+// (S lido no lugar do 5) e até sem separador ("HORA 1534"). Aceita a etiqueta
+// levemente distorcida (H0RA, HOR4).
+const RE_HORA_ROTULO = new RegExp(
+  `H\\s*[O0]\\s*R\\s*[A4][\\s:.=-]*(${D}{1,2})[\\s:.H=-]*(${D}{2})`,
+);
 // Hora genérica (só ":" ou "H" — sem ".", que apareceria em CNPJ/PIS).
 const RE_HORA = /\b([01]?\d|2[0-3])[:H]([0-5]\d)\b/;
-// Data pelo rótulo ("DATA:10/07/2026" ou "DATA 12/07/2026").
-const RE_DATA_ROTULO = /DATA\s*:?\s*(\d{2})\/(\d{2})\/(\d{2,4})/;
+// Data pelo rótulo, tolerante a OCR: "DATA:13/07/2026", "DATA 12-07-26".
+const RE_DATA_ROTULO = new RegExp(
+  `[D0]\\s*[A4]\\s*T\\s*[A4][\\s:.=-]*(${D}{2})[/.\\s-](${D}{2})[/.\\s-](${D}{2,4})`,
+);
 // Data genérica (fallback), varrida com validação para pular CNPJ etc.
 const RE_DATA = /(\d{2})[/.\-](\d{2})[/.\-](\d{2,4})/g;
 // Rótulos que antecedem o nome do trabalhador.
@@ -80,14 +91,50 @@ export function normalizarTexto(s: string): string {
     .trim();
 }
 
-/** Monta yyyy-mm-dd a partir de [_, dd, mm, aa(aa)] se for uma data plausível. */
-function montarData(m: RegExpMatchArray): string | null {
-  const dia = Number(m[1]);
-  const mes = Number(m[2]);
-  let ano = Number(m[3]);
-  if (m[3].length === 2) ano += 2000;
+/**
+ * Corrige as trocas mais comuns do OCR em um trecho que DEVERIA ser numérico
+ * (valor de hora/data já ancorado no rótulo). Letras não previstas ficam como
+ * estão e reprovam na validação de faixa — evitando falso positivo.
+ */
+function corrigirDigitos(s: string): string {
+  return s
+    .replace(/[OQD]/g, '0')
+    .replace(/[IL]/g, '1')
+    .replace(/Z/g, '2')
+    .replace(/S/g, '5')
+    .replace(/G/g, '6')
+    .replace(/B/g, '8');
+}
+
+/** Monta "HH:mm" validando faixa (00–23 / 00–59); null se implausível. */
+function montarHora(hh: string, mm: string): string | null {
+  const h = Number(hh);
+  const m = Number(mm);
+  if (!Number.isInteger(h) || !Number.isInteger(m)) return null;
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/** Monta yyyy-mm-dd a partir de dd, mm, aa(aa); null se implausível. */
+function montarDataDeGrupos(dd: string, mm: string, aa: string): string | null {
+  const dia = Number(dd);
+  const mes = Number(mm);
+  let ano = Number(aa);
+  if (
+    !Number.isInteger(dia) ||
+    !Number.isInteger(mes) ||
+    !Number.isInteger(ano)
+  ) {
+    return null;
+  }
+  if (aa.length === 2) ano += 2000;
   if (dia < 1 || dia > 31 || mes < 1 || mes > 12) return null;
   return `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+}
+
+/** Monta a data a partir de um match [_, dd, mm, aa(aa)] (dígitos puros). */
+function montarData(m: RegExpMatchArray): string | null {
+  return montarDataDeGrupos(m[1], m[2], m[3]);
 }
 
 /** true se a linha contém alguma palavra de cabeçalho. */
@@ -110,12 +157,23 @@ function pareceNome(linha: string): boolean {
   return !temCabecalho(normalizarTexto(limpa));
 }
 
-/** Extrai a hora (HH:mm): primeiro pelo rótulo `HORA:`, depois genérica. */
+/**
+ * Extrai a hora (HH:mm). Primeiro pelo rótulo `HORA:` (tolerante a OCR: corrige
+ * letras trocadas por dígitos e aceita separador ausente), depois genérica.
+ */
 export function extrairHora(texto: string): string | null {
   const norm = normalizarTexto(texto);
-  const m = RE_HORA_ROTULO.exec(norm) ?? RE_HORA.exec(norm);
-  if (!m) return null;
-  return `${m[1].padStart(2, '0')}:${m[2]}`;
+  const rot = RE_HORA_ROTULO.exec(norm);
+  if (rot) {
+    const h = montarHora(corrigirDigitos(rot[1]), corrigirDigitos(rot[2]));
+    if (h) return h;
+  }
+  const g = RE_HORA.exec(norm);
+  if (g) {
+    const h = montarHora(g[1], g[2]);
+    if (h) return h;
+  }
+  return null;
 }
 
 /** Extrai a data (yyyy-mm-dd): primeiro pelo rótulo `DATA:`, depois a 1ª válida. */
@@ -123,7 +181,11 @@ export function extrairData(texto: string): string | null {
   const norm = normalizarTexto(texto);
   const rot = RE_DATA_ROTULO.exec(norm);
   if (rot) {
-    const d = montarData(rot);
+    const d = montarDataDeGrupos(
+      corrigirDigitos(rot[1]),
+      corrigirDigitos(rot[2]),
+      corrigirDigitos(rot[3]),
+    );
     if (d) return d;
   }
   for (const m of norm.matchAll(RE_DATA)) {
