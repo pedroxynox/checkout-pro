@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { BatidaPonto, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { inicioDoDia } from '../common/datas';
@@ -8,7 +8,10 @@ import {
   TipoBatida,
   calcularJornadaDia,
   classificarBatidas,
+  statusFiscalDeTipoBatida,
 } from './ponto.domain';
+import { FiscaisService } from '../fiscais/fiscais.service';
+import { StatusFiscal } from '../fiscais/fiscais.domain';
 import { EditarBatidaDto, RegistrarBatidaDto } from './dto/ponto.dto';
 
 // As batidas são gravadas com a HORA DO COMPROVANTE (hora de parede de Brasília)
@@ -21,6 +24,13 @@ const OFFSET_BRASILIA_MS = -3 * 60 * 60 * 1000;
 function agoraNaBrasilia(): Date {
   return new Date(Date.now() + OFFSET_BRASILIA_MS);
 }
+
+/**
+ * Sentido inverso do offset acima: a hora da batida está em Brasília rotulada
+ * como Z, então somamos 3h para obter o instante em UTC real. Usado na ponte
+ * batidas → status do fiscal, cujo `calcularJornada` usa `new Date()` real.
+ */
+const OFFSET_BRASILIA_PARA_UTC_MS = 3 * 60 * 60 * 1000;
 
 /** Uma batida como exibida ao app. */
 export interface BatidaView {
@@ -71,7 +81,12 @@ export interface PessoaPonto {
  */
 @Injectable()
 export class PontoService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Ponte batidas → status do fiscal. Opcional para não quebrar testes
+    // unitários que exercitam só a persistência das batidas.
+    @Optional() private readonly fiscais?: FiscaisService,
+  ) {}
 
   /** Busca fiscais por nome (para escolher de quem é o comprovante). */
   async buscarPessoas(busca?: string): Promise<PessoaPonto[]> {
@@ -114,6 +129,7 @@ export class PontoService {
       },
     });
     await this.reclassificar(dto.pessoaId, dia);
+    await this.sincronizarStatusFiscal(dto.pessoaId, tipoPessoa, dia);
     return this.jornadaDoDia(dto.pessoaId, tipoPessoa, dia);
   }
 
@@ -129,6 +145,11 @@ export class PontoService {
     await this.prisma.batidaPonto.update({ where: { id }, data });
     // Se a hora mudou, a ordem do dia pode ter mudado → reclassifica.
     if (dto.hora) await this.reclassificar(batida.pessoaId, batida.data);
+    await this.sincronizarStatusFiscal(
+      batida.pessoaId,
+      batida.tipoPessoa,
+      batida.data,
+    );
     return this.jornadaDoDia(batida.pessoaId, batida.tipoPessoa, batida.data);
   }
 
@@ -137,6 +158,11 @@ export class PontoService {
     const batida = await this.buscarOuFalhar(id);
     await this.prisma.batidaPonto.delete({ where: { id } });
     await this.reclassificar(batida.pessoaId, batida.data);
+    await this.sincronizarStatusFiscal(
+      batida.pessoaId,
+      batida.tipoPessoa,
+      batida.data,
+    );
     return this.jornadaDoDia(batida.pessoaId, batida.tipoPessoa, batida.data);
   }
 
@@ -204,6 +230,45 @@ export class PontoService {
       })
       .filter((u): u is Prisma.Prisma__BatidaPontoClient<BatidaPonto> => !!u);
     await Promise.all(updates);
+  }
+
+  /**
+   * Ponte batidas → status do fiscal. Só para pessoas do tipo FISCAL: converte
+   * as batidas do dia em transições de status (DISPONIVEL/INTERVALO/
+   * FORA_EXPEDIENTE) e reescreve o log de fiscais desse dia. Assim o painel, o
+   * perfil e os avisos — que leem `RegistroPontoFiscal` — passam a refletir as
+   * batidas do relógio, sem os botões manuais.
+   *
+   * A hora da batida é horário de Brasília rotulado Z; somamos 3h para gravar o
+   * instante em UTC real, alinhado ao `new Date()` usado no cálculo de jornada.
+   */
+  private async sincronizarStatusFiscal(
+    pessoaId: string,
+    tipoPessoa: string,
+    data: Date,
+  ): Promise<void> {
+    if (tipoPessoa !== 'FISCAL' || !this.fiscais) return;
+
+    const dia = inicioDoDia(data);
+    const batidas = await this.prisma.batidaPonto.findMany({
+      where: { pessoaId, tipoPessoa: 'FISCAL', data: dia },
+      orderBy: { hora: 'asc' },
+    });
+    const classificadas = classificarBatidas(
+      batidas.map((b) => ({ id: b.id, hora: b.hora })),
+    );
+
+    const transicoes: { status: StatusFiscal; em: Date }[] = [];
+    for (const c of classificadas) {
+      const status = statusFiscalDeTipoBatida(c.tipo);
+      if (!status) continue;
+      transicoes.push({
+        status,
+        em: new Date(c.hora.getTime() + OFFSET_BRASILIA_PARA_UTC_MS),
+      });
+    }
+
+    await this.fiscais.aplicarTransicoesDoDia(pessoaId, dia, transicoes);
   }
 
   private async buscarOuFalhar(id: string): Promise<BatidaPonto> {

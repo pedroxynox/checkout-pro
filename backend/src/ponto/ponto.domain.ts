@@ -10,7 +10,7 @@
  * Sem efeitos colaterais — testável sem banco. A hora que vale é sempre a do
  * comprovante (a hora da batida), nunca a de carregamento.
  */
-import { jornadaEsperadaMs } from '../fiscais/fiscais.domain';
+import { StatusFiscal, jornadaEsperadaMs } from '../fiscais/fiscais.domain';
 
 export const TIPOS_BATIDA = [
   'ENTRADA',
@@ -76,6 +76,30 @@ export function classificarBatidas(
   return [...batidas]
     .sort((a, b) => a.hora.getTime() - b.hora.getTime())
     .map((b, i) => ({ id: b.id, hora: b.hora, tipo: tipoPorOrdem(i) }));
+}
+
+/**
+ * Estado de fiscal (DISPONIVEL/INTERVALO/FORA_EXPEDIENTE) correspondente a cada
+ * tipo de batida — usado para ligar as batidas ao status do fiscal:
+ *  - entrada e retorno do intervalo → DISPONIVEL (trabalhando);
+ *  - saída p/ intervalo → INTERVALO;
+ *  - encerramento → FORA_EXPEDIENTE;
+ *  - batida extra → sem transição (null).
+ */
+export function statusFiscalDeTipoBatida(
+  tipo: TipoBatida,
+): StatusFiscal | null {
+  switch (tipo) {
+    case 'ENTRADA':
+    case 'RETORNO_INTERVALO':
+      return 'DISPONIVEL';
+    case 'SAIDA_INTERVALO':
+      return 'INTERVALO';
+    case 'ENCERRAMENTO':
+      return 'FORA_EXPEDIENTE';
+    default:
+      return null;
+  }
 }
 
 /** Jornada calculada de um dia. */

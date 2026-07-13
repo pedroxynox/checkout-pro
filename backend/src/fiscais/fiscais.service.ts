@@ -223,6 +223,54 @@ export class FiscaisService {
     };
   }
 
+  /**
+   * Substitui os registros de ponto de um fiscal no dia pelas transições
+   * derivadas das batidas do Registro de Ponto (ponte batidas → status).
+   *
+   * Reescreve o log do dia (apaga e recria) para que painel, perfil e crons —
+   * que leem `RegistroPontoFiscal` — reflitam exatamente as batidas, sem
+   * duplicar. Propaga o status resultante em tempo real. `em` de cada transição
+   * já vem em UTC real (a ponte converte a hora da batida).
+   */
+  async aplicarTransicoesDoDia(
+    fiscalId: string,
+    dia: Date,
+    transicoes: { status: StatusFiscal; em: Date }[],
+  ): Promise<void> {
+    const data = inicioDoDia(dia);
+    const ordenadas = [...transicoes].sort(
+      (a, b) => a.em.getTime() - b.em.getTime(),
+    );
+
+    await this.prisma.$transaction([
+      this.prisma.registroPontoFiscal.deleteMany({ where: { fiscalId, data } }),
+      ...(ordenadas.length > 0
+        ? [
+            this.prisma.registroPontoFiscal.createMany({
+              data: ordenadas.map((t) => ({
+                fiscalId,
+                status: t.status,
+                data,
+                em: t.em,
+              })),
+            }),
+          ]
+        : []),
+    ]);
+
+    // Tempo real: propaga o status resultante (o do último registro do dia).
+    const fiscal = await this.prisma.fiscal.findUnique({
+      where: { id: fiscalId },
+    });
+    const ultimo = ordenadas[ordenadas.length - 1] ?? null;
+    this.eventos?.publicar({
+      fiscalId,
+      primeiroNome: primeiroNome(fiscal?.nome ?? ''),
+      status: ultimo?.status ?? 'FORA_EXPEDIENTE',
+      em: ultimo?.em ?? new Date(),
+    });
+  }
+
   /** Painel de todos os fiscais com o status atual (tempo real via WebSocket). */
   async painel(): Promise<ItemPainel[]> {
     const agora = new Date();

@@ -4,6 +4,7 @@ import {
   BatidaEntrada,
   calcularJornadaDia,
   classificarBatidas,
+  statusFiscalDeTipoBatida,
 } from './ponto.domain';
 
 /** Cria uma batida num horário HH:mm de um dia fixo (a data em si é irrelevante:
@@ -205,5 +206,24 @@ describe('calcularJornadaDia', () => {
       ),
       { numRuns: 200 },
     );
+  });
+});
+
+describe('statusFiscalDeTipoBatida', () => {
+  it('entrada e retorno do intervalo → DISPONIVEL', () => {
+    expect(statusFiscalDeTipoBatida('ENTRADA')).toBe('DISPONIVEL');
+    expect(statusFiscalDeTipoBatida('RETORNO_INTERVALO')).toBe('DISPONIVEL');
+  });
+
+  it('saída para intervalo → INTERVALO', () => {
+    expect(statusFiscalDeTipoBatida('SAIDA_INTERVALO')).toBe('INTERVALO');
+  });
+
+  it('encerramento → FORA_EXPEDIENTE', () => {
+    expect(statusFiscalDeTipoBatida('ENCERRAMENTO')).toBe('FORA_EXPEDIENTE');
+  });
+
+  it('batida extra → sem transição (null)', () => {
+    expect(statusFiscalDeTipoBatida('EXTRA')).toBeNull();
   });
 });
