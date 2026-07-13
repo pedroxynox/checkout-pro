@@ -1232,6 +1232,11 @@ export interface Colaborador {
   entradaFds: string | null;
   saidaFds: string | null;
   folgaDiaSemana: number | null;
+  /** Grupo do rodízio de domingo ('G1'|'G2'|'G3'); null = não trabalha domingo. */
+  grupoDomingo: string | null;
+  /** Horário de domingo ("HH:mm"), por pessoa. */
+  entradaDom: string | null;
+  saidaDom: string | null;
   usuarioId: string | null;
   /** Data de admissão (ISO yyyy-mm-dd) — base do módulo de Contratos. */
   dataAdmissao: string | null;
@@ -1256,6 +1261,11 @@ export interface ColaboradorInput {
   entradaFds?: string;
   saidaFds?: string;
   folgaDiaSemana?: number;
+  /** Grupo do rodízio de domingo ('G1'|'G2'|'G3'); null = não trabalha domingo. */
+  grupoDomingo?: string | null;
+  /** Horário de domingo ("HH:mm"), por pessoa. */
+  entradaDom?: string;
+  saidaDom?: string;
   /** Data de admissão (ISO yyyy-mm-dd) — base do módulo de Contratos. */
   dataAdmissao?: string;
   ativo?: boolean;

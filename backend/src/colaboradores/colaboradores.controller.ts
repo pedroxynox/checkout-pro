@@ -89,6 +89,9 @@ export class ColaboradoresController {
       entradaFds: dto.entradaFds,
       saidaFds: dto.saidaFds,
       folgaDiaSemana: dto.folgaDiaSemana,
+      grupoDomingo: dto.grupoDomingo,
+      entradaDom: dto.entradaDom,
+      saidaDom: dto.saidaDom,
       dataAdmissao: dto.dataAdmissao,
     });
   }
@@ -161,6 +164,9 @@ export class ColaboradoresController {
       entradaFds: dto.entradaFds,
       saidaFds: dto.saidaFds,
       folgaDiaSemana: dto.folgaDiaSemana,
+      grupoDomingo: dto.grupoDomingo,
+      entradaDom: dto.entradaDom,
+      saidaDom: dto.saidaDom,
       dataAdmissao: dto.dataAdmissao,
       ativo: dto.ativo,
     });
