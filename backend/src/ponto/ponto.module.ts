@@ -3,6 +3,11 @@ import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { PontoController } from './ponto.controller';
 import { PontoService } from './ponto.service';
 import { PontoAlertasService } from './ponto-alertas.service';
+import { PontoOcrService } from './ponto-ocr.service';
+import {
+  LeitorPapelitoService,
+  OcrServidorService,
+} from './leitor-papelito.service';
 
 /**
  * Módulo do Registro de Ponto (leitor de papelito) — Fase A.
@@ -14,7 +19,12 @@ import { PontoAlertasService } from './ponto-alertas.service';
 @Module({
   imports: [NotificacoesModule],
   controllers: [PontoController],
-  providers: [PontoService, PontoAlertasService],
+  providers: [
+    PontoService,
+    PontoAlertasService,
+    PontoOcrService,
+    { provide: LeitorPapelitoService, useClass: OcrServidorService },
+  ],
   exports: [PontoService],
 })
 export class PontoModule {}
