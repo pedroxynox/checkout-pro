@@ -12,6 +12,93 @@
 
 ---
 
+## Registro de Ponto — leitor do comprovante do ponto (Fases A + B) (2026-07-13)
+
+Nova seção **Registro de Ponto**: o fiscal fotografa o **comprovante do ponto**
+(o papel impresso pelo relógio biométrico da empresa) e o sistema lê a hora,
+associa ao colaborador e calcula a jornada do dia. Substitui o "bater ponto
+manual" por uma leitura auditável da hora oficial do relógio. Começou pelos
+**fiscais**; a base já está pronta para estender a operadores.
+
+Entregue em duas fases, tudo **mesclado na `main`** (PRs #174–#181), com
+`tsc`/`eslint`/testes verdes em cada PR (backend 342 testes; mobile 76). Spec
+completo em `.kiro/specs/registro-ponto-leitor/`.
+
+### O que foi feito
+
+**Fase A — base (registro manual + painel):**
+- **Modelo** `batidas_ponto` (uma linha por batida) + enums `TipoBatida`,
+  `OrigemBatida`, `TipoPessoaPonto`. Pessoa polimórfica (`pessoaId`+`tipoPessoa`,
+  padrão de `Ausencia`) — pronta para operadores. Migração aditiva
+  `9zh_registro_ponto`.
+- **Domínio puro** `ponto.domain.ts` (com testes de propriedade): classifica as
+  batidas pela ordem do dia (1ª entrada, 2ª saída p/ intervalo, 3ª retorno, 4ª
+  encerramento; 5ª+ = extra) e calcula a jornada.
+- **API** `/ponto`: registrar/editar/remover batida, `GET /ponto/dia` (jornada
+  calculada) e `GET /ponto/pessoas` (buscar fiscal por nome). Um fiscal pode
+  registrar o ponto de **qualquer** colaborador.
+- **Permissões** `PONTO_REGISTRAR` e `PONTO_VISUALIZAR` (fonte única + espelho no
+  app, ADR 0002).
+- **Alerta a cada minuto** (`ponto-alertas.service.ts`, cron): ao passar de
+  **1h45** de extras (ainda trabalhando), avisa **todos os fiscais**; ao virar
+  **TAC**, avisa **todos os usuários** (uma vez por dia).
+- **Tela** `RegistroPontoScreen`: busca o colaborador, mostra o painel da jornada
+  (status, trabalhado, intervalo, horas extras), lista as batidas (editar/
+  remover), registra a hora manualmente e tem **modo lote**.
+
+**Fase B — leitor do comprovante do ponto (OCR):**
+- **Android (APK):** o texto é lido **no aparelho** com **ML Kit** (rápido, sem
+  depender de terceiros); se indisponível, cai no OCR do servidor.
+- **Web:** a foto é lida pelo **nosso próprio servidor** (tesseract.js, sem
+  terceiros), com **pré-tratamento** da imagem (cinza/contraste/escala) e leitura
+  em bloco para melhorar o resultado.
+- **Interpretador** (`ponto-ocr.parser.ts`) ajustado ao **formato real** do
+  relógio da loja (IDCLASS BIO PROX / Comercial Zaffari): pega data e hora pelos
+  rótulos `DATA:`/`HORA:` (ignora CNPJ/PIS), **reconstrói o nome quebrado em duas
+  linhas** e **não sugere nome** quando o OCR só traz ruído.
+- Endpoint `POST /ponto/ocr` devolve nome/data/hora + colaboradores sugeridos; o
+  usuário **sempre confirma** antes de gravar.
+
+### Regras de negócio (definidas com o dono do produto)
+- **Carga base por dia:** Seg–Qui 7h · Sex–Sáb 8h · Dom 7h20.
+- **Horas extras:** Seg–Sáb com adicional **50%**; Domingo **100%**.
+- **Intervalo:** não conta como jornada; permitido de **1h a 3h** (esperado 2h).
+- **TAC (Termo de Ajustamento de Conduta):** o dia vira TAC se as extras passam
+  de **1h50**, ou o intervalo é **< 1h** ou **> 3h**. Ao virar TAC, o sistema
+  avisa **todos os usuários**.
+- **A hora que vale é a do comprovante** (a hora impressa), não a de
+  carregamento; o relógio do dia conta a partir da 1ª batida.
+
+### Estado atual
+- Tudo **em produção** (mesclado na `main`).
+- A palavra informal "papelito" foi renomeada para **"comprovante do ponto"** em
+  todo o produto (PR #179).
+
+### O que falta / próximos passos
+- **Validar no APK:** o leitor on-device (ML Kit) só pode ser testado num
+  aparelho real (o APK não compila no ambiente de desenvolvimento). Recomenda-se
+  gerar o APK (EAS) e ler comprovantes reais. Observação do build: foi adicionada
+  a dependência nativa `@react-native-ml-kit/text-recognition` (autolink no
+  prebuild); se o build acusar problema, o Android segue funcionando via OCR do
+  servidor.
+- **Afinar o interpretador** com mais fotos reais (o OCR da **web/servidor** é o
+  caminho mais fraco em fotos de papel amassado; o do **APK** tende a ler bem
+  melhor). Em qualquer caso, a hora pode ser digitada/corrigida à mão.
+- **Fase C (futuro):** estender a **operadores** (o modelo já é polimórfico) e
+  **importar o arquivo eletrônico do relógio (AFD)** para um fechamento exato.
+
+### PRs
+- #174 backend base (modelo, migração, domínio+testes, permissões, API).
+- #175 alerta de excesso (cron a cada minuto + TAC).
+- #176 tela mobile (registro manual + painel + lote).
+- #177 OCR no servidor + interpretador (parser) + endpoint `/ponto/ocr`.
+- #178 leitor no app/web (ML Kit no Android, foto→servidor na web).
+- #179 renomear "papelito" → "comprovante do ponto".
+- #180 melhorar OCR da web (pré-tratamento de imagem com jimp + PSM de bloco).
+- #181 não sugerir nome a partir de ruído do OCR.
+
+---
+
 ## Checklist: confirmação de envio + lembrete de fechamento às 22:20 (2026-07-10)
 
 Dois novos avisos, entregues pelo pipeline padrão de notificações (in-app + push
