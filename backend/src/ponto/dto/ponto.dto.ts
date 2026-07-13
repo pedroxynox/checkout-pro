@@ -41,15 +41,11 @@ export class RegistrarBatidaDto {
   comprovanteUrl?: string;
 }
 
-/** Leitura do comprovante: texto (já lido no app) OU imagem (OCR no servidor). */
+/** Leitura do comprovante: o texto já lido no aparelho (ML Kit, no APK). */
 export class LerComprovanteDto {
-  @IsOptional()
   @IsString()
-  texto?: string;
-
-  @IsOptional()
-  @IsString()
-  imagem?: string;
+  @IsNotEmpty({ message: 'O texto do comprovante é obrigatório.' })
+  texto!: string;
 }
 
 /** Corrige uma batida: a hora (reclassifica o dia) e/ou o tipo. */

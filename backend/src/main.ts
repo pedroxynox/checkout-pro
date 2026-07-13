@@ -10,11 +10,6 @@ import { origensCorsDoAmbiente } from './common/cors';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Aumenta o limite do corpo JSON para aceitar a imagem do comprovante (base64)
-  // enviada pela versão web ao endpoint de OCR (/ponto/ocr). O padrão do
-  // Express (100kb) é pequeno para fotos.
-  app.useBodyParser('json', { limit: '12mb' });
-
   // Serve as imagens dos procedimentos guiados (passo a passo das normativas)
   // como arquivos estáticos em /assets. Ficam versionadas no repositório
   // (backend/assets), portanto persistem entre os deploys do Render.

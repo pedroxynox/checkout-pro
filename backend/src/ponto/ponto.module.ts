@@ -4,27 +4,18 @@ import { PontoController } from './ponto.controller';
 import { PontoService } from './ponto.service';
 import { PontoAlertasService } from './ponto-alertas.service';
 import { PontoOcrService } from './ponto-ocr.service';
-import {
-  LeitorComprovanteService,
-  OcrServidorService,
-} from './leitor-comprovante.service';
 
 /**
- * Módulo do Registro de Ponto (leitor de comprovante) — Fase A.
+ * Módulo do Registro de Ponto (leitor de comprovante) — Fase A + B.
  *
- * Registro manual das batidas do relógio físico + cálculo da jornada do dia +
- * alerta de excesso (a cada minuto). O `PrismaService` é global. A Fase B (OCR
- * do comprovante) entra em serviços complementares.
+ * Registro das batidas + cálculo da jornada + alerta de excesso (a cada
+ * minuto) + interpretação do comprovante (texto lido no APK pelo ML Kit). O
+ * `PrismaService` é global. Não há OCR de imagem no servidor.
  */
 @Module({
   imports: [NotificacoesModule],
   controllers: [PontoController],
-  providers: [
-    PontoService,
-    PontoAlertasService,
-    PontoOcrService,
-    { provide: LeitorComprovanteService, useClass: OcrServidorService },
-  ],
+  providers: [PontoService, PontoAlertasService, PontoOcrService],
   exports: [PontoService],
 })
 export class PontoModule {}
