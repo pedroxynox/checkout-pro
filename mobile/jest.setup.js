@@ -66,6 +66,12 @@ jest.mock('expo-image-picker', () => ({
   MediaTypeOptions: { Images: 'Images' },
 }));
 
+// ML Kit (leitura de texto no aparelho): mock leve para os testes.
+jest.mock('@react-native-ml-kit/text-recognition', () => ({
+  __esModule: true,
+  default: { recognize: jest.fn(async () => ({ text: '' })) },
+}));
+
 // SQLite local: mock leve (o cache offline é exercitado com persistência em
 // memória nos testes; aqui evitamos exigir o módulo nativo ao importar).
 jest.mock('expo-sqlite', () => ({

@@ -31,6 +31,7 @@ import {
 } from '../../components';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { formatarData, formatarDuracao, hojeISO } from '../../utils/formato';
+import { capturarPapelito } from './leitorPapelito';
 
 const ROTULO_TIPO: Record<TipoBatida, string> = {
   ENTRADA: 'Entrada',
@@ -93,6 +94,14 @@ export function RegistroPontoScreen(): React.ReactElement {
   const [loteAtivo, setLoteAtivo] = useState(false);
   const [sessao, setSessao] = useState(0);
 
+  // Leitura do papelito (Fase B): estado do OCR e o que foi lido.
+  const [lendo, setLendo] = useState(false);
+  const [leituraInfo, setLeituraInfo] = useState<{
+    nome: string | null;
+    hora: string | null;
+  } | null>(null);
+  const [horaPendente, setHoraPendente] = useState<string | null>(null);
+
   // Busca de colaboradores (debounce) enquanto nenhum está selecionado.
   useEffect(() => {
     if (pessoa || busca.trim().length < 2) {
@@ -132,6 +141,50 @@ export function RegistroPontoScreen(): React.ReactElement {
     setBusca('');
     setResultados([]);
     setErro(null);
+    // Se a hora veio do papelito, já abre o formulário preenchido.
+    if (horaPendente) {
+      setHoraTexto(horaPendente);
+      setHoraPendente(null);
+      setMostrarForm(true);
+    }
+  }
+
+  /**
+   * Lê o papelito: no Android a câmera lê no aparelho (ML Kit); na web tira foto
+   * e o servidor faz o OCR. Preenche a hora e sugere o colaborador; o usuário
+   * confirma antes de gravar.
+   */
+  async function lerPapelito(): Promise<void> {
+    setErro(null);
+    let captura: { texto?: string; imagem?: string } | null;
+    try {
+      captura = await capturarPapelito();
+    } catch {
+      setErro('Não foi possível abrir a câmera/galeria.');
+      return;
+    }
+    if (!captura) return;
+    setLendo(true);
+    try {
+      const r = await pontoService.lerPapelito(captura);
+      setLeituraInfo({ nome: r.nome, hora: r.hora });
+      if (r.data) setData(r.data);
+      if (pessoa) {
+        if (r.hora) {
+          setHoraTexto(r.hora);
+          setMostrarForm(true);
+        }
+      } else if (r.candidatos.length > 0) {
+        setResultados(r.candidatos);
+        setHoraPendente(r.hora);
+      } else {
+        setErro('Não identifiquei o colaborador. Busque pelo nome e registre a hora.');
+      }
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : 'Não foi possível ler o papelito.');
+    } finally {
+      setLendo(false);
+    }
   }
 
   function trocarPessoa(): void {
@@ -224,6 +277,23 @@ export function RegistroPontoScreen(): React.ReactElement {
         <Text style={styles.sessaoTexto}>
           Batidas registradas nesta sessão: {sessao}
         </Text>
+      ) : null}
+
+      {/* Leitor do papelito: câmera no app (ML Kit) / foto na web (servidor). */}
+      <Botao
+        titulo="Ler papelito (foto)"
+        variante="secundario"
+        aoPressionar={() => void lerPapelito()}
+        carregando={lendo}
+      />
+      {leituraInfo ? (
+        <View style={styles.leituraBanner}>
+          <Ionicons name="scan-outline" size={16} color={cores.primaria} />
+          <Text style={styles.leituraTexto}>
+            Lido: {leituraInfo.nome ?? 'nome não identificado'}
+            {leituraInfo.hora ? ` · ${leituraInfo.hora}` : ' · sem hora'}
+          </Text>
+        </View>
       ) : null}
 
       {/* Seleção do colaborador */}
@@ -436,6 +506,19 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginBottom: espacamento.sm,
+  },
+  leituraBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+    marginTop: espacamento.xs,
+    marginBottom: espacamento.sm,
+  },
+  leituraTexto: {
+    ...tipografia.legenda,
+    color: cores.texto,
+    flex: 1,
+    fontWeight: '600',
   },
   resultado: {
     flexDirection: 'row',
