@@ -800,6 +800,16 @@ model Colaborador {
   saidaFds       String?
   folgaDiaSemana Int?
 
+  // Escala de DOMINGO (rodízio por grupos). O domingo não é um horário fixo
+  // semanal: os trabalhadores giram em 3 grupos — a cada domingo um grupo folga
+  // e os outros dois trabalham (cada grupo trabalha 2 domingos e folga 1).
+  // - grupoDomingo: 'G1' | 'G2' | 'G3' (NULL = fora do rodízio / não trabalha
+  //   domingo / folga fixa de domingo).
+  // - entradaDom/saidaDom: horário do domingo ("HH:mm"), por pessoa.
+  grupoDomingo   String?
+  entradaDom     String?
+  saidaDom       String?
+
   // Login do app (apenas fiscais/gestores). Escalar (sem relação rígida),
   // seguindo o padrão de IDs do schema.
   usuarioId String? @unique

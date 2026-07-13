@@ -14,6 +14,7 @@ import {
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const FUNCOES = ['OPERADOR', 'FISCAL', 'SUPERVISOR', 'GESTOR'];
 const TURNOS = ['ABERTURA', 'INTERMEDIARIO', 'FECHAMENTO', 'APOIO'];
+const GRUPOS_DOMINGO = ['G1', 'G2', 'G3'];
 
 /** Cadastro de colaborador (operador por padrão). */
 export class CadastrarColaboradorDto {
@@ -74,6 +75,18 @@ export class CadastrarColaboradorDto {
   @Min(0)
   @Max(6)
   folgaDiaSemana?: number;
+
+  @IsOptional()
+  @IsIn(GRUPOS_DOMINGO, { message: 'grupoDomingo deve ser G1, G2 ou G3.' })
+  grupoDomingo?: string;
+
+  @IsOptional()
+  @Matches(HHMM, { message: 'entradaDom deve ser HH:mm.' })
+  entradaDom?: string;
+
+  @IsOptional()
+  @Matches(HHMM, { message: 'saidaDom deve ser HH:mm.' })
+  saidaDom?: string;
 
   @IsOptional()
   @IsDateString(
@@ -144,6 +157,18 @@ export class EditarColaboradorDto {
   @Min(0)
   @Max(6)
   folgaDiaSemana?: number;
+
+  @IsOptional()
+  @IsIn(GRUPOS_DOMINGO, { message: 'grupoDomingo deve ser G1, G2 ou G3.' })
+  grupoDomingo?: string;
+
+  @IsOptional()
+  @Matches(HHMM, { message: 'entradaDom deve ser HH:mm.' })
+  entradaDom?: string;
+
+  @IsOptional()
+  @Matches(HHMM, { message: 'saidaDom deve ser HH:mm.' })
+  saidaDom?: string;
 
   @IsOptional()
   @IsDateString(

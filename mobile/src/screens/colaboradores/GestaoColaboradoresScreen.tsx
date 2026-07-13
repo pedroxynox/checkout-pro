@@ -80,6 +80,11 @@ export function GestaoColaboradoresScreen({
   const [entFds, setEntFds] = useState('');
   const [saiFds, setSaiFds] = useState('');
   const [folga, setFolga] = useState<number | null>(null);
+  // Escala de domingo: grupo do rodízio (G1/G2/G3 ou null = não trabalha) e
+  // horário próprio de domingo.
+  const [grupoDom, setGrupoDom] = useState<string | null>(null);
+  const [entDom, setEntDom] = useState('');
+  const [saiDom, setSaiDom] = useState('');
   const [admissao, setAdmissao] = useState('');
   const [senha, setSenha] = useState('');
   const [gerenteDev, setGerenteDev] = useState(false);
@@ -110,6 +115,9 @@ export function GestaoColaboradoresScreen({
     setEntFds('');
     setSaiFds('');
     setFolga(null);
+    setGrupoDom(null);
+    setEntDom('');
+    setSaiDom('');
     setAdmissao('');
     setSenha('');
     setGerenteDev(false);
@@ -148,6 +156,9 @@ export function GestaoColaboradoresScreen({
     setEntFds(c.entradaFds ?? '');
     setSaiFds(c.saidaFds ?? '');
     setFolga(c.folgaDiaSemana);
+    setGrupoDom(c.grupoDomingo ?? null);
+    setEntDom(c.entradaDom ?? '');
+    setSaiDom(c.saidaDom ?? '');
     setAdmissao(c.dataAdmissao ? isoParaDataBR(c.dataAdmissao) : '');
     setEditAtivo(c.ativo);
     setSenha('');
@@ -190,6 +201,8 @@ export function GestaoColaboradoresScreen({
       ['Saída Seg–Qui', saiSem],
       ['Entrada Sex–Sáb', entFds],
       ['Saída Sex–Sáb', saiFds],
+      ['Entrada Domingo', entDom],
+      ['Saída Domingo', saiDom],
     ] as const) {
       if (valor.trim() && !HHMM.test(valor.trim())) {
         notificar('Horário inválido', `${rotulo} deve ser HH:mm (ex.: 08:00).`);
@@ -221,6 +234,10 @@ export function GestaoColaboradoresScreen({
       entradaFds: entFds.trim() || undefined,
       saidaFds: saiFds.trim() || undefined,
       folgaDiaSemana: folga ?? undefined,
+      // Domingo: envia o grupo (ou null para "não trabalha domingo") e o horário.
+      grupoDomingo: grupoDom,
+      entradaDom: entDom.trim() || undefined,
+      saidaDom: saiDom.trim() || undefined,
       dataAdmissao: admissaoISO,
       // Acesso ao app (apenas funções com acesso).
       senha: temAcesso && senha.trim() ? senha.trim() : undefined,
@@ -414,6 +431,29 @@ export function GestaoColaboradoresScreen({
                 {NOMES_DIA[d]}
               </Text>
             ))}
+          </View>
+
+          {/* Domingo: rodízio por grupos (G1/G2/G3). A cada domingo um grupo
+              folga e os outros dois trabalham. Sem grupo = não trabalha domingo. */}
+          <Text style={styles.rotulo}>Grupo de domingo (rodízio)</Text>
+          <View style={styles.chips}>
+            {['G1', 'G2', 'G3'].map((g) => (
+              <Text
+                key={g}
+                onPress={() => setGrupoDom(grupoDom === g ? null : g)}
+                style={[styles.chip, grupoDom === g && styles.chipAtivo]}
+              >
+                {g}
+              </Text>
+            ))}
+          </View>
+          <Text style={styles.ajudaLogin}>
+            Cada domingo folga um grupo e trabalham os outros dois (cada grupo
+            trabalha 2 domingos e folga 1). Sem grupo = não trabalha aos domingos.
+          </Text>
+          <View style={styles.linha}>
+            <CampoTexto rotulo="Entrada Domingo" value={entDom} onChangeText={setEntDom} placeholder="08:00" containerStyle={styles.metade} />
+            <CampoTexto rotulo="Saída Domingo" value={saiDom} onChangeText={setSaiDom} placeholder="15:20" containerStyle={styles.metade} />
           </View>
 
           <CampoTexto

@@ -75,6 +75,11 @@ export interface ColaboradorInput {
   entradaFds?: string | null;
   saidaFds?: string | null;
   folgaDiaSemana?: number | null;
+  /** Grupo do rodízio de domingo ('G1'|'G2'|'G3'); null = fora do rodízio. */
+  grupoDomingo?: string | null;
+  /** Horário de domingo ("HH:mm"), por pessoa. */
+  entradaDom?: string | null;
+  saidaDom?: string | null;
   /** Data de admissão (base do módulo de Contratos). ISO ou Date; null limpa. */
   dataAdmissao?: string | Date | null;
   /**
@@ -188,6 +193,9 @@ export class ColaboradoresService {
         entradaFds: input.entradaFds ?? null,
         saidaFds: input.saidaFds ?? null,
         folgaDiaSemana: input.folgaDiaSemana ?? null,
+        grupoDomingo: input.grupoDomingo ?? null,
+        entradaDom: input.entradaDom ?? null,
+        saidaDom: input.saidaDom ?? null,
         dataAdmissao: normalizarAdmissao(input.dataAdmissao),
         usuarioId,
         identificadores: {
@@ -309,6 +317,10 @@ export class ColaboradoresService {
     if (input.saidaFds !== undefined) data.saidaFds = input.saidaFds;
     if (input.folgaDiaSemana !== undefined)
       data.folgaDiaSemana = input.folgaDiaSemana;
+    if (input.grupoDomingo !== undefined)
+      data.grupoDomingo = input.grupoDomingo;
+    if (input.entradaDom !== undefined) data.entradaDom = input.entradaDom;
+    if (input.saidaDom !== undefined) data.saidaDom = input.saidaDom;
     if (input.dataAdmissao !== undefined)
       data.dataAdmissao = normalizarAdmissao(input.dataAdmissao);
     if (input.ativo !== undefined) {
