@@ -1,9 +1,11 @@
 /**
  * Área de Fiscais — controle de jornada em tempo real.
  *
- * - O fiscal logado é identificado automaticamente: marca Disponível ao entrar,
- *   Intervalo ao pausar, e Fora de expediente ao encerrar. Vê apenas as SUAS
- *   horas (trabalhando, intervalo e carga do dia) e pode informar falta.
+ * - O status do fiscal (Disponível / Intervalo / Fora de expediente) é definido
+ *   AUTOMATICAMENTE pelas batidas do Registro de Ponto (Fase 2): não há mais
+ *   botões manuais. O fiscal vê o seu status atual, as SUAS horas (trabalhando,
+ *   intervalo e carga do dia), um atalho para registrar o ponto e pode informar
+ *   falta.
  * - Painel: todos os fiscais como cards individuais com estado colorido,
  *   ordenados por status (Disponível > Intervalo > Fora) e atualizados em
  *   tempo real por WebSocket (sem recarregar).
@@ -13,7 +15,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from 'react-native';
+import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from 'react-native';
 import { useAuth } from '../../auth/AuthContext';
 import { ApiError } from '../../api/client';
 import { fiscaisService } from '../../api/services';
@@ -39,16 +41,6 @@ const CINZA = cores.textoSecundario;
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-const ACOES: {
-  status: StatusFiscal;
-  rotulo: string;
-  icone: keyof typeof Ionicons.glyphMap;
-}[] = [
-  { status: 'DISPONIVEL', rotulo: 'Disponível', icone: 'checkmark-circle' },
-  { status: 'INTERVALO', rotulo: 'Intervalo', icone: 'cafe' },
-  { status: 'FORA_EXPEDIENTE', rotulo: 'Encerrar', icone: 'exit-outline' },
-];
 
 /** Ordem de prioridade para ordenação do painel. */
 const ORDEM_STATUS: Record<StatusFiscal, number> = {
@@ -130,7 +122,6 @@ export function FiscaisScreen({
   const [folgas, setFolgas] = useState<ItemFolgaFiscal[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
-  const [enviando, setEnviando] = useState<StatusFiscal | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [tick, setTick] = useState(0); // Live timer tick
   const conexaoRef = useRef<ConexaoFiscais | null>(null);
@@ -215,60 +206,6 @@ export function FiscaisScreen({
     }
   };
 
-  const definir = async (status: StatusFiscal) => {
-    if (enviando) return;
-
-    const mensagensConfirmacao: Record<StatusFiscal, { titulo: string; corpo: string }> = {
-      DISPONIVEL: {
-        titulo: '🟢 Iniciar jornada',
-        corpo: 'Estás lista para a jornada de hoje? Seu tempo de trabalho começará a ser contado.',
-      },
-      INTERVALO: {
-        titulo: '☕ Ir para intervalo',
-        corpo: 'Deseja fazer uma pausa?\n\n⚠️ Lembre-se: o intervalo mínimo é de 1 hora e 10 minutos. Retorne somente após esse período.',
-      },
-      FORA_EXPEDIENTE: {
-        titulo: '🔴 Encerrar expediente',
-        corpo: 'Deseja encerrar sua jornada de hoje? O registro será finalizado.',
-      },
-    };
-
-    const { titulo, corpo } = mensagensConfirmacao[status];
-    const ok = await confirmar(titulo, corpo, 'Confirmar');
-    if (!ok) return;
-
-    setEnviando(status);
-    try {
-      const r = await fiscaisService.definirStatus(status);
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setMeu((prev) => (prev ? { ...prev, ...r } : prev));
-      setPainel((lista) =>
-        lista.map((p) =>
-          p.fiscalId === r.fiscalId
-            ? { ...p, status: r.status, desde: r.em }
-            : p,
-        ),
-      );
-
-      // Resumo do dia ao encerrar expediente.
-      if (status === 'FORA_EXPEDIENTE' && r.cargaHorariaMs !== undefined) {
-        const trabalhado = formatarDuracao(r.cargaHorariaMs);
-        const intervalo = formatarDuracao(r.tempoIntervaloMs);
-        notificar(
-          '🏁 Jornada encerrada!',
-          `Hoje você trabalhou ${trabalhado} (intervalo: ${intervalo}). Bom descanso!`,
-        );
-      }
-    } catch (e) {
-      notificar(
-        'Erro',
-        e instanceof ApiError ? e.message : 'Não foi possível atualizar.',
-      );
-    } finally {
-      setEnviando(null);
-    }
-  };
-
   const informarFalta = async () => {
     const ok = await confirmar(
       'Informar falta',
@@ -345,36 +282,21 @@ export function FiscaisScreen({
             </View>
           ) : (
             <>
-              <View style={styles.acoes}>
-                {ACOES.map((a) => {
-                  const ativo = meu.status === a.status;
-                  return (
-                    <Pressable
-                      key={a.status}
-                      onPress={() => void definir(a.status)}
-                      disabled={enviando !== null}
-                      style={[styles.botaoAcao, ativo && styles.botaoAcaoAtivo]}
-                    >
-                      {enviando === a.status ? (
-                        <ActivityIndicator color={ativo ? cores.textoInverso : cores.primaria} />
-                      ) : (
-                        <>
-                          <Ionicons
-                            name={a.icone}
-                            size={22}
-                            color={ativo ? cores.textoInverso : cores.primaria}
-                          />
-                          <Text
-                            style={[styles.botaoAcaoTexto, ativo && styles.botaoAcaoTextoAtivo]}
-                          >
-                            {a.rotulo}
-                          </Text>
-                        </>
-                      )}
-                    </Pressable>
-                  );
-                })}
+              {/* Status automático pelas batidas do ponto (Fase 2). */}
+              <View style={styles.avisoAuto}>
+                <Ionicons name="sync-outline" size={18} color={cores.primaria} />
+                <Text style={styles.avisoAutoTexto}>
+                  Seu status é definido automaticamente pelas batidas do ponto.
+                </Text>
               </View>
+
+              <Pressable
+                onPress={() => navigation.navigate('RegistroPonto')}
+                style={styles.botaoPonto}
+              >
+                <Ionicons name="time-outline" size={20} color={cores.textoInverso} />
+                <Text style={styles.botaoPontoTexto}>Registrar ponto</Text>
+              </Pressable>
 
               <View style={styles.tempos}>
                 <Tempo rotulo="Trabalhando" valor={formatarDuracao(meu.tempoTrabalhandoMs)} />
@@ -559,34 +481,35 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 12,
   },
-  acoes: {
+  avisoAuto: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: espacamento.sm,
     marginTop: espacamento.md,
+    backgroundColor: cores.fundo,
+    borderRadius: raio.md,
+    padding: espacamento.md,
   },
-  botaoAcao: {
+  avisoAutoTexto: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
     flex: 1,
+  },
+  botaoPonto: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: espacamento.sm,
+    marginTop: espacamento.md,
     paddingVertical: espacamento.md,
     borderRadius: raio.md,
-    borderWidth: 1,
-    borderColor: cores.borda,
-    backgroundColor: cores.fundo,
-    minHeight: 64,
-  },
-  botaoAcaoAtivo: {
     backgroundColor: cores.primaria,
-    borderColor: cores.primaria,
+    minHeight: 52,
   },
-  botaoAcaoTexto: {
-    ...tipografia.legenda,
-    color: cores.primaria,
-    fontWeight: '700',
-  },
-  botaoAcaoTextoAtivo: {
+  botaoPontoTexto: {
+    ...tipografia.rotulo,
     color: cores.textoInverso,
+    fontWeight: '700',
   },
   tempos: {
     flexDirection: 'row',
