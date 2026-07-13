@@ -82,6 +82,17 @@ describe('parser do comprovante', () => {
     expect(r.nome).toBe('BETZABETH ELISA CASTELLANO REYES');
   });
 
+  it('não inventa nome a partir de ruído do OCR', () => {
+    // Leituras ruins do OCR não devem virar "nome" — melhor não sugerir nada.
+    expect(extrairNome('WINS NT')).toBeNull();
+    expect(extrairNome('VA RAL')).toBeNull();
+    expect(
+      interpretarComprovante(
+        'RSOCIAL:XPTO\nWINS NT\nDATA:10/07/2026 HORA:13:18',
+      ).nome,
+    ).toBeNull();
+  });
+
   it('não confunde CNPJ/PIS com a data', () => {
     // Sem a âncora do rótulo, os números com ponto não devem virar data.
     expect(extrairData('CNPJ:92.016.757/0061-22')).toBeNull();
