@@ -36,6 +36,12 @@ const ITENS: ItemControle[] = [
     icone: 'flag-outline',
   },
   {
+    rota: 'ConfigEscalaDomingo',
+    titulo: 'Rodízio de domingo',
+    descricao: 'Ponto de partida do rodízio de grupos (G1/G2/G3) no domingo',
+    icone: 'calendar-outline',
+  },
+  {
     rota: 'Relatorios',
     titulo: 'Relatórios',
     descricao: 'Baixar relatórios dos operadores em PDF (semana ou período)',

@@ -38,6 +38,7 @@ export type RootStackParamList = {
   Relatorios: undefined;
   GestaoColaboradores: { matriculaInicial?: string; nomeInicial?: string } | undefined;
   Metas: undefined;
+  ConfigEscalaDomingo: undefined;
   NaoReconhecidos: undefined;
   InsumosDados: undefined;
   ReiniciarDados: undefined;

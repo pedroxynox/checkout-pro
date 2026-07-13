@@ -31,6 +31,7 @@ import { SancoesScreen } from '../screens/colaboradores/SancoesScreen';
 import { GestaoColaboradoresScreen } from '../screens/colaboradores/GestaoColaboradoresScreen';
 import { PerfilColaboradorScreen } from '../screens/colaboradores/PerfilColaboradorScreen';
 import { CentroControleScreen } from '../screens/centroControle/CentroControleScreen';
+import { ConfigEscalaDomingoScreen } from '../screens/centroControle/ConfigEscalaDomingoScreen';
 import { RelatoriosScreen } from '../screens/relatorios/RelatoriosScreen';
 import { MetasScreen } from '../screens/metas/MetasScreen';
 import { NaoReconhecidosScreen } from '../screens/indicadores/NaoReconhecidosScreen';
@@ -212,6 +213,11 @@ export function AppNavigator(): React.ReactElement {
             name="Metas"
             component={MetasScreen}
             options={{ title: 'Metas' }}
+          />
+          <Stack.Screen
+            name="ConfigEscalaDomingo"
+            component={ConfigEscalaDomingoScreen}
+            options={{ title: 'Rodízio de domingo' }}
           />
           <Stack.Screen
             name="NaoReconhecidos"

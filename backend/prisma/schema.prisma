@@ -315,6 +315,12 @@ model ConfigVendas {
 model ConfigSistema {
   id            String   @id @default("sistema")
   dataInicial   DateTime @default("2026-07-01T00:00:00.000Z")
+  // Âncora do rodízio de domingo: domingo de referência (domingoAncoraData) e
+  // o grupo que FOLGA nele (domingoAncoraGrupo: 'G1'|'G2'|'G3'). A partir daí a
+  // rotação (G1→G2→G3 por domingo) é determinística. NULL = rodízio não
+  // configurado ainda.
+  domingoAncoraData  DateTime?
+  domingoAncoraGrupo String?
   atualizadoEm  DateTime @default(now()) @updatedAt
   atualizadoPor String?
 

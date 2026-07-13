@@ -23,6 +23,10 @@ export { usuariosService } from './usuarios';
 export { notificacoesService } from './notificacoes';
 export { assistenteService } from './assistente';
 export { configSistemaService } from './configSistema';
-export type { DataInicialResposta } from './configSistema';
+export type {
+  DataInicialResposta,
+  DomingoPreview,
+  EscalaDomingoConfig,
+} from './configSistema';
 export { adminService } from './admin';
 export type { ResumoReinicio } from './admin';
