@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { EscalaEntry as EscalaEntryPrisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -9,6 +9,8 @@ import {
   resolverEscalaEfetiva,
 } from './escala.domain';
 import { mapearFiscalColaborador } from './colaborador-vinculo';
+import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
+import { trabalhaNoDomingo } from '../escala-domingo/escala-domingo.domain';
 
 /** Dados para cadastrar uma entrada de escala (Req 4.3.1–4.3.4). */
 export interface EscalaEntryInput {
@@ -39,7 +41,84 @@ export interface ItemEscalaConsolidadaComNome extends ItemEscalaConsolidada {
  */
 @Injectable()
 export class EscalaService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Rodízio de domingo. Opcional para não quebrar testes unitários que
+    // constroem o serviço sem a dependência.
+    @Optional() private readonly escalaDomingo?: EscalaDomingoService,
+  ) {}
+
+  /**
+   * Escala de DOMINGO dos fiscais pelo rodízio de grupos (G1/G2/G3). Diferente
+   * dos outros dias, o domingo não vem da `EscalaEntry` (semanal), e sim do
+   * rodízio: cada fiscal trabalha ou folga conforme o seu grupo e a âncora
+   * configurada, com o horário de domingo (entradaDom/saidaDom) do cadastro.
+   * Sem âncora, todos folgam (não chuta).
+   */
+  private async escalaFiscaisDomingo(
+    dataDomingo: Date,
+  ): Promise<ItemEscalaConsolidadaComNome[]> {
+    const ancora = this.escalaDomingo
+      ? await this.escalaDomingo.obterAncora()
+      : null;
+    const [fiscais, usuarios, colaboradores] = await Promise.all([
+      this.prisma.fiscal.findMany({
+        select: { id: true, nome: true, usuarioId: true },
+      }),
+      this.prisma.usuario.findMany({
+        select: { id: true, login: true, nome: true },
+      }),
+      this.prisma.colaborador.findMany({
+        select: {
+          id: true,
+          nome: true,
+          matricula: true,
+          usuarioId: true,
+          ativo: true,
+          grupoDomingo: true,
+          entradaDom: true,
+          saidaDom: true,
+        },
+      }),
+    ]);
+    const mapaCol = mapearFiscalColaborador(fiscais, usuarios, colaboradores);
+    const colPorId = new Map(colaboradores.map((c) => [c.id, c]));
+
+    const itens: ItemEscalaConsolidadaComNome[] = [];
+    for (const f of fiscais) {
+      const col = mapaCol.get(f.id);
+      const ficha = col ? colPorId.get(col.colaboradorId) : undefined;
+      if (ficha && ficha.ativo === false) continue; // fiscal desligado
+      const trabalha =
+        !!ancora &&
+        trabalhaNoDomingo(
+          ficha?.grupoDomingo,
+          dataDomingo,
+          ancora.data,
+          ancora.grupo,
+        );
+      const efetiva: EscalaEfetiva = trabalha
+        ? {
+            funcionarioId: f.id,
+            diaSemana: 0,
+            entrada: ficha?.entradaDom ?? null,
+            saida: ficha?.saidaDom ?? null,
+            intervaloMin: 0,
+            folga: false,
+            especial: false,
+          }
+        : 'FOLGA';
+      itens.push({
+        funcionarioId: f.id,
+        efetiva,
+        nome: col?.nome ?? f.nome,
+        colaboradorId: col?.colaboradorId ?? null,
+        matricula: col?.matricula ?? null,
+      });
+    }
+    itens.sort((a, b) => a.nome.localeCompare(b.nome));
+    return itens;
+  }
 
   /**
    * Cadastra a escala geral de um funcionário para um dia da semana
@@ -108,7 +187,20 @@ export class EscalaService {
    */
   async escalaConsolidada(
     diaSemana: number,
+    dataISO?: string,
   ): Promise<ItemEscalaConsolidadaComNome[]> {
+    // No domingo (quando a data real é informada), a escala dos fiscais vem do
+    // rodízio de grupos, não da EscalaEntry semanal.
+    if (dataISO) {
+      const dataDomingo = new Date(`${dataISO.slice(0, 10)}T00:00:00.000Z`);
+      if (
+        !Number.isNaN(dataDomingo.getTime()) &&
+        dataDomingo.getUTCDay() === 0
+      ) {
+        return this.escalaFiscaisDomingo(dataDomingo);
+      }
+    }
+
     const entries = await this.prisma.escalaEntry.findMany({
       where: { diaSemana },
     });

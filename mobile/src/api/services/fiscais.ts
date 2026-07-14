@@ -77,10 +77,17 @@ export const fiscaisService = {
 };
 
 export const escalaService = {
-  /** Escala consolidada por dia da semana (Req 4.3.6). */
-  consolidada(diaSemana: number): Promise<ItemEscalaConsolidada[]> {
+  /**
+   * Escala consolidada por dia da semana (Req 4.3.6). Passe `data` (ISO
+   * yyyy-mm-dd) para que o domingo venha do rodízio de grupos dos fiscais.
+   */
+  consolidada(
+    diaSemana: number,
+    data?: string,
+  ): Promise<ItemEscalaConsolidada[]> {
+    const q = data ? `?data=${encodeURIComponent(data)}` : '';
     return apiClient.get<ItemEscalaConsolidada[]>(
-      `/escala/consolidada/${diaSemana}`,
+      `/escala/consolidada/${diaSemana}${q}`,
     );
   },
 
