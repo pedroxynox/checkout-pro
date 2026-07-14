@@ -9,6 +9,7 @@ import { Platform } from 'react-native';
 import { apiClient } from '../client';
 import {
   ConfigVendas,
+  EstimativasMes,
   PainelVendas,
   ResultadoUploadVendas,
   ResumoVendas,
@@ -79,5 +80,21 @@ export const vendasService = {
   /** Atualiza a meta mensal de faturamento. */
   definirConfig(dados: { metaMensal?: number }): Promise<ConfigVendas> {
     return apiClient.put<ConfigVendas>('/vendas/config', dados);
+  },
+
+  /** Estimativas de venda por dia de um mês (+ total do mês). */
+  listarEstimativas(anoMes: string): Promise<EstimativasMes> {
+    return apiClient.get<EstimativasMes>('/vendas/estimativas', { anoMes });
+  },
+
+  /** Define as estimativas de venda por dia de um mês (Central de Vendas). */
+  definirEstimativas(
+    anoMes: string,
+    dias: { data: string; valor: number }[],
+  ): Promise<EstimativasMes> {
+    return apiClient.put<EstimativasMes>('/vendas/estimativas', {
+      anoMes,
+      dias,
+    });
   },
 };

@@ -43,6 +43,19 @@ export interface ResumoVendas {
   totalMes: number;
 }
 
+/** Estimativa de venda de um dia (ISO yyyy-mm-dd + valor R$). */
+export interface EstimativaDia {
+  data: string;
+  valor: number;
+}
+
+/** Estimativas de venda de um mês (por dia) + total (soma) do mês. */
+export interface EstimativasMes {
+  anoMes: string;
+  dias: EstimativaDia[];
+  totalMes: number;
+}
+
 /** Configuração do Painel de Vendas. */
 export interface ConfigVendasResultado {
   metaMensal: number;
@@ -258,6 +271,58 @@ export class VendasService {
       create: { id: 'vendas', metaMensal: data.metaMensal ?? 0, atualizadoPor },
     });
     return { metaMensal: Number(cfg.metaMensal) };
+  }
+
+  // -------------------------- Estimativas ---------------------------------
+
+  /** Estimativas de venda de um mês (por dia) + total (soma) do mês. */
+  async listarEstimativas(anoMes: string): Promise<EstimativasMes> {
+    const [ano, mes] = anoMes.split('-').map(Number);
+    const inicio = new Date(Date.UTC(ano, mes - 1, 1));
+    const fim = new Date(Date.UTC(ano, mes, 1));
+    const regs = await this.prisma.estimativaVendaDia.findMany({
+      where: { data: { gte: inicio, lt: fim } },
+      orderBy: { data: 'asc' },
+    });
+    const dias: EstimativaDia[] = regs.map((r) => ({
+      data: r.data.toISOString().slice(0, 10),
+      valor: arredondar(Number(r.valor)),
+    }));
+    const totalMes = arredondar(dias.reduce((s, d) => s + d.valor, 0));
+    return { anoMes, dias, totalMes };
+  }
+
+  /**
+   * Define (upsert em lote) as estimativas por dia de um mês. Valor 0 remove a
+   * estimativa daquele dia. Retorna as estimativas atualizadas do mês.
+   */
+  async definirEstimativas(
+    anoMes: string,
+    itens: { data: string; valor: number }[],
+  ): Promise<EstimativasMes> {
+    const ops = itens.map((it) => {
+      const dia = new Date(`${it.data.slice(0, 10)}T00:00:00.000Z`);
+      if (it.valor > 0) {
+        return this.prisma.estimativaVendaDia.upsert({
+          where: { data: dia },
+          create: { data: dia, valor: it.valor },
+          update: { valor: it.valor },
+        });
+      }
+      return this.prisma.estimativaVendaDia.deleteMany({
+        where: { data: dia },
+      });
+    });
+    if (ops.length > 0) await this.prisma.$transaction(ops);
+    return this.listarEstimativas(anoMes);
+  }
+
+  /** Estimativa de venda de um dia específico (null se não houver). */
+  async estimativaDoDia(dia: Date): Promise<number | null> {
+    const r = await this.prisma.estimativaVendaDia.findUnique({
+      where: { data: inicioDoDia(dia) },
+    });
+    return r ? arredondar(Number(r.valor)) : null;
   }
 
   // ----------------------------- Painel -----------------------------------

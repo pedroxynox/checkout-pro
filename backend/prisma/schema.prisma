@@ -198,6 +198,16 @@ model VendaDiaria {
   @@map("vendas_diarias")
 }
 
+// Estimativa de venda por dia (Central de Vendas): quanto se ESTIMA vender em
+// cada data. A estimativa do mês é a soma das diárias. Uma linha por data.
+model EstimativaVendaDia {
+  id    String   @id @default(uuid())
+  data  DateTime @unique
+  valor Decimal  @db.Decimal(14, 2)
+
+  @@map("estimativas_venda_dia")
+}
+
 // Vendas por hora de um dia, vindas do arquivo .txt enviado diariamente.
 // Guarda hora (0..23) + valor. O total do dia é a soma das horas e é
 // espelhado em VendaDiaria, que alimenta os percentuais dos indicadores.

@@ -42,6 +42,12 @@ const ITENS: ItemControle[] = [
     icone: 'calendar-outline',
   },
   {
+    rota: 'CentralVendas',
+    titulo: 'Central de Vendas',
+    descricao: 'Estimativas de venda por dia (a do mês é a soma das diárias)',
+    icone: 'cash-outline',
+  },
+  {
     rota: 'Relatorios',
     titulo: 'Relatórios',
     descricao: 'Baixar relatórios dos operadores em PDF (semana ou período)',

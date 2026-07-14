@@ -311,6 +311,19 @@ export interface ConfigVendas {
   metaMensal: number;
 }
 
+/** Estimativa de venda de um dia (ISO yyyy-mm-dd + valor R$). */
+export interface EstimativaDia {
+  data: string;
+  valor: number;
+}
+
+/** Estimativas de venda de um mês (por dia) + total (soma) do mês. */
+export interface EstimativasMes {
+  anoMes: string;
+  dias: EstimativaDia[];
+  totalMes: number;
+}
+
 /** Comparativo entre o período atual e o equivalente anterior. */
 export interface ComparativoVendas {
   atual: number;
