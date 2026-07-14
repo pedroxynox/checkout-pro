@@ -150,3 +150,39 @@ export function formatarDuracao(ms: number): string {
   }
   return `${horas}h ${min.toString().padStart(2, '0')}min`;
 }
+
+
+/**
+ * Máscara de milhar (pt-BR) aplicada ENQUANTO se digita um valor em R$: agrupa
+ * a parte inteira com ponto a cada 3 dígitos e aceita uma vírgula decimal (até
+ * 2 casas). Ex.: "1000" → "1.000"; "1000000" → "1.000.000"; "1234,5" →
+ * "1.234,5"; "0,75" → "0,75". Descarta caracteres inválidos.
+ */
+export function mascaraMilhar(texto: string): string {
+  if (!texto) return '';
+  const limpo = texto.replace(/[^\d,]/g, '');
+  const idx = limpo.indexOf(',');
+  const temVirgula = idx !== -1;
+  let inteiro = temVirgula ? limpo.slice(0, idx) : limpo;
+  const decimal = temVirgula
+    ? limpo
+        .slice(idx + 1)
+        .replace(/,/g, '')
+        .slice(0, 2)
+    : '';
+  // Remove zeros à esquerda (mantém um único zero quando é só "0").
+  inteiro = inteiro.replace(/^0+(?=\d)/, '');
+  const inteiroFmt = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return inteiroFmt + (temVirgula ? `,${decimal}` : '');
+}
+
+/**
+ * Converte um número no formato pt-BR ("1.234,5") para número JS (1234.5).
+ * Remove os pontos de milhar e troca a vírgula decimal por ponto. Retorna 0
+ * quando vazio/ inválido.
+ */
+export function parseNumeroBR(texto: string): number {
+  const s = texto.replace(/\./g, '').replace(',', '.').trim();
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}

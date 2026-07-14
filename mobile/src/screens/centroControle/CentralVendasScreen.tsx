@@ -23,7 +23,7 @@ import {
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, tipografia } from '../../theme';
 import { notificar } from '../../utils/dialogos';
-import { formatarMoeda } from '../../utils/formato';
+import { formatarMoeda, mascaraMilhar, parseNumeroBR } from '../../utils/formato';
 
 const DIAS_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -62,10 +62,10 @@ function diasDoMes(anoMes: string): { iso: string; dia: number; dow: number }[] 
   });
 }
 
-/** "1234,5" → 1234.5; vazio/invalid → 0. */
+/** "1.234,5" → 1234.5; vazio/negativo/invalid → 0. */
 function parseValor(txt: string): number {
-  const n = Number(txt.trim().replace(/\./g, '').replace(',', '.'));
-  return Number.isFinite(n) && n > 0 ? n : 0;
+  const n = parseNumeroBR(txt);
+  return n > 0 ? n : 0;
 }
 
 export function CentralVendasScreen(): React.ReactElement {
@@ -85,7 +85,7 @@ export function CentralVendasScreen(): React.ReactElement {
     if (!cfg) return;
     const mapa: Record<string, string> = {};
     for (const d of cfg.dias) {
-      mapa[d.data] = String(d.valor).replace('.', ',');
+      mapa[d.data] = mascaraMilhar(String(d.valor).replace('.', ','));
     }
     setValores(mapa);
   }, [req.dados]);
@@ -165,7 +165,7 @@ export function CentralVendasScreen(): React.ReactElement {
                   keyboardType="decimal-pad"
                   value={valores[d.iso] ?? ''}
                   onChangeText={(t) =>
-                    setValores((prev) => ({ ...prev, [d.iso]: t }))
+                    setValores((prev) => ({ ...prev, [d.iso]: mascaraMilhar(t) }))
                   }
                   placeholder="R$ 0"
                 />
