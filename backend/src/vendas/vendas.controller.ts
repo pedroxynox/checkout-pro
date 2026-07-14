@@ -21,13 +21,16 @@ import {
 import {
   ConfigVendasDto,
   DataVendasDto,
+  DefinirEstimativasDto,
   IntervaloVendasDto,
+  ListarEstimativasDto,
   PainelVendasDto,
   UploadVendasDto,
 } from './dto/vendas.dto';
 import { parseVendasHora } from './vendas.parser';
 import {
   ConfigVendasResultado,
+  EstimativasMes,
   PainelVendas,
   ResultadoUploadVendas,
   ResumoVendas,
@@ -115,6 +118,23 @@ export class VendasController {
   @Get('config')
   config(): Promise<ConfigVendasResultado> {
     return this.vendasService.obterConfig();
+  }
+
+  /** Estimativas de venda por dia de um mês (+ total do mês). */
+  @Get('estimativas')
+  listarEstimativas(
+    @Query() dto: ListarEstimativasDto,
+  ): Promise<EstimativasMes> {
+    return this.vendasService.listarEstimativas(dto.anoMes);
+  }
+
+  /** Define as estimativas de venda por dia de um mês (Central de Vendas). */
+  @Put('estimativas')
+  @Funcionalidade('PAINEL_VENDAS_EDITAR')
+  definirEstimativas(
+    @Body() dto: DefinirEstimativasDto,
+  ): Promise<EstimativasMes> {
+    return this.vendasService.definirEstimativas(dto.anoMes, dto.dias);
   }
 
   /** Atualiza a meta mensal de faturamento. */

@@ -32,6 +32,7 @@ import { GestaoColaboradoresScreen } from '../screens/colaboradores/GestaoColabo
 import { PerfilColaboradorScreen } from '../screens/colaboradores/PerfilColaboradorScreen';
 import { CentroControleScreen } from '../screens/centroControle/CentroControleScreen';
 import { ConfigEscalaDomingoScreen } from '../screens/centroControle/ConfigEscalaDomingoScreen';
+import { CentralVendasScreen } from '../screens/centroControle/CentralVendasScreen';
 import { RelatoriosScreen } from '../screens/relatorios/RelatoriosScreen';
 import { MetasScreen } from '../screens/metas/MetasScreen';
 import { NaoReconhecidosScreen } from '../screens/indicadores/NaoReconhecidosScreen';
@@ -218,6 +219,11 @@ export function AppNavigator(): React.ReactElement {
             name="ConfigEscalaDomingo"
             component={ConfigEscalaDomingoScreen}
             options={{ title: 'Rodízio de domingo' }}
+          />
+          <Stack.Screen
+            name="CentralVendas"
+            component={CentralVendasScreen}
+            options={{ title: 'Central de Vendas' }}
           />
           <Stack.Screen
             name="NaoReconhecidos"
