@@ -2,10 +2,10 @@
  * Painel de configuração do rodízio de domingo (Centro de Controle).
  *
  * O domingo funciona por rodízio de 3 grupos (G1/G2/G3): a cada domingo um
- * grupo folga e os outros dois trabalham. Aqui o gestor define o "ponto de
- * partida": um domingo de referência e qual grupo folga nele. A partir disso o
- * sistema calcula sozinho a rotação. A prévia dos próximos domingos ajuda a
- * conferir se bate com a realidade.
+ * grupo folga e os outros dois trabalham. A ordem do ciclo NÃO é fixa — o
+ * gestor define, para os 3 domingos do ciclo (a partir de um domingo de
+ * referência), qual grupo folga em cada um. Ex.: 19/07 folga G1, 26/07 folga
+ * G3, 02/08 folga G2 — e o ciclo repete. A prévia mostra os próximos domingos.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
@@ -25,17 +25,28 @@ import { cores, espacamento, raio, tipografia } from '../../theme';
 import { notificar } from '../../utils/dialogos';
 import { dataBRParaISO, isoParaDataBR, mascaraDataBR } from '../../utils/formato';
 
-const GRUPOS: ('G1' | 'G2' | 'G3')[] = ['G1', 'G2', 'G3'];
+type Grupo = 'G1' | 'G2' | 'G3';
+const GRUPOS: Grupo[] = ['G1', 'G2', 'G3'];
 
 /** Os dois grupos que trabalham quando `folga` está de folga. */
 function gruposQueTrabalham(folga: string): string {
   return GRUPOS.filter((g) => g !== folga).join(' e ');
 }
 
-/** "dd/mm" a partir de um ISO yyyy-mm-dd (para a prévia compacta). */
+/** "dd/mm" a partir de um ISO yyyy-mm-dd. */
 function diaMes(iso: string): string {
   const br = isoParaDataBR(iso);
   return br ? br.slice(0, 5) : iso;
+}
+
+/** Soma `dias` a um ISO yyyy-mm-dd (UTC) e devolve dd/mm. */
+function isoMaisDiasDiaMes(iso: string, dias: number): string {
+  const d = new Date(`${iso}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) return '';
+  d.setUTCDate(d.getUTCDate() + dias);
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(
+    d.getUTCMonth() + 1,
+  ).padStart(2, '0')}`;
 }
 
 export function ConfigEscalaDomingoScreen(): React.ReactElement {
@@ -45,43 +56,46 @@ export function ConfigEscalaDomingoScreen(): React.ReactElement {
   );
 
   const [dataBR, setDataBR] = useState('');
-  const [grupo, setGrupo] = useState<'G1' | 'G2' | 'G3' | null>(null);
+  // Quem folga em cada um dos 3 domingos do ciclo (índices 0,1,2).
+  const [ordem, setOrdem] = useState<(Grupo | null)[]>([null, null, null]);
   const [salvando, setSalvando] = useState(false);
 
-  // Pré-preenche com a âncora atual (se já configurada).
+  // Pré-preenche com a configuração atual (se já existir).
   useEffect(() => {
     const cfg = req.dados;
     if (!cfg) return;
     if (cfg.ancoraData) setDataBR(isoParaDataBR(cfg.ancoraData));
-    if (cfg.ancoraGrupo) setGrupo(cfg.ancoraGrupo);
+    if (cfg.ordem && cfg.ordem.length === 3) setOrdem([...cfg.ordem]);
   }, [req.dados]);
 
+  const isoRef = dataBRParaISO(dataBR.trim());
+
   const salvar = async (): Promise<void> => {
-    const iso = dataBRParaISO(dataBR.trim());
-    if (!iso) {
+    if (!isoRef) {
       notificar('Data inválida', 'Use o formato dd/mm/aaaa (ex.: 19/07/2026).');
       return;
     }
-    // Precisa ser domingo.
-    if (new Date(`${iso}T00:00:00.000Z`).getUTCDay() !== 0) {
+    if (new Date(`${isoRef}T00:00:00.000Z`).getUTCDay() !== 0) {
       notificar(
         'Precisa ser um domingo',
-        'A data de referência deve cair num domingo. Escolha um domingo.',
+        'O 1º domingo do ciclo deve cair num domingo.',
       );
       return;
     }
-    if (!grupo) {
-      notificar('Escolha o grupo', 'Selecione qual grupo folga nesse domingo.');
+    const escolhidos = ordem.filter((g): g is Grupo => g != null);
+    const semRepetir = new Set(escolhidos).size === 3;
+    if (escolhidos.length !== 3 || !semRepetir) {
+      notificar(
+        'Complete o ciclo',
+        'Escolha um grupo diferente (G1, G2 e G3) para cada um dos 3 domingos.',
+      );
       return;
     }
     setSalvando(true);
     try {
-      await configSistemaService.definirEscalaDomingo(iso, grupo);
+      await configSistemaService.definirEscalaDomingo(isoRef, escolhidos);
       req.recarregar();
-      notificar(
-        'Rodízio salvo',
-        'O ponto de partida foi definido. A prévia mostra os próximos domingos.',
-      );
+      notificar('Rodízio salvo', 'A ordem do ciclo foi definida. Confira a prévia.');
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
     } finally {
@@ -95,14 +109,14 @@ export function ConfigEscalaDomingoScreen(): React.ReactElement {
     <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
       <Text style={styles.intro}>
         No domingo os colaboradores giram em 3 grupos (G1, G2 e G3): a cada
-        domingo um grupo folga e os outros dois trabalham. Defina abaixo um
-        domingo de referência e qual grupo folga nele — o resto é calculado
-        automaticamente.
+        domingo um grupo folga e os outros dois trabalham. Defina o 1º domingo
+        do ciclo e quem folga em cada um dos 3 domingos — a ordem repete a partir
+        daí.
       </Text>
 
-      <Cartao titulo="Ponto de partida">
+      <Cartao titulo="Ciclo de domingo">
         <CampoTexto
-          rotulo="Domingo de referência"
+          rotulo="1º domingo do ciclo"
           value={dataBR}
           onChangeText={(t) => setDataBR(mascaraDataBR(t))}
           placeholder="dd/mm/aaaa (ex.: 19/07/2026)"
@@ -110,20 +124,35 @@ export function ConfigEscalaDomingoScreen(): React.ReactElement {
           maxLength={10}
         />
 
-        <Text style={styles.rotulo}>Grupo que folga nesse domingo</Text>
-        <View style={styles.chips}>
-          {GRUPOS.map((g) => (
-            <Text
-              key={g}
-              onPress={() => setGrupo(g)}
-              style={[styles.chip, grupo === g && styles.chipAtivo]}
-            >
-              {g}
-            </Text>
-          ))}
-        </View>
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={styles.linhaCiclo}>
+            <View style={styles.linhaCicloTopo}>
+              <Text style={styles.linhaCicloRotulo}>
+                {i + 1}º domingo{isoRef ? ` · ${isoMaisDiasDiaMes(isoRef, i * 7)}` : ''}
+              </Text>
+              <Text style={styles.linhaCicloAjuda}>folga</Text>
+            </View>
+            <View style={styles.chips}>
+              {GRUPOS.map((g) => (
+                <Text
+                  key={g}
+                  onPress={() =>
+                    setOrdem((prev) => {
+                      const novo = [...prev];
+                      novo[i] = novo[i] === g ? null : g;
+                      return novo;
+                    })
+                  }
+                  style={[styles.chip, ordem[i] === g && styles.chipAtivo]}
+                >
+                  {g}
+                </Text>
+              ))}
+            </View>
+          </View>
+        ))}
 
-        <Botao titulo="Salvar ponto de partida" aoPressionar={salvar} carregando={salvando} />
+        <Botao titulo="Salvar rodízio" aoPressionar={salvar} carregando={salvando} />
       </Cartao>
 
       {req.carregando ? (
@@ -148,7 +177,7 @@ export function ConfigEscalaDomingoScreen(): React.ReactElement {
         </Cartao>
       ) : (
         <Text style={styles.semAncora}>
-          Ainda sem ponto de partida definido. Preencha acima para ver a prévia.
+          Ainda sem ciclo definido. Preencha acima para ver a prévia.
         </Text>
       )}
     </Tela>
@@ -161,16 +190,29 @@ const styles = StyleSheet.create({
     color: cores.textoSecundario,
     marginBottom: espacamento.md,
   },
-  rotulo: {
-    ...tipografia.rotulo,
-    color: cores.texto,
+  linhaCiclo: {
     marginTop: espacamento.sm,
     marginBottom: espacamento.xs,
+  },
+  linhaCicloTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: espacamento.xs,
+  },
+  linhaCicloRotulo: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    fontWeight: '700',
+  },
+  linhaCicloAjuda: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
   },
   chips: {
     flexDirection: 'row',
     gap: espacamento.sm,
-    marginBottom: espacamento.md,
+    marginBottom: espacamento.sm,
   },
   chip: {
     ...tipografia.rotulo,

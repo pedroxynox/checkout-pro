@@ -41,18 +41,32 @@ export function ehGrupoValido(g: string | null | undefined): g is GrupoDomingo {
 }
 
 /**
- * Grupo que **folga** num domingo, dada a âncora (domingo de referência +
- * grupo que folga nele). A rotação avança G1 → G2 → G3 a cada domingo.
+ * A ORDEM do ciclo é a sequência de grupos que folga em cada domingo do ciclo
+ * (ex.: ['G1','G3','G2'] = 1º domingo folga G1, 2º folga G3, 3º folga G2, e
+ * repete). Deve ser uma permutação dos 3 grupos (cada um folga uma vez por
+ * ciclo).
+ */
+export function ordemValida(
+  ordem: readonly string[] | null | undefined,
+): ordem is GrupoDomingo[] {
+  if (!ordem || ordem.length !== 3) return false;
+  return GRUPOS_DOMINGO.every((g) => ordem.filter((x) => x === g).length === 1);
+}
+
+/**
+ * Grupo que **folga** num domingo, dada a referência (1º domingo do ciclo) e a
+ * ORDEM do ciclo. A sequência não é fixa: segue exatamente a ordem informada e
+ * repete a cada 3 domingos. Ex.: ref=19/07 e ordem=['G1','G3','G2'] → 19/07
+ * folga G1, 26/07 folga G3, 02/08 folga G2, 09/08 folga G1 de novo.
  */
 export function grupoFolgaNoDomingo(
   dataDomingo: Date,
-  ancoraData: Date,
-  ancoraGrupo: GrupoDomingo,
+  refData: Date,
+  ordem: readonly GrupoDomingo[],
 ): GrupoDomingo {
-  const base = GRUPOS_DOMINGO.indexOf(ancoraGrupo);
-  const n = semanasEntre(ancoraData, dataDomingo);
-  const idx = (((base + n) % 3) + 3) % 3;
-  return GRUPOS_DOMINGO[idx];
+  const n = semanasEntre(refData, dataDomingo);
+  const idx = ((n % ordem.length) + ordem.length) % ordem.length;
+  return ordem[idx];
 }
 
 /**
@@ -62,14 +76,11 @@ export function grupoFolgaNoDomingo(
 export function trabalhaNoDomingo(
   grupoColaborador: string | null | undefined,
   dataDomingo: Date,
-  ancoraData: Date,
-  ancoraGrupo: GrupoDomingo,
+  refData: Date,
+  ordem: readonly GrupoDomingo[],
 ): boolean {
   if (!ehGrupoValido(grupoColaborador)) return false;
-  return (
-    grupoFolgaNoDomingo(dataDomingo, ancoraData, ancoraGrupo) !==
-    grupoColaborador
-  );
+  return grupoFolgaNoDomingo(dataDomingo, refData, ordem) !== grupoColaborador;
 }
 
 /** O primeiro domingo >= `apartir` (o próprio dia se já for domingo). */

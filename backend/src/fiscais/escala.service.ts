@@ -95,7 +95,7 @@ export class EscalaService {
           ficha?.grupoDomingo,
           dataDomingo,
           ancora.data,
-          ancora.grupo,
+          ancora.ordem,
         );
       const efetiva: EscalaEfetiva = trabalha
         ? {

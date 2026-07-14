@@ -26,13 +26,13 @@ export class EscalaDomingoController {
     return this.service.obter();
   }
 
-  /** Define o ponto de partida do rodízio (somente gestor). */
+  /** Define o rodízio: referência + ordem do ciclo (somente gestor). */
   @Put()
   @Funcionalidade('OPERADORES_CRUD')
   definir(
     @Body() dto: DefinirAncoraDomingoDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<EscalaDomingoConfig> {
-    return this.service.definir(dto.ancoraData, dto.ancoraGrupo, usuario?.sub);
+    return this.service.definir(dto.ancoraData, dto.ordem, usuario?.sub);
   }
 }

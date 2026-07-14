@@ -2,16 +2,21 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   GrupoDomingo,
+  GRUPOS_DOMINGO,
   ehDomingo,
   ehGrupoValido,
   grupoFolgaNoDomingo,
+  ordemValida,
   proximosDomingos,
 } from './escala-domingo.domain';
 
-/** Âncora vigente do rodízio (domingo de referência + grupo que folga). */
+/**
+ * Âncora vigente do rodízio: 1º domingo de referência + a ORDEM do ciclo
+ * (sequência de grupos que folga em cada domingo do ciclo, ex.: ['G1','G3','G2']).
+ */
 export interface AncoraDomingo {
   data: Date;
-  grupo: GrupoDomingo;
+  ordem: GrupoDomingo[];
 }
 
 /** Um domingo do preview com o grupo que folga nele. */
@@ -26,8 +31,8 @@ export interface DomingoPreview {
 export interface EscalaDomingoConfig {
   /** Domingo de referência (ISO yyyy-mm-dd) ou null se ainda não configurado. */
   ancoraData: string | null;
-  /** Grupo que folga na âncora (G1/G2/G3) ou null. */
-  ancoraGrupo: GrupoDomingo | null;
+  /** Ordem do ciclo (quem folga em cada domingo), ou null se não configurado. */
+  ordem: GrupoDomingo[] | null;
   /** Próximos domingos com o grupo que folga (vazio se sem âncora). */
   proximos: DomingoPreview[];
 }
@@ -35,44 +40,50 @@ export interface EscalaDomingoConfig {
 const PREVIEW_QTD = 8;
 
 /**
+ * Ordem legada: quando só existe o grupo único antigo (`domingoAncoraGrupo`),
+ * reconstrói a ordem assumindo o comportamento anterior (G1 → G2 → G3 a partir
+ * do grupo salvo). Mantém a configuração antiga funcionando até ser regravada.
+ */
+function ordemLegado(grupo: string | null | undefined): string[] {
+  if (!ehGrupoValido(grupo)) return [];
+  const base = GRUPOS_DOMINGO.indexOf(grupo);
+  return [0, 1, 2].map((i) => GRUPOS_DOMINGO[(base + i) % 3]);
+}
+
+/**
  * Configuração (singleton) do rodízio de domingo, guardada em `ConfigSistema`
- * (mesmo padrão de `DataInicialService`). Lê/grava a âncora (domingo de
- * referência + grupo que folga) e devolve um preview dos próximos domingos para
- * o gestor conferir se a rotação bate com a realidade.
+ * (mesmo padrão de `DataInicialService`). Lê/grava a âncora (1º domingo de
+ * referência + a ordem do ciclo) e devolve um preview dos próximos domingos
+ * para o gestor conferir se a rotação bate com a realidade.
  */
 @Injectable()
 export class EscalaDomingoService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Âncora vigente (domingo de referência + grupo que folga), ou null se o
+   * Âncora vigente (domingo de referência + ordem do ciclo), ou null se o
    * rodízio ainda não foi configurado. Usada por quem resolve a escala de um
-   * domingo específico (quadro de operadores).
+   * domingo específico (quadro de operadores e escala dos fiscais).
    */
   async obterAncora(): Promise<AncoraDomingo | null> {
     const cfg = await this.prisma.configSistema.findUnique({
       where: { id: 'sistema' },
     });
     const data = cfg?.domingoAncoraData ?? null;
-    const grupo = ehGrupoValido(cfg?.domingoAncoraGrupo)
-      ? cfg!.domingoAncoraGrupo
-      : null;
-    if (!data || !grupo) return null;
-    return { data, grupo };
+    if (!data) return null;
+    // Nova config (ordem do ciclo, CSV) ou fallback à antiga (grupo único).
+    const ordem = cfg?.domingoOrdemGrupos
+      ? cfg.domingoOrdemGrupos.split(',')
+      : ordemLegado(cfg?.domingoAncoraGrupo);
+    if (!ordemValida(ordem)) return null;
+    return { data, ordem };
   }
 
   /** Configuração vigente + preview dos próximos domingos. */
   async obter(): Promise<EscalaDomingoConfig> {
-    const cfg = await this.prisma.configSistema.findUnique({
-      where: { id: 'sistema' },
-    });
-    const ancoraData = cfg?.domingoAncoraData ?? null;
-    const ancoraGrupo = ehGrupoValido(cfg?.domingoAncoraGrupo)
-      ? cfg!.domingoAncoraGrupo
-      : null;
-
-    if (!ancoraData || !ancoraGrupo) {
-      return { ancoraData: null, ancoraGrupo: null, proximos: [] };
+    const ancora = await this.obterAncora();
+    if (!ancora) {
+      return { ancoraData: null, ordem: null, proximos: [] };
     }
 
     const proximos: DomingoPreview[] = proximosDomingos(
@@ -80,28 +91,30 @@ export class EscalaDomingoService {
       PREVIEW_QTD,
     ).map((d) => ({
       data: d.toISOString().slice(0, 10),
-      grupoFolga: grupoFolgaNoDomingo(d, ancoraData, ancoraGrupo),
+      grupoFolga: grupoFolgaNoDomingo(d, ancora.data, ancora.ordem),
     }));
 
     return {
-      ancoraData: ancoraData.toISOString().slice(0, 10),
-      ancoraGrupo,
+      ancoraData: ancora.data.toISOString().slice(0, 10),
+      ordem: ancora.ordem,
       proximos,
     };
   }
 
   /**
-   * Define o ponto de partida do rodízio: um domingo de referência e o grupo
-   * que folga nele. Valida que a data é realmente um domingo e o grupo é
-   * G1/G2/G3.
+   * Define o rodízio: o 1º domingo de referência e a ORDEM do ciclo (quem folga
+   * no 1º, 2º e 3º domingos). A ordem deve conter G1, G2 e G3, cada um uma vez.
+   * Valida também que a data é um domingo.
    */
   async definir(
     ancoraDataISO: string,
-    ancoraGrupo: string,
+    ordem: string[],
     por?: string,
   ): Promise<EscalaDomingoConfig> {
-    if (!ehGrupoValido(ancoraGrupo)) {
-      throw new BadRequestException('O grupo deve ser G1, G2 ou G3.');
+    if (!ordemValida(ordem)) {
+      throw new BadRequestException(
+        'A ordem do ciclo deve conter G1, G2 e G3, cada um uma vez.',
+      );
     }
     const data = new Date(`${ancoraDataISO.slice(0, 10)}T00:00:00.000Z`);
     if (Number.isNaN(data.getTime())) {
@@ -113,19 +126,17 @@ export class EscalaDomingoService {
       );
     }
 
+    const dados = {
+      domingoAncoraData: data,
+      domingoOrdemGrupos: ordem.join(','),
+      // Mantém o campo antigo coerente (1º grupo do ciclo) por compatibilidade.
+      domingoAncoraGrupo: ordem[0],
+      atualizadoPor: por,
+    };
     await this.prisma.configSistema.upsert({
       where: { id: 'sistema' },
-      update: {
-        domingoAncoraData: data,
-        domingoAncoraGrupo: ancoraGrupo,
-        atualizadoPor: por,
-      },
-      create: {
-        id: 'sistema',
-        domingoAncoraData: data,
-        domingoAncoraGrupo: ancoraGrupo,
-        atualizadoPor: por,
-      },
+      update: dados,
+      create: { id: 'sistema', ...dados },
     });
     return this.obter();
   }
