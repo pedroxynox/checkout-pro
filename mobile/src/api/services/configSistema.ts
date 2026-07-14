@@ -19,10 +19,11 @@ export interface DomingoPreview {
   grupoFolga: 'G1' | 'G2' | 'G3';
 }
 
-/** Configuração do rodízio de domingo (âncora + preview dos próximos). */
+/** Configuração do rodízio de domingo (referência + ordem do ciclo + preview). */
 export interface EscalaDomingoConfig {
   ancoraData: string | null;
-  ancoraGrupo: 'G1' | 'G2' | 'G3' | null;
+  /** Ordem do ciclo: quem folga no 1º, 2º e 3º domingos (ex.: ['G1','G3','G2']). */
+  ordem: ('G1' | 'G2' | 'G3')[] | null;
   proximos: DomingoPreview[];
 }
 
@@ -37,14 +38,14 @@ export const configSistemaService = {
     return apiClient.get<EscalaDomingoConfig>('/config/escala-domingo');
   },
 
-  /** Define o ponto de partida do rodízio de domingo (apenas gestor). */
+  /** Define o rodízio: 1º domingo de referência + ordem do ciclo (só gestor). */
   definirEscalaDomingo(
     ancoraData: string,
-    ancoraGrupo: 'G1' | 'G2' | 'G3',
+    ordem: ('G1' | 'G2' | 'G3')[],
   ): Promise<EscalaDomingoConfig> {
     return apiClient.put<EscalaDomingoConfig>('/config/escala-domingo', {
       ancoraData,
-      ancoraGrupo,
+      ordem,
     });
   },
 };

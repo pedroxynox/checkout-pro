@@ -320,7 +320,12 @@ model ConfigSistema {
   // rotação (G1→G2→G3 por domingo) é determinística. NULL = rodízio não
   // configurado ainda.
   domingoAncoraData  DateTime?
+  // [LEGADO] Grupo único que folga na âncora — substituído por
+  // domingoOrdemGrupos (mantido por compatibilidade / 1º grupo do ciclo).
   domingoAncoraGrupo String?
+  // Ordem do ciclo: sequência de quem folga em cada domingo do ciclo, como CSV
+  // (ex.: 'G1,G3,G2'). A rotação segue essa ordem e repete a cada 3 domingos.
+  domingoOrdemGrupos String?
   atualizadoEm  DateTime @default(now()) @updatedAt
   atualizadoPor String?
 

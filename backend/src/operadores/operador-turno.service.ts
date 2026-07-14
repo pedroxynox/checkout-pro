@@ -249,7 +249,7 @@ export class OperadorTurnoService {
           c.grupoDomingo,
           dataDomingo,
           ancora.data,
-          ancora.grupo,
+          ancora.ordem,
         );
       return {
         id: c.id,
@@ -263,7 +263,7 @@ export class OperadorTurnoService {
 
     return {
       grupoFolga: ancora
-        ? grupoFolgaNoDomingo(dataDomingo, ancora.data, ancora.grupo)
+        ? grupoFolgaNoDomingo(dataDomingo, ancora.data, ancora.ordem)
         : null,
       itens,
     };
