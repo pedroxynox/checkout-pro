@@ -85,6 +85,11 @@ function rotuloStatus(status: ColaboradorDia['status']): string {
   return 'Folga';
 }
 
+/** Os dois grupos que trabalham quando `folga` está de folga no domingo. */
+function gruposQueTrabalhamDomingo(folga: string): string {
+  return ['G1', 'G2', 'G3'].filter((g) => g !== folga).join(' e ');
+}
+
 /** Cor do status AO VIVO do fiscal (derivado das batidas do ponto). */
 function corStatusFiscal(status: StatusFiscal): string {
   if (status === 'DISPONIVEL') return cores.verde;
@@ -1198,6 +1203,29 @@ export function OperadoresScreen(): React.ReactElement {
         </Pressable>
       ) : null}
 
+      {/* Domingo: rodízio de grupos. Mostra quem folga e quem trabalha nesse
+          domingo (ou avisa que o rodízio ainda não foi configurado). */}
+      {dados?.diaSemana === 0 ? (
+        dados.grupoFolgaDomingo ? (
+          <View style={styles.domingoBanner}>
+            <Ionicons name="sync-outline" size={18} color={cores.primaria} />
+            <Text style={styles.domingoBannerTexto}>
+              Domingo · Folga{' '}
+              <Text style={styles.domingoForte}>{dados.grupoFolgaDomingo}</Text>
+              {'  ·  '}Trabalham {gruposQueTrabalhamDomingo(dados.grupoFolgaDomingo)}
+            </Text>
+          </View>
+        ) : (
+          <View style={[styles.domingoBanner, styles.domingoBannerAviso]}>
+            <Ionicons name="information-circle-outline" size={18} color={cores.amarelo} />
+            <Text style={styles.domingoBannerTexto}>
+              Rodízio de domingo ainda não configurado. Defina o ponto de partida
+              em Centro de Controle › Rodízio de domingo.
+            </Text>
+          </View>
+        )
+      ) : null}
+
       {/* Tablero "ao vivo": quem deveria estar agora */}
       {aoVivo.dados ? (
         <Cartao titulo="Agora no caixa">
@@ -1729,6 +1757,27 @@ const styles = StyleSheet.create({
     borderRadius: raio.lg,
     padding: espacamento.lg,
     marginBottom: espacamento.md,
+  },
+  domingoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    backgroundColor: cores.primariaClara,
+    borderRadius: raio.md,
+    padding: espacamento.md,
+    marginBottom: espacamento.md,
+  },
+  domingoBannerAviso: {
+    backgroundColor: cores.amareloFundo ?? '#FBF3DA',
+  },
+  domingoBannerTexto: {
+    ...tipografia.legenda,
+    color: cores.texto,
+    flex: 1,
+  },
+  domingoForte: {
+    fontWeight: '700',
+    color: cores.primaria,
   },
   linkJornadaTexto: {
     ...tipografia.rotulo,

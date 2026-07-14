@@ -9,6 +9,12 @@ import {
   type FaltasOperadorDetalhe,
 } from './operadores.domain';
 import { StatusJustificativa } from '../common/justificativas';
+import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
+import {
+  GrupoDomingo,
+  grupoFolgaNoDomingo,
+  trabalhaNoDomingo,
+} from '../escala-domingo/escala-domingo.domain';
 
 export type StatusCelula = 'TRABALHA' | 'FOLGA' | 'FALTA';
 
@@ -104,6 +110,11 @@ export interface DiaOperadores {
   folgas: number;
   faltas: number;
   colaboradores: ColaboradorDia[];
+  /**
+   * Só no domingo: grupo que FOLGA nesse domingo pelo rodízio (G1/G2/G3), ou
+   * null quando não é domingo ou o rodízio ainda não foi configurado.
+   */
+  grupoFolgaDomingo: GrupoDomingo | null;
 }
 
 const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -202,7 +213,61 @@ export class OperadorTurnoService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly notificacoes?: NotificacoesService,
+    @Optional() private readonly escalaDomingo?: EscalaDomingoService,
   ) {}
+
+  /**
+   * Resolve, para um domingo, quem trabalha e quem folga pelo rodízio de grupos
+   * (G1/G2/G3). Usa a âncora configurada; se não houver âncora, ninguém entra
+   * (todos folgam) e `grupoFolga` fica null. Horário do domingo é o `entradaDom`
+   * /`saidaDom` de cada colaborador (Fase 1).
+   */
+  private async operadoresNoDomingo(dataISO: string): Promise<{
+    grupoFolga: GrupoDomingo | null;
+    itens: {
+      id: string;
+      nome: string;
+      genero: string | null;
+      trabalha: boolean;
+      entrada: string | null;
+      saida: string | null;
+    }[];
+  }> {
+    const dataDomingo = new Date(`${dataISO}T00:00:00.000Z`);
+    const ancora = this.escalaDomingo
+      ? await this.escalaDomingo.obterAncora()
+      : null;
+    const cols = await this.prisma.colaborador.findMany({
+      where: { funcao: 'OPERADOR', ativo: true },
+      orderBy: [{ entradaDom: 'asc' }, { nome: 'asc' }],
+    });
+
+    const itens = cols.map((c) => {
+      const trabalha =
+        !!ancora &&
+        trabalhaNoDomingo(
+          c.grupoDomingo,
+          dataDomingo,
+          ancora.data,
+          ancora.grupo,
+        );
+      return {
+        id: c.id,
+        nome: c.nome,
+        genero: c.genero ?? null,
+        trabalha,
+        entrada: trabalha ? (c.entradaDom ?? null) : null,
+        saida: trabalha ? (c.saidaDom ?? null) : null,
+      };
+    });
+
+    return {
+      grupoFolga: ancora
+        ? grupoFolgaNoDomingo(dataDomingo, ancora.data, ancora.grupo)
+        : null,
+      itens,
+    };
+  }
 
   /**
    * Lista os operadores ATIVOS para a escala. Fonte: Cadastro Unificado de
@@ -342,8 +407,15 @@ export class OperadorTurnoService {
     const diaSemana = diaInicio.getUTCDay();
     const diaFim = addDias(diaInicio, 1);
 
-    const operadores = await this.listar();
-    const ids = operadores.map((o) => o.id);
+    // No domingo o roster vem do rodízio de grupos (com o horário de domingo);
+    // nos demais dias, do turno fixo (Seg–Qui x Sex–Sáb) + folga fixa.
+    const ehDom = diaSemana === 0;
+    const domingo = ehDom ? await this.operadoresNoDomingo(dataISO) : null;
+    const operadores = ehDom ? [] : await this.listar();
+    const ids = ehDom
+      ? domingo!.itens.map((i) => i.id)
+      : operadores.map((o) => o.id);
+
     const ausencias =
       ids.length > 0
         ? await this.prisma.ausencia.findMany({
@@ -362,39 +434,68 @@ export class OperadorTurnoService {
     const mapaAus = new Map(ausencias.map((a) => [a.pessoaId, a]));
     const fds = diaSemana === 5 || diaSemana === 6;
 
-    const colaboradores: ColaboradorDia[] = operadores.map(
-      (op): ColaboradorDia => {
-        if (op.folgaDiaSemana === diaSemana) {
-          return {
-            id: op.id,
-            nome: op.nome,
-            genero: op.genero ?? null,
-            status: 'FOLGA',
-            entrada: null,
-            saida: null,
-            ausenciaId: null,
-            statusJustificativa: null,
-            justificadaPorNome: null,
-          };
-        }
-        const entrada = fds ? op.entradaFds : op.entradaSemana;
-        const saida = fds ? op.saidaFds : op.saidaSemana;
-        const aus = mapaAus.get(op.id) ?? null;
-        return {
-          id: op.id,
-          nome: op.nome,
-          genero: op.genero ?? null,
-          status: aus ? 'FALTA' : 'TRABALHA',
-          entrada,
-          saida,
-          ausenciaId: aus?.id ?? null,
-          statusJustificativa: aus
-            ? (aus.statusJustificativa as StatusJustificativa)
-            : null,
-          justificadaPorNome: aus?.justificadaPorNome ?? null,
-        };
-      },
-    );
+    const linhaComFalta = (base: {
+      id: string;
+      nome: string;
+      genero: string | null;
+      entrada: string | null;
+      saida: string | null;
+    }): ColaboradorDia => {
+      const aus = mapaAus.get(base.id) ?? null;
+      return {
+        id: base.id,
+        nome: base.nome,
+        genero: base.genero,
+        status: aus ? 'FALTA' : 'TRABALHA',
+        entrada: base.entrada,
+        saida: base.saida,
+        ausenciaId: aus?.id ?? null,
+        statusJustificativa: aus
+          ? (aus.statusJustificativa as StatusJustificativa)
+          : null,
+        justificadaPorNome: aus?.justificadaPorNome ?? null,
+      };
+    };
+
+    const folga = (base: {
+      id: string;
+      nome: string;
+      genero: string | null;
+    }): ColaboradorDia => ({
+      id: base.id,
+      nome: base.nome,
+      genero: base.genero,
+      status: 'FOLGA',
+      entrada: null,
+      saida: null,
+      ausenciaId: null,
+      statusJustificativa: null,
+      justificadaPorNome: null,
+    });
+
+    const colaboradores: ColaboradorDia[] = ehDom
+      ? domingo!.itens.map((it) =>
+          it.trabalha
+            ? linhaComFalta({
+                id: it.id,
+                nome: it.nome,
+                genero: it.genero,
+                entrada: it.entrada,
+                saida: it.saida,
+              })
+            : folga({ id: it.id, nome: it.nome, genero: it.genero }),
+        )
+      : operadores.map((op) =>
+          op.folgaDiaSemana === diaSemana
+            ? folga({ id: op.id, nome: op.nome, genero: op.genero ?? null })
+            : linhaComFalta({
+                id: op.id,
+                nome: op.nome,
+                genero: op.genero ?? null,
+                entrada: fds ? op.entradaFds : op.entradaSemana,
+                saida: fds ? op.saidaFds : op.saidaSemana,
+              }),
+        );
 
     // Trabalha/falta primeiro, por hora de entrada; folga ao fim (por nome).
     colaboradores.sort((a, b) => {
@@ -414,6 +515,7 @@ export class OperadorTurnoService {
       folgas: colaboradores.filter((c) => c.status === 'FOLGA').length,
       faltas: colaboradores.filter((c) => c.status === 'FALTA').length,
       colaboradores,
+      grupoFolgaDomingo: domingo?.grupoFolga ?? null,
     };
   }
 
@@ -425,8 +527,39 @@ export class OperadorTurnoService {
   async aoVivo(): Promise<AoVivoOperadores> {
     const { dataISO, hora, minuto, diaSemana } = agoraBrasilia();
     const nowMin = hora * 60 + minuto;
-    const operadores = await this.listar();
-    const ids = operadores.map((o) => o.id);
+    const ehDom = diaSemana === 0;
+    const fds = diaSemana === 5 || diaSemana === 6;
+
+    // Candidatos do dia (com o horário do dia): no domingo, quem trabalha pelo
+    // rodízio de grupos; nos demais dias, quem não está de folga fixa.
+    let candidatos: {
+      id: string;
+      nome: string;
+      entrada: string | null;
+      saida: string | null;
+    }[];
+    if (ehDom) {
+      const { itens } = await this.operadoresNoDomingo(dataISO);
+      candidatos = itens
+        .filter((i) => i.trabalha)
+        .map((i) => ({
+          id: i.id,
+          nome: i.nome,
+          entrada: i.entrada,
+          saida: i.saida,
+        }));
+    } else {
+      const operadores = await this.listar();
+      candidatos = operadores
+        .filter((op) => op.folgaDiaSemana !== diaSemana)
+        .map((op) => ({
+          id: op.id,
+          nome: op.nome,
+          entrada: fds ? op.entradaFds : op.entradaSemana,
+          saida: fds ? op.saidaFds : op.saidaSemana,
+        }));
+    }
+    const ids = candidatos.map((c) => c.id);
 
     const diaInicio = new Date(`${dataISO}T00:00:00.000Z`);
     const diaFim = addDias(diaInicio, 1);
@@ -456,27 +589,27 @@ export class OperadorTurnoService {
         : [];
     const naoRetornou = new Set(incidencias.map((i) => i.colaboradorId));
 
-    const fds = diaSemana === 5 || diaSemana === 6;
     const listaDisponiveis: OperadorAgora[] = [];
     const listaFaltantes: OperadorAgora[] = [];
     const listaSemRetorno: OperadorAgora[] = [];
 
-    for (const op of operadores) {
-      if (op.folgaDiaSemana === diaSemana) continue; // folga hoje
-      const entrada = fds ? op.entradaFds : op.entradaSemana;
-      const saida = fds ? op.saidaFds : op.saidaSemana;
-      const ent = horaMin(entrada);
-      const sai = horaMin(saida);
+    for (const c of candidatos) {
+      const ent = horaMin(c.entrada ?? '');
+      const sai = horaMin(c.saida ?? '');
       if (ent == null || sai == null) continue;
-      const cobreAgora = nowMin >= ent && nowMin < sai;
-      if (!cobreAgora) continue;
-      if (faltou.has(op.id)) {
-        listaFaltantes.push({ nome: op.nome, entrada, saida });
-      } else if (naoRetornou.has(op.id)) {
+      if (!(nowMin >= ent && nowMin < sai)) continue;
+      const linha: OperadorAgora = {
+        nome: c.nome,
+        entrada: c.entrada ?? '',
+        saida: c.saida ?? '',
+      };
+      if (faltou.has(c.id)) {
+        listaFaltantes.push(linha);
+      } else if (naoRetornou.has(c.id)) {
         // Não retornou do intervalo: não conta como disponível no caixa.
-        listaSemRetorno.push({ nome: op.nome, entrada, saida });
+        listaSemRetorno.push(linha);
       } else {
-        listaDisponiveis.push({ nome: op.nome, entrada, saida });
+        listaDisponiveis.push(linha);
       }
     }
 
