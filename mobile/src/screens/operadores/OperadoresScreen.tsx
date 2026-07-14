@@ -934,7 +934,7 @@ export function OperadoresScreen(): React.ReactElement {
   const escalaFiscais = useRequisicao<ItemEscalaConsolidada[]>(
     () =>
       podeAcessar('ESCALA_VISUALIZAR')
-        ? escalaService.consolidada(diaSemanaSel).catch(() => [])
+        ? escalaService.consolidada(diaSemanaSel, diaSel).catch(() => [])
         : Promise.resolve([] as ItemEscalaConsolidada[]),
     [diaSel],
   );

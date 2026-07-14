@@ -34,13 +34,18 @@ export class EscalaController {
     });
   }
 
-  /** Escala consolidada por dia da semana (Req 4.3.6). */
+  /**
+   * Escala consolidada por dia da semana (Req 4.3.6). Aceita `?data=YYYY-MM-DD`
+   * opcional: quando a data é um domingo, a escala dos fiscais vem do rodízio de
+   * grupos (G1/G2/G3), não da escala semanal.
+   */
   @Get('consolidada/:diaSemana')
   @Funcionalidade('ESCALA_VISUALIZAR')
   async consolidada(
     @Param('diaSemana') diaSemana: string,
+    @Query('data') data?: string,
   ): Promise<ItemEscalaConsolidada[]> {
-    return this.escalaService.escalaConsolidada(Number(diaSemana));
+    return this.escalaService.escalaConsolidada(Number(diaSemana), data);
   }
 
   /** Escala efetiva de um funcionário num dia (Req 4.3.5). */
