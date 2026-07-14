@@ -28,7 +28,12 @@ import {
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
-import { formatarMoeda, formatarPercentual } from '../../utils/formato';
+import {
+  formatarMoeda,
+  formatarPercentual,
+  mascaraMilhar,
+  parseNumeroBR,
+} from '../../utils/formato';
 
 /** Ícone de cada indicador. */
 const ICONES: Record<TipoMeta, keyof typeof Ionicons.glyphMap> = {
@@ -104,8 +109,8 @@ export function MetasScreen(): React.ReactElement {
   useEffect(() => {
     const cfg = apaeReq.dados;
     if (cfg) {
-      setPrecoApae(String(cfg.precoSacola).replace('.', ','));
-      setMetaApae(String(cfg.metaMensal).replace('.', ','));
+      setPrecoApae(mascaraMilhar(String(cfg.precoSacola).replace('.', ',')));
+      setMetaApae(mascaraMilhar(String(cfg.metaMensal).replace('.', ',')));
     }
   }, [apaeReq.dados]);
 
@@ -117,11 +122,11 @@ export function MetasScreen(): React.ReactElement {
   const abrirEdicao = (item: MetaMensal) => {
     setEditTipo(item.tipo);
     // Preenche com o valor atual (vazio quando 0, para facilitar digitar).
-    setValor(item.meta > 0 ? String(item.meta).replace('.', ',') : '');
+    setValor(item.meta > 0 ? mascaraMilhar(String(item.meta).replace('.', ',')) : '');
   };
 
   const salvar = async (item: MetaMensal) => {
-    const num = Number(valor.replace(',', '.'));
+    const num = parseNumeroBR(valor);
     if (!Number.isFinite(num) || num < 0) {
       notificar('Valor inválido', 'Informe um número maior ou igual a zero.');
       return;
@@ -140,8 +145,8 @@ export function MetasScreen(): React.ReactElement {
   };
 
   const salvarApae = async () => {
-    const preco = Number(precoApae.replace(',', '.'));
-    const meta = Number(metaApae.replace(',', '.'));
+    const preco = parseNumeroBR(precoApae);
+    const meta = parseNumeroBR(metaApae);
     if (!Number.isFinite(preco) || preco < 0) {
       notificar('Preço inválido', 'Informe um valor em reais maior ou igual a zero.');
       return;
@@ -235,7 +240,7 @@ export function MetasScreen(): React.ReactElement {
                   }
                   keyboardType="decimal-pad"
                   value={valor}
-                  onChangeText={setValor}
+                  onChangeText={(t) => setValor(mascaraMilhar(t))}
                   placeholder="0"
                 />
                 <Text style={styles.ajuda}>{ajudaUnidade(item)}</Text>
@@ -281,14 +286,14 @@ export function MetasScreen(): React.ReactElement {
                 rotulo="Preço por sacola (R$)"
                 keyboardType="decimal-pad"
                 value={precoApae}
-                onChangeText={setPrecoApae}
+                onChangeText={(t) => setPrecoApae(mascaraMilhar(t))}
                 placeholder="0,49"
               />
               <CampoTexto
                 rotulo="Meta mensal (R$)"
                 keyboardType="decimal-pad"
                 value={metaApae}
-                onChangeText={setMetaApae}
+                onChangeText={(t) => setMetaApae(mascaraMilhar(t))}
                 placeholder="500"
                 style={{ marginTop: espacamento.sm }}
               />
