@@ -37,7 +37,12 @@ import { useAuth } from '../../auth/AuthContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, tipografia } from '../../theme';
-import { formatarMoeda, formatarPercentual, hojeISO } from '../../utils/formato';
+import {
+  formatarData,
+  formatarMoeda,
+  formatarPercentual,
+  hojeISO,
+} from '../../utils/formato';
 import { ARRECADACAO, DefinicaoArrecadacao } from '../../utils/rotulos';
 
 const OPCOES_PERIODO: { valor: Periodo; rotulo: string }[] = [
@@ -378,13 +383,15 @@ export function IndicadorDetalheScreen({
   route,
   navigation,
 }: PropsTela<'IndicadorDetalhe'>): React.ReactElement {
-  const { tipo } = route.params;
+  const { tipo, operadorNome, alertaMensagem } = route.params;
   const { podeAcessar } = useAuth();
   const def =
     ARRECADACAO.find((d) => d.tipo === tipo) ?? ARRECADACAO[0];
+  // Chegou de um "ponto de atenção": foca o detalhe na causa (escopo do mês).
+  const foco = !!alertaMensagem || !!operadorNome;
 
   const [data, setData] = useState(hojeISO());
-  const [periodo, setPeriodo] = useState<Periodo>('DIA');
+  const [periodo, setPeriodo] = useState<Periodo>(foco ? 'MES' : 'DIA');
 
   const req = useRequisicao(async () => {
     const { inicio, fim } = intervaloDoPeriodo(periodo, data);
@@ -392,7 +399,7 @@ export function IndicadorDetalheScreen({
       await Promise.all([
         arrecadacaoService.resumo(def.tipo, data),
         arrecadacaoService.ranking(def.tipo, inicio, fim),
-        def.mostraDetalhe
+        def.mostraDetalhe || foco
           ? arrecadacaoService.detalhes(def.tipo, inicio, fim)
           : Promise.resolve([] as DetalheArrecadacao[]),
         arrecadacaoService.tendencia(def.tipo, data, 14).catch(() => [] as PontoTendencia[]),
@@ -414,6 +421,18 @@ export function IndicadorDetalheScreen({
   const naoReconhecidos: ResumoNaoReconhecido | null =
     req.dados?.naoReconhecidos ?? null;
   const maxRanking = ranking.length > 0 ? ranking[0].total : 0;
+
+  // Lançamentos que disparam a atenção: já vêm por maior valor (backend). Se a
+  // alerta é de um operador, filtra só os dele; senão, os maiores do período.
+  const focoLista = React.useMemo(() => {
+    if (!foco) return [] as DetalheArrecadacao[];
+    const lista = req.dados?.detalhes ?? [];
+    const alvo = (operadorNome ?? '').trim().toLowerCase();
+    const filtrada = alvo
+      ? lista.filter((d) => d.nome.trim().toLowerCase() === alvo)
+      : lista;
+    return filtrada.slice(0, 20);
+  }, [foco, operadorNome, req.dados]);
 
   const metaTexto =
     def.base === 'FIXA'
@@ -456,6 +475,52 @@ export function IndicadorDetalheScreen({
         <MensagemErro mensagem={req.erro} aoTentarNovamente={req.recarregar} />
       ) : resumo ? (
         <>
+          {/* Chegou de um "ponto de atenção": mostra a CAUSA em primeiro lugar. */}
+          {foco ? (
+            <Cartao titulo="O que disparou a atenção">
+              {alertaMensagem ? (
+                <Text style={styles.focoMensagem}>{alertaMensagem}</Text>
+              ) : null}
+              <Text style={styles.focoSub}>
+                {operadorNome
+                  ? `Lançamentos de ${operadorNome} no mês (maiores primeiro)`
+                  : 'Maiores lançamentos do mês'}
+              </Text>
+              {focoLista.length > 0 ? (
+                focoLista.map((d, idx) => (
+                  <View key={`foco-${idx}`} style={styles.detalheItem}>
+                    <View style={styles.detalheTopo}>
+                      <Text style={styles.detalheNome} numberOfLines={1}>
+                        {formatarData(d.data)}
+                        {operadorNome ? '' : ` · ${d.nome}`}
+                      </Text>
+                      <Text style={styles.detalheValor}>
+                        {formatarMoeda(d.valor)}
+                      </Text>
+                    </View>
+                    {d.quantidade != null && d.quantidade > 0 ? (
+                      <Text style={styles.detalheLinha}>
+                        {rotuloItens(d.quantidade)}
+                      </Text>
+                    ) : null}
+                    {d.motivo ? (
+                      <Text style={styles.detalheLinha}>Motivo: {d.motivo}</Text>
+                    ) : null}
+                    {d.autorizadoPor ? (
+                      <Text style={styles.detalheLinha}>
+                        Autorizado por: {d.autorizadoPor}
+                      </Text>
+                    ) : null}
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.semDetalhe}>
+                  Sem lançamentos individuais no período.
+                </Text>
+              )}
+            </Cartao>
+          ) : null}
+
           <GraficoMeta def={def} resumo={resumo} periodo={periodo} />
           {projecao ? <CardProjecao def={def} projecao={projecao} /> : null}
           {comparativo ? <CardComparativo comparativo={comparativo} /> : null}
@@ -660,6 +725,17 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     paddingVertical: espacamento.sm,
+  },
+  focoMensagem: {
+    ...tipografia.corpo,
+    color: cores.texto,
+    fontWeight: '600',
+  },
+  focoSub: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+    marginBottom: espacamento.sm,
   },
   naoRecLinha: {
     ...tipografia.corpo,

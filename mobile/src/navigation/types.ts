@@ -20,7 +20,12 @@ export type RootStackParamList = {
   Importacoes: undefined;
   Fechamento: undefined;
   Indicadores: undefined;
-  IndicadorDetalhe: { tipo: TipoArrecadacao };
+  IndicadorDetalhe: {
+    tipo: TipoArrecadacao;
+    /** Ao vir de um "ponto de atenção": foca o detalhe na causa. */
+    operadorNome?: string;
+    alertaMensagem?: string;
+  };
   PainelVendas: undefined;
   LoteApae: undefined;
   Insumos: undefined;

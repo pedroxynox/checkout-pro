@@ -388,6 +388,8 @@ export interface DetalheArrecadacao {
   autorizadoPor: string | null;
   motivo: string | null;
   valor: number;
+  /** Quantidade (itens/cupons) do lançamento, quando o arquivo informa. */
+  quantidade: number | null;
   data: string;
 }
 
