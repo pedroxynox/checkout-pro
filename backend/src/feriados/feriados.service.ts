@@ -125,6 +125,16 @@ export class FeriadosService {
     });
   }
 
+  /** true se a data é feriado (nacional automático OU manual cadastrado). */
+  async ehFeriado(data: Date): Promise<boolean> {
+    const dia = inicioDoDia(data);
+    if (ehFeriadoNacional(dia)) return true;
+    const manual = await this.prisma.feriado.findUnique({
+      where: { data: dia },
+    });
+    return manual !== null;
+  }
+
   /** Remove um feriado manual (os nacionais não têm registro e não são removíveis). */
   async remover(id: string): Promise<void> {
     const existente = await this.prisma.feriado.findUnique({ where: { id } });

@@ -15,6 +15,8 @@ import { StatusFiscal } from '../fiscais/fiscais.domain';
 import { EditarBatidaDto, RegistrarBatidaDto } from './dto/ponto.dto';
 import { PontoOcrService } from './ponto-ocr.service';
 import { FUNCOES_PONTO_NAO_FISCAL } from './pessoas-ponto';
+import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { FeriadosService } from '../feriados/feriados.service';
 
 // As batidas são gravadas com a HORA DO COMPROVANTE (hora de parede de Brasília)
 // rotulada como UTC (ex.: "09:00" → "...T09:00:00Z"). Para medir o segmento
@@ -85,6 +87,13 @@ export interface PessoaPonto {
  */
 @Injectable()
 export class PontoService {
+  /**
+   * Anti-spam do aviso de TAC: garante no máximo UM aviso por pessoa por dia
+   * (chave `pessoaId:dia`). Em memória — best-effort; reiniciar o servidor
+   * apenas permite reenviar, o que é aceitável.
+   */
+  private readonly tacAvisados = new Set<string>();
+
   constructor(
     private readonly prisma: PrismaService,
     // Ponte batidas → status do fiscal. Opcional para não quebrar testes
@@ -93,6 +102,10 @@ export class PontoService {
     // Memória do leitor (aprende "nome lido → pessoa"). Opcional pelo mesmo
     // motivo: testes unitários de persistência não precisam dela.
     @Optional() private readonly ocr?: PontoOcrService,
+    // Aviso de TAC (supervisão/gerência) e feriados. Opcionais: os testes de
+    // persistência das batidas não precisam deles.
+    @Optional() private readonly notificacoes?: NotificacoesService,
+    @Optional() private readonly feriados?: FeriadosService,
   ) {}
 
   /**
@@ -172,7 +185,61 @@ export class PontoService {
     }
     await this.reclassificar(dto.pessoaId, dia);
     await this.sincronizarStatusFiscal(dto.pessoaId, tipoPessoa, dia);
-    return this.jornadaDoDia(dto.pessoaId, tipoPessoa, dia);
+    const resposta = await this.jornadaDoDia(dto.pessoaId, tipoPessoa, dia);
+    // Avisa a supervisão/gerência se o dia entrou em TAC (uma vez por dia).
+    await this.avisarTacSeNecessario(dto.pessoaId, tipoPessoa, dia, resposta);
+    return resposta;
+  }
+
+  /**
+   * Avisa a supervisão e a gerência quando a jornada do dia está em TAC (ex.:
+   * passou de 1h50 de horas extras, ou intervalo fora de 1h–3h). Envia no
+   * máximo um aviso por pessoa por dia. Best-effort: uma falha aqui nunca trava
+   * o registro da batida.
+   */
+  private async avisarTacSeNecessario(
+    pessoaId: string,
+    tipoPessoa: 'FISCAL' | 'OPERADOR',
+    dia: Date,
+    resposta: JornadaDiaResposta,
+  ): Promise<void> {
+    if (!this.notificacoes || !resposta.jornada.tac) return;
+    const chave = `${pessoaId}:${dia.toISOString()}`;
+    if (this.tacAvisados.has(chave)) return;
+    this.tacAvisados.add(chave);
+    // Evita crescimento indefinido do set numa execução muito longa.
+    if (this.tacAvisados.size > 1000) this.tacAvisados.clear();
+    try {
+      const nome = await this.nomeDaPessoa(pessoaId, tipoPessoa);
+      await this.notificacoes.notificarSupervisaoEGerencia({
+        titulo: '⚠️ TAC na jornada',
+        mensagem: `${nome} está em situação de TAC hoje: ${resposta.jornada.motivosTac.join('; ')}.`,
+      });
+    } catch {
+      // Best-effort: não interrompe o registro da batida.
+    }
+  }
+
+  /** Primeiro nome da pessoa (fiscal ou colaborador) para os avisos. */
+  private async nomeDaPessoa(
+    pessoaId: string,
+    tipoPessoa: 'FISCAL' | 'OPERADOR',
+  ): Promise<string> {
+    let nome: string | null = null;
+    if (tipoPessoa === 'FISCAL') {
+      const f = await this.prisma.fiscal.findUnique({
+        where: { id: pessoaId },
+        select: { nome: true },
+      });
+      nome = f?.nome ?? null;
+    } else {
+      const c = await this.prisma.colaborador.findUnique({
+        where: { id: pessoaId },
+        select: { nome: true },
+      });
+      nome = c?.nome ?? null;
+    }
+    return (nome ?? 'Colaborador').trim().split(/\s+/)[0];
   }
 
   /** Memoriza "nome lido → pessoa" (best-effort) para o leitor aprender. */
@@ -255,10 +322,16 @@ export class PontoService {
       where: { pessoaId, data: dia },
       orderBy: { hora: 'asc' },
     });
+    // Feriado segue a regra do domingo (base 7h20 + 100%). Best-effort: sem o
+    // serviço de feriados (ex.: teste unitário), trata como dia normal.
+    const ehFeriado = this.feriados
+      ? await this.feriados.ehFeriado(dia)
+      : false;
     const j = calcularJornadaDia(
       batidas.map((b) => ({ id: b.id, hora: b.hora })),
       agoraNaBrasilia(),
       dia.getUTCDay(),
+      ehFeriado,
     );
     return {
       pessoaId,
