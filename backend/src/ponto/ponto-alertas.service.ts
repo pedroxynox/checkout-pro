@@ -8,9 +8,10 @@ import { PontoService } from './ponto.service';
  * Verificador periódico dos riscos de TAC.
  *
  * A cada minuto recalcula a jornada das pessoas que bateram ponto no dia e
- * delega ao PontoService o aviso das etapas 1h30, 1h40 e TAC. A mesma
- * deduplicação é compartilhada com o registro da batida, portanto cron e
- * batida nunca geram duas mensagens da mesma etapa.
+ * delega ao PontoService o aviso das etapas 1h30, 1h40 e TAC. A deduplicação
+ * é persistente (tabela `AlertaTacEnviado`) e compartilhada com o registro da
+ * batida, portanto cron e batida nunca geram duas mensagens da mesma etapa —
+ * nem mesmo após um reinício do servidor ou com múltiplas instâncias.
  */
 @Injectable()
 export class PontoAlertasService {
