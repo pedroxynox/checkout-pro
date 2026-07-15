@@ -393,29 +393,31 @@ export class FiscaisService {
     }
 
     const diaSemana = dia.getUTCDay();
-    return colaboradores
-      .filter((c) => porPessoa.has(c.id))
-      // Ordena pela 1ª batida do dia (quem abriu primeiro aparece primeiro).
-      .sort(
-        (a, b) =>
-          porPessoa.get(a.id)![0].hora.getTime() -
-          porPessoa.get(b.id)![0].hora.getTime(),
-      )
-      .map((c) => {
-        const j = calcularJornadaDia(porPessoa.get(c.id)!, limite, diaSemana);
-        return {
-          fiscalId: c.id,
-          pessoaId: c.id,
-          tipoPessoa: 'OPERADOR',
-          funcao: c.funcao,
-          colaboradorId: c.id,
-          primeiroNome: primeiroNome(c.nome),
-          status: statusFiscalDeJornada(j.status),
-          tempoTrabalhandoMs: j.trabalhadoMs,
-          tempoIntervaloMs: j.intervaloMs,
-          cargaHorariaMs: j.trabalhadoMs,
-        };
-      });
+    return (
+      colaboradores
+        .filter((c) => porPessoa.has(c.id))
+        // Ordena pela 1ª batida do dia (quem abriu primeiro aparece primeiro).
+        .sort(
+          (a, b) =>
+            porPessoa.get(a.id)![0].hora.getTime() -
+            porPessoa.get(b.id)![0].hora.getTime(),
+        )
+        .map((c) => {
+          const j = calcularJornadaDia(porPessoa.get(c.id)!, limite, diaSemana);
+          return {
+            fiscalId: c.id,
+            pessoaId: c.id,
+            tipoPessoa: 'OPERADOR',
+            funcao: c.funcao,
+            colaboradorId: c.id,
+            primeiroNome: primeiroNome(c.nome),
+            status: statusFiscalDeJornada(j.status),
+            tempoTrabalhandoMs: j.trabalhadoMs,
+            tempoIntervaloMs: j.intervaloMs,
+            cargaHorariaMs: j.trabalhadoMs,
+          };
+        })
+    );
   }
 
   /** Registra a falta do fiscal no dia e avisa os gestores. */

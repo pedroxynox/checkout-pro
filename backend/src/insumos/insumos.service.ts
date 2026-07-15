@@ -13,11 +13,7 @@ import {
 } from './insumos.domain';
 import { FardoNaoReconhecidoError } from './insumos.errors';
 import { QuantidadeInvalidaError } from './insumos.errors';
-import {
-  inicioDoDia,
-  inicioDoMes,
-  inicioDoProximoDia,
-} from '../common/datas';
+import { inicioDoDia, inicioDoMes, inicioDoProximoDia } from '../common/datas';
 import { arredondar } from '../common/numeros';
 
 /** Parâmetros de uma retirada de fardo de sacolas (Req 3.1.1). */

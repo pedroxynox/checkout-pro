@@ -114,7 +114,7 @@ Para Android fechado, FCM + APK recompilado continuam obrigatórios.
 - Backend: build OK; 71 suítes / 406 testes.
 - Mobile: type-check + lint OK; 23 suítes / 85 testes.
 - Últimos arquivos TAC: ESLint OK.
-- Dívida: 31 diferenças Prettier em quatro arquivos legados; ver steering de estado.
+- Prettier: quatro arquivos legados já formatados em PR isolado. Dívida residual: 9 arquivos de domínio marcados pelo Prettier 3.9.5 por deriva de versão; CI normaliza via `eslint --fix`. Ver steering de estado.
 
 ## Áreas deliberadamente incompletas
 

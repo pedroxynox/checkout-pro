@@ -14,7 +14,7 @@ Validación más reciente:
 - Backend: build correcto; **71 suites / 406 tests**.
 - Mobile: type-check y lint correctos; **23 suites / 85 tests**.
 - ESLint focalizado de los archivos TAC: correcto.
-- Lint global backend sin `--fix`: 31 errores Prettier preexistentes en cuatro archivos, listados en §10.
+- Prettier: los cuatro archivos históricos ya fueron formateados (ver §10). Con Prettier 3.9.5 el `--check` global marca 9 archivos de dominio adicionales por deriva de versión; el CI los normaliza al vuelo vía `eslint --fix`, por lo que no rompen la validación.
 
 ## 2. Producto y perfiles
 
@@ -209,7 +209,7 @@ Caveats:
 
 ### Calidad/deuda técnica
 9. Evaluar deduplicación persistente de alertas TAC para sobrevivir reinicios y múltiples instancias.
-10. Corregir en PR aislado los 31 errores Prettier preexistentes del backend.
+10. **Resuelto.** Los cuatro archivos Prettier históricos fueron formateados en PR aislado (ver §10). Queda como deuda menor decidir si se normalizan los 9 archivos de dominio que Prettier 3.9.5 marca por deriva de versión.
 11. Mantener multi-tenancy parqueado hasta que la instancia de una sola tienda esté operativamente estable. Cuando se retome: `lojaId`, aislamiento por fila/RLS y pruebas de fuga entre tenants.
 
 ## 10. Verificación y deuda conocida
@@ -219,13 +219,20 @@ Caveats:
 - Mobile: type-check + lint OK; 23 suites, 85 tests.
 - Archivos TAC: ESLint focalizado OK.
 
-El lint global backend sin `--fix` reporta 31 diferencias Prettier preexistentes en:
+Los cuatro archivos con diferencias Prettier históricas ya fueron formateados en un
+cambio aislado (solo estilo, sin tocar lógica), verificado con build + 71 suites /
+406 tests en verde:
 - `backend/src/alertas/alertas.service.spec.ts`
 - `backend/src/fiscais/fiscais.service.ts`
 - `backend/src/insumos/insumos.service.ts`
 - `backend/test/helpers/fake-prisma.ts`
 
-No mezclar esa limpieza con cambios funcionales.
+Deuda residual: con Prettier 3.9.5 el `--check` global marca 9 archivos de dominio
+adicionales (`acessos`, `checklist`, `common/justificativas`, `contratos`,
+`fechamento`, `feedforward`, `incidencias`, `ponto-ocr.parser`, `ponto`). Son
+diferencias por deriva de versión de la herramienta; el CI las normaliza al vuelo
+con `eslint --fix`, así que no rompen la validación. No mezclar esa limpieza con
+cambios funcionales.
 
 ## 11. Fuentes documentales y responsabilidad
 

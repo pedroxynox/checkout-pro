@@ -220,16 +220,17 @@ describe('AlertasService (cron com relógio injetável)', () => {
 
     it('avalia o DIA OPERACIONAL de Brasília (não o dia seguinte em UTC)', async () => {
       // 01:50 UTC do dia 11 == 22:50 de Brasília do dia 10 (o dia operacional).
-      const { service, fechamentoServiceFake, arrecadacaoServiceFake } = montar({
-        agora: new Date('2024-03-11T01:50:00.000Z'),
-        pendentesImportacao: ['DEVOLUCOES'],
-      });
+      const { service, fechamentoServiceFake, arrecadacaoServiceFake } = montar(
+        {
+          agora: new Date('2024-03-11T01:50:00.000Z'),
+          pendentesImportacao: ['DEVOLUCOES'],
+        },
+      );
 
       await service.dispararAlertaImportacoesPendentes();
 
-      const diaFechamento = (
-        fechamentoServiceFake.estaCompleto as jest.Mock
-      ).mock.calls[0][0] as Date;
+      const diaFechamento = (fechamentoServiceFake.estaCompleto as jest.Mock)
+        .mock.calls[0][0] as Date;
       const diaStatus = (arrecadacaoServiceFake.status as jest.Mock).mock
         .calls[0][0] as Date;
       // Deve consultar o dia 10 (Brasília), e não o dia 11 (UTC).
