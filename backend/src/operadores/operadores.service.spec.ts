@@ -58,7 +58,13 @@ describe('OperadoresService', () => {
           return Promise.resolve(nova);
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        update: ({ where: { id }, data }: { where: { id: string }; data: any }) => {
+        update: ({
+          where: { id },
+          data,
+        }: {
+          where: { id: string };
+          data: any;
+        }) => {
           const a = ausencias.find((x) => x.id === id);
           if (a) Object.assign(a, data);
           return Promise.resolve(a ?? {});
@@ -71,10 +77,10 @@ describe('OperadoresService', () => {
           return Promise.resolve({});
         },
       },
-      // Colaborador (para a ausência a prazo): sem folga cadastrada por padrão.
+      // Colaborador (para a ausência a prazo): folga aos domingos (dia 0).
+      // A folga NÃO deve mais ser ignorada — todos os dias corridos contam.
       colaborador: {
-        findUnique: () =>
-          Promise.resolve({ nome: 'Teste', folgaDiaSemana: null }),
+        findUnique: () => Promise.resolve({ nome: 'Teste', folgaDiaSemana: 0 }),
       },
     };
 
@@ -99,7 +105,23 @@ describe('OperadoresService', () => {
       expect(r.criadas).toBe(2); // dias 9 e 11 (novos)
       expect(r.atualizadas).toBe(1); // dia 10 (já existia → justificado)
       expect(r.dias).toBe(3);
-      expect(r.folgasIgnoradas).toBe(0);
+    });
+
+    it('conta TODOS os dias corridos, inclusive a folga (domingo)', async () => {
+      const service = criarServico();
+      // 14 a 19 de março/2026 = 6 dias corridos. O dia 15 é DOMINGO (folga do
+      // colaborador no mock), mas deve contar mesmo assim (regra do usuário).
+      const r = await service.registrarAusenciaPeriodo(
+        'p1',
+        new Date(Date.UTC(2026, 2, 14)),
+        new Date(Date.UTC(2026, 2, 19)),
+        { motivo: 'ATESTADO_MEDICO', observacao: 'Atestado de 6 dias' },
+        { id: 'u1', nome: 'Gestor' },
+      );
+
+      expect(r.dias).toBe(6); // 14,15,16,17,18,19 — a folga (15) também conta
+      expect(r.criadas).toBe(6);
+      expect(r.atualizadas).toBe(0);
     });
 
     it('rejeita período com a data final antes da inicial', async () => {

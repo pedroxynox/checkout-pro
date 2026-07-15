@@ -31,8 +31,8 @@ export const operadoresService = {
 
   /**
    * Ausência a prazo: ausenta um colaborador por um período, criando faltas
-   * JUSTIFICADAS em cada dia da escala (a folga é ignorada). Retorna quantos
-   * dias foram marcados.
+   * JUSTIFICADAS em CADA dia corrido do intervalo (inclusive a folga). Retorna
+   * quantos dias foram marcados.
    */
   registrarAusenciaPeriodo(input: {
     pessoaId: string;
@@ -44,7 +44,6 @@ export const operadoresService = {
     dias: number;
     criadas: number;
     atualizadas: number;
-    folgasIgnoradas: number;
   }> {
     return apiClient.post('/operadores/ausencias/periodo', input);
   },
