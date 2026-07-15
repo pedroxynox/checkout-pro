@@ -23,26 +23,28 @@ updates:
           - minor
           - patch
     ignore:
-      # Pacotes GERENCIADOS PELO EXPO SDK: react-native, react e afins são
-      # travados na versão que o SDK exige e só devem mudar via `expo install`
-      # ao subir o SDK. Bumpá-los sozinho quebra o app (ex.: RN 0.76→0.86 numa
-      # base Expo 52). Como usam versão 0.x, o salto conta como "minor" e passa
-      # despercebido — por isso são IGNORADOS por completo aqui.
+      # 1) Nunca propor saltos de versão MAIOR de NADA: eles sempre exigem
+      #    migração manual e testada (ex.: ESLint 8→10, Jest 29→30, NestJS
+      #    10→11). O app segue recebendo patch/minor seguros, agrupados.
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+      # 2) Pacotes TRAVADOS pelo Expo SDK / React: ou usam versão 0.x (o salto
+      #    vira "minor" e escaparia da regra acima), ou precisam casar exatamente
+      #    com o SDK/React. Só mudam via `expo install` ao subir o SDK — por isso
+      #    são IGNORADOS por completo (ex.: react-native 0.76→0.86 quebra o app).
       - dependency-name: 'react-native'
       - dependency-name: 'react-native-*'
       - dependency-name: 'react'
       - dependency-name: 'react-dom'
+      - dependency-name: 'react-test-renderer'
+      - dependency-name: '@types/react'
+      - dependency-name: '@types/react-test-renderer'
       - dependency-name: 'expo'
       - dependency-name: 'expo-*'
       - dependency-name: '@expo/*'
       - dependency-name: '@expo-google-fonts/*'
+      - dependency-name: 'eslint-config-expo'
       - dependency-name: 'jest-expo'
-      # Frameworks cujo salto MAIOR exige migração dedicada e testada (o app
-      # continua recebendo patch/minor seguros desses pacotes).
-      - dependency-name: '@nestjs/*'
-        update-types: ['version-update:semver-major']
-      - dependency-name: '@react-navigation/*'
-        update-types: ['version-update:semver-major']
     labels:
       - dependencias
 
