@@ -8,6 +8,7 @@ import {
 } from './ponto-ocr.parser';
 import { scoreNome } from './ponto-nome-match';
 import { LerComprovanteDto } from './dto/ponto.dto';
+import { FUNCOES_PONTO_NAO_FISCAL } from './pessoas-ponto';
 
 /** Um colaborador sugerido pela leitura, com a confiança do casamento (0–1). */
 export interface CandidatoPonto extends PessoaPonto {
@@ -88,20 +89,46 @@ export class PontoOcrService {
   private async candidatosPara(nomeLido: string): Promise<CandidatoPonto[]> {
     const alvo = normalizarTexto(nomeLido);
 
-    const [alias, fiscais] = await Promise.all([
+    const [alias, fiscais, colaboradores] = await Promise.all([
       this.prisma.aliasLeituraPonto.findUnique({ where: { textoNome: alvo } }),
       this.prisma.fiscal.findMany(),
+      this.prisma.colaborador.findMany({
+        where: { ativo: true, funcao: { in: FUNCOES_PONTO_NAO_FISCAL } },
+      }),
     ]);
 
-    const porSimilaridade: CandidatoPonto[] = fiscais
-      .map((f) => ({ f, score: scoreNome(alvo, normalizarTexto(f.nome)) }))
+    // Universo de pessoas que batem ponto: fiscais (tabela Fiscal) + demais
+    // colaboradores ativos (operadores/supervisores) do Cadastro.
+    const pessoas: Array<{
+      id: string;
+      nome: string;
+      tipoPessoa: 'FISCAL' | 'OPERADOR';
+      colaboradorId: string | null;
+    }> = [
+      ...fiscais.map((f) => ({
+        id: f.id,
+        nome: f.nome,
+        tipoPessoa: 'FISCAL' as const,
+        colaboradorId: null,
+      })),
+      ...colaboradores.map((c) => ({
+        id: c.id,
+        nome: c.nome,
+        tipoPessoa: 'OPERADOR' as const,
+        colaboradorId: c.id,
+      })),
+    ];
+
+    const porSimilaridade: CandidatoPonto[] = pessoas
+      .map((p) => ({ p, score: scoreNome(alvo, normalizarTexto(p.nome)) }))
       .filter((x) => x.score >= LIMIAR_CANDIDATO)
       .sort((a, b) => b.score - a.score)
       .slice(0, 5)
       .map((x) => ({
-        id: x.f.id,
-        nome: x.f.nome,
-        tipoPessoa: 'FISCAL' as const,
+        id: x.p.id,
+        nome: x.p.nome,
+        tipoPessoa: x.p.tipoPessoa,
+        colaboradorId: x.p.colaboradorId,
         confianca: Math.round(x.score * 100) / 100,
       }));
 
@@ -114,6 +141,7 @@ export class PontoOcrService {
       id: alias.pessoaId,
       nome: alias.nome,
       tipoPessoa: alias.tipoPessoa as 'FISCAL' | 'OPERADOR',
+      colaboradorId: alias.colaboradorId ?? null,
       confianca: 1,
       aprendido: true,
     };

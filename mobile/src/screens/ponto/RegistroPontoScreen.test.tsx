@@ -82,7 +82,11 @@ describe('RegistroPontoScreen', () => {
     );
     fireEvent.press(await screen.findByText('Ana Souza'));
     await waitFor(() =>
-      expect(pontoService.jornadaDoDia).toHaveBeenCalledWith('f1', expect.any(String)),
+      expect(pontoService.jornadaDoDia).toHaveBeenCalledWith(
+        'f1',
+        expect.any(String),
+        'FISCAL',
+      ),
     );
     expect(await screen.findByText('Jornada do dia')).toBeTruthy();
   });

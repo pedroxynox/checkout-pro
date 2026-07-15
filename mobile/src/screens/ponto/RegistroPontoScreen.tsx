@@ -184,7 +184,11 @@ export function RegistroPontoScreen(): React.ReactElement {
     setCarregando(true);
     setErro(null);
     try {
-      const resp = await pontoService.jornadaDoDia(pessoa.id, data);
+      const resp = await pontoService.jornadaDoDia(
+        pessoa.id,
+        data,
+        pessoa.tipoPessoa,
+      );
       setDados(resp);
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Não foi possível carregar a jornada.');
@@ -340,7 +344,8 @@ export function RegistroPontoScreen(): React.ReactElement {
         ? await pontoService.editarBatida(editandoId, { hora: horaISO })
         : await pontoService.registrarBatida({
             pessoaId: pessoa.id,
-            tipoPessoa: 'FISCAL',
+            tipoPessoa: pessoa.tipoPessoa,
+            colaboradorId: pessoa.colaboradorId ?? undefined,
             data,
             hora: horaISO,
             origem: veioDoLeitor ? 'LEITOR' : 'MANUAL',

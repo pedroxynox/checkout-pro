@@ -102,6 +102,20 @@ export function statusFiscalDeTipoBatida(
   }
 }
 
+/**
+ * Status de fiscal (DISPONIVEL/INTERVALO/FORA_EXPEDIENTE) equivalente ao estado
+ * da jornada por batidas. Usado para que colaboradores não-fiscais apareçam no
+ * painel de jornada da equipe com um chip de status coerente (mesmo sem o
+ * painel em tempo real, que é exclusivo dos fiscais).
+ */
+export function statusFiscalDeJornada(
+  status: StatusJornadaPonto,
+): StatusFiscal {
+  if (status === 'TRABALHANDO') return 'DISPONIVEL';
+  if (status === 'EM_INTERVALO') return 'INTERVALO';
+  return 'FORA_EXPEDIENTE';
+}
+
 /** Jornada calculada de um dia. */
 export interface JornadaPonto {
   /** Tempo trabalhado (sem o intervalo), em ms. */
