@@ -201,4 +201,45 @@ describe('CentralJornadaService.resumoCiclo', () => {
     expect(p.extras50Ms).toBe(45 * 60_000); // 45 min de extra 50%
     expect(p.extras100Ms).toBe(0);
   });
+
+  it('lista todos os colaboradores não-gerentes, mesmo sem movimento (card zerada)', async () => {
+    const prismaFake = {
+      colaborador: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'a',
+            nome: 'Ana',
+            funcao: 'OPERADOR',
+            matricula: 'A',
+            usuarioId: null,
+          },
+          {
+            id: 'b',
+            nome: 'Bruno',
+            funcao: 'SUPERVISOR',
+            matricula: 'B',
+            usuarioId: null,
+          },
+        ]),
+      },
+      batidaPonto: { findMany: jest.fn().mockResolvedValue([]) },
+      ausencia: { findMany: jest.fn().mockResolvedValue([]) },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const feriadosFake = {
+      mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
+    };
+    const service = new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+    );
+
+    const r = await service.resumoCiclo(0);
+
+    // Nenhum bateu ponto, mas os dois aparecem, na ordem em que vêm da query.
+    expect(r.pessoas.map((p) => p.nome)).toEqual(['Ana', 'Bruno']);
+    expect(r.pessoas[0].cargaTrabalhadaMs).toBe(0);
+    expect(r.pessoas[0].saldoMs).toBe(0);
+  });
 });

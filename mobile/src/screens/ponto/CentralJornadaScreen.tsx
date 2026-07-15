@@ -39,12 +39,6 @@ const VERMELHO = cores.erro ?? '#DC2626';
 const AMARELO = cores.amarelo ?? '#C99700';
 
 const NOMES_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const ORDEM_FUNCAO: Record<string, number> = {
-  FISCAL: 0,
-  SUPERVISOR: 1,
-  OPERADOR: 2,
-  GESTOR: 3,
-};
 
 /** Saldo com sinal: "+2h 30min" / "−7h". */
 function formatarSaldo(ms: number): string {
@@ -120,13 +114,11 @@ export function CentralJornadaScreen(): React.ReactElement {
     }
   }
 
+  // Todos os colaboradores não-gerentes aparecem (mesmo sem movimento), em
+  // ordem alfabética por nome.
   const pessoas = (resumo.dados?.pessoas ?? [])
     .slice()
-    .sort(
-      (a, b) =>
-        (ORDEM_FUNCAO[a.funcao] ?? 9) - (ORDEM_FUNCAO[b.funcao] ?? 9) ||
-        a.nome.localeCompare(b.nome),
-    );
+    .sort((a, b) => a.nome.localeCompare(b.nome));
 
   return (
     <Tela aoAtualizar={resumo.recarregar} atualizando={resumo.atualizando}>

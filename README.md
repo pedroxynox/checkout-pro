@@ -6,7 +6,7 @@ Aplicação web e Android para gestão da frente de caixa de supermercado. O pro
 
 ## Estado atual
 
-- Backend: build validado; **71 suítes / 410 testes**.
+- Backend: build validado; **71 suítes / 411 testes**.
 - Mobile: type-check e lint validados; **23 suítes / 85 testes**.
 - Última migração Prisma: `9zq_alerta_tac_enviado`.
 - Alertas preventivos de TAC entregues nos PRs **#234 e #235**:

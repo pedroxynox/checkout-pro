@@ -7,6 +7,26 @@
 
 ---
 
+## Central de Jornada lista TODOS os colaboradores não-gerentes (2026-07-15)
+
+Antes, a Central mostrava só quem teve movimento no ciclo (bateu ponto, falta,
+atestado ou débito). Agora lista **todos os colaboradores ativos não-gerentes**
+(operador, supervisor e fiscal, contrato 6x1–2x1), **mesmo sem movimento** (card
+zerada), em **ordem alfabética**. A "Jornada da Equipe" (painel de fiscais)
+segue mostrando apenas quem bateu ponto no dia — sem mudança.
+
+- Backend: removido o filtro de "movimento" no `resumoCiclo`; a query já carrega
+  as fichas com `orderBy nome asc` e exclui gerentes (`funcao` em
+  operador/supervisor/fiscal).
+- App (`CentralJornadaScreen`): ordenação passa a ser puramente alfabética por
+  nome (removida a ordenação por função).
+
+Verificação: backend `build` OK, `prettier`/`eslint` limpos e **71 suítes / 411
+testes** verdes (1 teste novo: colaborador sem movimento aparece zerado). App:
+`type-check` sem erros novos e `eslint` limpo na tela alterada.
+
+---
+
 ## Correção: fiscais somem da Central de Jornada (2026-07-15)
 
 Um fiscal com horas extras (ex.: 45 min a 50%) não aparecia na Central de
@@ -142,7 +162,7 @@ O backend já faz envio real pelo Expo Push Service e persiste tokens. Para o pu
 chegar ao Android com o app fechado ainda é necessário configurar FCM no projeto
 Expo/EAS e recompilar/publicar o APK.
 
-Verificação mais recente: backend build OK (**71 suítes / 410 testes**); mobile
+Verificação mais recente: backend build OK (**71 suítes / 411 testes**); mobile
 type-check + lint OK (**23 suítes / 85 testes**). Última migration:
 `9zq_alerta_tac_enviado`. As diferenças Prettier históricas nos quatro
 arquivos já foram limpas (ver entrada no topo deste registro); restam apenas 9
