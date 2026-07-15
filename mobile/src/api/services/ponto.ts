@@ -30,6 +30,8 @@ export const pontoService = {
   registrarBatida(input: {
     pessoaId: string;
     tipoPessoa?: 'FISCAL' | 'OPERADOR';
+    /** Ficha do colaborador (para não-fiscais); usada no aprendizado do leitor. */
+    colaboradorId?: string | null;
     data: string;
     hora: string;
     origem?: 'MANUAL' | 'LEITOR' | 'EDITADO';

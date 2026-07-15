@@ -27,6 +27,11 @@ import {
   ColaboradorDoFiscal,
   mapearFiscalColaborador,
 } from './colaborador-vinculo';
+import {
+  calcularJornadaDia,
+  statusFiscalDeJornada,
+} from '../ponto/ponto.domain';
+import { FUNCOES_PONTO_NAO_FISCAL } from '../ponto/pessoas-ponto';
 
 /** Item do painel em tempo real: um fiscal e seu status atual. */
 export interface ItemPainel {
@@ -39,9 +44,14 @@ export interface ItemPainel {
   desde: string | null;
 }
 
-/** Item do log de jornada do dia (tempos por fiscal). */
+/** Item do log de jornada do dia (tempos por pessoa: fiscal ou colaborador). */
 export interface ItemJornada extends Jornada {
+  /** Id da pessoa: Fiscal.id (fiscais) ou Colaborador.id (demais). */
   fiscalId: string;
+  pessoaId: string;
+  tipoPessoa: 'FISCAL' | 'OPERADOR';
+  /** Função (FISCAL/OPERADOR/SUPERVISOR) para exibir o papel. */
+  funcao: string;
   colaboradorId: string | null;
   primeiroNome: string;
   status: StatusFiscal;
@@ -55,9 +65,11 @@ export interface ResumoStatus {
   em: string;
 }
 
-/** Acumulado de horas extras do mês por fiscal. */
+/** Acumulado de horas extras do mês por pessoa (fiscal ou colaborador). */
 export interface ItemHorasExtras {
   fiscalId: string;
+  pessoaId: string;
+  tipoPessoa: 'FISCAL' | 'OPERADOR';
   primeiroNome: string;
   horasExtrasMs: number;
 }
@@ -297,32 +309,93 @@ export class FiscaisService {
     });
   }
 
-  /** Log de jornada do dia (tempos por fiscal) — uso gerencial. */
+  /**
+   * Log de jornada do dia (tempos por pessoa) — uso gerencial. Inclui os
+   * fiscais (via RegistroPontoFiscal, com o painel/sync já existentes) e os
+   * demais colaboradores ativos que batem ponto (operadores/supervisores),
+   * cuja jornada é calculada a partir das batidas do Registro de Ponto.
+   */
   async jornadaDoDia(data: Date = new Date()): Promise<ItemJornada[]> {
     const agora = new Date();
     const fim = inicioDoProximoDia(data);
     // Para dias passados, conta no máximo até o fim do dia; para hoje, até agora.
     const limite = agora < fim ? agora : fim;
-    const [fiscais, registros, mapaCol] = await Promise.all([
+    const [fiscais, registros, mapaCol, operadores] = await Promise.all([
       this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
       this.prisma.registroPontoFiscal.findMany({
         where: { data: inicioDoDia(data) },
         orderBy: { em: 'asc' },
       }),
       this.mapaColaboradores(),
+      this.jornadaOperadoresDoDia(inicioDoDia(data), limite),
     ]);
     const porFiscal = this.agrupar(registros);
-    return fiscais.map((f) => {
+    const dosFiscais: ItemJornada[] = fiscais.map((f) => {
       const regs = porFiscal.get(f.id) ?? [];
       const col = mapaCol.get(f.id);
       return {
         fiscalId: f.id,
+        pessoaId: f.id,
+        tipoPessoa: 'FISCAL',
+        funcao: 'FISCAL',
         colaboradorId: col?.colaboradorId ?? null,
         primeiroNome: primeiroNome(col?.nome ?? f.nome),
         status: statusAtual(regs) ?? 'FORA_EXPEDIENTE',
         ...calcularJornada(regs, limite),
       };
     });
+    return [...dosFiscais, ...operadores].sort((a, b) =>
+      a.primeiroNome.localeCompare(b.primeiroNome),
+    );
+  }
+
+  /**
+   * Jornada do dia dos colaboradores NÃO-fiscais (operadores/supervisores) que
+   * bateram ponto, calculada a partir das batidas (Registro de Ponto). Só
+   * inclui quem tem ao menos uma batida no dia (evita dezenas de linhas zeradas
+   * de quem não trabalhou). O chip de status é derivado do estado da jornada.
+   */
+  private async jornadaOperadoresDoDia(
+    dia: Date,
+    limite: Date,
+  ): Promise<ItemJornada[]> {
+    const [colaboradores, batidas] = await Promise.all([
+      this.prisma.colaborador.findMany({
+        where: { ativo: true, funcao: { in: FUNCOES_PONTO_NAO_FISCAL } },
+        orderBy: { nome: 'asc' },
+      }),
+      this.prisma.batidaPonto.findMany({
+        where: { tipoPessoa: 'OPERADOR', data: dia },
+        orderBy: { hora: 'asc' },
+        select: { id: true, pessoaId: true, hora: true },
+      }),
+    ]);
+
+    const porPessoa = new Map<string, { id: string; hora: Date }[]>();
+    for (const b of batidas) {
+      const arr = porPessoa.get(b.pessoaId) ?? [];
+      arr.push({ id: b.id, hora: b.hora });
+      porPessoa.set(b.pessoaId, arr);
+    }
+
+    const diaSemana = dia.getUTCDay();
+    return colaboradores
+      .filter((c) => porPessoa.has(c.id))
+      .map((c) => {
+        const j = calcularJornadaDia(porPessoa.get(c.id)!, limite, diaSemana);
+        return {
+          fiscalId: c.id,
+          pessoaId: c.id,
+          tipoPessoa: 'OPERADOR',
+          funcao: c.funcao,
+          colaboradorId: c.id,
+          primeiroNome: primeiroNome(c.nome),
+          status: statusFiscalDeJornada(j.status),
+          tempoTrabalhandoMs: j.trabalhadoMs,
+          tempoIntervaloMs: j.intervaloMs,
+          cargaHorariaMs: j.trabalhadoMs,
+        };
+      });
   }
 
   /** Registra a falta do fiscal no dia e avisa os gestores. */
@@ -378,12 +451,13 @@ export class FiscaisService {
     const agora = new Date();
     const limite = agora < fimMes ? agora : fimMes;
 
-    const [fiscais, registros] = await Promise.all([
+    const [fiscais, registros, operadores] = await Promise.all([
       this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
       this.prisma.registroPontoFiscal.findMany({
         where: { data: { gte: inicioMes, lt: fimMes } },
         orderBy: { em: 'asc' },
       }),
+      this.horasExtrasOperadoresMes(inicioMes, fimMes, limite),
     ]);
 
     // Agrupar registros por fiscalId e por data (dia).
@@ -402,7 +476,7 @@ export class FiscaisService {
         .push({ status: r.status as StatusFiscal, em: r.em });
     }
 
-    return fiscais.map((f) => {
+    const dosFiscais: ItemHorasExtras[] = fiscais.map((f) => {
       const mapaFiscal = porFiscalDia.get(f.id);
       let horasExtrasMs = 0;
 
@@ -427,10 +501,74 @@ export class FiscaisService {
 
       return {
         fiscalId: f.id,
+        pessoaId: f.id,
+        tipoPessoa: 'FISCAL' as const,
         primeiroNome: primeiroNome(f.nome),
         horasExtrasMs,
       };
     });
+
+    return [...dosFiscais, ...operadores];
+  }
+
+  /**
+   * Horas extras do mês dos colaboradores NÃO-fiscais (operadores/supervisores)
+   * que bateram ponto, a partir das batidas do Registro de Ponto. Excluímos os
+   * domingos (mesma regra dos fiscais). Só inclui quem tem batidas no mês.
+   */
+  private async horasExtrasOperadoresMes(
+    inicioMes: Date,
+    fimMes: Date,
+    limite: Date,
+  ): Promise<ItemHorasExtras[]> {
+    const [colaboradores, batidas] = await Promise.all([
+      this.prisma.colaborador.findMany({
+        where: { ativo: true, funcao: { in: FUNCOES_PONTO_NAO_FISCAL } },
+        orderBy: { nome: 'asc' },
+      }),
+      this.prisma.batidaPonto.findMany({
+        where: { tipoPessoa: 'OPERADOR', data: { gte: inicioMes, lt: fimMes } },
+        orderBy: { hora: 'asc' },
+        select: { id: true, pessoaId: true, hora: true, data: true },
+      }),
+    ]);
+
+    // Agrupar batidas por pessoa e por dia.
+    const porPessoaDia = new Map<
+      string,
+      Map<string, { id: string; hora: Date }[]>
+    >();
+    for (const b of batidas) {
+      const diaKey = b.data.toISOString();
+      if (!porPessoaDia.has(b.pessoaId))
+        porPessoaDia.set(b.pessoaId, new Map());
+      const mapaPessoa = porPessoaDia.get(b.pessoaId)!;
+      if (!mapaPessoa.has(diaKey)) mapaPessoa.set(diaKey, []);
+      mapaPessoa.get(diaKey)!.push({ id: b.id, hora: b.hora });
+    }
+
+    return colaboradores
+      .filter((c) => porPessoaDia.has(c.id))
+      .map((c) => {
+        let horasExtrasMs = 0;
+        const mapaPessoa = porPessoaDia.get(c.id)!;
+        for (const [diaKey, regs] of mapaPessoa.entries()) {
+          const diaDate = new Date(diaKey);
+          const diaSemana = diaDate.getUTCDay();
+          if (isDomingo(diaSemana)) continue; // domingos não contam
+          const fimDia = inicioDoProximoDia(diaDate);
+          const limiteDia = limite < fimDia ? limite : fimDia;
+          const j = calcularJornadaDia(regs, limiteDia, diaSemana);
+          horasExtrasMs += j.horasExtrasMs;
+        }
+        return {
+          fiscalId: c.id,
+          pessoaId: c.id,
+          tipoPessoa: 'OPERADOR' as const,
+          primeiroNome: primeiroNome(c.nome),
+          horasExtrasMs,
+        };
+      });
   }
 
   /** Histórico semanal do próprio fiscal (últimos 7 dias trabalhados). */

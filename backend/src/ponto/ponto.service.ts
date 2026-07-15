@@ -14,6 +14,7 @@ import { FiscaisService } from '../fiscais/fiscais.service';
 import { StatusFiscal } from '../fiscais/fiscais.domain';
 import { EditarBatidaDto, RegistrarBatidaDto } from './dto/ponto.dto';
 import { PontoOcrService } from './ponto-ocr.service';
+import { FUNCOES_PONTO_NAO_FISCAL } from './pessoas-ponto';
 
 // As batidas são gravadas com a HORA DO COMPROVANTE (hora de parede de Brasília)
 // rotulada como UTC (ex.: "09:00" → "...T09:00:00Z"). Para medir o segmento
@@ -71,6 +72,8 @@ export interface PessoaPonto {
   id: string;
   nome: string;
   tipoPessoa: 'FISCAL' | 'OPERADOR';
+  /** Ficha do Cadastro de Colaboradores (para não-fiscais); null p/ fiscais. */
+  colaboradorId?: string | null;
 }
 
 /**
@@ -92,22 +95,50 @@ export class PontoService {
     @Optional() private readonly ocr?: PontoOcrService,
   ) {}
 
-  /** Busca fiscais por nome (para escolher de quem é o comprovante). */
+  /**
+   * Busca pessoas por nome para escolher de quem é o comprovante: fiscais (da
+   * tabela Fiscal) + colaboradores não-fiscais ativos (operadores/supervisores)
+   * do Cadastro de Colaboradores. Gerentes e desligados ficam de fora.
+   */
   async buscarPessoas(busca?: string): Promise<PessoaPonto[]> {
-    const where: Prisma.FiscalWhereInput =
-      busca && busca.trim()
-        ? { nome: { contains: busca.trim(), mode: 'insensitive' } }
-        : {};
-    const fiscais = await this.prisma.fiscal.findMany({
-      where,
-      orderBy: { nome: 'asc' },
-      take: 20,
-    });
-    return fiscais.map((f) => ({
-      id: f.id,
-      nome: f.nome,
-      tipoPessoa: 'FISCAL' as const,
-    }));
+    const termo = busca?.trim();
+    const whereFiscal: Prisma.FiscalWhereInput = termo
+      ? { nome: { contains: termo, mode: 'insensitive' } }
+      : {};
+    const whereColaborador: Prisma.ColaboradorWhereInput = {
+      ativo: true,
+      funcao: { in: FUNCOES_PONTO_NAO_FISCAL },
+      ...(termo ? { nome: { contains: termo, mode: 'insensitive' } } : {}),
+    };
+
+    const [fiscais, colaboradores] = await Promise.all([
+      this.prisma.fiscal.findMany({
+        where: whereFiscal,
+        orderBy: { nome: 'asc' },
+        take: 20,
+      }),
+      this.prisma.colaborador.findMany({
+        where: whereColaborador,
+        orderBy: { nome: 'asc' },
+        take: 20,
+      }),
+    ]);
+
+    const pessoas: PessoaPonto[] = [
+      ...fiscais.map((f) => ({
+        id: f.id,
+        nome: f.nome,
+        tipoPessoa: 'FISCAL' as const,
+        colaboradorId: null,
+      })),
+      ...colaboradores.map((c) => ({
+        id: c.id,
+        nome: c.nome,
+        tipoPessoa: 'OPERADOR' as const,
+        colaboradorId: c.id,
+      })),
+    ];
+    return pessoas.sort((a, b) => a.nome.localeCompare(b.nome)).slice(0, 20);
   }
 
   /** Registra uma nova batida e devolve a jornada do dia recalculada. */
@@ -152,16 +183,28 @@ export class PontoService {
     if (!this.ocr || !dto.nomeLido) return;
     try {
       // Resolve o nome oficial da pessoa (o alias guarda o nome de exibição).
-      const fiscal =
-        tipoPessoa === 'FISCAL'
-          ? await this.prisma.fiscal.findUnique({ where: { id: dto.pessoaId } })
-          : null;
-      if (!fiscal) return;
+      // Fiscais vêm da tabela Fiscal; os demais, do Cadastro de Colaboradores.
+      let nome: string | null = null;
+      let colaboradorId = dto.colaboradorId ?? null;
+      if (tipoPessoa === 'FISCAL') {
+        const fiscal = await this.prisma.fiscal.findUnique({
+          where: { id: dto.pessoaId },
+        });
+        nome = fiscal?.nome ?? null;
+      } else {
+        const id = dto.colaboradorId ?? dto.pessoaId;
+        const colaborador = await this.prisma.colaborador.findUnique({
+          where: { id },
+        });
+        nome = colaborador?.nome ?? null;
+        colaboradorId = colaborador?.id ?? colaboradorId;
+      }
+      if (!nome) return;
       await this.ocr.aprenderAlias(dto.nomeLido, {
         pessoaId: dto.pessoaId,
         tipoPessoa,
-        colaboradorId: dto.colaboradorId ?? null,
-        nome: fiscal.nome,
+        colaboradorId,
+        nome,
       });
     } catch {
       // Aprendizado é um "extra"; ignorar falhas para não travar a batida.

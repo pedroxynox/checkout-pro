@@ -1,12 +1,14 @@
 /**
- * Log de jornada da equipe de fiscais (uso gerencial — funcionalidade
- * FISCAIS_JORNADA). Mostra, por fiscal, o tempo trabalhando, o tempo de
- * intervalo e a carga horária do dia com cores de status.
+ * Log de jornada da equipe (uso gerencial — funcionalidade FISCAIS_JORNADA).
+ * Mostra, por pessoa, o tempo trabalhando, o tempo de intervalo e a carga
+ * horária do dia com cores de status. Inclui os fiscais e também os demais
+ * colaboradores que batem ponto (operadores/supervisores) que registraram
+ * batidas no dia.
  *
  * Inclui:
  * - Card com a data de hoje
  * - Acumulado de horas extras do mês (excluindo domingos)
- * - Cards por fiscal com status colorido e tempos
+ * - Cards por pessoa com status colorido, papel e tempos
  */
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -33,6 +35,14 @@ const VERDE = cores.sucesso ?? '#1E9E5A';
 const AMARELO = cores.amarelo ?? '#C99700';
 const CINZA = cores.textoSecundario;
 const AZUL = '#2563EB';
+
+/** Rótulo curto do papel (para o chip ao lado do nome dos não-fiscais). */
+const ROTULO_FUNCAO: Record<string, string> = {
+  FISCAL: 'Fiscal',
+  OPERADOR: 'Operador',
+  SUPERVISOR: 'Supervisor',
+  GESTOR: 'Gestor',
+};
 
 function corStatus(status: StatusFiscal): string {
   if (status === 'DISPONIVEL') return VERDE;
@@ -94,12 +104,12 @@ export function JornadaFiscaisScreen(): React.ReactElement {
     [],
   );
 
-  /** Cria mapa de horas extras por fiscalId para lookup rápido */
+  /** Cria mapa de horas extras por pessoaId para lookup rápido */
   const mapaExtras = React.useMemo(() => {
     const m = new Map<string, number>();
     if (horasExtras.dados) {
       for (const he of horasExtras.dados) {
-        m.set(he.fiscalId, he.horasExtrasMs);
+        m.set(he.pessoaId, he.horasExtrasMs);
       }
     }
     return m;
@@ -149,7 +159,7 @@ export function JornadaFiscaisScreen(): React.ReactElement {
               .filter((he) => he.horasExtrasMs > 0)
               .sort((a, b) => b.horasExtrasMs - a.horasExtrasMs)
               .map((he) => (
-                <View key={he.fiscalId} style={styles.extrasItem}>
+                <View key={he.pessoaId} style={styles.extrasItem}>
                   <Text style={styles.extrasNome}>{he.primeiroNome}</Text>
                   <Text style={styles.extrasValor}>+{formatarDuracao(he.horasExtrasMs)}</Text>
                 </View>
@@ -182,7 +192,7 @@ export function JornadaFiscaisScreen(): React.ReactElement {
           const navegavel = podeVerPerfil && !!f.colaboradorId;
           return (
           <Pressable
-            key={f.fiscalId}
+            key={f.pessoaId}
             disabled={!navegavel}
             onPress={() =>
               f.colaboradorId &&
@@ -206,6 +216,11 @@ export function JornadaFiscaisScreen(): React.ReactElement {
                 />
               </View>
               <Text style={styles.nome}>{f.primeiroNome}</Text>
+              {f.tipoPessoa === 'OPERADOR' ? (
+                <Text style={styles.papelTag}>
+                  {ROTULO_FUNCAO[f.funcao] ?? 'Colaborador'}
+                </Text>
+              ) : null}
               <View style={[styles.badgeStatus, { backgroundColor: corFundoStatus(f.status) }]}>
                 <View style={[styles.pontinho, { backgroundColor: corStatus(f.status) }]} />
                 <Text style={[styles.statusTexto, { color: corStatus(f.status) }]}>
@@ -221,12 +236,12 @@ export function JornadaFiscaisScreen(): React.ReactElement {
               <ItemTempo rotulo="Carga" valor={formatarDuracao(f.cargaHorariaMs)} cor={cores.texto} />
             </View>
 
-            {/* Horas extras do mês deste fiscal */}
-            {(mapaExtras.get(f.fiscalId) ?? 0) > 0 && (
+            {/* Horas extras do mês desta pessoa */}
+            {(mapaExtras.get(f.pessoaId) ?? 0) > 0 && (
               <View style={styles.extrasFiscalRow}>
                 <Ionicons name="trending-up" size={14} color={AZUL} />
                 <Text style={styles.extrasFiscalTexto}>
-                  +{formatarDuracao(mapaExtras.get(f.fiscalId)!)} extras no mês
+                  +{formatarDuracao(mapaExtras.get(f.pessoaId)!)} extras no mês
                 </Text>
               </View>
             )}
@@ -360,6 +375,15 @@ const styles = StyleSheet.create({
     ...tipografia.rotulo,
     color: cores.texto,
     flex: 1,
+  },
+  papelTag: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    backgroundColor: cores.fundo,
+    paddingHorizontal: espacamento.sm,
+    paddingVertical: 2,
+    borderRadius: raio.pill,
+    overflow: 'hidden',
   },
   badgeStatus: {
     flexDirection: 'row',

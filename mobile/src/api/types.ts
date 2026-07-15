@@ -604,17 +604,25 @@ export interface MeuResumoFiscal extends JornadaTempos {
   folgaHoje: boolean;
 }
 
-/** Item do log de jornada do dia (tempos por fiscal) — uso gerencial. */
+/** Item do log de jornada do dia (tempos por pessoa: fiscal ou colaborador). */
 export interface ItemJornadaFiscal extends JornadaTempos {
+  /** Id da pessoa: Fiscal.id (fiscais) ou Colaborador.id (demais). */
   fiscalId: string;
+  /** Igual ao fiscalId; nome explícito para chave/lookup independente do tipo. */
+  pessoaId: string;
+  tipoPessoa: 'FISCAL' | 'OPERADOR';
+  /** Função (FISCAL/OPERADOR/SUPERVISOR) para exibir o papel. */
+  funcao: string;
   colaboradorId: string | null;
   primeiroNome: string;
   status: StatusFiscal;
 }
 
-/** Acumulado de horas extras do mês por fiscal. */
+/** Acumulado de horas extras do mês por pessoa (fiscal ou colaborador). */
 export interface ItemHorasExtrasFiscal {
   fiscalId: string;
+  pessoaId: string;
+  tipoPessoa: 'FISCAL' | 'OPERADOR';
   primeiroNome: string;
   horasExtrasMs: number;
 }
@@ -1575,6 +1583,8 @@ export interface PessoaPonto {
   id: string;
   nome: string;
   tipoPessoa: 'FISCAL' | 'OPERADOR';
+  /** Ficha do Cadastro de Colaboradores (para não-fiscais); null p/ fiscais. */
+  colaboradorId?: string | null;
 }
 
 /** Resultado da leitura do comprovante (Fase B): nome/data/hora + sugestões. */

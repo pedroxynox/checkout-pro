@@ -4,6 +4,7 @@ import {
   BatidaEntrada,
   calcularJornadaDia,
   classificarBatidas,
+  statusFiscalDeJornada,
   statusFiscalDeTipoBatida,
 } from './ponto.domain';
 
@@ -225,5 +226,15 @@ describe('statusFiscalDeTipoBatida', () => {
 
   it('batida extra → sem transição (null)', () => {
     expect(statusFiscalDeTipoBatida('EXTRA')).toBeNull();
+  });
+});
+
+describe('statusFiscalDeJornada (colaboradores no painel de jornada)', () => {
+  it('mapeia o estado da jornada para um status de exibição', () => {
+    expect(statusFiscalDeJornada('TRABALHANDO')).toBe('DISPONIVEL');
+    expect(statusFiscalDeJornada('EM_INTERVALO')).toBe('INTERVALO');
+    expect(statusFiscalDeJornada('ENCERRADO')).toBe('FORA_EXPEDIENTE');
+    expect(statusFiscalDeJornada('INCOMPLETO')).toBe('FORA_EXPEDIENTE');
+    expect(statusFiscalDeJornada('SEM_REGISTRO')).toBe('FORA_EXPEDIENTE');
   });
 });

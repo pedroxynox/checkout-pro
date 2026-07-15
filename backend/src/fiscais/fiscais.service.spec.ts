@@ -45,6 +45,9 @@ describe('FiscaisService e EscalaService', () => {
       colaborador: {
         findMany: () => Promise.resolve([]),
       },
+      batidaPonto: {
+        findMany: () => Promise.resolve([]),
+      },
       registroPontoFiscal: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         create: ({ data }: any) => {
