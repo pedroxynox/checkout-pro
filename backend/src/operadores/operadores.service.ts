@@ -308,32 +308,39 @@ export class OperadoresService {
       justificadaEm: new Date(),
     };
 
-    let criadas = 0;
-    let atualizadas = 0;
-    // Conta TODOS os dias corridos do intervalo (inclusive folga): a folga
-    // também faz parte da ausência a prazo.
-    for (let t = d0.getTime(); t <= d1.getTime(); t += UM_DIA_MS) {
-      const dia = new Date(t);
-      const existId = idPorDia.get(t);
-      if (existId) {
-        await this.prisma.ausencia.update({
-          where: { id: existId },
-          data: justificativa,
-        });
-        atualizadas += 1;
-      } else {
-        await this.prisma.ausencia.create({
-          data: {
-            pessoaId,
-            data: dia,
-            registradaPorId: autor.id ?? null,
-            registradaPorNome: autor.nome ?? null,
-            ...justificativa,
-          },
-        });
-        criadas += 1;
-      }
-    }
+    // Grava os dias do período de forma ATÔMICA (tudo-ou-nada): se algo falhar
+    // no meio (ex.: erro de banco), nenhum dia fica gravado pela metade — a
+    // ausência a prazo é um único ato do supervisor. Conta TODOS os dias
+    // corridos do intervalo (inclusive folga): a folga também faz parte.
+    const { criadas, atualizadas } = await this.prisma.$transaction(
+      async (tx) => {
+        let criadas = 0;
+        let atualizadas = 0;
+        for (let t = d0.getTime(); t <= d1.getTime(); t += UM_DIA_MS) {
+          const dia = new Date(t);
+          const existId = idPorDia.get(t);
+          if (existId) {
+            await tx.ausencia.update({
+              where: { id: existId },
+              data: justificativa,
+            });
+            atualizadas += 1;
+          } else {
+            await tx.ausencia.create({
+              data: {
+                pessoaId,
+                data: dia,
+                registradaPorId: autor.id ?? null,
+                registradaPorNome: autor.nome ?? null,
+                ...justificativa,
+              },
+            });
+            criadas += 1;
+          }
+        }
+        return { criadas, atualizadas };
+      },
+    );
 
     const dias = criadas + atualizadas;
     // Um único aviso a todos (evita spamar um por dia).

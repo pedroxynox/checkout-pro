@@ -82,6 +82,10 @@ describe('OperadoresService', () => {
       colaborador: {
         findUnique: () => Promise.resolve({ nome: 'Teste', folgaDiaSemana: 0 }),
       },
+      // Transação: no fake, executa o callback com o próprio cliente falso
+      // (as escritas usam `tx.ausencia.*`, que aqui é o mesmo `prismaFake`).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      $transaction: (fn: (tx: any) => any) => fn(prismaFake),
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
