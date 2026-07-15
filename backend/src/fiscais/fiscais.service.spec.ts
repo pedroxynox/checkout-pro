@@ -21,6 +21,17 @@ describe('FiscaisService e EscalaService', () => {
     const escalas: any[] = [];
     let seq = 0;
 
+    // Casa a condição de `data` do Prisma: igualdade (Date) ou faixa {gte,lt}.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const casaData = (rData: Date, cond: any): boolean => {
+      if (cond === undefined) return true;
+      if (cond instanceof Date) return rData.getTime() === cond.getTime();
+      const okGte =
+        cond.gte === undefined || rData.getTime() >= cond.gte.getTime();
+      const okLt = cond.lt === undefined || rData.getTime() < cond.lt.getTime();
+      return okGte && okLt;
+    };
+
     return {
       registros,
       ausencias,
@@ -63,8 +74,7 @@ describe('FiscaisService e EscalaService', () => {
                 (r) =>
                   (where.fiscalId === undefined ||
                     r.fiscalId === where.fiscalId) &&
-                  (where.data === undefined ||
-                    r.data.getTime() === where.data.getTime()),
+                  casaData(r.data, where.data),
               )
               .map((r) => ({ ...r })),
           ),
@@ -186,6 +196,46 @@ describe('FiscaisService e EscalaService', () => {
     // do domínio (`Jornada.cargaHorariaMs`): 3,5h.
     expect(f1?.cargaHorariaMs).toBe(3.5 * HORA);
     expect(f1?.status).toBe('FORA_EXPEDIENTE');
+  });
+
+  it('horas extras do mês: domingo conta como 100% e dia útil como 50%', async () => {
+    const prisma = criarPrisma();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fiscais = new FiscaisService(prisma as any);
+    const HORA = 3_600_000;
+
+    // Domingo 10/03/2024: 08–18 = 10h (esperado 7h20) → 2h40 a 100%.
+    await fiscais.definirStatus(
+      'f1',
+      'DISPONIVEL',
+      new Date('2024-03-10T08:00:00Z'),
+    );
+    await fiscais.definirStatus(
+      'f1',
+      'FORA_EXPEDIENTE',
+      new Date('2024-03-10T18:00:00Z'),
+    );
+    // Segunda 11/03/2024: 08–18 = 10h (esperado 7h) → 3h a 50%.
+    await fiscais.definirStatus(
+      'f1',
+      'DISPONIVEL',
+      new Date('2024-03-11T08:00:00Z'),
+    );
+    await fiscais.definirStatus(
+      'f1',
+      'FORA_EXPEDIENTE',
+      new Date('2024-03-11T18:00:00Z'),
+    );
+
+    const extras = await fiscais.horasExtrasMes(
+      new Date('2024-03-15T00:00:00Z'),
+    );
+    const f1 = extras.find((e) => e.pessoaId === 'f1');
+    // 2h40 de domingo a 100%.
+    expect(f1?.horasExtras100Ms).toBe(2 * HORA + 40 * 60_000);
+    // 3h de segunda a 50%.
+    expect(f1?.horasExtras50Ms).toBe(3 * HORA);
+    expect(f1?.horasExtrasMs).toBe(2 * HORA + 40 * 60_000 + 3 * HORA);
   });
 
   it('registra a falta do fiscal no dia', async () => {

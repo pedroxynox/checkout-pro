@@ -71,7 +71,12 @@ export interface ItemHorasExtras {
   pessoaId: string;
   tipoPessoa: 'FISCAL' | 'OPERADOR';
   primeiroNome: string;
+  /** Total de horas extras do mês (50% + 100%), em ms. */
   horasExtrasMs: number;
+  /** Extras com adicional de 50% (segunda a sábado), em ms. */
+  horasExtras50Ms: number;
+  /** Extras com adicional de 100% (domingos), em ms. */
+  horasExtras100Ms: number;
 }
 
 /** Fiscal de folga hoje. */
@@ -436,8 +441,10 @@ export class FiscaisService {
   }
 
   /**
-   * Acumulado de horas extras do mês por fiscal (excluindo domingos).
-   * Horas extras = soma de max(0, cargaTrabalhada - jornadaEsperada) por dia.
+   * Acumulado de horas extras do mês por pessoa. Horas extras = soma de
+   * max(0, cargaTrabalhada - jornadaEsperada) por dia. Os DOMINGOS CONTAM: as
+   * extras de domingo entram no adicional de 100%; de segunda a sábado, 50%
+   * (mesma regra da jornada diária, `calcularJornadaDia`).
    */
   async horasExtrasMes(mes?: Date): Promise<ItemHorasExtras[]> {
     const referencia = mes ?? new Date();
@@ -478,23 +485,21 @@ export class FiscaisService {
 
     const dosFiscais: ItemHorasExtras[] = fiscais.map((f) => {
       const mapaFiscal = porFiscalDia.get(f.id);
-      let horasExtrasMs = 0;
+      let horasExtras50Ms = 0;
+      let horasExtras100Ms = 0;
 
       if (mapaFiscal) {
         for (const [diaKey, regs] of mapaFiscal.entries()) {
           const diaDate = new Date(diaKey);
           const diaSemana = diaDate.getUTCDay();
-
-          // Domingos não contam para horas extras.
-          if (isDomingo(diaSemana)) continue;
-
           const fimDia = inicioDoProximoDia(diaDate);
           const limiteDia = limite < fimDia ? limite : fimDia;
           const jornada = calcularJornada(regs, limiteDia);
-          const esperado = jornadaEsperadaMs(diaSemana);
-          const extra = jornada.cargaHorariaMs - esperado;
+          const extra = jornada.cargaHorariaMs - jornadaEsperadaMs(diaSemana);
           if (extra > 0) {
-            horasExtrasMs += extra;
+            // Domingo = adicional de 100%; demais dias = 50%.
+            if (isDomingo(diaSemana)) horasExtras100Ms += extra;
+            else horasExtras50Ms += extra;
           }
         }
       }
@@ -504,7 +509,9 @@ export class FiscaisService {
         pessoaId: f.id,
         tipoPessoa: 'FISCAL' as const,
         primeiroNome: primeiroNome(f.nome),
-        horasExtrasMs,
+        horasExtras50Ms,
+        horasExtras100Ms,
+        horasExtrasMs: horasExtras50Ms + horasExtras100Ms,
       };
     });
 
@@ -513,8 +520,9 @@ export class FiscaisService {
 
   /**
    * Horas extras do mês dos colaboradores NÃO-fiscais (operadores/supervisores)
-   * que bateram ponto, a partir das batidas do Registro de Ponto. Excluímos os
-   * domingos (mesma regra dos fiscais). Só inclui quem tem batidas no mês.
+   * que bateram ponto, a partir das batidas do Registro de Ponto. Os domingos
+   * CONTAM, no adicional de 100% (reaproveita a regra de `calcularJornadaDia`).
+   * Só inclui quem tem batidas no mês.
    */
   private async horasExtrasOperadoresMes(
     inicioMes: Date,
@@ -550,23 +558,27 @@ export class FiscaisService {
     return colaboradores
       .filter((c) => porPessoaDia.has(c.id))
       .map((c) => {
-        let horasExtrasMs = 0;
+        let horasExtras50Ms = 0;
+        let horasExtras100Ms = 0;
         const mapaPessoa = porPessoaDia.get(c.id)!;
         for (const [diaKey, regs] of mapaPessoa.entries()) {
           const diaDate = new Date(diaKey);
           const diaSemana = diaDate.getUTCDay();
-          if (isDomingo(diaSemana)) continue; // domingos não contam
           const fimDia = inicioDoProximoDia(diaDate);
           const limiteDia = limite < fimDia ? limite : fimDia;
           const j = calcularJornadaDia(regs, limiteDia, diaSemana);
-          horasExtrasMs += j.horasExtrasMs;
+          // Domingo entra no 100%; demais dias no 50% (regra do domínio).
+          horasExtras50Ms += j.horasExtras50Ms;
+          horasExtras100Ms += j.horasExtras100Ms;
         }
         return {
           fiscalId: c.id,
           pessoaId: c.id,
           tipoPessoa: 'OPERADOR' as const,
           primeiroNome: primeiroNome(c.nome),
-          horasExtrasMs,
+          horasExtras50Ms,
+          horasExtras100Ms,
+          horasExtrasMs: horasExtras50Ms + horasExtras100Ms,
         };
       });
   }

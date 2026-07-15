@@ -7,7 +7,7 @@
  *
  * Inclui:
  * - Card com a data de hoje
- * - Acumulado de horas extras do mês (excluindo domingos)
+ * - Acumulado de horas extras do mês (domingos contam, com adicional de 100%)
  * - Cards por pessoa com status colorido, papel e tempos
  */
 import { Ionicons } from '@expo/vector-icons';
@@ -161,7 +161,14 @@ export function JornadaFiscaisScreen(): React.ReactElement {
               .map((he) => (
                 <View key={he.pessoaId} style={styles.extrasItem}>
                   <Text style={styles.extrasNome}>{he.primeiroNome}</Text>
-                  <Text style={styles.extrasValor}>+{formatarDuracao(he.horasExtrasMs)}</Text>
+                  <View style={styles.extrasValores}>
+                    <Text style={styles.extrasValor}>+{formatarDuracao(he.horasExtrasMs)}</Text>
+                    {he.horasExtras100Ms > 0 && (
+                      <Text style={styles.extrasDom}>
+                        dom 100%: +{formatarDuracao(he.horasExtras100Ms)}
+                      </Text>
+                    )}
+                  </View>
                 </View>
               ))}
             {horasExtras.dados.every((he) => he.horasExtrasMs === 0) && (
@@ -330,9 +337,16 @@ const styles = StyleSheet.create({
     ...tipografia.rotulo,
     color: cores.texto,
   },
+  extrasValores: {
+    alignItems: 'flex-end',
+  },
   extrasValor: {
     ...tipografia.rotulo,
     color: AZUL,
+  },
+  extrasDom: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
   },
   extrasSemDados: {
     ...tipografia.legenda,
