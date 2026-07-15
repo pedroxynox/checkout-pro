@@ -1,303 +1,247 @@
 # PROJECT_UNDERSTANDING — Check-out PRO
 
-> Documento base de comprensión del proyecto, generado a partir del análisis
-> completo del repositorio. Sirve como contexto de continuidad para cualquier
-> trabajo futuro. Complementa (no reemplaza) a `.kiro/steering/arquitetura.md`
-> y `.kiro/steering/estado-e-pendientes.md`.
+> Snapshot canónico para continuidad del proyecto. Resume producto, arquitectura, reglas de negocio, entregas, calidad, operación, riesgos y próximos pasos. Complementa el historial de `REGISTRO_DE_MUDANCAS.md`, el QA de `GUIA_QA.md` y el mapa técnico de `.kiro/steering/arquitetura.md`.
 >
-> Idioma de trabajo: español · UI/dominio: portugués (Brasil).
->
-> Última revisión: 2026-07-08 (módulos de RRHH añadidos y documentados:
-> **incidencias** de escala/sanciones, **advertencias**, **contratos** de
-> experiencia 45+45, **data-inicial**, **reset-operacional** y **push tokens** en
-> notificaciones; purga mensual de inactivos ahora con **ventana de retención**
-> configurable (`RETENCAO_INATIVOS_MESES`, def. 12) para proteger el histórico
-> disciplinar/laboral; eliminadas las carpetas legacy `importacoes/` e
-> `indicadores/` —`parseValor` reubicado en `common/numeros.ts`—. Verificación:
-> backend 59 suites / 300 tests, mobile 20 suites / 68 tests. Meta del usuario:
-> dejar la app 100% operativa antes de escalar; multi-tenancy parqueado).
-
----
+> Última revisión: **2026-07-15**. Idioma de trabajo/handoff: español; UI, dominio y código: portugués de Brasil.
 
 ## 1. Resumen ejecutivo
 
-**Check-out PRO** es una aplicación de **gestión inteligente de la frente de caja
-de un supermercado** (rebranding del antiguo "Stok Center"). Centraliza la
-operación de caja para **gerentes, supervisores, fiscales, importadores y
-operadores**.
+**Check-out PRO** gestiona la operación de la frente de caja de un supermercado desde web y Android: personas y accesos, importaciones, indicadores, ventas, stock, checklists, escalas, punto, jornada, contratos, disciplina, notificaciones y asistencia con IA.
 
-Funcionalidades principales:
-- Importación diaria de archivos operativos (`.txt`).
-- Indicadores/metas (KPIs) con semáforo (verde/amarillo/rojo) y rankings.
-- Control de insumos (bolsas, bobinas, paños) con fardos por código de barras,
-  requisiciones y pedidos recurrentes.
-- Monitoreo de fiscales en tiempo real (WebSocket) con jornada y escala.
-- Checklists de apertura/cierre con imagen y anti-fraude.
-- Sacolas APAE por lote, panel de ventas por hora.
-- Asistente de IA **"Cluby"** (Google Gemini) que orienta al equipo.
+El estado funcional documentado está **mergeado en `main`** hasta `e8c32be` (PR #235). No se verificó desde este trabajo que ese commit esté efectivamente desplegado en producción; por eso se distingue siempre entre **implementado/mergeado**, **deploy confirmado** y **configuración externa pendiente**.
 
-Producto 100% en **portugués de Brasil**, disponible como **app Android (APK vía
-Expo)** y como **web estática**. Estado: **funcional/en producción**; spec
-completo (tareas 1–22 marcadas como hechas) con evolución posterior reflejada en
-migraciones `9h`–`9s`.
+Validación más reciente:
+- Backend: build correcto; **71 suites / 406 tests**.
+- Mobile: type-check y lint correctos; **23 suites / 85 tests**.
+- ESLint focalizado de los archivos TAC: correcto.
+- Lint global backend sin `--fix`: 31 errores Prettier preexistentes en cuatro archivos, listados en §10.
 
----
+## 2. Producto y perfiles
 
-## 2. Arquitectura
+Perfiles de acceso:
+- `GERENTE_DESENVOLVEDOR`: acceso total y administración de datos/configuración.
+- `GERENTE`: operación y gestión, con restricciones estructurales según la allowlist.
+- `SUPERVISOR`: operación y supervisión de equipos/jornada.
+- `FISCAL`: rutinas de caja, punto y consulta según permisos.
+- `IMPORTADOR`: carga de archivos operativos.
+- Los operadores se administran como colaboradores, pero no reciben necesariamente login del app.
 
-Monorepo **npm workspaces** con dos paquetes independientes:
+La autorización se define por funcionalidad en `backend/src/acessos/acessos.domain.ts` y se refleja en mobile. `Colaborador` es la fuente única de personas; matrícula/login e identificadores permiten atribuir movimientos históricos.
 
+## 3. Arquitectura
+
+Monorepo npm workspaces:
+
+```text
+mobile/ (Expo SDK 52 / React Native 0.76 / web)
+   └── REST HTTPS + JWT / Socket.IO
+backend/ (NestJS 10 / Prisma 5 / cron)
+   └── PostgreSQL / Gemini / Expo Push Service
 ```
-mobile/ (Expo / React Native)  --HTTPS + JWT Bearer-->  backend/ (NestJS)
-  - App Android (APK)                                    - REST + WebSocket + Cron
-  - App Web (estática)                                   - Prisma -> PostgreSQL
-                                                         - Gemini (asistente IA)
-```
 
-- **backend/** — API NestJS modular por dominio. JWT global; autorización por
-  funcionalidad con `@Funcionalidade('X')` + `PerfilGuard`. WebSocket (estado de
-  fiscales) y cron jobs (alertas/limpieza) en huso `America/Sao_Paulo`.
-- **mobile/** — React Native + Expo SDK 52, exportable como web estática.
-  Organizado por capas; soporte offline (SQLite + cola de sincronización).
+Patrón backend:
+- `*.controller.ts`: contrato HTTP y permisos.
+- `*.service.ts`: orquestación, transacciones y persistencia.
+- `*.domain.ts`: reglas puras y determinísticas.
+- `dto/`: validación de entrada.
+- errores de dominio: traducidos por filtro global.
 
-**Patrón por módulo backend:**
-`*.controller.ts` (HTTP) → `*.service.ts` (negocio) → Prisma (persistencia);
-`*.domain.ts` (lógica pura testeable), `dto/` (validación), `*.errors.ts`
-(errores de dominio traducidos a HTTP por `DominioExceptionFilter` global).
+Patrón mobile: `api`, `auth`, `components`, `navigation`, `screens`, `hooks`, `offline`, `theme` y `utils`. El app mantiene soporte web y cola offline en SQLite para los flujos compatibles.
 
-### Stack tecnológico
+Servicios externos:
+- Render: API, web y PostgreSQL.
+- Google Gemini: Cluby.
+- Expo/EAS: compilación y distribución Android.
+- Expo Push Service: envío push; Android requiere credenciales FCM.
 
-| Capa | Tecnologías |
+## 4. Mapa funcional actual
+
+### Núcleo y seguridad
+- `acessos`, `usuarios`: login por matrícula, JWT, revocación con `tokenVersion`, rate limiting y permisos por funcionalidad.
+- `colaboradores`: cadastro unificado, identificadores, perfil inteligente, activación/inactivación y purga con retención.
+- `common`, `config`, `prisma`, `storage`: filtros, guards, validación de entorno, observabilidad, BD y archivos.
+
+### Operación comercial
+- `arrecadacao`: carga `.txt`, indicadores, rankings y no reconocidos.
+- `vendas`: ventas por hora y total diario.
+- `metas`: metas mensuales.
+- `fechamento`: resumen del día, consistencia y conclusión idempotente.
+- `insumos`, `requisicoes`: movimientos de stock, solicitudes y pedidos recurrentes; el stock no puede quedar negativo.
+- `lote-apae`: Sacolas APAE, lote, saldo y configuración.
+- `checklist`: apertura/cierre con imagen, ventanas y hash anti-fraude.
+
+### Personas, escala y jornada
+- `fiscais`: estado en tiempo real y jornada histórica.
+- `operadores`: cuadro, escala y ausencias.
+- `ponto`: batidas, OCR del comprobante, cálculo de jornada y alertas TAC.
+- `central-jornada`: consolidación por ciclo 26→25 y comparativos.
+- `feriados`: calendario nacional automático y fechas estatales/municipales manuales.
+- `escala-domingo`: alternancia/configuración de domingos.
+- `incidencias`, `advertencias`: faltas, no retorno, sanciones, justificativas y solicitudes con aprobación.
+- `contratos`: contrato de experiência dos operadores ativos, derivado da data de admissão; `tipoContrato` pertence às regras de jornada do colaborador.
+- `feedforward`: seguimiento/desarrollo de colaboradores.
+- `data-inicial`, `reset-operacional`: fecha mínima y reinicio controlado de datos operativos.
+
+### Comunicación
+- `notificacoes`: persistencia in-app, WebSocket y envío real al Expo Push Service.
+- `alertas`: crons operacionales.
+- `assistente`: Cluby con Gemini; procedimientos masivos todavía desactivados.
+
+## 5. Reglas de negocio confirmadas
+
+### 5.1 Registro de Ponto y TAC
+
+Fuente principal: `backend/src/ponto/ponto.domain.ts`.
+
+- Carga base: lunes–jueves 7h; viernes–sábado 8h; domingo/feriado 7h20.
+- Extras: lunes–sábado al 50%; domingo y feriado al 100%.
+- Intervalo no cuenta como trabajo y debe estar entre 1h y 3h.
+- Umbrales de extras:
+  - desde 1h30 (`90 min`): riesgo de TAC;
+  - desde 1h40 (`100 min`): riesgo alto;
+  - TAC solo cuando las extras son **mayores** a 1h50 (`>110 min`). Exactamente 1h50 todavía no cruza el umbral de TAC por extras.
+- Un intervalo `<1h` o `>3h` también genera TAC.
+- El horario válido es el impreso en el comprobante; el usuario confirma/corrige el OCR antes de guardar.
+
+Alertas:
+- destinatarios: `SUPERVISOR`, `GERENTE` y `GERENTE_DESENVOLVEDOR`;
+- nunca bloquean una batida si falla la notificación;
+- batida y cron comparten deduplicación por persona/día/etapa;
+- cron cada minuto y cobertura de fiscales/operadores;
+- deduplicación actual en memoria: un reinicio puede permitir un nuevo aviso; el fallo no se marca como enviado y puede reintentarse.
+
+### 5.2 Central de Jornada
+
+Fuente principal: `backend/src/central-jornada/central-jornada.service.ts`.
+
+- Ciclo mensual: día **26** hasta día **25**.
+- Funciones consideradas: operador, supervisor y fiscal.
+- Contrato soportado: `SEIS_X_UM_DOIS_X_UM` (6x1–2x1).
+- Métricas: carga trabajada y base diaria, extras 50%, extras 100%, horas devidas, atestado, faltas, TAC y saldo.
+- La carga se deriva de las batidas y reglas diarias; la Central no calcula hoy una “carga prevista” desde la escala.
+- Saldo = extras 50% + extras 100% − horas devidas.
+- Una falta puede marcarse como débito de horas.
+- El backend admite comparativo de hasta 12 ciclos; el app solicita/muestra actualmente seis.
+- Las tres funciones se consolidan juntas; no existe filtro interactivo por función.
+
+### 5.3 Feriados
+
+Fuente: `backend/src/feriados/feriados.domain.ts`.
+
+- Feriados nacionales se generan automáticamente.
+- Feriados estatales y municipales se registran manualmente.
+- Carnaval y Corpus Christi no se agregan automáticamente.
+- Para jornada, feriado usa carga base de domingo (7h20) y extras 100%.
+
+### 5.4 Contrato de jornada y contrato de experiencia
+
+Son conceptos distintos:
+- `tipoContrato = SEIS_X_UM_DOIS_X_UM` gobierna las reglas de jornada del colaborador.
+- El contrato de experiencia se deriva de `dataAdmissao` y se procesa para **operadores activos**.
+- Experiencia máxima: 90 días; efectivación automática a partir del día 91.
+- El cron alerta durante los 5 días anteriores al marco de 90 días.
+- Los destinatarios actuales del cron de experiencia son `FISCAL`, `SUPERVISOR`, `GERENTE` y `GERENTE_DESENVOLVEDOR` a través del selector `gestores()`; no describirlo como exclusivo de gerentes mientras el código mantenga ese alcance.
+- Decisiones manuales antiguas se conservan por compatibilidad histórica/API, pero no son la fuente principal del estado actual.
+
+### 5.5 Notificaciones
+
+- Todos los avisos pasan por el canal persistido/in-app y WebSocket según el flujo.
+- `NotificacoesService` envía push real mediante `https://exp.host/--/api/v2/push/send` a tokens guardados.
+- El envío es best-effort: un fallo externo no debe romper la operación principal.
+- Para recibir con el APK Android cerrado falta vincular FCM al proyecto Expo/EAS y recompilar/publicar el APK.
+
+## 6. Entregas recientes auditadas
+
+| PR | Resultado mergeado |
 | --- | --- |
-| Backend | Node.js ≥18, NestJS 10, TypeScript strict, Prisma 5, PostgreSQL, JWT, Socket.IO, `@nestjs/schedule` |
-| IA | Google Gemini (`gemini-2.5-flash`) vía REST |
-| Mobile | React Native 0.76, Expo SDK 52, TypeScript, React Navigation 7 (native-stack) |
-| Parsing | papaparse, xlsx (flujos antiguos) + parsers `.txt` propios (flujo actual) |
-| Tests | Jest (backend y mobile), fast-check (property-based, ≥100 iter.), Testing Library |
-| Calidad | ESLint, Prettier, TypeScript `strict` (ambos paquetes) |
-| Infra | Render (API + Web + PostgreSQL), EAS Build (APK) |
+| #211 | Seguridad: autenticación en WebSocket de fiscales, bloqueo de escalada en colaboradores y eliminación de contraseña débil del seed. |
+| #212 | Validación de uploads/entradas y refuerzo de privacidad en el app. |
+| #213 | Registro atómico de ausencias a plazo. |
+| #214 | Dependabot incorporado para monitoreo de dependencias. |
+| #223 | Rendimiento/UX: memoización del contexto de notificaciones y renombre `StatusBadge` → `Selo`. |
+| #224 | Backend de Central de Jornada, ciclo 26→25, feriados y contrato 6x1–2x1. |
+| #225 | App de Central de Jornada, Relógio Ponto, feriados y contrato. |
+| #226 | Dependabot con menos ruido para paquetes controlados por Expo/NestJS. |
+| #232 | Bloqueo de upgrades major y paquetes incompatibles/trabados. |
+| #234 | Aviso TAC en tiempo real a supervisión/gerencia y jornada consciente de feriados. |
+| #235 | Alertas preventivos de riesgo TAC a 1h30 y 1h40, con deduplicación compartida. |
 
-### Despliegue (Render)
+El historial anterior continúa en `REGISTRO_DE_MUDANCAS.md`; esta tabla no reemplaza las entradas detalladas.
 
-- **API:** `https://checkout-pro-api.onrender.com` (web service, rootDir `backend`).
-- **Web:** `https://checkout-pro-web.onrender.com` (static site, rootDir `mobile`).
-- **BD:** PostgreSQL free de Render (`stok-center-db` — NO renombrar). El plan
-  free expira ~30 días.
-- Push directo a `main` → redeploy automático. CI (`.github/workflows/`) va por PR.
-- `render.yaml` quedó como documentación (los servicios se gestionan a mano).
+## 7. Persistencia y migraciones
 
----
+- Schema: `backend/prisma/schema.prisma`.
+- Migraciones: `backend/prisma/migrations/`.
+- Última migración real: **`9zp_tipo_contrato_colaborador`**.
+- La próxima migración debe ordenar después de `9zp` y ser aditiva siempre que sea posible.
+- Nunca ejecutar un reset destructivo en producción como parte de una entrega automática.
+- Antes de entregar a un cliente se requiere un `reset:cliente` explícito y seed mínimo, separado del seed demo.
 
-## 3. Módulos
+## 8. Infraestructura y operación
 
-### Backend (`backend/src/*`)
+Variables críticas:
+- `DATABASE_URL`, `JWT_SECRET`: obligatorias en producción.
+- `CORS_ORIGINS`: allowlist web.
+- `GEMINI_API_KEY`, `GEMINI_MODEL`: Cluby.
+- `SENHA_INICIAL`: seed.
+- `RETENCAO_INATIVOS_MESES`: retención de ex colaboradores.
+- `EXPO_PUBLIC_API_URL`: URL de API para mobile/web.
 
-| Módulo | Responsabilidad |
-| --- | --- |
-| `acessos` | Login (matrícula + senha) + JWT; mapa de permisos por perfil (`acessos.domain.ts`). |
-| `usuarios` | CRUD de logins/accesos del app. |
-| `colaboradores` | **Cadastro Unificado** (fuente única de personas): cadastro/edición con unicidad de matrícula/login, login creado en el cadastro, `resolverColaboradorId` y **perfil inteligente** (`perfil-colaborador.*`). **Purga mensual de inactivos** (`purga-inativos.service.ts`) con **ventana de retención** (`RETENCAO_INATIVOS_MESES`, def. 12 meses): solo borra ficha + histórico de RRHH de quien fue dado de baja hace más de N meses; preserva los totales de arrecadación. |
-| `arrecadacao` | Indicadores desde `.txt` (parser por tipo) + `indicadores-inteligente` / `indicadores-resumo` + **"não reconhecidos"** (total cuenta a todos; bandeja para asociar/crear). **(flujo actual)** |
-| `fechamento` | Cierre del día: `estaCompleto`/notificación + **resumo inteligente** (`fechamento.domain` puro + `GET /fechamento/resumo`: pendencias y alertas). |
-| `vendas` | Ventas por hora desde `.txt`; espeja el total diario en `VendaDiaria`. |
-| `metas` | Metas mensuales por indicador (`MetaMensal`): vendas, cancelamientos, recargas, devoluções y Sacolas APAE. Mostradas en Centro de Controle ▸ Metas. |
-| `incidencias` | Incidencias de escala / sanciones (ej.: no retorno del intervalo). Dominio puro genérico por `tipo` (ADR 0007): línea de tiempo unificada (faltas + incidencias), ranking y analítica de riesgo. Ruta `escala/incidencias`. |
-| `advertencias` | Solicitudes de advertencia (ej.: por falta no justificada); cron con ventana retroactiva. Ruta `advertencias`. |
-| `contratos` | Contrato de experiencia brasileño (45+45 días). Estado (experiencia/efetivado/encerrado) **siempre derivado** de `dataAdmissao` + decisiones de 45/90 días (ADR 0008); dominio puro testeado. Ruta `contratos`. |
-| `data-inicial` | `Data_Inicial_Sistema`: config global *singleton* (id `'sistema'`), valida fecha mínima. Ruta `config/data-inicial`. |
-| `reset-operacional` | "Plan de reinicio" administrativo: borra/zera datos operativos según un plan tipado (qué apagar, en qué orden, qué conservar). Dominio puro. Ruta `admin/reset-operacional`. |
-| `insumos` | Stock como suma de `MovimentoEstoque`; fardos por código de barras; alertas de stock bajo. |
-| `requisicoes` | Requisiciones de insumos (aprobación) + pedidos recurrentes / sugerencias. |
-| `lote-apae` | Sacolas APAE por lote, histórico, config de precio/meta. |
-| `fiscais` | Estado en tiempo real (WebSocket) + jornada (`RegistroPontoFiscal`) + escala (la escala del fiscal viene del cadastro del colaborador — Opción A). |
-| `checklist` | Apertura/cierre con imagen, ventanas fijas, hash anti-fraude. |
-| `operadores` | Cuadro de turnos y ausencias. La **escala lee de `Colaborador`** (funcao OPERADOR); `OperadorTurno` quedó `[DEPRECADO]` (no se lee ni escribe). |
-| `notificacoes` | In-app + WebSocket (toast + badge). Registro/baja de **push tokens** de dispositivo (Expo) preparado (`registrarPushToken`/`removerPushToken`); el envío push real es paso siguiente. |
-| `assistente` | Chat Cluby (Gemini) + procedimientos guiados (desactivados por flag). |
-| `alertas` | Cron jobs: checklist (08:55 / 13:55) e importaciones (fin del día). |
-| `common` / `config` / `prisma` / `storage` | Guards, decorators, filtros; validación de env; acceso a BD; almacenamiento. |
+Caveats:
+- El banco gratuito/no persistente de Render representa riesgo operativo; migrar a un plan estable/pago.
+- Ejecutar `prisma migrate deploy` en **Pre-Deploy**, no en el Start Command, para que un advisory lock no impida abrir el puerto.
+- Verificar deploy mediante panel/logs y `/health/ready`; un merge exitoso no lo confirma.
+- La cuota gratuita de Gemini no es adecuada para concurrencia multiusuario sostenida.
 
-### Mobile (`mobile/src/*`)
+## 9. Estado del producto y próximos pasos priorizados
 
-- `api/` — `client.ts`, `config.ts`, `socket.ts`, `tokenStorage.ts`, `types.ts`,
-  y `services/` (uno por dominio).
-- `auth/` — contexto de autenticación, `podeAcessar(perfil, funcionalidade)`,
-  `funcionalidades.ts` (espejo del catálogo del backend) y `biometria.ts`.
-- `navigation/` — `RootNavigator`, `AppNavigator` (pila de pantallas de módulo),
-  **`MainTabs.tsx`** (barra inferior del app autenticado: **Início, Tarefas
-  [badge de pendencias], botón central Cluby [sparkles] → Mensagens,
-  Notificações [badge], Perfil**), `areas.ts` (allowlist por funcionalidad
-  reflejando el backend; áreas `emBreve: true` ocultas del menú), `types.ts`.
-- `screens/` — pantallas por área (colaboradores [Colaboradores/Gestão/Perfil],
-  centroControle [Centro de Controle: Acesso/Insumos], metas, fechamento, fiscais
-  [Fiscais/Escala/JornadaFiscais], importacoes, indicadores [Indicadores/
-  IndicadorDetalhe/PainelVendas], insumos [Insumos/InsumoDetalhe/Requisicoes],
-  loteApae, normativas, notificacoes, operadores, quebra, usuarios, checklist,
-  alertasFila) + **centroDeMando** (`ResumoDoDia` + hook `usePulsoDoDia`),
-  **tarefas** (`TarefasScreen`), **mensagens** (chat Cluby), **perfil**
-  (`PerfilScreen`), Home y Login (rediseñado: fondo onda azul/blanco).
-- `components/` (incl. `Graficos.tsx`: pizza/rosca interactiva + barras,
-  `Logo.tsx` con `LogoPulseC`, `LeitorCodigoBarras`, `MarkdownTexto`,
-  `ProcedimentoView`), `assistente/` (`AssistenteContext`), `notificacoes/`
-  (`NotificacoesContext`), `hooks/`, `offline/` (SQLite + cola), `theme/`
-  (tema azul + `Inter` + iconos Lucide), `utils/` (`dialogos.ts`).
-- `assets/` — branding subido por el usuario: `Logo.png` (login),
-  `LogoElemento.png` (header), `Appicon.png` (ícono APK), `Favicon.ico` (web).
-  Integración **en curso** en la rama `feat/branding-imagens` (ver §5).
+### Bloqueantes de operación/entrega
+1. Configurar FCM en Expo/EAS y generar/publicar un nuevo APK.
+2. Probar OCR/ML Kit con comprobantes reales en dispositivo Android; ajustar parser con muestras reales.
+3. Migrar PostgreSQL de Render a un plan persistente/estable.
+4. Mover migrations a Pre-Deploy y validar el procedimiento completo de deploy.
+5. Habilitar un tier pago de Gemini antes del uso intensivo multiusuario.
 
-### Perfiles y autorización
+### Producto
+6. Decidir si terminar o retirar las áreas ocultas: Alertas de Fila, Normativas e Indicador de Quebra.
+7. Para Normativas: construir ingestión/RAG con pgvector y object storage; no reactivar el piloto hardcoded como solución de escala.
+8. Preparar `reset:cliente` + seed limpio y retirar datos del piloto antes de la entrega.
 
-Perfiles: `GERENTE_DESENVOLVEDOR` (acceso total), `GERENTE`, `SUPERVISOR`,
-`FISCAL`, `IMPORTADOR` (solo *Importações*). La autorización es una **allowlist
-por funcionalidad** definida en `backend/src/acessos/acessos.domain.ts` y
-reflejada en el mobile (`areas.ts` / `funcionalidades.ts`).
+### Calidad/deuda técnica
+9. Evaluar deduplicación persistente de alertas TAC para sobrevivir reinicios y múltiples instancias.
+10. Corregir en PR aislado los 31 errores Prettier preexistentes del backend.
+11. Mantener multi-tenancy parqueado hasta que la instancia de una sola tienda esté operativamente estable. Cuando se retome: `lojaId`, aislamiento por fila/RLS y pruebas de fuga entre tenants.
 
----
+## 10. Verificación y deuda conocida
 
-## 4. Dependencias
+Últimos resultados confirmados:
+- Backend: build OK; 71 suites, 406 tests.
+- Mobile: type-check + lint OK; 23 suites, 85 tests.
+- Archivos TAC: ESLint focalizado OK.
 
-### Backend (principales)
-`@nestjs/common|core|config|jwt|schedule|websockets|platform-express|platform-socket.io`,
-`@prisma/client` + `prisma` (v5), `bcrypt`, `class-validator` + `class-transformer`,
-`papaparse`, `xlsx`, `socket.io`, `rxjs`, `reflect-metadata`.
-Dev: `fast-check`, `jest` + `ts-jest`, `@nestjs/testing`, ESLint/Prettier, `ts-node`.
+El lint global backend sin `--fix` reporta 31 diferencias Prettier preexistentes en:
+- `backend/src/alertas/alertas.service.spec.ts`
+- `backend/src/fiscais/fiscais.service.ts`
+- `backend/src/insumos/insumos.service.ts`
+- `backend/test/helpers/fake-prisma.ts`
 
-### Mobile (principales)
-`expo` (~52), `react` 18.3 / `react-native` 0.76.9 / `react-native-web`,
-`@react-navigation/native` + `native-stack`, `expo-camera`, `expo-image-picker`,
-`expo-document-picker`, `expo-secure-store`, `expo-sqlite`, `react-native-svg`,
-`socket.io-client`, `@react-native-async-storage/async-storage`.
-Dev: `jest-expo`, `@testing-library/react-native`, ESLint, TypeScript.
+No mezclar esa limpieza con cambios funcionales.
 
-### Servicios externos
-Render (hosting API/Web/BD), Google Gemini (asistente), EAS Build (APK).
-Secretos en Render (no en el repo): `DATABASE_URL`, `JWT_SECRET`,
-`GEMINI_API_KEY`, `GEMINI_MODEL`, `JWT_EXPIRES_IN`, `HORARIO_FIM_DO_DIA`,
-`CORS_ORIGINS`, `SENHA_INICIAL`, `RETENCAO_INATIVOS_MESES` (opcional, def. 12 —
-meses de retención antes de purgar inactivos). Mobile: `EXPO_PUBLIC_API_URL`.
+## 11. Fuentes documentales y responsabilidad
 
----
+- `README.md`: resumen público, setup y operación básica.
+- `PROJECT_UNDERSTANDING.md`: este snapshot canónico.
+- `REGISTRO_DE_MUDANCAS.md`: bitácora cronológica.
+- `GUIA_QA.md`: validación manual.
+- `.kiro/steering/estado-e-pendientes.md`: handoff de estado/prioridades.
+- `.kiro/steering/arquitetura.md`: mapa técnico.
+- `docs/ESTADO_Y_PROXIMOS_PASOS.md`: índice de compatibilidad; no debe duplicar el snapshot.
 
-## 5. Estado actual
+## 12. Convenciones de continuidad
 
-### Hecho
-- Rebranding total a "Check-out PRO" (código, paquetes `@checkout-pro/*`, URLs).
-- 7 módulos del spec implementados (importaciones, indicadores/metas, insumos,
-  fiscales/escala, checklist, operadores/ausencias, accesos/perfiles).
-- Capa de dominio pura con property-based tests; API REST por módulo; WebSocket
-  gateway; cron jobs; app móvil con navegación por perfil; cache offline.
-- Jornada de fiscales en tiempo real (3 estados, log, cálculo de jornada).
-- Asistente Cluby (Gemini) con chat flotante, conversación 24h, markdown.
-- Notificaciones in-app en tiempo real; sesión de 30 días; `JWT_SECRET` seguro.
-- Funcionalidades posteriores al spec (migraciones `9h`–`9s`): pedidos
-  recurrentes, stock inicial, metas configurables, APAE inteligente, config de
-  ventas, cuadro de operadores, auditoría de checklist, género de operador.
-- **Rediseño de UX reciente** (sprint de UI): barra inferior de navegación
-  (`MainTabs`: Início / Tarefas / botón central **Cluby** / Notificações /
-  Perfil), **Centro de Mando** ("Pulso do Dia" — resumen y pendencias por
-  perfil), Home compacta en grilla de "Acessos rápidos", escalas unificadas
-  (fiscales + operadores), tipografía **Inter** + iconos **Lucide**, y login
-  rediseñado (fondo mitad blanco/mitad azul con onda suave + logo Pulse C).
-- **Branding (en curso, rama `feat/branding-imagens`):** el usuario subió 4
-  imágenes a `mobile/assets/` (`Logo.png`, `LogoElemento.png`, `Appicon.png`,
-  `Favicon.ico`). Pendiente integrarlas: `Logo.png` en el login (reemplaza el
-  vector `LogoPulseC`), `LogoElemento.png` en el header del menú (solo el logo,
-  sin el texto "Check-out Pro"), `Appicon.png` como ícono del APK y
-  `Favicon.ico` como favicon web (en `app.json`), y pasar los colores rojos
-  viejos de `app.json` a azul. Aún sin commits en la rama.
-- **Cadastro Unificado de Colaboradores (fuente única de personas):** cadastro/
-  edición con unicidad de matrícula/login; el **login del app se crea en el
-  cadastro** (fiscal/supervisor/gestor); operadores sin acceso; senha mínima 6.
-  Pantallas Lista/Gestão/Perfil. **Escalas unificadas:** fiscais y operadores
-  leen de `Colaborador`; `OperadorTurno` deprecado (sin migración destructiva).
-- **Centro de Controle reorganizado:** desaparecen "Pessoas e Acessos" y
-  "Gerenciar dados"; cards **Acesso / Metas / Insumos / Importações**. **Metas
-  mensuales** por indicador (`MetaMensal`, módulo `metas/`) + card Sacolas APAE.
-  Fix de "Saúde do negócio" (topes por categoría; archivos pendientes pesan tras 18h).
-
-### Verificación
-- Backend: **59** suites `.spec.ts` / **300** tests. Mobile: **20** suites / **68** tests.
-- Comandos: backend (`prisma generate` + `validate` + `build` + `lint` + `jest`);
-  mobile (`type-check` + `lint` + `jest` + `expo export --platform web`).
-
-### Pendientes / deuda técnica
-1. **Gemini tier pago (URGENTE multiusuario):** la capa gratuita (~20 req/min) es
-   insuficiente para ~15 fiscales (`RESOURCE_EXHAUSTED`).
-2. **Migrar la BD de Render a plan pago** antes de que expire (~30 días).
-3. **Normativas de Cluby (RAG con fotos):** DESACTIVADAS por
-   `PROCEDIMENTOS_ATIVOS = false` en
-   `backend/src/assistente/procedimentos.service.ts`. Requiere ingestar ~300
-   PDFs (RAG + pgvector + object storage) y tier pago.
-4. **APK + push notifications reales (v1.1):** hoy solo in-app; falta
-   `expo-notifications` + tokens push + `expo-server-sdk`.
-5. **EscalaScreen con nombres:** la escala del Quadro de Operadores ya muestra
-   nombres (vía `Colaborador`); revisar si la `EscalaScreen` dedicada de fiscais
-   aún muestra algún ID suelto y pulirlo — menor.
-6. Áreas marcadas "(em breve)" en la UI: **Alertas de Fila**, **Normativas**,
-   **Indicador de Quebra**.
-
-### Riesgos / observaciones técnicas
-- Los flujos **antiguos** (`indicadores`, `importacoes` CSV/XLSX) ya fueron
-  **eliminados** (carpetas borradas). Lo único vivo que quedaba —la función
-  `parseValor`— se reubicó en `common/numeros.ts` (la usan los parsers de
-  `arrecadacao` y `vendas`).
-- Acoplamiento implícito: `vendas` → `VendaDiaria` → % de indicadores.
-- `pessoaId` en `Ausencia`/`EscalaEntry` ahora apunta al `Colaborador` (id); se
-  añadió `colaboradorId` (nullable) para el vínculo. Convive con datos históricos
-  sin FK rígida.
-- Notificaciones "push" simuladas (campos `canalPush`/`canalInApp` son marcadores).
-- Plan free de Render: API "duerme" (~30–60s primer arranque) y BD expira.
-- Migraciones con nomenclatura `9a..9s`: la próxima debe ordenarse **después de
-  `9s`**.
-- El repositorio fue clonado **shallow (1 commit squashed)** → sin historial
-  detallado; el contexto de evolución vive en `.kiro/steering/`.
-
----
-
-## 6. Convenciones (mantener consistencia)
-
-- **Idioma:** dominio/identificadores/UI en **portugués**; comunicación y handoff
-  en **español**; commits descriptivos en portugués.
-- **TypeScript `strict`** en ambos paquetes; **0 `any`**; tipos compartidos en
-  `types.ts`/DTOs.
-- **Backend:** un módulo por dominio; separación controller → service →
-  domain/Prisma; errores de dominio tipados + filtro global; lógica pura aislada
-  para property-based testing (fast-check, ≥100 iter., anotada con
-  `// Feature: gestao-frente-de-caixa, Property N: ...`).
-- **Mobile:** UI en `components/`, red en `api/services/`, pantallas en
-  `screens/`; diálogos vía `utils/dialogos.ts` (la web no soporta `Alert`).
-- **Git:** push directo a `main` autorizado (Render redespliega); CI va por PR.
-- **Verificación SIEMPRE antes de push** (ver sección 5).
-
----
-
-## 7. Próximos pasos recomendados
-
-1. **Antes de implementar cualquier funcionalidad nueva**, leer este documento +
-   `.kiro/steering/arquitetura.md` + `.kiro/steering/estado-e-pendientes.md` para
-   mantener continuidad.
-2. Confirmar con el usuario la prioridad real entre los pendientes (sección 5);
-   los puntos 1 y 2 (Gemini pago y BD pago) son de **infraestructura/riesgo** y
-   pueden bloquear el uso multiusuario o causar pérdida de datos.
-3. Reutilizar los patrones existentes (módulo por dominio, lógica pura + tests
-   de propiedad, allowlist por funcionalidad) en cualquier extensión.
-4. Para nuevas migraciones Prisma, nombrar de forma que ordenen después de la
-   última (`9s`).
-5. Ejecutar la batería de verificación completa antes de cualquier push.
-
----
-
-## 8. Alcance del análisis (exclusiones explícitas)
-
-- **`backend/assets/procedimentos/**.jpg`** — imágenes binarias de normativas
-  (datos del piloto). No leídas (binarios); su rol se entiende por el código de
-  `assistente/procedimentos`.
-- **`.git/`** — metadatos de Git (clon shallow, 1 commit). No analizable en
-  profundidad histórica.
-- **Pantallas individuales `mobile/src/screens/**.tsx`** y cada archivo de
-  dominio/servicio — revisados de forma representativa (ej.: `acessos.domain.ts`,
-  `arrecadacao`), no exhaustivamente archivo por archivo; la estructura completa
-  sí fue recorrida.
-- No se revisó `node_modules` (dependencias instaladas) por irrelevante.
-
-Ningún directorio de código fuente fue omitido sin justificación.
+- Responder al usuario en español; UI, dominio, commits y PRs en portugués.
+- TypeScript strict; no introducir `any` sin justificación.
+- Backend: controller → service → domain/Prisma; reglas puras testeables.
+- Mobile: API separada de UI; permisos reflejados; diálogos multiplataforma.
+- Una rama/PR por lote lógico; nunca afirmar deploy sin evidencia.
+- Antes de cambiar reglas de jornada, TAC, contratos o feriados, releer los dominios fuente y actualizar este documento, el registro y el QA.

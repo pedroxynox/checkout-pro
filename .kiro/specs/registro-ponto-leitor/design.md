@@ -1,5 +1,13 @@
 # Design — Registro de Ponto (leitor de comprovante do ponto)
 
+> **Nota de evolução (2026-07-15):** este design descreve a entrega inicial.
+> Hoje o Registro de Ponto/Central (#224–#225) abrange operadores, supervisores
+> e fiscais; Android usa ML Kit local com fallback ao servidor e web usa OCR no
+> servidor. Os PRs #234–#235 substituíram o alerta de 1h45 pelos estágios
+> 1h30/1h40/TAC >1h50 para supervisão/gerência, com dedupe compartilhado em
+> memória e envio best-effort. Apenas AFD continua futuro. Ver
+> `PROJECT_UNDERSTANDING.md`.
+
 ## 1. Arquitetura geral
 
 Captura no telefone → leitura/validação no backend → persistência → painel.

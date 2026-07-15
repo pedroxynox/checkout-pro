@@ -1,135 +1,135 @@
-# Arquitetura — Check-out PRO (Check-out PRO)
+# Arquitetura — Check-out PRO
 
-Guia rápido para humanos e IA entenderem o projeto sem reler tudo.
+> Mapa técnico rápido. Snapshot funcional completo: `PROJECT_UNDERSTANDING.md`. Estado/pendientes: `.kiro/steering/estado-e-pendientes.md`. Atualizado: **15/07/2026**.
 
 ## Visão geral
-App de gestão de frente de caixa de supermercado. Monorepo:
-- `backend/` — NestJS + Prisma + PostgreSQL (API REST).
-- `mobile/` — React Native + Expo (roda como app Android e como **web** estática).
 
-Deploy (Render):
-- API: `https://checkout-pro-api.onrender.com`
-- Web: `https://checkout-pro-web.onrender.com`
-- O `mobile` usa `EXPO_PUBLIC_API_URL` para falar com a API.
+Monorepo npm workspaces:
 
-## Autenticação e perfis
-- Login por **matrícula** + senha (JWT). Ex.: gerente `232152`. Senha mínima: **6**.
-- Perfis: `GERENTE_DESENVOLVEDOR` (acesso total) | `GERENTE` | `SUPERVISOR` |
-  `FISCAL` | `IMPORTADOR` (só *Importações*) — `backend/src/acessos/acessos.domain.ts`.
-- Autorização por **funcionalidade**: decorator `@Funcionalidade('X')` + `PerfilGuard`
-  (método sobrepõe classe via `getAllAndOverride`). No mobile, `funcionalidades.ts`
-  + `useAuth().podeAcessar(...)` controla o que aparece.
-- **Cadastro Unificado de Colaboradores** é a fonte única de pessoas. O login do
-  app é criado no próprio cadastro do colaborador quando a função é
-  fiscal/supervisor/gestor; **operadores não têm acesso ao app**.
+```text
+mobile/  Expo SDK 52 + React Native 0.76 + web estática
+   │     REST/JWT + Socket.IO
+backend/ NestJS 10 + Prisma 5 + cron
+   │
+   ├── PostgreSQL
+   ├── Google Gemini
+   └── Expo Push Service (Android exige FCM no projeto EAS)
+```
 
-## Módulos principais do backend (`backend/src/*`)
-- `acessos` — login, identidade, mapa de permissões por perfil.
-- `usuarios` — CRUD de logins/acessos do app.
-- `colaboradores` — **Cadastro Unificado** (fonte única de pessoas): cadastro/
-  edição com unicidade de matrícula/login, criação do login no cadastro,
-  `resolverColaboradorId` (matrícula/login) e **perfil inteligente**
-  (`perfil-colaborador.*`).
-- `arrecadacao` — **indicadores** a partir de arquivos .txt (ver fluxo abaixo).
-- `vendas` — **vendas por hora** a partir de .txt (ver fluxo abaixo).
-- `metas` — metas mensais por indicador (`MetaMensal`), exibidas no Centro de
-  Controle ▸ Metas (vendas, cancelamentos, recargas, devoluções, Sacolas APAE).
-- `incidencias` — incidências de escala / sanções (domínio puro genérico por
-  `tipo`, ADR 0007): linha do tempo unificada (faltas + incidências), ranking e
-  analítica de risco. Rota `escala/incidencias`.
-- `advertencias` — solicitações de advertência (ex.: falta não justificada);
-  cron com janela retroativa. Rota `advertencias`.
-- `contratos` — contrato de experiência (45+45). Estado SEMPRE derivado de
-  `dataAdmissao` + decisões (ADR 0008); domínio puro testado. Rota `contratos`.
-- `data-inicial` — `Data_Inicial_Sistema` (config global singleton). Rota
-  `config/data-inicial`.
-- `reset-operacional` — plano de reinício administrativo (apagar/zerar dados
-  operacionais). Rota `admin/reset-operacional`.
-- Os fluxos ANTIGOS `indicadores`/`importacoes` (CSV/XLSX) foram REMOVIDOS. A
-  única função viva (`parseValor`) foi movida para `common/numeros.ts` (usada
-  pelos parsers de `arrecadacao` e `vendas`).
-- `fiscais` — status dos fiscais (gateway WebSocket) e **escala** de trabalho
-  (a escala do fiscal vem do cadastro do colaborador — Opção A).
-- `operadores` — Quadro de Operadores (escala + ausências). A **escala lê de
-  `Colaborador`** (funcao OPERADOR); o model `OperadorTurno` está `[DEPRECADO]`
-  (não é mais lido nem escrito).
-- `insumos`, `lote-apae`, `checklist`, `notificacoes`.
+Deploy conhecido: API e web no Render. Código mergeado não equivale a deploy confirmado; validar logs e `/health/ready`.
 
-## Fluxo 1 — Indicadores (arrecadação por operador)
-Arquivos .txt que o fiscal sobe em "Importações" alimentam os indicadores.
-- Tipos (`arrecadacao.domain.ts` / mobile `rotulos.ts` `ARRECADACAO`):
-  TROCO_SOLIDARIO, RECARGAS_CELULAR (meta FIXA R$2000),
-  CANCELAMENTO_ITENS (0,75%), CANCELAMENTO_CUPOM (0,5%), DEVOLUCOES (0,05%) — os
-  três últimos são % sobre as **vendas**.
-- Parser (`arrecadacao.parser.ts`): lê por cabeçalho (cada tipo tem layout
-  próprio). Importa NOME + VALOR; CANCELAMENTO_ITENS tem QTD; CANCELAMENTO_CUPOM
-  tem "autorizado por" + "motivo"; DEVOLUCOES extrai o nome do fiscal de
-  "MATRICULA - NOME". Valor em vírgula decimal.
-- Modelo `RegistroArrecadacao`. Endpoints: `/arrecadacao/upload|resumo|ranking|
-  detalhes|status`.
-- Mobile: `IndicadoresScreen` (menu) → `IndicadorDetalheScreen` (totais, meta,
-  gráficos de barras, **pizza interativa**, ranking, detalhe do cupom).
+## Padrões obrigatórios
 
-## Fluxo 2 — Vendas por hora (Painel de Vendas)
-- Arquivo .txt diário (relatório com muitas colunas). Parser
-  (`vendas.parser.ts`) extrai a HORA da coluna "Empresa : Hora" e o valor da
-  coluna **"Valor Total Liq"** (venda LÍQUIDA); ignora a linha de TOTAL.
-- Modelo `VendaHora` (hora+valor por dia). No upload, o serviço também grava o
-  total do dia em **`VendaDiaria`** — que é a fonte usada pelos % dos
-  indicadores (acoplamento importante).
-- Regras: qualquer perfil envia; após enviado, só o GERENTE reenvia (checado no
-  backend, controller `vendas`). Não há ajuste manual.
-- Endpoints: `/vendas/upload|resumo|por-hora|status|limpar-sem-hora`.
-- Mobile: `PainelVendasScreen` (status, totais dia/semana/mês, período
-  dia/semana/mês/personalizado, barras por hora, pizza das horas que mais
-  venderam — valor no Dia, % na Semana/Mês).
+### Backend
+- `controller`: HTTP, DTO e autorização.
+- `service`: orquestração, transação, Prisma e integrações.
+- `domain`: lógica pura/determinística; usar testes de propriedade quando adequado.
+- Erros estendem a base de domínio e carregam status HTTP.
+- Autorização: `@Funcionalidade(...)` + `PerfilGuard`.
+- Funcionalidades: fonte em `backend/src/acessos/acessos.domain.ts`; mobile mantém espelho.
+- Notificações externas são best-effort quando não fazem parte da transação principal.
 
-## Gráficos (mobile)
-`mobile/src/components/Graficos.tsx`: `GraficoPizza` (rosca interativa — toque
-na fatia mostra rótulo/valor/% no centro; toque no centro limpa) e
-`GraficoBarrasVerticais`. `montarFatias()` agrupa o excedente em "Outros".
+### Mobile
+- `api/services`: rede; `api/types`: contratos espelhados.
+- `auth`: sessão e permissões.
+- `navigation`: rotas e allowlist de áreas.
+- `screens`: composição de fluxo; `components`: UI reutilizável.
+- `offline`: SQLite/fila; `utils/dialogos.ts`: diálogos compatíveis com web.
 
-## Notificações
-`NotificacoesService.enviar()` cria registros in-app (campos canalPush/InApp são
-apenas marcadores — NÃO há push real de dispositivo ainda). Ao completar os 5
-arquivos de indicadores do dia, `ArrecadacaoService` notifica os gerentes
-("Fechamento concluído").
+## Perfis
 
-## Centro de Controle (mobile)
-Área administrativa (gestor) que concentra a configuração que antes ficava
-espalhada. Cards atuais:
-- **Acesso** — pessoas com login no app (antiga "Pessoas e Acessos"). Os
-  acessos são criados no cadastro do colaborador.
-- **Metas** — metas mensais por indicador (vendas, cancelamento de itens/cupom,
-  recargas, devoluções) e **Sacolas APAE** (preço da sacola + meta mensal).
-- **Insumos** — botões de zerar estoque de consumo e limpar histórico de
-  requisições.
-- **Importações** — saiu da Home (fica só para o perfil IMPORTADOR) e passou
-  para cá.
-A antiga seção "Gerenciar dados" deixou de existir (seus botões foram
-distribuídos nos cards acima e em Sacolas APAE).
+`GERENTE_DESENVOLVEDOR`, `GERENTE`, `SUPERVISOR`, `FISCAL`, `IMPORTADOR`. Cadastro Unificado (`Colaborador`) é a fonte de pessoas; operadores não precisam de login.
 
-## Banco de dados
-- Prisma (`backend/prisma/schema.prisma`). Migrações numeradas em
-  `backend/prisma/migrations/`. No deploy roda `prisma migrate deploy` + seed.
-  A última migração é `9zf_colaborador_desligado_em`; nomear a próxima para
-  ordenar DEPOIS dela.
-- Só guardamos dados essenciais (não os arquivos .txt).
-- **Purga mensal de inativos** (`colaboradores/purga-inativos.service.ts`, cron
-  dia 1º 00:00 Brasília): apaga ficha + histórico de RRHH dos colaboradores
-  desligados há mais de `RETENCAO_INATIVOS_MESES` meses (env, padrão 12) —
-  janela de retenção que protege o histórico disciplinar/trabalhista recente.
-  `Colaborador.desligadoEm` marca a data de baixa. Preserva os totais de
-  arrecadação e do lote APAE.
+## Módulos backend
 
-## Verificação (rodar antes de qualquer push)
-- Backend: `npm run build` + `npm test` (152 testes) + `npm run lint`.
-- Mobile: `npm run type-check` + `npm run lint` + `npm test` + `npx expo export --platform web`.
-- Banco: `npx prisma validate` + `npx prisma generate` (gerar o client ANTES do build).
+| Grupo | Módulos/responsabilidade |
+| --- | --- |
+| Identidade | `acessos`, `usuarios`, `colaboradores` |
+| Comercial | `arrecadacao`, `vendas`, `metas`, `fechamento` |
+| Estoque | `insumos`, `requisicoes`, `lote-apae` |
+| Rotinas | `checklist`, `alertas`, `notificacoes` |
+| Pessoas | `operadores`, `fiscais`, `incidencias`, `advertencias`, `contratos`, `feedforward` |
+| Jornada | `ponto`, `central-jornada`, `feriados`, `escala-domingo` |
+| Administração | `data-inicial`, `reset-operacional` |
+| IA/infra | `assistente`, `common`, `config`, `prisma`, `storage` |
 
-## Convenções
-- Mensagens de UI em **português**; conversa com o usuário em **espanhol**.
-- Commits descritivos em português.
-- Push direto na `main` (autorizado); Render redeploya automaticamente.
-- TAREFA PENDENTE: push real de dispositivo (Expo push tokens) para o aviso de
-  "Fechamento concluído" aos gerentes — só funciona no APK, a fazer no próximo APK.
+## Fluxos principais
+
+### Importação → indicadores/fechamento
+1. App envia `.txt` a `arrecadacao` ou `vendas`.
+2. Parser valida e normaliza; serviços persistem apenas dados essenciais.
+3. `VendaHora` alimenta painel e total em `VendaDiaria`.
+4. Indicadores atribuem por identificadores de `Colaborador`; desconhecidos continuam no total.
+5. `fechamento` agrega cinco arrecadações + vendas + checklists e conclui de forma idempotente.
+
+### Ponto → alertas → Central de Jornada
+1. Batida manual ou OCR entra em `ponto`.
+2. OCR sugere; usuário confirma antes de persistir.
+3. `ponto.domain` classifica batidas e calcula jornada.
+4. Batida e cron `* * * * *` avaliam etapas TAC com dedupe compartilhado em memória.
+5. `central-jornada` consolida ciclo 26→25 para operador/supervisor/fiscal.
+6. `feriados` altera carga e percentual de extras.
+
+Regras TAC:
+- 1h30 risco; 1h40 risco alto; `>1h50` TAC.
+- Intervalo `<1h` ou `>3h` também TAC.
+- Destino: supervisão/gerência; falha de aviso não bloqueia ponto.
+- Dedupe não persiste entre reinícios.
+
+### Feriados/contrato
+- Nacionais automáticos; estaduais/municipais manuais.
+- Carnaval/Corpus Christi não automáticos.
+- A API permite cadastrar e remover feriados manuais; correção exige remover e cadastrar novamente.
+- Feriado = domingo: 7h20, extras 100%.
+- `SEIS_X_UM_DOIS_X_UM` é o tipo de contrato que governa as regras de jornada.
+- O contrato de experiência é outro conceito: aplica-se a operadores ativos, dura até 90 dias, alerta nos 5 dias anteriores e efetiva no dia 91.
+- O cron de experiência notifica hoje `FISCAL`, `SUPERVISOR`, `GERENTE` e `GERENTE_DESENVOLVEDOR`.
+
+### Notificações
+1. `NotificacoesService.enviar` persiste a notificação.
+2. Publica via WebSocket/in-app.
+3. Se há token, chama Expo Push Service.
+4. Falha push é capturada e não desfaz o fluxo principal.
+
+Para Android fechado, FCM + APK recompilado continuam obrigatórios.
+
+## Banco e migrations
+
+- Prisma schema: `backend/prisma/schema.prisma`.
+- Última migration: `9zp_tipo_contrato_colaborador`.
+- Próxima deve ordenar depois de `9zp`.
+- Preferir migrations aditivas e compatíveis durante rolling deploy.
+- `prisma migrate deploy` deve rodar no Pre-Deploy, não no Start Command.
+- `reset-operacional` é função de negócio controlada; não substitui migration nem deve ser executada automaticamente em produção.
+
+## Integrações e configuração
+
+- Backend: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGINS`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `JWT_EXPIRES_IN`, `HORARIO_FIM_DO_DIA`, `SENHA_INICIAL`, `RETENCAO_INATIVOS_MESES`.
+- Mobile: `EXPO_PUBLIC_API_URL`.
+- Android push: credenciais FCM no Expo/EAS.
+- Render DB deve estar em plano persistente para operação real.
+
+## Qualidade atual
+
+- Backend: build OK; 71 suítes / 406 testes.
+- Mobile: type-check + lint OK; 23 suítes / 85 testes.
+- Últimos arquivos TAC: ESLint OK.
+- Dívida: 31 diferenças Prettier em quatro arquivos legados; ver steering de estado.
+
+## Áreas deliberadamente incompletas
+
+- Alertas de Fila, Normativas e Indicador de Quebra: ocultas por `emBreve`.
+- Normativas em escala: requerem RAG + pgvector + object storage.
+- Multi-tenancy: parqueado.
+- Dedupe TAC persistente: opcional/futuro.
+- Push Android: backend pronto; falta FCM + novo APK.
+
+## Checklist de mudança
+
+1. Identificar regra fonte e perfis afetados.
+2. Preservar separação controller/service/domain.
+3. Atualizar espelhos de tipo/permissão backend↔mobile.
+4. Se houver schema, criar migration posterior a `9zp` e validar em PostgreSQL.
+5. Rodar build/tests/type-check/lint focalizado.
+6. Revisar diff e atualizar docs canônicas.
+7. Publicar por branch/PR; confirmar deploy separadamente.

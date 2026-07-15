@@ -1,159 +1,218 @@
 # Guia de QA — Check-out PRO
 
-> Checklist de validação manual da aplicação em produção, organizado por
-> perfil. Objetivo: qualquer pessoa (mesmo não técnica) conseguir validar que
-> o app está 100% operacional após um deploy. Marque cada item ao testar.
+> Validação manual por perfil e por fluxo. Use após um deploy ou antes de uma entrega. A versão documentada está mesclada na `main` até `e8c32be`; confirme no painel do Render se esse commit foi realmente implantado antes de iniciar.
 >
-> Ambiente: web (https://checkout-pro-web.onrender.com) ou APK Android.
-> Idioma da UI: português (Brasil). Sessão dura ~30 dias.
+> Última revisão: **15/07/2026**. UI em Português do Brasil.
 
-## Como usar este guia
-1. Escolha o perfil que vai testar (peça o login correspondente ao gestor).
-2. Siga os passos na ordem. Cada item tem um **resultado esperado**.
-3. Se um item falhar, anote o passo, o que aconteceu e um print.
-4. Recomenda-se validar primeiro o **fluxo do dia** (Importador → Fechamento),
-   pois é o que alimenta os indicadores.
+## Como registrar a execução
 
----
+Para cada falha, anote: ambiente (web/APK), perfil, data/hora, colaborador de teste, passo, resultado, print e resposta da API quando disponível. Não use dados reais desnecessários.
 
-## 0. Pré-condições (todas as validações)
-- [ ] O app abre e mostra a tela de **Login** (fundo azul/branco com onda + logo).
-- [ ] Login com **matrícula + senha** funciona; senha errada mostra erro claro.
-- [ ] Após ~30 dias a sessão expira e pede novo login (não testar sempre).
-- [ ] A primeira chamada do dia pode demorar ~30–60s (a API "acorda" no Render).
+## 0. Pré-condições
 
----
+- [ ] API e web respondem; `GET /health/ready` confirma conexão com o banco.
+- [ ] O commit/deploy testado foi identificado nos logs do Render.
+- [ ] Migrations foram aplicadas até `9zp_tipo_contrato_colaborador`.
+- [ ] Existem usuários de QA para IMPORTADOR, FISCAL, SUPERVISOR, GERENTE e GERENTE_DESENVOLVEDOR.
+- [ ] Existem colaboradores de teste nas funções operador, fiscal e supervisor, com escala e data de admissão.
+- [ ] Há arquivos `.txt` de teste de vendas/arrecadação e comprovantes de ponto sem dados pessoais reais.
+- [ ] Para push Android: FCM está vinculado ao Expo/EAS e o APK testado foi compilado depois dessa configuração.
+- [ ] A hora/fuso do ambiente está em `America/Sao_Paulo`.
 
-## 1. Perfil IMPORTADOR (usuário do computador da loja)
-> Só enxerga **Importações**. É quem carrega os arquivos do dia.
+## 1. Autenticação, sessão e permissões
 
-### 1.1 Carga dos arquivos do dia
-- [ ] Ao logar, vê **apenas** a área de Importações (nenhuma outra).
-- [ ] Sobe o `.txt` de **vendas por hora** → confirma total do dia.
-- [ ] Sobe os 5 `.txt` de arrecadação (troco solidário, recargas,
-      cancelamento de itens, cancelamento de cupom, devoluções).
-- [ ] Para um tipo sem movimento no dia, marca **"sem movimento"**.
-- [ ] Consegue **remover** a marca "sem movimento" se marcou por engano.
-- [ ] Ao completar os 5 arquivos, o sistema considera o dia carregado (os
-      gerentes recebem a notificação "Fechamento concluído").
+### Todos os perfis
+- [ ] Login por matrícula + senha funciona.
+- [ ] Senha inválida mostra mensagem clara sem revelar detalhes internos.
+- [ ] Logout remove a sessão local e o token push do aparelho quando aplicável.
+- [ ] Token revogado após troca de senha deixa de acessar a API.
+- [ ] Áreas sem permissão não aparecem e chamadas diretas retornam 403.
 
-**Esperado:** cada upload retorna quantas linhas foram importadas; o status
-de cada tipo muda para "enviado".
+### Visibilidade esperada
+- [ ] IMPORTADOR acessa somente Importações.
+- [ ] FISCAL acessa as rotinas operacionais autorizadas, sem administração estrutural.
+- [ ] SUPERVISOR acessa supervisão/jornada e gestão parcial.
+- [ ] GERENTE acessa gestão operacional conforme allowlist.
+- [ ] GERENTE_DESENVOLVEDOR acessa todas as funcionalidades catalogadas.
+- [ ] Alertas de Fila, Normativas e Indicador de Quebra continuam ocultos enquanto `emBreve` estiver ativo.
 
----
+## 2. Importações, indicadores e fechamento
 
-## 2. Perfil FISCAL (rotina diária de caixa)
-> Rotina operacional: insumos, sacolas APAE, checklist, seu próprio ponto,
-> escala (só ver), indicadores/painel de vendas (ver).
+### IMPORTADOR
+- [ ] Enviar `.txt` de vendas por hora; conferir total e distribuição por hora.
+- [ ] Enviar os cinco tipos de arrecadação.
+- [ ] Marcar um tipo sem movimento e desfazer a marca.
+- [ ] Reenviar arquivo quando permitido; confirmar bloqueio de perfil não autorizado.
+- [ ] Arquivo/tamanho/formato inválido é rejeitado sem gravar dados parciais.
 
-### 2.1 Ponto / jornada (auto-identificado pelo login)
-- [ ] Define o próprio status: **Disponível**, **Intervalo**, **Fora de
-      expediente** — o painel dos gestores atualiza em tempo real.
-- [ ] Informa a **própria falta do dia**.
-- [ ] Vê o **histórico semanal** do próprio ponto.
+### Gestores
+- [ ] Indicadores exibem total, meta, semáforo, gráficos e ranking.
+- [ ] Valores sem colaborador correspondente continuam no total e aparecem em “Não reconhecidos”.
+- [ ] Associar um código não reconhecido corrige a atribuição histórica.
+- [ ] Painel de Vendas exibe venda do dia, períodos e barras por hora.
+- [ ] Fechamento mostra os itens pendentes e alertas de consistência.
+- [ ] Ao completar o dia, a conclusão é notificada uma única vez mesmo com cargas concorrentes.
+- [ ] Às 22:20, o lembrete só é enviado se o fechamento estiver incompleto.
 
-### 2.2 Insumos (almoxarifado)
-- [ ] Lista de insumos mostra o selo de estoque por nível
-      (**Crítico / Atenção / OK**).
-- [ ] Retira um **fardo** lendo o **código de barras** (câmera) → saldo sobe.
-- [ ] Registra **consumo** de bobina/insumo → saldo desce.
-- [ ] Cria uma **requisição** de insumo (fica PENDENTE até gestor decidir).
+## 3. Registro de Ponto — fluxo principal
 
-### 2.3 Sacolas APAE
-- [ ] Vê o lote ativo e a configuração (preço/meta) — **sem** poder registrar
-      ou reiniciar lote.
-- [ ] Atualiza o **saldo restante** do lote → ao zerar, o lote encerra sozinho.
+Executar na web e no APK quando possível.
 
-### 2.4 Checklist de abertura/fechamento
-- [ ] Envia a **foto** do checklist de abertura dentro da janela.
-- [ ] Envia a foto do checklist de fechamento.
-- [ ] Uma foto repetida (mesmo arquivo) é detectada (anti-fraude / hash).
-- [ ] Fora da janela, o item indica que está fora do prazo.
+### Cadastro e batidas
+- [ ] Buscar colaborador pelo nome/matrícula e confirmar o tipo correto.
+- [ ] Registrar quatro batidas (entrada, saída intervalo, retorno, saída final).
+- [ ] A ordem classifica corretamente cada batida; 5ª+ aparece como extra.
+- [ ] Editar/remover uma batida recalcula a jornada.
+- [ ] Falha de rede/persistência não cria duplicação silenciosa.
 
-### 2.5 Geral
-- [ ] Recebe **notificações** in-app (sino com badge).
-- [ ] Abre o assistente **Cluby** (botão central) e faz uma pergunta.
-- [ ] **NÃO** vê áreas administrativas (cadastro de pessoas, metas, Centro de
-      Controle).
+### Comprovante e OCR
+- [ ] Fotografar comprovante real de QA no APK; ML Kit extrai data/hora/nome.
+- [ ] Na web, enviar foto para OCR do servidor.
+- [ ] O parser usa os rótulos DATA/HORA e não confunde CNPJ/PIS com horário.
+- [ ] Nome quebrado em duas linhas é reconstruído quando legível.
+- [ ] Ruído não gera sugestão de colaborador indevida.
+- [ ] Nada é gravado antes da confirmação; corrigir manualmente hora/nome funciona.
+- [ ] Foto ilegível permite seguir pelo registro manual.
 
----
+### Cálculo de jornada
+- [ ] Seg–Qui usa carga base de 7h.
+- [ ] Sex–Sáb usa carga base de 8h.
+- [ ] Domingo usa 7h20 e extras 100%.
+- [ ] Feriado usa a mesma regra de domingo: 7h20 e extras 100%.
+- [ ] Intervalo não conta como trabalhado.
+- [ ] Intervalo entre 1h e 3h não gera TAC por intervalo.
+- [ ] Intervalo menor que 1h ou maior que 3h gera TAC.
 
-## 3. Perfil SUPERVISOR (tudo do fiscal + gestão parcial)
-> Tudo do fiscal, mais: cadastro de operadores, gestão de requisições,
-> Fechamento e log de jornada dos fiscais.
+## 4. Alertas preventivos e TAC
 
-### 3.1 Fechamento do dia
-- [ ] Abre **Fechamento** e vê o resumo do dia: titular
-      ("Tudo pronto" / "X de N"), estado dos 5 arquivos + vendas + 2 checklists.
-- [ ] Vê **alertas de consistência** (ex.: "vendas sem arrecadação",
-      "tudo sem movimento").
+Preparar jornadas controladas; validar tanto o disparo após batida quanto o cron de um minuto.
 
-### 3.2 Gestão de insumos e operadores
-- [ ] **Aprova** e **nega** requisições de insumos (com motivo).
-- [ ] Registra **entrada** de estoque.
-- [ ] Cadastra/edita **operadores** no Cadastro de Colaboradores.
-- [ ] Programa uma **ausência futura** de um operador (permitido a supervisor).
+- [ ] Com extras abaixo de 1h30, nenhum alerta preventivo é enviado.
+- [ ] Ao chegar a `>=1h30`, chega “Risco de TAC”.
+- [ ] Ao chegar a `>=1h40`, chega “Risco alto de TAC”.
+- [ ] Exatamente 1h50 ainda não vira TAC por extras.
+- [ ] Acima de 1h50, chega alerta TAC.
+- [ ] Intervalo `<1h` ou `>3h` também gera TAC.
+- [ ] Cada etapa é enviada no máximo uma vez por pessoa/dia enquanto o processo está ativo.
+- [ ] Batida e cron não duplicam a mesma etapa.
+- [ ] Destinatários são somente SUPERVISOR, GERENTE e GERENTE_DESENVOLVEDOR; fiscais/importadores não recebem por esse motivo.
+- [ ] Simular falha do serviço de notificação: a batida continua gravada e a etapa pode ser tentada novamente.
+- [ ] Reiniciar o backend durante o dia pode permitir reaviso, pois a deduplicação é em memória; registrar o comportamento como caveat, não como falha inesperada.
 
-### 3.3 Fiscais
-- [ ] Vê o **log de jornada** dos fiscais do dia (tempos trabalhados/intervalo).
+## 5. Central de Jornada
 
----
+### Ciclos e abrangência
+- [ ] O ciclo abre no dia 26 e fecha no dia 25 do mês seguinte.
+- [ ] Trocar ciclo atual/anterior atualiza datas e totais.
+- [ ] A API aceita comparativo de até 12 ciclos; o app exibe atualmente seis em ordem correta.
+- [ ] A consolidação inclui operador, supervisor e fiscal, sem filtro interativo por função.
 
-## 4. Perfil GERENTE (vê tudo + operação; sem gestão estrutural)
-> Vê tudo, opera o dia a dia. **Não** faz: gestão de lote APAE, gestão de
-> pessoas/acessos, cadastro de operadores, edição de escala nem zerar dados.
+### Métricas
+- [ ] Carga trabalhada e base diária coincidem com as batidas/regras do período.
+- [ ] Extras de dias comuns entram em 50%.
+- [ ] Extras de domingo/feriado entram em 100%.
+- [ ] Horas devidas, atestado, faltas e TAC aparecem nas colunas/resumo corretos.
+- [ ] Marcar uma falta como débito afeta horas devidas.
+- [ ] Saldo = extras 50% + extras 100% − horas devidas.
+- [ ] Dias sem dados não inventam jornada.
 
-### 4.1 Visão geral
-- [ ] **Centro de Mando / Pulso do Dia**: resumo e pendências do dia por perfil.
-- [ ] **Indicadores**: abre um indicador → totais, meta com semáforo
-      (verde/amarelo/vermelho), gráfico de barras, **pizza interativa**,
-      ranking e a linha **"Não reconhecidos"**.
-- [ ] **Painel de Vendas**: totais dia/semana/mês, barras por hora, projeção.
-- [ ] Recebe a notificação **"Fechamento concluído"** quando o dia é carregado.
+## 6. Feriados e escala 6x1–2x1
 
-### 4.2 Limites de permissão (deve estar bloqueado)
-- [ ] **NÃO** consegue registrar/reiniciar lote APAE.
-- [ ] **NÃO** vê gestão de usuários/acessos nem edição de escala.
-- [ ] **NÃO** vê botões de "zerar estoque" / "limpar requisições".
+- [ ] Feriados nacionais aparecem automaticamente no ano selecionado.
+- [ ] Cadastrar/remover feriado estadual ou municipal manualmente funciona com a permissão correta; para corrigir um cadastro, remover e criar novamente.
+- [ ] Carnaval e Corpus Christi não aparecem automaticamente; cadastrar manualmente quando a loja os adotar.
+- [ ] Uma batida em feriado usa carga 7h20/extras 100% na jornada e na Central.
+- [ ] Colaborador com contrato `SEIS_X_UM_DOIS_X_UM` apresenta a escala esperada.
+- [ ] Alternância/configuração de domingos respeita a âncora e a ordem cadastradas.
 
----
+## 7. Contratos de experiência
 
-## 5. Perfil GERENTE_DESENVOLVEDOR (acesso total)
-> Enxerga **absolutamente tudo**, inclusive administração de dados.
+> Este fluxo é diferente de `tipoContrato=SEIS_X_UM_DOIS_X_UM`, que governa a jornada.
 
-### 5.1 Centro de Controle
-- [ ] Card **Acesso**: cria login de app no cadastro do colaborador
-      (fiscal/supervisor/gestor); operador **não** recebe acesso.
-- [ ] Card **Metas**: define metas mensais por indicador (vendas,
-      cancelamentos, recargas, devoluções) e config das **Sacolas APAE**.
-- [ ] Card **Insumos**: **zerar estoque** e **limpar requisições** funcionam.
-- [ ] Card **Importações** disponível.
+- [ ] Cadastrar **operador ativo** com data de admissão cria/deriva contrato de experiência.
+- [ ] Outros tipos de colaborador não entram na carteira/cron de experiência.
+- [ ] Até 90 dias, o estado é de experiência.
+- [ ] Nos cinco dias anteriores ao marco de 90, o alerta chega aos destinatários atuais: FISCAL, SUPERVISOR, GERENTE e GERENTE_DESENVOLVEDOR.
+- [ ] No dia 91, sem encerramento, o estado muda automaticamente para efetivado.
+- [ ] Histórico/decisões antigas continuam consultáveis sem substituir a regra automática atual.
+- [ ] Alterar data de admissão recalcula marcos sem criar registros duplicados.
 
-### 5.2 Cadastro Unificado de Colaboradores
-- [ ] Cadastra pessoa com **matrícula única** (rejeita matrícula/login repetido).
-- [ ] Edita e **inativa/reativa** (histórico preservado).
-- [ ] Fila **"Não reconhecidos"**: **associa** um código solto a uma pessoa
-      (corrige o histórico) ou **cria** a pessoa com os dados pré-preenchidos.
-- [ ] Escala de fiscais e operadores é lida do Colaborador (Opção A).
+## 8. Operadores, faltas, justificativas e sanções
 
-### 5.3 Fiscais (total)
-- [ ] Pode alterar o status de **qualquer** fiscal (não só o próprio).
-- [ ] Vê ranking do mês, previsão de horas extras, horas extras do mês.
+- [ ] Escala mostra operadores ativos e não mostra inativos.
+- [ ] Marcar/desmarcar falta atualiza a tela imediatamente.
+- [ ] Marcar “Sem retorno” retira a pessoa dos disponíveis no caixa.
+- [ ] Justificar, injustificar e reabrir falta/incidência atualiza score e auditoria.
+- [ ] Falta sem justificativa gera solicitação de advertência; nada é aplicado sem aprovação.
+- [ ] Aprovar/cancelar solicitação funciona e não duplica por falta.
+- [ ] Advertência/suspensão aparece na linha do tempo do perfil.
+- [ ] Inativar colaborador preserva histórico no período de retenção; reativar restaura sua presença operacional.
 
----
+## 9. Insumos, requisições e APAE
 
-## 6. Cross-cutting (validar em qualquer perfil)
-- [ ] **Tempo real**: mudança de status de fiscal aparece nos gestores sem
-      recarregar.
-- [ ] **Offline** (APK): sem internet, ações entram numa fila e sincronizam ao
-      voltar a conexão.
-- [ ] **Cluby**: com muitos acessos simultâneos pode responder
-      "indisponível" (limite gratuito do Gemini — ver pendências de infra).
-- [ ] **CORS/web**: a versão web fala com a API sem erro de origem.
+- [ ] Estoque mostra nível Crítico/Atenção/OK.
+- [ ] Entrada aprovada aumenta saldo; consumo reduz saldo.
+- [ ] Consumo maior que o saldo retorna conflito e não deixa saldo negativo.
+- [ ] Requisição manual exige decisão; alertas de estoque não criam entrada automaticamente.
+- [ ] Pedido recorrente aparece como sugestão para confirmação.
+- [ ] Sacolas APAE: lote, saldo, preço/meta e encerramento ao zerar funcionam conforme perfil.
 
----
+## 10. Checklist
 
-## 7. Registro de problemas encontrados
-| # | Perfil | Passo | O que aconteceu | Print | Gravidade |
-|---|--------|-------|-----------------|-------|-----------|
-|   |        |       |                 |       |           |
+- [ ] Enviar abertura/fechamento dentro da janela registra sucesso.
+- [ ] Enviar fora da janela registra atraso.
+- [ ] Foto repetida é detectada pelo hash.
+- [ ] Confirmação de envio chega por notificação sem bloquear o upload se o canal falhar.
+- [ ] Perfis sem permissão não alteram checklist.
+
+## 11. Notificações e tempo real
+
+### In-app/WebSocket
+- [ ] Sino/badge atualiza sem recarregar.
+- [ ] Mudança de status de fiscal aparece em tempo real aos gestores.
+- [ ] Reconexão não duplica eventos persistidos.
+
+### Push Android
+- [ ] APK solicita permissão e registra token Expo após login.
+- [ ] Com app aberto, push é apresentado sem duplicação indevida.
+- [ ] Com app fechado, push chega ao Android configurado com FCM.
+- [ ] Logout remove o token do aparelho.
+- [ ] Token inválido/falha do Expo não quebra o fluxo que originou a notificação.
+- [ ] Se FCM ou novo APK ainda não estiverem disponíveis, marcar como **bloqueado por configuração externa**, não como backend ausente.
+
+## 12. Cluby
+
+- [ ] Chat abre, mantém conversa e renderiza markdown.
+- [ ] Sem `GEMINI_API_KEY`, mostra indisponibilidade/configuração ausente sem quebrar o app.
+- [ ] Sob limite de cota, resposta é tratada; para teste multiusuário usar tier pago.
+- [ ] Normativas/procedimentos em escala continuam ocultos/desativados até existir RAG + storage.
+
+## 13. Administração e segurança operacional
+
+- [ ] GERENTE_DESENVOLVEDOR acessa Data Inicial e Reset Operacional.
+- [ ] Data anterior à `Data_Inicial_Sistema` é rejeitada nos fluxos protegidos.
+- [ ] Reset exige confirmação explícita e conserva cadastros/configurações previstas.
+- [ ] **Não executar reset em produção durante QA normal.** Usar banco descartável.
+- [ ] CORS aceita apenas origens configuradas em produção.
+- [ ] Upload excessivo/arquivo inválido é rejeitado.
+- [ ] Logs incluem correlation/request id sem expor senha/token/corpo sensível.
+
+## 14. Regressão web/APK/offline
+
+- [ ] Web navega e chama a API sem erro CORS.
+- [ ] APK aponta para a URL correta de produção/QA.
+- [ ] Sem rede no APK, ações compatíveis entram na fila; ao reconectar, sincronizam uma vez.
+- [ ] PDF de relatório contém texto e gráficos, sem página em branco.
+- [ ] Layout principal funciona em resolução desktop e celular.
+
+## 15. Registro de problemas
+
+| # | Ambiente | Perfil | Fluxo/passo | Esperado | Obtido | Evidência | Gravidade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| | | | | | | | |
+
+### Critério de saída
+
+- Nenhum erro crítico/alto aberto nos fluxos de login, persistência, ponto/TAC, jornada, importação/fechamento ou permissões.
+- Bloqueios externos (FCM/APK, plano Render, Gemini) registrados com responsável e prazo.
+- Commit implantado, migration aplicada e resultado das suítes automáticas anexados ao registro da entrega.

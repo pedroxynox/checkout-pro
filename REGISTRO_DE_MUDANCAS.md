@@ -1,24 +1,97 @@
-# Registro de Mudanças — Limpeza, Permissões e Áreas
+# Registro de Mudanças — Check-out PRO
 
-> Documento de manutenção (em português) descrevendo as melhorias aplicadas ao
-> projeto: unificação de permissões, acesso total do gerente desenvolvedor,
-> remoção de código morto e ocultação de áreas em construção. Serve de
-> referência para entender **o que mudou e por quê**.
->
-> Importante: o ambiente de edição não tinha as dependências instaladas (rede
-> restrita), então **não foi possível rodar `build`/`lint`/`jest` aqui**. Cada
-> mudança foi validada por análise estática (rastreio de todos os imports). É
-> recomendável rodar a verificação completa antes do deploy (ver o final).
+> Histórico cronológico das entregas e decisões do projeto. O estado consolidado
+> atual fica em `PROJECT_UNDERSTANDING.md`; este arquivo registra **o que mudou e
+> por quê**. Entradas antigas são preservadas como histórico, mas uma regra
+> posterior substitui a anterior quando houver evolução explícita.
+
+---
+
+## Estado atual consolidado — auditoria, Central de Jornada e alertas TAC (2026-07-15)
+
+Revisão documental executada sobre a `main` no commit `e8c32be`, sem afirmar que
+esse commit já esteja implantado no Render. Foram conferidos módulos, migrations,
+regras de negócio, PRs e resultados de validação; documentos desatualizados foram
+alinhados às fontes reais.
+
+### Auditoria e robustez (#211–#214 e #223)
+
+- **#211:** autenticação no WebSocket de fiscais, bloqueio de escalada de
+  privilégios em colaboradores e remoção de senha fraca do seed.
+- **#212:** validação de uploads/entradas e reforço de privacidade no app.
+- **#213:** gravação atômica de ausências a prazo.
+- **#214:** Dependabot adicionado para monitorar dependências.
+- **#223:** memoização do contexto de notificações e ajuste de nomenclatura de UI
+  (`StatusBadge` → `Selo`).
+
+### Central de Jornada, feriados e contrato (#224–#225)
+
+- Central de Jornada no backend e app, com ciclo **26→25**. O backend aceita
+  comparativo de até 12 ciclos e o app exibe atualmente seis.
+- Abrange operadores, supervisores e fiscais.
+- Métricas: carga, extras 50%/100%, horas devidas, atestado, faltas, TAC e saldo;
+  saldo = extras 50 + extras 100 − horas devidas.
+- Contrato `SEIS_X_UM_DOIS_X_UM` (6x1–2x1), com falta opcionalmente lançada como
+  débito.
+- Feriados nacionais automáticos; estaduais/municipais manuais. Carnaval e
+  Corpus Christi não são automáticos. Feriado segue domingo: 7h20 e extras 100%.
+- Contrato de experiência para operadores ativos: até 90 dias, alerta nos cinco
+  dias anteriores e efetivação automática a partir do dia 91. O cron usa hoje o
+  seletor `gestores()`, que inclui FISCAL, SUPERVISOR, GERENTE e
+  GERENTE_DESENVOLVEDOR.
+
+### Dependabot (#226 e #232)
+
+Configuração reduz ruído e evita upgrades major/incompatíveis, especialmente em
+pacotes controlados pelo Expo, React Native e NestJS.
+
+### TAC em tempo real e prevenção (#234–#235)
+
+A regra vigente substitui o alerta histórico de 1h45 e os destinatários amplos:
+
+- `>=1h30` de extras: **Risco de TAC**;
+- `>=1h40`: **Risco alto de TAC**;
+- `>1h50`: **TAC** (exatamente 1h50 ainda não cruza o limite por extras);
+- intervalo `<1h` ou `>3h` também gera TAC;
+- destinatários: somente `SUPERVISOR`, `GERENTE` e
+  `GERENTE_DESENVOLVEDOR`;
+- envio best-effort: falha de notificação nunca bloqueia a batida;
+- deduplicação por pessoa/dia/etapa compartilhada entre batida e cron de um
+  minuto, com retry se o envio falhar;
+- deduplicação em memória: reinício do processo pode permitir novo aviso.
+
+### Push e estado operacional
+
+O backend já faz envio real pelo Expo Push Service e persiste tokens. Para o push
+chegar ao Android com o app fechado ainda é necessário configurar FCM no projeto
+Expo/EAS e recompilar/publicar o APK.
+
+Verificação mais recente: backend build OK (**71 suítes / 406 testes**); mobile
+type-check + lint OK (**23 suítes / 85 testes**). Última migration:
+`9zp_tipo_contrato_colaborador`. O lint global do backend sem `--fix` mantém 31
+diferenças Prettier preexistentes em quatro arquivos; limpeza adiada para PR
+isolado.
+
+### Pendências registradas
+
+1. FCM + novo APK; validar OCR/ML Kit com comprovantes reais.
+2. PostgreSQL Render persistente e migrations no Pre-Deploy.
+3. Tier pago Gemini para multiusuário.
+4. Decidir Alertas de Fila, Normativas e Indicador de Quebra; Normativas exigem
+   RAG + pgvector + object storage.
+5. Preparar `reset:cliente` + seed limpo antes da entrega.
+6. Avaliar dedupe TAC persistente; multi-tenancy permanece parqueado.
 
 ---
 
 ## Registro de Ponto — leitor do comprovante do ponto (Fases A + B) (2026-07-13)
 
-Nova seção **Registro de Ponto**: o fiscal fotografa o **comprovante do ponto**
-(o papel impresso pelo relógio biométrico da empresa) e o sistema lê a hora,
+Nova seção **Registro de Ponto**: a equipe fotografa o **comprovante do ponto**
+(o papel impresso pelo relógio biométrico da empresa), o sistema lê a hora,
 associa ao colaborador e calcula a jornada do dia. Substitui o "bater ponto
-manual" por uma leitura auditável da hora oficial do relógio. Começou pelos
-**fiscais**; a base já está pronta para estender a operadores.
+manual" por uma leitura auditável da hora oficial do relógio. A entrega inicial
+começou pelos fiscais; as evoluções dos PRs #224–#225 passaram a integrar
+operadores, supervisores e fiscais na Central de Jornada.
 
 Entregue em duas fases, tudo **mesclado na `main`** (PRs #174–#181), com
 `tsc`/`eslint`/testes verdes em cada PR (backend 342 testes; mobile 76). Spec
@@ -39,9 +112,10 @@ completo em `.kiro/specs/registro-ponto-leitor/`.
   registrar o ponto de **qualquer** colaborador.
 - **Permissões** `PONTO_REGISTRAR` e `PONTO_VISUALIZAR` (fonte única + espelho no
   app, ADR 0002).
-- **Alerta a cada minuto** (`ponto-alertas.service.ts`, cron): ao passar de
-  **1h45** de extras (ainda trabalhando), avisa **todos os fiscais**; ao virar
-  **TAC**, avisa **todos os usuários** (uma vez por dia).
+- **Alerta a cada minuto** (`ponto-alertas.service.ts`, cron): a regra inicial
+  foi substituída pelos PRs #234–#235. A regra vigente alerta supervisores e
+  gerentes em `>=1h30` (risco), `>=1h40` (risco alto) e `>1h50` (TAC), com
+  deduplicação compartilhada entre batida/cron e envio best-effort.
 - **Tela** `RegistroPontoScreen`: busca o colaborador, mostra o painel da jornada
   (status, trabalhado, intervalo, horas extras), lista as batidas (editar/
   remover), registra a hora manualmente e tem **modo lote**.
@@ -64,13 +138,15 @@ completo em `.kiro/specs/registro-ponto-leitor/`.
 - **Horas extras:** Seg–Sáb com adicional **50%**; Domingo **100%**.
 - **Intervalo:** não conta como jornada; permitido de **1h a 3h** (esperado 2h).
 - **TAC (Termo de Ajustamento de Conduta):** o dia vira TAC se as extras passam
-  de **1h50**, ou o intervalo é **< 1h** ou **> 3h**. Ao virar TAC, o sistema
-  avisa **todos os usuários**.
+  de **1h50**, ou o intervalo é **< 1h** ou **> 3h**. A regra atual envia os
+  avisos apenas à supervisão/gerência; o envio nunca bloqueia a batida.
 - **A hora que vale é a do comprovante** (a hora impressa), não a de
   carregamento; o relógio do dia conta a partir da 1ª batida.
 
 ### Estado atual
-- Tudo **em produção** (mesclado na `main`).
+- Entrega inicial e evoluções posteriores **mescladas na `main`**. O deploy do
+  commit mais recente deve ser confirmado separadamente no Render; merge não é
+  evidência suficiente de produção.
 - A palavra informal "papelito" foi renomeada para **"comprovante do ponto"** em
   todo o produto (PR #179).
 
@@ -84,8 +160,10 @@ completo em `.kiro/specs/registro-ponto-leitor/`.
 - **Afinar o interpretador** com mais fotos reais (o OCR da **web/servidor** é o
   caminho mais fraco em fotos de papel amassado; o do **APK** tende a ler bem
   melhor). Em qualquer caso, a hora pode ser digitada/corrigida à mão.
-- **Fase C (futuro):** estender a **operadores** (o modelo já é polimórfico) e
-  **importar o arquivo eletrônico do relógio (AFD)** para um fechamento exato.
+- **Integração posterior:** operadores, supervisores e fiscais passaram a ser
+  consolidados pela Central de Jornada (PRs #224–#225). A importação do arquivo
+  eletrônico do relógio (AFD) continua como evolução futura para fechamento
+  automatizado.
 
 ### PRs
 - #174 backend base (modelo, migração, domínio+testes, permissões, API).
