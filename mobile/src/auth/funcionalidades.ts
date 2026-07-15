@@ -54,6 +54,9 @@ export const TODAS_FUNCIONALIDADES = [
   // Contratos de experiência (tempo de casa + marcos 45/90)
   'CONTRATOS_VISUALIZAR',
   'CONTRATOS_GERIR',
+  // Feedforward (acompanhamento de desenvolvimento no perfil do colaborador)
+  'FEEDFORWARD_VISUALIZAR',
+  'FEEDFORWARD_GERIR',
   // Pessoas e avisos
   'USUARIOS_CRUD',
   'NOTIFICACOES',
@@ -104,6 +107,8 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] = Object.free
   'FECHAMENTO',
   'FISCAIS_JORNADA',
   'CONTRATOS_VISUALIZAR',
+  'FEEDFORWARD_VISUALIZAR',
+  'FEEDFORWARD_GERIR',
   'ADVERTENCIAS_DECIDIR',
 ]);
 
@@ -148,6 +153,8 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
   'PONTO_VISUALIZAR',
   'CONTRATOS_VISUALIZAR',
   'CONTRATOS_GERIR',
+  'FEEDFORWARD_VISUALIZAR',
+  'FEEDFORWARD_GERIR',
   'ADVERTENCIAS_DECIDIR',
 ]);
 

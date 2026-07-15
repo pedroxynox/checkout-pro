@@ -899,6 +899,73 @@ model DecisaoContrato {
 }
 
 
+// ------------------------------- Feedforward -------------------------------
+// Feedforward: acompanhamento de desenvolvimento do colaborador (Frente de
+// Caixa). O colaborador preenche o formulário em papel (autoavaliação e metas);
+// o líder tira uma FOTO do formulário e registra no app apenas o essencial para
+// dar seguimento: pontos fortes, oportunidades, nota de evolução (1–5) e os
+// PONTOS A MELHORAR, cada um com um PRAZO definido pelo próprio colaborador. Ao
+// vencer o prazo, o app avisa supervisores e gerentes para o próximo encontro.
+// Segue o padrão de IDs polimórficos sem FK rígida (ADR 0005): colaboradorId é
+// a ficha do Cadastro de Colaboradores.
+
+/// Estado de um ponto a melhorar (com prazo) de uma rodada de feedforward.
+enum StatusFeedforwardPonto {
+  PENDENTE
+  ATINGIDO
+  NAO_ATINGIDO
+}
+
+/// Uma rodada de feedforward (uma conversa/formulário) de um colaborador.
+model Feedforward {
+  id               String   @id @default(uuid())
+  colaboradorId    String
+  data             DateTime
+  liderId          String?
+  liderNome        String?
+  cargo            String?
+  pontosFortes     String?
+  oportunidades    String?
+  compromissoFinal String?
+  /// Nota de evolução da conversa (1 a 5), como no formulário.
+  evolucaoNota     Int?
+  /// URL da foto do formulário preenchido à mão (object storage).
+  fotoUrl          String?
+  criadoEm         DateTime @default(now())
+  atualizadoEm     DateTime @default(now()) @updatedAt
+
+  pontos FeedforwardPonto[]
+
+  @@index([colaboradorId, data])
+  @@map("feedforwards")
+}
+
+/// Ponto a melhorar (com prazo) de uma rodada. O prazo é a data que o próprio
+/// colaborador define; ao vencer sem revisão, avisa supervisores e gerentes.
+model FeedforwardPonto {
+  id                String                 @id @default(uuid())
+  feedforwardId     String
+  /// Desnormalizado (para o cron/consulta sem join).
+  colaboradorId     String
+  descricao         String
+  prazo             DateTime
+  status            StatusFeedforwardPonto @default(PENDENTE)
+  revisadoPorId     String?
+  revisadoPorNome   String?
+  revisadoEm        DateTime?
+  observacaoRevisao String?
+  criadoEm          DateTime               @default(now())
+  atualizadoEm      DateTime               @default(now()) @updatedAt
+
+  feedforward Feedforward @relation(fields: [feedforwardId], references: [id], onDelete: Cascade)
+
+  @@index([feedforwardId])
+  @@index([colaboradorId])
+  @@index([status, prazo])
+  @@map("feedforward_pontos")
+}
+
+
 /// Incidência de escala por DATA (diferente de EscalaEntry, que é a plantilla
 /// semanal). Genérica por `tipo` para crescer sem novas tabelas. O horário
 /// ESPERADO é derivado da escala (intervaloMin); para fiscais, o horário REAL

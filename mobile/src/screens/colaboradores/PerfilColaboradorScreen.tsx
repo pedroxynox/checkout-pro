@@ -35,6 +35,7 @@ import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { formatarData, formatarDuracao } from '../../utils/formato';
 import { ROTULO_STATUS_FISCAL } from '../../utils/rotulos';
+import { FeedforwardSecao } from './FeedforwardSecao';
 
 const FUNCOES: Record<FuncaoColaborador, string> = {
   OPERADOR: 'Operador',
@@ -671,6 +672,9 @@ export function PerfilColaboradorScreen({
               </Text>
             </Cartao>
           )}
+
+          {/* Feedforward (acompanhamento de desenvolvimento) — só supervisor/gerente */}
+          <FeedforwardSecao colaboradorId={colaboradorId} />
 
           {/* Escala / folga */}
           <Cartao titulo="Escala">

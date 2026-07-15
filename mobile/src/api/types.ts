@@ -1565,3 +1565,49 @@ export interface LeituraComprovante {
   hora: string | null;
   candidatos: PessoaPonto[];
 }
+
+
+// ----- Feedforward (acompanhamento de desenvolvimento no perfil) -----
+
+/** Estado persistido de um ponto a melhorar. */
+export type StatusPontoFeedforward = 'PENDENTE' | 'ATINGIDO' | 'NAO_ATINGIDO';
+
+/** Situação (semáforo) exibida de um ponto. */
+export type SituacaoPontoFeedforward =
+  | 'EM_DIA'
+  | 'PROXIMO'
+  | 'VENCIDO'
+  | 'ATINGIDO'
+  | 'NAO_ATINGIDO';
+
+/** Um ponto a melhorar (com prazo) de uma rodada de feedforward. */
+export interface PontoFeedforward {
+  id: string;
+  descricao: string;
+  /** Prazo (ISO). */
+  prazo: string;
+  status: StatusPontoFeedforward;
+  situacao: SituacaoPontoFeedforward;
+  revisadoPorNome: string | null;
+  revisadoEm: string | null;
+  observacaoRevisao: string | null;
+}
+
+/** Uma rodada de feedforward (uma conversa/formulário). */
+export interface RodadaFeedforward {
+  id: string;
+  colaboradorId: string;
+  /** Data da conversa (ISO). */
+  data: string;
+  liderNome: string | null;
+  cargo: string | null;
+  pontosFortes: string | null;
+  oportunidades: string | null;
+  compromissoFinal: string | null;
+  /** Nota de evolução da conversa (1 a 5). */
+  evolucaoNota: number | null;
+  /** URL da foto do formulário preenchido. */
+  fotoUrl: string | null;
+  criadoEm: string;
+  pontos: PontoFeedforward[];
+}
