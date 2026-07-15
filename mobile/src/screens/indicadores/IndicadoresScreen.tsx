@@ -267,7 +267,13 @@ export function IndicadoresScreen({
                 return (
                   <Pressable
                     key={`${a.categoria}-${a.tipo}-${i}`}
-                    onPress={() => irParaDetalhe(a.tipo)}
+                    onPress={() =>
+                      navigation.navigate('IndicadorDetalhe', {
+                        tipo: a.tipo,
+                        operadorNome: a.operadorNome,
+                        alertaMensagem: a.mensagem,
+                      })
+                    }
                     style={[
                       styles.alertaItem,
                       { borderLeftColor: a.severidade === 'CRITICO' ? cores.vermelho : cores.amarelo },

@@ -67,6 +67,8 @@ export interface DetalheArrecadacao {
   autorizadoPor: string | null;
   motivo: string | null;
   valor: number;
+  /** Quantidade (itens/cupons) do lançamento, quando o arquivo informa. */
+  quantidade: number | null;
   data: string;
 }
 
@@ -451,6 +453,7 @@ export class ArrecadacaoService {
         autorizadoPor: true,
         motivo: true,
         valor: true,
+        quantidade: true,
         data: true,
       },
       take: 300,
@@ -464,6 +467,7 @@ export class ArrecadacaoService {
         autorizadoPor: r.autorizadoPor,
         motivo: r.motivo,
         valor: arredondar(Number(r.valor)),
+        quantidade: r.quantidade ?? null,
         data: r.data.toISOString(),
       });
     }
