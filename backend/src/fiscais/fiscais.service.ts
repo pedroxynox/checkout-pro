@@ -335,23 +335,32 @@ export class FiscaisService {
       this.jornadaOperadoresDoDia(inicioDoDia(data), limite),
     ]);
     const porFiscal = this.agrupar(registros);
-    const dosFiscais: ItemJornada[] = fiscais.map((f) => {
-      const regs = porFiscal.get(f.id) ?? [];
-      const col = mapaCol.get(f.id);
-      return {
-        fiscalId: f.id,
-        pessoaId: f.id,
-        tipoPessoa: 'FISCAL',
-        funcao: 'FISCAL',
-        colaboradorId: col?.colaboradorId ?? null,
-        primeiroNome: primeiroNome(col?.nome ?? f.nome),
-        status: statusAtual(regs) ?? 'FORA_EXPEDIENTE',
-        ...calcularJornada(regs, limite),
-      };
-    });
-    return [...dosFiscais, ...operadores].sort((a, b) =>
-      a.primeiroNome.localeCompare(b.primeiroNome),
-    );
+    const dosFiscais: ItemJornada[] = fiscais
+      // Só fiscais que bateram ponto hoje (mesma regra dos operadores): quem
+      // não registrou não aparece no painel.
+      .filter((f) => (porFiscal.get(f.id) ?? []).length > 0)
+      // Ordena pela 1ª batida do dia: quem abriu primeiro aparece primeiro.
+      .sort(
+        (a, b) =>
+          porFiscal.get(a.id)![0].em.getTime() -
+          porFiscal.get(b.id)![0].em.getTime(),
+      )
+      .map((f) => {
+        const regs = porFiscal.get(f.id)!;
+        const col = mapaCol.get(f.id);
+        return {
+          fiscalId: f.id,
+          pessoaId: f.id,
+          tipoPessoa: 'FISCAL' as const,
+          funcao: 'FISCAL',
+          colaboradorId: col?.colaboradorId ?? null,
+          primeiroNome: primeiroNome(col?.nome ?? f.nome),
+          status: statusAtual(regs) ?? 'FORA_EXPEDIENTE',
+          ...calcularJornada(regs, limite),
+        };
+      });
+    // Fiscais acima, operadores abaixo — cada grupo já ordenado pela 1ª batida.
+    return [...dosFiscais, ...operadores];
   }
 
   /**
@@ -386,6 +395,12 @@ export class FiscaisService {
     const diaSemana = dia.getUTCDay();
     return colaboradores
       .filter((c) => porPessoa.has(c.id))
+      // Ordena pela 1ª batida do dia (quem abriu primeiro aparece primeiro).
+      .sort(
+        (a, b) =>
+          porPessoa.get(a.id)![0].hora.getTime() -
+          porPessoa.get(b.id)![0].hora.getTime(),
+      )
       .map((c) => {
         const j = calcularJornadaDia(porPessoa.get(c.id)!, limite, diaSemana);
         return {

@@ -22,6 +22,8 @@ import { InsumoDetalheScreen } from '../screens/insumos/InsumoDetalheScreen';
 import { RequisicoesScreen } from '../screens/insumos/RequisicoesScreen';
 import { JornadaFiscaisScreen } from '../screens/fiscais/JornadaFiscaisScreen';
 import { RegistroPontoScreen } from '../screens/ponto/RegistroPontoScreen';
+import { CentralJornadaScreen } from '../screens/ponto/CentralJornadaScreen';
+import { FeriadosScreen } from '../screens/ponto/FeriadosScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
 import { OperadoresScreen } from '../screens/operadores/OperadoresScreen';
 import { JustificativasScreen } from '../screens/operadores/JustificativasScreen';
@@ -141,7 +143,21 @@ export function AppNavigator(): React.ReactElement {
         <Stack.Screen
           name="RegistroPonto"
           component={RegistroPontoScreen}
-          options={{ title: 'Registro de Ponto' }}
+          options={{ title: 'Relógio Ponto' }}
+        />
+      )}
+      {podeAcessar('FISCAIS_JORNADA') && (
+        <Stack.Screen
+          name="CentralJornada"
+          component={CentralJornadaScreen}
+          options={{ title: 'Central de Jornada' }}
+        />
+      )}
+      {podeAcessar('FISCAIS_JORNADA') && (
+        <Stack.Screen
+          name="Feriados"
+          component={FeriadosScreen}
+          options={{ title: 'Feriados' }}
         />
       )}
       {podeAcessar('CHECKLIST') && (

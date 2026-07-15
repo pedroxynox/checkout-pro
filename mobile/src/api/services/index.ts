@@ -11,6 +11,18 @@ export { insumosService } from './insumos';
 export { requisicoesService } from './requisicoes';
 export { fiscaisService, escalaService } from './fiscais';
 export { pontoService } from './ponto';
+export { feriadosService } from './feriados';
+export type { Feriado, AmbitoFeriado } from './feriados';
+export { centralJornadaService } from './centralJornada';
+export type {
+  CentralResumo,
+  CentralPessoaResumo,
+  CentralPeriodo,
+  CentralTotais,
+  CentralDiaDetalhe,
+  CentralComparativo,
+  TipoDiaJornada,
+} from './centralJornada';
 export { checklistService } from './checklist';
 export type { ImagemSelecionada } from './checklist';
 export { operadoresService } from './operadores';

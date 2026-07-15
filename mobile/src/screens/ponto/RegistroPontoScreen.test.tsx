@@ -11,6 +11,17 @@ import {
 import React from 'react';
 import { RegistroPontoScreen } from './RegistroPontoScreen';
 
+// Sem NavigationContainer no teste: mocka o hook de navegação (só usamos o
+// atalho para a Central de Jornada, que não é exercitado aqui).
+jest.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({ navigate: jest.fn() }),
+}));
+
+// Sem AuthProvider no teste: o atalho da Central de Jornada fica oculto.
+jest.mock('../../auth/AuthContext', () => ({
+  useAuth: () => ({ podeAcessar: () => false }),
+}));
+
 jest.mock('../../api/services', () => ({
   pontoService: {
     buscarPessoas: jest.fn(),

@@ -36,6 +36,10 @@ import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, formatarDuracao, hojeISO } from '../../utils/formato';
 import { capturarComprovante } from './leitorComprovante';
 import { LeitorComprovanteAoVivo } from './leitorAoVivo';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../navigation/types';
+import { useAuth } from '../../auth/AuthContext';
 
 const ROTULO_TIPO: Record<TipoBatida, string> = {
   ENTRADA: 'Entrada',
@@ -90,6 +94,9 @@ function rotuloConfianca(c: number): string {
 }
 
 export function RegistroPontoScreen(): React.ReactElement {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { podeAcessar } = useAuth();
   const [data, setData] = useState(hojeISO());
 
   // Autosserviço do fiscal logado: se o usuário atual é fiscal, pode informar
@@ -383,6 +390,25 @@ export function RegistroPontoScreen(): React.ReactElement {
 
   return (
     <Tela aoAtualizar={pessoa ? carregarJornada : undefined} atualizando={carregando}>
+      {/* Atalho para a Central de Jornada (controle do ciclo 26→25). */}
+      {podeAcessar('FISCAIS_JORNADA') && (
+        <Pressable
+          onPress={() => navigation.navigate('CentralJornada')}
+          style={styles.cardCentral}
+        >
+          <View style={styles.cardCentralIcone}>
+            <Ionicons name="albums-outline" size={22} color={cores.primaria} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardCentralTitulo}>Central de Jornada</Text>
+            <Text style={styles.cardCentralSub}>
+              Carga, horas extras, faltas e saldo por colaborador (ciclo 26→25)
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />
+        </Pressable>
+      )}
+
       {/* Autosserviço do fiscal logado: informar a própria falta de hoje. */}
       {meuFiscal && data === hojeISO() ? (
         meuFiscal.folgaHoje ? (
@@ -719,6 +745,27 @@ function PainelJornada({ dados }: { dados: JornadaDiaPonto }): React.ReactElemen
 }
 
 const styles = StyleSheet.create({
+  cardCentral: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.md,
+    backgroundColor: cores.superficie ?? '#fff',
+    borderRadius: raio.lg,
+    padding: espacamento.md,
+    marginBottom: espacamento.md,
+    borderWidth: 1,
+    borderColor: cores.divisor,
+  },
+  cardCentralIcone: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: cores.primariaClara ?? '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardCentralTitulo: { ...tipografia.rotulo, color: cores.texto, fontWeight: '700' },
+  cardCentralSub: { ...tipografia.legenda, color: cores.textoSecundario, marginTop: 2 },
   loteLinha: {
     flexDirection: 'row',
     alignItems: 'center',

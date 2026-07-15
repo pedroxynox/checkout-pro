@@ -101,8 +101,8 @@ export const AREAS: Area[] = [
   },
   {
     rota: 'RegistroPonto',
-    titulo: 'Registro de Ponto',
-    descricao: 'Batidas do comprovante do ponto, jornada e horas extras',
+    titulo: 'Relógio Ponto',
+    descricao: 'Batidas do comprovante, jornada, horas extras e Central de Jornada',
     icone: 'time-outline',
     funcionalidade: 'PONTO_VISUALIZAR',
   },
