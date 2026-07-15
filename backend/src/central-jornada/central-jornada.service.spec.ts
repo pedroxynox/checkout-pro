@@ -75,14 +75,92 @@ describe('CentralJornadaService.resumoCiclo', () => {
     ];
     const prismaFake = {
       colaborador: {
-        findMany: jest
-          .fn()
-          .mockResolvedValue([
-            { id: 'c1', nome: 'Ana Souza', funcao: 'OPERADOR' },
-          ]),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            nome: 'Ana Souza',
+            funcao: 'OPERADOR',
+            matricula: 'ANA',
+            usuarioId: null,
+          },
+        ]),
       },
       batidaPonto: { findMany: jest.fn().mockResolvedValue(batidas) },
       ausencia: { findMany: jest.fn().mockResolvedValue(ausencias) },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const feriadosFake = {
+      mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
+    };
+    return new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+    );
+  }
+
+  /**
+   * Um fiscal bate ponto pela identidade de Fiscal (batida.pessoaId = Fiscal.id,
+   * colaboradorId nulo), diferente do id da sua ficha. A Central deve resolver o
+   * vínculo (por conta/matrícula) e atribuir a jornada à ficha — senão o fiscal
+   * some da lista mesmo com horas extras.
+   */
+  function montarFiscal() {
+    // Ter 30/06 (base 7h): 07-12 + 14-16:45 = 7h45 → 45min de extra 50%.
+    const batidas = [
+      {
+        id: 'j1',
+        pessoaId: 'fisc1',
+        colaboradorId: null,
+        data: dia('2026-06-30'),
+        hora: new Date('2026-06-30T07:00:00.000Z'),
+      },
+      {
+        id: 'j2',
+        pessoaId: 'fisc1',
+        colaboradorId: null,
+        data: dia('2026-06-30'),
+        hora: new Date('2026-06-30T12:00:00.000Z'),
+      },
+      {
+        id: 'j3',
+        pessoaId: 'fisc1',
+        colaboradorId: null,
+        data: dia('2026-06-30'),
+        hora: new Date('2026-06-30T14:00:00.000Z'),
+      },
+      {
+        id: 'j4',
+        pessoaId: 'fisc1',
+        colaboradorId: null,
+        data: dia('2026-06-30'),
+        hora: new Date('2026-06-30T16:45:00.000Z'),
+      },
+    ];
+    const prismaFake = {
+      colaborador: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'col-jos',
+            nome: 'Josiane Lima',
+            funcao: 'FISCAL',
+            matricula: 'JOS',
+            usuarioId: 'u1',
+          },
+        ]),
+      },
+      batidaPonto: { findMany: jest.fn().mockResolvedValue(batidas) },
+      ausencia: { findMany: jest.fn().mockResolvedValue([]) },
+      fiscal: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { id: 'fisc1', nome: 'Josiane', usuarioId: 'u1' },
+          ]),
+      },
+      usuario: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'u1', login: 'JOS' }]),
+      },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
@@ -109,5 +187,18 @@ describe('CentralJornadaService.resumoCiclo', () => {
     expect(p.faltas).toBe(2);
     expect(p.diasTac).toBe(0);
     expect(p.saldoMs).toBe(2 * UMA_HORA - (2 * UMA_HORA + H7)); // extras − devidas
+  });
+
+  it('inclui o fiscal (vínculo por conta/matrícula) com suas horas extras', async () => {
+    const service = montarFiscal();
+    const r = await service.resumoCiclo(0);
+
+    expect(r.pessoas).toHaveLength(1);
+    const p = r.pessoas[0];
+    expect(p.nome).toBe('Josiane Lima');
+    expect(p.funcao).toBe('FISCAL');
+    expect(p.cargaTrabalhadaMs).toBe(H7 + 45 * 60_000); // 7h45
+    expect(p.extras50Ms).toBe(45 * 60_000); // 45 min de extra 50%
+    expect(p.extras100Ms).toBe(0);
   });
 });

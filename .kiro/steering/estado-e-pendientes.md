@@ -7,7 +7,7 @@
 - Rama base auditada: `main` en `e8c32be` (merge de PR #235).
 - Todo lo descrito como entregado está **mergeado en `main`**; el deploy de ese commit no fue confirmado desde esta sesión.
 - Última migration: `9zq_alerta_tac_enviado`.
-- Backend: build OK; **71 suites / 409 tests**.
+- Backend: build OK; **71 suites / 410 tests**.
 - Mobile: type-check + lint OK; **23 suites / 85 tests**.
 - ESLint focalizado TAC: OK.
 - Prettier: los cuatro archivos históricos ya fueron formateados en PR aislado. Prettier 3.9.5 marca 9 archivos de dominio por deriva de versión; el CI los normaliza con `eslint --fix` (no bloquea).

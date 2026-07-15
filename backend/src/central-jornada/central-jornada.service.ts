@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { FeriadosService } from '../feriados/feriados.service';
 import { calcularJornadaDia } from '../ponto/ponto.domain';
 import { jornadaEsperadaMs } from '../fiscais/fiscais.domain';
+import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 import {
   agoraNaBrasilia,
   inicioDoDia,
@@ -114,32 +115,60 @@ export class CentralJornadaService {
     const agora = agoraNaBrasilia();
     const limite = agora < fimExclusivo ? agora : fimExclusivo;
 
-    const [pessoas, batidas, ausencias, feriadoMap] = await Promise.all([
-      this.prisma.colaborador.findMany({
-        where: {
-          ativo: true,
-          funcao: { in: FUNCOES_PONTO },
-          tipoContrato: 'SEIS_X_UM_DOIS_X_UM',
-        },
-        orderBy: { nome: 'asc' },
-        select: { id: true, nome: true, funcao: true },
-      }),
-      this.prisma.batidaPonto.findMany({
-        where: { data: { gte: inicio, lt: fimExclusivo } },
-        orderBy: { hora: 'asc' },
-        select: {
-          id: true,
-          hora: true,
-          data: true,
-          pessoaId: true,
-          colaboradorId: true,
-        },
-      }),
-      this.prisma.ausencia.findMany({
-        where: { data: { gte: inicio, lt: fimExclusivo } },
-      }),
-      this.feriados.mapaNoPeriodo(inicio, fimExclusivo),
-    ]);
+    const [pessoas, batidas, ausencias, feriadoMap, fiscais, usuarios] =
+      await Promise.all([
+        this.prisma.colaborador.findMany({
+          where: {
+            ativo: true,
+            funcao: { in: FUNCOES_PONTO },
+            tipoContrato: 'SEIS_X_UM_DOIS_X_UM',
+          },
+          orderBy: { nome: 'asc' },
+          select: {
+            id: true,
+            nome: true,
+            funcao: true,
+            matricula: true,
+            usuarioId: true,
+          },
+        }),
+        this.prisma.batidaPonto.findMany({
+          where: { data: { gte: inicio, lt: fimExclusivo } },
+          orderBy: { hora: 'asc' },
+          select: {
+            id: true,
+            hora: true,
+            data: true,
+            pessoaId: true,
+            colaboradorId: true,
+          },
+        }),
+        this.prisma.ausencia.findMany({
+          where: { data: { gte: inicio, lt: fimExclusivo } },
+        }),
+        this.feriados.mapaNoPeriodo(inicio, fimExclusivo),
+        this.prisma.fiscal.findMany({
+          select: { id: true, nome: true, usuarioId: true },
+        }),
+        this.prisma.usuario.findMany({ select: { id: true, login: true } }),
+      ]);
+
+    // Um fiscal bate ponto pela sua identidade de Fiscal (batida.pessoaId =
+    // Fiscal.id), que é DIFERENTE do id da sua ficha de Colaborador. Sem este
+    // vínculo, a jornada dos fiscais não seria atribuída à ficha e eles
+    // sumiriam da Central. Aqui mapeamos, para cada ficha, os ids de fiscal que
+    // lhe pertencem (por conta de acesso ou matrícula).
+    const fiscalParaColaborador = mapearFiscalColaborador(
+      fiscais,
+      usuarios,
+      pessoas,
+    );
+    const fiscalIdsPorColaborador = new Map<string, string[]>();
+    for (const [fiscalId, vinculo] of fiscalParaColaborador) {
+      const atuais = fiscalIdsPorColaborador.get(vinculo.colaboradorId) ?? [];
+      atuais.push(fiscalId);
+      fiscalIdsPorColaborador.set(vinculo.colaboradorId, atuais);
+    }
 
     return {
       periodo,
@@ -150,22 +179,35 @@ export class CentralJornadaService {
       batidas,
       ausencias,
       feriadoMap,
+      fiscalIdsPorColaborador,
     };
+  }
+
+  /** Todos os ids que representam um colaborador: a própria ficha + seus fiscais. */
+  private idsDaPessoa(
+    colaboradorId: string,
+    fiscalIdsPorColaborador: Map<string, string[]>,
+  ): Set<string> {
+    return new Set<string>([
+      colaboradorId,
+      ...(fiscalIdsPorColaborador.get(colaboradorId) ?? []),
+    ]);
   }
 
   /** true se a batida/ausência pertence ao colaborador (por vínculo ou pessoaId). */
   private daPessoa(
     reg: { pessoaId: string; colaboradorId: string | null },
-    colaboradorId: string,
+    ids: Set<string>,
   ): boolean {
     return (
-      reg.colaboradorId === colaboradorId || reg.pessoaId === colaboradorId
+      (reg.colaboradorId !== null && ids.has(reg.colaboradorId)) ||
+      ids.has(reg.pessoaId)
     );
   }
 
   /** Calcula os totais e o detalhe diário de um colaborador no ciclo. */
   private calcularPessoa(
-    colaboradorId: string,
+    ids: Set<string>,
     batidas: BatidaMin[],
     ausencias: Ausencia[],
     feriadoMap: Map<number, string>,
@@ -182,14 +224,14 @@ export class CentralJornadaService {
     // Batidas e ausências da pessoa, agrupadas por dia (ISO do dia).
     const batidasPorDia = new Map<string, BatidaMin[]>();
     for (const b of batidas) {
-      if (!this.daPessoa(b, colaboradorId)) continue;
+      if (!this.daPessoa(b, ids)) continue;
       const k = inicioDoDia(b.data).toISOString();
       if (!batidasPorDia.has(k)) batidasPorDia.set(k, []);
       batidasPorDia.get(k)!.push(b);
     }
     const ausenciaPorDia = new Map<string, Ausencia>();
     for (const a of ausencias) {
-      if (!this.daPessoa(a, colaboradorId)) continue;
+      if (!this.daPessoa(a, ids)) continue;
       ausenciaPorDia.set(inicioDoDia(a.data).toISOString(), a);
     }
 
@@ -320,7 +362,7 @@ export class CentralJornadaService {
     const pessoas: CentralPessoaResumo[] = dados.pessoas
       .map((c) => {
         const { resumo } = this.calcularPessoa(
-          c.id,
+          this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador),
           batidas,
           dados.ausencias,
           dados.feriadoMap,
@@ -380,7 +422,7 @@ export class CentralJornadaService {
   ): Promise<{ periodo: CentralPeriodo; dias: CentralDiaDetalhe[] }> {
     const dados = await this.carregarCiclo(deslocamento);
     const { dias } = this.calcularPessoa(
-      colaboradorId,
+      this.idsDaPessoa(colaboradorId, dados.fiscalIdsPorColaborador),
       dados.batidas as BatidaMin[],
       dados.ausencias,
       dados.feriadoMap,

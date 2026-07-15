@@ -7,6 +7,26 @@
 
 ---
 
+## Correção: fiscais somem da Central de Jornada (2026-07-15)
+
+Um fiscal com horas extras (ex.: 45 min a 50%) não aparecia na Central de
+Jornada. Causa: o fiscal bate ponto pela sua identidade de **Fiscal**
+(`batida.pessoaId = Fiscal.id`, `colaboradorId` nulo), que é **diferente** do id
+da sua ficha de **Colaborador**. A Central é montada a partir das fichas e só
+atribuía a jornada quando o id batia — o que funciona para operadores
+(`pessoaId = Colaborador.id`), mas nunca para fiscais. Sem horas atribuídas, o
+fiscal caía no filtro de "sem movimento" e sumia.
+
+Correção: a Central passa a resolver o vínculo **Fiscal → ficha** com o mesmo
+helper já usado nas outras telas (`mapearFiscalColaborador`, por conta de acesso
+ou matrícula) e atribui as batidas/faltas de todos os ids do colaborador (a
+ficha + seus fiscais). O cálculo, os totais e o saldo permanecem idênticos.
+
+Verificação: `build` OK, `prettier`/`eslint` limpos e **71 suítes / 410 testes**
+verdes (1 teste novo: fiscal com 45 min de extra aparece na Central).
+
+---
+
 ## Deduplicação PERSISTENTE dos alertas de TAC (2026-07-15)
 
 Os avisos preventivos de risco/TAC (1h30, 1h40 e TAC) deixam de depender da
@@ -122,7 +142,7 @@ O backend já faz envio real pelo Expo Push Service e persiste tokens. Para o pu
 chegar ao Android com o app fechado ainda é necessário configurar FCM no projeto
 Expo/EAS e recompilar/publicar o APK.
 
-Verificação mais recente: backend build OK (**71 suítes / 409 testes**); mobile
+Verificação mais recente: backend build OK (**71 suítes / 410 testes**); mobile
 type-check + lint OK (**23 suítes / 85 testes**). Última migration:
 `9zq_alerta_tac_enviado`. As diferenças Prettier históricas nos quatro
 arquivos já foram limpas (ver entrada no topo deste registro); restam apenas 9
