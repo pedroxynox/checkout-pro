@@ -31,8 +31,7 @@
         "backgroundColor": "#0F4C81"
       },
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -43,7 +42,8 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "O Check-out PRO usa a câmera para ler o código de barras dos fardos de insumos."
+          "cameraPermission": "O Check-out PRO usa a câmera para ler o código de barras dos fardos de insumos.",
+          "recordAudioAndroid": false
         }
       ],
       [
@@ -62,7 +62,6 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "https://checkout-pro-api.onrender.com",
       "eas": {
         "projectId": "40ea3b1a-6c63-4f2e-8202-ba1a6f88fb05"
       }

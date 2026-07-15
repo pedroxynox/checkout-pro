@@ -63,6 +63,18 @@ export class ConsumoBobinaDto {
   quantidade!: number;
 }
 
+/** Consumo simplificado em embalagens inteiras (1 fardo, 1 caixa, 1 galão). */
+export class ConsumoEmbalagemDto {
+  @IsString()
+  @IsNotEmpty({ message: 'O insumo é obrigatório.' })
+  insumoId!: string;
+
+  @Type(() => Number)
+  @IsInt({ message: 'A quantidade de embalagens deve ser um número inteiro.' })
+  @Min(1, { message: 'A quantidade de embalagens deve ser maior que zero.' })
+  embalagens!: number;
+}
+
 /** Consumo genérico de um insumo (Req 3.3.2). */
 export class ConsumoInsumoDto {
   @IsString()

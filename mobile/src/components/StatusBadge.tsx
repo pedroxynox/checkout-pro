@@ -1,28 +1,10 @@
 /**
- * Selo colorido (verde/amarelo/vermelho) para indicadores e estados.
- * Reflete a `StatusCor` do backend nas cores do tema.
+ * Selo colorido para textos arbitrários (ex.: status de fiscal), com um ponto
+ * e o texto na cor informada.
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { coresParaStatus, espacamento, raio, StatusCor, tipografia } from '../theme';
-
-interface StatusBadgeProps {
-  status: StatusCor;
-  texto?: string;
-}
-
-export function StatusBadge({
-  status,
-  texto,
-}: StatusBadgeProps): React.ReactElement {
-  const { cor, fundo, rotulo } = coresParaStatus(status);
-  return (
-    <View style={[styles.badge, { backgroundColor: fundo }]}>
-      <View style={[styles.ponto, { backgroundColor: cor }]} />
-      <Text style={[styles.texto, { color: cor }]}>{texto ?? rotulo}</Text>
-    </View>
-  );
-}
+import { espacamento, raio, tipografia } from '../theme';
 
 /** Selo genérico para textos arbitrários (ex.: status de fiscal). */
 export function Selo({
@@ -62,5 +44,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
-export default StatusBadge;
