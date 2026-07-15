@@ -7,6 +7,7 @@
  */
 import * as ImagePicker from 'expo-image-picker';
 import TextRecognition from '@react-native-ml-kit/text-recognition';
+import { textoPelaGeometria } from './montarTextoOcr';
 
 export interface CapturaComprovante {
   /** Texto lido no aparelho (ML Kit). */
@@ -21,7 +22,9 @@ export async function capturarComprovante(): Promise<CapturaComprovante | null> 
 
   try {
     const resultado = await TextRecognition.recognize(res.assets[0].uri);
-    const texto = resultado?.text?.trim();
+    // Preferimos o texto reconstruído pela geometria (mantém rótulo+valor na
+    // mesma linha); se a geometria não vier, usamos o texto cru do ML Kit.
+    const texto = (textoPelaGeometria(resultado) ?? resultado?.text ?? '').trim();
     if (texto) return { texto };
   } catch {
     // Leitura on-device indisponível → cai no preenchimento manual.

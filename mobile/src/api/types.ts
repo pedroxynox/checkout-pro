@@ -1555,6 +1555,21 @@ export interface JornadaDiaPonto {
   batidas: BatidaPontoView[];
 }
 
+/** Confiança (0–1) da leitura do comprovante, por campo e geral. */
+export interface ConfiancaComprovante {
+  nome: number;
+  data: number;
+  hora: number;
+  geral: number;
+}
+
+/** Colaborador sugerido pela leitura, com a confiança do casamento (0–1). */
+export interface CandidatoPonto extends PessoaPonto {
+  confianca: number;
+  /** true quando veio de um alias já confirmado antes (memória do leitor). */
+  aprendido?: boolean;
+}
+
 /** Pessoa selecionável para registrar o ponto. */
 export interface PessoaPonto {
   id: string;
@@ -1568,5 +1583,8 @@ export interface LeituraComprovante {
   nome: string | null;
   data: string | null;
   hora: string | null;
-  candidatos: PessoaPonto[];
+  /** Confiança estimada da leitura (por campo e geral). */
+  confianca: ConfiancaComprovante;
+  /** Colaboradores sugeridos, do mais provável ao menos (com confiança). */
+  candidatos: CandidatoPonto[];
 }

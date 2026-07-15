@@ -13,6 +13,7 @@ import { ApiError } from '../../api/client';
 import { fiscaisService, pontoService } from '../../api/services';
 import {
   BatidaPontoView,
+  CandidatoPonto,
   JornadaDiaPonto,
   MeuResumoFiscal,
   PessoaPonto,
@@ -73,6 +74,21 @@ function mascaraHora(texto: string): string {
 
 const HORA_VALIDA = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
+/** Cor do indicador de confiança da leitura (verde/âmbar/vermelho). */
+function corConfianca(c: number | null): string {
+  if (c == null) return cores.textoSecundario;
+  if (c >= 0.8) return cores.verde;
+  if (c >= 0.55) return cores.amarelo;
+  return cores.vermelho;
+}
+
+/** Rótulo curto da confiança da leitura. */
+function rotuloConfianca(c: number): string {
+  if (c >= 0.8) return 'alta confiança';
+  if (c >= 0.55) return 'confira';
+  return 'baixa confiança';
+}
+
 export function RegistroPontoScreen(): React.ReactElement {
   const [data, setData] = useState(hojeISO());
 
@@ -108,8 +124,16 @@ export function RegistroPontoScreen(): React.ReactElement {
   const [leituraInfo, setLeituraInfo] = useState<{
     nome: string | null;
     hora: string | null;
+    confianca: number | null;
   } | null>(null);
   const [horaPendente, setHoraPendente] = useState<string | null>(null);
+  // Sugestões da leitura (com confiança) e o nome exatamente como foi LIDO —
+  // guardado para o leitor "aprender" a pessoa ao confirmar a batida.
+  const [candidatos, setCandidatos] = useState<CandidatoPonto[]>([]);
+  const [nomeLidoPendente, setNomeLidoPendente] = useState<string | null>(null);
+  const [confiancaPendente, setConfiancaPendente] = useState<number | null>(
+    null,
+  );
 
   // Descobre se o usuário logado é fiscal (para o autosserviço de falta).
   useEffect(() => {
@@ -144,6 +168,8 @@ export function RegistroPontoScreen(): React.ReactElement {
       setResultados([]);
       return;
     }
+    // Digitou uma busca manual → tira as sugestões da leitura para não confundir.
+    setCandidatos([]);
     const t = setTimeout(() => {
       pontoService
         .buscarPessoas(busca.trim())
@@ -176,6 +202,7 @@ export function RegistroPontoScreen(): React.ReactElement {
     setPessoa(p);
     setBusca('');
     setResultados([]);
+    setCandidatos([]);
     setErro(null);
     // Se a hora veio do comprovante, já abre o formulário preenchido.
     if (horaPendente) {
@@ -185,27 +212,66 @@ export function RegistroPontoScreen(): React.ReactElement {
     }
   }
 
+  /** Escolhe a pessoa e já preenche a hora lida (usado no acerto automático). */
+  function escolherComHora(p: PessoaPonto, hora: string | null): void {
+    setPessoa(p);
+    setBusca('');
+    setResultados([]);
+    setCandidatos([]);
+    setHoraPendente(null);
+    setErro(null);
+    if (hora) {
+      setHoraTexto(hora);
+      setMostrarForm(true);
+    }
+  }
+
   /**
    * Interpreta no servidor o texto lido (pelo leitor ao vivo ou pela foto):
-   * preenche a hora e sugere o colaborador; o usuário confirma antes de gravar.
+   * preenche a hora e sugere o colaborador. Quando a leitura é bem confiável e
+   * há um candidato claramente melhor, já seleciona sozinho (o usuário só
+   * confirma a hora); senão, mostra as sugestões ordenadas por confiança.
    */
   async function processarTextoLido(texto: string): Promise<void> {
     setLendo(true);
     setErro(null);
     try {
       const r = await pontoService.lerComprovante({ texto });
-      setLeituraInfo({ nome: r.nome, hora: r.hora });
+      const confiancaGeral = r.confianca?.geral ?? null;
+      setLeituraInfo({ nome: r.nome, hora: r.hora, confianca: confiancaGeral });
+      setNomeLidoPendente(r.nome);
+      setConfiancaPendente(confiancaGeral);
       if (r.data) setData(r.data);
+
+      // Já havia uma pessoa escolhida: só preenche a hora lida.
       if (pessoa) {
         if (r.hora) {
           setHoraTexto(r.hora);
           setMostrarForm(true);
         }
-      } else if (r.candidatos.length > 0) {
-        setResultados(r.candidatos);
+        return;
+      }
+
+      const sugestoes = r.candidatos ?? [];
+      const top = sugestoes[0];
+      const segundo = sugestoes[1];
+      // Acerto automático: candidato memorizado, ou muito confiável e bem à
+      // frente do 2º (evita escolher errado quando há dois nomes parecidos).
+      const autoSelecionar =
+        !!top &&
+        (top.aprendido || top.confianca >= 0.85) &&
+        (!segundo || top.confianca - segundo.confianca >= 0.2);
+
+      if (autoSelecionar) {
+        escolherComHora(top, r.hora);
+      } else if (sugestoes.length > 0) {
+        setCandidatos(sugestoes);
+        setResultados([]);
         setHoraPendente(r.hora);
       } else {
-        setErro('Não identifiquei o colaborador. Busque pelo nome e registre a hora.');
+        setErro(
+          'Não identifiquei o colaborador. Busque pelo nome e registre a hora.',
+        );
       }
     } catch (e) {
       setErro(
@@ -237,12 +303,16 @@ export function RegistroPontoScreen(): React.ReactElement {
     setDados(null);
     setMostrarForm(false);
     setEditandoId(null);
+    setCandidatos([]);
   }
 
   function abrirRegistro(): void {
     setEditandoId(null);
     setHoraTexto('');
     setErroForm(null);
+    // Registro manual (sem leitura): não é do leitor, então não aprende alias.
+    setNomeLidoPendente(null);
+    setConfiancaPendente(null);
     setMostrarForm(true);
   }
 
@@ -263,6 +333,9 @@ export function RegistroPontoScreen(): React.ReactElement {
     setErroForm(null);
     try {
       const horaISO = `${data}T${horaTexto}:00.000Z`;
+      // Veio do leitor quando temos um nome lido pendente (e não é edição):
+      // marcamos origem LEITOR e mandamos o nome lido para o leitor aprender.
+      const veioDoLeitor = !editandoId && !!nomeLidoPendente;
       const resp = editandoId
         ? await pontoService.editarBatida(editandoId, { hora: horaISO })
         : await pontoService.registrarBatida({
@@ -270,12 +343,17 @@ export function RegistroPontoScreen(): React.ReactElement {
             tipoPessoa: 'FISCAL',
             data,
             hora: horaISO,
+            origem: veioDoLeitor ? 'LEITOR' : 'MANUAL',
+            nomeLido: veioDoLeitor ? nomeLidoPendente ?? undefined : undefined,
+            confianca: veioDoLeitor ? confiancaPendente ?? undefined : undefined,
           });
       setDados(resp);
       setMostrarForm(false);
       setHoraTexto('');
       if (!editandoId) {
         setSessao((s) => s + 1);
+        setNomeLidoPendente(null);
+        setConfiancaPendente(null);
         // No modo lote, volta para escolher o próximo colaborador.
         if (loteAtivo) trocarPessoa();
       }
@@ -373,11 +451,25 @@ export function RegistroPontoScreen(): React.ReactElement {
           </Pressable>
           {leituraInfo ? (
             <View style={styles.leituraBanner}>
-              <Ionicons name="scan-outline" size={16} color={cores.primaria} />
+              <Ionicons
+                name="scan-outline"
+                size={16}
+                color={corConfianca(leituraInfo.confianca)}
+              />
               <Text style={styles.leituraTexto}>
                 Lido: {leituraInfo.nome ?? 'nome não identificado'}
                 {leituraInfo.hora ? ` · ${leituraInfo.hora}` : ' · sem hora'}
               </Text>
+              {leituraInfo.confianca != null ? (
+                <Text
+                  style={[
+                    styles.leituraConf,
+                    { color: corConfianca(leituraInfo.confianca) },
+                  ]}
+                >
+                  {rotuloConfianca(leituraInfo.confianca)}
+                </Text>
+              ) : null}
             </View>
           ) : null}
 
@@ -390,6 +482,41 @@ export function RegistroPontoScreen(): React.ReactElement {
             aoCancelar={() => setScannerAberto(false)}
           />
         </>
+      ) : null}
+
+      {/* Sugestões da leitura (ordenadas por confiança), quando não há acerto
+          automático. O usuário toca no colaborador certo para continuar. */}
+      {!pessoa && candidatos.length > 0 ? (
+        <Cartao>
+          <Text style={styles.secaoTitulo}>Sugestões da leitura</Text>
+          {candidatos.map((c, i) => (
+            <Pressable
+              key={c.id}
+              onPress={() => selecionarPessoa(c)}
+              style={styles.resultado}
+              accessibilityRole="button"
+            >
+              <Ionicons name="person-outline" size={18} color={cores.primaria} />
+              <View style={styles.candidatoInfo}>
+                <Text style={styles.candidatoNome}>{c.nome}</Text>
+                {c.aprendido ? (
+                  <Text style={[styles.candidatoTag, { color: cores.primaria }]}>
+                    memorizado · {Math.round(c.confianca * 100)}%
+                  </Text>
+                ) : i === 0 ? (
+                  <Text style={[styles.candidatoTag, { color: cores.verde }]}>
+                    mais provável · {Math.round(c.confianca * 100)}%
+                  </Text>
+                ) : (
+                  <Text style={styles.candidatoTagFraco}>
+                    {Math.round(c.confianca * 100)}%
+                  </Text>
+                )}
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={cores.textoSecundario} />
+            </Pressable>
+          ))}
+        </Cartao>
       ) : null}
 
       {/* Seleção do colaborador */}
@@ -628,6 +755,26 @@ const styles = StyleSheet.create({
     color: cores.texto,
     flex: 1,
     fontWeight: '600',
+  },
+  leituraConf: {
+    ...tipografia.legenda,
+    fontWeight: '700',
+  },
+  candidatoInfo: {
+    flex: 1,
+  },
+  candidatoNome: {
+    ...tipografia.corpo,
+    color: cores.texto,
+    fontWeight: '600',
+  },
+  candidatoTag: {
+    ...tipografia.legenda,
+    fontWeight: '700',
+  },
+  candidatoTagFraco: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
   },
   resultado: {
     flexDirection: 'row',

@@ -15,6 +15,29 @@
  * A data e a hora são determinísticas; o nome é heurístico (o usuário confirma).
  */
 
+/**
+ * Como cada campo foi encontrado — usado para estimar a confiança da leitura.
+ *  - ROTULO: casou pelo rótulo (`HORA:`/`DATA:`/`NOME:`) com dígitos limpos.
+ *  - ROTULO_CORRIGIDO: casou pelo rótulo, mas precisou corrigir letras que o
+ *    OCR trocou por dígitos (ex.: "1S:34" → "15:34") — um pouco menos seguro.
+ *  - GENERICA: casou sem rótulo (varredura), mais sujeito a engano.
+ *  - FALLBACK: nome deduzido pela "maior linha que parece nome" (sem rótulo).
+ */
+export type FonteCampo =
+  | 'ROTULO'
+  | 'ROTULO_CORRIGIDO'
+  | 'GENERICA'
+  | 'FALLBACK';
+
+/** Confiança (0–1) por campo lido + uma confiança geral ponderada. */
+export interface ConfiancaComprovante {
+  nome: number;
+  data: number;
+  hora: number;
+  /** Combinação ponderada (hora e nome pesam mais que a data). */
+  geral: number;
+}
+
 export interface ComprovanteInterpretado {
   /** Texto bruto lido (para auditoria/depuração). */
   texto: string;
@@ -24,6 +47,45 @@ export interface ComprovanteInterpretado {
   data: string | null;
   /** Hora da batida no formato HH:mm, se identificada. */
   hora: string | null;
+  /** Confiança estimada da leitura, por campo e geral. */
+  confianca: ConfiancaComprovante;
+}
+
+/** Resultado de uma extração: o valor e COMO ele foi encontrado. */
+interface CampoExtraido {
+  valor: string | null;
+  fonte: FonteCampo | null;
+}
+
+// Confiança por origem do dado. Ancorado no rótulo = alto; corrigido = médio;
+// varredura genérica = mais baixo; fallback do nome = baixo.
+const CONFIANCA_HORA: Record<FonteCampo, number> = {
+  ROTULO: 0.95,
+  ROTULO_CORRIGIDO: 0.82,
+  GENERICA: 0.6,
+  FALLBACK: 0,
+};
+const CONFIANCA_DATA: Record<FonteCampo, number> = {
+  ROTULO: 0.95,
+  ROTULO_CORRIGIDO: 0.82,
+  GENERICA: 0.55,
+  FALLBACK: 0,
+};
+const CONFIANCA_NOME: Record<FonteCampo, number> = {
+  ROTULO: 0.9,
+  ROTULO_CORRIGIDO: 0.9,
+  GENERICA: 0.6,
+  FALLBACK: 0.5,
+};
+
+/** Arredonda para 2 casas (mantém a confiança legível). */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/** true se o trecho tem letras (ou seja, o OCR trocou dígito por letra). */
+function precisouCorrigir(...trechos: string[]): boolean {
+  return /[^0-9]/.test(trechos.join(''));
 }
 
 // "Dígito" tolerante ao OCR: além de 0-9, aceita as letras que o leitor mais
@@ -158,26 +220,40 @@ function pareceNome(linha: string): boolean {
 }
 
 /**
- * Extrai a hora (HH:mm). Primeiro pelo rótulo `HORA:` (tolerante a OCR: corrige
- * letras trocadas por dígitos e aceita separador ausente), depois genérica.
+ * Extrai a hora (HH:mm) e diz COMO a encontrou. Primeiro pelo rótulo `HORA:`
+ * (tolerante a OCR: corrige letras trocadas por dígitos e aceita separador
+ * ausente), depois genérica.
  */
-export function extrairHora(texto: string): string | null {
+export function extrairHoraDetalhe(texto: string): CampoExtraido {
   const norm = normalizarTexto(texto);
   const rot = RE_HORA_ROTULO.exec(norm);
   if (rot) {
     const h = montarHora(corrigirDigitos(rot[1]), corrigirDigitos(rot[2]));
-    if (h) return h;
+    if (h) {
+      const fonte = precisouCorrigir(rot[1], rot[2])
+        ? 'ROTULO_CORRIGIDO'
+        : 'ROTULO';
+      return { valor: h, fonte };
+    }
   }
   const g = RE_HORA.exec(norm);
   if (g) {
     const h = montarHora(g[1], g[2]);
-    if (h) return h;
+    if (h) return { valor: h, fonte: 'GENERICA' };
   }
-  return null;
+  return { valor: null, fonte: null };
 }
 
-/** Extrai a data (yyyy-mm-dd): primeiro pelo rótulo `DATA:`, depois a 1ª válida. */
-export function extrairData(texto: string): string | null {
+/** Extrai a hora (HH:mm). Mantido para compatibilidade. */
+export function extrairHora(texto: string): string | null {
+  return extrairHoraDetalhe(texto).valor;
+}
+
+/**
+ * Extrai a data (yyyy-mm-dd) e diz COMO a encontrou: primeiro pelo rótulo
+ * `DATA:`, depois a 1ª válida por varredura.
+ */
+export function extrairDataDetalhe(texto: string): CampoExtraido {
   const norm = normalizarTexto(texto);
   const rot = RE_DATA_ROTULO.exec(norm);
   if (rot) {
@@ -186,20 +262,32 @@ export function extrairData(texto: string): string | null {
       corrigirDigitos(rot[2]),
       corrigirDigitos(rot[3]),
     );
-    if (d) return d;
+    if (d) {
+      const fonte = precisouCorrigir(rot[1], rot[2], rot[3])
+        ? 'ROTULO_CORRIGIDO'
+        : 'ROTULO';
+      return { valor: d, fonte };
+    }
   }
   for (const m of norm.matchAll(RE_DATA)) {
     const d = montarData(m);
-    if (d) return d;
+    if (d) return { valor: d, fonte: 'GENERICA' };
   }
-  return null;
+  return { valor: null, fonte: null };
+}
+
+/** Extrai a data (yyyy-mm-dd). Mantido para compatibilidade. */
+export function extrairData(texto: string): string | null {
+  return extrairDataDetalhe(texto).valor;
 }
 
 /**
- * Extrai o nome do trabalhador. Usa o rótulo `NOME:`/`FUNCIONÁRIO:` e junta a
- * continuação quando o nome quebra de linha (ex.: "...RE" + "YES" = "REYES").
+ * Extrai o nome do trabalhador e diz COMO o encontrou. Usa o rótulo `NOME:`/
+ * `FUNCIONÁRIO:` e junta a continuação quando o nome quebra de linha (ex.:
+ * "...RE" + "YES" = "REYES"). Se não houver rótulo, cai no FALLBACK (a maior
+ * linha que "parece nome").
  */
-export function extrairNome(texto: string): string | null {
+export function extrairNomeDetalhe(texto: string): CampoExtraido {
   const linhas = texto
     .split(/\r?\n/)
     .map((l) => l.trim())
@@ -220,22 +308,47 @@ export function extrairNome(texto: string): string | null {
       if (nome.length > 60) break;
     }
     nome = normalizarTexto(nome);
-    if (pareceNome(nome)) return nome;
+    if (pareceNome(nome)) return { valor: nome, fonte: 'ROTULO' };
   }
 
   // Fallback: a maior linha que "parece nome".
   const candidatas = linhas.filter(pareceNome);
-  if (candidatas.length === 0) return null;
+  if (candidatas.length === 0) return { valor: null, fonte: null };
   candidatas.sort((a, b) => b.length - a.length);
-  return normalizarTexto(candidatas[0]);
+  return { valor: normalizarTexto(candidatas[0]), fonte: 'FALLBACK' };
 }
 
-/** Interpreta o comprovante: nome + data + hora. */
+/** Extrai o nome do trabalhador. Mantido para compatibilidade. */
+export function extrairNome(texto: string): string | null {
+  return extrairNomeDetalhe(texto).valor;
+}
+
+/** Confiança de um campo a partir da fonte (0 quando não foi encontrado). */
+function confiancaDe(
+  tabela: Record<FonteCampo, number>,
+  fonte: FonteCampo | null,
+): number {
+  return fonte ? tabela[fonte] : 0;
+}
+
+/** Interpreta o comprovante: nome + data + hora + confiança da leitura. */
 export function interpretarComprovante(texto: string): ComprovanteInterpretado {
+  const hora = extrairHoraDetalhe(texto);
+  const data = extrairDataDetalhe(texto);
+  const nome = extrairNomeDetalhe(texto);
+
+  const cHora = confiancaDe(CONFIANCA_HORA, hora.fonte);
+  const cData = confiancaDe(CONFIANCA_DATA, data.fonte);
+  const cNome = confiancaDe(CONFIANCA_NOME, nome.fonte);
+  // Hora e nome são os mais importantes para registrar a batida certa; a data
+  // pesa menos (quase sempre é hoje e o usuário vê o dia selecionado).
+  const geral = round2(cHora * 0.45 + cNome * 0.4 + cData * 0.15);
+
   return {
     texto,
-    nome: extrairNome(texto),
-    data: extrairData(texto),
-    hora: extrairHora(texto),
+    nome: nome.valor,
+    data: data.valor,
+    hora: hora.valor,
+    confianca: { nome: cNome, data: cData, hora: cHora, geral },
   };
 }
