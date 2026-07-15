@@ -1,219 +1,171 @@
 # Check-out PRO — Gestão Inteligente de Supermercado
 
-Aplicativo de gestão da operação de supermercado da rede **Check-out PRO**, voltado a
-gerentes, supervisores, fiscais e operadores. Centraliza a operação de frente de
-caixa e do mercado num só lugar, com uma assistente de IA (**Cluby**) que orienta a
-equipe e mostra o passo a passo das normativas com fotos.
+Aplicação web e Android para gestão da frente de caixa de supermercado. O produto reúne operação diária, pessoas, jornada, ponto, indicadores, estoque, checklists, notificações e a assistente **Cluby** em um monorepo com backend NestJS e app Expo/React Native.
 
-> Produto 100% em Português do Brasil. Web (navegador) + Android (APK via Expo).
+> UI e domínio em Português do Brasil. Estado deste documento: **15/07/2026**. O código descrito está mesclado na `main` até o commit `e8c32be`; este registro não confirma que o último commit já tenha sido implantado no Render.
 
----
+## Estado atual
 
-## Sumário
+- Backend: build validado; **71 suítes / 406 testes**.
+- Mobile: type-check e lint validados; **23 suítes / 85 testes**.
+- Última migração Prisma: `9zp_tipo_contrato_colaborador`.
+- Alertas preventivos de TAC entregues nos PRs **#234 e #235**:
+  - `>= 1h30` de horas extras: **Risco de TAC**;
+  - `>= 1h40`: **Risco alto de TAC**;
+  - `> 1h50`: **TAC**;
+  - destinatários: supervisores e gerentes;
+  - envio best-effort, sem bloquear a batida;
+  - deduplicação por pessoa/dia/etapa em memória, compartilhada entre a batida e o cron.
+- Central de Jornada, feriados e contrato `6x1-2x1` entregues nos PRs **#224 e #225**.
+- Auditoria de segurança, privacidade, atomicidade, dependências e desempenho consolidada nos PRs **#211–#214 e #223**.
+- Dependabot ajustado para reduzir upgrades incompatíveis/major nos PRs **#226 e #232**.
 
-- [Arquitetura](#arquitetura)
-- [Stack tecnológico](#stack-tecnológico)
-- [Estrutura de pastas](#estrutura-de-pastas)
-- [Instalação local](#instalação-local)
-- [Variáveis de ambiente](#variáveis-de-ambiente)
-- [Scripts disponíveis](#scripts-disponíveis)
-- [Deploy no Render](#deploy-no-render)
-- [Geração do APK (Expo)](#geração-do-apk-expo)
-- [Convenções de desenvolvimento](#convenções-de-desenvolvimento)
+## Funcionalidades principais
 
----
+- **Acessos e pessoas:** login por matrícula, JWT com revogação por `tokenVersion`, permissões por funcionalidade, Cadastro Unificado de Colaboradores e perfis de gerente desenvolvedor, gerente, supervisor, fiscal e importador.
+- **Operação diária:** importação de vendas e arrecadação por `.txt`, fechamento inteligente, metas, indicadores, painel de vendas e tratamento de lançamentos não reconhecidos.
+- **Registro de Ponto:** batidas manuais ou por comprovante fotografado, OCR no servidor/web e ML Kit no Android, confirmação antes da gravação, jornada calculada e alertas de risco/TAC.
+- **Central de Jornada:** ciclo de apuração **26→25** e consolidação de operadores, supervisores e fiscais; o backend compara até 12 ciclos e o app exibe atualmente seis, com carga trabalhada/base diária, extras 50%/100%, horas devidas, atestados, faltas, TAC e saldo.
+- **Escala e calendário:** contrato `SEIS_X_UM_DOIS_X_UM`; feriados nacionais automáticos e estaduais/municipais manuais; feriado segue a regra de domingo.
+- **RRHH:** faltas e justificativas, incidências/sanções, solicitações de advertência, contratos de experiência, feedforward e perfil inteligente do colaborador.
+- **Estoque e rotinas:** insumos, requisições, pedidos recorrentes, Sacolas APAE, checklist com imagem/hash e notificações.
+- **Cluby:** assistente com Google Gemini e conversa persistida; procedimentos/normativas em escala continuam desativados até a implantação de RAG.
+- **Notificações:** in-app, WebSocket e envio real pelo Expo Push Service. Para Android em produção ainda é necessário configurar FCM e gerar/publicar novo APK.
 
 ## Arquitetura
 
-Monorepo **npm workspaces** com dois pacotes independentes:
-
-```
-┌─────────────────────────┐         ┌──────────────────────────────┐
-│  mobile/ (Expo / RN)     │  HTTPS  │  backend/ (NestJS)           │
-│  - App Android (APK)     │ ───────▶│  - REST + WebSocket + Cron   │
-│  - App Web (estático)    │  Bearer │  - Prisma → PostgreSQL       │
-└─────────────────────────┘   JWT   │  - Gemini (assistente IA)    │
-                                     └──────────────────────────────┘
+```text
+mobile/ (Expo / React Native / Web)
+       └── HTTPS + JWT + Socket.IO
+backend/ (NestJS / Prisma / Cron)
+       └── PostgreSQL + Gemini + Expo Push Service
 ```
 
-- **backend/** — API NestJS modular por domínio (um módulo por área: acessos,
-  arrecadação, fechamento, fiscais, importações, indicadores, insumos, requisições,
-  lote APAE, notificações, vendas, checklist, assistente). Autenticação JWT global;
-  autorização por perfil/funcionalidade via guards. WebSocket (status de fiscais em
-  tempo real) e cron jobs (alertas, limpeza) no fuso `America/Sao_Paulo`.
-- **mobile/** — App React Native + Expo, também exportável como site estático para a
-  web. Organizado por camadas (`api`, `screens`, `components`, `navigation`,
-  `hooks`, `offline`, `theme`, `utils`). Suporte offline com fila de sincronização.
-
-Separação de responsabilidades no backend, por módulo: `*.controller.ts` (HTTP) →
-`*.service.ts` (regra de negócio) → Prisma (persistência); `*.domain.ts` para regras
-puras, `dto/` para validação de entrada, `*.errors.ts` para erros de domínio
-traduzidos a HTTP por um filtro global (`common/filters`).
-
-## Stack tecnológico
+O backend segue, por módulo, `controller → service → domain/Prisma`. Regras puras ficam em `*.domain.ts`; DTOs validam entrada; erros de domínio são traduzidos por filtro global. O mobile separa API, autenticação, componentes, navegação, telas, offline, tema e utilitários.
 
 | Camada | Tecnologias |
 | --- | --- |
-| Backend | Node.js, NestJS, TypeScript, Prisma, PostgreSQL, JWT, WebSocket, `@nestjs/schedule` |
-| IA | Google Gemini (`gemini-2.5-flash`) via REST |
-| Mobile | React Native, Expo SDK 52, TypeScript, React Navigation (native-stack) |
-| Testes | Jest (backend e mobile), fast-check (property-based), Testing Library |
-| Qualidade | ESLint, Prettier, TypeScript em modo `strict` (ambos os pacotes) |
-| Infra | Render (API + Web + PostgreSQL), EAS Build (APK) |
+| Backend | Node.js, NestJS 10, TypeScript strict, Prisma 5, PostgreSQL, JWT, Socket.IO, `@nestjs/schedule` |
+| Mobile | React Native 0.76, Expo SDK 52, React Navigation, SQLite/offline |
+| IA e push | Gemini `gemini-2.5-flash`, Expo Push Service; FCM necessário no APK Android |
+| Qualidade | Jest, fast-check, Testing Library, ESLint, Prettier |
+| Infra | Render, PostgreSQL, EAS Build |
 
-## Estrutura de pastas
+## Estrutura do repositório
 
-```
-.
-├── backend/
-│   ├── prisma/                 # schema, migrations, seed
-│   ├── assets/procedimentos/   # fotos das normativas (servidas em /assets)
-│   └── src/
-│       ├── <dominio>/          # módulo por área (controller/service/module/dto)
-│       ├── assistente/         # chat IA (Cluby) + procedimentos guiados
-│       ├── common/             # guards, decorators, filtros, utilidades
-│       ├── config/             # validação de env
-│       └── main.ts
-└── mobile/
-    └── src/
-        ├── api/                # client HTTP, services por domínio, types
-        ├── auth/               # contexto de autenticação e permissões
-        ├── components/         # UI compartilhada
-        ├── navigation/         # navegadores e rotas
-        ├── hooks/ offline/     # hooks e suporte offline
-        ├── screens/            # telas por área
-        ├── theme/ utils/       # tema, formatação, diálogos
-        └── ...
+```text
+backend/
+├── prisma/                 # schema, migrations e seed
+├── assets/procedimentos/   # imagens do piloto de normativas
+└── src/                    # módulos NestJS
+mobile/
+├── assets/                 # marca e ícones
+└── src/
+    ├── api/ auth/ navigation/
+    ├── components/ hooks/ offline/
+    ├── screens/ theme/ utils/
+    └── ...
+docs/                       # operação, auditorias e ADRs
+.kiro/steering/             # handoff técnico e estado operacional
 ```
 
 ## Instalação local
 
-Pré-requisitos: **Node.js ≥ 18**, **PostgreSQL** (para o backend) e, para o mobile,
-o app **Expo Go** ou um emulador.
+Pré-requisitos: Node.js 18 ou superior e PostgreSQL.
 
 ```bash
-# 1. Instalar dependências de todo o monorepo (na raiz)
 npm install
 
-# 2. Backend
 cd backend
-cp .env.example .env            # ajuste DATABASE_URL e JWT_SECRET
+cp .env.example .env
 npm run prisma:generate
-npm run prisma:migrate          # aplica as migrations no banco local
-npm run seed                    # (opcional) popula dados iniciais
-npm run start:dev               # API em http://localhost:3000
+npm run prisma:migrate
+npm run seed
+npm run start:dev
 
-# 3. Mobile (em outro terminal)
+# em outro terminal
 cd mobile
 EXPO_PUBLIC_API_URL=http://localhost:3000 npm run start
 ```
 
-## Variáveis de ambiente
+## Variáveis importantes
 
-### Backend (`backend/.env`)
+### Backend
 
-| Variável | Obrigatória | Padrão | Descrição |
-| --- | --- | --- | --- |
-| `DATABASE_URL` | **sim em produção** | — | String de conexão PostgreSQL (Prisma). Obrigatória em produção — a API não sobe sem ela |
-| `JWT_SECRET` | **sim em produção** | — (sem default) | Segredo de assinatura dos tokens JWT. **Obrigatório em produção** (a API se recusa a iniciar sem ele); em desenvolvimento usa-se um segredo aleatório efêmero. Use algo longo e aleatório (`openssl rand -hex 32`) |
-| `JWT_EXPIRES_IN` | não | `30d` | Expiração do token de acesso (a equipe fica logada ~1 mês) |
-| `PORT` | não | `3000` | Porta HTTP (o Render injeta automaticamente) |
-| `NODE_ENV` | não | `development` | `development` \| `test` \| `production` |
-| `HORARIO_FIM_DO_DIA` | não | `18:00` | Horário (HH:mm) para alertas de importações pendentes |
-| `GEMINI_API_KEY` | não | — | Chave do Google Gemini (assistente Cluby). Sem ela, o assistente responde "não configurado" |
-| `GEMINI_MODEL` | não | `gemini-2.5-flash` | Modelo Gemini usado pela Cluby |
-| `CORS_ORIGINS` | não | — | Lista de origens permitidas para CORS, separadas por vírgula (ex.: `https://checkout-pro-web.onrender.com`). Se vazia, a API reflete a origem da requisição — **defina-a em produção** |
-
-> ⚠️ **Segurança:** em **produção** o `JWT_SECRET` é **obrigatório** — a API **não
-> inicializa** (falha rápida no boot) sem ele; não há mais segredo padrão inseguro.
-> Em desenvolvimento/teste, quando ausente, é gerado um segredo aleatório efêmero por
-> processo (útil localmente, inválido entre reinícios). O `DATABASE_URL` também é
-> obrigatório em produção pelo mesmo mecanismo de falha rápida.
+| Variável | Uso |
+| --- | --- |
+| `DATABASE_URL` | conexão PostgreSQL; obrigatória em produção |
+| `JWT_SECRET` | assinatura JWT; obrigatória em produção |
+| `JWT_EXPIRES_IN` | validade do token; padrão `30d` |
+| `CORS_ORIGINS` | allowlist da web em produção |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | Cluby; modelo padrão `gemini-2.5-flash` |
+| `HORARIO_FIM_DO_DIA` | horário dos alertas operacionais |
+| `SENHA_INICIAL` | senha usada pelo seed |
+| `RETENCAO_INATIVOS_MESES` | retenção antes da purga; padrão 12 meses |
 
 ### Mobile
 
-| Variável | Obrigatória | Descrição |
-| --- | --- | --- |
-| `EXPO_PUBLIC_API_URL` | sim | URL base da API (ex.: `https://checkout-pro-api.onrender.com`) |
-
-## Scripts disponíveis
-
-### Raiz (delegam ao backend)
-
-| Comando | Descrição |
+| Variável | Uso |
 | --- | --- |
-| `npm run build` | Compila o backend |
-| `npm run start` | Inicia o backend |
-| `npm run lint` / `npm run test` | Lint / testes do backend |
+| `EXPO_PUBLIC_API_URL` | URL pública da API |
 
-### Backend (`backend/`)
+A entrega de push Android depende também das credenciais **Firebase Cloud Messaging (FCM)** vinculadas ao projeto Expo/EAS; depois da configuração é obrigatório recompilar e distribuir o APK.
 
-| Comando | Descrição |
-| --- | --- |
-| `npm run start:dev` | API em modo watch |
-| `npm run start:prod` | Inicia a build de produção (`dist/main.js`) |
-| `npm run build` / `lint` / `test` | Build / lint / testes |
-| `npm run test:cov` | Testes com cobertura |
-| `npm run prisma:generate` | Gera o Prisma Client |
-| `npm run prisma:migrate` | Aplica migrations (dev) |
-| `npm run prisma:validate` | Valida o schema Prisma |
-| `npm run seed` | Popula dados iniciais |
+## Verificação
 
-### Mobile (`mobile/`)
+```bash
+# backend
+cd backend
+npm run prisma:generate
+npm run prisma:validate
+npm run build
+npm test
 
-| Comando | Descrição |
-| --- | --- |
-| `npm run start` | Inicia o Expo (dev) |
-| `npm run android` / `ios` / `web` | Abre na plataforma |
-| `npm run type-check` | Checagem de tipos (`tsc --noEmit`) |
-| `npm run lint` / `test` | Lint / testes |
+# mobile
+cd mobile
+npm run type-check
+npm run lint
+npm test -- --runInBand
+```
 
-## Deploy no Render
+O lint global do backend sem `--fix` ainda encontra **31 erros Prettier preexistentes** em quatro arquivos (`alertas.service.spec.ts`, `fiscais.service.ts`, `insumos.service.ts` e `test/helpers/fake-prisma.ts`). A limpeza deve ser feita em PR isolado para evitar diff funcional acidental.
 
-São três serviços no Render, todos com deploy automático ao dar push na `main`:
+## Deploy e APK
 
-1. **API (`checkout-pro-api`)** — Web Service, root directory `backend/`.
-   - Build: `npm install && npm run build && npm run prisma:generate`
-   - Start: `npm run start:prod`
-   - Variáveis: `DATABASE_URL`, `JWT_SECRET`, `GEMINI_API_KEY`, `CORS_ORIGINS`, etc.
-     (`JWT_SECRET` e `DATABASE_URL` são obrigatórios — sem eles a API não sobe).
-   - Migrations: aplicar via `prisma migrate deploy` (inclui as migrações
-     `9t`/`9u`/`9v`). Recomenda-se configurá-lo como **Pre-Deploy Command** para
-     rodar antes de a nova versão entrar no ar (o advisory lock do Prisma evita
-     execuções concorrentes).
-   - Health check / readiness: o endpoint `GET /health/ready` sinaliza prontidão
-     (inclui conectividade com o banco); pode ser usado como health check do Render.
-2. **Web (`checkout-pro-web`)** — site estático gerado com:
-   `EXPO_PUBLIC_API_URL=<url-da-api> npx expo export --platform web --output-dir dist`
-   (publish directory `dist`).
-3. **PostgreSQL** — banco gerenciado do Render (fornece o `DATABASE_URL`).
-
-> No plano gratuito do Render, a API "dorme" após inatividade; a primeira chamada
-> pode levar ~30–60s para acordar.
-
-## Geração do APK (Expo)
+- Render hospeda API, web estática e PostgreSQL.
+- O código em `main` pode acionar deploy automático, mas **merge não é prova de deploy concluído**; conferir painel, logs e `/health/ready`.
+- Migrations devem rodar em **Pre-Deploy Command**; o processo web deve iniciar sem ficar aguardando advisory lock do Prisma.
+- O banco deve usar plano persistente/estável antes da entrega ao cliente.
 
 ```bash
 cd mobile
-npm install -g eas-cli      # se ainda não tiver
-eas login
-eas build -p android --profile preview   # gera um APK instalável
+eas build -p android --profile preview
 ```
 
-Defina `EXPO_PUBLIC_API_URL` apontando para a API de produção no perfil de build
-(`eas.json`) para que o APK fale com o backend correto.
+## Pendências prioritárias
 
-## Convenções de desenvolvimento
+1. Configurar FCM e publicar novo APK para ativar push Android com o app fechado.
+2. Validar OCR/ML Kit com comprovantes reais em aparelho Android.
+3. Migrar o PostgreSQL do Render para plano persistente e mover migrations para Pre-Deploy.
+4. Contratar tier do Gemini compatível com uso multiusuário.
+5. Decidir/implementar as áreas ocultas: Alertas de Fila, Normativas e Indicador de Quebra.
+6. Implantar RAG com pgvector e object storage antes de reativar normativas em escala.
+7. Preparar `reset:cliente` + seed limpo antes da entrega; multi-tenancy permanece parqueado.
+8. Avaliar deduplicação persistente dos alertas TAC; hoje ela é em memória e reinícios podem permitir novo aviso.
 
-- **Idioma:** domínio, identificadores e UI em **Português do Brasil**.
-- **TypeScript `strict`** habilitado nos dois pacotes; evitar `any` (use tipos
-  compartilhados em `types.ts` / DTOs).
-- **Backend:** um módulo NestJS por domínio, com a separação
-  controller → service → domínio/Prisma; erros de domínio tipados + filtro global.
-- **Mobile:** UI em `components/`, chamadas de rede em `api/services/`, telas em
-  `screens/`, tipos espelhando os contratos do backend em `api/types.ts`.
-- **Documentação:** JSDoc em funções públicas, services, hooks e utilidades; evitar
-  comentários redundantes.
-- **Qualidade:** rodar `lint` + `test` antes de commitar. Backend: também
-  `prisma validate` e `build`. Mobile: `type-check` + export web para validar a build.
-- **Git:** commits descritivos; push direto à `main` aciona o redeploy no Render.
+## Documentação
+
+- [`PROJECT_UNDERSTANDING.md`](PROJECT_UNDERSTANDING.md) — snapshot canônico e completo do produto.
+- [`REGISTRO_DE_MUDANCAS.md`](REGISTRO_DE_MUDANCAS.md) — histórico cronológico das entregas.
+- [`GUIA_QA.md`](GUIA_QA.md) — validação manual por perfil e por fluxo.
+- [`.kiro/steering/estado-e-pendientes.md`](.kiro/steering/estado-e-pendientes.md) — handoff operacional e prioridades.
+- [`.kiro/steering/arquitetura.md`](.kiro/steering/arquitetura.md) — mapa técnico.
+- [`docs/ESTADO_Y_PROXIMOS_PASOS.md`](docs/ESTADO_Y_PROXIMOS_PASOS.md) — índice de compatibilidade que aponta para as fontes canônicas.
+
+## Convenções
+
+- UI, domínio, código, commits e PRs em Português do Brasil; handoff pode ser em espanhol.
+- TypeScript `strict`; evitar `any`.
+- Novas regras: domínio puro + testes quando aplicável; migrations aditivas por padrão.
+- Nova migration deve ordenar depois de `9zp_tipo_contrato_colaborador`.
+- Trabalhar em branch e PR; não publicar diretamente em `main` sem pedido explícito.

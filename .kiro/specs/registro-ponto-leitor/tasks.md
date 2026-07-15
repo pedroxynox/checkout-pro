@@ -1,10 +1,17 @@
 # Tarefas — Registro de Ponto (leitor de comprovante do ponto)
 
-> **Estado (2026-07-13):** Fase A e Fase B **concluídas e mescladas** na `main`
-> (PRs #174–#181). Falta apenas **validar em campo** o leitor on-device do APK
-> (ML Kit) e, com mais fotos reais, seguir afinando o interpretador. A Fase C
-> (operadores e importação do arquivo AFD) fica para o futuro. Ver o resumo
-> completo em `REGISTRO_DE_MUDANCAS.md`.
+> **Nota de evolução (2026-07-15):** o checklist abaixo registra a entrega
+> inicial. Hoje o Registro de Ponto/Central (#224–#225) abrange operadores,
+> supervisores e fiscais; Android usa ML Kit local com fallback e web usa o OCR
+> do servidor. Os PRs #234–#235 substituíram o alerta por 1h30/1h40/TAC >1h50,
+> supervisão/gerência e dedupe compartilhado. Apenas AFD continua futuro. Ver
+> `PROJECT_UNDERSTANDING.md`.
+
+> **Estado (2026-07-15):** Fases A/B e as ampliações de jornada estão
+> **concluídas e mescladas** na `main` (PRs #174–#181 e #224–#225). Falta validar
+> em campo o leitor on-device do APK (ML Kit), afinar o interpretador com fotos
+> reais e, como evolução futura, importar o arquivo AFD. Ver o resumo completo
+> em `REGISTRO_DE_MUDANCAS.md`.
 
 Cada bloco marcado como PR virou um Pull Request separado.
 

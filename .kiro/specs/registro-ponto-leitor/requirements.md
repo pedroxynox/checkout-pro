@@ -1,5 +1,14 @@
 # Requisitos — Registro de Ponto (leitor de comprovante do ponto)
 
+> **Nota de evolução (2026-07-15):** este documento preserva os requisitos da
+> entrega inicial (#174–#181). As regras de alerta da seção 12 foram substituídas
+> pelos PRs #234–#235: risco em `>=1h30`, risco alto em `>=1h40` e TAC em
+> `>1h50`, somente para supervisão/gerência, com deduplicação compartilhada e
+> envio best-effort. O Registro de Ponto e a Central de Jornada (#224–#225) já
+> abrangem operadores, supervisores e fiscais. No Android, o OCR usa ML Kit
+> local com fallback ao servidor; na web, usa o servidor. Apenas a importação
+> AFD continua futura. Regra vigente: `PROJECT_UNDERSTANDING.md`.
+
 ## Visão geral
 
 Nova seção **Registro de Ponto** no Check-out Pro. Hoje o fiscal marca
