@@ -2,7 +2,7 @@ export { Tela } from './Tela';
 export { Botao } from './Botao';
 export { CampoTexto } from './CampoTexto';
 export { Cartao } from './Cartao';
-export { Selo } from './StatusBadge';
+export { Selo } from './Selo';
 export { Carregando, MensagemErro, EstadoVazio } from './Estados';
 export { Segmentado, LinhaInfo } from './Diversos';
 export { SeletorData } from './SeletorData';

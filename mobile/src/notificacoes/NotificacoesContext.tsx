@@ -14,6 +14,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { conectarNotificacoes, EventoNotificacao } from '../api/socket';
@@ -81,10 +82,15 @@ export function NotificacoesProvider({
   const zerar = useCallback(() => setNaoLidas(0), []);
   const descartarUltima = useCallback(() => setUltima(null), []);
 
+  // Memoiza o valor para não recriar o objeto a cada render do provider —
+  // assim os consumidores só re-renderizam quando algo realmente muda.
+  const valor = useMemo(
+    () => ({ naoLidas, ultima, zerar, descartarUltima }),
+    [naoLidas, ultima, zerar, descartarUltima],
+  );
+
   return (
-    <NotificacoesContext.Provider
-      value={{ naoLidas, ultima, zerar, descartarUltima }}
-    >
+    <NotificacoesContext.Provider value={valor}>
       {children}
     </NotificacoesContext.Provider>
   );
