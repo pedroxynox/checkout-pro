@@ -11,7 +11,7 @@
 El estado funcional documentado está **mergeado en `main`** hasta `e8c32be` (PR #235). No se verificó desde este trabajo que ese commit esté efectivamente desplegado en producción; por eso se distingue siempre entre **implementado/mergeado**, **deploy confirmado** y **configuración externa pendiente**.
 
 Validación más reciente:
-- Backend: build correcto; **71 suites / 406 tests**.
+- Backend: build correcto; **71 suites / 409 tests**.
 - Mobile: type-check y lint correctos; **23 suites / 85 tests**.
 - ESLint focalizado de los archivos TAC: correcto.
 - Prettier: los cuatro archivos históricos ya fueron formateados (ver §10). Con Prettier 3.9.5 el `--check` global marca 9 archivos de dominio adicionales por deriva de versión; el CI los normaliza al vuelo vía `eslint --fix`, por lo que no rompen la validación.
@@ -108,7 +108,7 @@ Alertas:
 - nunca bloquean una batida si falla la notificación;
 - batida y cron comparten deduplicación por persona/día/etapa;
 - cron cada minuto y cobertura de fiscales/operadores;
-- deduplicación actual en memoria: un reinicio puede permitir un nuevo aviso; el fallo no se marca como enviado y puede reintentarse.
+- deduplicación PERSISTENTE (tabla `AlertaTacEnviado`, migración `9zq_alerta_tac_enviado`): reserva atómica por índice único `(pessoaId, dia, etapa)` antes de notificar, así sobrevive a reinicios y coordina múltiples instancias; el fallo libera la reserva y puede reintentarse; el TAC es diario (la unicidad incluye el día).
 
 ### 5.2 Central de Jornada
 
@@ -172,7 +172,7 @@ El historial anterior continúa en `REGISTRO_DE_MUDANCAS.md`; esta tabla no reem
 
 - Schema: `backend/prisma/schema.prisma`.
 - Migraciones: `backend/prisma/migrations/`.
-- Última migración real: **`9zp_tipo_contrato_colaborador`**.
+- Última migración real: **`9zq_alerta_tac_enviado`**.
 - La próxima migración debe ordenar después de `9zp` y ser aditiva siempre que sea posible.
 - Nunca ejecutar un reset destructivo en producción como parte de una entrega automática.
 - Antes de entregar a un cliente se requiere un `reset:cliente` explícito y seed mínimo, separado del seed demo.
@@ -208,14 +208,14 @@ Caveats:
 8. Preparar `reset:cliente` + seed limpio y retirar datos del piloto antes de la entrega.
 
 ### Calidad/deuda técnica
-9. Evaluar deduplicación persistente de alertas TAC para sobrevivir reinicios y múltiples instancias.
+9. **Resuelto.** Deduplicación persistente de alertas TAC (tabla `AlertaTacEnviado`, migración `9zq`): reserva atómica por índice único; sobrevive a reinicios y coordina múltiples instancias.
 10. **Resuelto.** Los cuatro archivos Prettier históricos fueron formateados en PR aislado (ver §10). Queda como deuda menor decidir si se normalizan los 9 archivos de dominio que Prettier 3.9.5 marca por deriva de versión.
 11. Mantener multi-tenancy parqueado hasta que la instancia de una sola tienda esté operativamente estable. Cuando se retome: `lojaId`, aislamiento por fila/RLS y pruebas de fuga entre tenants.
 
 ## 10. Verificación y deuda conocida
 
 Últimos resultados confirmados:
-- Backend: build OK; 71 suites, 406 tests.
+- Backend: build OK; 71 suites, 409 tests.
 - Mobile: type-check + lint OK; 23 suites, 85 tests.
 - Archivos TAC: ESLint focalizado OK.
 

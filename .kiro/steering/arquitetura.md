@@ -66,7 +66,7 @@ Deploy conhecido: API e web no Render. Código mergeado não equivale a deploy c
 1. Batida manual ou OCR entra em `ponto`.
 2. OCR sugere; usuário confirma antes de persistir.
 3. `ponto.domain` classifica batidas e calcula jornada.
-4. Batida e cron `* * * * *` avaliam etapas TAC com dedupe compartilhado em memória.
+4. Batida e cron `* * * * *` avaliam etapas TAC com dedupe PERSISTENTE (tabela `AlertaTacEnviado`, reserva atômica por índice único): sobrevive a reinícios e coordena instâncias.
 5. `central-jornada` consolida ciclo 26→25 para operador/supervisor/fiscal.
 6. `feriados` altera carga e percentual de extras.
 
@@ -96,7 +96,7 @@ Para Android fechado, FCM + APK recompilado continuam obrigatórios.
 ## Banco e migrations
 
 - Prisma schema: `backend/prisma/schema.prisma`.
-- Última migration: `9zp_tipo_contrato_colaborador`.
+- Última migration: `9zq_alerta_tac_enviado`.
 - Próxima deve ordenar depois de `9zp`.
 - Preferir migrations aditivas e compatíveis durante rolling deploy.
 - `prisma migrate deploy` deve rodar no Pre-Deploy, não no Start Command.
@@ -111,7 +111,7 @@ Para Android fechado, FCM + APK recompilado continuam obrigatórios.
 
 ## Qualidade atual
 
-- Backend: build OK; 71 suítes / 406 testes.
+- Backend: build OK; 71 suítes / 409 testes.
 - Mobile: type-check + lint OK; 23 suítes / 85 testes.
 - Últimos arquivos TAC: ESLint OK.
 - Prettier: quatro arquivos legados já formatados em PR isolado. Dívida residual: 9 arquivos de domínio marcados pelo Prettier 3.9.5 por deriva de versão; CI normaliza via `eslint --fix`. Ver steering de estado.

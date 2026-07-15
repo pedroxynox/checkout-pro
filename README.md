@@ -6,16 +6,16 @@ Aplicação web e Android para gestão da frente de caixa de supermercado. O pro
 
 ## Estado atual
 
-- Backend: build validado; **71 suítes / 406 testes**.
+- Backend: build validado; **71 suítes / 409 testes**.
 - Mobile: type-check e lint validados; **23 suítes / 85 testes**.
-- Última migração Prisma: `9zp_tipo_contrato_colaborador`.
+- Última migração Prisma: `9zq_alerta_tac_enviado`.
 - Alertas preventivos de TAC entregues nos PRs **#234 e #235**:
   - `>= 1h30` de horas extras: **Risco de TAC**;
   - `>= 1h40`: **Risco alto de TAC**;
   - `> 1h50`: **TAC**;
   - destinatários: supervisores e gerentes;
   - envio best-effort, sem bloquear a batida;
-  - deduplicação por pessoa/dia/etapa em memória, compartilhada entre a batida e o cron.
+  - deduplicação por pessoa/dia/etapa **persistente** (tabela `AlertaTacEnviado`, reserva atômica por índice único), compartilhada entre a batida e o cron: sobrevive a reinícios e coordena múltiplas instâncias.
 - Central de Jornada, feriados e contrato `6x1-2x1` entregues nos PRs **#224 e #225**.
 - Auditoria de segurança, privacidade, atomicidade, dependências e desempenho consolidada nos PRs **#211–#214 e #223**.
 - Dependabot ajustado para reduzir upgrades incompatíveis/major nos PRs **#226 e #232**.
@@ -151,7 +151,7 @@ eas build -p android --profile preview
 5. Decidir/implementar as áreas ocultas: Alertas de Fila, Normativas e Indicador de Quebra.
 6. Implantar RAG com pgvector e object storage antes de reativar normativas em escala.
 7. Preparar `reset:cliente` + seed limpo antes da entrega; multi-tenancy permanece parqueado.
-8. Avaliar deduplicação persistente dos alertas TAC; hoje ela é em memória e reinícios podem permitir novo aviso.
+8. **Concluído.** Deduplicação persistente dos alertas TAC (tabela `AlertaTacEnviado`, migration `9zq`): sobrevive a reinícios e coordena múltiplas instâncias.
 
 ## Documentação
 
@@ -167,5 +167,5 @@ eas build -p android --profile preview
 - UI, domínio, código, commits e PRs em Português do Brasil; handoff pode ser em espanhol.
 - TypeScript `strict`; evitar `any`.
 - Novas regras: domínio puro + testes quando aplicável; migrations aditivas por padrão.
-- Nova migration deve ordenar depois de `9zp_tipo_contrato_colaborador`.
+- Nova migration deve ordenar depois de `9zq_alerta_tac_enviado`.
 - Trabalhar em branch e PR; não publicar diretamente em `main` sem pedido explícito.
