@@ -22,27 +22,24 @@ updates:
         update-types:
           - minor
           - patch
-    # Ignora as atualizações de versão MAIOR dos frameworks pesados (NestJS,
-    # Expo, React Native, React Navigation). Esses saltos quebram o app com
-    # facilidade e exigem uma migração dedicada e testada — serão feitos à mão,
-    # um de cada vez, e não propostos automaticamente (evita ruído e risco).
-    # As atualizações de patch/minor desses pacotes continuam sendo propostas.
     ignore:
-      - dependency-name: '@nestjs/*'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'expo'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'expo-*'
-        update-types: ['version-update:semver-major']
-      - dependency-name: '@expo/*'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'react'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'react-dom'
-        update-types: ['version-update:semver-major']
+      # Pacotes GERENCIADOS PELO EXPO SDK: react-native, react e afins são
+      # travados na versão que o SDK exige e só devem mudar via `expo install`
+      # ao subir o SDK. Bumpá-los sozinho quebra o app (ex.: RN 0.76→0.86 numa
+      # base Expo 52). Como usam versão 0.x, o salto conta como "minor" e passa
+      # despercebido — por isso são IGNORADOS por completo aqui.
       - dependency-name: 'react-native'
-        update-types: ['version-update:semver-major']
       - dependency-name: 'react-native-*'
+      - dependency-name: 'react'
+      - dependency-name: 'react-dom'
+      - dependency-name: 'expo'
+      - dependency-name: 'expo-*'
+      - dependency-name: '@expo/*'
+      - dependency-name: '@expo-google-fonts/*'
+      - dependency-name: 'jest-expo'
+      # Frameworks cujo salto MAIOR exige migração dedicada e testada (o app
+      # continua recebendo patch/minor seguros desses pacotes).
+      - dependency-name: '@nestjs/*'
         update-types: ['version-update:semver-major']
       - dependency-name: '@react-navigation/*'
         update-types: ['version-update:semver-major']
