@@ -572,6 +572,31 @@ model RegistroPontoFiscal {
   @@map("registros_ponto_fiscal")
 }
 
+// Etapa de aviso preventivo de excesso de jornada (escala diária): 1h30 e 1h40
+// de horas extras (risco) e o próprio TAC.
+enum EtapaAlertaTac {
+  RISCO_1H30
+  RISCO_1H40
+  TAC
+}
+
+// Deduplicação PERSISTENTE dos avisos de risco/TAC. Registra que uma etapa já
+// foi avisada para uma pessoa em um dia, substituindo a memória em processo:
+// sobrevive a reinícios do servidor e é compartilhada entre instâncias (o
+// índice único abaixo é o "trava" atômica que evita reenviar a mesma etapa).
+// O TAC é diário — a unicidade inclui `dia`, então cada dia recomeça as etapas.
+// `pessoaId` é id "solto" (fiscal ou colaborador), sem FK rígida (ADR 0005).
+model AlertaTacEnviado {
+  id        String         @id @default(uuid())
+  pessoaId  String
+  dia       DateTime
+  etapa     EtapaAlertaTac
+  enviadoEm DateTime       @default(now())
+
+  @@unique([pessoaId, dia, etapa])
+  @@map("alertas_tac_enviados")
+}
+
 model EscalaEntry {
   id            String  @id @default(uuid())
   funcionarioId String

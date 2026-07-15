@@ -12,7 +12,7 @@ Para cada falha, anote: ambiente (web/APK), perfil, data/hora, colaborador de te
 
 - [ ] API e web respondem; `GET /health/ready` confirma conexão com o banco.
 - [ ] O commit/deploy testado foi identificado nos logs do Render.
-- [ ] Migrations foram aplicadas até `9zp_tipo_contrato_colaborador`.
+- [ ] Migrations foram aplicadas até `9zq_alerta_tac_enviado`.
 - [ ] Existem usuários de QA para IMPORTADOR, FISCAL, SUPERVISOR, GERENTE e GERENTE_DESENVOLVEDOR.
 - [ ] Existem colaboradores de teste nas funções operador, fiscal e supervisor, com escala e data de admissão.
 - [ ] Há arquivos `.txt` de teste de vendas/arrecadação e comprovantes de ponto sem dados pessoais reais.
@@ -97,7 +97,7 @@ Preparar jornadas controladas; validar tanto o disparo após batida quanto o cro
 - [ ] Batida e cron não duplicam a mesma etapa.
 - [ ] Destinatários são somente SUPERVISOR, GERENTE e GERENTE_DESENVOLVEDOR; fiscais/importadores não recebem por esse motivo.
 - [ ] Simular falha do serviço de notificação: a batida continua gravada e a etapa pode ser tentada novamente.
-- [ ] Reiniciar o backend durante o dia pode permitir reaviso, pois a deduplicação é em memória; registrar o comportamento como caveat, não como falha inesperada.
+- [ ] Reiniciar o backend durante o dia NÃO deve gerar reaviso da mesma etapa: a deduplicação é persistente (tabela `alertas_tac_enviados`, índice único por pessoa/dia/etapa). Conferir que a etapa já avisada não se repete após o restart.
 
 ## 5. Central de Jornada
 

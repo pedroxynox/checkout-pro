@@ -92,8 +92,13 @@ export class PontoService {
   /**
    * Anti-spam dos avisos de risco/TAC. Cada etapa é enviada no máximo uma vez
    * por pessoa/dia; chaves diferentes permitem a escalada 1h30 → 1h40 → TAC.
-   * Em memória — reiniciar o servidor pode reenviar, o que é aceitável para
-   * estes avisos preventivos.
+   *
+   * A dedup DEFINITIVA é a tabela `AlertaTacEnviado` (índice único por
+   * pessoa/dia/etapa), que sobrevive a reinícios e coordena múltiplas
+   * instâncias. Estes dois conjuntos são apenas um cache em processo:
+   * `alertasTacAvisados` evita ir ao banco quando a etapa já foi confirmada
+   * nesta instância; `alertasTacEmEnvio` impede envio duplicado enquanto a
+   * mesma etapa está sendo processada (batida e cron ao mesmo tempo).
    */
   private readonly alertasTacAvisados = new Set<string>();
   private readonly alertasTacEmEnvio = new Set<string>();
@@ -201,10 +206,16 @@ export class PontoService {
   }
 
   /**
-   * Avisa a supervisão e a gerência nas etapas 1h30, 1h40 e TAC. A chave
-   * inclui a etapa, portanto cada uma é enviada no máximo uma vez por
-   * pessoa/dia. Se a jornada saltar diretamente para uma etapa maior, envia
-   * somente a etapa atual. Best-effort: uma falha nunca trava a batida.
+   * Avisa a supervisão e a gerência nas etapas 1h30, 1h40 e TAC. Cada etapa é
+   * enviada no máximo uma vez por pessoa/dia. Se a jornada saltar diretamente
+   * para uma etapa maior, envia somente a etapa atual e marca as inferiores
+   * como consumidas. Best-effort: uma falha nunca trava a batida.
+   *
+   * A não-repetição é garantida pela tabela `AlertaTacEnviado`: reservamos a
+   * etapa atual com um INSERT (o índice único é a trava atômica) e só então
+   * enviamos. Como o registro é persistente, um reinício do servidor ou uma
+   * segunda instância não reenviam a mesma etapa. Se o envio falhar, a reserva
+   * é liberada para o próximo ciclo tentar de novo.
    *
    * Também é chamado pelo verificador periódico, para avisar enquanto a pessoa
    * continua trabalhando sem precisar aguardar a próxima batida.
@@ -234,12 +245,24 @@ export class PontoService {
       (etapaConsumida) => `${pessoaId}:${chaveDia}:${etapaConsumida}`,
     );
     const chaveAtual = chavesConsumidas[chavesConsumidas.length - 1];
+
+    // Cache em processo: já confirmada ou em envio nesta instância.
     if (
       this.alertasTacAvisados.has(chaveAtual) ||
       this.alertasTacEmEnvio.has(chaveAtual)
     ) {
       return;
     }
+
+    // Reserva atômica no banco (sobrevive a reinícios e coordena instâncias).
+    const reserva = await this.reservarEtapaTac(pessoaId, dia, etapa);
+    if (reserva === 'JA_ENVIADO') {
+      for (const chave of chavesConsumidas) {
+        this.alertasTacAvisados.add(chave);
+      }
+      return;
+    }
+
     for (const chave of chavesConsumidas) {
       this.alertasTacEmEnvio.add(chave);
     }
@@ -248,15 +271,86 @@ export class PontoService {
       const nome = await this.nomeDaPessoa(pessoaId, tipoPessoa);
       const conteudo = this.conteudoAlertaTac(nome, etapa, resposta);
       await this.notificacoes.notificarSupervisaoEGerencia(conteudo);
+      // Envio confirmado: persiste também as etapas inferiores consumidas para
+      // que não sejam reenviadas em ciclos futuros (idempotente).
+      if (reserva === 'RESERVADO') {
+        await this.registrarEtapasConsumidas(pessoaId, dia, etapasConsumidas);
+      }
       for (const chave of chavesConsumidas) {
         this.alertasTacAvisados.add(chave);
       }
     } catch {
-      // Best-effort: não interrompe a batida; o cron poderá tentar novamente.
+      // Envio falhou: libera a reserva para o próximo ciclo tentar de novo.
+      // (Só quando fomos nós que reservamos; sem reserva não há o que liberar.)
+      if (reserva === 'RESERVADO') {
+        await this.liberarEtapaTac(pessoaId, dia, etapa);
+      }
     } finally {
       for (const chave of chavesConsumidas) {
         this.alertasTacEmEnvio.delete(chave);
       }
+    }
+  }
+
+  /**
+   * Tenta reservar a etapa atual gravando uma linha em `AlertaTacEnviado`. O
+   * índice único (pessoa/dia/etapa) transforma o INSERT numa trava atômica:
+   * - `RESERVADO`: gravamos agora, então somos responsáveis por enviar;
+   * - `JA_ENVIADO`: o índice recusou (P2002), outra batida/instância já cuidou;
+   * - `INDISPONIVEL`: o banco falhou — segue-se com o cache em memória para não
+   *   perder o aviso (pode reenviar após reinício, como no comportamento antigo).
+   */
+  private async reservarEtapaTac(
+    pessoaId: string,
+    dia: Date,
+    etapa: EtapaAlertaTac,
+  ): Promise<'RESERVADO' | 'JA_ENVIADO' | 'INDISPONIVEL'> {
+    try {
+      await this.prisma.alertaTacEnviado.create({
+        data: { pessoaId, dia, etapa },
+      });
+      return 'RESERVADO';
+    } catch (erro) {
+      if (
+        erro instanceof Prisma.PrismaClientKnownRequestError &&
+        erro.code === 'P2002'
+      ) {
+        return 'JA_ENVIADO';
+      }
+      return 'INDISPONIVEL';
+    }
+  }
+
+  /** Persiste as etapas inferiores consumidas (idempotente). Best-effort. */
+  private async registrarEtapasConsumidas(
+    pessoaId: string,
+    dia: Date,
+    etapas: EtapaAlertaTac[],
+  ): Promise<void> {
+    try {
+      await this.prisma.alertaTacEnviado.createMany({
+        data: etapas.map((etapa) => ({ pessoaId, dia, etapa })),
+        skipDuplicates: true,
+      });
+    } catch {
+      // Best-effort: a etapa atual já está reservada; as inferiores são um
+      // reforço para não reenviar avisos menores depois.
+    }
+  }
+
+  /** Libera a reserva de uma etapa quando o envio falhou. Best-effort. */
+  private async liberarEtapaTac(
+    pessoaId: string,
+    dia: Date,
+    etapa: EtapaAlertaTac,
+  ): Promise<void> {
+    try {
+      await this.prisma.alertaTacEnviado.deleteMany({
+        where: { pessoaId, dia, etapa },
+      });
+    } catch {
+      // Best-effort: se não conseguir liberar, o pior caso é não reenviar esta
+      // etapa preventiva; nunca trava a batida.
     }
   }
 

@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
@@ -42,6 +43,11 @@ describe('PontoService — alertas preventivos de TAC', () => {
       findMany: jest.Mock;
       update: jest.Mock;
     };
+    alertaTacEnviado: {
+      create: jest.Mock;
+      createMany: jest.Mock;
+      deleteMany: jest.Mock;
+    };
   };
   let notificacoes: {
     notificarSupervisaoEGerencia: jest.Mock;
@@ -59,6 +65,12 @@ describe('PontoService — alertas preventivos de TAC', () => {
         findMany: jest.fn().mockResolvedValue([]),
         update: jest.fn(),
       },
+      // Dedup persistente: por padrão a reserva é aceita (linha nova gravada).
+      alertaTacEnviado: {
+        create: jest.fn().mockResolvedValue({}),
+        createMany: jest.fn().mockResolvedValue({ count: 0 }),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
     };
     notificacoes = {
       notificarSupervisaoEGerencia: jest.fn().mockResolvedValue([]),
@@ -71,6 +83,14 @@ describe('PontoService — alertas preventivos de TAC', () => {
       undefined,
     );
   });
+
+  /** Violação de índice único que o Prisma lança quando a etapa já existe. */
+  function erroDuplicado(): Prisma.PrismaClientKnownRequestError {
+    return new Prisma.PrismaClientKnownRequestError(
+      'Unique constraint failed',
+      { code: 'P2002', clientVersion: 'test' },
+    );
+  }
 
   it('não avisa com 1h29 de extras', async () => {
     await service.avisarAlertaTacSeNecessario(
@@ -209,5 +229,53 @@ describe('PontoService — alertas preventivos de TAC', () => {
       jornada,
     );
     expect(notificacoes.notificarSupervisaoEGerencia).toHaveBeenCalledTimes(2);
+  });
+
+  it('reserva a etapa no banco (dedup persistente) antes de avisar', async () => {
+    await service.avisarAlertaTacSeNecessario(
+      'pessoa-1',
+      'FISCAL',
+      DIA,
+      resposta(RISCO_TAC_1H30_MS),
+    );
+
+    expect(prisma.alertaTacEnviado.create).toHaveBeenCalledWith({
+      data: { pessoaId: 'pessoa-1', dia: DIA, etapa: 'RISCO_1H30' },
+    });
+    expect(notificacoes.notificarSupervisaoEGerencia).toHaveBeenCalledTimes(1);
+  });
+
+  it('não reenvia após reinício: se a etapa já está persistida, não avisa', async () => {
+    // Simula um reinício: uma nova instância (cache em memória vazio) encontra
+    // a etapa já gravada no banco por uma execução anterior → índice único
+    // recusa a reserva (P2002) e o aviso não se repete.
+    prisma.alertaTacEnviado.create.mockRejectedValue(erroDuplicado());
+
+    await service.avisarAlertaTacSeNecessario(
+      'pessoa-1',
+      'FISCAL',
+      DIA,
+      resposta(RISCO_TAC_1H30_MS),
+    );
+
+    expect(notificacoes.notificarSupervisaoEGerencia).not.toHaveBeenCalled();
+  });
+
+  it('libera a reserva quando o envio falha, permitindo novo aviso depois', async () => {
+    notificacoes.notificarSupervisaoEGerencia.mockRejectedValueOnce(
+      new Error('serviço indisponível'),
+    );
+
+    await service.avisarAlertaTacSeNecessario(
+      'pessoa-1',
+      'FISCAL',
+      DIA,
+      resposta(RISCO_TAC_1H30_MS),
+    );
+
+    // A reserva feita antes do envio é desfeita para o cron tentar de novo.
+    expect(prisma.alertaTacEnviado.deleteMany).toHaveBeenCalledWith({
+      where: { pessoaId: 'pessoa-1', dia: DIA, etapa: 'RISCO_1H30' },
+    });
   });
 });
