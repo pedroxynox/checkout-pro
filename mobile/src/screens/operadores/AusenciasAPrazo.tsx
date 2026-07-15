@@ -3,8 +3,8 @@
  *
  * Permite ausentar um colaborador por um PERÍODO (ex.: férias, licença),
  * escolhendo início, fim e o mesmo motivo de justificativa das faltas. O
- * backend cria uma **falta justificada** em cada dia da escala do período (a
- * folga do colaborador é ignorada). Uso típico: gerente/supervisor.
+ * backend cria uma **falta justificada** em cada dia corrido do período,
+ * inclusive a folga (a folga também conta). Uso típico: gerente/supervisor.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
@@ -114,10 +114,7 @@ export function AusenciasAPrazoCard({
       });
       notificar(
         'Ausência registrada',
-        `${selNome}: ${r.dias} falta(s) justificada(s) no período` +
-          (r.folgasIgnoradas > 0
-            ? ` (${r.folgasIgnoradas} folga(s) não contam).`
-            : '.'),
+        `${selNome}: ${r.dias} falta(s) justificada(s) no período.`,
       );
       fechar();
       resetar();

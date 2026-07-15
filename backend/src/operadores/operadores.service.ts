@@ -115,8 +115,6 @@ export interface ResultadoAusenciaPeriodo {
   criadas: number;
   /** Dias que já tinham falta e foram convertidos em justificada. */
   atualizadas: number;
-  /** Dias de folga do colaborador ignorados (não são "escala"). */
-  folgasIgnoradas: number;
 }
 
 /** Formata uma data (UTC) como "dd/mm" para textos de aviso. */
@@ -256,9 +254,9 @@ export class OperadoresService {
 
   /**
    * Ausência a prazo (por período): marca o colaborador como **falta
-   * justificada** em cada dia do intervalo [inicio, fim], com o mesmo motivo/
-   * observação de uma justificativa comum. Os dias de folga do colaborador são
-   * ignorados (não fazem parte da escala). Dias que já tinham falta são
+   * justificada** em CADA dia corrido do intervalo [inicio, fim], inclusive —
+   * os dias de folga TAMBÉM contam (uma ausência de 6 dias a partir do dia 14
+   * cobre 14–19, com ou sem folga no meio). Dias que já tinham falta são
    * convertidos em justificada (não duplica). Envia um único aviso (não um por
    * dia). O motivo é obrigatório (é uma falta JUSTIFICADA).
    */
@@ -288,9 +286,8 @@ export class OperadoresService {
 
     const colaborador = await this.prisma.colaborador.findUnique({
       where: { id: pessoaId },
-      select: { nome: true, folgaDiaSemana: true },
+      select: { nome: true },
     });
-    const folga = colaborador?.folgaDiaSemana ?? -1;
 
     // Faltas já existentes no período (para justificar em vez de duplicar).
     const existentes = await this.prisma.ausencia.findMany({
@@ -313,14 +310,10 @@ export class OperadoresService {
 
     let criadas = 0;
     let atualizadas = 0;
-    let folgasIgnoradas = 0;
+    // Conta TODOS os dias corridos do intervalo (inclusive folga): a folga
+    // também faz parte da ausência a prazo.
     for (let t = d0.getTime(); t <= d1.getTime(); t += UM_DIA_MS) {
       const dia = new Date(t);
-      // Pula o dia de folga do colaborador: não é dia de escala.
-      if (folga >= 0 && dia.getUTCDay() === folga) {
-        folgasIgnoradas += 1;
-        continue;
-      }
       const existId = idPorDia.get(t);
       if (existId) {
         await this.prisma.ausencia.update({
@@ -346,7 +339,7 @@ export class OperadoresService {
     // Um único aviso a todos (evita spamar um por dia).
     await this.avisarAusenciaPeriodo(colaborador?.nome ?? null, d0, d1, dias);
 
-    return { dias, criadas, atualizadas, folgasIgnoradas };
+    return { dias, criadas, atualizadas };
   }
 
   /** Aviso único (a todos) de uma ausência a prazo. Best-effort. */
