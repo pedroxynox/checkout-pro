@@ -1,0 +1,40 @@
+# Monitoramento automático de dependências (Dependabot).
+#
+# O objetivo é ser avisado cedo — e receber PRs prontos e testados pela CI —
+# quando surgir uma dependência vulnerável ou desatualizada, em vez de descobrir
+# tarde. As atualizações vêm AGRUPADAS e SEMANAIS para não virar ruído: você
+# revisa, a CI roda os testes, e só então você faz o merge. Nada é aplicado
+# sozinho no app em produção.
+version: 2
+updates:
+  # Pacotes npm do monorepo (backend NestJS + app Expo, workspaces na raiz).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      # Correções de patch/minor juntas: baixo risco, fáceis de revisar.
+      patch-e-minor:
+        update-types:
+          - minor
+          - patch
+    # Atualizações de versão MAIOR (ex.: NestJS, Expo) chegam em PRs separados,
+    # pois exigem migração cuidadosa — nunca misturadas com as de baixo risco.
+    labels:
+      - dependencias
+
+  # Mantém as GitHub Actions da CI atualizadas (segurança da cadeia de build).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore(ci)
+    labels:
+      - dependencias
