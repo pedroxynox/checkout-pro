@@ -59,3 +59,69 @@ export function inicioDoProximoMes(data: Date): Date {
 export function fimDoMes(data: Date): Date {
   return new Date(Date.UTC(data.getUTCFullYear(), data.getUTCMonth() + 1, 0));
 }
+
+/**
+ * Período da folha de RH — o "ciclo 26→25". A folha da unidade fecha todo dia
+ * 25 e abre no dia 26; portanto o ciclo que contém `data` vai do dia 26 de um
+ * mês ao dia 25 do mês seguinte (inclusive). Retorna o `inicio` (dia 26, 00:00
+ * UTC, inclusivo) e o `fimExclusivo` (dia 26 do mês seguinte, 00:00 UTC) — para
+ * usar em faixas do Prisma como `{ gte: inicio, lt: fimExclusivo }`.
+ *
+ * `Date.UTC` normaliza o estouro/subfluxo de mês (ex.: mês -1 → dezembro do ano
+ * anterior; mês +1 no dezembro → janeiro do ano seguinte).
+ */
+export function periodoFolha(data: Date): { inicio: Date; fimExclusivo: Date } {
+  const ano = data.getUTCFullYear();
+  const mes = data.getUTCMonth();
+  const dia = data.getUTCDate();
+  // A partir do dia 26 o ciclo já começou neste mês; antes disso, começou no
+  // mês anterior (a folha ainda está aberta desde o dia 26 do mês passado).
+  const mesInicio = dia >= 26 ? mes : mes - 1;
+  return {
+    inicio: new Date(Date.UTC(ano, mesInicio, 26)),
+    fimExclusivo: new Date(Date.UTC(ano, mesInicio + 1, 26)),
+  };
+}
+
+/**
+ * Período da folha deslocado em `n` ciclos a partir do ciclo que contém `data`
+ * (n negativo = ciclos anteriores; usado para ver meses passados e comparativos).
+ */
+export function periodoFolhaDeslocado(
+  data: Date,
+  n: number,
+): { inicio: Date; fimExclusivo: Date } {
+  const base = periodoFolha(data);
+  const ano = base.inicio.getUTCFullYear();
+  const mes = base.inicio.getUTCMonth();
+  return {
+    inicio: new Date(Date.UTC(ano, mes + n, 26)),
+    fimExclusivo: new Date(Date.UTC(ano, mes + n + 1, 26)),
+  };
+}
+
+/**
+ * Rótulo curto do ciclo de folha (ex.: "26/06 – 25/07"). Usa o `inicio` e o
+ * último dia (dia 25 = fimExclusivo menos um dia).
+ */
+export function rotuloPeriodoFolha(periodo: {
+  inicio: Date;
+  fimExclusivo: Date;
+}): string {
+  const fim = new Date(periodo.fimExclusivo);
+  fim.setUTCDate(fim.getUTCDate() - 1);
+  const dd = (d: Date) => String(d.getUTCDate()).padStart(2, '0');
+  const mm = (d: Date) => String(d.getUTCMonth() + 1).padStart(2, '0');
+  return `${dd(periodo.inicio)}/${mm(periodo.inicio)} – ${dd(fim)}/${mm(fim)}`;
+}
+
+/** Offset fixo de Brasília (UTC-3, sem horário de verão). */
+export const OFFSET_BRASILIA_MS = -3 * 60 * 60 * 1000;
+
+/**
+ * "Agora" no fuso de Brasília. As horas do ponto são tratadas nesse fuso; use
+ * este helper para o limite "até agora" dos cálculos de jornada do dia atual.
+ */
+export function agoraNaBrasilia(): Date {
+  return new Date(Date.now() + OFFSET_BRASILIA_MS);
+}

@@ -13,6 +13,7 @@ import {
 import {
   Colaborador,
   FuncaoColaborador,
+  TipoContrato,
   TurnoColaborador,
 } from '@prisma/client';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
@@ -101,6 +102,7 @@ export class ColaboradoresController {
         entradaDom: dto.entradaDom,
         saidaDom: dto.saidaDom,
         dataAdmissao: dto.dataAdmissao,
+        tipoContrato: dto.tipoContrato as TipoContrato | undefined,
       },
       usuario.perfil,
     );
@@ -181,6 +183,7 @@ export class ColaboradoresController {
         entradaDom: dto.entradaDom,
         saidaDom: dto.saidaDom,
         dataAdmissao: dto.dataAdmissao,
+        tipoContrato: dto.tipoContrato as TipoContrato | undefined,
         ativo: dto.ativo,
       },
       usuario.perfil,

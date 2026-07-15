@@ -105,14 +105,14 @@ enum TipoIncidenciaEscala {
 // ---------------------------- Modelos -------------------------------------
 
 model Usuario {
-  id        String   @id @default(uuid())
-  login     String   @unique
-  nome      String?
-  senhaHash String
-  perfil    Perfil
-  online    Boolean  @default(false)
+  id           String   @id @default(uuid())
+  login        String   @unique
+  nome         String?
+  senhaHash    String
+  perfil       Perfil
+  online       Boolean  @default(false)
   tokenVersion Int      @default(0)
-  criadoEm  DateTime @default(now())
+  criadoEm     DateTime @default(now())
 
   fiscal       Fiscal?
   notificacoes Notificacao[]
@@ -227,21 +227,21 @@ model VendaHora {
 // apenas o essencial: nome do operador + valor, por tipo e data (dia do
 // fechamento). Alimenta os indicadores (total dia/semana/mes e ranking).
 model RegistroArrecadacao {
-  id            String   @id @default(uuid())
-  tipo          String
-  data          DateTime
-  matricula     String?
-  nome          String
-  valor         Decimal  @db.Decimal(12, 2)
-  quantidade    Int?
-  autorizadoPor String?
-  motivo        String?
+  id              String   @id @default(uuid())
+  tipo            String
+  data            DateTime
+  matricula       String?
+  nome            String
+  valor           Decimal  @db.Decimal(12, 2)
+  quantidade      Int?
+  autorizadoPor   String?
+  motivo          String?
   // Vínculo canônico (Cadastro Unificado de Colaboradores). Nullable durante a
   // transição; resolvido por identificador na importação. `nome`/`matricula`
   // brutos seguem guardados para auditoria.
   colaboradorId   String?
   autorizadoPorId String?
-  criadoEm      DateTime @default(now())
+  criadoEm        DateTime @default(now())
 
   @@index([tipo, data])
   @@index([colaboradorId])
@@ -323,8 +323,8 @@ model ConfigVendas {
 // data a partir da qual registros podem ser cadastrados/editados e a partir da
 // qual começam os calendários do app. Editável pelo gestor sem redeploy.
 model ConfigSistema {
-  id            String   @id @default("sistema")
-  dataInicial   DateTime @default("2026-07-01T00:00:00.000Z")
+  id                 String    @id @default("sistema")
+  dataInicial        DateTime  @default("2026-07-01T00:00:00.000Z")
   // Âncora do rodízio de domingo: domingo de referência (domingoAncoraData) e
   // o grupo que FOLGA nele (domingoAncoraGrupo: 'G1'|'G2'|'G3'). A partir daí a
   // rotação (G1→G2→G3 por domingo) é determinística. NULL = rodízio não
@@ -336,53 +336,79 @@ model ConfigSistema {
   // Ordem do ciclo: sequência de quem folga em cada domingo do ciclo, como CSV
   // (ex.: 'G1,G3,G2'). A rotação segue essa ordem e repete a cada 3 domingos.
   domingoOrdemGrupos String?
-  atualizadoEm  DateTime @default(now()) @updatedAt
-  atualizadoPor String?
+  atualizadoEm       DateTime  @default(now()) @updatedAt
+  atualizadoPor      String?
 
   @@map("config_sistema")
 }
 
+// Âmbito de um feriado. Os NACIONAIS são reconhecidos automaticamente pelo
+// sistema (semeados por ano); ESTADUAL/MUNICIPAL são cadastrados manualmente
+// pelo gestor. Para efeito de jornada, todo feriado segue a regra do domingo
+// (carga de domingo + extras a 100%), porém sem o rodízio por grupos.
+enum FeriadoAmbito {
+  NACIONAL
+  ESTADUAL
+  MUNICIPAL
+}
+
+model Feriado {
+  id            String        @id @default(uuid())
+  // Data do feriado em 00:00 UTC. Único: um dia é feriado ou não.
+  data          DateTime      @unique
+  nome          String
+  ambito        FeriadoAmbito @default(MUNICIPAL)
+  // true = semeado automaticamente (nacional); false = cadastrado pelo gestor.
+  automatico    Boolean       @default(false)
+  criadoEm      DateTime      @default(now())
+  criadoPorId   String?
+  criadoPorNome String?
+
+  @@index([data])
+  @@map("feriados")
+}
+
 model Insumo {
-  id           String          @id @default(uuid())
-  nome         String
-  categoria    CategoriaInsumo
-  saldo        Int             @default(0)
-  limiteMinimo Int             @default(0)
+  id             String          @id @default(uuid())
+  nome           String
+  categoria      CategoriaInsumo
+  saldo          Int             @default(0)
+  limiteMinimo   Int             @default(0)
   // Unidade base de contagem do saldo (ex.: "sacola", "bobina", "metro", "litro").
-  unidade      String          @default("un")
+  unidade        String          @default("un")
   // Embalagem de entrada e quantas unidades base ela contém (ex.: fardo=1000
   // sacolas, caixa=20 bobinas, rolo=100 metros, galão=5 litros).
-  embalagem    String          @default("un")
-  fatorEmbalagem Int           @default(1)
-  ativo        Boolean         @default(true)
+  embalagem      String          @default("un")
+  fatorEmbalagem Int             @default(1)
+  ativo          Boolean         @default(true)
 
-  movimentos  MovimentoEstoque[]
-  requisicoes Requisicao[]
+  movimentos         MovimentoEstoque[]
+  requisicoes        Requisicao[]
   pedidosRecorrentes PedidoRecorrente[]
-  sugestoes   SugestaoPedido[]
+  sugestoes          SugestaoPedido[]
 
   @@map("insumos")
 }
 
 model Fardo {
-  id               String @id @default(uuid())
-  codigoBarras     String @unique
+  id                String @id @default(uuid())
+  codigoBarras      String @unique
   quantidadeSacolas Int
 
   @@map("fardos")
 }
 
 model MovimentoEstoque {
-  id            String   @id @default(uuid())
-  insumoId      String
-  delta         Int
-  responsavelId String?
-  dataHora      DateTime @default(now())
-  destino       String?
-  pdvId         String?
+  id               String   @id @default(uuid())
+  insumoId         String
+  delta            Int
+  responsavelId    String?
+  dataHora         DateTime @default(now())
+  destino          String?
+  pdvId            String?
   // Origem do movimento para o "Controle de requisição" (ex.: ENTRADA,
   // REQUISICAO, COMPRA, AJUSTE, CONSUMO, FARDO). Entradas têm delta > 0.
-  origem        String?
+  origem           String?
   // Nomes (snapshot, mesmo padrão de auditoria de Requisicao) para exibição:
   // - responsavelNome: quem REGISTROU o movimento (saída) ou quem APROVOU (entrada de requisição).
   // - requisitanteNome: quem SOLICITOU (apenas em entradas vindas de requisição).
@@ -532,12 +558,12 @@ model AliasLeituraPonto {
 // somando as durações por status calcula-se a jornada (tempo trabalhando,
 // tempo de intervalo e carga horária do dia).
 model RegistroPontoFiscal {
-  id       String       @id @default(uuid())
-  fiscalId String
+  id            String       @id @default(uuid())
+  fiscalId      String
   colaboradorId String?
-  status   StatusFiscal
-  data     DateTime
-  em       DateTime     @default(now())
+  status        StatusFiscal
+  data          DateTime
+  em            DateTime     @default(now())
 
   fiscal Fiscal @relation(fields: [fiscalId], references: [id])
 
@@ -625,10 +651,10 @@ enum MotivoJustificativa {
 }
 
 model Ausencia {
-  id       String   @id @default(uuid())
-  pessoaId String
+  id            String   @id @default(uuid())
+  pessoaId      String
   colaboradorId String?
-  data     DateTime
+  data          DateTime
 
   // Quem registrou a falta (auditoria — 10 pessoas lançam faltas no app).
   registradaPorId   String?
@@ -644,6 +670,11 @@ model Ausencia {
   justificadaPorNome      String?
   justificadaEm           DateTime?
 
+  // Quando true, o dia da falta é lançado como DÉBITO de horas na Central de
+  // Jornada: a carga-base daquele dia entra em "horas que deve". Marcado
+  // manualmente pelo gestor (falta não justificada / abonada como débito).
+  debitoHoras Boolean @default(false)
+
   @@unique([pessoaId, data])
   @@index([colaboradorId])
   @@index([statusJustificativa])
@@ -651,14 +682,14 @@ model Ausencia {
 }
 
 model Notificacao {
-  id        String   @id @default(uuid())
-  usuarioId String
-  titulo    String
-  mensagem  String
-  canalPush Boolean  @default(false)
-  canalInApp Boolean @default(false)
-  lida      Boolean  @default(false)
-  criadaEm  DateTime @default(now())
+  id         String   @id @default(uuid())
+  usuarioId  String
+  titulo     String
+  mensagem   String
+  canalPush  Boolean  @default(false)
+  canalInApp Boolean  @default(false)
+  lida       Boolean  @default(false)
+  criadaEm   DateTime @default(now())
 
   usuario Usuario @relation(fields: [usuarioId], references: [id])
 
@@ -703,15 +734,15 @@ model MensagemAssistente {
 // quantidades habituais. O cron gera sugestões automaticamente e o gestor
 // confirma ou ajusta antes de virar requisição/entrada.
 model PedidoRecorrente {
-  id            String   @id @default(uuid())
-  insumoId      String
-  quantidade    Int
+  id             String   @id @default(uuid())
+  insumoId       String
+  quantidade     Int
   /// Frequência em dias (7 = semanal, 15 = quinzenal).
-  frequenciaDias Int     @default(7)
+  frequenciaDias Int      @default(7)
   /// Dia da semana preferencial para sugestão (1=Seg..6=Sáb, 0=Dom).
-  diaSugestao   Int      @default(1)
-  ativo         Boolean  @default(true)
-  criadoEm      DateTime @default(now())
+  diaSugestao    Int      @default(1)
+  ativo          Boolean  @default(true)
+  criadoEm       DateTime @default(now())
 
   insumo Insumo @relation(fields: [insumoId], references: [id])
 
@@ -721,17 +752,17 @@ model PedidoRecorrente {
 // Sugestão de pedido gerada pelo sistema (cron). Fica PENDENTE até o gestor
 // confirmar (vira entrada) ou ignorar.
 model SugestaoPedido {
-  id            String   @id @default(uuid())
-  insumoId      String
-  quantidade    Int
+  id                 String         @id @default(uuid())
+  insumoId           String
+  quantidade         Int
   /// Quantidade ajustada pelo gestor (se diferente da sugestão).
   quantidadeAjustada Int?
-  status        StatusSugestao @default(PENDENTE)
+  status             StatusSugestao @default(PENDENTE)
   /// Lote: agrupa sugestões geradas juntas (ex.: "pedido semanal 2026-06-23").
-  lote          String?
-  criadaEm      DateTime @default(now())
-  confirmadaEm  DateTime?
-  confirmadaPor String?
+  lote               String?
+  criadaEm           DateTime       @default(now())
+  confirmadaEm       DateTime?
+  confirmadaPor      String?
 
   insumo Insumo @relation(fields: [insumoId], references: [id])
 
@@ -744,7 +775,6 @@ enum StatusSugestao {
   CONFIRMADA
   IGNORADA
 }
-
 
 // Meta configurável de um indicador de arrecadação. Substitui as metas
 // hardcoded (CONFIG_ARRECADACAO) como fonte única de verdade — o gestor pode
@@ -784,7 +814,6 @@ model MetaMensal {
   @@map("metas_mensais")
 }
 
-
 // --------------------- Cadastro Unificado de Colaboradores -----------------
 // Pessoa canônica da operação (operador/fiscal/gestor). A `matricula` é o
 // registro único; os identificadores mapeiam os códigos dos arquivos (login e
@@ -797,6 +826,14 @@ enum FuncaoColaborador {
   FISCAL
   SUPERVISOR
   GESTOR
+}
+
+// Tipo de contrato — define as REGRAS DE JORNADA do colaborador. Hoje só existe
+// o "6x1 - 2x1" (escala 6x1 + rodízio de domingo 2x1), que ativa o comportamento
+// do Relógio Ponto (Seg-Qui 7h, Sex-Sáb 8h, domingo/feriado a 100%, TAC a 1h50,
+// intervalo fora da jornada). Futuros contratos terão outras regras.
+enum TipoContrato {
+  SEIS_X_UM_DOIS_X_UM
 }
 
 enum TurnoColaborador {
@@ -818,6 +855,10 @@ model Colaborador {
   funcao    FuncaoColaborador
   genero    String?
   ativo     Boolean           @default(true)
+
+  // Tipo de contrato (regras de jornada). Default "6x1 - 2x1" (único hoje), que
+  // ativa o comportamento do Relógio Ponto / Central de Jornada.
+  tipoContrato TipoContrato @default(SEIS_X_UM_DOIS_X_UM)
 
   // Data do desligamento (quando `ativo` passou a false). Base da JANELA DE
   // RETENÇÃO: a purga mensal de inativos só apaga a ficha e o histórico de RRHH
@@ -846,9 +887,9 @@ model Colaborador {
   // - grupoDomingo: 'G1' | 'G2' | 'G3' (NULL = fora do rodízio / não trabalha
   //   domingo / folga fixa de domingo).
   // - entradaDom/saidaDom: horário do domingo ("HH:mm"), por pessoa.
-  grupoDomingo   String?
-  entradaDom     String?
-  saidaDom       String?
+  grupoDomingo String?
+  entradaDom   String?
+  saidaDom     String?
 
   // Login do app (apenas fiscais/gestores). Escalar (sem relação rígida),
   // seguindo o padrão de IDs do schema.
@@ -875,7 +916,6 @@ model ColaboradorIdentificador {
   @@index([colaboradorId])
   @@map("colaborador_identificadores")
 }
-
 
 // --------------------------- Contratos de experiência ----------------------
 // Contrato de experiência brasileiro (máx. 90 dias, partido em 45 + 45). O
@@ -916,7 +956,6 @@ model DecisaoContrato {
   @@index([colaboradorId])
   @@map("decisoes_contrato")
 }
-
 
 // ------------------------------- Feedforward -------------------------------
 // Feedforward: acompanhamento de desenvolvimento do colaborador (Frente de
@@ -984,33 +1023,32 @@ model FeedforwardPonto {
   @@map("feedforward_pontos")
 }
 
-
 /// Incidência de escala por DATA (diferente de EscalaEntry, que é a plantilla
 /// semanal). Genérica por `tipo` para crescer sem novas tabelas. O horário
 /// ESPERADO é derivado da escala (intervaloMin); para fiscais, o horário REAL
 /// pode ser detectado do ponto (RegistroPontoFiscal).
 model IncidenciaEscala {
-  id                 String               @id @default(uuid())
-  colaboradorId      String
-  funcionarioId      String?
-  tipo               TipoIncidenciaEscala
-  data               DateTime
-  horaSaida          String?
-  horaEsperadaRetorno String?
-  horaReal           String?
-  origem             String               @default("MANUAL") // MANUAL | DETECTADO_PONTO
-  motivo             String?
-  observacao         String?
-  registradoPorId    String?
-  registradoPorNome  String?
+  id                      String               @id @default(uuid())
+  colaboradorId           String
+  funcionarioId           String?
+  tipo                    TipoIncidenciaEscala
+  data                    DateTime
+  horaSaida               String?
+  horaEsperadaRetorno     String?
+  horaReal                String?
+  origem                  String               @default("MANUAL") // MANUAL | DETECTADO_PONTO
+  motivo                  String?
+  observacao              String?
+  registradoPorId         String?
+  registradoPorNome       String?
   // Sanções disciplinares (ADR 0012). Para SUSPENSAO: duração em dias e a data
   // final (inclusiva) para saber quem está suspenso "hoje". Vínculo opcional da
   // sanção à ocorrência que a motivou (causaTipo = FALTA ou um tipo de
   // incidência; causaData = a data dessa ocorrência) — informativo.
-  diasSuspensao      Int?
-  dataFim            DateTime?
-  causaTipo          String?
-  causaData          DateTime?
+  diasSuspensao           Int?
+  dataFim                 DateTime?
+  causaTipo               String?
+  causaData               DateTime?
   // Justificativa (abono) do não-retorno, aplicada DEPOIS do registro — mesmo
   // modelo das faltas (Ausencia). Estado persistido; peso no score derivado do
   // motivo (ver ADR 0009). `motivo`/`observacao` acima são do registro; estes
@@ -1021,8 +1059,8 @@ model IncidenciaEscala {
   justificadaPorId        String?
   justificadaPorNome      String?
   justificadaEm           DateTime?
-  criadoEm           DateTime             @default(now())
-  atualizadoEm       DateTime             @default(now()) @updatedAt
+  criadoEm                DateTime             @default(now())
+  atualizadoEm            DateTime             @default(now()) @updatedAt
 
   @@unique([colaboradorId, tipo, data])
   @@index([colaboradorId, data])
