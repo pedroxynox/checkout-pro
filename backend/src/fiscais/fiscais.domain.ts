@@ -132,7 +132,9 @@ export { inicioDoDia, inicioDoProximoDia } from '../common/datas';
  * Jornada esperada por dia da semana (em milissegundos).
  * - Seg a Qui (1-4): 7h = 25.200.000 ms
  * - Sex e Sáb (5-6): 8h = 28.800.000 ms
- * - Dom (0): 7h20min = 26.400.000 ms (não conta para horas extras)
+ * - Dom (0): 7h20min = 26.400.000 ms
+ * O que exceder a jornada esperada é hora extra: aos domingos com adicional de
+ * 100%, nos demais dias com 50%.
  */
 export function jornadaEsperadaMs(diaSemana: number): number {
   if (diaSemana === 0) return 26400000; // Domingo: 7h20min
@@ -140,7 +142,7 @@ export function jornadaEsperadaMs(diaSemana: number): number {
   return 28800000; // Sex-Sáb: 8h
 }
 
-/** Verifica se o dia da semana é domingo (não conta para horas extras). */
+/** Verifica se o dia da semana é domingo (horas extras com adicional de 100%). */
 export function isDomingo(diaSemana: number): boolean {
   return diaSemana === 0;
 }

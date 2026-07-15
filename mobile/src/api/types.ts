@@ -624,7 +624,12 @@ export interface ItemHorasExtrasFiscal {
   pessoaId: string;
   tipoPessoa: 'FISCAL' | 'OPERADOR';
   primeiroNome: string;
+  /** Total de horas extras do mês (50% + 100%), em ms. */
   horasExtrasMs: number;
+  /** Extras com adicional de 50% (segunda a sábado), em ms. */
+  horasExtras50Ms: number;
+  /** Extras com adicional de 100% (domingos), em ms. */
+  horasExtras100Ms: number;
 }
 
 /** Fiscal de folga hoje. */
