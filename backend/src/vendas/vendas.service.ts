@@ -102,6 +102,11 @@ export interface PainelVendas {
   metaProgresso: number;
   /** Projeção vs meta em % (null sem meta). */
   projecaoVsMeta: number | null;
+  /**
+   * Estimativa de venda definida para o dia de referência (Central de Vendas).
+   * `null` quando não há estimativa cadastrada para o dia.
+   */
+  estimativaDia: number | null;
   comparativos: {
     dia: ComparativoVendas;
     semana: ComparativoVendas;
@@ -362,14 +367,21 @@ export class VendasService {
     const variacao = (atual: number, anterior: number): number | null =>
       anterior > 0 ? arredondar((atual / anterior - 1) * 100) : null;
 
-    const [diaAtual, diaAnterior, semanaAtual, semanaAnterior, mesAnterior] =
-      await Promise.all([
-        this.valorDoDia(ref),
-        this.valorDoDia(refAnterior),
-        this.somarDiario(addDias(ref, -6), addDias(ref, 1)),
-        this.somarDiario(addDias(ref, -13), addDias(ref, -6)),
-        this.somarDiario(inicioDoMes(refAnterior), addDias(refAnterior, 1)),
-      ]);
+    const [
+      diaAtual,
+      diaAnterior,
+      semanaAtual,
+      semanaAnterior,
+      mesAnterior,
+      estimativaDia,
+    ] = await Promise.all([
+      this.valorDoDia(ref),
+      this.valorDoDia(refAnterior),
+      this.somarDiario(addDias(ref, -6), addDias(ref, 1)),
+      this.somarDiario(addDias(ref, -13), addDias(ref, -6)),
+      this.somarDiario(inicioDoMes(refAnterior), addDias(refAnterior, 1)),
+      this.estimativaDoDia(ref),
+    ]);
 
     const comparativos = {
       dia: {
@@ -435,6 +447,7 @@ export class VendasService {
       projecaoFechamento,
       metaProgresso,
       projecaoVsMeta,
+      estimativaDia,
       comparativos,
       tendencia,
       curvaHoraria,
