@@ -365,6 +365,11 @@ export interface PainelVendas {
   metaProgresso: number;
   /** Projeção vs meta em % (null sem meta). */
   projecaoVsMeta: number | null;
+  /**
+   * Estimativa de venda definida para o dia de referência (Central de Vendas).
+   * `null` quando não há estimativa cadastrada para o dia.
+   */
+  estimativaDia: number | null;
   comparativos: {
     dia: ComparativoVendas;
     semana: ComparativoVendas;

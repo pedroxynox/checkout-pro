@@ -40,6 +40,7 @@ const PAINEL = {
   projecaoFechamento: 300000,
   metaProgresso: 0.6,
   projecaoVsMeta: 50,
+  estimativaDia: 10000,
   comparativos: {
     dia: { atual: 12345.67, anterior: 10000, variacao: 23.46 },
     semana: { atual: 70000, anterior: 65000, variacao: 7.69 },
@@ -92,5 +93,15 @@ describe('PainelVendasScreen', () => {
     expect(await screen.findByText('Venda do dia')).toBeTruthy();
     // O valor do dia (R$ 12.345,67) aparece no destaque e no comparativo "Dia".
     expect((await screen.findAllByText(/12\.345,67/)).length).toBeGreaterThan(1);
+  });
+
+  it('mostra a estimativa do dia e marca quando atingida', async () => {
+    render(<PainelVendasScreen />);
+
+    // A estimativa do dia (R$ 10.000,00) aparece com o marcador de atingida,
+    // pois a venda do dia (R$ 12.345,67) superou a estimativa.
+    expect(await screen.findByText(/Estimativa do dia/)).toBeTruthy();
+    expect((await screen.findAllByText(/10\.000,00/)).length).toBeGreaterThan(0);
+    expect(await screen.findByText('Estimativa atingida')).toBeTruthy();
   });
 });

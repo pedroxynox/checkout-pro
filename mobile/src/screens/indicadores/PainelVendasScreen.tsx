@@ -220,6 +220,14 @@ export function PainelVendasScreen(): React.ReactElement {
   const corDia =
     varDia == null ? cores.textoSecundario : varDia >= 0 ? cores.verde : cores.vermelho;
 
+  // Estimativa do dia (meta diária definida na Central de Vendas). Funciona
+  // como uma "meta do dia": marcamos quando a venda do dia atinge a estimativa.
+  const vendaDia = painel?.comparativos.dia.atual ?? 0;
+  const estimativaDia = painel?.estimativaDia ?? null;
+  const estimativaAtingida = estimativaDia != null && vendaDia >= estimativaDia;
+  const estimativaPct =
+    estimativaDia && estimativaDia > 0 ? (vendaDia / estimativaDia) * 100 : 0;
+
   const dadosCurva = (painel?.curvaHoraria ?? [])
     .filter((c) => c.valor > 0)
     .map((c) => ({ rotulo: `${c.hora}h`, valor: c.valor }));
@@ -273,6 +281,47 @@ export function PainelVendasScreen(): React.ReactElement {
               {formatarMoeda(painel.comparativos.dia.atual)}
             </Text>
             <Text style={styles.vendaDiaData}>{formatarData(data)}</Text>
+
+            {estimativaDia != null && (
+              <View style={styles.estimativaBloco}>
+                <View style={styles.estimativaTopo}>
+                  <Text style={styles.estimativaRotulo}>
+                    Estimativa do dia{estimativaAtingida ? ' ✓' : ''}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.estimativaValor,
+                      {
+                        color: estimativaAtingida
+                          ? cores.verde
+                          : cores.textoSecundario,
+                      },
+                    ]}
+                  >
+                    {formatarMoeda(estimativaDia)}
+                  </Text>
+                </View>
+                <BarraProgresso
+                  percentual={estimativaPct}
+                  cor={estimativaAtingida ? cores.verde : cores.primaria}
+                />
+                <Text
+                  style={[
+                    styles.estimativaStatus,
+                    {
+                      color: estimativaAtingida
+                        ? cores.verde
+                        : cores.textoSecundario,
+                    },
+                  ]}
+                >
+                  {estimativaAtingida
+                    ? 'Estimativa atingida'
+                    : `${formatarPercentual(estimativaPct, 0)} da estimativa`}
+                </Text>
+              </View>
+            )}
+
             <View style={styles.vendaDiaComp}>
               <Text style={styles.vendaDiaAntes}>
                 antes {formatarMoeda(painel.comparativos.dia.anterior)}
@@ -491,6 +540,32 @@ const styles = StyleSheet.create({
   vendaDiaVar: {
     ...tipografia.rotulo,
     fontWeight: '700',
+  },
+  // Estimativa do dia (meta diária)
+  estimativaBloco: {
+    marginTop: espacamento.sm,
+    paddingTop: espacamento.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: cores.divisor,
+    gap: espacamento.xs,
+  },
+  estimativaTopo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  estimativaRotulo: {
+    ...tipografia.rotulo,
+    color: cores.textoSecundario,
+    fontWeight: '600',
+  },
+  estimativaValor: {
+    ...tipografia.rotulo,
+    fontWeight: '700',
+  },
+  estimativaStatus: {
+    ...tipografia.legenda,
+    fontWeight: '600',
   },
   metaTopo: {
     flexDirection: 'row',
