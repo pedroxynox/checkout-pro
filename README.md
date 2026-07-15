@@ -128,7 +128,7 @@ npm run lint
 npm test -- --runInBand
 ```
 
-O lint global do backend sem `--fix` ainda encontra **31 erros Prettier preexistentes** em quatro arquivos (`alertas.service.spec.ts`, `fiscais.service.ts`, `insumos.service.ts` e `test/helpers/fake-prisma.ts`). A limpeza deve ser feita em PR isolado para evitar diff funcional acidental.
+Os quatro arquivos com diferenças Prettier históricas (`alertas.service.spec.ts`, `fiscais.service.ts`, `insumos.service.ts` e `test/helpers/fake-prisma.ts`) já foram formatados em PR isolado (apenas estilo, sem diff funcional). Com o Prettier 3.9.5, o `--check` global ainda aponta 9 arquivos de domínio por deriva de versão da ferramenta; o CI os normaliza no ato via `eslint --fix`, então não quebram a validação.
 
 ## Deploy e APK
 

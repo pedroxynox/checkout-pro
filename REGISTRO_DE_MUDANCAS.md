@@ -7,6 +7,30 @@
 
 ---
 
+## Limpeza de formatação Prettier — quatro arquivos históricos (2026-07-15)
+
+Aplicada a limpeza que estava adiada para PR isolado. Rodado `prettier --write`
+apenas nos quatro arquivos listados no `PROJECT_UNDERSTANDING.md` §10:
+
+- `backend/src/alertas/alertas.service.spec.ts`
+- `backend/src/fiscais/fiscais.service.ts`
+- `backend/src/insumos/insumos.service.ts`
+- `backend/test/helpers/fake-prisma.ts`
+
+São **apenas mudanças de estilo** (quebras de linha, agrupamento de import e
+parênteses de envolvimento); nenhuma lógica, cálculo ou comportamento foi
+alterado. Verificação: `prettier --check` e `eslint` (sem `--fix`) limpos nos
+quatro arquivos, `build` OK e **71 suítes / 406 testes** verdes.
+
+Observação: com Prettier 3.9.5 o `--check` global ainda marca 9 arquivos de
+domínio (`acessos`, `checklist`, `common/justificativas`, `contratos`,
+`fechamento`, `feedforward`, `incidencias`, `ponto-ocr.parser`, `ponto`) por
+deriva de versão da ferramenta. O CI normaliza no ato via `eslint --fix`, então
+não quebra a validação; a normalização desses arquivos fica como dívida menor
+separada.
+
+---
+
 ## Estado atual consolidado — auditoria, Central de Jornada e alertas TAC (2026-07-15)
 
 Revisão documental executada sobre a `main` no commit `e8c32be`, sem afirmar que
@@ -68,9 +92,10 @@ Expo/EAS e recompilar/publicar o APK.
 
 Verificação mais recente: backend build OK (**71 suítes / 406 testes**); mobile
 type-check + lint OK (**23 suítes / 85 testes**). Última migration:
-`9zp_tipo_contrato_colaborador`. O lint global do backend sem `--fix` mantém 31
-diferenças Prettier preexistentes em quatro arquivos; limpeza adiada para PR
-isolado.
+`9zp_tipo_contrato_colaborador`. As diferenças Prettier históricas nos quatro
+arquivos já foram limpas (ver entrada no topo deste registro); restam apenas 9
+arquivos de domínio marcados por deriva de versão do Prettier, normalizados pelo
+CI via `eslint --fix`.
 
 ### Pendências registradas
 

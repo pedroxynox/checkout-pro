@@ -10,7 +10,7 @@
 - Backend: build OK; **71 suites / 406 tests**.
 - Mobile: type-check + lint OK; **23 suites / 85 tests**.
 - ESLint focalizado TAC: OK.
-- Lint global backend sin `--fix`: 31 errores Prettier preexistentes en cuatro archivos; limpiar en PR independiente.
+- Prettier: los cuatro archivos históricos ya fueron formateados en PR aislado. Prettier 3.9.5 marca 9 archivos de dominio por deriva de versión; el CI los normaliza con `eslint --fix` (no bloquea).
 
 ## Entregas recientes
 
@@ -69,11 +69,10 @@
 
 ### P2 — deuda/evolución
 9. Persistir deduplicación TAC si se requiere garantía entre reinicios/múltiples instancias.
-10. Limpiar 31 errores Prettier en PR aislado:
-   - `backend/src/alertas/alertas.service.spec.ts`
-   - `backend/src/fiscais/fiscais.service.ts`
-   - `backend/src/insumos/insumos.service.ts`
-   - `backend/test/helpers/fake-prisma.ts`
+10. **Hecho.** Formateados en PR aislado los cuatro archivos Prettier históricos
+   (`alertas.service.spec.ts`, `fiscais.service.ts`, `insumos.service.ts`,
+   `test/helpers/fake-prisma.ts`). Pendiente menor: decidir si se normalizan los
+   9 archivos de dominio que Prettier 3.9.5 marca por deriva de versión.
 11. Multi-tenancy sigue parqueado hasta estabilizar una tienda. Plan futuro: `lojaId`, RLS y tests de aislamiento.
 
 ## Flujo de trabajo

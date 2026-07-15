@@ -90,7 +90,9 @@ export class FakePrisma {
         }
         if (where.perfil !== undefined) {
           const p = where.perfil;
-          if (typeof p === 'string' ? u.perfil !== p : !p.in.includes(u.perfil)) {
+          if (
+            typeof p === 'string' ? u.perfil !== p : !p.in.includes(u.perfil)
+          ) {
             return false;
           }
         }
