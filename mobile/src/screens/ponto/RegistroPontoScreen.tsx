@@ -723,7 +723,9 @@ function PainelJornada({ dados }: { dados: JornadaDiaPonto }): React.ReactElemen
         <View style={[styles.faixa, { backgroundColor: cores.amareloFundo }]}>
           <Ionicons name="time-outline" size={16} color={cores.amarelo} />
           <Text style={[styles.faixaTexto, { color: cores.amarelo }]}>
-            Perto do limite: já passou de 1h45 de horas extras.
+            {j.horasExtrasMs >= 100 * 60_000
+              ? 'Risco alto de TAC: já atingiu 1h40 de horas extras.'
+              : 'Risco de TAC: já atingiu 1h30 de horas extras.'}
           </Text>
         </View>
       ) : null}

@@ -1,9 +1,13 @@
 import fc from 'fast-check';
 import {
   ALERTA_EXTRAS_MS,
+  LIMITE_EXTRAS_MS,
+  RISCO_TAC_1H30_MS,
+  RISCO_TAC_1H40_MS,
   BatidaEntrada,
   calcularJornadaDia,
   classificarBatidas,
+  etapaAlertaTac,
   statusFiscalDeJornada,
   statusFiscalDeTipoBatida,
 } from './ponto.domain';
@@ -163,15 +167,15 @@ describe('calcularJornadaDia', () => {
     expect(j.intervaloMs).toBe(30 * 60_000); // intervalo em curso
   });
 
-  it('alerta iminente ao atingir 1h45 de extras ainda trabalhando', () => {
-    // base 7h. 05:00→11:00 (6h) + int 11:00→12:00 (1h) + 12:00→agora 14:45 (2h45) = 8h45
+  it('alerta iminente ao atingir 1h30 de extras ainda trabalhando', () => {
+    // base 7h. 05:00→11:00 (6h) + int 11:00→12:00 (1h) + 12:00→agora 14:30 (2h30) = 8h30
     const j = calcularJornadaDia(
       [batida('1', '05:00'), batida('2', '11:00'), batida('3', '12:00')],
-      H('14:45'),
+      H('14:30'),
       SEGUNDA,
     );
     expect(j.status).toBe('TRABALHANDO');
-    expect(j.horasExtrasMs).toBe(ALERTA_EXTRAS_MS); // 1h45
+    expect(j.horasExtrasMs).toBe(ALERTA_EXTRAS_MS); // 1h30
     expect(j.alertaIminente).toBe(true);
     expect(j.tac).toBe(false); // ainda não passou de 1h50
   });
@@ -227,6 +231,27 @@ describe('calcularJornadaDia', () => {
       ),
       { numRuns: 200 },
     );
+  });
+});
+
+describe('etapaAlertaTac', () => {
+  it('não avisa antes de 1h30', () => {
+    expect(etapaAlertaTac(RISCO_TAC_1H30_MS - 1, false)).toBeNull();
+  });
+
+  it('seleciona 1h30 e depois 1h40 nos limites exatos', () => {
+    expect(etapaAlertaTac(RISCO_TAC_1H30_MS, false)).toBe('RISCO_1H30');
+    expect(etapaAlertaTac(RISCO_TAC_1H40_MS, false)).toBe('RISCO_1H40');
+  });
+
+  it('mantém risco alto em 1h50 exato e só vira TAC acima do limite', () => {
+    expect(etapaAlertaTac(LIMITE_EXTRAS_MS, false)).toBe('RISCO_1H40');
+    expect(etapaAlertaTac(LIMITE_EXTRAS_MS + 1, true)).toBe('TAC');
+  });
+
+  it('TAC prevalece para evitar três mensagens num salto direto', () => {
+    expect(etapaAlertaTac(LIMITE_EXTRAS_MS + 1, true)).toBe('TAC');
+    expect(etapaAlertaTac(0, true)).toBe('TAC');
   });
 });
 

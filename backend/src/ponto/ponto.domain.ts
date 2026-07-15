@@ -31,11 +31,32 @@ export type StatusJornadaPonto =
   | 'INCOMPLETO';
 
 // Parâmetros (ver spec). Constantes em milissegundos.
-export const ALERTA_EXTRAS_MS = 6_300_000; // 1h45 — início dos avisos por minuto
-export const LIMITE_EXTRAS_MS = 6_600_000; // 1h50 — acima disso é TAC
+export const RISCO_TAC_1H30_MS = 90 * 60_000;
+export const RISCO_TAC_1H40_MS = 100 * 60_000;
+export const ALERTA_EXTRAS_MS = RISCO_TAC_1H30_MS;
+export const LIMITE_EXTRAS_MS = 110 * 60_000; // 1h50 — acima disso é TAC
 export const INTERVALO_ESPERADO_MS = 7_200_000; // 2h
 export const INTERVALO_MINIMO_MS = 3_600_000; // 1h — abaixo disso é TAC
 export const INTERVALO_MAXIMO_MS = 10_800_000; // 3h — acima disso é TAC
+
+/** Etapas crescentes dos avisos preventivos/de TAC. */
+export type EtapaAlertaTac = 'RISCO_1H30' | 'RISCO_1H40' | 'TAC';
+
+/**
+ * Retorna somente a etapa mais grave da jornada atual. Assim, se a primeira
+ * verificação já ocorrer após 1h50, envia apenas TAC (não três mensagens de
+ * uma vez). Um TAC por intervalo irregular também prevalece sobre os riscos
+ * calculados apenas pelas horas extras.
+ */
+export function etapaAlertaTac(
+  horasExtrasMs: number,
+  tac: boolean,
+): EtapaAlertaTac | null {
+  if (tac) return 'TAC';
+  if (horasExtrasMs >= RISCO_TAC_1H40_MS) return 'RISCO_1H40';
+  if (horasExtrasMs >= RISCO_TAC_1H30_MS) return 'RISCO_1H30';
+  return null;
+}
 
 /** Uma batida como entra no cálculo (só precisamos de id e hora). */
 export interface BatidaEntrada {
@@ -131,7 +152,7 @@ export interface JornadaPonto {
   horasExtras50Ms: number;
   /** Extras com adicional de 100% (domingo). */
   horasExtras100Ms: number;
-  /** true quando está prestes a exceder (≥ 1h45 e ainda trabalhando). */
+  /** true quando entrou no primeiro risco preventivo (≥ 1h30). */
   alertaIminente: boolean;
   /** true quando o dia é irregular (Termo de Ajustamento de Conduta). */
   tac: boolean;

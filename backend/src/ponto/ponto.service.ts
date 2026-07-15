@@ -4,10 +4,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { inicioDoDia } from '../common/datas';
 import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
 import {
+  type EtapaAlertaTac,
   StatusJornadaPonto,
   TipoBatida,
   calcularJornadaDia,
   classificarBatidas,
+  etapaAlertaTac,
   statusFiscalDeTipoBatida,
 } from './ponto.domain';
 import { FiscaisService } from '../fiscais/fiscais.service';
@@ -88,11 +90,13 @@ export interface PessoaPonto {
 @Injectable()
 export class PontoService {
   /**
-   * Anti-spam do aviso de TAC: garante no máximo UM aviso por pessoa por dia
-   * (chave `pessoaId:dia`). Em memória — best-effort; reiniciar o servidor
-   * apenas permite reenviar, o que é aceitável.
+   * Anti-spam dos avisos de risco/TAC. Cada etapa é enviada no máximo uma vez
+   * por pessoa/dia; chaves diferentes permitem a escalada 1h30 → 1h40 → TAC.
+   * Em memória — reiniciar o servidor pode reenviar, o que é aceitável para
+   * estes avisos preventivos.
    */
-  private readonly tacAvisados = new Set<string>();
+  private readonly alertasTacAvisados = new Set<string>();
+  private readonly alertasTacEmEnvio = new Set<string>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -186,38 +190,97 @@ export class PontoService {
     await this.reclassificar(dto.pessoaId, dia);
     await this.sincronizarStatusFiscal(dto.pessoaId, tipoPessoa, dia);
     const resposta = await this.jornadaDoDia(dto.pessoaId, tipoPessoa, dia);
-    // Avisa a supervisão/gerência se o dia entrou em TAC (uma vez por dia).
-    await this.avisarTacSeNecessario(dto.pessoaId, tipoPessoa, dia, resposta);
+    // Avisa a supervisão/gerência ao entrar em risco de TAC ou em TAC.
+    await this.avisarAlertaTacSeNecessario(
+      dto.pessoaId,
+      tipoPessoa,
+      dia,
+      resposta,
+    );
     return resposta;
   }
 
   /**
-   * Avisa a supervisão e a gerência quando a jornada do dia está em TAC (ex.:
-   * passou de 1h50 de horas extras, ou intervalo fora de 1h–3h). Envia no
-   * máximo um aviso por pessoa por dia. Best-effort: uma falha aqui nunca trava
-   * o registro da batida.
+   * Avisa a supervisão e a gerência nas etapas 1h30, 1h40 e TAC. A chave
+   * inclui a etapa, portanto cada uma é enviada no máximo uma vez por
+   * pessoa/dia. Se a jornada saltar diretamente para uma etapa maior, envia
+   * somente a etapa atual. Best-effort: uma falha nunca trava a batida.
+   *
+   * Também é chamado pelo verificador periódico, para avisar enquanto a pessoa
+   * continua trabalhando sem precisar aguardar a próxima batida.
    */
-  private async avisarTacSeNecessario(
+  async avisarAlertaTacSeNecessario(
     pessoaId: string,
     tipoPessoa: 'FISCAL' | 'OPERADOR',
     dia: Date,
     resposta: JornadaDiaResposta,
   ): Promise<void> {
-    if (!this.notificacoes || !resposta.jornada.tac) return;
-    const chave = `${pessoaId}:${dia.toISOString()}`;
-    if (this.tacAvisados.has(chave)) return;
-    this.tacAvisados.add(chave);
-    // Evita crescimento indefinido do set numa execução muito longa.
-    if (this.tacAvisados.size > 1000) this.tacAvisados.clear();
+    if (!this.notificacoes) return;
+
+    const chaveDia = dia.toISOString();
+    const etapa = etapaAlertaTac(
+      resposta.jornada.horasExtrasMs,
+      resposta.jornada.tac,
+    );
+    if (!etapa) return;
+
+    const etapasConsumidas: EtapaAlertaTac[] =
+      etapa === 'TAC'
+        ? ['RISCO_1H30', 'RISCO_1H40', 'TAC']
+        : etapa === 'RISCO_1H40'
+          ? ['RISCO_1H30', 'RISCO_1H40']
+          : ['RISCO_1H30'];
+    const chavesConsumidas = etapasConsumidas.map(
+      (etapaConsumida) => `${pessoaId}:${chaveDia}:${etapaConsumida}`,
+    );
+    const chaveAtual = chavesConsumidas[chavesConsumidas.length - 1];
+    if (
+      this.alertasTacAvisados.has(chaveAtual) ||
+      this.alertasTacEmEnvio.has(chaveAtual)
+    ) {
+      return;
+    }
+    for (const chave of chavesConsumidas) {
+      this.alertasTacEmEnvio.add(chave);
+    }
+
     try {
       const nome = await this.nomeDaPessoa(pessoaId, tipoPessoa);
-      await this.notificacoes.notificarSupervisaoEGerencia({
-        titulo: '⚠️ TAC na jornada',
-        mensagem: `${nome} está em situação de TAC hoje: ${resposta.jornada.motivosTac.join('; ')}.`,
-      });
+      const conteudo = this.conteudoAlertaTac(nome, etapa, resposta);
+      await this.notificacoes.notificarSupervisaoEGerencia(conteudo);
+      for (const chave of chavesConsumidas) {
+        this.alertasTacAvisados.add(chave);
+      }
     } catch {
-      // Best-effort: não interrompe o registro da batida.
+      // Best-effort: não interrompe a batida; o cron poderá tentar novamente.
+    } finally {
+      for (const chave of chavesConsumidas) {
+        this.alertasTacEmEnvio.delete(chave);
+      }
     }
+  }
+
+  private conteudoAlertaTac(
+    nome: string,
+    etapa: EtapaAlertaTac,
+    resposta: JornadaDiaResposta,
+  ): { titulo: string; mensagem: string } {
+    if (etapa === 'RISCO_1H30') {
+      return {
+        titulo: '⚠️ Risco de TAC',
+        mensagem: `${nome} atingiu 1h30 de horas extras hoje. Faltam 20 minutos para o limite de TAC.`,
+      };
+    }
+    if (etapa === 'RISCO_1H40') {
+      return {
+        titulo: '⚠️ Risco alto de TAC',
+        mensagem: `${nome} atingiu 1h40 de horas extras hoje. Faltam 10 minutos para o limite de TAC.`,
+      };
+    }
+    return {
+      titulo: '⚠️ TAC na jornada',
+      mensagem: `${nome} está em situação de TAC hoje: ${resposta.jornada.motivosTac.join('; ')}.`,
+    };
   }
 
   /** Primeiro nome da pessoa (fiscal ou colaborador) para os avisos. */
