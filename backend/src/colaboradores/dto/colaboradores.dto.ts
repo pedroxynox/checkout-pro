@@ -15,6 +15,8 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const FUNCOES = ['OPERADOR', 'FISCAL', 'SUPERVISOR', 'GESTOR'];
 const TURNOS = ['ABERTURA', 'INTERMEDIARIO', 'FECHAMENTO', 'APOIO'];
 const GRUPOS_DOMINGO = ['G1', 'G2', 'G3'];
+// Tipos de contrato disponíveis (regras de jornada). Hoje só "6x1 - 2x1".
+const TIPOS_CONTRATO = ['SEIS_X_UM_DOIS_X_UM'];
 
 /** Cadastro de colaborador (operador por padrão). */
 export class CadastrarColaboradorDto {
@@ -94,6 +96,10 @@ export class CadastrarColaboradorDto {
     { message: 'A data de admissão deve ser uma data válida (ISO 8601).' },
   )
   dataAdmissao?: string;
+
+  @IsOptional()
+  @IsIn(TIPOS_CONTRATO, { message: 'Tipo de contrato inválido.' })
+  tipoContrato?: string;
 }
 
 /** Edição de colaborador — todos os campos opcionais. */
@@ -176,6 +182,10 @@ export class EditarColaboradorDto {
     { message: 'A data de admissão deve ser uma data válida (ISO 8601).' },
   )
   dataAdmissao?: string;
+
+  @IsOptional()
+  @IsIn(TIPOS_CONTRATO, { message: 'Tipo de contrato inválido.' })
+  tipoContrato?: string;
 
   @IsOptional()
   @IsBoolean()

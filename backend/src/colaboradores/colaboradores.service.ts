@@ -4,6 +4,7 @@ import {
   FuncaoColaborador,
   Perfil,
   Prisma,
+  TipoContrato,
   TurnoColaborador,
   TurnoFiscal,
 } from '@prisma/client';
@@ -103,6 +104,8 @@ export interface ColaboradorInput {
   saidaDom?: string | null;
   /** Data de admissão (base do módulo de Contratos). ISO ou Date; null limpa. */
   dataAdmissao?: string | Date | null;
+  /** Tipo de contrato (regras de jornada). Ausente = mantém/usa o default. */
+  tipoContrato?: TipoContrato;
   /**
    * Senha de acesso ao app. No cadastro de fiscal/supervisor/gerente é
    * obrigatória (cria a conta com login = matrícula). Na edição, quando
@@ -226,6 +229,8 @@ export class ColaboradoresService {
         entradaDom: input.entradaDom ?? null,
         saidaDom: input.saidaDom ?? null,
         dataAdmissao: normalizarAdmissao(input.dataAdmissao),
+        // Ausente → Prisma aplica o default (6x1 - 2x1).
+        tipoContrato: input.tipoContrato,
         usuarioId,
         identificadores: {
           create: [
@@ -366,6 +371,8 @@ export class ColaboradoresService {
     if (input.saidaDom !== undefined) data.saidaDom = input.saidaDom;
     if (input.dataAdmissao !== undefined)
       data.dataAdmissao = normalizarAdmissao(input.dataAdmissao);
+    if (input.tipoContrato !== undefined)
+      data.tipoContrato = input.tipoContrato;
     if (input.ativo !== undefined) {
       data.ativo = input.ativo;
       // Marca/limpa a data de desligamento (base da janela de retenção da

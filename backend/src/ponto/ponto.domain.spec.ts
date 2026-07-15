@@ -101,6 +101,26 @@ describe('calcularJornadaDia', () => {
     expect(j.tac).toBe(false); // 1h40 < 1h50
   });
 
+  it('feriado (mesmo numa segunda): base de domingo e extras a 100%', () => {
+    // ehFeriado=true numa SEGUNDA → base vira 7h20 (domingo) e extras a 100%.
+    // 06:00→12:00 (6h) + int 2h + 14:00→17:00 (3h) = 9h → 1h40 extra.
+    const j = calcularJornadaDia(
+      [
+        batida('1', '06:00'),
+        batida('2', '12:00'),
+        batida('3', '14:00'),
+        batida('4', '17:00'),
+      ],
+      H('17:00'),
+      SEGUNDA,
+      true,
+    );
+    expect(j.baseMs).toBe(26_400_000); // 7h20 (regra de domingo)
+    expect(j.horasExtrasMs).toBe(100 * 60_000); // 1h40
+    expect(j.horasExtras100Ms).toBe(100 * 60_000);
+    expect(j.horasExtras50Ms).toBe(0);
+  });
+
   it('intervalo abaixo de 1h → TAC', () => {
     const j = calcularJornadaDia(
       [

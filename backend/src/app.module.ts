@@ -35,6 +35,8 @@ import { AssistenteModule } from './assistente/assistente.module';
 import { DataInicialModule } from './data-inicial/data-inicial.module';
 import { EscalaDomingoModule } from './escala-domingo/escala-domingo.module';
 import { ResetOperacionalModule } from './reset-operacional/reset-operacional.module';
+import { FeriadosModule } from './feriados/feriados.module';
+import { CentralJornadaModule } from './central-jornada/central-jornada.module';
 
 @Module({
   imports: [
@@ -74,6 +76,8 @@ import { ResetOperacionalModule } from './reset-operacional/reset-operacional.mo
     DataInicialModule,
     EscalaDomingoModule,
     ResetOperacionalModule,
+    FeriadosModule,
+    CentralJornadaModule,
   ],
   controllers: [AppController],
   providers: [

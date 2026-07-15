@@ -154,9 +154,15 @@ export function calcularJornadaDia(
   batidas: readonly BatidaEntrada[],
   agora: Date,
   diaSemana: number,
+  ehFeriado = false,
 ): JornadaPonto {
   const classificadas = classificarBatidas(batidas);
-  const baseMs = jornadaEsperadaMs(diaSemana);
+  // Feriado segue a MESMA regra do domingo: carga-base de domingo e extras a
+  // 100% (o rodízio por grupos, esse sim, é exclusivo do domingo).
+  const contaComo100 = diaSemana === 0 || ehFeriado;
+  const baseMs = ehFeriado
+    ? jornadaEsperadaMs(0)
+    : jornadaEsperadaMs(diaSemana);
 
   if (classificadas.length === 0) {
     return {
@@ -225,9 +231,8 @@ export function calcularJornadaDia(
   }
 
   const horasExtrasMs = Math.max(0, trabalhadoMs - baseMs);
-  const domingo = diaSemana === 0;
-  const horasExtras50Ms = domingo ? 0 : horasExtrasMs;
-  const horasExtras100Ms = domingo ? horasExtrasMs : 0;
+  const horasExtras50Ms = contaComo100 ? 0 : horasExtrasMs;
+  const horasExtras100Ms = contaComo100 ? horasExtrasMs : 0;
 
   const emAndamento = status === 'TRABALHANDO' || status === 'EM_INTERVALO';
   const alertaIminente = emAndamento && horasExtrasMs >= ALERTA_EXTRAS_MS;
