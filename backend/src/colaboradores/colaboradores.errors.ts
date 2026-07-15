@@ -80,3 +80,18 @@ export class ColaboradorNaoEncontradoError extends ColaboradoresError {
     super('Colaborador não encontrado.');
   }
 }
+
+/**
+ * Tentativa de criar/promover uma conta de gerente (ou gerente desenvolvedor)
+ * sem ter o perfil necessário para isso. Só o gerente desenvolvedor pode
+ * conceder acesso de nível gerencial, evitando escalada de privilégios por
+ * quem administra colaboradores (ex.: supervisor).
+ */
+export class PermissaoInsuficienteFuncaoError extends ColaboradoresError {
+  readonly statusHttp = HttpStatus.FORBIDDEN;
+  constructor() {
+    super(
+      'Você não tem permissão para atribuir a função de gerente. Fale com o gerente desenvolvedor.',
+    );
+  }
+}

@@ -1,4 +1,5 @@
 import { INestApplication } from '@nestjs/common';
+import { JwtModule, JwtService } from '@nestjs/jwt';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { Test } from '@nestjs/testing';
 import { AddressInfo } from 'net';
@@ -18,6 +19,7 @@ describe('FiscaisGateway (integração WebSocket)', () => {
   let app: INestApplication;
   let url: string;
   let fiscaisService: FiscaisService;
+  let token: string;
 
   const definidoEm = new Date('2024-03-10T08:30:00.000Z');
   const prismaFake = {
@@ -42,6 +44,7 @@ describe('FiscaisGateway (integração WebSocket)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
+      imports: [JwtModule.register({ secret: 'segredo-de-teste' })],
       providers: [
         FiscalStatusEventos,
         FiscaisGateway,
@@ -55,6 +58,11 @@ describe('FiscaisGateway (integração WebSocket)', () => {
     await app.listen(0);
 
     fiscaisService = app.get(FiscaisService);
+    token = app.get(JwtService).sign({
+      sub: 'u1',
+      login: 'karen',
+      perfil: 'GERENTE',
+    });
     const porta = (app.getHttpServer().address() as AddressInfo).port;
     url = `http://localhost:${porta}/fiscais`;
   });
@@ -65,7 +73,11 @@ describe('FiscaisGateway (integração WebSocket)', () => {
 
   function conectar(): Promise<Socket> {
     return new Promise((resolve, reject) => {
-      const socket = io(url, { transports: ['websocket'], forceNew: true });
+      const socket = io(url, {
+        transports: ['websocket'],
+        forceNew: true,
+        auth: { token },
+      });
       const t = setTimeout(() => reject(new Error('timeout de conexão')), 4000);
       socket.on('connect', () => {
         clearTimeout(t);
@@ -77,6 +89,33 @@ describe('FiscaisGateway (integração WebSocket)', () => {
       });
     });
   }
+
+  it('encerra a conexão de um cliente sem token (não autenticado)', async () => {
+    const socket = io(url, {
+      transports: ['websocket'],
+      forceNew: true,
+      // Sem `auth.token`: o gateway deve desconectar.
+    });
+    try {
+      const desconectado = await new Promise<boolean>((resolve, reject) => {
+        const t = setTimeout(
+          () => reject(new Error('timeout: não desconectou')),
+          4000,
+        );
+        socket.on('disconnect', () => {
+          clearTimeout(t);
+          resolve(true);
+        });
+        socket.on('connect_error', () => {
+          clearTimeout(t);
+          resolve(true);
+        });
+      });
+      expect(desconectado).toBe(true);
+    } finally {
+      socket.close();
+    }
+  });
 
   it('propaga a mudança de status (com primeiro nome) ao cliente conectado', async () => {
     const cliente = await conectar();

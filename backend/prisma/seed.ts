@@ -84,7 +84,9 @@ const GERENTES: SeedGerente[] = [
   {
     nome: 'Pedro Munoz',
     matricula: '232152',
-    senha: '123456',
+    // Sem senha fraca fixa: usa a SENHA_INICIAL (variável de ambiente) como as
+    // demais contas. Deve ser trocada no primeiro acesso. Nunca versionar uma
+    // senha real, muito menos para a conta de acesso total.
     perfil: Perfil.GERENTE_DESENVOLVEDOR,
   },
   { nome: 'Arlete Pacheco Fernandes' },

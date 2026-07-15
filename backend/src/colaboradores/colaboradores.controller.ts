@@ -17,6 +17,10 @@ import {
 } from '@prisma/client';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
+  UsuarioAtual,
+  UsuarioAutenticado,
+} from '../common/decorators/usuario-atual.decorator';
+import {
   ColaboradoresService,
   LoginColaborador,
 } from './colaboradores.service';
@@ -73,27 +77,33 @@ export class ColaboradoresController {
 
   /** Cadastra um colaborador (operador por padrão). */
   @Post()
-  async cadastrar(@Body() dto: CadastrarColaboradorDto): Promise<Colaborador> {
-    return this.service.cadastrar({
-      nome: dto.nome,
-      matricula: dto.matricula,
-      login: dto.login,
-      usuarioId: dto.usuarioId,
-      senha: dto.senha,
-      gerenteDesenvolvedor: dto.gerenteDesenvolvedor,
-      funcao: dto.funcao as FuncaoColaborador | undefined,
-      genero: dto.genero,
-      turno: dto.turno as TurnoColaborador | undefined,
-      entradaSemana: dto.entradaSemana,
-      saidaSemana: dto.saidaSemana,
-      entradaFds: dto.entradaFds,
-      saidaFds: dto.saidaFds,
-      folgaDiaSemana: dto.folgaDiaSemana,
-      grupoDomingo: dto.grupoDomingo,
-      entradaDom: dto.entradaDom,
-      saidaDom: dto.saidaDom,
-      dataAdmissao: dto.dataAdmissao,
-    });
+  async cadastrar(
+    @Body() dto: CadastrarColaboradorDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<Colaborador> {
+    return this.service.cadastrar(
+      {
+        nome: dto.nome,
+        matricula: dto.matricula,
+        login: dto.login,
+        usuarioId: dto.usuarioId,
+        senha: dto.senha,
+        gerenteDesenvolvedor: dto.gerenteDesenvolvedor,
+        funcao: dto.funcao as FuncaoColaborador | undefined,
+        genero: dto.genero,
+        turno: dto.turno as TurnoColaborador | undefined,
+        entradaSemana: dto.entradaSemana,
+        saidaSemana: dto.saidaSemana,
+        entradaFds: dto.entradaFds,
+        saidaFds: dto.saidaFds,
+        folgaDiaSemana: dto.folgaDiaSemana,
+        grupoDomingo: dto.grupoDomingo,
+        entradaDom: dto.entradaDom,
+        saidaDom: dto.saidaDom,
+        dataAdmissao: dto.dataAdmissao,
+      },
+      usuario.perfil,
+    );
   }
 
   /** Lista os colaboradores (busca/filtros). Liberado a quem vê a escala. */
@@ -148,28 +158,33 @@ export class ColaboradoresController {
   async editar(
     @Param('id') id: string,
     @Body() dto: EditarColaboradorDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<Colaborador> {
-    return this.service.editar(id, {
-      nome: dto.nome,
-      matricula: dto.matricula,
-      login: dto.login,
-      usuarioId: dto.usuarioId,
-      senha: dto.senha,
-      gerenteDesenvolvedor: dto.gerenteDesenvolvedor,
-      funcao: dto.funcao as FuncaoColaborador | undefined,
-      genero: dto.genero,
-      turno: dto.turno as TurnoColaborador | undefined,
-      entradaSemana: dto.entradaSemana,
-      saidaSemana: dto.saidaSemana,
-      entradaFds: dto.entradaFds,
-      saidaFds: dto.saidaFds,
-      folgaDiaSemana: dto.folgaDiaSemana,
-      grupoDomingo: dto.grupoDomingo,
-      entradaDom: dto.entradaDom,
-      saidaDom: dto.saidaDom,
-      dataAdmissao: dto.dataAdmissao,
-      ativo: dto.ativo,
-    });
+    return this.service.editar(
+      id,
+      {
+        nome: dto.nome,
+        matricula: dto.matricula,
+        login: dto.login,
+        usuarioId: dto.usuarioId,
+        senha: dto.senha,
+        gerenteDesenvolvedor: dto.gerenteDesenvolvedor,
+        funcao: dto.funcao as FuncaoColaborador | undefined,
+        genero: dto.genero,
+        turno: dto.turno as TurnoColaborador | undefined,
+        entradaSemana: dto.entradaSemana,
+        saidaSemana: dto.saidaSemana,
+        entradaFds: dto.entradaFds,
+        saidaFds: dto.saidaFds,
+        folgaDiaSemana: dto.folgaDiaSemana,
+        grupoDomingo: dto.grupoDomingo,
+        entradaDom: dto.entradaDom,
+        saidaDom: dto.saidaDom,
+        dataAdmissao: dto.dataAdmissao,
+        ativo: dto.ativo,
+      },
+      usuario.perfil,
+    );
   }
 
   /** Inativa um colaborador (preserva histórico). */

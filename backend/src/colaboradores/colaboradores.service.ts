@@ -14,6 +14,7 @@ import {
   gerarEscalaSemanalFiscal,
   temEscalaDefinida,
 } from '../fiscais/escala.domain';
+import { Perfil as PerfilSolicitante } from '../acessos/acessos.domain';
 import { normalizarLogin, normalizarMatricula } from './colaboradores.domain';
 import {
   ColaboradorNaoEncontradoError,
@@ -22,6 +23,7 @@ import {
   LoginAppInexistenteError,
   LoginColaboradorDuplicadoError,
   MatriculaColaboradorDuplicadaError,
+  PermissaoInsuficienteFuncaoError,
   SenhaAcessoObrigatoriaError,
 } from './colaboradores.errors';
 
@@ -36,6 +38,25 @@ function perfilDaFuncao(
     return gerenteDesenvolvedor ? 'GERENTE_DESENVOLVEDOR' : 'GERENTE';
   }
   return null;
+}
+
+/**
+ * Garante que só o gerente desenvolvedor conceda acesso de nível gerencial.
+ * Impede escalada de privilégios: quem administra colaboradores (ex.:
+ * supervisor, que tem OPERADORES_CRUD) não pode criar/promover uma conta para
+ * GESTOR (que vira GERENTE/GERENTE_DESENVOLVEDOR) nem marcar
+ * `gerenteDesenvolvedor`. Só o próprio GERENTE_DESENVOLVEDOR pode fazê-lo.
+ */
+function validarPermissaoDeFuncao(
+  perfilSolicitante: PerfilSolicitante | undefined,
+  funcao: FuncaoColaborador,
+  gerenteDesenvolvedor?: boolean,
+): void {
+  const concedeAcessoGerencial =
+    funcao === 'GESTOR' || gerenteDesenvolvedor === true;
+  if (concedeAcessoGerencial && perfilSolicitante !== 'GERENTE_DESENVOLVEDOR') {
+    throw new PermissaoInsuficienteFuncaoError();
+  }
 }
 
 /** Mapeia o turno do colaborador para o turno do fiscal (3 turnos). */
@@ -134,10 +155,18 @@ export class ColaboradoresService {
    * caso de fiscal, o registro de fiscal (mantendo o painel/jornada/escala
    * funcionando). Operadores não recebem login (sem acesso ao app).
    */
-  async cadastrar(input: ColaboradorInput): Promise<Colaborador> {
+  async cadastrar(
+    input: ColaboradorInput,
+    perfilSolicitante?: PerfilSolicitante,
+  ): Promise<Colaborador> {
     const matricula = normalizarMatricula(input.matricula);
     const login = input.login ? normalizarLogin(input.login) : undefined;
     const funcao = input.funcao ?? 'OPERADOR';
+    validarPermissaoDeFuncao(
+      perfilSolicitante,
+      funcao,
+      input.gerenteDesenvolvedor,
+    );
     const perfilAcesso = perfilDaFuncao(funcao, input.gerenteDesenvolvedor);
 
     const jaMatricula = await this.prisma.colaborador.findUnique({
@@ -299,10 +328,24 @@ export class ColaboradoresService {
   async editar(
     id: string,
     input: Partial<ColaboradorInput> & { ativo?: boolean },
+    perfilSolicitante?: PerfilSolicitante,
   ): Promise<Colaborador> {
     const atual = await this.prisma.colaborador.findUnique({ where: { id } });
     if (!atual) {
       throw new ColaboradorNaoEncontradoError();
+    }
+
+    // Impede escalada de privilégios: só o gerente desenvolvedor pode conceder
+    // acesso de nível gerencial ao mudar a função/flag de um colaborador.
+    if (
+      input.funcao !== undefined ||
+      input.gerenteDesenvolvedor !== undefined
+    ) {
+      validarPermissaoDeFuncao(
+        perfilSolicitante,
+        input.funcao ?? atual.funcao,
+        input.gerenteDesenvolvedor,
+      );
     }
 
     const data: Prisma.ColaboradorUpdateInput = {};
