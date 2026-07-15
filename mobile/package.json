@@ -35,7 +35,7 @@
     "expo-linear-gradient": "~14.0.2",
     "expo-local-authentication": "~15.0.0",
     "expo-notifications": "~0.29.14",
-    "expo-print": "~14.0.3",
+    "expo-print": "~57.0.1",
     "expo-screen-capture": "~7.0.1",
     "expo-secure-store": "~14.0.0",
     "expo-sqlite": "~15.1.4",
