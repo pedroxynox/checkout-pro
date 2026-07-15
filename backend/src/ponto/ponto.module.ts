@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
+import { FeriadosModule } from '../feriados/feriados.module';
 import { FiscaisModule } from '../fiscais/fiscais.module';
 import { PontoController } from './ponto.controller';
 import { PontoService } from './ponto.service';
@@ -14,7 +15,7 @@ import { PontoOcrService } from './ponto-ocr.service';
  * `PrismaService` é global. Não há OCR de imagem no servidor.
  */
 @Module({
-  imports: [NotificacoesModule, FiscaisModule],
+  imports: [NotificacoesModule, FeriadosModule, FiscaisModule],
   controllers: [PontoController],
   providers: [PontoService, PontoAlertasService, PontoOcrService],
   exports: [PontoService],
