@@ -171,4 +171,31 @@ describe('parser do comprovante', () => {
     expect(r2.data).toBe('2026-07-13');
     expect(r2.hora).toBe('17:37');
   });
+
+  // Confiança da leitura (por campo e geral). Ancorado no rótulo = alto;
+  // corrigido pelo OCR = médio; não encontrado = zero.
+  it('reporta confiança alta quando ancora nos rótulos', () => {
+    const r = interpretarComprovante(COMPROVANTE_REAL);
+    expect(r.confianca.hora).toBeGreaterThanOrEqual(0.9);
+    expect(r.confianca.data).toBeGreaterThanOrEqual(0.9);
+    expect(r.confianca.nome).toBeGreaterThanOrEqual(0.9);
+    expect(r.confianca.geral).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('confiança da hora cai quando precisa corrigir o OCR', () => {
+    // "1S:34" casa pelo rótulo, mas precisa corrigir S→5: confiança média.
+    const r = interpretarComprovante(
+      'NOME:ANA SOUZA\nDATA:13/07/2026 HORA:1S:34',
+    );
+    expect(r.hora).toBe('15:34');
+    expect(r.confianca.hora).toBeGreaterThan(0.5);
+    expect(r.confianca.hora).toBeLessThan(0.9);
+  });
+
+  it('confiança zero nos campos que não encontrou', () => {
+    const r = interpretarComprovante('texto ilegível %%%');
+    expect(r.confianca.hora).toBe(0);
+    expect(r.confianca.nome).toBe(0);
+    expect(r.confianca.geral).toBe(0);
+  });
 });

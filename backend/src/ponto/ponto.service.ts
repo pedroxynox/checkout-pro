@@ -13,6 +13,7 @@ import {
 import { FiscaisService } from '../fiscais/fiscais.service';
 import { StatusFiscal } from '../fiscais/fiscais.domain';
 import { EditarBatidaDto, RegistrarBatidaDto } from './dto/ponto.dto';
+import { PontoOcrService } from './ponto-ocr.service';
 
 // As batidas são gravadas com a HORA DO COMPROVANTE (hora de parede de Brasília)
 // rotulada como UTC (ex.: "09:00" → "...T09:00:00Z"). Para medir o segmento
@@ -86,6 +87,9 @@ export class PontoService {
     // Ponte batidas → status do fiscal. Opcional para não quebrar testes
     // unitários que exercitam só a persistência das batidas.
     @Optional() private readonly fiscais?: FiscaisService,
+    // Memória do leitor (aprende "nome lido → pessoa"). Opcional pelo mesmo
+    // motivo: testes unitários de persistência não precisam dela.
+    @Optional() private readonly ocr?: PontoOcrService,
   ) {}
 
   /** Busca fiscais por nome (para escolher de quem é o comprovante). */
@@ -123,14 +127,45 @@ export class PontoService {
         // Tipo provisório — `reclassificar` ajusta pela ordem do dia.
         tipo: 'ENTRADA',
         origem: dto.origem ?? 'MANUAL',
+        confianca: dto.confianca ?? null,
         comprovanteUrl: dto.comprovanteUrl ?? null,
         registradoPor: usuario.sub,
         registradoPorNome: usuario.nome ?? null,
       },
     });
+    // Aprende o vínculo "nome lido → pessoa" quando a batida veio do leitor,
+    // para reconhecer a pessoa na hora nas próximas leituras. Best-effort: uma
+    // falha aqui não deve impedir o registro da batida.
+    if (dto.origem === 'LEITOR' && dto.nomeLido) {
+      await this.aprenderAlias(dto, tipoPessoa);
+    }
     await this.reclassificar(dto.pessoaId, dia);
     await this.sincronizarStatusFiscal(dto.pessoaId, tipoPessoa, dia);
     return this.jornadaDoDia(dto.pessoaId, tipoPessoa, dia);
+  }
+
+  /** Memoriza "nome lido → pessoa" (best-effort) para o leitor aprender. */
+  private async aprenderAlias(
+    dto: RegistrarBatidaDto,
+    tipoPessoa: 'FISCAL' | 'OPERADOR',
+  ): Promise<void> {
+    if (!this.ocr || !dto.nomeLido) return;
+    try {
+      // Resolve o nome oficial da pessoa (o alias guarda o nome de exibição).
+      const fiscal =
+        tipoPessoa === 'FISCAL'
+          ? await this.prisma.fiscal.findUnique({ where: { id: dto.pessoaId } })
+          : null;
+      if (!fiscal) return;
+      await this.ocr.aprenderAlias(dto.nomeLido, {
+        pessoaId: dto.pessoaId,
+        tipoPessoa,
+        colaboradorId: dto.colaboradorId ?? null,
+        nome: fiscal.nome,
+      });
+    } catch {
+      // Aprendizado é um "extra"; ignorar falhas para não travar a batida.
+    }
   }
 
   /** Corrige uma batida (hora e/ou tipo) e recalcula. */

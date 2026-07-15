@@ -1,4 +1,4 @@
-import { leituraCompleta } from './leituraComprovanteUtil';
+import { horaLida, leituraCompleta } from './leituraComprovanteUtil';
 
 describe('leituraCompleta (gatilho do leitor ao vivo)', () => {
   it('aceita quando há hora + marcador do comprovante', () => {
@@ -18,5 +18,15 @@ describe('leituraCompleta (gatilho do leitor ao vivo)', () => {
     expect(leituraCompleta('07:56')).toBe(false); // sem marcador
     expect(leituraCompleta('')).toBe(false);
     expect(leituraCompleta('texto ilegível %%%')).toBe(false);
+  });
+});
+
+describe('horaLida (extração da hora para a votação)', () => {
+  it('extrai a hora, tolerante ao OCR', () => {
+    expect(horaLida('HORA:13:18')).toBe('13:18');
+    expect(horaLida('HORA:1S:34')).toBe('15:34'); // S→5
+    expect(horaLida('HORA 0756')).toBe('07:56'); // sem separador
+    expect(horaLida('bateu 7h05')).toBe('07:05');
+    expect(horaLida('sem hora')).toBeNull();
   });
 });

@@ -21,7 +21,8 @@ import {
   View,
 } from 'react-native';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { leituraCompleta } from './leituraComprovanteUtil';
+import { horaLida, leituraCompleta } from './leituraComprovanteUtil';
+import { textoPelaGeometria } from './montarTextoOcr';
 
 export interface PropsLeitorAoVivo {
   visivel: boolean;
@@ -34,6 +35,12 @@ export interface PropsLeitorAoVivo {
 const INTERVALO_MS = 1200;
 // Após algumas tentativas sem sucesso, sugerimos aproximar/segurar firme.
 const TENTATIVAS_ATE_DICA = 4;
+// Votação: nº de quadros que precisam concordar na MESMA hora para capturar
+// automaticamente (evita aceitar um único quadro borrado com hora errada).
+const CONSENSO = 2;
+// Depois de tantos quadros "completos" sem consenso, aceitamos a hora mais
+// votada até então (não travar a leitura se a câmera oscilar muito).
+const MAX_FRAMES_CONSENSO = 6;
 
 export function LeitorComprovanteAoVivo({
   visivel,
@@ -46,6 +53,16 @@ export function LeitorComprovanteAoVivo({
   const [tentativas, setTentativas] = useState(0);
   const ocupado = useRef(false);
   const ativo = useRef(true);
+  // Votação entre quadros: por hora lida, guarda quantos quadros concordaram e
+  // o melhor texto correspondente. `framesCompletos` conta os quadros válidos.
+  const votos = useRef<Map<string, { texto: string; n: number }>>(new Map());
+  const framesCompletos = useRef(0);
+
+  /** Zera a votação (ao (re)iniciar o loop de leitura). */
+  const zerarVotacao = useCallback((): void => {
+    votos.current = new Map();
+    framesCompletos.current = 0;
+  }, []);
 
   // Pede a permissão da câmera ao abrir, se ainda não concedida.
   useEffect(() => {
@@ -53,6 +70,15 @@ export function LeitorComprovanteAoVivo({
       void pedirPermissao();
     }
   }, [visivel, permissao, pedirPermissao]);
+
+  /** Aceita definitivamente um texto lido (encerra o loop). */
+  const aceitar = useCallback(
+    (texto: string): void => {
+      ativo.current = false;
+      aoLer(texto);
+    },
+    [aoLer],
+  );
 
   const lerFrame = useCallback(
     async (automatico: boolean): Promise<void> => {
@@ -65,23 +91,60 @@ export function LeitorComprovanteAoVivo({
         });
         if (!foto?.uri || !ativo.current) return;
         const r = await TextRecognition.recognize(foto.uri);
-        const texto = r?.text?.trim();
+        // Preferimos o texto reconstruído pela geometria (rótulo+valor juntos).
+        const texto = (textoPelaGeometria(r) ?? r?.text ?? '').trim();
         if (!ativo.current) return;
-        // No modo automático só aceita quando a leitura parece completa; no
-        // manual ("Capturar agora") aceita o que houver (o usuário confirma).
-        if (texto && (!automatico || leituraCompleta(texto))) {
-          ativo.current = false;
-          aoLer(texto);
+
+        // Modo manual ("Capturar agora"): aceita o que houver (o usuário
+        // confirma depois). Sem votação.
+        if (!automatico) {
+          if (texto) aceitar(texto);
           return;
         }
-        if (automatico) setTentativas((n) => n + 1);
+
+        // Modo automático: só considera quadros que parecem um comprovante.
+        if (!texto || !leituraCompleta(texto)) {
+          setTentativas((n) => n + 1);
+          return;
+        }
+
+        framesCompletos.current += 1;
+        const hora = horaLida(texto);
+        if (!hora) {
+          // Completo mas sem hora extraível no aparelho: deixa o servidor
+          // interpretar após alguns quadros, para não travar.
+          if (framesCompletos.current >= MAX_FRAMES_CONSENSO) aceitar(texto);
+          else setTentativas((n) => n + 1);
+          return;
+        }
+
+        // Vota nessa hora e guarda o melhor texto correspondente.
+        const atual = votos.current.get(hora);
+        const n = (atual?.n ?? 0) + 1;
+        votos.current.set(hora, { texto, n });
+
+        // Consenso: a mesma hora apareceu em quadros suficientes → captura.
+        if (n >= CONSENSO) {
+          aceitar(texto);
+          return;
+        }
+        // Sem consenso após muitos quadros: aceita a hora mais votada até aqui.
+        if (framesCompletos.current >= MAX_FRAMES_CONSENSO) {
+          let melhor: { texto: string; n: number } | null = null;
+          for (const v of votos.current.values()) {
+            if (!melhor || v.n > melhor.n) melhor = v;
+          }
+          if (melhor) aceitar(melhor.texto);
+          return;
+        }
+        setTentativas((x) => x + 1);
       } catch {
         // Quadro ruim/borrado: ignora e tenta no próximo ciclo.
       } finally {
         ocupado.current = false;
       }
     },
-    [aoLer],
+    [aceitar],
   );
 
   // Loop de leitura automática enquanto a câmera está pronta e visível.
@@ -89,6 +152,7 @@ export function LeitorComprovanteAoVivo({
     if (!visivel || !pronta) return;
     ativo.current = true;
     setTentativas(0);
+    zerarVotacao();
     const timer = setInterval(() => {
       void lerFrame(true);
     }, INTERVALO_MS);
@@ -96,7 +160,7 @@ export function LeitorComprovanteAoVivo({
       ativo.current = false;
       clearInterval(timer);
     };
-  }, [visivel, pronta, lerFrame]);
+  }, [visivel, pronta, lerFrame, zerarVotacao]);
 
   if (!visivel) return null;
 

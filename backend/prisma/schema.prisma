@@ -507,6 +507,25 @@ model BatidaPonto {
   @@map("batidas_ponto")
 }
 
+// Aprendizado do leitor de ponto: memoriza que um NOME LIDO pelo OCR (texto
+// normalizado — maiúsculas, sem acento) corresponde a uma pessoa confirmada
+// pelo usuário. Assim, na próxima leitura do mesmo comprovante (mesmo com o
+// mesmo erro do OCR), a pessoa é reconhecida na hora, com confiança máxima.
+// Um alias por texto lido; `usos` conta quantas vezes foi confirmado.
+model AliasLeituraPonto {
+  id            String          @id @default(uuid())
+  textoNome     String          @unique
+  pessoaId      String
+  tipoPessoa    TipoPessoaPonto @default(FISCAL)
+  colaboradorId String?
+  nome          String
+  usos          Int             @default(1)
+  criadoEm      DateTime        @default(now())
+  atualizadoEm  DateTime        @updatedAt
+
+  @@map("aliases_leitura_ponto")
+}
+
 // Registro de ponto/jornada dos fiscais: cada transição de status (entrar =
 // DISPONIVEL, sair para INTERVALO, voltar = DISPONIVEL, encerrar =
 // FORA_EXPEDIENTE). O status atual de um fiscal é o do último registro do dia;

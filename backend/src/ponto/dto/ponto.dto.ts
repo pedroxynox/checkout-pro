@@ -2,8 +2,11 @@ import {
   IsDateString,
   IsIn,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
+  Max,
+  Min,
 } from 'class-validator';
 import { TIPOS_BATIDA, TipoBatida } from '../ponto.domain';
 
@@ -39,6 +42,22 @@ export class RegistrarBatidaDto {
   @IsOptional()
   @IsString()
   comprovanteUrl?: string;
+
+  /**
+   * Nome exatamente como foi LIDO do comprovante (OCR). Quando a batida vem do
+   * leitor (origem LEITOR), guardamos o vínculo "nome lido → pessoa" para
+   * reconhecer a pessoa na hora nas próximas leituras.
+   */
+  @IsOptional()
+  @IsString()
+  nomeLido?: string;
+
+  /** Confiança (0–1) da leitura que originou a batida (auditoria). */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  confianca?: number;
 }
 
 /** Leitura do comprovante: o texto já lido no aparelho (ML Kit, no APK). */

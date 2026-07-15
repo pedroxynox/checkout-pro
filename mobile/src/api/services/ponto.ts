@@ -33,6 +33,10 @@ export const pontoService = {
     data: string;
     hora: string;
     origem?: 'MANUAL' | 'LEITOR' | 'EDITADO';
+    /** Nome como foi LIDO do comprovante (para o leitor aprender a pessoa). */
+    nomeLido?: string;
+    /** Confiança (0–1) da leitura que originou a batida. */
+    confianca?: number;
   }): Promise<JornadaDiaPonto> {
     return apiClient.post<JornadaDiaPonto>('/ponto/batidas', input);
   },
