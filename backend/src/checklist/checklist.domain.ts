@@ -61,6 +61,55 @@ const EXTENSOES_IMAGEM = new Set([
   'heif',
 ]);
 
+/**
+ * Tipos MIME de imagem aceitos → extensão canônica **segura** do arquivo
+ * gravado. É uma lista fechada (allowlist): tudo que não estiver aqui é
+ * recusado. Note que `image/svg+xml` NÃO está incluído de propósito — um SVG
+ * pode conter script e viraria um vetor de XSS ao ser servido; só aceitamos
+ * formatos de imagem "rasterizada".
+ */
+const MIME_IMAGEM: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/pjpeg': 'jpg',
+  'image/png': 'png',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+  'image/bmp': 'bmp',
+  'image/x-ms-bmp': 'bmp',
+  'image/heic': 'heic',
+  'image/heif': 'heif',
+};
+
+/** Normaliza a extensão do nome do arquivo para a forma canônica segura. */
+function extensaoCanonica(ext: string): string {
+  return ext === 'jpeg' ? 'jpg' : ext;
+}
+
+/**
+ * Deriva uma extensão **segura** para o arquivo a ser gravado, a partir do tipo
+ * de imagem validado — nunca confiando na extensão do nome original enviado
+ * pelo cliente (que poderia ser `.html`/`.svg` e ser servido como executável).
+ * Assume que `ehImagem(arquivo)` já retornou verdadeiro.
+ */
+export function extensaoImagemSegura(arquivo: ArquivoRef): string {
+  const mime = arquivo.mimeType?.trim().toLowerCase();
+  if (mime && MIME_IMAGEM[mime]) {
+    return MIME_IMAGEM[mime];
+  }
+  const nome = arquivo.nome?.trim().toLowerCase();
+  if (nome) {
+    const ponto = nome.lastIndexOf('.');
+    if (ponto >= 0 && ponto < nome.length - 1) {
+      const ext = nome.slice(ponto + 1);
+      if (EXTENSOES_IMAGEM.has(ext)) {
+        return extensaoCanonica(ext);
+      }
+    }
+  }
+  return 'jpg';
+}
+
 /** Minutos a partir da meia-noite (UTC) de um instante. */
 export function minutosDoDia(instante: Date): number {
   return instante.getUTCHours() * 60 + instante.getUTCMinutes();
@@ -121,7 +170,9 @@ export function derivarStatusVisual(
 export function ehImagem(arquivo: ArquivoRef): boolean {
   const mime = arquivo.mimeType?.trim().toLowerCase();
   if (mime) {
-    return mime.startsWith('image/');
+    // Allowlist fechada: só formatos de imagem rasterizada conhecidos. Isso
+    // recusa `image/svg+xml` (possível XSS) e qualquer `image/...` arbitrário.
+    return mime in MIME_IMAGEM;
   }
   const nome = arquivo.nome?.trim().toLowerCase();
   if (nome) {

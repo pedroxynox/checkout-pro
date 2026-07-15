@@ -1,8 +1,7 @@
 /**
- * Pequenos componentes reutilizáveis: controle segmentado, linha de
- * informação (rótulo/valor) e item de lista clicável.
+ * Pequenos componentes reutilizáveis: controle segmentado e linha de
+ * informação (rótulo/valor).
  */
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { cores, espacamento, raio, tipografia } from '../theme';
@@ -56,42 +55,6 @@ export function LinhaInfo({
   );
 }
 
-export function ItemLista({
-  titulo,
-  subtitulo,
-  aoPressionar,
-  direita,
-}: {
-  titulo: string;
-  subtitulo?: string;
-  aoPressionar?: () => void;
-  direita?: React.ReactNode;
-}): React.ReactElement {
-  const Conteudo = (
-    <View style={styles.itemLista}>
-      <View style={styles.itemTextos}>
-        <Text style={styles.itemTitulo}>{titulo}</Text>
-        {subtitulo ? <Text style={styles.itemSubtitulo}>{subtitulo}</Text> : null}
-      </View>
-      {direita ?? (aoPressionar ? (
-        <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />
-      ) : null)}
-    </View>
-  );
-
-  if (aoPressionar) {
-    return (
-      <Pressable
-        onPress={aoPressionar}
-        style={({ pressed }) => (pressed ? styles.pressionado : undefined)}
-      >
-        {Conteudo}
-      </Pressable>
-    );
-  }
-  return Conteudo;
-}
-
 const styles = StyleSheet.create({
   segmentoContainer: {
     flexDirection: 'row',
@@ -135,30 +98,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'right',
     flexShrink: 1,
-  },
-  itemLista: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: espacamento.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: cores.divisor,
-  },
-  itemTextos: {
-    flex: 1,
-    paddingRight: espacamento.sm,
-  },
-  itemTitulo: {
-    ...tipografia.corpo,
-    color: cores.texto,
-    fontWeight: '600',
-  },
-  itemSubtitulo: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    marginTop: 2,
-  },
-  pressionado: {
-    opacity: 0.6,
   },
 });

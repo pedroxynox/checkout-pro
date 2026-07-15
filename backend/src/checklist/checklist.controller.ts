@@ -24,7 +24,12 @@ import {
 } from '../common/decorators/usuario-atual.decorator';
 import { OBJECT_STORAGE, ObjectStorage } from '../storage/object-storage';
 import { ArquivoNaoImagemError } from './checklist.errors';
-import { JanelaExecucao, StatusChecklist, ehImagem } from './checklist.domain';
+import {
+  JanelaExecucao,
+  StatusChecklist,
+  ehImagem,
+  extensaoImagemSegura,
+} from './checklist.domain';
 import {
   ChecklistHistoricoDia,
   ChecklistMetricas,
@@ -85,9 +90,13 @@ export class ChecklistController {
 
     const data = dto.data ? new Date(dto.data) : new Date();
     const hash = createHash('sha256').update(arquivo.buffer).digest('hex');
+    // Nome de gravação com extensão SEGURA derivada do tipo validado — nunca
+    // reutiliza a extensão do nome original do cliente (que poderia ser
+    // `.html`/`.svg` e ser servido como conteúdo executável).
+    const nomeSeguro = `imagem.${extensaoImagemSegura(ref)}`;
     const salvo = await this.storage.salvar({
       conteudo: arquivo.buffer,
-      nomeOriginal: arquivo.originalname,
+      nomeOriginal: nomeSeguro,
       mimeType: arquivo.mimetype,
       prefixo: 'checklists',
     });

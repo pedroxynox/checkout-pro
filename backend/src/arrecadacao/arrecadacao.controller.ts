@@ -16,11 +16,15 @@ import { ArquivoUpload } from '../common/arquivo-upload';
 import { opcoesUploadTexto } from '../common/upload-options';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
+  DataIndicadorDto,
+  DefinirMetaDto,
+  IndicadorTipoDataDto,
   PeriodoArrecadacaoDto,
   RankingArrecadacaoDto,
   ResumoArrecadacaoDto,
   SemMovimentoArrecadacaoDto,
   StatusArrecadacaoDto,
+  TendenciaArrecadacaoDto,
   UploadArrecadacaoDto,
 } from './dto/arrecadacao.dto';
 import {
@@ -178,7 +182,7 @@ export class ArrecadacaoController {
   @HttpCode(HttpStatus.OK)
   @Funcionalidade('ADMIN_DADOS')
   definirMeta(
-    @Body() dto: { tipo: TipoArrecadacao; meta: number },
+    @Body() dto: DefinirMetaDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<{ tipo: TipoArrecadacao; meta: number }> {
     return this.arrecadacaoService.definirMeta(
@@ -190,51 +194,43 @@ export class ArrecadacaoController {
 
   /** Série temporal (tendência) dos últimos N dias de um indicador. */
   @Get('tendencia')
-  tendencia(
-    @Query('tipo') tipo: TipoArrecadacao,
-    @Query('data') data: string,
-    @Query('dias') dias?: string,
-  ): Promise<PontoTendencia[]> {
+  tendencia(@Query() dto: TendenciaArrecadacaoDto): Promise<PontoTendencia[]> {
     return this.inteligente.tendencia(
-      tipo,
-      new Date(data),
-      dias ? Number(dias) : 30,
+      dto.tipo,
+      new Date(dto.data),
+      dto.dias ?? 30,
     );
   }
 
   /** Comparativo do mês/semana atual vs o período anterior. */
   @Get('comparativo')
   comparativo(
-    @Query('tipo') tipo: TipoArrecadacao,
-    @Query('data') data: string,
+    @Query() dto: IndicadorTipoDataDto,
   ): Promise<{ mes: Comparativo; semana: Comparativo }> {
-    return this.inteligente.comparativo(tipo, new Date(data));
+    return this.inteligente.comparativo(dto.tipo, new Date(dto.data));
   }
 
   /** Projeção de fechamento de mês + meta diária derivada. */
   @Get('projecao')
-  projecao(
-    @Query('tipo') tipo: TipoArrecadacao,
-    @Query('data') data: string,
-  ): Promise<ProjecaoMes> {
-    return this.inteligente.projecaoMes(tipo, new Date(data));
+  projecao(@Query() dto: IndicadorTipoDataDto): Promise<ProjecaoMes> {
+    return this.inteligente.projecaoMes(dto.tipo, new Date(dto.data));
   }
 
   /** Destaques do mês (Top 3: troco, recargas, cancelamento de itens). */
   @Get('destaques-mes')
-  destaquesMes(@Query('data') data: string) {
-    return this.inteligente.destaquesMes(new Date(data));
+  destaquesMes(@Query() dto: DataIndicadorDto) {
+    return this.inteligente.destaquesMes(new Date(dto.data));
   }
 
   /** Operadores com cancelamentos/devoluções muito acima da média (mês). */
   @Get('anomalias')
-  anomalias(@Query('data') data: string) {
-    return this.inteligente.anomalias(new Date(data));
+  anomalias(@Query() dto: DataIndicadorDto) {
+    return this.inteligente.anomalias(new Date(dto.data));
   }
 
   /** Painel "Precisa de atenção" completo (metas em risco + operadores). */
   @Get('painel-atencao')
-  painelAtencao(@Query('data') data: string) {
-    return this.inteligente.painelAtencao(new Date(data));
+  painelAtencao(@Query() dto: DataIndicadorDto) {
+    return this.inteligente.painelAtencao(new Date(dto.data));
   }
 }

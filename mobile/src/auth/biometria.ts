@@ -13,10 +13,45 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { tokenStorage } from '../api/tokenStorage';
 
 const CHAVE_BIO_LOGIN = 'checkoutpro:bio-login';
 const CHAVE_BIO_TOKEN = 'checkoutpro:bio-token';
+
+/**
+ * O token biométrico é uma credencial sensível de longa duração, então é
+ * guardado no armazenamento seguro do aparelho (Keychain/Keystore) via
+ * `expo-secure-store` — nunca em texto puro. Na web (sem SecureStore) caímos
+ * para o `AsyncStorage`, como no restante do app. As funções abaixo isolam
+ * essa diferença de plataforma.
+ */
+const usaSecureStore = Platform.OS !== 'web';
+
+async function escreverSeguro(chave: string, valor: string): Promise<void> {
+  if (usaSecureStore && (await SecureStore.isAvailableAsync())) {
+    await SecureStore.setItemAsync(chave, valor);
+    return;
+  }
+  await AsyncStorage.setItem(chave, valor);
+}
+
+async function lerSeguro(chave: string): Promise<string | null> {
+  if (usaSecureStore && (await SecureStore.isAvailableAsync())) {
+    return SecureStore.getItemAsync(chave);
+  }
+  return AsyncStorage.getItem(chave);
+}
+
+async function removerSeguro(chave: string): Promise<void> {
+  if (usaSecureStore && (await SecureStore.isAvailableAsync())) {
+    await SecureStore.deleteItemAsync(chave);
+  }
+  // Remove também de eventual armazenamento legado em AsyncStorage (limpeza de
+  // tokens antigos guardados em texto puro por versões anteriores do app).
+  await AsyncStorage.removeItem(chave);
+}
 
 /** Há hardware biométrico disponível e cadastrado neste aparelho? */
 export async function biometriaSuportada(): Promise<boolean> {
@@ -44,8 +79,8 @@ export async function ativarBiometria(login: string): Promise<void> {
     if (!token) {
       return;
     }
-    await AsyncStorage.setItem(CHAVE_BIO_LOGIN, login);
-    await AsyncStorage.setItem(CHAVE_BIO_TOKEN, token);
+    await escreverSeguro(CHAVE_BIO_LOGIN, login);
+    await escreverSeguro(CHAVE_BIO_TOKEN, token);
   } catch {
     // ignora
   }
@@ -55,8 +90,8 @@ export async function ativarBiometria(login: string): Promise<void> {
 export async function loginBiometrico(): Promise<string | null> {
   try {
     const [login, token] = await Promise.all([
-      AsyncStorage.getItem(CHAVE_BIO_LOGIN),
-      AsyncStorage.getItem(CHAVE_BIO_TOKEN),
+      lerSeguro(CHAVE_BIO_LOGIN),
+      lerSeguro(CHAVE_BIO_TOKEN),
     ]);
     return login && token ? login : null;
   } catch {
@@ -77,7 +112,7 @@ export async function autenticarComBiometria(): Promise<string | null> {
     if (!resultado.success) {
       return null;
     }
-    return await AsyncStorage.getItem(CHAVE_BIO_TOKEN);
+    return await lerSeguro(CHAVE_BIO_TOKEN);
   } catch {
     return null;
   }
@@ -86,7 +121,10 @@ export async function autenticarComBiometria(): Promise<string | null> {
 /** Apaga a credencial biométrica (ex.: token expirado). */
 export async function limparBiometria(): Promise<void> {
   try {
-    await AsyncStorage.multiRemove([CHAVE_BIO_LOGIN, CHAVE_BIO_TOKEN]);
+    await Promise.all([
+      removerSeguro(CHAVE_BIO_LOGIN),
+      removerSeguro(CHAVE_BIO_TOKEN),
+    ]);
   } catch {
     // ignora
   }

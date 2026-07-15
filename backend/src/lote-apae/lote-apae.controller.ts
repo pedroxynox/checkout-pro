@@ -15,6 +15,7 @@ import {
 } from '../common/decorators/usuario-atual.decorator';
 import {
   AtualizarSaldoDto,
+  DefinirConfigApaeDto,
   RegistrarLoteDto,
   ReiniciarLoteDto,
 } from './dto/lote-apae.dto';
@@ -105,7 +106,7 @@ export class LoteApaeController {
   @Put('config')
   @Funcionalidade('LOTE_APAE_GERENCIAR')
   async definirConfig(
-    @Body() dto: { precoSacola?: number; metaMensal?: number },
+    @Body() dto: DefinirConfigApaeDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<{ precoSacola: number; metaMensal: number }> {
     return this.loteApaeService.definirConfig(dto, usuario?.sub);

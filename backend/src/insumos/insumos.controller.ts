@@ -17,6 +17,7 @@ import {
 import {
   CadastrarInsumoDto,
   ConsumoBobinaDto,
+  ConsumoEmbalagemDto,
   ConsumoInsumoDto,
   RegistrarEntradaDto,
   RetiradaFardoDto,
@@ -56,7 +57,7 @@ export class InsumosController {
   @Post('consumo-embalagem')
   @HttpCode(HttpStatus.OK)
   async consumoEmbalagem(
-    @Body() dto: { insumoId: string; embalagens: number },
+    @Body() dto: ConsumoEmbalagemDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<{ saldo: number }> {
     return this.insumosService.registrarConsumoEmbalagem(

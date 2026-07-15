@@ -11,6 +11,11 @@ import {
   UsuarioAtual,
   UsuarioAutenticado,
 } from '../common/decorators/usuario-atual.decorator';
+import {
+  ConfigurarPedidoDto,
+  ConfirmarSugestoesDto,
+  IgnorarSugestoesDto,
+} from './dto/pedidos-recorrentes.dto';
 import { PedidosRecorrentesService } from './pedidos-recorrentes.service';
 
 /**
@@ -45,7 +50,7 @@ export class PedidosRecorrentesController {
   @HttpCode(HttpStatus.OK)
   @Funcionalidade('INSUMOS_GERENCIAR')
   async confirmar(
-    @Body() dto: { ids: string[]; ajustes?: Record<string, number> },
+    @Body() dto: ConfirmarSugestoesDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ) {
     return this.service.confirmarSugestoes(dto.ids, dto.ajustes, usuario?.sub);
@@ -55,7 +60,7 @@ export class PedidosRecorrentesController {
   @Post('ignorar')
   @HttpCode(HttpStatus.OK)
   @Funcionalidade('INSUMOS_GERENCIAR')
-  async ignorar(@Body() dto: { ids: string[] }) {
+  async ignorar(@Body() dto: IgnorarSugestoesDto) {
     await this.service.ignorarSugestoes(dto.ids);
     return { ok: true };
   }
@@ -64,15 +69,7 @@ export class PedidosRecorrentesController {
   @Post('configurar')
   @HttpCode(HttpStatus.OK)
   @Funcionalidade('INSUMOS_GERENCIAR')
-  async configurar(
-    @Body()
-    dto: {
-      insumoId: string;
-      quantidade: number;
-      frequenciaDias: number;
-      diaSugestao?: number;
-    },
-  ) {
+  async configurar(@Body() dto: ConfigurarPedidoDto) {
     return this.service.configurar(
       dto.insumoId,
       dto.quantidade,
