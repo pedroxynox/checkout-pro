@@ -56,6 +56,10 @@ export interface CentralDiaDetalhe {
   devidasMs: number;
   tac: boolean;
   motivosTac: string[];
+  /** id da ausência (nos dias de FALTA/FALTA_DEBITO/ATESTADO), para marcar débito. */
+  ausenciaId?: string;
+  /** true se a falta está marcada como débito de horas. */
+  debito?: boolean;
 }
 
 export interface CentralPeriodo {
@@ -271,6 +275,8 @@ export class CentralJornadaService {
           devidasMs: devidasDia,
           tac: false,
           motivosTac: [],
+          ausenciaId: ausencia.id,
+          debito: ausencia.debitoHoras,
         });
       } else {
         dias.push({

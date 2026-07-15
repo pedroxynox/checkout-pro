@@ -13,7 +13,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { colaboradoresService } from '../../api/services';
-import { Colaborador, FuncaoColaborador, TurnoColaborador } from '../../api/types';
+import {
+  Colaborador,
+  FuncaoColaborador,
+  ROTULO_TIPO_CONTRATO,
+  TipoContrato,
+  TurnoColaborador,
+} from '../../api/types';
 import {
   Botao,
   CampoTexto,
@@ -40,6 +46,12 @@ const FUNCOES: { v: FuncaoColaborador; r: string }[] = [
 
 /** Funções que entram no app (precisam de login/senha). Operador não entra. */
 const FUNCOES_COM_ACESSO: FuncaoColaborador[] = ['FISCAL', 'SUPERVISOR', 'GESTOR'];
+
+// Tipos de contrato (regras de jornada). Hoje só "6x1 - 2x1"; a lista cresce
+// conforme novos contratos forem criados.
+const CONTRATOS: { v: TipoContrato; r: string }[] = (
+  Object.entries(ROTULO_TIPO_CONTRATO) as [TipoContrato, string][]
+).map(([v, r]) => ({ v, r }));
 
 const TURNOS: { v: TurnoColaborador; r: string }[] = [
   { v: 'ABERTURA', r: 'Abertura' },
@@ -73,6 +85,9 @@ export function GestaoColaboradoresScreen({
   const [matricula, setMatricula] = useState('');
   const [login, setLogin] = useState('');
   const [funcao, setFuncao] = useState<FuncaoColaborador>('OPERADOR');
+  const [tipoContrato, setTipoContrato] = useState<TipoContrato>(
+    'SEIS_X_UM_DOIS_X_UM',
+  );
   const [genero, setGenero] = useState<'M' | 'F'>('F');
   const [turno, setTurno] = useState<TurnoColaborador | null>(null);
   const [entSem, setEntSem] = useState('');
@@ -121,6 +136,7 @@ export function GestaoColaboradoresScreen({
     setAdmissao('');
     setSenha('');
     setGerenteDev(false);
+    setTipoContrato('SEIS_X_UM_DOIS_X_UM');
   };
 
   const abrirNovo = () => {
@@ -160,6 +176,7 @@ export function GestaoColaboradoresScreen({
     setEntDom(c.entradaDom ?? '');
     setSaiDom(c.saidaDom ?? '');
     setAdmissao(c.dataAdmissao ? isoParaDataBR(c.dataAdmissao) : '');
+    setTipoContrato(c.tipoContrato ?? 'SEIS_X_UM_DOIS_X_UM');
     setEditAtivo(c.ativo);
     setSenha('');
     setGerenteDev(false);
@@ -239,6 +256,7 @@ export function GestaoColaboradoresScreen({
       entradaDom: entDom.trim() || undefined,
       saidaDom: saiDom.trim() || undefined,
       dataAdmissao: admissaoISO,
+      tipoContrato,
       // Acesso ao app (apenas funções com acesso).
       senha: temAcesso && senha.trim() ? senha.trim() : undefined,
       gerenteDesenvolvedor: funcao === 'GESTOR' ? gerenteDev : undefined,
@@ -342,6 +360,22 @@ export function GestaoColaboradoresScreen({
                 style={[styles.chip, funcao === f.v && styles.chipAtivo]}
               >
                 {f.r}
+              </Text>
+            ))}
+          </View>
+
+          <Text style={styles.rotulo}>Tipo de contrato</Text>
+          <View style={styles.chips}>
+            {CONTRATOS.map((c) => (
+              <Text
+                key={c.v}
+                onPress={() => setTipoContrato(c.v)}
+                style={[
+                  styles.chip,
+                  tipoContrato === c.v && styles.chipAtivo,
+                ]}
+              >
+                {c.r}
               </Text>
             ))}
           </View>
