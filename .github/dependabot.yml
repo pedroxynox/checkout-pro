@@ -22,8 +22,30 @@ updates:
         update-types:
           - minor
           - patch
-    # Atualizações de versão MAIOR (ex.: NestJS, Expo) chegam em PRs separados,
-    # pois exigem migração cuidadosa — nunca misturadas com as de baixo risco.
+    # Ignora as atualizações de versão MAIOR dos frameworks pesados (NestJS,
+    # Expo, React Native, React Navigation). Esses saltos quebram o app com
+    # facilidade e exigem uma migração dedicada e testada — serão feitos à mão,
+    # um de cada vez, e não propostos automaticamente (evita ruído e risco).
+    # As atualizações de patch/minor desses pacotes continuam sendo propostas.
+    ignore:
+      - dependency-name: '@nestjs/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'expo'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'expo-*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@expo/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-dom'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-native'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-native-*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@react-navigation/*'
+        update-types: ['version-update:semver-major']
     labels:
       - dependencias
 
