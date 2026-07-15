@@ -73,6 +73,9 @@ export const TODAS_FUNCIONALIDADES = [
   // Contratos de experiência (tempo de casa + marcos 45/90)
   'CONTRATOS_VISUALIZAR',
   'CONTRATOS_GERIR',
+  // Feedforward (acompanhamento de desenvolvimento no perfil do colaborador)
+  'FEEDFORWARD_VISUALIZAR',
+  'FEEDFORWARD_GERIR',
   // Pessoas e avisos
   'USUARIOS_CRUD',
   'NOTIFICACOES',
@@ -132,6 +135,9 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] =
     'FISCAIS_JORNADA',
     // Contratos: o supervisor acompanha (visualiza), mas não decide os marcos.
     'CONTRATOS_VISUALIZAR',
+    // Feedforward: supervisor cria/edita e acompanha.
+    'FEEDFORWARD_VISUALIZAR',
+    'FEEDFORWARD_GERIR',
     // Decide as solicitações de advertência por falta não justificada.
     'ADVERTENCIAS_DECIDIR',
   ]);
@@ -189,6 +195,9 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
     // Contratos de experiência: o gerente visualiza e decide os marcos.
     'CONTRATOS_VISUALIZAR',
     'CONTRATOS_GERIR',
+    // Feedforward: gerente cria/edita e acompanha.
+    'FEEDFORWARD_VISUALIZAR',
+    'FEEDFORWARD_GERIR',
     // Decide as solicitações de advertência por falta não justificada.
     'ADVERTENCIAS_DECIDIR',
   ],

@@ -18,6 +18,8 @@ jest.mock('../../api/services', () => ({
     editarIncidencia: jest.fn(),
     removerIncidencia: jest.fn(),
   },
+  // A seção Feedforward (renderizada no perfil) busca as rodadas do colaborador.
+  feedforwardService: { doColaborador: jest.fn().mockResolvedValue([]) },
 }));
 
 // Permissão controlável por teste: `mockAuth.permitir` alimenta `podeAcessar`

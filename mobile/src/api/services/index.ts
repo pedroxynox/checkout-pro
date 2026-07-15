@@ -19,6 +19,11 @@ export type { FiltroColaboradores } from './colaboradores';
 export { advertenciasService } from './advertencias';
 export { contratosService } from './contratos';
 export type { FiltroContratos } from './contratos';
+export { feedforwardService } from './feedforward';
+export type {
+  CriarFeedforwardInput,
+  PontoNovoFeedforward,
+} from './feedforward';
 export { usuariosService } from './usuarios';
 export { notificacoesService } from './notificacoes';
 export { assistenteService } from './assistente';
