@@ -359,33 +359,27 @@ export class CentralJornadaService {
     const dados = await this.carregarCiclo(deslocamento);
     const batidas = dados.batidas as BatidaMin[];
 
-    const pessoas: CentralPessoaResumo[] = dados.pessoas
-      .map((c) => {
-        const { resumo } = this.calcularPessoa(
-          this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador),
-          batidas,
-          dados.ausencias,
-          dados.feriadoMap,
-          dados.inicio,
-          dados.fimExclusivo,
-          dados.limite,
-        );
-        return {
-          colaboradorId: c.id,
-          nome: c.nome,
-          primeiroNome: primeiroNome(c.nome),
-          funcao: c.funcao,
-          ...resumo,
-        };
-      })
-      // Só aparece quem teve movimento no ciclo (bateu ponto ou teve falta).
-      .filter(
-        (p) =>
-          p.cargaTrabalhadaMs > 0 ||
-          p.faltas > 0 ||
-          p.horasAtestadoMs > 0 ||
-          p.horasDevidasMs > 0,
+    const pessoas: CentralPessoaResumo[] = dados.pessoas.map((c) => {
+      const { resumo } = this.calcularPessoa(
+        this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador),
+        batidas,
+        dados.ausencias,
+        dados.feriadoMap,
+        dados.inicio,
+        dados.fimExclusivo,
+        dados.limite,
       );
+      return {
+        colaboradorId: c.id,
+        nome: c.nome,
+        primeiroNome: primeiroNome(c.nome),
+        funcao: c.funcao,
+        ...resumo,
+      };
+    });
+    // Sem filtro de "movimento": a Central lista TODAS as fichas não-gerentes
+    // (operador/supervisor/fiscal), mesmo zeradas, já em ordem alfabética
+    // (a query carrega os colaboradores com orderBy nome asc).
 
     const totais = pessoas.reduce(
       (acc, p) => ({

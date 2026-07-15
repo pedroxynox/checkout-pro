@@ -11,7 +11,7 @@
 El estado funcional documentado está **mergeado en `main`** hasta `e8c32be` (PR #235). No se verificó desde este trabajo que ese commit esté efectivamente desplegado en producción; por eso se distingue siempre entre **implementado/mergeado**, **deploy confirmado** y **configuración externa pendiente**.
 
 Validación más reciente:
-- Backend: build correcto; **71 suites / 410 tests**.
+- Backend: build correcto; **71 suites / 411 tests**.
 - Mobile: type-check y lint correctos; **23 suites / 85 tests**.
 - ESLint focalizado de los archivos TAC: correcto.
 - Prettier: los cuatro archivos históricos ya fueron formateados (ver §10). Con Prettier 3.9.5 el `--check` global marca 9 archivos de dominio adicionales por deriva de versión; el CI los normaliza al vuelo vía `eslint --fix`, por lo que no rompen la validación.
@@ -123,6 +123,7 @@ Fuente principal: `backend/src/central-jornada/central-jornada.service.ts`.
 - Una falta puede marcarse como débito de horas.
 - El backend admite comparativo de hasta 12 ciclos; el app solicita/muestra actualmente seis.
 - Las tres funciones se consolidan juntas; no existe filtro interactivo por función.
+- Lista **todos** los colaboradores no-gerentes del ciclo, aunque no tengan movimiento (card en cero), en **orden alfabético** por nombre. (La "Jornada de Equipe" sí sigue mostrando solo a quien fichó en el día.)
 
 ### 5.3 Feriados
 
@@ -215,7 +216,7 @@ Caveats:
 ## 10. Verificación y deuda conocida
 
 Últimos resultados confirmados:
-- Backend: build OK; 71 suites, 410 tests.
+- Backend: build OK; 71 suites, 411 tests.
 - Mobile: type-check + lint OK; 23 suites, 85 tests.
 - Archivos TAC: ESLint focalizado OK.
 
