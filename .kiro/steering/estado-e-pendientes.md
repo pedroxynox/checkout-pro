@@ -6,8 +6,8 @@
 
 - Rama base auditada: `main` en `e8c32be` (merge de PR #235).
 - Todo lo descrito como entregado está **mergeado en `main`**; el deploy de ese commit no fue confirmado desde esta sesión.
-- Última migration: `9zp_tipo_contrato_colaborador`.
-- Backend: build OK; **71 suites / 406 tests**.
+- Última migration: `9zq_alerta_tac_enviado`.
+- Backend: build OK; **71 suites / 409 tests**.
 - Mobile: type-check + lint OK; **23 suites / 85 tests**.
 - ESLint focalizado TAC: OK.
 - Prettier: los cuatro archivos históricos ya fueron formateados en PR aislado. Prettier 3.9.5 marca 9 archivos de dominio por deriva de versión; el CI los normaliza con `eslint --fix` (no bloquea).
@@ -29,7 +29,7 @@
 - Domingo/feriado: carga 7h20 y extras 100%; seg–qui 7h, sex–sáb 8h.
 - Avisos TAC solo a `SUPERVISOR`, `GERENTE`, `GERENTE_DESENVOLVEDOR`.
 - Envío best-effort: nunca bloquear la batida.
-- Dedupe por persona/día/etapa en memoria; batida y cron comparten estado. Reinicio puede permitir reaviso.
+- Dedupe por persona/día/etapa PERSISTENTE (tabla `AlertaTacEnviado`): reserva atómica por índice único antes de notificar; sobrevive a reinicios y coordina múltiples instancias; el fallo libera la reserva (retry). TAC diario: la unicidad incluye el día.
 
 ### Central de Jornada
 - Ciclo 26→25; contrato `SEIS_X_UM_DOIS_X_UM`.
@@ -68,7 +68,7 @@
 8. Preparar `reset:cliente` + seed mínimo, sin datos demo/piloto, antes de entregar.
 
 ### P2 — deuda/evolución
-9. Persistir deduplicación TAC si se requiere garantía entre reinicios/múltiples instancias.
+9. **Hecho.** Deduplicación TAC persistente (tabla `AlertaTacEnviado`, migración `9zq`): garantía entre reinicios y múltiples instancias vía índice único.
 10. **Hecho.** Formateados en PR aislado los cuatro archivos Prettier históricos
    (`alertas.service.spec.ts`, `fiscais.service.ts`, `insumos.service.ts`,
    `test/helpers/fake-prisma.ts`). Pendiente menor: decidir si se normalizan los
@@ -82,7 +82,7 @@
 - GitHub: usar el power/herramientas autenticadas; no `git push` desde bash.
 - No ejecutar lint backend con `--fix` para validar: puede alterar archivos ajenos. Usar ESLint focalizado o revisar el diff inmediatamente.
 - No afirmar “en producción” sin logs/commit de deploy.
-- Nueva migration debe ordenar después de `9zp_tipo_contrato_colaborador`.
+- Nueva migration debe ordenar después de `9zq_alerta_tac_enviado`.
 
 ## Verificación antes de publicar
 

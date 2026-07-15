@@ -7,6 +7,36 @@
 
 ---
 
+## Deduplicação PERSISTENTE dos alertas de TAC (2026-07-15)
+
+Os avisos preventivos de risco/TAC (1h30, 1h40 e TAC) deixam de depender da
+memória do processo. Antes, um reinício do servidor — comum no Render — ou uma
+segunda instância podiam reenviar a mesma etapa do mesmo dia. Agora a
+deduplicação é **persistente e diária**:
+
+- Nova tabela `AlertaTacEnviado` (migration `9zq_alerta_tac_enviado`) com índice
+  único `(pessoaId, dia, etapa)`. O TAC é diário: a unicidade inclui o dia, então
+  cada dia recomeça a escala de etapas.
+- O envio passa a **reservar a etapa** com um INSERT antes de notificar: o índice
+  único é a trava atômica. Se outra batida/instância já reservou, o INSERT é
+  recusado (P2002) e o aviso não se repete — sobrevive a reinícios e coordena
+  múltiplas instâncias.
+- **Retry preservado:** se a notificação falhar, a reserva é liberada
+  (`deleteMany`) para o cron do minuto seguinte tentar de novo; só se marca como
+  enviado quando a notificação realmente sai.
+- Ao pular direto para uma etapa maior, as inferiores são gravadas como
+  consumidas (`createMany` idempotente) para não reenviar avisos menores depois.
+- **Best-effort mantido:** se o banco estiver indisponível, cai no antigo
+  comportamento em memória e nunca trava a batida. Os dois `Set` em processo
+  viram apenas cache/guard de concorrência.
+
+Verificação: `prisma validate` OK, `build` OK, `prettier`/`eslint` limpos nos
+arquivos alterados e **71 suítes / 409 testes** verdes (3 testes novos: reserva
+antes de avisar, não reenvia após reinício simulado com P2002 e libera a reserva
+quando o envio falha).
+
+---
+
 ## Limpeza de formatação Prettier — quatro arquivos históricos (2026-07-15)
 
 Aplicada a limpeza que estava adiada para PR isolado. Rodado `prettier --write`
@@ -82,7 +112,9 @@ A regra vigente substitui o alerta histórico de 1h45 e os destinatários amplos
 - envio best-effort: falha de notificação nunca bloqueia a batida;
 - deduplicação por pessoa/dia/etapa compartilhada entre batida e cron de um
   minuto, com retry se o envio falhar;
-- deduplicação em memória: reinício do processo pode permitir novo aviso.
+- deduplicação PERSISTENTE (tabela `AlertaTacEnviado`, migration
+  `9zq_alerta_tac_enviado`): sobrevive a reinícios do processo e coordena
+  múltiplas instâncias (ver entrada no topo deste registro).
 
 ### Push e estado operacional
 
@@ -90,9 +122,9 @@ O backend já faz envio real pelo Expo Push Service e persiste tokens. Para o pu
 chegar ao Android com o app fechado ainda é necessário configurar FCM no projeto
 Expo/EAS e recompilar/publicar o APK.
 
-Verificação mais recente: backend build OK (**71 suítes / 406 testes**); mobile
+Verificação mais recente: backend build OK (**71 suítes / 409 testes**); mobile
 type-check + lint OK (**23 suítes / 85 testes**). Última migration:
-`9zp_tipo_contrato_colaborador`. As diferenças Prettier históricas nos quatro
+`9zq_alerta_tac_enviado`. As diferenças Prettier históricas nos quatro
 arquivos já foram limpas (ver entrada no topo deste registro); restam apenas 9
 arquivos de domínio marcados por deriva de versão do Prettier, normalizados pelo
 CI via `eslint --fix`.
