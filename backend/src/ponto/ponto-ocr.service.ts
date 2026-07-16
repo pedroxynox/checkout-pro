@@ -9,6 +9,7 @@ import {
 import { scoreNome } from './ponto-nome-match';
 import { LerComprovanteDto } from './dto/ponto.dto';
 import { FUNCOES_PONTO_NAO_FISCAL } from './pessoas-ponto';
+import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 
 /** Um colaborador sugerido pela leitura, com a confiança do casamento (0–1). */
 export interface CandidatoPonto extends PessoaPonto {
@@ -89,28 +90,50 @@ export class PontoOcrService {
   private async candidatosPara(nomeLido: string): Promise<CandidatoPonto[]> {
     const alvo = normalizarTexto(nomeLido);
 
-    const [alias, fiscais, colaboradores] = await Promise.all([
-      this.prisma.aliasLeituraPonto.findUnique({ where: { textoNome: alvo } }),
-      this.prisma.fiscal.findMany(),
-      this.prisma.colaborador.findMany({
-        where: { ativo: true, funcao: { in: FUNCOES_PONTO_NAO_FISCAL } },
-      }),
-    ]);
+    const [alias, fiscais, usuarios, colaboradoresFiscais, colaboradores] =
+      await Promise.all([
+        this.prisma.aliasLeituraPonto.findUnique({
+          where: { textoNome: alvo },
+        }),
+        this.prisma.fiscal.findMany({
+          select: { id: true, nome: true, usuarioId: true },
+        }),
+        this.prisma.usuario.findMany({ select: { id: true, login: true } }),
+        this.prisma.colaborador.findMany({
+          where: { ativo: true, funcao: 'FISCAL' },
+          select: { id: true, nome: true, matricula: true, usuarioId: true },
+        }),
+        this.prisma.colaborador.findMany({
+          where: { ativo: true, funcao: { in: FUNCOES_PONTO_NAO_FISCAL } },
+        }),
+      ]);
 
-    // Universo de pessoas que batem ponto: fiscais (tabela Fiscal) + demais
-    // colaboradores ativos (operadores/supervisores) do Cadastro.
+    const fiscalParaColaborador = mapearFiscalColaborador(
+      fiscais,
+      usuarios,
+      colaboradoresFiscais,
+    );
+    // Universo de pessoas ATIVAS que batem ponto. Fiscais sem ficha canônica
+    // ativa ficam de fora tanto da similaridade quanto de aliases antigos.
     const pessoas: Array<{
       id: string;
       nome: string;
       tipoPessoa: 'FISCAL' | 'OPERADOR';
       colaboradorId: string | null;
     }> = [
-      ...fiscais.map((f) => ({
-        id: f.id,
-        nome: f.nome,
-        tipoPessoa: 'FISCAL' as const,
-        colaboradorId: null,
-      })),
+      ...fiscais.flatMap((f) => {
+        const vinculo = fiscalParaColaborador.get(f.id);
+        return vinculo
+          ? [
+              {
+                id: f.id,
+                nome: vinculo.nome,
+                tipoPessoa: 'FISCAL' as const,
+                colaboradorId: vinculo.colaboradorId,
+              },
+            ]
+          : [];
+      }),
       ...colaboradores.map((c) => ({
         id: c.id,
         nome: c.nome,
@@ -134,14 +157,25 @@ export class PontoOcrService {
 
     if (!alias) return porSimilaridade;
 
-    // Alias confirmado antes: vai para o topo com confiança máxima, sem
-    // duplicar quem já apareceu por similaridade.
-    const semAlias = porSimilaridade.filter((c) => c.id !== alias.pessoaId);
+    const pessoaAtivaDoAlias = pessoas.find(
+      (p) =>
+        p.id === alias.pessoaId &&
+        p.tipoPessoa === (alias.tipoPessoa as 'FISCAL' | 'OPERADOR'),
+    );
+    if (!pessoaAtivaDoAlias) return porSimilaridade;
+
+    // Alias confirmado antes: só entra se ainda aponta para uma pessoa ativa.
+    // Nome e ficha vêm do cadastro atual, não da cópia histórica do alias.
+    const semAlias = porSimilaridade.filter(
+      (c) =>
+        c.id !== pessoaAtivaDoAlias.id ||
+        c.tipoPessoa !== pessoaAtivaDoAlias.tipoPessoa,
+    );
     const doAlias: CandidatoPonto = {
-      id: alias.pessoaId,
-      nome: alias.nome,
-      tipoPessoa: alias.tipoPessoa as 'FISCAL' | 'OPERADOR',
-      colaboradorId: alias.colaboradorId ?? null,
+      id: pessoaAtivaDoAlias.id,
+      nome: pessoaAtivaDoAlias.nome,
+      tipoPessoa: pessoaAtivaDoAlias.tipoPessoa,
+      colaboradorId: pessoaAtivaDoAlias.colaboradorId,
       confianca: 1,
       aprendido: true,
     };

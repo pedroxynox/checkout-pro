@@ -54,7 +54,7 @@ export class CentralJornadaController {
   /** Marca/desmarca uma falta como débito de horas (RH/gestão). */
   @Post('ausencia/:id/debito')
   @HttpCode(HttpStatus.OK)
-  @Funcionalidade('OPERADORES_AUSENCIAS')
+  @Funcionalidade('FISCAIS_JORNADA')
   marcarDebito(@Param('id') id: string, @Body() dto: MarcarDebitoDto) {
     return this.service.marcarDebito(id, dto.debito);
   }

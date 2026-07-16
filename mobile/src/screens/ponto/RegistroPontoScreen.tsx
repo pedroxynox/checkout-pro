@@ -40,6 +40,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
 import { useAuth } from '../../auth/AuthContext';
+import { useConfigSistema } from '../../config/ConfigSistemaContext';
 
 const ROTULO_TIPO: Record<TipoBatida, string> = {
   ENTRADA: 'Entrada',
@@ -97,6 +98,7 @@ export function RegistroPontoScreen(): React.ReactElement {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { podeAcessar } = useAuth();
+  const { dataInicial } = useConfigSistema();
   const [data, setData] = useState(hojeISO());
 
   // Autosserviço do fiscal logado: se o usuário atual é fiscal, pode informar
@@ -442,7 +444,13 @@ export function RegistroPontoScreen(): React.ReactElement {
         )
       ) : null}
 
-      <SeletorData valor={data} aoMudar={setData} rotulo="Dia" />
+      <SeletorData
+        valor={data}
+        aoMudar={setData}
+        rotulo="Dia"
+        dataMinima={dataInicial}
+        permitirFuturo={false}
+      />
 
       {/* Modo lote */}
       <Pressable
