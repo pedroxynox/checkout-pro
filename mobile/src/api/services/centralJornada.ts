@@ -36,6 +36,7 @@ export interface CentralResumo {
 
 export type TipoDiaJornada =
   | 'TRABALHO'
+  | 'INCOMPLETO'
   | 'FALTA'
   | 'FALTA_DEBITO'
   | 'ATESTADO'
@@ -47,6 +48,13 @@ export interface CentralDiaDetalhe {
   ehFeriado: boolean;
   feriadoNome?: string;
   tipo: TipoDiaJornada;
+  status:
+    | 'SEM_REGISTRO'
+    | 'TRABALHANDO'
+    | 'EM_INTERVALO'
+    | 'ENCERRADO'
+    | 'INCOMPLETO';
+  faltando: string[];
   trabalhadoMs: number;
   baseMs: number;
   extras50Ms: number;

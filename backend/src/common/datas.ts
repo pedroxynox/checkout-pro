@@ -125,3 +125,19 @@ export const OFFSET_BRASILIA_MS = -3 * 60 * 60 * 1000;
 export function agoraNaBrasilia(): Date {
   return new Date(Date.now() + OFFSET_BRASILIA_MS);
 }
+
+/** true quando o dia civil rotulado em UTC já terminou em Brasília. */
+export function diaEncerradoEmBrasilia(
+  dia: Date,
+  agoraBrasilia: Date = agoraNaBrasilia(),
+): boolean {
+  return inicioDoProximoDia(dia).getTime() <= agoraBrasilia.getTime();
+}
+
+/**
+ * Instante UTC real em que termina um dia civil de Brasília. As datas de
+ * negócio usam meia-noite UTC como rótulo; o fim real ocorre três horas depois.
+ */
+export function fimDoDiaBrasiliaEmUtc(dia: Date): Date {
+  return new Date(inicioDoProximoDia(dia).getTime() - OFFSET_BRASILIA_MS);
+}

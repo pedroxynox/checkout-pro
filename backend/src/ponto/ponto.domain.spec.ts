@@ -2,6 +2,7 @@ import fc from 'fast-check';
 import {
   ALERTA_EXTRAS_MS,
   LIMITE_EXTRAS_MS,
+  MAX_TRABALHO_SEM_INTERVALO_MS,
   RISCO_TAC_1H30_MS,
   RISCO_TAC_1H40_MS,
   BatidaEntrada,
@@ -38,6 +39,11 @@ describe('classificarBatidas', () => {
       'd:ENCERRAMENTO',
       'e:EXTRA',
     ]);
+  });
+
+  it('classifica duas batidas de até 4h50 como entrada e encerramento', () => {
+    const b = classificarBatidas([batida('2', '11:50'), batida('1', '07:00')]);
+    expect(b.map((x) => x.tipo)).toEqual(['ENTRADA', 'ENCERRAMENTO']);
   });
 });
 
@@ -156,7 +162,38 @@ describe('calcularJornadaDia', () => {
     expect(j.motivosTac).toContain('Intervalo acima de 3h');
   });
 
-  it('duas batidas → em intervalo, jornada em curso', () => {
+  it('uma batida conta até agora no dia em andamento', () => {
+    const j = calcularJornadaDia([batida('1', '07:00')], H('10:00'), SEGUNDA);
+    expect(j.status).toBe('TRABALHANDO');
+    expect(j.trabalhadoMs).toBe(3 * 3_600_000);
+  });
+
+  it('uma batida em dia encerrado fica incompleta e não inventa trabalho', () => {
+    const j = calcularJornadaDia(
+      [batida('1', '07:00')],
+      H('23:59'),
+      SEGUNDA,
+      false,
+      true,
+    );
+    expect(j.status).toBe('INCOMPLETO');
+    expect(j.trabalhadoMs).toBe(0);
+    expect(j.faltando).toEqual(['encerramento']);
+  });
+
+  it('duas batidas até 4h50 encerram uma jornada válida sem intervalo', () => {
+    const j = calcularJornadaDia(
+      [batida('1', '07:00'), batida('2', '11:50')],
+      H('12:30'),
+      SEGUNDA,
+    );
+    expect(j.status).toBe('ENCERRADO');
+    expect(j.trabalhadoMs).toBe(MAX_TRABALHO_SEM_INTERVALO_MS);
+    expect(j.intervaloMs).toBe(0);
+    expect(j.batidas[1].tipo).toBe('ENCERRAMENTO');
+  });
+
+  it('duas batidas acima de 4h50 ficam em intervalo no dia em andamento', () => {
     const j = calcularJornadaDia(
       [batida('1', '07:00'), batida('2', '12:00')],
       H('12:30'),
@@ -164,7 +201,35 @@ describe('calcularJornadaDia', () => {
     );
     expect(j.status).toBe('EM_INTERVALO');
     expect(j.trabalhadoMs).toBe(5 * 3_600_000);
-    expect(j.intervaloMs).toBe(30 * 60_000); // intervalo em curso
+    expect(j.intervaloMs).toBe(30 * 60_000);
+  });
+
+  it('duas batidas acima de 4h50 em dia encerrado ficam incompletas sem intervalo fictício', () => {
+    const j = calcularJornadaDia(
+      [batida('1', '07:00'), batida('2', '12:00')],
+      H('23:59'),
+      SEGUNDA,
+      false,
+      true,
+    );
+    expect(j.status).toBe('INCOMPLETO');
+    expect(j.trabalhadoMs).toBe(5 * 3_600_000);
+    expect(j.intervaloMs).toBe(0);
+    expect(j.faltando).toEqual(['retorno do intervalo', 'encerramento']);
+  });
+
+  it('três batidas em dia encerrado contam apenas segmentos fechados', () => {
+    const j = calcularJornadaDia(
+      [batida('1', '07:00'), batida('2', '12:00'), batida('3', '14:00')],
+      H('23:59'),
+      SEGUNDA,
+      false,
+      true,
+    );
+    expect(j.status).toBe('INCOMPLETO');
+    expect(j.trabalhadoMs).toBe(5 * 3_600_000);
+    expect(j.intervaloMs).toBe(2 * 3_600_000);
+    expect(j.faltando).toEqual(['encerramento']);
   });
 
   it('alerta iminente ao atingir 1h30 de extras ainda trabalhando', () => {

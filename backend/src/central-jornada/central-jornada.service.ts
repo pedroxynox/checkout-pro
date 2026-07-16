@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Ausencia, FuncaoColaborador } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { FeriadosService } from '../feriados/feriados.service';
-import { calcularJornadaDia } from '../ponto/ponto.domain';
+import { calcularJornadaDia, StatusJornadaPonto } from '../ponto/ponto.domain';
 import { jornadaEsperadaMs } from '../fiscais/fiscais.domain';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 import {
@@ -48,8 +48,17 @@ export interface CentralDiaDetalhe {
   diaSemana: number;
   ehFeriado: boolean;
   feriadoNome?: string;
-  /** Tipo do dia: TRABALHO | FALTA | FALTA_DEBITO | ATESTADO | SEM_REGISTRO. */
-  tipo: 'TRABALHO' | 'FALTA' | 'FALTA_DEBITO' | 'ATESTADO' | 'SEM_REGISTRO';
+  /** Tipo do dia: TRABALHO | INCOMPLETO | FALTA | FALTA_DEBITO | ATESTADO | SEM_REGISTRO. */
+  tipo:
+    | 'TRABALHO'
+    | 'INCOMPLETO'
+    | 'FALTA'
+    | 'FALTA_DEBITO'
+    | 'ATESTADO'
+    | 'SEM_REGISTRO';
+  /** Estado canônico calculado para dias com batidas. */
+  status: StatusJornadaPonto;
+  faltando: string[];
   trabalhadoMs: number;
   baseMs: number;
   extras50Ms: number;
@@ -267,6 +276,7 @@ export class CentralJornadaService {
           limiteDia,
           diaSemana,
           ehFeriado,
+          diaCompleto,
         );
         cargaTrabalhadaMs += j.trabalhadoMs;
         extras50Ms += j.horasExtras50Ms;
@@ -283,7 +293,9 @@ export class CentralJornadaService {
           diaSemana,
           ehFeriado,
           feriadoNome,
-          tipo: 'TRABALHO',
+          tipo: j.status === 'INCOMPLETO' ? 'INCOMPLETO' : 'TRABALHO',
+          status: j.status,
+          faltando: j.faltando,
           trabalhadoMs: j.trabalhadoMs,
           baseMs,
           extras50Ms: j.horasExtras50Ms,
@@ -310,6 +322,8 @@ export class CentralJornadaService {
           ehFeriado,
           feriadoNome,
           tipo,
+          status: 'SEM_REGISTRO',
+          faltando: [],
           trabalhadoMs: 0,
           baseMs,
           extras50Ms: 0,
@@ -327,6 +341,8 @@ export class CentralJornadaService {
           ehFeriado,
           feriadoNome,
           tipo: 'SEM_REGISTRO',
+          status: 'SEM_REGISTRO',
+          faltando: [],
           trabalhadoMs: 0,
           baseMs,
           extras50Ms: 0,

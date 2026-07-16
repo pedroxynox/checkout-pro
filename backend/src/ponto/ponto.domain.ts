@@ -2,8 +2,9 @@
  * Lógica pura do Registro de Ponto (leitor de comprovante) — Fase A.
  *
  * A partir das batidas do dia (uma por marcação do relógio físico), classifica
- * cada uma pela ordem cronológica (1=entrada, 2=saída p/ intervalo, 3=retorno,
- * 4=encerramento; 5ª em diante = extra) e calcula a jornada do dia: tempo
+ * cada uma pela ordem cronológica. Duas batidas com até 4h50 representam uma
+ * jornada encerrada sem intervalo; acima disso seguem como saída para intervalo.
+ * A 3ª é retorno e a 4ª é encerramento. Também calcula a jornada do dia: tempo
  * trabalhado (o intervalo NÃO conta), tempo de intervalo, horas extras (com o
  * adicional 50%/100%), alerta de excesso e classificação TAC.
  *
@@ -24,11 +25,7 @@ export type TipoBatida = (typeof TIPOS_BATIDA)[number];
 
 /** Estado da jornada do dia. */
 export type StatusJornadaPonto =
-  | 'SEM_REGISTRO'
-  | 'TRABALHANDO'
-  | 'EM_INTERVALO'
-  | 'ENCERRADO'
-  | 'INCOMPLETO';
+  'SEM_REGISTRO' | 'TRABALHANDO' | 'EM_INTERVALO' | 'ENCERRADO' | 'INCOMPLETO';
 
 // Parâmetros (ver spec). Constantes em milissegundos.
 export const RISCO_TAC_1H30_MS = 90 * 60_000;
@@ -38,6 +35,8 @@ export const LIMITE_EXTRAS_MS = 110 * 60_000; // 1h50 — acima disso é TAC
 export const INTERVALO_ESPERADO_MS = 7_200_000; // 2h
 export const INTERVALO_MINIMO_MS = 3_600_000; // 1h — abaixo disso é TAC
 export const INTERVALO_MAXIMO_MS = 10_800_000; // 3h — acima disso é TAC
+/** Jornada que pode ser encerrada sem intervalo no contrato 6x1–2x1. */
+export const MAX_TRABALHO_SEM_INTERVALO_MS = 4 * 60 * 60_000 + 50 * 60_000; // 4h50
 
 /** Etapas crescentes dos avisos preventivos/de TAC. */
 export type EtapaAlertaTac = 'RISCO_1H30' | 'RISCO_1H40' | 'TAC';
@@ -94,9 +93,19 @@ export function tipoPorOrdem(indice: number): TipoBatida {
 export function classificarBatidas(
   batidas: readonly BatidaEntrada[],
 ): BatidaClassificada[] {
-  return [...batidas]
-    .sort((a, b) => a.hora.getTime() - b.hora.getTime())
-    .map((b, i) => ({ id: b.id, hora: b.hora, tipo: tipoPorOrdem(i) }));
+  const ordenadas = [...batidas].sort(
+    (a, b) => a.hora.getTime() - b.hora.getTime(),
+  );
+  const jornadaSemIntervalo =
+    ordenadas.length === 2 &&
+    ordenadas[1].hora.getTime() - ordenadas[0].hora.getTime() <=
+      MAX_TRABALHO_SEM_INTERVALO_MS;
+
+  return ordenadas.map((b, i) => ({
+    id: b.id,
+    hora: b.hora,
+    tipo: jornadaSemIntervalo && i === 1 ? 'ENCERRAMENTO' : tipoPorOrdem(i),
+  }));
 }
 
 /**
@@ -168,14 +177,17 @@ export interface JornadaPonto {
  * Calcula a jornada do dia a partir das batidas, até o instante `agora`.
  *
  * Trabalho = (saída_intervalo − entrada) + (encerramento − retorno). O intervalo
- * não conta como jornada. Se um segmento estiver aberto (sem a batida seguinte),
- * conta até `agora`. `diaSemana` (0=domingo) define a base e o adicional.
+ * não conta como jornada. Segmentos abertos contam até `agora` somente no dia
+ * em andamento; com `diaEncerrado`, permanecem desconhecidos e o dia fica
+ * incompleto. Duas batidas separadas por até 4h50 encerram uma jornada válida
+ * sem intervalo. `diaSemana` (0=domingo) define a base e o adicional.
  */
 export function calcularJornadaDia(
   batidas: readonly BatidaEntrada[],
   agora: Date,
   diaSemana: number,
   ehFeriado = false,
+  diaEncerrado = false,
 ): JornadaPonto {
   const classificadas = classificarBatidas(batidas);
   // Feriado segue a MESMA regra do domingo: carga-base de domingo e extras a
@@ -202,53 +214,62 @@ export function calcularJornadaDia(
     };
   }
 
-  const porTipo = (t: TipoBatida): BatidaClassificada | undefined =>
-    classificadas.find((b) => b.tipo === t);
-  const entrada = porTipo('ENTRADA');
-  const saida = porTipo('SAIDA_INTERVALO');
-  const retorno = porTipo('RETORNO_INTERVALO');
-  const encerramento = porTipo('ENCERRAMENTO');
+  const entrada = classificadas[0];
+  const segunda = classificadas[1];
+  const retorno = classificadas[2];
+  const encerramento = classificadas[3];
+  const saida = segunda?.tipo === 'SAIDA_INTERVALO' ? segunda : undefined;
   const agoraMs = agora.getTime();
   const dur = (ini: Date, fim: number): number =>
     Math.max(0, fim - ini.getTime());
 
   let trabalhadoMs = 0;
   let intervaloMs = 0;
-
-  // 1º segmento de trabalho: da entrada até a saída p/ intervalo (ou até o
-  // encerramento se não houve intervalo, ou até agora se ainda em curso).
-  if (entrada) {
-    const fim1 =
-      saida?.hora.getTime() ?? encerramento?.hora.getTime() ?? agoraMs;
-    trabalhadoMs += dur(entrada.hora, fim1);
-  }
-  // Intervalo: da saída até o retorno (ou até agora se ainda em intervalo).
-  if (saida) {
-    const fimInt = retorno?.hora.getTime() ?? agoraMs;
-    intervaloMs += dur(saida.hora, fimInt);
-  }
-  // 2º segmento de trabalho: do retorno até o encerramento (ou até agora).
-  if (retorno) {
-    const fim2 = encerramento?.hora.getTime() ?? agoraMs;
-    trabalhadoMs += dur(retorno.hora, fim2);
-  }
-
-  // O que falta / incompleto.
-  const faltando: string[] = [];
-  if (encerramento) {
-    if (!entrada) faltando.push('entrada');
-    if (saida && !retorno) faltando.push('retorno do intervalo');
-  }
-
   let status: StatusJornadaPonto;
-  if (faltando.length > 0) {
-    status = 'INCOMPLETO';
-  } else if (encerramento) {
-    status = 'ENCERRADO';
-  } else if (saida && !retorno) {
-    status = 'EM_INTERVALO';
+  const faltando: string[] = [];
+
+  if (classificadas.length === 1) {
+    if (diaEncerrado) {
+      // Sem uma saída não há como afirmar quanto foi trabalhado no passado.
+      status = 'INCOMPLETO';
+      faltando.push('encerramento');
+    } else {
+      trabalhadoMs = dur(entrada.hora, agoraMs);
+      status = 'TRABALHANDO';
+    }
+  } else if (classificadas.length === 2) {
+    trabalhadoMs = dur(entrada.hora, segunda.hora.getTime());
+    if (segunda.tipo === 'ENCERRAMENTO') {
+      // Até 4h50, duas batidas formam uma jornada válida sem intervalo.
+      status = 'ENCERRADO';
+    } else if (diaEncerrado) {
+      // A segunda batida abriu um intervalo que nunca foi encerrado. Não se
+      // projeta esse intervalo até meia-noite, pois sua duração é desconhecida.
+      status = 'INCOMPLETO';
+      faltando.push('retorno do intervalo', 'encerramento');
+    } else {
+      intervaloMs = dur(segunda.hora, agoraMs);
+      status = 'EM_INTERVALO';
+    }
+  } else if (classificadas.length === 3) {
+    trabalhadoMs = dur(entrada.hora, segunda.hora.getTime());
+    intervaloMs = dur(segunda.hora, retorno.hora.getTime());
+    if (diaEncerrado) {
+      // O retorno existe, mas sem fechamento não se conhece o segundo segmento.
+      status = 'INCOMPLETO';
+      faltando.push('encerramento');
+    } else {
+      trabalhadoMs += dur(retorno.hora, agoraMs);
+      status = 'TRABALHANDO';
+    }
   } else {
-    status = 'TRABALHANDO';
+    // Quatro batidas encerram a jornada. Registros EXTRA antigos permanecem
+    // visíveis por compatibilidade, mas não alteram os segmentos canônicos.
+    trabalhadoMs =
+      dur(entrada.hora, segunda.hora.getTime()) +
+      dur(retorno.hora, encerramento.hora.getTime());
+    intervaloMs = dur(segunda.hora, retorno.hora.getTime());
+    status = 'ENCERRADO';
   }
 
   const horasExtrasMs = Math.max(0, trabalhadoMs - baseMs);

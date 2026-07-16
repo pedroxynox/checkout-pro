@@ -320,6 +320,10 @@ export function RegistroPontoScreen(): React.ReactElement {
   }
 
   function abrirRegistro(): void {
+    if (limiteBatidasAtingido) {
+      setErroForm('Limite de 4 batidas atingido para este dia.');
+      return;
+    }
     setEditandoId(null);
     setHoraTexto('');
     setErroForm(null);
@@ -338,6 +342,10 @@ export function RegistroPontoScreen(): React.ReactElement {
 
   async function salvarBatida(): Promise<void> {
     if (!pessoa) return;
+    if (!editandoId && limiteBatidasAtingido) {
+      setErroForm('Limite de 4 batidas atingido para este dia.');
+      return;
+    }
     if (!HORA_VALIDA.test(horaTexto)) {
       setErroForm('Informe a hora no formato HH:mm (ex.: 07:56).');
       return;
@@ -388,6 +396,7 @@ export function RegistroPontoScreen(): React.ReactElement {
     }
   }
 
+  const limiteBatidasAtingido = (dados?.batidas.length ?? 0) >= 4;
   const dataDiferenteDeHoje = data !== hojeISO();
 
   return (
@@ -477,7 +486,7 @@ export function RegistroPontoScreen(): React.ReactElement {
       {/* Leitor do comprovante: só no APK (lê no aparelho com ML Kit). A câmera
           escaneia sozinha e captura quando a leitura fica boa; a foto única é
           um reforço manual. Na web, sem leitor on-device, o registro é manual. */}
-      {Platform.OS !== 'web' ? (
+      {Platform.OS !== 'web' && (!pessoa || !limiteBatidasAtingido) ? (
         <>
           <Botao
             titulo="Ler comprovante (automático)"
@@ -648,8 +657,17 @@ export function RegistroPontoScreen(): React.ReactElement {
             />
           ) : null}
 
+          {limiteBatidasAtingido && !editandoId ? (
+            <View style={styles.limiteBatidasAviso}>
+              <Ionicons name="checkmark-circle-outline" size={18} color={cores.textoSecundario} />
+              <Text style={styles.limiteBatidasTexto}>
+                Limite de 4 batidas atingido. Você ainda pode corrigir ou excluir uma batida.
+              </Text>
+            </View>
+          ) : null}
+
           {/* Formulário de batida */}
-          {mostrarForm ? (
+          {mostrarForm && (editandoId || !limiteBatidasAtingido) ? (
             <Cartao>
               <Text style={styles.secaoTitulo}>
                 {editandoId ? 'Corrigir hora da batida' : 'Registrar batida'}
@@ -680,12 +698,12 @@ export function RegistroPontoScreen(): React.ReactElement {
                 />
               </View>
             </Cartao>
-          ) : (
+          ) : !limiteBatidasAtingido ? (
             <Botao
               titulo="Registrar batida"
               aoPressionar={abrirRegistro}
             />
-          )}
+          ) : null}
         </>
       )}
     </Tela>
@@ -989,6 +1007,20 @@ const styles = StyleSheet.create({
   },
   acao: {
     padding: espacamento.xs,
+  },
+  limiteBatidasAviso: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    borderRadius: raio.md,
+    backgroundColor: cores.superficieAlternativa,
+    padding: espacamento.md,
+    marginBottom: espacamento.sm,
+  },
+  limiteBatidasTexto: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    flex: 1,
   },
   botoesForm: {
     flexDirection: 'row',

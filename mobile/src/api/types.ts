@@ -618,6 +618,13 @@ export interface ItemJornadaFiscal extends JornadaTempos {
   colaboradorId: string | null;
   primeiroNome: string;
   status: StatusFiscal;
+  jornadaStatus:
+    | 'SEM_REGISTRO'
+    | 'TRABALHANDO'
+    | 'EM_INTERVALO'
+    | 'ENCERRADO'
+    | 'INCOMPLETO';
+  faltando: string[];
 }
 
 /** Acumulado de horas extras do mês por pessoa (fiscal ou colaborador). */

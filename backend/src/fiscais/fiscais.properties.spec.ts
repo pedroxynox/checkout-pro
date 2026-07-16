@@ -99,6 +99,19 @@ describe('Fiscais e Escala — testes de propriedade', () => {
     );
   });
 
+  it('dia encerrado não estende o último estado aberto até meia-noite', () => {
+    const inicio = new Date('2025-06-02T07:00:00.000Z');
+    const fimDoDia = new Date('2025-06-03T00:00:00.000Z');
+    const jornada = calcularJornada(
+      [{ status: 'DISPONIVEL', em: inicio }],
+      fimDoDia,
+      true,
+    );
+
+    expect(jornada.tempoTrabalhandoMs).toBe(0);
+    expect(jornada.tempoIntervaloMs).toBe(0);
+  });
+
   // Property 20: Horário especial prevalece sobre a regra geral (Req 4.3.5).
   it('Property 20: existindo horário especial no dia, a escala efetiva é o especial; senão, a regra geral (ou folga)', () => {
     const horarioArb = fc.constantFrom(

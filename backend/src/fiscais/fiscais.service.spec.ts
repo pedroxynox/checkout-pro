@@ -198,6 +198,99 @@ describe('FiscaisService e EscalaService', () => {
     expect(f1?.status).toBe('FORA_EXPEDIENTE');
   });
 
+  it('expõe fiscal histórico incompleto sem mantê-lo disponível', async () => {
+    const prisma = criarPrisma();
+    prisma.registros.push({
+      id: 'r-incompleto',
+      fiscalId: 'f1',
+      status: 'DISPONIVEL',
+      data: new Date('2024-03-10T00:00:00.000Z'),
+      em: new Date('2024-03-10T11:00:00.000Z'),
+    });
+    const fiscais = new FiscaisService(prisma as never);
+
+    const jornada = await fiscais.jornadaDoDia(
+      new Date('2024-03-10T00:00:00.000Z'),
+    );
+    const f1 = jornada.find((j) => j.fiscalId === 'f1');
+
+    expect(f1?.jornadaStatus).toBe('INCOMPLETO');
+    expect(f1?.status).toBe('FORA_EXPEDIENTE');
+    expect(f1?.faltando).toEqual(['encerramento']);
+    expect(f1?.tempoTrabalhandoMs).toBe(0);
+  });
+
+  it('prefere a classificação canônica mesmo se o tipo histórico persistido estiver antigo', async () => {
+    const prisma = criarPrisma();
+    prisma.registros.push(
+      {
+        id: 'r1',
+        fiscalId: 'f1',
+        status: 'DISPONIVEL',
+        data: new Date('2024-03-10T00:00:00.000Z'),
+        em: new Date('2024-03-10T10:00:00.000Z'),
+      },
+      {
+        id: 'r2',
+        fiscalId: 'f1',
+        status: 'INTERVALO',
+        data: new Date('2024-03-10T00:00:00.000Z'),
+        em: new Date('2024-03-10T14:00:00.000Z'),
+      },
+    );
+    prisma.batidaPonto.findMany = jest.fn().mockResolvedValue([
+      {
+        id: 'b1',
+        pessoaId: 'f1',
+        hora: new Date('2024-03-10T07:00:00.000Z'),
+        tipo: 'ENTRADA',
+      },
+      {
+        id: 'b2',
+        pessoaId: 'f1',
+        hora: new Date('2024-03-10T11:00:00.000Z'),
+        tipo: 'SAIDA_INTERVALO',
+      },
+    ]);
+    const fiscais = new FiscaisService(prisma as never);
+
+    const jornada = await fiscais.jornadaDoDia(
+      new Date('2024-03-10T00:00:00.000Z'),
+    );
+    const f1 = jornada.find((j) => j.fiscalId === 'f1');
+
+    expect(f1?.jornadaStatus).toBe('ENCERRADO');
+    expect(f1?.status).toBe('FORA_EXPEDIENTE');
+    expect(f1?.tempoTrabalhandoMs).toBe(4 * 3_600_000);
+  });
+
+  it('não encerra a jornada às 21h de Brasília por causa da virada UTC', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-07-17T02:30:00.000Z')); // 23h30 em Brasília
+    try {
+      const prisma = criarPrisma();
+      prisma.registros.push({
+        id: 'r-late',
+        fiscalId: 'f1',
+        status: 'DISPONIVEL',
+        data: new Date('2026-07-16T00:00:00.000Z'),
+        em: new Date('2026-07-17T00:00:00.000Z'), // 21h em Brasília
+      });
+      const fiscais = new FiscaisService(prisma as never);
+
+      const jornada = await fiscais.jornadaDoDia(
+        new Date('2026-07-16T00:00:00.000Z'),
+      );
+      const f1 = jornada.find((j) => j.fiscalId === 'f1');
+
+      expect(f1?.jornadaStatus).toBe('TRABALHANDO');
+      expect(f1?.status).toBe('DISPONIVEL');
+      expect(f1?.tempoTrabalhandoMs).toBe(2.5 * 3_600_000);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('horas extras do mês: domingo conta como 100% e dia útil como 50%', async () => {
     const prisma = criarPrisma();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

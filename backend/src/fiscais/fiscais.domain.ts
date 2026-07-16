@@ -90,11 +90,13 @@ export interface Jornada {
 /**
  * Calcula a jornada do dia a partir dos registros de ponto, até o instante
  * `agora`. Cada segmento vai de um registro ao próximo; o último segmento, se
- * o fiscal não estiver FORA_EXPEDIENTE, conta até `agora` (jornada em curso).
+ * o fiscal não estiver FORA_EXPEDIENTE, conta até `agora` apenas enquanto o dia
+ * está em andamento. Em um dia encerrado, sua duração permanece desconhecida.
  */
 export function calcularJornada(
   registros: readonly RegistroPonto[],
   agora: Date,
+  diaEncerrado = false,
 ): Jornada {
   const ordenados = [...registros].sort(
     (a, b) => a.em.getTime() - b.em.getTime(),
@@ -106,7 +108,7 @@ export function calcularJornada(
     const proximo = ordenados[i + 1];
     const fim = proximo
       ? proximo.em
-      : atual.status === 'FORA_EXPEDIENTE'
+      : atual.status === 'FORA_EXPEDIENTE' || diaEncerrado
         ? atual.em
         : agora;
     const dur = Math.max(0, fim.getTime() - atual.em.getTime());

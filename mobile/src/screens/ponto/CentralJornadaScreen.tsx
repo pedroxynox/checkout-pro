@@ -69,6 +69,8 @@ function rotuloTipoDia(tipo: CentralDiaDetalhe['tipo']): string {
       return 'Falta (débito)';
     case 'ATESTADO':
       return 'Atestado';
+    case 'INCOMPLETO':
+      return 'Incompleto';
     default:
       return 'Trabalho';
   }
@@ -375,6 +377,11 @@ function PessoaCartao({
                     {d.extras100Ms > 0 ? ` • +100% ${formatarDuracao(d.extras100Ms)}` : ''}
                     {d.devidasMs > 0 ? ` • deve ${formatarDuracao(d.devidasMs)}` : ''}
                   </Text>
+                  {d.tipo === 'INCOMPLETO' && d.faltando.length > 0 && (
+                    <Text style={styles.diaIncompleto}>
+                      Falta registrar: {d.faltando.join(', ')}
+                    </Text>
+                  )}
                   {d.tac && (
                     <Text style={styles.diaTac}>TAC: {d.motivosTac.join('; ')}</Text>
                   )}
@@ -461,6 +468,7 @@ const styles = StyleSheet.create({
   },
   diaData: { ...tipografia.rotulo, color: cores.texto },
   diaInfo: { ...tipografia.legenda, color: cores.textoSecundario, marginTop: 2 },
+  diaIncompleto: { ...tipografia.legenda, color: VERMELHO, marginTop: 2, fontWeight: '600' },
   diaTac: { ...tipografia.legenda, color: AMARELO, marginTop: 2, fontWeight: '600' },
   debitoBtn: {
     paddingHorizontal: espacamento.sm,

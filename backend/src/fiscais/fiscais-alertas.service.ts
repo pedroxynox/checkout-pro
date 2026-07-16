@@ -10,6 +10,11 @@ import {
   jornadaEsperadaMs,
   primeiroNome,
 } from './fiscais.domain';
+import {
+  agoraNaBrasilia,
+  diaEncerradoEmBrasilia,
+  fimDoDiaBrasiliaEmUtc,
+} from '../common/datas';
 
 /**
  * Serviço de alertas inteligentes para fiscais.
@@ -188,12 +193,13 @@ export class FiscaisAlertasService {
    */
   @Cron('0 22 * * *', { timeZone: 'America/Sao_Paulo' })
   async verificarExtrasExcessivas(): Promise<void> {
-    const agora = new Date();
+    const agoraReal = new Date();
+    const agoraPonto = agoraNaBrasilia();
     const inicioMes = new Date(
-      Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1),
+      Date.UTC(agoraPonto.getUTCFullYear(), agoraPonto.getUTCMonth(), 1),
     );
     const fimMes = new Date(
-      Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 1),
+      Date.UTC(agoraPonto.getUTCFullYear(), agoraPonto.getUTCMonth() + 1, 1),
     );
 
     const LIMITE_EXTRAS_MS = 7 * 60 * 60 * 1000; // 7 horas
@@ -231,9 +237,11 @@ export class FiscaisAlertasService {
         const diaSemana = diaDate.getUTCDay();
         if (isDomingo(diaSemana)) continue;
 
-        const fimDia = new Date(diaDate.getTime() + 24 * 60 * 60 * 1000);
-        const limite = agora < fimDia ? agora : fimDia;
-        const jornada = calcularJornada(regs, limite);
+        const diaEncerrado = diaEncerradoEmBrasilia(diaDate, agoraPonto);
+        const limite = diaEncerrado
+          ? fimDoDiaBrasiliaEmUtc(diaDate)
+          : agoraReal;
+        const jornada = calcularJornada(regs, limite, diaEncerrado);
         const esperado = jornadaEsperadaMs(diaSemana);
         const extra = jornada.cargaHorariaMs - esperado;
         if (extra > 0) totalExtrasMs += extra;
@@ -330,6 +338,7 @@ export class FiscaisAlertasService {
         const jornada = calcularJornada(
           regs,
           new Date(diaDate.getTime() + 24 * 60 * 60 * 1000),
+          true,
         );
         if (jornada.tempoIntervaloMs > 120 * 60 * 1000) {
           diasComIntervaloLongo++;

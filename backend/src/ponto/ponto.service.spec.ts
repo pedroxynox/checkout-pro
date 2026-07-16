@@ -12,6 +12,7 @@ import { JornadaDiaResposta, PontoService } from './ponto.service';
 import {
   HoraForaDoDiaError,
   HoraFuturaError,
+  LimiteBatidasDiaError,
   PessoaPontoInativaError,
   PessoaPontoNaoEncontradaError,
 } from './ponto.errors';
@@ -43,6 +44,7 @@ function resposta(horasExtrasMs: number, tac = false): JornadaDiaResposta {
 
 describe('PontoService — alertas preventivos de TAC', () => {
   let prisma: {
+    $transaction: jest.Mock;
     fiscal: { findUnique: jest.Mock };
     usuario: { findUnique: jest.Mock; findMany: jest.Mock };
     colaborador: {
@@ -51,6 +53,7 @@ describe('PontoService — alertas preventivos de TAC', () => {
       findMany: jest.Mock;
     };
     batidaPonto: {
+      count: jest.Mock;
       create: jest.Mock;
       findMany: jest.Mock;
       findUnique: jest.Mock;
@@ -71,6 +74,7 @@ describe('PontoService — alertas preventivos de TAC', () => {
 
   beforeEach(() => {
     prisma = {
+      $transaction: jest.fn(),
       fiscal: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'pessoa-1',
@@ -88,6 +92,7 @@ describe('PontoService — alertas preventivos de TAC', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
       batidaPonto: {
+        count: jest.fn().mockResolvedValue(0),
         create: jest.fn().mockResolvedValue({}),
         findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn(),
@@ -101,6 +106,9 @@ describe('PontoService — alertas preventivos de TAC', () => {
         deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
     };
+    prisma.$transaction.mockImplementation(
+      (operacao: (tx: typeof prisma) => unknown) => operacao(prisma),
+    );
     notificacoes = {
       notificarSupervisaoEGerencia: jest.fn().mockResolvedValue([]),
     };
@@ -321,6 +329,7 @@ describe('PontoService — validações de pessoa, data e hora', () => {
 
   function montar() {
     const prisma = {
+      $transaction: jest.fn(),
       fiscal: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'fiscal-1',
@@ -343,6 +352,7 @@ describe('PontoService — validações de pessoa, data e hora', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
       batidaPonto: {
+        count: jest.fn().mockResolvedValue(0),
         create: jest.fn().mockResolvedValue({}),
         findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn(),
@@ -355,6 +365,9 @@ describe('PontoService — validações de pessoa, data e hora', () => {
         deleteMany: jest.fn(),
       },
     };
+    prisma.$transaction.mockImplementation(
+      (operacao: (tx: typeof prisma) => unknown) => operacao(prisma),
+    );
     const validacaoData = {
       exigirDataPermitida: jest.fn().mockResolvedValue(undefined),
     };
@@ -395,6 +408,100 @@ describe('PontoService — validações de pessoa, data e hora', () => {
         }),
       }),
     );
+  });
+
+  it('rejeita a quinta batida antes de gravar', async () => {
+    const { prisma, service } = montar();
+    prisma.batidaPonto.count.mockResolvedValue(4);
+
+    await expect(
+      service.registrarBatida(
+        {
+          pessoaId: 'colaborador-1',
+          tipoPessoa: 'OPERADOR',
+          data: '2026-07-10',
+          hora: '2026-07-10T18:00:00.000Z',
+        },
+        usuario,
+      ),
+    ).rejects.toBeInstanceOf(LimiteBatidasDiaError);
+
+    expect(prisma.batidaPonto.count).toHaveBeenCalledWith({
+      where: {
+        pessoaId: 'colaborador-1',
+        tipoPessoa: 'OPERADOR',
+        data: new Date('2026-07-10T00:00:00.000Z'),
+      },
+    });
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    });
+    expect(prisma.batidaPonto.create).not.toHaveBeenCalled();
+  });
+
+  it('expõe o tipo canônico ao ler duas batidas históricas curtas', async () => {
+    const { prisma, service } = montar();
+    jest.restoreAllMocks();
+    prisma.batidaPonto.findMany.mockResolvedValue([
+      {
+        id: 'b1',
+        pessoaId: 'colaborador-1',
+        tipoPessoa: 'OPERADOR',
+        data: new Date('2026-07-10T00:00:00.000Z'),
+        hora: new Date('2026-07-10T07:00:00.000Z'),
+        tipo: 'ENTRADA',
+        origem: 'MANUAL',
+        registradoPorNome: 'Gestor',
+      },
+      {
+        id: 'b2',
+        pessoaId: 'colaborador-1',
+        tipoPessoa: 'OPERADOR',
+        data: new Date('2026-07-10T00:00:00.000Z'),
+        hora: new Date('2026-07-10T11:00:00.000Z'),
+        tipo: 'SAIDA_INTERVALO',
+        origem: 'MANUAL',
+        registradoPorNome: 'Gestor',
+      },
+    ]);
+
+    const respostaDia = await service.jornadaDoDia(
+      'colaborador-1',
+      'OPERADOR',
+      new Date('2026-07-10T00:00:00.000Z'),
+    );
+
+    expect(respostaDia.jornada.status).toBe('ENCERRADO');
+    expect(respostaDia.batidas.map((b) => b.tipo)).toEqual([
+      'ENTRADA',
+      'ENCERRAMENTO',
+    ]);
+  });
+
+  it('repete a transação após conflito serializável antes de aceitar a vaga', async () => {
+    const { prisma, service } = montar();
+    const conflito = new Prisma.PrismaClientKnownRequestError(
+      'Transaction write conflict',
+      { code: 'P2034', clientVersion: 'test' },
+    );
+    prisma.$transaction
+      .mockRejectedValueOnce(conflito)
+      .mockImplementationOnce((operacao: (tx: typeof prisma) => unknown) =>
+        operacao(prisma),
+      );
+
+    await service.registrarBatida(
+      {
+        pessoaId: 'colaborador-1',
+        tipoPessoa: 'OPERADOR',
+        data: '2026-07-10',
+        hora: '2026-07-10T18:00:00.000Z',
+      },
+      usuario,
+    );
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2);
+    expect(prisma.batidaPonto.create).toHaveBeenCalledTimes(1);
   });
 
   it('rejeita pessoa inexistente ou sem ficha ativa', async () => {

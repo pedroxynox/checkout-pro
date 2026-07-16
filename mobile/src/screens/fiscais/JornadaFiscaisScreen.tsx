@@ -197,6 +197,14 @@ export function JornadaFiscaisScreen(): React.ReactElement {
       ) : (
         jornada.dados.map((f) => {
           const navegavel = podeVerPerfil && !!f.colaboradorId;
+          const incompleta = f.jornadaStatus === 'INCOMPLETO';
+          const corExibicao = incompleta ? cores.vermelho : corStatus(f.status);
+          const fundoExibicao = incompleta
+            ? cores.vermelhoFundo
+            : corFundoStatus(f.status);
+          const rotuloStatus = incompleta
+            ? 'Incompleto'
+            : ROTULO_STATUS_FISCAL[f.status];
           return (
           <Pressable
             key={f.pessoaId}
@@ -211,15 +219,15 @@ export function JornadaFiscaisScreen(): React.ReactElement {
           >
           <Cartao style={styles.cartaoFiscal}>
             {/* Borda lateral colorida */}
-            <View style={[styles.bordaLateral, { backgroundColor: corStatus(f.status) }]} />
+            <View style={[styles.bordaLateral, { backgroundColor: corExibicao }]} />
 
             {/* Cabeçalho: ícone + nome + badge status */}
             <View style={styles.topo}>
-              <View style={[styles.iconeContainer, { backgroundColor: corFundoStatus(f.status) }]}>
+              <View style={[styles.iconeContainer, { backgroundColor: fundoExibicao }]}>
                 <Ionicons
                   name={iconeStatus(f.status)}
                   size={18}
-                  color={corStatus(f.status)}
+                  color={corExibicao}
                 />
               </View>
               <Text style={styles.nome}>{f.primeiroNome}</Text>
@@ -228,13 +236,19 @@ export function JornadaFiscaisScreen(): React.ReactElement {
                   {ROTULO_FUNCAO[f.funcao] ?? 'Colaborador'}
                 </Text>
               ) : null}
-              <View style={[styles.badgeStatus, { backgroundColor: corFundoStatus(f.status) }]}>
-                <View style={[styles.pontinho, { backgroundColor: corStatus(f.status) }]} />
-                <Text style={[styles.statusTexto, { color: corStatus(f.status) }]}>
-                  {ROTULO_STATUS_FISCAL[f.status]}
+              <View style={[styles.badgeStatus, { backgroundColor: fundoExibicao }]}>
+                <View style={[styles.pontinho, { backgroundColor: corExibicao }]} />
+                <Text style={[styles.statusTexto, { color: corExibicao }]}>
+                  {rotuloStatus}
                 </Text>
               </View>
             </View>
+
+            {incompleta && f.faltando.length > 0 && (
+              <Text style={styles.incompletoTexto}>
+                Falta registrar: {f.faltando.join(', ')}
+              </Text>
+            )}
 
             {/* Tempos */}
             <View style={styles.tempos}>
@@ -415,6 +429,12 @@ const styles = StyleSheet.create({
   statusTexto: {
     ...tipografia.legenda,
     fontWeight: '700',
+  },
+  incompletoTexto: {
+    ...tipografia.legenda,
+    color: cores.vermelho,
+    fontWeight: '600',
+    marginTop: espacamento.sm,
   },
   tempos: {
     flexDirection: 'row',

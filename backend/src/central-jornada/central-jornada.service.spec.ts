@@ -242,4 +242,45 @@ describe('CentralJornadaService.resumoCiclo', () => {
     expect(r.pessoas[0].cargaTrabalhadaMs).toBe(0);
     expect(r.pessoas[0].saldoMs).toBe(0);
   });
+
+  it('expõe jornada histórica incompleta e o que falta registrar', async () => {
+    const prismaFake = {
+      colaborador: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            nome: 'Ana',
+            funcao: 'OPERADOR',
+            matricula: 'A',
+            usuarioId: null,
+          },
+        ]),
+      },
+      batidaPonto: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([batida('unica', '2026-06-28', '07:00')]),
+      },
+      ausencia: { findMany: jest.fn().mockResolvedValue([]) },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const feriadosFake = {
+      mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
+    };
+    const service = new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+    );
+
+    const r = await service.detalhePessoa('c1', 0);
+    const incompleto = r.dias.find((d) => d.data.startsWith('2026-06-28'));
+
+    expect(incompleto).toMatchObject({
+      tipo: 'INCOMPLETO',
+      status: 'INCOMPLETO',
+      trabalhadoMs: 0,
+      faltando: ['encerramento'],
+    });
+  });
 });
