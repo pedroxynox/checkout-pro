@@ -591,65 +591,83 @@ export class FiscaisService {
     const fimMes = new Date(
       Date.UTC(referencia.getUTCFullYear(), referencia.getUTCMonth() + 1, 1),
     );
-    // Limita ao dia de hoje se for o mês atual. Batidas usam hora rotulada.
-    const limitePonto = agoraPonto < fimMes ? agoraPonto : fimMes;
     // Feriados do mês (fonte única compartilhada com a Central): feriado conta
     // como domingo (base 7h20, extras 100%).
     const feriadoSet = await this.feriadosNoPeriodo(inicioMes, fimMes);
 
-    const [fiscais, registros, operadores] = await Promise.all([
+    const [fiscais, registros, batidasFiscais, operadores] = await Promise.all([
       this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
       this.prisma.registroPontoFiscal.findMany({
         where: { data: { gte: inicioMes, lt: fimMes } },
         orderBy: { em: 'asc' },
       }),
-      this.horasExtrasOperadoresMes(inicioMes, fimMes, limitePonto, feriadoSet),
+      this.prisma.batidaPonto.findMany({
+        where: { tipoPessoa: 'FISCAL', data: { gte: inicioMes, lt: fimMes } },
+        orderBy: { hora: 'asc' },
+        select: { id: true, pessoaId: true, hora: true, data: true },
+      }),
+      this.horasExtrasOperadoresMes(
+        inicioMes,
+        fimMes,
+        agoraPonto,
+        agoraReal,
+        feriadoSet,
+      ),
     ]);
 
-    // Agrupar registros por fiscalId e por data (dia).
-    const porFiscalDia = new Map<string, Map<string, RegistroPonto[]>>();
+    // Log legado por fiscal/dia (fallback) e batidas canônicas por fiscal/dia.
+    const registrosPorFiscalDia = new Map<
+      string,
+      Map<string, RegistroPonto[]>
+    >();
     for (const r of registros) {
       const diaKey = r.data.toISOString();
-      if (!porFiscalDia.has(r.fiscalId)) {
-        porFiscalDia.set(r.fiscalId, new Map());
+      if (!registrosPorFiscalDia.has(r.fiscalId)) {
+        registrosPorFiscalDia.set(r.fiscalId, new Map());
       }
-      const mapaFiscal = porFiscalDia.get(r.fiscalId)!;
-      if (!mapaFiscal.has(diaKey)) {
-        mapaFiscal.set(diaKey, []);
-      }
+      const mapaFiscal = registrosPorFiscalDia.get(r.fiscalId)!;
+      if (!mapaFiscal.has(diaKey)) mapaFiscal.set(diaKey, []);
       mapaFiscal
         .get(diaKey)!
         .push({ status: r.status as StatusFiscal, em: r.em });
     }
+    const batidasPorFiscalDia = new Map<
+      string,
+      Map<string, { id: string; hora: Date }[]>
+    >();
+    for (const b of batidasFiscais) {
+      const diaKey = b.data.toISOString();
+      if (!batidasPorFiscalDia.has(b.pessoaId)) {
+        batidasPorFiscalDia.set(b.pessoaId, new Map());
+      }
+      const mapaFiscal = batidasPorFiscalDia.get(b.pessoaId)!;
+      if (!mapaFiscal.has(diaKey)) mapaFiscal.set(diaKey, []);
+      mapaFiscal.get(diaKey)!.push({ id: b.id, hora: b.hora });
+    }
 
     const dosFiscais: ItemHorasExtras[] = fiscais.map((f) => {
-      const mapaFiscal = porFiscalDia.get(f.id);
+      const regDias = registrosPorFiscalDia.get(f.id);
+      const batDias = batidasPorFiscalDia.get(f.id);
+      // União dos dias com log OU com batidas (batidas-first, log de fallback).
+      const dias = new Set<string>([
+        ...(regDias?.keys() ?? []),
+        ...(batDias?.keys() ?? []),
+      ]);
       let horasExtras50Ms = 0;
       let horasExtras100Ms = 0;
-
-      if (mapaFiscal) {
-        for (const [diaKey, regs] of mapaFiscal.entries()) {
-          const diaDate = new Date(diaKey);
-          const diaSemana = diaDate.getUTCDay();
-          const ehFeriado = feriadoSet.has(diaDate.getTime());
-          const diaEncerrado = diaEncerradoEmBrasilia(diaDate, agoraPonto);
-          const limiteDia = diaEncerrado
-            ? fimDoDiaBrasiliaEmUtc(diaDate)
-            : agoraReal;
-          const jornada = calcularJornada(regs, limiteDia, diaEncerrado);
-          // Feriado segue a regra do domingo: base 7h20 e extras a 100%.
-          const contaComo100 = isDomingo(diaSemana) || ehFeriado;
-          const base = ehFeriado
-            ? jornadaEsperadaMs(0)
-            : jornadaEsperadaMs(diaSemana);
-          const extra = jornada.cargaHorariaMs - base;
-          if (extra > 0) {
-            if (contaComo100) horasExtras100Ms += extra;
-            else horasExtras50Ms += extra;
-          }
-        }
+      for (const diaKey of dias) {
+        const diaDate = new Date(diaKey);
+        const e = this.extrasDoDia(
+          batDias?.get(diaKey),
+          regDias?.get(diaKey),
+          diaDate,
+          feriadoSet.has(diaDate.getTime()),
+          agoraPonto,
+          agoraReal,
+        );
+        horasExtras50Ms += e.horasExtras50Ms;
+        horasExtras100Ms += e.horasExtras100Ms;
       }
-
       return {
         fiscalId: f.id,
         pessoaId: f.id,
@@ -665,6 +683,61 @@ export class FiscaisService {
   }
 
   /**
+   * Extras (50%/100%) de UMA pessoa num dia, com FONTE ÚNICA canônica: as
+   * batidas do Relógio Ponto (`calcularJornadaDia`). O log legado
+   * (`RegistroPontoFiscal` + `calcularJornada`) só entra como fallback quando
+   * não há batidas naquele dia — preservando o histórico anterior à unificação
+   * sem duplicar a regra de cálculo. Feriado conta como domingo (base 7h20,
+   * 100%). As batidas usam hora de parede de Brasília (rotulada UTC); o log usa
+   * instante UTC real — por isso cada fonte recebe o limite na sua referência.
+   */
+  private extrasDoDia(
+    batidasDoDia: { id: string; hora: Date }[] | undefined,
+    registrosDoDia: RegistroPonto[] | undefined,
+    diaDate: Date,
+    ehFeriado: boolean,
+    agoraPonto: Date,
+    agoraReal: Date,
+  ): {
+    trabalhadoMs: number;
+    horasExtras50Ms: number;
+    horasExtras100Ms: number;
+  } {
+    const diaSemana = diaDate.getUTCDay();
+    const diaEncerrado = diaEncerradoEmBrasilia(diaDate, agoraPonto);
+    if (batidasDoDia && batidasDoDia.length > 0) {
+      const limite = diaEncerrado ? inicioDoProximoDia(diaDate) : agoraPonto;
+      const j = calcularJornadaDia(
+        batidasDoDia,
+        limite,
+        diaSemana,
+        ehFeriado,
+        diaEncerrado,
+      );
+      return {
+        trabalhadoMs: j.trabalhadoMs,
+        horasExtras50Ms: j.horasExtras50Ms,
+        horasExtras100Ms: j.horasExtras100Ms,
+      };
+    }
+    if (registrosDoDia && registrosDoDia.length > 0) {
+      const limite = diaEncerrado ? fimDoDiaBrasiliaEmUtc(diaDate) : agoraReal;
+      const jornada = calcularJornada(registrosDoDia, limite, diaEncerrado);
+      const base = ehFeriado
+        ? jornadaEsperadaMs(0)
+        : jornadaEsperadaMs(diaSemana);
+      const contaComo100 = isDomingo(diaSemana) || ehFeriado;
+      const extra = Math.max(0, jornada.cargaHorariaMs - base);
+      return {
+        trabalhadoMs: jornada.cargaHorariaMs,
+        horasExtras50Ms: extra > 0 && !contaComo100 ? extra : 0,
+        horasExtras100Ms: extra > 0 && contaComo100 ? extra : 0,
+      };
+    }
+    return { trabalhadoMs: 0, horasExtras50Ms: 0, horasExtras100Ms: 0 };
+  }
+
+  /**
    * Horas extras do mês dos colaboradores NÃO-fiscais (operadores/supervisores)
    * que bateram ponto, a partir das batidas do Registro de Ponto. Os domingos
    * CONTAM, no adicional de 100% (reaproveita a regra de `calcularJornadaDia`).
@@ -673,7 +746,8 @@ export class FiscaisService {
   private async horasExtrasOperadoresMes(
     inicioMes: Date,
     fimMes: Date,
-    limite: Date,
+    agoraPonto: Date,
+    agoraReal: Date,
     feriadoSet: Set<number>,
   ): Promise<ItemHorasExtras[]> {
     const [colaboradores, batidas] = await Promise.all([
@@ -710,21 +784,17 @@ export class FiscaisService {
         const mapaPessoa = porPessoaDia.get(c.id)!;
         for (const [diaKey, regs] of mapaPessoa.entries()) {
           const diaDate = new Date(diaKey);
-          const diaSemana = diaDate.getUTCDay();
-          const ehFeriado = feriadoSet.has(diaDate.getTime());
-          const fimDia = inicioDoProximoDia(diaDate);
-          const limiteDia = limite < fimDia ? limite : fimDia;
-          const diaEncerrado = fimDia.getTime() <= limite.getTime();
-          const j = calcularJornadaDia(
+          // Operadores só têm batidas (sem log legado) — mesma fonte canônica.
+          const e = this.extrasDoDia(
             regs,
-            limiteDia,
-            diaSemana,
-            ehFeriado,
-            diaEncerrado,
+            undefined,
+            diaDate,
+            feriadoSet.has(diaDate.getTime()),
+            agoraPonto,
+            agoraReal,
           );
-          // Domingo e feriado entram no 100%; demais dias no 50% (regra do domínio).
-          horasExtras50Ms += j.horasExtras50Ms;
-          horasExtras100Ms += j.horasExtras100Ms;
+          horasExtras50Ms += e.horasExtras50Ms;
+          horasExtras100Ms += e.horasExtras100Ms;
         }
         return {
           fiscalId: c.id,

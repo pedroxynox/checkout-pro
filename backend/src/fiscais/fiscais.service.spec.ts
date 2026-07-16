@@ -331,6 +331,121 @@ describe('FiscaisService e EscalaService', () => {
     expect(f1?.horasExtrasMs).toBe(2 * HORA + 40 * 60_000 + 3 * HORA);
   });
 
+  it('horas extras do mês usam as batidas do fiscal (fonte canônica), não só o log', async () => {
+    const prisma = criarPrisma();
+    // Fiscal f1 com batidas numa segunda (11/03/2024): 07-12 + 14-17 = 8h →
+    // 1h de extra (base 7h). Sem log legado nesse dia → usa as batidas.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (prisma.batidaPonto as any).findMany = ({ where }: any) => {
+      if (where?.tipoPessoa === 'FISCAL') {
+        const data = new Date('2024-03-11T00:00:00.000Z');
+        return Promise.resolve([
+          {
+            id: 'b1',
+            pessoaId: 'f1',
+            hora: new Date('2024-03-11T07:00:00.000Z'),
+            data,
+          },
+          {
+            id: 'b2',
+            pessoaId: 'f1',
+            hora: new Date('2024-03-11T12:00:00.000Z'),
+            data,
+          },
+          {
+            id: 'b3',
+            pessoaId: 'f1',
+            hora: new Date('2024-03-11T14:00:00.000Z'),
+            data,
+          },
+          {
+            id: 'b4',
+            pessoaId: 'f1',
+            hora: new Date('2024-03-11T17:00:00.000Z'),
+            data,
+          },
+        ]);
+      }
+      return Promise.resolve([]);
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fiscais = new FiscaisService(prisma as any);
+    const HORA = 3_600_000;
+
+    const extras = await fiscais.horasExtrasMes(
+      new Date('2024-03-15T00:00:00Z'),
+    );
+    const f1 = extras.find((e) => e.pessoaId === 'f1');
+    expect(f1?.horasExtras50Ms).toBe(1 * HORA);
+    expect(f1?.horasExtras100Ms).toBe(0);
+  });
+
+  it('no mesmo dia, prefere as batidas e ignora o log (sem dobrar)', async () => {
+    const prisma = criarPrisma();
+    const HORA = 3_600_000;
+    // Log legado de f1 na segunda 11/03: 07–17 = 10h (→ 3h extra se usado).
+    prisma.registros.push(
+      {
+        id: 'r1',
+        fiscalId: 'f1',
+        status: 'DISPONIVEL',
+        data: new Date('2024-03-11T00:00:00.000Z'),
+        em: new Date('2024-03-11T07:00:00.000Z'),
+      },
+      {
+        id: 'r2',
+        fiscalId: 'f1',
+        status: 'FORA_EXPEDIENTE',
+        data: new Date('2024-03-11T00:00:00.000Z'),
+        em: new Date('2024-03-11T17:00:00.000Z'),
+      },
+    );
+    // Batidas de f1 no MESMO dia: 07-12 + 14-17 = 8h (→ 1h extra).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (prisma.batidaPonto as any).findMany = ({ where }: any) => {
+      if (where?.tipoPessoa === 'FISCAL') {
+        const data = new Date('2024-03-11T00:00:00.000Z');
+        return Promise.resolve([
+          {
+            id: 'b1',
+            pessoaId: 'f1',
+            hora: new Date('2024-03-11T07:00:00.000Z'),
+            data,
+          },
+          {
+            id: 'b2',
+            pessoaId: 'f1',
+            hora: new Date('2024-03-11T12:00:00.000Z'),
+            data,
+          },
+          {
+            id: 'b3',
+            pessoaId: 'f1',
+            hora: new Date('2024-03-11T14:00:00.000Z'),
+            data,
+          },
+          {
+            id: 'b4',
+            pessoaId: 'f1',
+            hora: new Date('2024-03-11T17:00:00.000Z'),
+            data,
+          },
+        ]);
+      }
+      return Promise.resolve([]);
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fiscais = new FiscaisService(prisma as any);
+
+    const extras = await fiscais.horasExtrasMes(
+      new Date('2024-03-15T00:00:00Z'),
+    );
+    const f1 = extras.find((e) => e.pessoaId === 'f1');
+    // 1h (batidas), não 3h (log) nem 4h (soma das duas fontes).
+    expect(f1?.horasExtras50Ms).toBe(1 * HORA);
+    expect(f1?.horasExtras100Ms).toBe(0);
+  });
+
   it('feriado em dia útil conta como domingo: base 7h20 e extras a 100% (fiscal)', async () => {
     const prisma = criarPrisma();
     const feriadoDia = new Date('2024-03-11T00:00:00.000Z').getTime();
