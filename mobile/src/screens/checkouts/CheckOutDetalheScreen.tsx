@@ -118,7 +118,13 @@ export function CheckOutDetalheScreen({
       notificar('Avaria reportada', 'A gestão foi avisada. Obrigado!');
       reportes.recarregar();
     } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao reportar.');
+      if (e instanceof ApiError && e.status === 409) {
+        // Avaria já aberta deste equipamento nesta caixa: aviso amigável.
+        notificar('Já reportada', e.message);
+        reportes.recarregar();
+      } else {
+        notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao reportar.');
+      }
     } finally {
       setEnviando(false);
     }
