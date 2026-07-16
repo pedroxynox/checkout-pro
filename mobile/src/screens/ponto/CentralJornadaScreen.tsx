@@ -179,6 +179,13 @@ export function CentralJornadaScreen(): React.ReactElement {
                 <Metrica rotulo="Atestado" valor={formatarDuracao(resumo.dados.totais.horasAtestadoMs)} cor={cores.texto} />
                 <Metrica rotulo="Faltas" valor={String(resumo.dados.totais.faltas)} cor={VERMELHO} />
                 <Metrica rotulo="TAC" valor={String(resumo.dados.totais.diasTac)} cor={AMARELO} />
+                {resumo.dados.totais.conflitos > 0 && (
+                  <Metrica
+                    rotulo="Conflitos"
+                    valor={String(resumo.dados.totais.conflitos)}
+                    cor={VERMELHO}
+                  />
+                )}
                 <Metrica
                   rotulo="Saldo"
                   valor={formatarSaldo(resumo.dados.totais.saldoMs)}
@@ -352,6 +359,9 @@ function PessoaCartao({
         {pessoa.diasTac > 0 && (
           <Selo texto={`TAC: ${pessoa.diasTac}`} cor={AMARELO} fundo="#FBF3DA" />
         )}
+        {pessoa.conflitos > 0 && (
+          <Selo texto={`Conflito: ${pessoa.conflitos}`} cor={VERMELHO} fundo="#FEECEC" />
+        )}
       </View>
 
       {expandido && (
@@ -384,6 +394,11 @@ function PessoaCartao({
                   )}
                   {d.tac && (
                     <Text style={styles.diaTac}>TAC: {d.motivosTac.join('; ')}</Text>
+                  )}
+                  {d.conflitoAusencia && (
+                    <Text style={styles.diaConflito}>
+                      ⚠️ Também há falta/atestado marcado neste dia. Verifique qual está correto.
+                    </Text>
                   )}
                 </View>
                 {podeMarcarDebito &&
@@ -470,6 +485,7 @@ const styles = StyleSheet.create({
   diaInfo: { ...tipografia.legenda, color: cores.textoSecundario, marginTop: 2 },
   diaIncompleto: { ...tipografia.legenda, color: VERMELHO, marginTop: 2, fontWeight: '600' },
   diaTac: { ...tipografia.legenda, color: AMARELO, marginTop: 2, fontWeight: '600' },
+  diaConflito: { ...tipografia.legenda, color: VERMELHO, marginTop: 2, fontWeight: '600' },
   debitoBtn: {
     paddingHorizontal: espacamento.sm,
     paddingVertical: 6,

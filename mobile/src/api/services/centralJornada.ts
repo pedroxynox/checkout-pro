@@ -17,6 +17,8 @@ export interface CentralTotais {
   horasAtestadoMs: number;
   faltas: number;
   diasTac: number;
+  /** Dias com conflito: bateu ponto E tem ausência marcada no mesmo dia. */
+  conflitos: number;
   saldoMs: number;
 }
 
@@ -66,6 +68,13 @@ export interface CentralDiaDetalhe {
   ausenciaId?: string;
   /** true se a falta está marcada como débito de horas. */
   debito?: boolean;
+  /** Conflito: bateu ponto E tem ausência marcada no mesmo dia. */
+  conflitoAusencia?: {
+    ausenciaId: string;
+    motivoJustificativa: string | null;
+    statusJustificativa: string;
+    debito: boolean;
+  };
 }
 
 export interface CentralComparativo {
