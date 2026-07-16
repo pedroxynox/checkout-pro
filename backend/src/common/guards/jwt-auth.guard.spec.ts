@@ -72,7 +72,10 @@ describe('JwtAuthGuard', () => {
     await expect(g.canActivate(ctx)).resolves.toBe(true);
     expect(findUnique).toHaveBeenCalledWith({
       where: { id: 'u1' },
-      select: { tokenVersion: true },
+      select: {
+        tokenVersion: true,
+        permissoes: { select: { funcionalidade: true, concedida: true } },
+      },
     });
     expect(request.usuario).toMatchObject({
       sub: 'u1',

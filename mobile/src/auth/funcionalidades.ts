@@ -70,6 +70,8 @@ export const TODAS_FUNCIONALIDADES = [
   'INDICADOR_QUEBRA',
   // Configuração do rodízio de domingo (Centro de Controle) — só administrador.
   'ESCALA_DOMINGO_CONFIG',
+  // Central de Permissões (ajustar permissões por login) — só administrador.
+  'PERMISSOES_GERENCIAR',
   // Administração de dados (zerar/limpar) — só administrador
   'ADMIN_DADOS',
 ] as const;

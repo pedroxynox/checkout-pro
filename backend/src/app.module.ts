@@ -37,6 +37,7 @@ import { EscalaDomingoModule } from './escala-domingo/escala-domingo.module';
 import { ResetOperacionalModule } from './reset-operacional/reset-operacional.module';
 import { FeriadosModule } from './feriados/feriados.module';
 import { CentralJornadaModule } from './central-jornada/central-jornada.module';
+import { PermissoesModule } from './permissoes/permissoes.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { CentralJornadaModule } from './central-jornada/central-jornada.module';
     ResetOperacionalModule,
     FeriadosModule,
     CentralJornadaModule,
+    PermissoesModule,
   ],
   controllers: [AppController],
   providers: [

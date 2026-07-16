@@ -37,6 +37,7 @@ export type {
   PontoNovoFeedforward,
 } from './feedforward';
 export { usuariosService } from './usuarios';
+export { permissoesService } from './permissoes';
 export { notificacoesService } from './notificacoes';
 export { assistenteService } from './assistente';
 export { configSistemaService } from './configSistema';

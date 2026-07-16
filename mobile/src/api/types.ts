@@ -15,6 +15,8 @@ export type Perfil =
 export interface ResultadoLogin {
   token: string;
   perfil: Perfil;
+  /** Permissões efetivas do usuário (padrão do perfil ± ajustes por login). */
+  permissoes?: string[];
 }
 
 export interface UsuarioAutenticado {
@@ -22,6 +24,31 @@ export interface UsuarioAutenticado {
   login: string;
   nome?: string | null;
   perfil: Perfil;
+  /**
+   * Permissões efetivas enviadas pelo backend (fonte de verdade). Quando
+   * presente, a navegação usa esta lista; se ausente (backend antigo), o app
+   * cai no padrão local do perfil.
+   */
+  permissoes?: string[];
+}
+
+/** Estado de uma funcionalidade ajustável de um usuário (Central de Permissões). */
+export interface ItemPermissaoUsuario {
+  funcionalidade: string;
+  efetiva: boolean;
+  padraoDoPerfil: boolean;
+  personalizada: boolean;
+}
+
+/** Visão das permissões de um usuário para o painel do administrador. */
+export interface PermissoesDoUsuario {
+  usuarioId: string;
+  login: string;
+  nome?: string | null;
+  perfil: Perfil;
+  /** true para o próprio Administrador: acesso total e não ajustável. */
+  acessoTotal: boolean;
+  itens: ItemPermissaoUsuario[];
 }
 
 /** Conta de usuário gerenciável no painel de pessoas (login por matrícula). */

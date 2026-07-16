@@ -118,8 +118,49 @@ model Usuario {
   notificacoes Notificacao[]
   importacoes  RegistroImportacao[] @relation("ImportadoPor")
   movimentos   MovimentoEstoque[]   @relation("ResponsavelMovimento")
+  permissoes   UsuarioPermissao[]
 
   @@map("usuarios")
+}
+
+// Ajuste de permissão POR LOGIN (Central de Permissões). O perfil define o
+// conjunto padrão; cada linha aqui é um DESVIO desse padrão para um usuário:
+// `concedida = true` adiciona a funcionalidade, `false` remove. A permissão
+// efetiva do usuário é: padrão do perfil ± estes ajustes. Só o ADMINISTRADOR
+// gerencia (funcionalidade PERMISSOES_GERENCIAR); o próprio ADMINISTRADOR tem
+// acesso total e não é ajustável.
+model UsuarioPermissao {
+  id             String   @id @default(uuid())
+  usuarioId      String
+  funcionalidade String
+  concedida      Boolean
+  definidoPor    String?  // login do administrador que fez o ajuste
+  criadoEm       DateTime @default(now())
+  atualizadoEm   DateTime @updatedAt
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, funcionalidade])
+  @@index([usuarioId])
+  @@map("usuario_permissoes")
+}
+
+// Trilha de auditoria (append-only) das mudanças de permissão por login.
+// Registra CADA ajuste: quem mudou, para quem, qual funcionalidade e o valor.
+model PermissaoAuditoria {
+  id             String   @id @default(uuid())
+  usuarioAlvoId  String
+  loginAlvo      String
+  funcionalidade String
+  // Valor aplicado: true = concedida, false = revogada, null = restaurada ao
+  // padrão do perfil (ajuste removido).
+  concedida      Boolean?
+  acao           String // 'AJUSTE' | 'RESTAURACAO'
+  definidoPor    String? // login do administrador
+  em             DateTime @default(now())
+
+  @@index([usuarioAlvoId])
+  @@map("permissao_auditoria")
 }
 
 // [DEPRECADO] Operador "simples" (só nome) do fluxo antigo de importação

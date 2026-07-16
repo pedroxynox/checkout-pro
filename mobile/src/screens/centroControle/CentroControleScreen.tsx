@@ -62,6 +62,13 @@ const ITENS: ItemControle[] = [
     funcionalidade: 'USUARIOS_CRUD',
   },
   {
+    rota: 'Permissoes',
+    titulo: 'Permissões',
+    descricao: 'Conceder ou remover permissões por login',
+    icone: 'shield-checkmark-outline',
+    funcionalidade: 'PERMISSOES_GERENCIAR',
+  },
+  {
     rota: 'Importacoes',
     titulo: 'Importações',
     descricao: 'Carregar os arquivos do dia',

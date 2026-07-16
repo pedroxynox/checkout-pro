@@ -63,14 +63,19 @@ export class JwtAuthGuard implements CanActivate {
 
     // Verificação de revogação: comparada FORA do try/catch acima para que a
     // UnauthorizedException de "sessão expirada" não seja remapeada para
-    // "token inválido". Uma leitura por PK (indexada) por requisição.
+    // "token inválido". Uma leitura por PK (indexada) por requisição — na mesma
+    // consulta trazemos os ajustes de permissão por login (Central de
+    // Permissões), sem custo de round-trip adicional.
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: payload.sub },
-      select: { tokenVersion: true },
+      select: {
+        tokenVersion: true,
+        permissoes: { select: { funcionalidade: true, concedida: true } },
+      },
     });
     // Rejeita se o usuário foi removido ou se o token foi revogado
-    // (versão diferente da atual — ex.: após redefinição de senha).
-    // Tokens antigos sem `tokenVersion` são tratados como 0.
+    // (versão diferente da atual — ex.: após redefinição de senha ou mudança
+    // de permissões). Tokens antigos sem `tokenVersion` são tratados como 0.
     if (!usuario || usuario.tokenVersion !== (payload.tokenVersion ?? 0)) {
       throw new UnauthorizedException('Sessão expirada. Faça login novamente.');
     }
@@ -80,6 +85,7 @@ export class JwtAuthGuard implements CanActivate {
       login: payload.login,
       nome: payload.nome ?? null,
       perfil: payload.perfil,
+      permissoesOverrides: usuario.permissoes,
     };
     return true;
   }
