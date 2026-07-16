@@ -3,7 +3,9 @@ import {
   ehDiaDeFolga,
   ehDomingo,
   ehGrupoValido,
+  entradaEsperadaNoDia,
   grupoFolgaNoDomingo,
+  minutosDeAtraso,
   ordemValida,
   proximoDomingo,
   proximosDomingos,
@@ -137,5 +139,65 @@ describe('ehDiaDeFolga', () => {
     expect(
       ehDiaDeFolga({ folgaDiaSemana: 0, grupoDomingo: 'G2' }, DOM1, ancora),
     ).toBe(true);
+  });
+});
+
+describe('entradaEsperadaNoDia', () => {
+  const ancora = { data: DOM1, ordem: ORDEM };
+  const ficha = {
+    folgaDiaSemana: 1, // segunda
+    grupoDomingo: 'G2',
+    entradaSemana: '07:00',
+    entradaFds: '08:00',
+    entradaDom: '09:00',
+  };
+  const SEGUNDA = new Date('2026-07-20T00:00:00.000Z');
+  const TERCA = new Date('2026-07-21T00:00:00.000Z');
+  const SEXTA = new Date('2026-07-24T00:00:00.000Z');
+
+  it('seg–qui usa o horário de semana', () => {
+    expect(entradaEsperadaNoDia(ficha, TERCA, ancora)).toBe('07:00');
+  });
+
+  it('sex–sáb usa o horário de fim de semana', () => {
+    expect(entradaEsperadaNoDia(ficha, SEXTA, ancora)).toBe('08:00');
+  });
+
+  it('domingo trabalhado pelo rodízio usa o horário de domingo', () => {
+    // DOM1 folga G1; G2 trabalha → entrada de domingo.
+    expect(entradaEsperadaNoDia(ficha, DOM1, ancora)).toBe('09:00');
+  });
+
+  it('dia de folga não tem turno esperado', () => {
+    expect(entradaEsperadaNoDia(ficha, SEGUNDA, ancora)).toBeNull();
+  });
+
+  it('domingo de folga do grupo não tem turno esperado', () => {
+    const g1 = { ...ficha, grupoDomingo: 'G1' };
+    expect(entradaEsperadaNoDia(g1, DOM1, ancora)).toBeNull();
+  });
+
+  it('domingo com grupo mas SEM âncora não afirma turno (evita atraso falso)', () => {
+    expect(entradaEsperadaNoDia(ficha, DOM1, null)).toBeNull();
+  });
+});
+
+describe('minutosDeAtraso', () => {
+  const H = (hhmm: string): Date => new Date(`2026-07-21T${hhmm}:00Z`);
+
+  it('sem turno esperado, não há atraso', () => {
+    expect(minutosDeAtraso(null, H('09:00'))).toBeNull();
+  });
+
+  it('dentro da tolerância não conta como atraso', () => {
+    expect(minutosDeAtraso('07:00', H('07:15'))).toBeNull(); // 15 = tolerância
+  });
+
+  it('além da tolerância devolve os minutos de atraso', () => {
+    expect(minutosDeAtraso('07:00', H('07:40'))).toBe(40);
+  });
+
+  it('chegar antes do horário nunca é atraso', () => {
+    expect(minutosDeAtraso('07:00', H('06:45'))).toBeNull();
   });
 });

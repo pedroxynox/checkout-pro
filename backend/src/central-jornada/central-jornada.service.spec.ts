@@ -351,4 +351,164 @@ describe('CentralJornadaService.resumoCiclo', () => {
       debito: false,
     });
   });
+
+  it('sinaliza atraso quando a entrada passa da tolerância do turno', async () => {
+    const prismaFake = {
+      colaborador: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            nome: 'Ana',
+            funcao: 'OPERADOR',
+            matricula: 'A',
+            usuarioId: null,
+            folgaDiaSemana: 0, // folga aos domingos
+            grupoDomingo: null,
+            entradaSemana: '07:00',
+            entradaFds: '08:00',
+            entradaDom: null,
+          },
+        ]),
+      },
+      // Terça 30/06: turno 07:00, mas a entrada foi 07:40 → 40 min de atraso.
+      batidaPonto: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            batida('e1', '2026-06-30', '07:40'),
+            batida('e2', '2026-06-30', '12:00'),
+            batida('e3', '2026-06-30', '13:00'),
+            batida('e4', '2026-06-30', '16:00'),
+          ]),
+      },
+      ausencia: { findMany: jest.fn().mockResolvedValue([]) },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const feriadosFake = {
+      mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
+    };
+    const service = new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+    );
+
+    const r = await service.resumoCiclo(0);
+    expect(r.pessoas[0].atrasos).toBe(1);
+    expect(r.totais.atrasos).toBe(1);
+
+    const det = await service.detalhePessoa('c1', 0);
+    const diaAtraso = det.dias.find((d) => d.data.startsWith('2026-06-30'));
+    expect(diaAtraso?.entradaPrevista).toBe('07:00');
+    expect(diaAtraso?.atrasoMinutos).toBe(40);
+  });
+
+  it('aponta atraso no domingo trabalhado pelo rodízio (com âncora)', async () => {
+    // Âncora 05/07 folga G1; 28/06 (domingo anterior) folga G2 → G1 trabalha.
+    const escalaDomingo = {
+      obterAncora: jest.fn().mockResolvedValue({
+        data: new Date('2026-07-05T00:00:00.000Z'),
+        ordem: ['G1', 'G3', 'G2'],
+      }),
+    };
+    const prismaFake = {
+      colaborador: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            nome: 'Ana',
+            funcao: 'OPERADOR',
+            matricula: 'A',
+            usuarioId: null,
+            folgaDiaSemana: 1,
+            grupoDomingo: 'G1',
+            entradaSemana: '07:00',
+            entradaFds: '08:00',
+            entradaDom: '09:00',
+          },
+        ]),
+      },
+      // Domingo 28/06: turno 09:00, entrada 09:40 → 40 min de atraso.
+      batidaPonto: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            batida('e1', '2026-06-28', '09:40'),
+            batida('e2', '2026-06-28', '12:00'),
+            batida('e3', '2026-06-28', '13:00'),
+            batida('e4', '2026-06-28', '15:20'),
+          ]),
+      },
+      ausencia: { findMany: jest.fn().mockResolvedValue([]) },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const feriadosFake = {
+      mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
+    };
+    const service = new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+      escalaDomingo as never,
+    );
+
+    const det = await service.detalhePessoa('c1', 0);
+    const d = det.dias.find((x) => x.data.startsWith('2026-06-28'));
+    expect(d?.entradaPrevista).toBe('09:00');
+    expect(d?.atrasoMinutos).toBe(40);
+    expect(escalaDomingo.obterAncora).toHaveBeenCalled();
+  });
+
+  it('não aponta atraso em feriado (turno ambíguo)', async () => {
+    const prismaFake = {
+      colaborador: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            nome: 'Ana',
+            funcao: 'OPERADOR',
+            matricula: 'A',
+            usuarioId: null,
+            folgaDiaSemana: 0,
+            grupoDomingo: null,
+            entradaSemana: '07:00',
+            entradaFds: '08:00',
+            entradaDom: null,
+          },
+        ]),
+      },
+      batidaPonto: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            batida('e1', '2026-06-30', '07:40'),
+            batida('e2', '2026-06-30', '12:00'),
+            batida('e3', '2026-06-30', '13:00'),
+            batida('e4', '2026-06-30', '16:00'),
+          ]),
+      },
+      ausencia: { findMany: jest.fn().mockResolvedValue([]) },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    // 30/06 marcado como feriado → não aponta atraso mesmo entrando 07:40.
+    const feriadosFake = {
+      mapaNoPeriodo: jest
+        .fn()
+        .mockResolvedValue(
+          new Map<number, string>([[dia('2026-06-30').getTime(), 'Feriado']]),
+        ),
+    };
+    const service = new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+    );
+
+    const r = await service.resumoCiclo(0);
+    expect(r.pessoas[0].atrasos).toBe(0);
+
+    const det = await service.detalhePessoa('c1', 0);
+    const d = det.dias.find((x) => x.data.startsWith('2026-06-30'));
+    expect(d?.atrasoMinutos).toBeUndefined();
+  });
 });

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { FeriadosModule } from '../feriados/feriados.module';
+import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
 import { CentralJornadaController } from './central-jornada.controller';
 import { CentralJornadaService } from './central-jornada.service';
 
@@ -9,7 +10,7 @@ import { CentralJornadaService } from './central-jornada.service';
  * Ponto e os feriados. O `PrismaService` é global.
  */
 @Module({
-  imports: [FeriadosModule],
+  imports: [FeriadosModule, EscalaDomingoModule],
   controllers: [CentralJornadaController],
   providers: [CentralJornadaService],
   exports: [CentralJornadaService],

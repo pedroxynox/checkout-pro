@@ -140,3 +140,59 @@ export function ehDiaDeFolga(
     ficha.folgaDiaSemana != null && dia.getUTCDay() === ficha.folgaDiaSemana
   );
 }
+
+/** Cadastro de escala usado para comparar a marcação com o turno. */
+export interface FichaEscala {
+  folgaDiaSemana: number | null;
+  grupoDomingo: string | null;
+  entradaSemana: string | null;
+  entradaFds: string | null;
+  entradaDom: string | null;
+}
+
+/**
+ * Horário de ENTRADA esperado (turno) do colaborador no dia, no formato "HH:mm",
+ * ou null quando não há turno: dia de folga, domingo fora do rodízio ou horário
+ * não cadastrado. Seg–Qui usam o horário de semana; Sex–Sáb o de fim de semana;
+ * domingo o horário de domingo (só quando o rodízio manda trabalhar).
+ */
+export function entradaEsperadaNoDia(
+  ficha: FichaEscala,
+  dia: Date,
+  ancoraDomingo: { data: Date; ordem: readonly GrupoDomingo[] } | null,
+): string | null {
+  if (ehDiaDeFolga(ficha, dia, ancoraDomingo)) return null;
+  const dow = dia.getUTCDay();
+  if (dow === 0) {
+    // Só afirmamos o turno de domingo quando o rodízio está ancorado; sem
+    // âncora não dá para saber se a pessoa trabalha nesse domingo (evita
+    // apontar atraso por engano).
+    return ancoraDomingo ? (ficha.entradaDom ?? null) : null;
+  }
+  if (dow >= 1 && dow <= 4) return ficha.entradaSemana ?? null;
+  return ficha.entradaFds ?? null;
+}
+
+/** Tolerância padrão (minutos) antes de considerar a entrada como atraso. */
+export const TOLERANCIA_ATRASO_MIN = 15;
+
+/**
+ * Minutos TOTAIS de atraso na entrada (contados a partir do horário do turno),
+ * devolvidos somente quando ultrapassam a tolerância; caso contrário null — o
+ * que também cobre "sem turno esperado" e "chegou dentro da tolerância". A hora
+ * da batida está em hora de parede de Brasília (rotulada UTC), na mesma
+ * referência do "HH:mm" do turno — por isso comparamos direto os componentes UTC.
+ */
+export function minutosDeAtraso(
+  entradaPrevista: string | null,
+  entradaReal: Date,
+  tolerancia: number = TOLERANCIA_ATRASO_MIN,
+): number | null {
+  if (!entradaPrevista) return null;
+  const [h, m] = entradaPrevista.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  const previstoMin = h * 60 + m;
+  const realMin = entradaReal.getUTCHours() * 60 + entradaReal.getUTCMinutes();
+  const atraso = realMin - previstoMin;
+  return atraso > tolerancia ? atraso : null;
+}
