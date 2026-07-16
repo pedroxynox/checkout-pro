@@ -401,10 +401,38 @@ model ConfigSistema {
   // Ordem do ciclo: sequência de quem folga em cada domingo do ciclo, como CSV
   // (ex.: 'G1,G3,G2'). A rotação segue essa ordem e repete a cada 3 domingos.
   domingoOrdemGrupos String?
+  // Quantidade de check-outs (caixas) da loja. Editável no Centro de Controle;
+  // define quantos check-outs aparecem na seção Check-Outs (numerados 1..N).
+  quantidadeCheckouts Int      @default(38)
   atualizadoEm       DateTime  @default(now()) @updatedAt
   atualizadoPor      String?
 
   @@map("config_sistema")
+}
+
+// Reporte de avaria em um equipamento de um check-out (caixa). Qualquer fiscal
+// pode registrar; a gestão marca como resolvido. `equipamento` é validado na
+// aplicação (CPU, TECLADO, SCANNER, PINPAD, MONITOR, IMPRESSORA, GAVETA,
+// BALANCA, OUTRO). Guardamos o nome de quem reportou/resolveu para exibição e
+// histórico, sem depender de joins.
+model CheckoutReporte {
+  id               String    @id @default(uuid())
+  checkoutNumero   Int
+  equipamento      String
+  descricao        String
+  fotoUrl          String?
+  // 'ABERTO' | 'RESOLVIDO'
+  status           String    @default("ABERTO")
+  reportadoPorId   String?
+  reportadoPorNome String?
+  reportadoEm      DateTime  @default(now())
+  resolvidoPorId   String?
+  resolvidoPorNome String?
+  resolvidoEm      DateTime?
+
+  @@index([status])
+  @@index([checkoutNumero])
+  @@map("checkout_reportes")
 }
 
 // Âmbito de um feriado. Os NACIONAIS são reconhecidos automaticamente pelo

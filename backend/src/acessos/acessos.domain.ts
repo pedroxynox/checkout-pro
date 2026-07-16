@@ -80,6 +80,9 @@ export const TODAS_FUNCIONALIDADES = [
   // Feedforward (acompanhamento de desenvolvimento no perfil do colaborador)
   'FEEDFORWARD_VISUALIZAR',
   'FEEDFORWARD_GERIR',
+  // Check-Outs (reportar avarias de equipamentos por caixa)
+  'CHECKOUTS',
+  'CHECKOUTS_GERENCIAR',
   // Pessoas e avisos
   'USUARIOS_CRUD',
   'NOTIFICACOES',
@@ -124,6 +127,8 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
   // (isso exige PONTO_EDITAR, restrito à gestão).
   'PONTO_REGISTRAR',
   'PONTO_VISUALIZAR',
+  // Check-Outs: qualquer fiscal reporta avarias de equipamentos por caixa.
+  'CHECKOUTS',
   // Somente leitura do status de carga do dia, para o Briefing ter a MESMA
   // nota de saúde de gerentes/supervisores. Não abre nenhuma seção no menu do
   // fiscal (não há área associada a esta funcionalidade).
@@ -151,6 +156,8 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] =
     'PONTO_EDITAR',
     // Central de Jornada: portal gerencial do ciclo de folha (26→25).
     'CENTRAL_JORNADA',
+    // Check-Outs: resolve as avarias reportadas pelos fiscais.
+    'CHECKOUTS_GERENCIAR',
     // Contratos: o supervisor acompanha (visualiza), mas não decide os marcos.
     'CONTRATOS_VISUALIZAR',
     // Feedforward: supervisor cria/edita e acompanha.
@@ -212,6 +219,9 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
     'FISCAIS_JORNADA',
     // Central de Jornada: portal gerencial do ciclo de folha (26→25).
     'CENTRAL_JORNADA',
+    // Check-Outs: ver/reportar e resolver avarias de equipamentos por caixa.
+    'CHECKOUTS',
+    'CHECKOUTS_GERENCIAR',
     // Edição da escala.
     'ESCALA_EDITAR',
     // Registro de ponto (leitor de comprovante) + correção/remoção de batidas.

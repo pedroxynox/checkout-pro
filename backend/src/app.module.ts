@@ -38,6 +38,7 @@ import { ResetOperacionalModule } from './reset-operacional/reset-operacional.mo
 import { FeriadosModule } from './feriados/feriados.module';
 import { CentralJornadaModule } from './central-jornada/central-jornada.module';
 import { PermissoesModule } from './permissoes/permissoes.module';
+import { CheckoutsModule } from './checkouts/checkouts.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { PermissoesModule } from './permissoes/permissoes.module';
     FeriadosModule,
     CentralJornadaModule,
     PermissoesModule,
+    CheckoutsModule,
   ],
   controllers: [AppController],
   providers: [

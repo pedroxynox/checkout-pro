@@ -41,6 +41,9 @@ import { NaoReconhecidosScreen } from '../screens/indicadores/NaoReconhecidosScr
 import { InsumosDadosScreen } from '../screens/centroControle/InsumosDadosScreen';
 import { ReiniciarDadosScreen } from '../screens/centroControle/ReiniciarDadosScreen';
 import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
+import { CheckOutsScreen } from '../screens/checkouts/CheckOutsScreen';
+import { CheckOutDetalheScreen } from '../screens/checkouts/CheckOutDetalheScreen';
+import { CheckOutsConfigScreen } from '../screens/checkouts/CheckOutsConfigScreen';
 import { PermissoesScreen } from '../screens/permissoes/PermissoesScreen';
 import { PermissoesUsuarioScreen } from '../screens/permissoes/PermissoesUsuarioScreen';
 import { PermissoesHistoricoScreen } from '../screens/permissoes/PermissoesHistoricoScreen';
@@ -172,6 +175,20 @@ export function AppNavigator(): React.ReactElement {
           options={{ title: 'Checklist' }}
         />
       )}
+      {podeAcessar('CHECKOUTS') && (
+        <>
+          <Stack.Screen
+            name="CheckOuts"
+            component={CheckOutsScreen}
+            options={{ title: 'Check-Outs' }}
+          />
+          <Stack.Screen
+            name="CheckOutDetalhe"
+            component={CheckOutDetalheScreen}
+            options={{ title: 'Check-out' }}
+          />
+        </>
+      )}
       {podeAcessar('OPERADORES_AUSENCIAS') && (
         <Stack.Screen
           name="Operadores"
@@ -245,6 +262,11 @@ export function AppNavigator(): React.ReactElement {
             name="NaoReconhecidos"
             component={NaoReconhecidosScreen}
             options={{ title: 'Não reconhecidos' }}
+          />
+          <Stack.Screen
+            name="CheckOutsConfig"
+            component={CheckOutsConfigScreen}
+            options={{ title: 'Check-Outs' }}
           />
         </>
       )}

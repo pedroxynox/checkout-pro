@@ -17,6 +17,7 @@ export const ORDEM_AREAS: string[] = [
   'Insumos',
   'Fiscais e jornada',
   'Operação e pessoas',
+  'Check-Outs',
   'Avisos',
 ];
 
@@ -133,6 +134,16 @@ export const ROTULOS_FUNCIONALIDADE: Record<string, RotuloFuncionalidade> = {
   FEEDFORWARD_GERIR: {
     titulo: 'Gerir feedforward',
     area: 'Operação e pessoas',
+  },
+  CHECKOUTS: {
+    titulo: 'Check-Outs',
+    descricao: 'Ver as caixas e reportar equipamentos com defeito',
+    area: 'Check-Outs',
+  },
+  CHECKOUTS_GERENCIAR: {
+    titulo: 'Resolver avarias',
+    descricao: 'Marcar avarias de check-out como resolvidas',
+    area: 'Check-Outs',
   },
   NOTIFICACOES: {
     titulo: 'Notificações',

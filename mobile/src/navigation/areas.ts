@@ -31,6 +31,7 @@ export interface Area {
     | 'Colaboradores'
     | 'Contratos'
     | 'CentroControle'
+    | 'CheckOuts'
     | 'Usuarios'
     | 'AlertasFila'
     | 'Normativas'
@@ -98,6 +99,13 @@ export const AREAS: Area[] = [
     descricao: 'Abertura e fechamento com imagem',
     icone: 'checkbox-outline',
     funcionalidade: 'CHECKLIST',
+  },
+  {
+    rota: 'CheckOuts',
+    titulo: 'Check-Outs',
+    descricao: 'Reportar equipamentos com defeito nas caixas',
+    icone: 'desktop-outline',
+    funcionalidade: 'CHECKOUTS',
   },
   {
     rota: 'RegistroPonto',

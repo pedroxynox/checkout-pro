@@ -71,6 +71,43 @@ export interface ResumoPerfil {
   personalizados: number;
 }
 
+// ----- Check-Outs (avarias de equipamentos por caixa) -----
+export type EquipamentoCheckout =
+  | 'CPU'
+  | 'TECLADO'
+  | 'SCANNER'
+  | 'PINPAD'
+  | 'MONITOR'
+  | 'IMPRESSORA'
+  | 'GAVETA'
+  | 'BALANCA'
+  | 'OUTRO';
+
+export interface ReporteCheckout {
+  id: string;
+  checkoutNumero: number;
+  equipamento: string;
+  descricao: string;
+  fotoUrl?: string | null;
+  status: 'ABERTO' | 'RESOLVIDO';
+  reportadoPorNome?: string | null;
+  reportadoEm: string;
+  resolvidoPorNome?: string | null;
+  resolvidoEm?: string | null;
+}
+
+/** Um check-out no tablero e quantas avarias abertas tem. */
+export interface CheckoutResumo {
+  numero: number;
+  abertos: number;
+}
+
+/** Tablero da seção Check-Outs: total de caixas + estado de cada uma. */
+export interface TableroCheckouts {
+  quantidade: number;
+  checkouts: CheckoutResumo[];
+}
+
 /** Entrada da trilha de auditoria (histórico de mudanças de permissão). */
 export interface ItemAuditoria {
   id: string;

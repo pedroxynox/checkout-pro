@@ -49,6 +49,12 @@ const ITENS: ItemControle[] = [
     icone: 'cash-outline',
   },
   {
+    rota: 'CheckOutsConfig',
+    titulo: 'Check-Outs',
+    descricao: 'Definir quantas caixas (check-outs) existem na loja',
+    icone: 'desktop-outline',
+  },
+  {
     rota: 'Relatorios',
     titulo: 'Relatórios',
     descricao: 'Baixar relatórios dos operadores em PDF (semana ou período)',
