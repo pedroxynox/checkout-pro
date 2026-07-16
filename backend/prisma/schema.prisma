@@ -642,6 +642,18 @@ model AliasLeituraPonto {
   criadoEm      DateTime        @default(now())
   atualizadoEm  DateTime        @updatedAt
 
+  // Desafiante pendente: quando uma leitura é confirmada para uma pessoa
+  // DIFERENTE da associação já aprendida, não trocamos de imediato (uma
+  // seleção isolada não pisa uma associação confiável). Registramos aqui a
+  // pessoa proposta e quantas confirmações repetidas ela já recebeu; só ao
+  // atingir o limiar a associação principal é substituída. Assim um engano
+  // pontual não se propaga para leituras futuras.
+  pendentePessoaId      String?
+  pendenteTipoPessoa    TipoPessoaPonto?
+  pendenteColaboradorId String?
+  pendenteNome          String?
+  pendenteUsos          Int              @default(0)
+
   @@map("aliases_leitura_ponto")
 }
 
