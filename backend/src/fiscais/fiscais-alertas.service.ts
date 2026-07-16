@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { FeriadosService } from '../feriados/feriados.service';
 import {
   StatusFiscal,
   calcularJornada,
@@ -41,6 +42,9 @@ export class FiscaisAlertasService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificacoes: NotificacoesService,
+    // Feriado conta como domingo: fica de fora do acúmulo de extras "de dia
+    // útil". Opcional para não quebrar instanciações sem o serviço.
+    @Optional() private readonly feriados?: FeriadosService,
   ) {}
 
   /** Reseta caches diários à meia-noite. */
@@ -204,6 +208,12 @@ export class FiscaisAlertasService {
 
     const LIMITE_EXTRAS_MS = 7 * 60 * 60 * 1000; // 7 horas
 
+    // Feriados do mês (fonte única, igual à Central/Jornada da Equipe): feriado
+    // conta como domingo e fica fora deste acúmulo.
+    const feriadoSet = this.feriados
+      ? new Set((await this.feriados.mapaNoPeriodo(inicioMes, fimMes)).keys())
+      : new Set<number>();
+
     const fiscais = await this.prisma.fiscal.findMany();
     const registros = await this.prisma.registroPontoFiscal.findMany({
       where: { data: { gte: inicioMes, lt: fimMes } },
@@ -235,7 +245,7 @@ export class FiscaisAlertasService {
       for (const [diaKey, regs] of mapaFiscal.entries()) {
         const diaDate = new Date(diaKey);
         const diaSemana = diaDate.getUTCDay();
-        if (isDomingo(diaSemana)) continue;
+        if (isDomingo(diaSemana) || feriadoSet.has(diaDate.getTime())) continue;
 
         const diaEncerrado = diaEncerradoEmBrasilia(diaDate, agoraPonto);
         const limite = diaEncerrado
