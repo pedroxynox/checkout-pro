@@ -132,7 +132,7 @@ alinhados às fontes reais.
 - Contrato de experiência para operadores ativos: até 90 dias, alerta nos cinco
   dias anteriores e efetivação automática a partir do dia 91. O cron usa hoje o
   seletor `gestores()`, que inclui FISCAL, SUPERVISOR, GERENTE e
-  GERENTE_DESENVOLVEDOR.
+  ADMINISTRADOR.
 
 ### Dependabot (#226 e #232)
 
@@ -148,7 +148,7 @@ A regra vigente substitui o alerta histórico de 1h45 e os destinatários amplos
 - `>1h50`: **TAC** (exatamente 1h50 ainda não cruza o limite por extras);
 - intervalo `<1h` ou `>3h` também gera TAC;
 - destinatários: somente `SUPERVISOR`, `GERENTE` e
-  `GERENTE_DESENVOLVEDOR`;
+  `ADMINISTRADOR`;
 - envio best-effort: falha de notificação nunca bloqueia a batida;
 - deduplicação por pessoa/dia/etapa compartilhada entre batida e cron de um
   minuto, com retry se o envio falhar;
@@ -1227,7 +1227,7 @@ profundidade, sem alterar comportamento legítimo.
 
 ## 1. Permissões: fonte única de verdade + acesso total do desenvolvedor
 
-**Objetivo:** o perfil `GERENTE_DESENVOLVEDOR` deve ver **absolutamente tudo**, e
+**Objetivo:** o perfil `ADMINISTRADOR` deve ver **absolutamente tudo**, e
 as regras de permissão devem ficar centralizadas.
 
 - Criado um **catálogo único** de funcionalidades `TODAS_FUNCIONALIDADES` (com o
@@ -1237,7 +1237,7 @@ as regras de permissão devem ficar centralizadas.
 - As listas de cada perfil agora são tipadas como `readonly Funcionalidade[]`,
   o que garante **em tempo de compilação** que só usem funcionalidades que
   existem no catálogo (evita "permissão fantasma" digitada errado).
-- `GERENTE_DESENVOLVEDOR` continua liberado por uma regra explícita
+- `ADMINISTRADOR` continua liberado por uma regra explícita
   (`return true`), de modo que enxerga tudo — inclusive qualquer funcionalidade
   **nova** adicionada ao catálogo no futuro, sem precisar mexer na regra.
 - Adicionado teste-guarda `backend/src/acessos/acessos.permissoes.spec.ts` que

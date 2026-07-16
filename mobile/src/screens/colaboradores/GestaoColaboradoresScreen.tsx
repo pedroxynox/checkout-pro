@@ -408,7 +408,7 @@ export function GestaoColaboradoresScreen({
                     onPress={() => setGerenteDev(true)}
                     style={[styles.chip, gerenteDev && styles.chipAtivo]}
                   >
-                    Gerente desenvolvedor
+                    Administrador
                   </Text>
                 </View>
               )}

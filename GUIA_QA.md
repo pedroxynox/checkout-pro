@@ -13,7 +13,7 @@ Para cada falha, anote: ambiente (web/APK), perfil, data/hora, colaborador de te
 - [ ] API e web respondem; `GET /health/ready` confirma conexão com o banco.
 - [ ] O commit/deploy testado foi identificado nos logs do Render.
 - [ ] Migrations foram aplicadas até `9zq_alerta_tac_enviado`.
-- [ ] Existem usuários de QA para IMPORTADOR, FISCAL, SUPERVISOR, GERENTE e GERENTE_DESENVOLVEDOR.
+- [ ] Existem usuários de QA para IMPORTADOR, FISCAL, SUPERVISOR, GERENTE e ADMINISTRADOR.
 - [ ] Existem colaboradores de teste nas funções operador, fiscal e supervisor, com escala e data de admissão.
 - [ ] Há arquivos `.txt` de teste de vendas/arrecadação e comprovantes de ponto sem dados pessoais reais.
 - [ ] Para push Android: FCM está vinculado ao Expo/EAS e o APK testado foi compilado depois dessa configuração.
@@ -33,7 +33,7 @@ Para cada falha, anote: ambiente (web/APK), perfil, data/hora, colaborador de te
 - [ ] FISCAL acessa as rotinas operacionais autorizadas, sem administração estrutural.
 - [ ] SUPERVISOR acessa supervisão/jornada e gestão parcial.
 - [ ] GERENTE acessa gestão operacional conforme allowlist.
-- [ ] GERENTE_DESENVOLVEDOR acessa todas as funcionalidades catalogadas.
+- [ ] ADMINISTRADOR acessa todas as funcionalidades catalogadas.
 - [ ] Alertas de Fila, Normativas e Indicador de Quebra continuam ocultos enquanto `emBreve` estiver ativo.
 
 ## 2. Importações, indicadores e fechamento
@@ -95,7 +95,7 @@ Preparar jornadas controladas; validar tanto o disparo após batida quanto o cro
 - [ ] Intervalo `<1h` ou `>3h` também gera TAC.
 - [ ] Cada etapa é enviada no máximo uma vez por pessoa/dia enquanto o processo está ativo.
 - [ ] Batida e cron não duplicam a mesma etapa.
-- [ ] Destinatários são somente SUPERVISOR, GERENTE e GERENTE_DESENVOLVEDOR; fiscais/importadores não recebem por esse motivo.
+- [ ] Destinatários são somente SUPERVISOR, GERENTE e ADMINISTRADOR; fiscais/importadores não recebem por esse motivo.
 - [ ] Simular falha do serviço de notificação: a batida continua gravada e a etapa pode ser tentada novamente.
 - [ ] Reiniciar o backend durante o dia NÃO deve gerar reaviso da mesma etapa: a deduplicação é persistente (tabela `alertas_tac_enviados`, índice único por pessoa/dia/etapa). Conferir que a etapa já avisada não se repete após o restart.
 
@@ -132,7 +132,7 @@ Preparar jornadas controladas; validar tanto o disparo após batida quanto o cro
 - [ ] Cadastrar **operador ativo** com data de admissão cria/deriva contrato de experiência.
 - [ ] Outros tipos de colaborador não entram na carteira/cron de experiência.
 - [ ] Até 90 dias, o estado é de experiência.
-- [ ] Nos cinco dias anteriores ao marco de 90, o alerta chega aos destinatários atuais: FISCAL, SUPERVISOR, GERENTE e GERENTE_DESENVOLVEDOR.
+- [ ] Nos cinco dias anteriores ao marco de 90, o alerta chega aos destinatários atuais: FISCAL, SUPERVISOR, GERENTE e ADMINISTRADOR.
 - [ ] No dia 91, sem encerramento, o estado muda automaticamente para efetivado.
 - [ ] Histórico/decisões antigas continuam consultáveis sem substituir a regra automática atual.
 - [ ] Alterar data de admissão recalcula marcos sem criar registros duplicados.
@@ -189,7 +189,7 @@ Preparar jornadas controladas; validar tanto o disparo após batida quanto o cro
 
 ## 13. Administração e segurança operacional
 
-- [ ] GERENTE_DESENVOLVEDOR acessa Data Inicial e Reset Operacional.
+- [ ] ADMINISTRADOR acessa Data Inicial e Reset Operacional.
 - [ ] Data anterior à `Data_Inicial_Sistema` é rejeitada nos fluxos protegidos.
 - [ ] Reset exige confirmação explícita e conserva cadastros/configurações previstas.
 - [ ] **Não executar reset em produção durante QA normal.** Usar banco descartável.

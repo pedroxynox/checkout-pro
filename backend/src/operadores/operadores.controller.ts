@@ -46,7 +46,7 @@ function hojeBrasiliaISO(): string {
 /** Perfis autorizados a programar ausência futura. */
 const PERFIS_AUTORIZA_FUTURO = [
   'GERENTE',
-  'GERENTE_DESENVOLVEDOR',
+  'ADMINISTRADOR',
   'SUPERVISOR',
 ];
 

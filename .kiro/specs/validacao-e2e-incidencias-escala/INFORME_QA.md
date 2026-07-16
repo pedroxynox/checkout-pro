@@ -41,12 +41,12 @@
 | P1 | 401 sin token | 401; "Autenticação necessária. Informe um token de acesso válido." | Sin defecto | — | — | — |
 | P2 | 403 escritura con perfil IMPORTADOR | 403; "Permissão insuficiente para acessar esta funcionalidade." | Sin defecto | — | — | — |
 | P3 | 403 lectura con perfil IMPORTADOR | 403; "Permissão insuficiente para acessar esta funcionalidade." | Sin defecto | — | — | — |
-| P4 | 201/200 escritura autorizada (dev) | 201 (GERENTE_DESENVOLVEDOR) | Sin defecto | — | — | — |
+| P4 | 201/200 escritura autorizada (dev) | 201 (ADMINISTRADOR) | Sin defecto | — | — | — |
 | P5 | 200 lectura autorizada (dev) | 200; lista de incidencias | Sin defecto | — | — | — |
 | E12 | 200; 1 sugestión `DETECTADO_PONTO` (12:00→14:00) | 200; 1 sugestión (Fabiana), `origem="DETECTADO_PONTO"`, `horaSaida="12:00"`, `horaEsperadaRetorno="14:00"` | Sin defecto | — | — | — |
 | E13 | 200; SIN sugestión (volvió a DISPONIVEL) | 200; `[]` | Sin defecto | — | — | — |
 | E15 | 200; SIN sugestión (ya registrada) | 200; `[]` tras registrar la incidencia del día | Sin defecto | — | — | — |
-| E16 | Al 3.º no-retorno del mes: se dispara el umbral | 201; Δnotificaciones=+2 (broadcast: 1 fila por gestor × 2 gestores), título "🔴 Incidências recorrentes na escala", destino GERENTE + GERENTE_DESENVOLVEDOR | Sin defecto | — | — | — |
+| E16 | Al 3.º no-retorno del mes: se dispara el umbral | 201; Δnotificaciones=+2 (broadcast: 1 fila por gestor × 2 gestores), título "🔴 Incidências recorrentes na escala", destino GERENTE + ADMINISTRADOR | Sin defecto | — | — | — |
 | E17 | 1.º/2.º/4.º no-retorno: sin notificación de umbral | 201; Δ=0 en 1.º (N=1), 2.º (N=2) y 4.º (N=4) | Sin defecto | — | — | — |
 | E18 | Sección `incidencias` completa | 200; `totalNaoRetorno=3`, `ultimoNaoRetorno=2026-07-24`, `diasConsecutivosSemIncidencia=0`, `risco=MEDIO`, `tendencia=MELHORANDO`, `porDiaSemana`(Sex=3), `frequenciaMensal=0.6`, `percentualSobreEscalados=2` | Sin defecto | — | — | — |
 | E19 | `timeline` unificado FALTA + NAO_RETORNO orden `data` desc | 200; 5 items [07-24 NAO_RETORNO, 07-13 FALTA, 07-10 NAO_RETORNO, 07-06 FALTA, 07-03 NAO_RETORNO] desc; longitud = 3 incidencias + 2 faltas | Sin defecto | — | — | — |

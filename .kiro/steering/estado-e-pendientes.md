@@ -27,7 +27,7 @@
 - Riesgo: extras `>=1h30`; riesgo alto: `>=1h40`; TAC por extras solo `>1h50`.
 - Intervalo `<1h` o `>3h` también es TAC.
 - Domingo/feriado: carga 7h20 y extras 100%; seg–qui 7h, sex–sáb 8h.
-- Avisos TAC solo a `SUPERVISOR`, `GERENTE`, `GERENTE_DESENVOLVEDOR`.
+- Avisos TAC solo a `SUPERVISOR`, `GERENTE`, `ADMINISTRADOR`.
 - Envío best-effort: nunca bloquear la batida.
 - Dedupe por persona/día/etapa PERSISTENTE (tabla `AlertaTacEnviado`): reserva atómica por índice único antes de notificar; sobrevive a reinicios y coordina múltiples instancias; el fallo libera la reserva (retry). TAC diario: la unicidad incluye el día.
 
@@ -41,7 +41,7 @@
 - Nacionales automáticos; estatales/municipales manuales; Carnaval/Corpus Christi no automáticos.
 - `SEIS_X_UM_DOIS_X_UM` gobierna la jornada; no es el estado del contrato de experiencia.
 - La experiencia se calcula para operadores activos: hasta 90 días, alerta en los 5 días previos y efectivación automática el día 91.
-- El cron de experiencia notifica actualmente a `FISCAL`, `SUPERVISOR`, `GERENTE` y `GERENTE_DESENVOLVEDOR`.
+- El cron de experiencia notifica actualmente a `FISCAL`, `SUPERVISOR`, `GERENTE` y `ADMINISTRADOR`.
 
 ## Infraestructura
 

@@ -23,12 +23,12 @@ function deslocamentoDe(ciclo?: string): number {
 }
 
 /**
- * Central de Jornada (uso gerencial — FISCAIS_JORNADA). Portal de controle da
+ * Central de Jornada (uso gerencial — CENTRAL_JORNADA). Portal de controle da
  * jornada de cada colaborador no ciclo de folha (26→25): carga, horas extras
  * 50%/100%, horas que deve, horas de atestado, faltas, dias de TAC e saldo.
  */
 @Controller('central-jornada')
-@Funcionalidade('FISCAIS_JORNADA')
+@Funcionalidade('CENTRAL_JORNADA')
 export class CentralJornadaController {
   constructor(private readonly service: CentralJornadaService) {}
 
@@ -54,7 +54,7 @@ export class CentralJornadaController {
   /** Marca/desmarca uma falta como débito de horas (RH/gestão). */
   @Post('ausencia/:id/debito')
   @HttpCode(HttpStatus.OK)
-  @Funcionalidade('FISCAIS_JORNADA')
+  @Funcionalidade('CENTRAL_JORNADA')
   marcarDebito(@Param('id') id: string, @Body() dto: MarcarDebitoDto) {
     return this.service.marcarDebito(id, dto.debito);
   }

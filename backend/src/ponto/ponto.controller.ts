@@ -27,8 +27,10 @@ import {
 /**
  * API do Registro de Ponto (leitor de comprovante) — Fase A.
  *
- * Registrar/editar/remover batidas exige `PONTO_REGISTRAR` (o fiscal pode
- * fazer isso para qualquer colaborador). Ver o painel exige `PONTO_VISUALIZAR`.
+ * Registrar batidas novas (e ler o comprovante) exige `PONTO_REGISTRAR` — o
+ * fiscal pode fazer isso para qualquer colaborador. Corrigir/remover batidas já
+ * registradas exige `PONTO_EDITAR` (restrito à gestão). Ver o painel exige
+ * `PONTO_VISUALIZAR`.
  */
 @Controller('ponto')
 export class PontoController {
@@ -82,9 +84,9 @@ export class PontoController {
     return this.service.registrarBatida(dto, usuario);
   }
 
-  /** Corrige uma batida (hora e/ou tipo). */
+  /** Corrige uma batida (hora e/ou tipo) — só gestão (PONTO_EDITAR). */
   @Patch('batidas/:id')
-  @Funcionalidade('PONTO_REGISTRAR')
+  @Funcionalidade('PONTO_EDITAR')
   editarBatida(
     @Param('id') id: string,
     @Body() dto: EditarBatidaDto,
@@ -92,9 +94,9 @@ export class PontoController {
     return this.service.editarBatida(id, dto);
   }
 
-  /** Remove uma batida e reclassifica o dia. */
+  /** Remove uma batida e reclassifica o dia — só gestão (PONTO_EDITAR). */
   @Delete('batidas/:id')
-  @Funcionalidade('PONTO_REGISTRAR')
+  @Funcionalidade('PONTO_EDITAR')
   removerBatida(@Param('id') id: string): Promise<JornadaDiaResposta> {
     return this.service.removerBatida(id);
   }

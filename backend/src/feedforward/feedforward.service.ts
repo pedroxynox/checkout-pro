@@ -193,7 +193,7 @@ export class FeedforwardService {
   async destinatariosAcompanhamento(): Promise<{ id: string }[]> {
     return this.prisma.usuario.findMany({
       where: {
-        perfil: { in: ['SUPERVISOR', 'GERENTE', 'GERENTE_DESENVOLVEDOR'] },
+        perfil: { in: ['SUPERVISOR', 'GERENTE', 'ADMINISTRADOR'] },
       },
       select: { id: true },
     });

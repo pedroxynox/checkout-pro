@@ -74,7 +74,7 @@ interface SeedGerente {
   matricula?: string;
   /** Senha inicial específica; se ausente, usa SENHA_INICIAL. */
   senha?: string;
-  /** Perfil; padrão GERENTE. Pedro é o GERENTE_DESENVOLVEDOR (acesso total). */
+  /** Perfil; padrão GERENTE. Pedro é o ADMINISTRADOR (acesso total). */
   perfil?: Perfil;
 }
 
@@ -87,7 +87,7 @@ const GERENTES: SeedGerente[] = [
     // Sem senha fraca fixa: usa a SENHA_INICIAL (variável de ambiente) como as
     // demais contas. Deve ser trocada no primeiro acesso. Nunca versionar uma
     // senha real, muito menos para a conta de acesso total.
-    perfil: Perfil.GERENTE_DESENVOLVEDOR,
+    perfil: Perfil.ADMINISTRADOR,
   },
   { nome: 'Arlete Pacheco Fernandes' },
 ];

@@ -7,7 +7,7 @@ Esta funcionalidade permite colocar o Check-out PRO "em zero" para começar a op
 1. **Reinício operacional limpo (zerar dados de movimento):** uma operação administrativa que apaga todos os dados transacionais/operacionais (vendas, arrecadação, movimentos de estoque, sacolas APAE, jornada/escala por data, notificações, checklists, dados de fluxos legados), **conservando** as pessoas (logins, colaboradores, operadores, fiscais), as escalas de cadastro, as definições de insumos e a configuração/metas.
 2. **Data inicial do sistema:** uma configuração global (singleton) que define a data a partir da qual é permitido cadastrar/editar registros e a partir da qual os calendários da aplicação começam. Registros com data anterior à data inicial são rejeitados.
 
-O reinício é disparado por um endpoint + botão de administrador restrito ao perfil `GERENTE_DESENVOLVEDOR`, com confirmação explícita na interface, e é executado de forma idempotente e transacional (tudo ou nada), reportando um resumo de quantos registros foram apagados por entidade.
+O reinício é disparado por um endpoint + botão de administrador restrito ao perfil `ADMINISTRADOR`, com confirmação explícita na interface, e é executado de forma idempotente e transacional (tudo ou nada), reportando um resumo de quantos registros foram apagados por entidade.
 
 **Restrição operacional importante:** o apagamento real em produção é executado pelo próprio usuário (gestor) através do botão já publicado no app. O time de desenvolvimento constrói e testa a função **sem acesso ao banco de dados produtivo** — a entrega é a função pronta, testada e publicada, não a execução do apagamento em produção.
 
@@ -22,19 +22,19 @@ O reinício é disparado por um endpoint + botão de administrador restrito ao p
 - **Resumo_de_Reinicio:** Estrutura retornada pela operação de reinício contendo a contagem de registros apagados por entidade.
 - **ErroDominio:** Classe base dos erros de domínio do projeto; cada erro declara o próprio `statusHttp` (padrão 400).
 - **ErroDataAnteriorInicial:** Erro de domínio (extends `ErroDominio`) lançado quando um registro com data anterior à Data_Inicial_Sistema é submetido; responde 400/422.
-- **GERENTE_DESENVOLVEDOR:** Perfil de acesso total do sistema, único autorizado a executar o reinício operacional e a editar a Data_Inicial_Sistema.
-- **ADMIN_DADOS:** Funcionalidade da allowlist (`acessos.domain.ts`) que controla o acesso às operações administrativas de dados, restrita ao `GERENTE_DESENVOLVEDOR` via `@Funcionalidade('ADMIN_DADOS')` + `PerfilGuard`.
+- **ADMINISTRADOR:** Perfil de acesso total do sistema, único autorizado a executar o reinício operacional e a editar a Data_Inicial_Sistema.
+- **ADMIN_DADOS:** Funcionalidade da allowlist (`acessos.domain.ts`) que controla o acesso às operações administrativas de dados, restrita ao `ADMINISTRADOR` via `@Funcionalidade('ADMIN_DADOS')` + `PerfilGuard`.
 
 ## Requirements
 
 ### Requirement 1 — Disparo do reinício operacional (autorização e confirmação)
 
-**User Story:** Como GERENTE_DESENVOLVEDOR, quero disparar o reinício operacional por um endpoint protegido acionado por um botão com confirmação, para que os dados de movimento sejam apagados apenas de forma intencional e autorizada.
+**User Story:** Como ADMINISTRADOR, quero disparar o reinício operacional por um endpoint protegido acionado por um botão com confirmação, para que os dados de movimento sejam apagados apenas de forma intencional e autorizada.
 
 #### Acceptance Criteria
 
 1. O Modulo_ResetOperacional DEVE expor um endpoint de reinício protegido pela funcionalidade `ADMIN_DADOS` por meio de `@Funcionalidade('ADMIN_DADOS')` combinado com `PerfilGuard`.
-2. QUANDO uma requisição de reinício é recebida de um usuário com perfil `GERENTE_DESENVOLVEDOR`, O Modulo_ResetOperacional DEVE executar o reinício operacional.
+2. QUANDO uma requisição de reinício é recebida de um usuário com perfil `ADMINISTRADOR`, O Modulo_ResetOperacional DEVE executar o reinício operacional.
 3. SE uma requisição de reinício é recebida de um usuário sem a funcionalidade `ADMIN_DADOS`, ENTÃO O Modulo_ResetOperacional DEVE recusar a operação com um erro de domínio de status 403 e NÃO apagar nenhum registro.
 4. SE uma requisição de reinício é recebida sem o marcador de confirmação explícita exigido, ENTÃO O Modulo_ResetOperacional DEVE recusar a operação com um erro de domínio de status 400 e NÃO apagar nenhum registro.
 5. QUANDO o gestor aciona o botão de reinício na interface, O Sistema DEVE exigir uma confirmação explícita antes de enviar a requisição ao endpoint.
@@ -67,7 +67,7 @@ O reinício é disparado por um endpoint + botão de administrador restrito ao p
 
 ### Requirement 4 — Idempotência, transacionalidade e resumo
 
-**User Story:** Como GERENTE_DESENVOLVEDOR, quero que o reinício seja atômico, repetível e informe o que apagou, para que eu tenha certeza do estado final e do efeito da operação.
+**User Story:** Como ADMINISTRADOR, quero que o reinício seja atômico, repetível e informe o que apagou, para que eu tenha certeza do estado final e do efeito da operação.
 
 #### Acceptance Criteria
 

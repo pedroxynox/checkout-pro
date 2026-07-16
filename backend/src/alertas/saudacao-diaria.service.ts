@@ -112,7 +112,7 @@ export class SaudacaoDiariaService {
     const gestores = await this.prisma.usuario.findMany({
       where: {
         perfil: {
-          in: [Perfil.GERENTE, Perfil.GERENTE_DESENVOLVEDOR, Perfil.SUPERVISOR],
+          in: [Perfil.GERENTE, Perfil.ADMINISTRADOR, Perfil.SUPERVISOR],
         },
       },
     });

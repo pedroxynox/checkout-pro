@@ -11,7 +11,7 @@
 
 export type Perfil =
   | 'GERENTE'
-  | 'GERENTE_DESENVOLVEDOR'
+  | 'ADMINISTRADOR'
   | 'SUPERVISOR'
   | 'FISCAL'
   | 'IMPORTADOR';
@@ -24,7 +24,7 @@ export type Perfil =
  * `TODAS_FUNCIONALIDADES` é o catálogo completo de funcionalidades existentes.
  * Toda a regra de acesso (abaixo) e o app móvel derivam deste catálogo, de modo
  * que:
- *  - o perfil GERENTE_DESENVOLVEDOR enxerga **absolutamente tudo** — inclusive
+ *  - o perfil ADMINISTRADOR enxerga **absolutamente tudo** — inclusive
  *    qualquer funcionalidade nova que for adicionada aqui no futuro, sem
  *    precisar mexer na regra (ver `decidirAutorizacao`);
  *  - o tipo `Funcionalidade` garante, em tempo de compilação, que as listas de
@@ -58,11 +58,15 @@ export const TODAS_FUNCIONALIDADES = [
   // Fiscais
   'FISCAIS_STATUS',
   'FISCAIS_JORNADA',
+  // Central de Jornada (portal gerencial do ciclo de folha 26→25).
+  'CENTRAL_JORNADA',
   'ESCALA_VISUALIZAR',
   'ESCALA_EDITAR',
-  // Registro de Ponto (leitor de comprovante): registrar/editar batidas e ver o
-  // painel de jornada.
+  // Registro de Ponto (leitor de comprovante): PONTO_REGISTRAR = registrar
+  // batidas novas (todos os perfis); PONTO_EDITAR = corrigir/remover batidas já
+  // registradas (só gestão); PONTO_VISUALIZAR = ver o painel de jornada.
   'PONTO_REGISTRAR',
+  'PONTO_EDITAR',
   'PONTO_VISUALIZAR',
   // Operação diária
   'CHECKLIST',
@@ -100,18 +104,20 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
   'LOTE_APAE',
   'INSUMOS',
   'FISCAIS_STATUS',
+  // Jornada da equipe (horas trabalhadas e intervalos). O fiscal acompanha,
+  // mas NÃO a Central de Jornada (portal gerencial do ciclo de folha).
+  'FISCAIS_JORNADA',
   'ESCALA_VISUALIZAR',
   'CHECKLIST',
   'NOTIFICACOES',
   'ALERTAS_FILA',
   'NORMATIVAS',
   'INDICADORES_VISUALIZAR',
-  'PAINEL_VENDAS_VISUALIZAR',
-  'PAINEL_VENDAS_EDITAR',
   'INDICADOR_QUEBRA',
   'OPERADORES_AUSENCIAS',
-  // Registro de ponto: o fiscal pode ler o comprovante de qualquer colaborador e
-  // ver o painel de jornada.
+  // Registro de ponto: o fiscal registra batidas novas de qualquer colaborador
+  // e vê o painel de jornada, mas NÃO corrige/remove batidas já registradas
+  // (isso exige PONTO_EDITAR, restrito à gestão).
   'PONTO_REGISTRAR',
   'PONTO_VISUALIZAR',
   // Somente leitura do status de carga do dia, para o Briefing ter a MESMA
@@ -128,11 +134,18 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
 export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] =
   Object.freeze([
     ...FUNCIONALIDADES_FISCAL,
+    // Painel de vendas: o supervisor visualiza (o fiscal não vê mais). A edição
+    // (PAINEL_VENDAS_EDITAR) permanece exclusiva de gerente/administrador.
+    'PAINEL_VENDAS_VISUALIZAR',
     'OPERADORES_CRUD',
     'INSUMOS_GERENCIAR',
     'FECHAMENTO',
-    // Log de jornada dos fiscais (horas trabalhadas e intervalos).
-    'FISCAIS_JORNADA',
+    // Edição da escala (o fiscal só visualiza).
+    'ESCALA_EDITAR',
+    // Correção/remoção de batidas já registradas (o fiscal só registra novas).
+    'PONTO_EDITAR',
+    // Central de Jornada: portal gerencial do ciclo de folha (26→25).
+    'CENTRAL_JORNADA',
     // Contratos: o supervisor acompanha (visualiza), mas não decide os marcos.
     'CONTRATOS_VISUALIZAR',
     // Feedforward: supervisor cria/edita e acompanha.
@@ -159,12 +172,11 @@ const FUNCIONALIDADES_IMPORTADOR_SET = new Set<string>(
 );
 
 /**
- * Funcionalidades liberadas ao perfil GERENTE (comum). Pode **ver tudo** e
- * executar a operação do dia a dia, MAS não as operações de gestão estrutural
- * de dados, que ficam exclusivas do GERENTE_DESENVOLVEDOR:
- * - NÃO inclui: `LOTE_APAE_GERENCIAR` (registrar/reiniciar lote), `USUARIOS_CRUD`
- *   (gestão de pessoas), `OPERADORES_CRUD` (cadastro de operadores),
- *   `ESCALA_EDITAR` (edição de escala) e `ADMIN_DADOS` (zerar/limpar dados).
+ * Funcionalidades liberadas ao perfil GERENTE. Pode **ver tudo** e executar a
+ * operação e a gestão do dia a dia, incluindo cadastro de operadores, gestão de
+ * usuários, edição de escala, correção de batidas e a gestão do lote APAE.
+ * - NÃO inclui apenas `ADMIN_DADOS` (zerar/limpar dados), que continua exclusivo
+ *   do ADMINISTRADOR (acesso total).
  * - A alteração de status de fiscal não é por funcionalidade: só o próprio
  *   fiscal (do seu status) ou o desenvolvedor podem alterar (ver FiscaisController).
  */
@@ -186,12 +198,21 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
     'LOTE_APAE',
     'CHECKLIST',
     'OPERADORES_AUSENCIAS',
+    'OPERADORES_CRUD',
     'FISCAIS_STATUS',
     // Log de jornada dos fiscais (horas trabalhadas e intervalos).
     'FISCAIS_JORNADA',
-    // Registro de ponto (leitor de comprovante).
+    // Central de Jornada: portal gerencial do ciclo de folha (26→25).
+    'CENTRAL_JORNADA',
+    // Edição da escala.
+    'ESCALA_EDITAR',
+    // Registro de ponto (leitor de comprovante) + correção/remoção de batidas.
     'PONTO_REGISTRAR',
+    'PONTO_EDITAR',
     'PONTO_VISUALIZAR',
+    // Gestão de pessoas com acesso (login) e do lote APAE.
+    'USUARIOS_CRUD',
+    'LOTE_APAE_GERENCIAR',
     // Contratos de experiência: o gerente visualiza e decide os marcos.
     'CONTRATOS_VISUALIZAR',
     'CONTRATOS_GERIR',
@@ -209,7 +230,7 @@ const FUNCIONALIDADES_GERENTE_SET = new Set<string>(FUNCIONALIDADES_GERENTE);
  * Decide, de forma pura, se um perfil está autorizado a usar uma
  * funcionalidade (Requisito 7.2).
  *
- * - GERENTE_DESENVOLVEDOR: sempre autorizado (acesso total, inclui operações
+ * - ADMINISTRADOR: sempre autorizado (acesso total, inclui operações
  *   que alteram dados da DB e a área administrativa).
  * - GERENTE: autorizado apenas para o conjunto de gerente (ver tudo + operação
  *   do dia a dia, sem gestão estrutural de dados).
@@ -222,7 +243,7 @@ export function decidirAutorizacao(
   perfil: Perfil,
   funcionalidade: string,
 ): boolean {
-  if (perfil === 'GERENTE_DESENVOLVEDOR') {
+  if (perfil === 'ADMINISTRADOR') {
     // Acesso TOTAL: o desenvolvedor enxerga e executa todas as funcionalidades
     // do catálogo (`TODAS_FUNCIONALIDADES`), inclusive as administrativas e
     // qualquer funcionalidade futura. Por isso liberamos sem consultar lista.

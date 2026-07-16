@@ -7,7 +7,7 @@
 
 export type Perfil =
   | 'GERENTE'
-  | 'GERENTE_DESENVOLVEDOR'
+  | 'ADMINISTRADOR'
   | 'SUPERVISOR'
   | 'FISCAL'
   | 'IMPORTADOR';

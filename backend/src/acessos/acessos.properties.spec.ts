@@ -22,7 +22,7 @@ const NUM_RUNS = 100;
 
 const perfilArb: fc.Arbitrary<Perfil> = fc.constantFrom(
   'GERENTE',
-  'GERENTE_DESENVOLVEDOR',
+  'ADMINISTRADOR',
   'FISCAL',
 );
 
@@ -103,7 +103,7 @@ describe('Modulo_Acessos — testes de propriedade', () => {
     fc.assert(
       fc.property(perfilArb, funcionalidadeArb, (perfil, funcionalidade) => {
         const autorizado = decidirAutorizacao(perfil, funcionalidade);
-        if (perfil === 'GERENTE_DESENVOLVEDOR') {
+        if (perfil === 'ADMINISTRADOR') {
           return autorizado === true;
         }
         if (perfil === 'GERENTE') {

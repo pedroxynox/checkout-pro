@@ -27,7 +27,7 @@ import { confirmar, notificar } from '../../utils/dialogos';
 
 const ROTULO_PERFIL: Record<Perfil, string> = {
   GERENTE: 'Gerente',
-  GERENTE_DESENVOLVEDOR: 'Gerente Dev',
+  ADMINISTRADOR: 'Administrador',
   SUPERVISOR: 'Supervisor',
   FISCAL: 'Fiscal',
   IMPORTADOR: 'Importador',

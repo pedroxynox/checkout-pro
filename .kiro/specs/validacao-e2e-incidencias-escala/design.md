@@ -139,7 +139,7 @@ migraciones aplicadas, incluida `9w_incidencia_escala`).
 
 | Perfil | login | senha | Uso en la validación |
 | --- | --- | --- | --- |
-| `GERENTE_DESENVOLVEDOR` (Pedro Munoz) | `232152` | `123456` | Acceso total: cubre todas las rutas (lectura + escritura). |
+| `ADMINISTRADOR` (Pedro Munoz) | `232152` | `123456` | Acceso total: cubre todas las rutas (lectura + escritura). |
 | `GERENTE` (Arlete) | `arlete.pacheco.fernandes` | `SENHA_INICIAL` (`CheckoutPro@2025`) | Tiene `OPERADORES_AUSENCIAS` y `ESCALA_VISUALIZAR`. |
 | `FISCAL` (p. ej. Carmen) | `232150` (matrícula) | `232150` (= matrícula) | Fiscal: también tiene ambos permisos del módulo. |
 
@@ -180,7 +180,7 @@ para el diseño de las pruebas de permisos:
 
 Perfiles que poseen cada permiso:
 
-| Funcionalidad | GERENTE_DESENVOLVEDOR | GERENTE | SUPERVISOR | FISCAL | IMPORTADOR |
+| Funcionalidad | ADMINISTRADOR | GERENTE | SUPERVISOR | FISCAL | IMPORTADOR |
 | --- | :--: | :--: | :--: | :--: | :--: |
 | `OPERADORES_AUSENCIAS` | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `ESCALA_VISUALIZAR` | ✅ | ✅ | ✅ | ✅ | ❌ |
@@ -277,7 +277,7 @@ WHERE f."usuarioId" IS NOT NULL
 -- (+ el INSERT de colaborador_identificadores MATRICULA de la misma 9s)
 ```
 
-Alternativa soportada por API: `POST /colaboradores` (perfil GERENTE_DESENVOLVEDOR)
+Alternativa soportada por API: `POST /colaboradores` (perfil ADMINISTRADOR)
 con `funcao=FISCAL`, `usuarioId` del fiscal, matrícula = login. Se prefiere el
 SQL insert-only por ser fiel al backfill oficial. Tras F0, obtener el
 `{COL_FISCAL}` con `GET /colaboradores?funcao=FISCAL` (o `SELECT id,nome`).
