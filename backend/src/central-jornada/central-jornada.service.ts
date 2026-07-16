@@ -1,7 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { Ausencia, FuncaoColaborador } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { FeriadosService } from '../feriados/feriados.service';
+import {
+  AncoraDomingo,
+  EscalaDomingoService,
+} from '../escala-domingo/escala-domingo.service';
+import {
+  FichaEscala,
+  entradaEsperadaNoDia,
+  minutosDeAtraso,
+} from '../escala-domingo/escala-domingo.domain';
 import { calcularJornadaDia, StatusJornadaPonto } from '../ponto/ponto.domain';
 import { jornadaEsperadaMs } from '../fiscais/fiscais.domain';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
@@ -40,6 +49,8 @@ export interface CentralPessoaResumo {
   diasTac: number;
   /** Dias com conflito: bateu ponto E tem uma ausência marcada no mesmo dia. */
   conflitos: number;
+  /** Dias em que a entrada foi além da tolerância do turno (atraso). */
+  atrasos: number;
   /** Saldo (banco de horas) = extras (50+100) − horas que deve. 1h = 1h. */
   saldoMs: number;
 }
@@ -84,6 +95,10 @@ export interface CentralDiaDetalhe {
     statusJustificativa: string;
     debito: boolean;
   };
+  /** Horário de entrada esperado pela escala ("HH:mm"), quando há turno. */
+  entradaPrevista?: string | null;
+  /** Minutos de atraso na entrada além da tolerância (só quando houve atraso). */
+  atrasoMinutos?: number;
 }
 
 export interface CentralPeriodo {
@@ -103,6 +118,7 @@ export interface CentralResumo {
     faltas: number;
     diasTac: number;
     conflitos: number;
+    atrasos: number;
     saldoMs: number;
   };
   pessoas: CentralPessoaResumo[];
@@ -111,6 +127,15 @@ export interface CentralResumo {
 function primeiroNome(nome: string): string {
   return nome.trim().split(/\s+/)[0] ?? nome;
 }
+
+/** Ficha de escala vazia (sem turno) — usada quando a ficha não é encontrada. */
+const FICHA_ESCALA_VAZIA: FichaEscala = {
+  folgaDiaSemana: null,
+  grupoDomingo: null,
+  entradaSemana: null,
+  entradaFds: null,
+  entradaDom: null,
+};
 
 /**
  * Central de Jornada — o "portal" de controle da jornada de cada colaborador no
@@ -124,6 +149,9 @@ export class CentralJornadaService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly feriados: FeriadosService,
+    // Rodízio de domingo, para resolver o turno esperado aos domingos.
+    // Opcional: sem ele, o atraso de domingo simplesmente não é calculado.
+    @Optional() private readonly escalaDomingo?: EscalaDomingoService,
   ) {}
 
   private baseDoDia(dia: Date, ehFeriado: boolean): number {
@@ -139,7 +167,7 @@ export class CentralJornadaService {
     const agora = agoraNaBrasilia();
     const limite = agora < fimExclusivo ? agora : fimExclusivo;
 
-    const [pessoas, batidas, ausencias, feriadoMap, fiscais, usuarios] =
+    const [pessoas, batidas, ausencias, feriadoMap, fiscais, usuarios, ancora] =
       await Promise.all([
         this.prisma.colaborador.findMany({
           where: {
@@ -154,6 +182,12 @@ export class CentralJornadaService {
             funcao: true,
             matricula: true,
             usuarioId: true,
+            // Escala (turno) para comparar a marcação com o horário esperado.
+            folgaDiaSemana: true,
+            grupoDomingo: true,
+            entradaSemana: true,
+            entradaFds: true,
+            entradaDom: true,
           },
         }),
         this.prisma.batidaPonto.findMany({
@@ -175,6 +209,7 @@ export class CentralJornadaService {
           select: { id: true, nome: true, usuarioId: true },
         }),
         this.prisma.usuario.findMany({ select: { id: true, login: true } }),
+        this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
       ]);
 
     // Um fiscal bate ponto pela sua identidade de Fiscal (batida.pessoaId =
@@ -204,6 +239,7 @@ export class CentralJornadaService {
       ausencias,
       feriadoMap,
       fiscalIdsPorColaborador,
+      ancora,
     };
   }
 
@@ -238,6 +274,8 @@ export class CentralJornadaService {
     inicio: Date,
     fimExclusivo: Date,
     limite: Date,
+    ficha: FichaEscala,
+    ancora: AncoraDomingo | null,
   ): {
     resumo: Omit<
       CentralPessoaResumo,
@@ -267,6 +305,7 @@ export class CentralJornadaService {
     let faltas = 0;
     let diasTac = 0;
     let conflitos = 0;
+    let atrasos = 0;
     const dias: CentralDiaDetalhe[] = [];
 
     for (
@@ -316,6 +355,19 @@ export class CentralJornadaService {
             }
           : undefined;
         if (conflito) conflitos += 1;
+        // Atraso: compara a 1ª batida (entrada) com o turno esperado da escala.
+        // Em feriado o turno é ambíguo (não há horário de feriado no cadastro),
+        // então não apontamos atraso.
+        const entradaReal = regs.reduce(
+          (min, b) => (b.hora < min ? b.hora : min),
+          regs[0].hora,
+        );
+        const entradaPrevista = ehFeriado
+          ? null
+          : entradaEsperadaNoDia(ficha, dia, ancora);
+        const atrasoMinutos =
+          minutosDeAtraso(entradaPrevista, entradaReal) ?? undefined;
+        if (atrasoMinutos != null) atrasos += 1;
         dias.push({
           data: k,
           diaSemana,
@@ -332,6 +384,8 @@ export class CentralJornadaService {
           tac: j.tac,
           motivosTac: j.motivosTac,
           conflitoAusencia: conflito,
+          entradaPrevista,
+          atrasoMinutos,
         });
       } else if (ausencia) {
         faltas += 1;
@@ -394,6 +448,7 @@ export class CentralJornadaService {
         faltas,
         diasTac,
         conflitos,
+        atrasos,
         saldoMs,
       },
       dias,
@@ -414,6 +469,8 @@ export class CentralJornadaService {
         dados.inicio,
         dados.fimExclusivo,
         dados.limite,
+        c,
+        dados.ancora,
       );
       return {
         colaboradorId: c.id,
@@ -436,6 +493,7 @@ export class CentralJornadaService {
         faltas: acc.faltas + p.faltas,
         diasTac: acc.diasTac + p.diasTac,
         conflitos: acc.conflitos + p.conflitos,
+        atrasos: acc.atrasos + p.atrasos,
         saldoMs: acc.saldoMs + p.saldoMs,
       }),
       {
@@ -446,6 +504,7 @@ export class CentralJornadaService {
         faltas: 0,
         diasTac: 0,
         conflitos: 0,
+        atrasos: 0,
         saldoMs: 0,
       },
     );
@@ -463,6 +522,7 @@ export class CentralJornadaService {
     deslocamento = 0,
   ): Promise<{ periodo: CentralPeriodo; dias: CentralDiaDetalhe[] }> {
     const dados = await this.carregarCiclo(deslocamento);
+    const ficha = dados.pessoas.find((p) => p.id === colaboradorId);
     const { dias } = this.calcularPessoa(
       this.idsDaPessoa(colaboradorId, dados.fiscalIdsPorColaborador),
       dados.batidas as BatidaMin[],
@@ -471,6 +531,8 @@ export class CentralJornadaService {
       dados.inicio,
       dados.fimExclusivo,
       dados.limite,
+      ficha ?? FICHA_ESCALA_VAZIA,
+      dados.ancora,
     );
     return { periodo: this.montarPeriodo(dados.periodo, deslocamento), dias };
   }

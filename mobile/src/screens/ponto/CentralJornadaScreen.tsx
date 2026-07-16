@@ -186,6 +186,13 @@ export function CentralJornadaScreen(): React.ReactElement {
                     cor={VERMELHO}
                   />
                 )}
+                {resumo.dados.totais.atrasos > 0 && (
+                  <Metrica
+                    rotulo="Atrasos"
+                    valor={String(resumo.dados.totais.atrasos)}
+                    cor={AMARELO}
+                  />
+                )}
                 <Metrica
                   rotulo="Saldo"
                   valor={formatarSaldo(resumo.dados.totais.saldoMs)}
@@ -362,6 +369,9 @@ function PessoaCartao({
         {pessoa.conflitos > 0 && (
           <Selo texto={`Conflito: ${pessoa.conflitos}`} cor={VERMELHO} fundo="#FEECEC" />
         )}
+        {pessoa.atrasos > 0 && (
+          <Selo texto={`Atraso: ${pessoa.atrasos}`} cor={AMARELO} fundo="#FBF3DA" />
+        )}
       </View>
 
       {expandido && (
@@ -398,6 +408,12 @@ function PessoaCartao({
                   {d.conflitoAusencia && (
                     <Text style={styles.diaConflito}>
                       ⚠️ Também há falta/atestado marcado neste dia. Verifique qual está correto.
+                    </Text>
+                  )}
+                  {d.atrasoMinutos != null && (
+                    <Text style={styles.diaAtraso}>
+                      Atraso de {d.atrasoMinutos} min na entrada
+                      {d.entradaPrevista ? ` (turno ${d.entradaPrevista})` : ''}.
                     </Text>
                   )}
                 </View>
@@ -486,6 +502,7 @@ const styles = StyleSheet.create({
   diaIncompleto: { ...tipografia.legenda, color: VERMELHO, marginTop: 2, fontWeight: '600' },
   diaTac: { ...tipografia.legenda, color: AMARELO, marginTop: 2, fontWeight: '600' },
   diaConflito: { ...tipografia.legenda, color: VERMELHO, marginTop: 2, fontWeight: '600' },
+  diaAtraso: { ...tipografia.legenda, color: AMARELO, marginTop: 2, fontWeight: '600' },
   debitoBtn: {
     paddingHorizontal: espacamento.sm,
     paddingVertical: 6,

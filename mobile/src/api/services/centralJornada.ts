@@ -19,6 +19,8 @@ export interface CentralTotais {
   diasTac: number;
   /** Dias com conflito: bateu ponto E tem ausência marcada no mesmo dia. */
   conflitos: number;
+  /** Dias em que a entrada passou da tolerância do turno (atraso). */
+  atrasos: number;
   saldoMs: number;
 }
 
@@ -75,6 +77,10 @@ export interface CentralDiaDetalhe {
     statusJustificativa: string;
     debito: boolean;
   };
+  /** Horário de entrada esperado pela escala ("HH:mm"), quando há turno. */
+  entradaPrevista?: string | null;
+  /** Minutos de atraso na entrada além da tolerância (só quando houve atraso). */
+  atrasoMinutos?: number;
 }
 
 export interface CentralComparativo {
