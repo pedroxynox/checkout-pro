@@ -218,7 +218,13 @@ export class EscalaService {
         select: { id: true, login: true, nome: true },
       }),
       this.prisma.colaborador.findMany({
-        select: { id: true, nome: true, matricula: true, usuarioId: true },
+        select: {
+          id: true,
+          nome: true,
+          matricula: true,
+          usuarioId: true,
+          ativo: true,
+        },
       }),
     ]);
     const mapa = new Map<string, string>();
@@ -229,14 +235,22 @@ export class EscalaService {
     // Vínculo Fiscal → ficha única (colaborador), para nome canônico + perfil.
     const mapaCol = mapearFiscalColaborador(fiscais, usuarios, colaboradores);
 
-    return itens.map((it) => {
-      const col = mapaCol.get(it.funcionarioId);
-      return {
-        ...it,
-        nome: col?.nome ?? mapa.get(it.funcionarioId) ?? it.funcionarioId,
-        colaboradorId: col?.colaboradorId ?? null,
-        matricula: col?.matricula ?? null,
-      };
-    });
+    // Pessoas inativas (desligadas do quadro) NÃO aparecem na escala, mesmo que
+    // sua escala semanal ainda exista no banco. (No domingo já é filtrado.)
+    const inativos = new Set(
+      colaboradores.filter((c) => c.ativo === false).map((c) => c.id),
+    );
+
+    return itens
+      .map((it) => {
+        const col = mapaCol.get(it.funcionarioId);
+        return {
+          ...it,
+          nome: col?.nome ?? mapa.get(it.funcionarioId) ?? it.funcionarioId,
+          colaboradorId: col?.colaboradorId ?? null,
+          matricula: col?.matricula ?? null,
+        };
+      })
+      .filter((it) => !(it.colaboradorId && inativos.has(it.colaboradorId)));
   }
 }
