@@ -61,6 +61,9 @@ export const TODAS_FUNCIONALIDADES = [
   // Feedforward (acompanhamento de desenvolvimento no perfil do colaborador)
   'FEEDFORWARD_VISUALIZAR',
   'FEEDFORWARD_GERIR',
+  // Check-Outs (reportar avarias de equipamentos por caixa)
+  'CHECKOUTS',
+  'CHECKOUTS_GERENCIAR',
   // Pessoas e avisos
   'USUARIOS_CRUD',
   'NOTIFICACOES',
@@ -101,6 +104,8 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
   // corrige/remove batidas já registradas (isso exige PONTO_EDITAR).
   'PONTO_REGISTRAR',
   'PONTO_VISUALIZAR',
+  // Check-Outs: qualquer fiscal reporta avarias de equipamentos por caixa.
+  'CHECKOUTS',
   // Somente leitura do status de carga do dia, para o Briefing ter a MESMA
   // nota de saúde de gerentes/supervisores. Não abre nenhuma seção no menu do
   // fiscal (não há área associada a esta funcionalidade).
@@ -121,6 +126,8 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] = Object.free
   'ESCALA_EDITAR',
   'PONTO_EDITAR',
   'CENTRAL_JORNADA',
+  // Check-Outs: resolve as avarias reportadas pelos fiscais.
+  'CHECKOUTS_GERENCIAR',
   'CONTRATOS_VISUALIZAR',
   'FEEDFORWARD_VISUALIZAR',
   'FEEDFORWARD_GERIR',
@@ -170,6 +177,8 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
   'FISCAIS_STATUS',
   'FISCAIS_JORNADA',
   'CENTRAL_JORNADA',
+  'CHECKOUTS',
+  'CHECKOUTS_GERENCIAR',
   'PONTO_REGISTRAR',
   'PONTO_EDITAR',
   'PONTO_VISUALIZAR',

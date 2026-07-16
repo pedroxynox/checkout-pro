@@ -52,6 +52,9 @@ export type RootStackParamList = {
   ReiniciarDados: undefined;
   PerfilColaborador: { colaboradorId: string };
   Usuarios: undefined;
+  CheckOuts: undefined;
+  CheckOutDetalhe: { numero: number };
+  CheckOutsConfig: undefined;
   Permissoes: undefined;
   PermissoesUsuario: { usuarioId: string; login: string; nome?: string | null };
   PermissoesHistorico: undefined;
