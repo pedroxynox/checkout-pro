@@ -10,6 +10,7 @@ import {
 } from './ponto.domain';
 import { JornadaDiaResposta, PontoService } from './ponto.service';
 import {
+  BatidaDuplicadaError,
   HoraForaDoDiaError,
   HoraFuturaError,
   LimiteBatidasDiaError,
@@ -412,7 +413,12 @@ describe('PontoService — validações de pessoa, data e hora', () => {
 
   it('rejeita a quinta batida antes de gravar', async () => {
     const { prisma, service } = montar();
-    prisma.batidaPonto.count.mockResolvedValue(4);
+    prisma.batidaPonto.findMany.mockResolvedValue([
+      { hora: new Date('2026-07-10T07:00:00.000Z') },
+      { hora: new Date('2026-07-10T12:00:00.000Z') },
+      { hora: new Date('2026-07-10T14:00:00.000Z') },
+      { hora: new Date('2026-07-10T16:00:00.000Z') },
+    ]);
 
     await expect(
       service.registrarBatida(
@@ -426,17 +432,51 @@ describe('PontoService — validações de pessoa, data e hora', () => {
       ),
     ).rejects.toBeInstanceOf(LimiteBatidasDiaError);
 
-    expect(prisma.batidaPonto.count).toHaveBeenCalledWith({
-      where: {
-        pessoaId: 'colaborador-1',
-        tipoPessoa: 'OPERADOR',
-        data: new Date('2026-07-10T00:00:00.000Z'),
-      },
-    });
     expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
     expect(prisma.batidaPonto.create).not.toHaveBeenCalled();
+  });
+
+  it('rejeita uma batida duplicada (mesma hora ou próxima demais)', async () => {
+    const { prisma, service } = montar();
+    // Já existe uma batida às 08:00; a nova às 08:01 fica dentro da janela.
+    prisma.batidaPonto.findMany.mockResolvedValue([
+      { hora: new Date('2026-07-10T08:00:00.000Z') },
+    ]);
+
+    await expect(
+      service.registrarBatida(
+        {
+          pessoaId: 'colaborador-1',
+          tipoPessoa: 'OPERADOR',
+          data: '2026-07-10',
+          hora: '2026-07-10T08:01:00.000Z',
+        },
+        usuario,
+      ),
+    ).rejects.toBeInstanceOf(BatidaDuplicadaError);
+
+    expect(prisma.batidaPonto.create).not.toHaveBeenCalled();
+  });
+
+  it('aceita uma batida distante o suficiente da existente', async () => {
+    const { prisma, service } = montar();
+    prisma.batidaPonto.findMany.mockResolvedValue([
+      { hora: new Date('2026-07-10T08:00:00.000Z') },
+    ]);
+
+    await service.registrarBatida(
+      {
+        pessoaId: 'colaborador-1',
+        tipoPessoa: 'OPERADOR',
+        data: '2026-07-10',
+        hora: '2026-07-10T12:00:00.000Z',
+      },
+      usuario,
+    );
+
+    expect(prisma.batidaPonto.create).toHaveBeenCalledTimes(1);
   });
 
   it('expõe o tipo canônico ao ler duas batidas históricas curtas', async () => {
@@ -621,6 +661,29 @@ describe('PontoService — validações de pessoa, data e hora', () => {
     ).rejects.toBeInstanceOf(HoraForaDoDiaError);
   });
 
+  it('rejeita corrigir a hora para colidir com outra batida do dia', async () => {
+    const { prisma, service } = montar();
+    prisma.batidaPonto.findUnique.mockResolvedValue({
+      id: 'batida-1',
+      pessoaId: 'colaborador-1',
+      tipoPessoa: 'OPERADOR',
+      data: new Date('2026-07-10T00:00:00.000Z'),
+      hora: new Date('2026-07-10T08:00:00.000Z'),
+      tipo: 'ENTRADA',
+    });
+    // Outra batida do dia (excluída a própria) às 12:00; a correção para 12:01
+    // cai dentro da janela mínima.
+    prisma.batidaPonto.findMany.mockResolvedValue([
+      { hora: new Date('2026-07-10T12:00:00.000Z') },
+    ]);
+
+    await expect(
+      service.editarBatida('batida-1', {
+        hora: '2026-07-10T12:01:00.000Z',
+      }),
+    ).rejects.toBeInstanceOf(BatidaDuplicadaError);
+  });
+
   it('aplica a data inicial também ao excluir uma batida', async () => {
     const { prisma, validacaoData, service } = montar();
     const batida = {
@@ -673,5 +736,123 @@ describe('PontoService — validações de pessoa, data e hora', () => {
         colaboradorId: 'col-ana',
       },
     ]);
+  });
+});
+
+describe('PontoService — operação atômica e ponte de fiscal', () => {
+  const usuario = { sub: 'gestor', nome: 'Gestor' } as UsuarioAutenticado;
+
+  function montarComFiscal() {
+    const fiscais = {
+      reescreverRegistrosDoDia: jest.fn().mockResolvedValue(undefined),
+      publicarStatusDoDia: jest.fn().mockResolvedValue(undefined),
+    };
+    const prisma = {
+      $transaction: jest.fn(),
+      fiscal: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'fiscal-1',
+          nome: 'Ana Fiscal',
+          usuarioId: 'usuario-fiscal',
+        }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      usuario: {
+        findUnique: jest.fn().mockResolvedValue({ login: 'ANA' }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      colaborador: {
+        findUnique: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue({ id: 'colaborador-fiscal' }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      batidaPonto: {
+        create: jest.fn().mockResolvedValue({}),
+        // Uma batida de entrada já registrada às 07:00 (a nova vem às 12:00).
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'b1',
+            hora: new Date('2026-07-10T07:00:00.000Z'),
+            tipo: 'ENTRADA',
+          },
+        ]),
+        findUnique: jest.fn(),
+        update: jest.fn().mockResolvedValue({}),
+        delete: jest.fn().mockResolvedValue({}),
+      },
+    };
+    prisma.$transaction.mockImplementation(
+      (operacao: (tx: typeof prisma) => unknown) => operacao(prisma),
+    );
+    const validacaoData = {
+      exigirDataPermitida: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = new PontoService(
+      prisma as never,
+      validacaoData as never,
+      fiscais as never,
+      undefined,
+      undefined,
+      undefined,
+    );
+    return { prisma, fiscais, service };
+  }
+
+  it('reescreve o log do fiscal com o cliente da transação e publica só após o commit', async () => {
+    const { prisma, fiscais, service } = montarComFiscal();
+
+    await service.registrarBatida(
+      {
+        pessoaId: 'fiscal-1',
+        tipoPessoa: 'FISCAL',
+        data: '2026-07-10',
+        hora: '2026-07-10T12:00:00.000Z',
+      },
+      usuario,
+    );
+
+    // A reescrita do log ocorre DENTRO da transação: recebe o cliente tx.
+    expect(fiscais.reescreverRegistrosDoDia).toHaveBeenCalledTimes(1);
+    const [clienteTx, fiscalId, dia, transicoes] =
+      fiscais.reescreverRegistrosDoDia.mock.calls[0];
+    expect(clienteTx).toBe(prisma);
+    expect(fiscalId).toBe('fiscal-1');
+    expect(dia).toEqual(new Date('2026-07-10T00:00:00.000Z'));
+    // A entrada 07:00 (Brasília) vira DISPONIVEL às 10:00 UTC real (+3h).
+    expect(transicoes).toEqual([
+      { status: 'DISPONIVEL', em: new Date('2026-07-10T10:00:00.000Z') },
+    ]);
+
+    // A publicação em tempo real acontece com as mesmas transições…
+    expect(fiscais.publicarStatusDoDia).toHaveBeenCalledWith(
+      'fiscal-1',
+      transicoes,
+    );
+    // …e SOMENTE depois de reescrever (pós-commit).
+    expect(
+      fiscais.publicarStatusDoDia.mock.invocationCallOrder[0],
+    ).toBeGreaterThan(
+      fiscais.reescreverRegistrosDoDia.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('uma falha ao publicar em tempo real não derruba a batida já gravada', async () => {
+    const { prisma, fiscais, service } = montarComFiscal();
+    fiscais.publicarStatusDoDia.mockRejectedValue(new Error('ws indisponível'));
+
+    await expect(
+      service.registrarBatida(
+        {
+          pessoaId: 'fiscal-1',
+          tipoPessoa: 'FISCAL',
+          data: '2026-07-10',
+          hora: '2026-07-10T12:00:00.000Z',
+        },
+        usuario,
+      ),
+    ).resolves.toBeDefined();
+
+    // A batida foi persistida (commit) mesmo com o WebSocket falhando.
+    expect(prisma.batidaPonto.create).toHaveBeenCalledTimes(1);
   });
 });

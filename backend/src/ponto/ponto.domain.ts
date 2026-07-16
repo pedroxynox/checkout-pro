@@ -37,6 +37,28 @@ export const INTERVALO_MINIMO_MS = 3_600_000; // 1h — abaixo disso é TAC
 export const INTERVALO_MAXIMO_MS = 10_800_000; // 3h — acima disso é TAC
 /** Jornada que pode ser encerrada sem intervalo no contrato 6x1–2x1. */
 export const MAX_TRABALHO_SEM_INTERVALO_MS = 4 * 60 * 60_000 + 50 * 60_000; // 4h50
+/**
+ * Distância mínima entre duas batidas da mesma pessoa no dia. Abaixo dela a
+ * nova batida é tratada como duplicada (toque duplo, reenvio ou sincronização
+ * repetida): no contrato 6x1–2x1 duas marcações legítimas nunca ficam a poucos
+ * minutos uma da outra (o menor intervalo real, mesmo irregular, é bem maior),
+ * então a janela pega apenas repetições acidentais sem barrar registros válidos.
+ */
+export const INTERVALO_MINIMO_ENTRE_BATIDAS_MS = 2 * 60_000; // 2 min
+
+/**
+ * true se `horaMs` está a menos de `intervaloMinimoMs` de alguma das horas já
+ * registradas (horas iguais ou próximas demais). Puro e sem efeitos colaterais.
+ */
+export function batidaDuplicada(
+  horaMs: number,
+  horasExistentesMs: readonly number[],
+  intervaloMinimoMs: number = INTERVALO_MINIMO_ENTRE_BATIDAS_MS,
+): boolean {
+  return horasExistentesMs.some(
+    (existente) => Math.abs(existente - horaMs) < intervaloMinimoMs,
+  );
+}
 
 /** Etapas crescentes dos avisos preventivos/de TAC. */
 export type EtapaAlertaTac = 'RISCO_1H30' | 'RISCO_1H40' | 'TAC';

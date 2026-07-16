@@ -54,3 +54,15 @@ export class LimiteBatidasDiaError extends ErroDominio {
     super('Limite de 4 batidas atingido para esta pessoa neste dia.');
   }
 }
+
+/**
+ * Já existe uma batida no mesmo horário (ou muito próxima). Bloqueia toque
+ * duplo, reenvios e sincronizações repetidas.
+ */
+export class BatidaDuplicadaError extends ErroDominio {
+  readonly statusHttp = HttpStatus.CONFLICT;
+
+  constructor() {
+    super('Já existe uma batida nesse horário. Verifique se não é repetida.');
+  }
+}

@@ -7,6 +7,7 @@ import {
   type EtapaAlertaTac,
   StatusJornadaPonto,
   TipoBatida,
+  batidaDuplicada,
   calcularJornadaDia,
   classificarBatidas,
   etapaAlertaTac,
@@ -22,6 +23,7 @@ import { FeriadosService } from '../feriados/feriados.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 import {
+  BatidaDuplicadaError,
   DataHoraPontoInvalidaError,
   HoraForaDoDiaError,
   HoraFuturaError,
@@ -29,6 +31,9 @@ import {
   PessoaPontoInativaError,
   PessoaPontoNaoEncontradaError,
 } from './ponto.errors';
+
+/** Transição de status do fiscal derivada de uma batida (em UTC real). */
+type TransicaoFiscal = { status: StatusFiscal; em: Date };
 
 // As batidas são gravadas com a HORA DO COMPROVANTE (hora de parede de Brasília)
 // rotulada como UTC (ex.: "09:00" → "...T09:00:00Z"). Para medir o segmento
@@ -325,18 +330,30 @@ export class PontoService {
       registradoPorNome: usuario.nome ?? null,
     };
 
-    // SERIALIZABLE transforma count + create + reclassificação em uma única
-    // decisão por pessoa/dia. Se duas solicitações disputarem a 4ª vaga, o
-    // PostgreSQL aborta uma delas (P2034); no retry ela já encontra quatro e
-    // recebe LimiteBatidasDiaError, portanto uma 5ª batida não é persistida.
-    await this.transacaoSerializavel(async (tx) => {
-      const totalBatidas = await tx.batidaPonto.count({
+    // Uma única operação atômica (SERIALIZABLE): ler o dia, validar limite e
+    // duplicidade, gravar, reordenar e reescrever o log do fiscal. Se duas
+    // solicitações disputarem a mesma vaga/horário, o PostgreSQL aborta uma
+    // delas (P2034); no retry ela já vê o estado atualizado e é recusada,
+    // então nunca há 5ª batida nem duplicada persistida. A publicação em tempo
+    // real e os avisos ficam FORA da transação (efeitos externos, pós-commit).
+    const transicoes = await this.transacaoSerializavel(async (tx) => {
+      const batidasDoDia = await tx.batidaPonto.findMany({
         where: { pessoaId: dto.pessoaId, tipoPessoa, data: dia },
+        select: { hora: true },
       });
-      if (totalBatidas >= 4) throw new LimiteBatidasDiaError();
+      if (batidasDoDia.length >= 4) throw new LimiteBatidasDiaError();
+      if (
+        batidaDuplicada(
+          hora.getTime(),
+          batidasDoDia.map((b) => b.hora.getTime()),
+        )
+      ) {
+        throw new BatidaDuplicadaError();
+      }
 
       await tx.batidaPonto.create({ data: dadosBatida });
       await this.reclassificarNoCliente(tx, dto.pessoaId, tipoPessoa, dia);
+      return this.sincronizarFiscalNoCliente(tx, dto.pessoaId, tipoPessoa, dia);
     });
     // Aprende o vínculo "nome lido → pessoa" quando a batida veio do leitor,
     // para reconhecer a pessoa na hora nas próximas leituras. Best-effort: uma
@@ -344,7 +361,7 @@ export class PontoService {
     if (dto.origem === 'LEITOR' && dto.nomeLido) {
       await this.aprenderAlias({ ...dto, colaboradorId }, tipoPessoa);
     }
-    await this.sincronizarStatusFiscal(dto.pessoaId, tipoPessoa, dia);
+    await this.publicarStatusFiscal(dto.pessoaId, transicoes);
     const resposta = await this.jornadaDoDia(dto.pessoaId, tipoPessoa, dia);
     // Avisa a supervisão/gerência ao entrar em risco de TAC ou em TAC.
     await this.avisarAlertaTacSeNecessario(
@@ -601,11 +618,30 @@ export class PontoService {
       data.hora = hora;
     }
     if (dto.tipo) data.tipo = dto.tipo;
-    await this.transacaoSerializavel(async (tx) => {
+    // Operação atômica: aplica a correção, valida duplicidade, reordena (só se
+    // a hora mudou, para não sobrescrever um tipo corrigido à mão) e reescreve
+    // o log do fiscal na mesma transação.
+    const transicoes = await this.transacaoSerializavel(async (tx) => {
       await tx.batidaPonto.update({ where: { id }, data });
-      // Se a hora mudou, a ordem do dia pode ter mudado → reclassifica dentro
-      // da mesma transação para não disputar com registros ou exclusões.
       if (dto.hora) {
+        const horaCorrigida = this.dataValida(dto.hora);
+        const outras = await tx.batidaPonto.findMany({
+          where: {
+            pessoaId: batida.pessoaId,
+            tipoPessoa: batida.tipoPessoa,
+            data: inicioDoDia(batida.data),
+            id: { not: id },
+          },
+          select: { hora: true },
+        });
+        if (
+          batidaDuplicada(
+            horaCorrigida.getTime(),
+            outras.map((b) => b.hora.getTime()),
+          )
+        ) {
+          throw new BatidaDuplicadaError();
+        }
         await this.reclassificarNoCliente(
           tx,
           batida.pessoaId,
@@ -613,12 +649,14 @@ export class PontoService {
           batida.data,
         );
       }
+      return this.sincronizarFiscalNoCliente(
+        tx,
+        batida.pessoaId,
+        batida.tipoPessoa,
+        batida.data,
+      );
     });
-    await this.sincronizarStatusFiscal(
-      batida.pessoaId,
-      batida.tipoPessoa,
-      batida.data,
-    );
+    await this.publicarStatusFiscal(batida.pessoaId, transicoes);
     return this.jornadaDoDia(batida.pessoaId, batida.tipoPessoa, batida.data);
   }
 
@@ -626,7 +664,7 @@ export class PontoService {
   async removerBatida(id: string): Promise<JornadaDiaResposta> {
     const batida = await this.buscarOuFalhar(id);
     await this.validacaoData.exigirDataPermitida(batida.data);
-    await this.transacaoSerializavel(async (tx) => {
+    const transicoes = await this.transacaoSerializavel(async (tx) => {
       await tx.batidaPonto.delete({ where: { id } });
       await this.reclassificarNoCliente(
         tx,
@@ -634,12 +672,14 @@ export class PontoService {
         batida.tipoPessoa,
         batida.data,
       );
+      return this.sincronizarFiscalNoCliente(
+        tx,
+        batida.pessoaId,
+        batida.tipoPessoa,
+        batida.data,
+      );
     });
-    await this.sincronizarStatusFiscal(
-      batida.pessoaId,
-      batida.tipoPessoa,
-      batida.data,
-    );
+    await this.publicarStatusFiscal(batida.pessoaId, transicoes);
     return this.jornadaDoDia(batida.pessoaId, batida.tipoPessoa, batida.data);
   }
 
@@ -727,24 +767,27 @@ export class PontoService {
   }
 
   /**
-   * Ponte batidas → status do fiscal. Só para pessoas do tipo FISCAL: converte
-   * as batidas do dia em transições de status (DISPONIVEL/INTERVALO/
-   * FORA_EXPEDIENTE) e reescreve o log de fiscais desse dia. Assim o painel, o
-   * perfil e os avisos — que leem `RegistroPontoFiscal` — passam a refletir as
-   * batidas do relógio, sem os botões manuais.
+   * Ponte batidas → status do fiscal, DENTRO da transação. Só para pessoas do
+   * tipo FISCAL: converte as batidas do dia (já reordenadas) em transições de
+   * status (DISPONIVEL/INTERVALO/FORA_EXPEDIENTE) e reescreve o log de fiscais
+   * desse dia usando o mesmo cliente transacional. Assim o painel, o perfil e
+   * os avisos — que leem `RegistroPontoFiscal` — refletem exatamente as
+   * batidas, sem estados parciais. Devolve as transições para a publicação em
+   * tempo real ser feita só após o commit (ou null quando não há ponte).
    *
    * A hora da batida é horário de Brasília rotulado Z; somamos 3h para gravar o
    * instante em UTC real, alinhado ao `new Date()` usado no cálculo de jornada.
    */
-  private async sincronizarStatusFiscal(
+  private async sincronizarFiscalNoCliente(
+    cliente: Prisma.TransactionClient,
     pessoaId: string,
-    tipoPessoa: string,
+    tipoPessoa: 'FISCAL' | 'OPERADOR',
     data: Date,
-  ): Promise<void> {
-    if (tipoPessoa !== 'FISCAL' || !this.fiscais) return;
+  ): Promise<TransicaoFiscal[] | null> {
+    if (tipoPessoa !== 'FISCAL' || !this.fiscais) return null;
 
     const dia = inicioDoDia(data);
-    const batidas = await this.prisma.batidaPonto.findMany({
+    const batidas = await cliente.batidaPonto.findMany({
       where: { pessoaId, tipoPessoa: 'FISCAL', data: dia },
       orderBy: { hora: 'asc' },
     });
@@ -752,7 +795,7 @@ export class PontoService {
       batidas.map((b) => ({ id: b.id, hora: b.hora })),
     );
 
-    const transicoes: { status: StatusFiscal; em: Date }[] = [];
+    const transicoes: TransicaoFiscal[] = [];
     for (const c of classificadas) {
       const status = statusFiscalDeTipoBatida(c.tipo);
       if (!status) continue;
@@ -762,7 +805,32 @@ export class PontoService {
       });
     }
 
-    await this.fiscais.aplicarTransicoesDoDia(pessoaId, dia, transicoes);
+    await this.fiscais.reescreverRegistrosDoDia(
+      cliente,
+      pessoaId,
+      dia,
+      transicoes,
+    );
+    return transicoes;
+  }
+
+  /**
+   * Propaga em tempo real o status resultante do fiscal, APÓS o commit. Fora da
+   * transação para não anunciar um status que um rollback poderia desfazer.
+   * Best-effort: no-op quando não há ponte de fiscal (`transicoes` null).
+   */
+  private async publicarStatusFiscal(
+    pessoaId: string,
+    transicoes: TransicaoFiscal[] | null,
+  ): Promise<void> {
+    if (!transicoes || !this.fiscais) return;
+    try {
+      await this.fiscais.publicarStatusDoDia(pessoaId, transicoes);
+    } catch {
+      // Best-effort: a batida já foi persistida no commit; uma falha ao
+      // propagar o status em tempo real não deve derrubar a requisição (o
+      // painel se atualiza no próximo refresh/evento).
+    }
   }
 
   private async buscarOuFalhar(id: string): Promise<BatidaPonto> {

@@ -1,5 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { Fiscal } from '@prisma/client';
+import { Fiscal, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
@@ -250,15 +250,17 @@ export class FiscaisService {
   }
 
   /**
-   * Substitui os registros de ponto de um fiscal no dia pelas transições
-   * derivadas das batidas do Registro de Ponto (ponte batidas → status).
-   *
-   * Reescreve o log do dia (apaga e recria) para que painel, perfil e crons —
-   * que leem `RegistroPontoFiscal` — reflitam exatamente as batidas, sem
-   * duplicar. Propaga o status resultante em tempo real. `em` de cada transição
-   * já vem em UTC real (a ponte converte a hora da batida).
+   * Reescreve (apaga e recria) o log de ponto de um fiscal no dia a partir das
+   * transições derivadas das batidas do Registro de Ponto (ponte batidas →
+   * status), usando o `cliente` transacional recebido. Fica DENTRO da mesma
+   * transação que grava/ordena as batidas: assim guardar, ordenar, recalcular
+   * e sincronizar formam uma única operação atômica, sem estados parciais entre
+   * `batidas_ponto` e `registros_ponto_fiscal`. A propagação em tempo real fica
+   * separada em `publicarStatusDoDia`, chamada só após o commit. `em` de cada
+   * transição já vem em UTC real (a ponte converte a hora da batida).
    */
-  async aplicarTransicoesDoDia(
+  async reescreverRegistrosDoDia(
+    cliente: Prisma.TransactionClient,
     fiscalId: string,
     dia: Date,
     transicoes: { status: StatusFiscal; em: Date }[],
@@ -267,29 +269,37 @@ export class FiscaisService {
     const ordenadas = [...transicoes].sort(
       (a, b) => a.em.getTime() - b.em.getTime(),
     );
+    await cliente.registroPontoFiscal.deleteMany({ where: { fiscalId, data } });
+    if (ordenadas.length > 0) {
+      await cliente.registroPontoFiscal.createMany({
+        data: ordenadas.map((t) => ({
+          fiscalId,
+          status: t.status,
+          data,
+          em: t.em,
+        })),
+      });
+    }
+  }
 
-    await this.prisma.$transaction([
-      this.prisma.registroPontoFiscal.deleteMany({ where: { fiscalId, data } }),
-      ...(ordenadas.length > 0
-        ? [
-            this.prisma.registroPontoFiscal.createMany({
-              data: ordenadas.map((t) => ({
-                fiscalId,
-                status: t.status,
-                data,
-                em: t.em,
-              })),
-            }),
-          ]
-        : []),
-    ]);
-
-    // Tempo real: propaga o status resultante (o do último registro do dia).
+  /**
+   * Propaga em tempo real (WebSocket) o status resultante do dia — o do último
+   * registro. Chamada DEPOIS do commit da transação que reescreveu o log, para
+   * não anunciar um status que poderia ser desfeito por um rollback.
+   */
+  async publicarStatusDoDia(
+    fiscalId: string,
+    transicoes: { status: StatusFiscal; em: Date }[],
+  ): Promise<void> {
+    if (!this.eventos) return;
+    const ordenadas = [...transicoes].sort(
+      (a, b) => a.em.getTime() - b.em.getTime(),
+    );
     const fiscal = await this.prisma.fiscal.findUnique({
       where: { id: fiscalId },
     });
     const ultimo = ordenadas[ordenadas.length - 1] ?? null;
-    this.eventos?.publicar({
+    this.eventos.publicar({
       fiscalId,
       primeiroNome: primeiroNome(fiscal?.nome ?? ''),
       status: ultimo?.status ?? 'FORA_EXPEDIENTE',
