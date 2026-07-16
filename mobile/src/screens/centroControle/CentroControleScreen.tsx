@@ -40,6 +40,7 @@ const ITENS: ItemControle[] = [
     titulo: 'Rodízio de domingo',
     descricao: 'Ponto de partida do rodízio de grupos (G1/G2/G3) no domingo',
     icone: 'calendar-outline',
+    funcionalidade: 'ESCALA_DOMINGO_CONFIG',
   },
   {
     rota: 'CentralVendas',

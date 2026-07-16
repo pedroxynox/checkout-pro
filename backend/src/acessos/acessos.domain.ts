@@ -87,7 +87,9 @@ export const TODAS_FUNCIONALIDADES = [
   'ALERTAS_FILA',
   'NORMATIVAS',
   'INDICADOR_QUEBRA',
-  // Administração de dados (zerar/limpar) — só desenvolvedor
+  // Configuração do rodízio de domingo (Centro de Controle) — só administrador.
+  'ESCALA_DOMINGO_CONFIG',
+  // Administração de dados (zerar/limpar) — só administrador
   'ADMIN_DADOS',
 ] as const;
 
@@ -127,9 +129,11 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
 ]);
 
 /**
- * Funcionalidades liberadas ao perfil SUPERVISOR: tudo do fiscal + cadastro de
- * operadores, gestão de requisições e o **Fechamento** (status dos arquivos do
- * dia). Permanece exclusiva do gerente a gestão de pessoas/acessos.
+ * Funcionalidades liberadas ao perfil SUPERVISOR: tudo do fiscal + gestão de
+ * requisições, o **Fechamento** (status dos arquivos do dia), a edição de
+ * escala/batidas e a Central de Jornada. NÃO acessa o **Centro de Controle**
+ * (cadastro de colaboradores, metas, relatórios, etc.), que é exclusivo de
+ * gerente/administrador.
  */
 export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] =
   Object.freeze([
@@ -137,7 +141,6 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] =
     // Painel de vendas: o supervisor visualiza (o fiscal não vê mais). A edição
     // (PAINEL_VENDAS_EDITAR) permanece exclusiva de gerente/administrador.
     'PAINEL_VENDAS_VISUALIZAR',
-    'OPERADORES_CRUD',
     'INSUMOS_GERENCIAR',
     'FECHAMENTO',
     // Edição da escala (o fiscal só visualiza).
@@ -172,13 +175,16 @@ const FUNCIONALIDADES_IMPORTADOR_SET = new Set<string>(
 );
 
 /**
- * Funcionalidades liberadas ao perfil GERENTE. Pode **ver tudo** e executar a
- * operação e a gestão do dia a dia, incluindo cadastro de operadores, gestão de
- * usuários, edição de escala, correção de batidas e a gestão do lote APAE.
- * - NÃO inclui apenas `ADMIN_DADOS` (zerar/limpar dados), que continua exclusivo
- *   do ADMINISTRADOR (acesso total).
+ * Funcionalidades liberadas ao perfil GERENTE. Executa a operação e a gestão do
+ * dia a dia, incluindo o Centro de Controle nas ferramentas de gestão (cadastro
+ * de colaboradores, metas, central de vendas e relatórios), edição de escala,
+ * correção de batidas e a gestão do lote APAE.
+ * - NÃO inclui as ferramentas exclusivas do ADMINISTRADOR dentro do Centro de
+ *   Controle: `USUARIOS_CRUD` (definir acessos ao app), `ESCALA_DOMINGO_CONFIG`
+ *   (rodízio de domingo), `IMPORTACOES` (carregar arquivos do dia) e
+ *   `ADMIN_DADOS` (zerar/limpar dados operacionais/insumos).
  * - A alteração de status de fiscal não é por funcionalidade: só o próprio
- *   fiscal (do seu status) ou o desenvolvedor podem alterar (ver FiscaisController).
+ *   fiscal (do seu status) ou o administrador podem alterar (ver FiscaisController).
  */
 export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
   [
@@ -210,8 +216,9 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
     'PONTO_REGISTRAR',
     'PONTO_EDITAR',
     'PONTO_VISUALIZAR',
-    // Gestão de pessoas com acesso (login) e do lote APAE.
-    'USUARIOS_CRUD',
+    // Cadastro de colaboradores (Centro de Controle ▸ Colaboradores) e gestão do
+    // lote APAE. A gestão de ACESSOS (USUARIOS_CRUD) NÃO pertence ao gerente:
+    // definir quem acessa o app é exclusivo do administrador.
     'LOTE_APAE_GERENCIAR',
     // Contratos de experiência: o gerente visualiza e decide os marcos.
     'CONTRATOS_VISUALIZAR',

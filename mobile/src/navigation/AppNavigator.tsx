@@ -232,11 +232,6 @@ export function AppNavigator(): React.ReactElement {
             options={{ title: 'Metas' }}
           />
           <Stack.Screen
-            name="ConfigEscalaDomingo"
-            component={ConfigEscalaDomingoScreen}
-            options={{ title: 'Rodízio de domingo' }}
-          />
-          <Stack.Screen
             name="CentralVendas"
             component={CentralVendasScreen}
             options={{ title: 'Central de Vendas' }}
@@ -247,6 +242,13 @@ export function AppNavigator(): React.ReactElement {
             options={{ title: 'Não reconhecidos' }}
           />
         </>
+      )}
+      {podeAcessar('ESCALA_DOMINGO_CONFIG') && (
+        <Stack.Screen
+          name="ConfigEscalaDomingo"
+          component={ConfigEscalaDomingoScreen}
+          options={{ title: 'Rodízio de domingo' }}
+        />
       )}
       {podeAcessar('USUARIOS_CRUD') && (
         <Stack.Screen

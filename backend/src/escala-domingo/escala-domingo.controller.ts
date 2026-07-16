@@ -14,7 +14,8 @@ import {
  * Controller do rodízio de domingo (`config/escala-domingo`).
  *
  * - `GET`: leitura autenticada (âncora + preview dos próximos domingos).
- * - `PUT`: define o ponto de partida (restrito a `OPERADORES_CRUD` — gestor).
+ * - `PUT`: define o ponto de partida (restrito a `ESCALA_DOMINGO_CONFIG` — só
+ *   administrador).
  */
 @Controller('config/escala-domingo')
 export class EscalaDomingoController {
@@ -26,9 +27,9 @@ export class EscalaDomingoController {
     return this.service.obter();
   }
 
-  /** Define o rodízio: referência + ordem do ciclo (somente gestor). */
+  /** Define o rodízio: referência + ordem do ciclo (somente administrador). */
   @Put()
-  @Funcionalidade('OPERADORES_CRUD')
+  @Funcionalidade('ESCALA_DOMINGO_CONFIG')
   definir(
     @Body() dto: DefinirAncoraDomingoDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
