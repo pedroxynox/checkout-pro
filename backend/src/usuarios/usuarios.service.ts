@@ -100,9 +100,16 @@ export class UsuariosService {
   }
 
   /**
-   * Remove um usuário. Impede a auto-exclusão do solicitante. Remove primeiro
-   * as notificações (relação obrigatória); demais relações são opcionais e
-   * ficam com referência nula.
+   * Remove um usuário (revoga o acesso). Impede a auto-exclusão do solicitante.
+   *
+   * Além de apagar a conta e suas notificações (relação obrigatória), LIMPA o
+   * vínculo na ficha do colaborador. Isso é necessário porque `Colaborador.
+   * usuarioId` é um escalar solto (sem FK), então NÃO é ajustado automaticamente
+   * ao remover o `Usuario` — sem esta limpeza, a ficha ficaria apontando para uma
+   * conta inexistente ("vínculo fantasma"), o que quebra a edição do colaborador
+   * e a reconcessão de acesso depois. As demais relações (Fiscal, importações,
+   * movimentos) têm FK opcional e ficam com referência nula automaticamente; o
+   * registro de Fiscal em si é preservado (histórico de escala/jornada).
    */
   async remover(id: string, solicitanteId: string): Promise<void> {
     if (id === solicitanteId) {
@@ -115,6 +122,11 @@ export class UsuariosService {
     // JwtAuthGuard já rejeita qualquer token existente dele, pois o findUnique
     // por id retorna null (usuário inexistente => sessão inválida).
     await this.prisma.$transaction([
+      // Desfaz o vínculo "fantasma" na ficha do colaborador (escalar sem FK).
+      this.prisma.colaborador.updateMany({
+        where: { usuarioId: id },
+        data: { usuarioId: null },
+      }),
       this.prisma.notificacao.deleteMany({ where: { usuarioId: id } }),
       this.prisma.usuario.delete({ where: { id } }),
     ]);
