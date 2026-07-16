@@ -1,11 +1,13 @@
 import fc from 'fast-check';
 import {
   ALERTA_EXTRAS_MS,
+  INTERVALO_MINIMO_ENTRE_BATIDAS_MS,
   LIMITE_EXTRAS_MS,
   MAX_TRABALHO_SEM_INTERVALO_MS,
   RISCO_TAC_1H30_MS,
   RISCO_TAC_1H40_MS,
   BatidaEntrada,
+  batidaDuplicada,
   calcularJornadaDia,
   classificarBatidas,
   etapaAlertaTac,
@@ -346,5 +348,36 @@ describe('statusFiscalDeJornada (colaboradores no painel de jornada)', () => {
     expect(statusFiscalDeJornada('ENCERRADO')).toBe('FORA_EXPEDIENTE');
     expect(statusFiscalDeJornada('INCOMPLETO')).toBe('FORA_EXPEDIENTE');
     expect(statusFiscalDeJornada('SEM_REGISTRO')).toBe('FORA_EXPEDIENTE');
+  });
+});
+
+describe('batidaDuplicada', () => {
+  const base = new Date('2025-06-02T08:00:00Z').getTime();
+
+  it('sem batidas existentes nunca é duplicada', () => {
+    expect(batidaDuplicada(base, [])).toBe(false);
+  });
+
+  it('mesma hora é duplicada', () => {
+    expect(batidaDuplicada(base, [base])).toBe(true);
+  });
+
+  it('dentro da janela mínima (1 min) é duplicada', () => {
+    expect(batidaDuplicada(base + 60_000, [base])).toBe(true);
+  });
+
+  it('exatamente na janela mínima já é permitida', () => {
+    expect(
+      batidaDuplicada(base + INTERVALO_MINIMO_ENTRE_BATIDAS_MS, [base]),
+    ).toBe(false);
+  });
+
+  it('bem distante (horas) é permitida', () => {
+    expect(batidaDuplicada(base + 4 * 3_600_000, [base])).toBe(false);
+  });
+
+  it('compara contra todas as batidas existentes', () => {
+    const horas = [base, base + 4 * 3_600_000];
+    expect(batidaDuplicada(base + 4 * 3_600_000 + 30_000, horas)).toBe(true);
   });
 });

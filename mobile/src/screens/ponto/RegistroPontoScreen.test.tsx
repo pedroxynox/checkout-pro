@@ -10,6 +10,7 @@ import {
 } from '@testing-library/react-native';
 import React from 'react';
 import { RegistroPontoScreen } from './RegistroPontoScreen';
+import { ApiError } from '../../api/client';
 
 // Sem NavigationContainer no teste: mocka o hook de navegação (só usamos o
 // atalho para a Central de Jornada, que não é exercitado aqui).
@@ -154,6 +155,33 @@ describe('RegistroPontoScreen', () => {
     expect(screen.queryByText('Registrar batida')).toBeNull();
     expect(screen.getByText('Entrada')).toBeTruthy();
     expect(screen.getByText('Encerramento')).toBeTruthy();
+  });
+
+  it('mostra a mensagem do backend quando a batida é recusada por duplicidade', async () => {
+    pontoService.registrarBatida.mockRejectedValue(
+      new ApiError(
+        409,
+        'Já existe uma batida nesse horário. Verifique se não é repetida.',
+      ),
+    );
+
+    render(<RegistroPontoScreen />);
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Digite o nome…'),
+      'Ana',
+    );
+    fireEvent.press(await screen.findByText('Ana Souza'));
+    await screen.findByText('Jornada do dia');
+
+    fireEvent.press(screen.getByText('Registrar batida'));
+    fireEvent.changeText(screen.getByPlaceholderText('07:56'), '0800');
+    fireEvent.press(screen.getByText('Registrar'));
+
+    expect(
+      await screen.findByText(
+        'Já existe uma batida nesse horário. Verifique se não é repetida.',
+      ),
+    ).toBeTruthy();
   });
 
   it('lê o comprovante, sugere o colaborador e pré-preenche a hora', async () => {
