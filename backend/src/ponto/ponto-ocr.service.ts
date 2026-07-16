@@ -44,6 +44,10 @@ export interface AlvoAlias {
 const LIMIAR_CANDIDATO = 0.4;
 // Tamanho mínimo do texto lido para virar um alias (evita lixo curto).
 const MIN_TEXTO_ALIAS = 4;
+// Confirmações repetidas de uma pessoa DIFERENTE necessárias para substituir
+// uma associação já aprendida. Uma seleção isolada (1 confirmação) nunca troca
+// a associação vigente — evita que um engano pontual se propague.
+const CONFIRMACOES_PARA_TROCAR = 2;
 
 /**
  * Interpreta o comprovante (Fase B): recebe o **texto já lido no aparelho**
@@ -186,25 +190,95 @@ export class PontoOcrService {
    * Memoriza que um nome lido corresponde à pessoa confirmada pelo usuário.
    * Chamado ao registrar uma batida vinda do leitor (origem LEITOR). Assim a
    * próxima leitura do mesmo comprovante reconhece a pessoa na hora.
+   *
+   * O aprendizado é **apoio, não confirmação definitiva**: uma associação já
+   * aprendida só é trocada por outra pessoa depois de `CONFIRMACOES_PARA_TROCAR`
+   * confirmações repetidas da MESMA nova pessoa. Uma seleção isolada (ou uma
+   * confirmação avulsa de alguém diferente) fica apenas registrada como
+   * "desafiante pendente" e NÃO substitui a associação vigente — assim um
+   * engano pontual não se propaga para as próximas leituras.
    */
   async aprenderAlias(nomeLido: string, alvo: AlvoAlias): Promise<void> {
     const textoNome = normalizarTexto(nomeLido);
     if (textoNome.length < MIN_TEXTO_ALIAS) return;
-    await this.prisma.aliasLeituraPonto.upsert({
+
+    const atual = await this.prisma.aliasLeituraPonto.findUnique({
       where: { textoNome },
-      create: {
-        textoNome,
-        pessoaId: alvo.pessoaId,
-        tipoPessoa: alvo.tipoPessoa,
-        colaboradorId: alvo.colaboradorId ?? null,
-        nome: alvo.nome,
-      },
-      update: {
-        pessoaId: alvo.pessoaId,
-        tipoPessoa: alvo.tipoPessoa,
-        colaboradorId: alvo.colaboradorId ?? null,
-        nome: alvo.nome,
-        usos: { increment: 1 },
+    });
+
+    // 1) Alias novo: cria a associação (primeira confirmação).
+    if (!atual) {
+      await this.prisma.aliasLeituraPonto.create({
+        data: {
+          textoNome,
+          pessoaId: alvo.pessoaId,
+          tipoPessoa: alvo.tipoPessoa,
+          colaboradorId: alvo.colaboradorId ?? null,
+          nome: alvo.nome,
+        },
+      });
+      return;
+    }
+
+    const mesmaPessoa =
+      atual.pessoaId === alvo.pessoaId && atual.tipoPessoa === alvo.tipoPessoa;
+
+    // 2) Confirma a MESMA pessoa: reforça a associação (mais um uso) e descarta
+    // qualquer desafiante pendente (a divergência anterior foi ruído).
+    if (mesmaPessoa) {
+      await this.prisma.aliasLeituraPonto.update({
+        where: { textoNome },
+        data: {
+          colaboradorId: alvo.colaboradorId ?? null,
+          nome: alvo.nome,
+          usos: { increment: 1 },
+          pendentePessoaId: null,
+          pendenteTipoPessoa: null,
+          pendenteColaboradorId: null,
+          pendenteNome: null,
+          pendenteUsos: 0,
+        },
+      });
+      return;
+    }
+
+    // 3) Confirma uma pessoa DIFERENTE da associação vigente.
+    const mesmoDesafiante =
+      atual.pendentePessoaId === alvo.pessoaId &&
+      atual.pendenteTipoPessoa === alvo.tipoPessoa;
+    const confirmacoesDesafiante =
+      (mesmoDesafiante ? atual.pendenteUsos : 0) + 1;
+
+    // 3a) O desafiante alcançou as confirmações repetidas → troca a associação.
+    if (confirmacoesDesafiante >= CONFIRMACOES_PARA_TROCAR) {
+      await this.prisma.aliasLeituraPonto.update({
+        where: { textoNome },
+        data: {
+          pessoaId: alvo.pessoaId,
+          tipoPessoa: alvo.tipoPessoa,
+          colaboradorId: alvo.colaboradorId ?? null,
+          nome: alvo.nome,
+          usos: confirmacoesDesafiante,
+          pendentePessoaId: null,
+          pendenteTipoPessoa: null,
+          pendenteColaboradorId: null,
+          pendenteNome: null,
+          pendenteUsos: 0,
+        },
+      });
+      return;
+    }
+
+    // 3b) Ainda não atingiu o limiar: registra/atualiza o desafiante pendente
+    // SEM trocar a associação vigente (uma seleção isolada não substitui).
+    await this.prisma.aliasLeituraPonto.update({
+      where: { textoNome },
+      data: {
+        pendentePessoaId: alvo.pessoaId,
+        pendenteTipoPessoa: alvo.tipoPessoa,
+        pendenteColaboradorId: alvo.colaboradorId ?? null,
+        pendenteNome: alvo.nome,
+        pendenteUsos: confirmacoesDesafiante,
       },
     });
   }
