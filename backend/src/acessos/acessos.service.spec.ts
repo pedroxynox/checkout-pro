@@ -82,18 +82,33 @@ describe('AcessosService', () => {
       );
     });
 
-    it('gerente gere o dia a dia e pessoas, mas só o desenvolvedor zera/limpa dados', () => {
+    it('gerente gere o dia a dia e o Centro de Controle, salvo o que é exclusivo do administrador', () => {
       const service = criarServico([]);
       expect(service.autorizar('GERENTE', 'INSUMOS')).toBe(true);
       expect(service.autorizar('GERENTE', 'INSUMOS_GERENCIAR')).toBe(true);
       expect(service.autorizar('GERENTE', 'OPERADORES_CRUD')).toBe(true);
-      expect(service.autorizar('GERENTE', 'USUARIOS_CRUD')).toBe(true);
       expect(service.autorizar('GERENTE', 'LOTE_APAE_GERENCIAR')).toBe(true);
       expect(service.autorizar('GERENTE', 'ESCALA_EDITAR')).toBe(true);
       expect(service.autorizar('GERENTE', 'PONTO_EDITAR')).toBe(true);
       expect(service.autorizar('GERENTE', 'CENTRAL_JORNADA')).toBe(true);
-      // Único ponto ainda exclusivo do administrador (acesso total).
+      // Exclusivo do administrador dentro do Centro de Controle: definir acessos
+      // ao app, rodízio de domingo, importar arquivos e zerar/limpar dados.
+      expect(service.autorizar('GERENTE', 'USUARIOS_CRUD')).toBe(false);
+      expect(service.autorizar('GERENTE', 'ESCALA_DOMINGO_CONFIG')).toBe(false);
+      expect(service.autorizar('GERENTE', 'IMPORTACOES')).toBe(false);
       expect(service.autorizar('GERENTE', 'ADMIN_DADOS')).toBe(false);
+    });
+
+    it('supervisor não acessa o Centro de Controle (cadastro/metas/acessos)', () => {
+      const service = criarServico([]);
+      expect(service.autorizar('SUPERVISOR', 'OPERADORES_CRUD')).toBe(false);
+      expect(service.autorizar('SUPERVISOR', 'USUARIOS_CRUD')).toBe(false);
+      expect(service.autorizar('SUPERVISOR', 'ESCALA_DOMINGO_CONFIG')).toBe(
+        false,
+      );
+      // Mas mantém suas atribuições de supervisão.
+      expect(service.autorizar('SUPERVISOR', 'FECHAMENTO')).toBe(true);
+      expect(service.autorizar('SUPERVISOR', 'CENTRAL_JORNADA')).toBe(true);
     });
 
     it('fiscal é autorizado em funcionalidade operacional e negado em gerente-only', () => {

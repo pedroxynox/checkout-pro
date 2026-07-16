@@ -68,7 +68,9 @@ export const TODAS_FUNCIONALIDADES = [
   'ALERTAS_FILA',
   'NORMATIVAS',
   'INDICADOR_QUEBRA',
-  // Administração de dados (zerar/limpar) — só desenvolvedor
+  // Configuração do rodízio de domingo (Centro de Controle) — só administrador.
+  'ESCALA_DOMINGO_CONFIG',
+  // Administração de dados (zerar/limpar) — só administrador
   'ADMIN_DADOS',
 ] as const;
 
@@ -103,13 +105,14 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
   'CARGA_STATUS_VISUALIZAR',
 ]);
 
-/** Funcionalidades do SUPERVISOR: tudo do fiscal + operadores + requisições + fechamento. */
+/** Funcionalidades do SUPERVISOR: tudo do fiscal + requisições + fechamento +
+ * edição de escala/batidas e Central de Jornada. NÃO acessa o Centro de
+ * Controle (cadastro/metas/relatórios/acessos), exclusivo de gerente/admin. */
 export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] = Object.freeze([
   ...FUNCIONALIDADES_FISCAL,
   // Painel de vendas: o supervisor visualiza (o fiscal não vê mais). A edição
   // permanece exclusiva de gerente/administrador.
   'PAINEL_VENDAS_VISUALIZAR',
-  'OPERADORES_CRUD',
   'INSUMOS_GERENCIAR',
   'FECHAMENTO',
   // Edição da escala, correção de batidas e Central de Jornada.
@@ -136,11 +139,13 @@ const FUNCIONALIDADES_IMPORTADOR_SET = new Set<string>(
 );
 
 /**
- * Funcionalidades do GERENTE (espelho do backend): vê tudo + operação e gestão
- * do dia a dia, incluindo cadastro de operadores, gestão de usuários, edição de
- * escala, correção de batidas e gestão do lote APAE. Só NÃO inclui zerar/limpar
- * dados (ADMIN_DADOS), exclusivo do ADMINISTRADOR. Alterar status de
- * fiscal não é por funcionalidade (só o próprio fiscal ou o desenvolvedor).
+ * Funcionalidades do GERENTE (espelho do backend): operação e gestão do dia a
+ * dia + Centro de Controle nas ferramentas de gestão (cadastro de colaboradores,
+ * metas, central de vendas e relatórios), edição de escala, correção de batidas
+ * e gestão do lote APAE. NÃO inclui as ferramentas exclusivas do ADMINISTRADOR
+ * dentro do Centro de Controle: definir acessos (USUARIOS_CRUD), rodízio de
+ * domingo (ESCALA_DOMINGO_CONFIG), importar arquivos (IMPORTACOES) e zerar/limpar
+ * dados (ADMIN_DADOS).
  */
 export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze([
   'INDICADORES_VISUALIZAR',
@@ -160,7 +165,6 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
   'CHECKLIST',
   'OPERADORES_AUSENCIAS',
   'OPERADORES_CRUD',
-  'USUARIOS_CRUD',
   'FISCAIS_STATUS',
   'FISCAIS_JORNADA',
   'CENTRAL_JORNADA',
