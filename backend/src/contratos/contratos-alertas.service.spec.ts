@@ -10,18 +10,20 @@ describe('ContratosAlertasService', () => {
 
   function criar(alertas: AlertaDoDia[]) {
     const enviar = jest.fn(() => Promise.resolve([]));
-    const gestores = jest.fn(() => Promise.resolve([{ id: 'g1' }]));
+    const destinatariosComPermissao = jest.fn(() =>
+      Promise.resolve([{ id: 'g1' }]),
+    );
     const contratos = {
       avaliarAlertasDoDia: jest.fn(() => Promise.resolve(alertas)),
     };
-    const notificacoes = { gestores, enviar };
+    const notificacoes = { destinatariosComPermissao, enviar };
     const service = new ContratosAlertasService(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       contratos as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       notificacoes as any,
     );
-    return { service, enviar, gestores };
+    return { service, enviar, destinatariosComPermissao };
   }
 
   it('envia um aviso de vencimento aos gestores', async () => {

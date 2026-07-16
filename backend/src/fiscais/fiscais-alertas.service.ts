@@ -120,8 +120,9 @@ export class FiscaisAlertasService {
         }
       }
 
-      // Notificar gestores.
-      const gestores = await this.notificacoes.gestores();
+      // Notificar a alçada da Central de Jornada (supervisor/gerente/admin).
+      const gestores =
+        await this.notificacoes.destinatariosComPermissao('CENTRAL_JORNADA');
       await this.notificacoes.enviar(gestores, {
         titulo: '⚠️ Intervalo excedido',
         mensagem: `${nome} está em intervalo há ${tempoStr} (limite: 2h15min).`,
@@ -175,7 +176,8 @@ export class FiscaisAlertasService {
     if (disponiveis >= 2) return; // OK
 
     if (disponiveis <= 1) {
-      const gestores = await this.notificacoes.gestores();
+      const gestores =
+        await this.notificacoes.destinatariosComPermissao('ESCALA_EDITAR');
       const urgencia = disponiveis === 0 ? '🚨 URGENTE' : '⚠️ Atenção';
       await this.notificacoes.enviar(gestores, {
         titulo: `${urgencia}: Cobertura insuficiente`,
@@ -276,7 +278,8 @@ export class FiscaisAlertasService {
         }
       }
 
-      const gestores = await this.notificacoes.gestores();
+      const gestores =
+        await this.notificacoes.destinatariosComPermissao('CENTRAL_JORNADA');
       await this.notificacoes.enviar(gestores, {
         titulo: '📋 Folga sugerida por excesso de extras',
         mensagem: `${nome} acumulou ${horasExtras}h${minExtras > 0 ? `${minExtras}min` : ''} extras no mês. Considere conceder um dia livre para compensação.`,
@@ -385,7 +388,8 @@ export class FiscaisAlertasService {
     }
 
     if (alertas.length > 0) {
-      const gestores = await this.notificacoes.gestores();
+      const gestores =
+        await this.notificacoes.destinatariosComPermissao('FISCAIS_STATUS');
       await this.notificacoes.enviar(gestores, {
         titulo: '📊 Padrões detectados (semana anterior)',
         mensagem: alertas.join('\n'),

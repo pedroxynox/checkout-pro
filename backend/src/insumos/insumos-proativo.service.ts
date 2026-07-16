@@ -39,7 +39,7 @@ export class InsumosProativoService {
 
     // Apenas ALERTA — NÃO cria requisição. Nada entra em requisições/estoque
     // sem o gestor solicitar/aprovar.
-    const gestores = await this.notificacoes.gestores();
+    const gestores = await this.notificacoes.destinatariosComPermissao('INSUMOS');
     const linhas = apenasUrgentes.map(
       (i) => `• ${i.nome} (saldo: ${i.saldo} ${i.unidade}s)`,
     );
@@ -67,7 +67,7 @@ export class InsumosProativoService {
 
     if (iminentes.length === 0) return;
 
-    const gestores = await this.notificacoes.gestores();
+    const gestores = await this.notificacoes.destinatariosComPermissao('INSUMOS');
     const linhas = iminentes.map(
       (i) =>
         `• ${i.nome}: ~${i.diasAteRuptura} dia${i.diasAteRuptura === 1 ? '' : 's'} até acabar (saldo: ${i.saldo})`,
@@ -90,7 +90,7 @@ export class InsumosProativoService {
   @Cron('0 8 * * 1', { timeZone: 'America/Sao_Paulo' })
   async relatorioSemanal(): Promise<void> {
     const todos = await this.insumos.listarProativo();
-    const gestores = await this.notificacoes.gestores();
+    const gestores = await this.notificacoes.destinatariosComPermissao('INSUMOS');
 
     const linhas = todos.map((i) => {
       const nivel =

@@ -679,7 +679,8 @@ export class IncidenciasService {
         select: { nome: true },
       });
       if (!col) return;
-      const gestores = await this.notificacoes.gestores();
+      const gestores =
+        await this.notificacoes.destinatariosComPermissao('OPERADORES_AUSENCIAS');
       if (gestores.length === 0) return;
       await this.notificacoes.enviar(gestores, {
         titulo: '🔴 Incidências recorrentes na escala',

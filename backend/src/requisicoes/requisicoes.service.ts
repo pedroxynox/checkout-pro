@@ -125,9 +125,8 @@ export class RequisicoesService {
       include: INCLUDE_INSUMO,
     });
 
-    const gestores = await this.prisma.usuario.findMany({
-      where: { perfil: { in: ['GERENTE', 'SUPERVISOR'] } },
-    });
+    const gestores =
+      await this.notificacoes.destinatariosComPermissao('INSUMOS_GERENCIAR');
     await this.notificacoes.enviar(gestores, {
       titulo: 'Nova requisição de insumo',
       mensagem: `${solicitanteNome ?? 'Um fiscal'} solicitou ${quantidade} ${pluralEmbalagem(insumo.embalagem, quantidade)} de ${insumo.nome}.`,

@@ -193,6 +193,16 @@ export class FakePrisma {
     },
   };
 
+  // ----- prisma.perfilPermissao (Central de Permissões) -----
+  perfilPermissao = {
+    findMany: async () =>
+      [] as Array<{
+        perfil: string;
+        funcionalidade: string;
+        concedida: boolean;
+      }>,
+  };
+
   // ----- prisma.notificacao -----
   notificacao = {
     create: async (args: { data: Record<string, unknown> }) => {

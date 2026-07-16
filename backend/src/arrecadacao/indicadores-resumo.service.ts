@@ -109,7 +109,7 @@ export class IndicadoresResumoService {
         }
       }
 
-      const gestores = await this.notificacoes.gestores();
+      const gestores = await this.notificacoes.destinatariosComPermissao('INDICADORES_VISUALIZAR');
       await this.notificacoes.enviar(gestores, {
         titulo: '📊 Resumo de indicadores',
         mensagem: linhas.join('\n'),

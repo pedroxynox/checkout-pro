@@ -3,6 +3,11 @@ import { Notificacao, Perfil, Usuario } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacaoEventos } from './notificacoes.eventos';
 import {
+  decidirAutorizacaoComOverrides,
+  OverridePermissao,
+  Perfil as PerfilAcesso,
+} from '../acessos/acessos.domain';
+import {
   ConteudoNotificacao,
   UsuarioRef,
   montarEntregas,
@@ -173,6 +178,58 @@ export class NotificacoesService {
   }
 
   /**
+   * Destinatários de um aviso pela FUNCIONALIDADE relacionada (Central de
+   * Permissões): retorna os usuários operacionais cuja permissão EFETIVA inclui
+   * `funcionalidade`, considerando as três camadas — padrão do perfil (código)
+   * ± ajustes de perfil ± ajustes por login. É assim que os avisos passam a
+   * respeitar o painel de permissões: quem recebe segue quem tem o acesso.
+   */
+  async destinatariosComPermissao(funcionalidade: string): Promise<Usuario[]> {
+    const [usuarios, perfilOverridesRaw] = await Promise.all([
+      this.prisma.usuario.findMany({
+        where: {
+          perfil: { in: [...NotificacoesService.PERFIS_QUE_RECEBEM_AVISOS] },
+        },
+        include: {
+          permissoes: { select: { funcionalidade: true, concedida: true } },
+        },
+      }),
+      this.prisma.perfilPermissao.findMany({
+        select: { perfil: true, funcionalidade: true, concedida: true },
+      }),
+    ]);
+
+    const overridesPorPerfil = new Map<string, OverridePermissao[]>();
+    for (const o of perfilOverridesRaw) {
+      const lista = overridesPorPerfil.get(o.perfil) ?? [];
+      lista.push({ funcionalidade: o.funcionalidade, concedida: o.concedida });
+      overridesPorPerfil.set(o.perfil, lista);
+    }
+
+    return usuarios.filter((u) =>
+      decidirAutorizacaoComOverrides(
+        u.perfil as PerfilAcesso,
+        funcionalidade,
+        overridesPorPerfil.get(u.perfil) ?? [],
+        (u as { permissoes?: OverridePermissao[] }).permissoes ?? [],
+      ),
+    );
+  }
+
+  /**
+   * Envia um aviso a quem tem a FUNCIONALIDADE relacionada (respeita o painel de
+   * permissões). Sem destinatários, não faz nada.
+   */
+  async notificarComPermissao(
+    funcionalidade: string,
+    conteudo: ConteudoNotificacao,
+  ): Promise<Notificacao[]> {
+    const destinatarios = await this.destinatariosComPermissao(funcionalidade);
+    if (destinatarios.length === 0) return [];
+    return this.enviar(destinatarios, conteudo);
+  }
+
+  /**
    * Alvo dos avisos de gestão (fechamento, insumos, vendas, contratos, faltas,
    * advertências, etc.). Por decisão de negócio atual, todos os perfis
    * operacionais recebem esses avisos — delega a `destinatariosGerais`.
@@ -196,7 +253,8 @@ export class NotificacoesService {
    * online. Delega a `destinatariosGerais`.
    */
   async destinatariosAlertaChecklist(): Promise<Usuario[]> {
-    return this.destinatariosGerais();
+    // Conectado ao painel: quem tem a funcionalidade CHECKLIST recebe.
+    return this.destinatariosComPermissao('CHECKLIST');
   }
 
   /**
@@ -211,33 +269,23 @@ export class NotificacoesService {
   }
 
   /**
-   * Envia um aviso apenas à SUPERVISÃO e GERÊNCIA (supervisor, gerente e
-   * gerente desenvolvedor) — sem fiscais nem o próprio operador. Usado no aviso
-   * de TAC da jornada. Sem destinatários, não faz nada.
+   * Envia um aviso à alçada da Central de Jornada (supervisor, gerente e
+   * administrador por padrão) — conectado ao painel pela funcionalidade
+   * `CENTRAL_JORNADA`. Usado no aviso de TAC/conflito da jornada.
    */
   async notificarSupervisaoEGerencia(
     conteudo: ConteudoNotificacao,
   ): Promise<Notificacao[]> {
-    const destinatarios = await this.prisma.usuario.findMany({
-      where: {
-        perfil: {
-          in: [Perfil.SUPERVISOR, Perfil.GERENTE, Perfil.ADMINISTRADOR],
-        },
-      },
-    });
-    return this.enviar(destinatarios, conteudo);
+    return this.notificarComPermissao('CENTRAL_JORNADA', conteudo);
   }
 
   /**
-   * Envia um aviso a TODOS os perfis operacionais (fiscal, supervisor, gerente
-   * e gerente desenvolvedor). Atalho semântico para avisos que devem chegar a
-   * todos — ex.: falta ou não-retorno do intervalo do dia. Sem destinatários,
-   * não faz nada.
+   * Envia um aviso a TODOS os que recebem notificações (funcionalidade
+   * `NOTIFICACOES`, que por padrão é de todos os perfis operacionais). Atalho
+   * para avisos gerais. Sem destinatários, não faz nada.
    */
   async notificarTodos(conteudo: ConteudoNotificacao): Promise<Notificacao[]> {
-    const destinatarios = await this.destinatariosGerais();
-    if (destinatarios.length === 0) return [];
-    return this.enviar(destinatarios, conteudo);
+    return this.notificarComPermissao('NOTIFICACOES', conteudo);
   }
 
   /** Histórico de notificações de um usuário (Req 7.3.3), mais recentes primeiro. */

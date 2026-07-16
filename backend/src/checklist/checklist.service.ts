@@ -272,7 +272,7 @@ export class ChecklistService {
         orderBy: { data: 'desc' },
       });
       if (!outro) return;
-      const gestores = await this.notificacoes.gestores();
+      const gestores = await this.notificacoes.destinatariosComPermissao('CHECKLIST');
       if (gestores.length === 0) return;
       const rotulo = tipo === 'ABERTURA' ? 'abertura' : 'fechamento';
       const quando = outro.data.toISOString().slice(0, 10);

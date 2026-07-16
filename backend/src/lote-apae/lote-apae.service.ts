@@ -152,7 +152,7 @@ export class LoteApaeService {
     try {
       const config = await this.obterConfig();
       const arrecadadoAgora = await this.arrecadadoNoMes(new Date());
-      const gestores = await this.notificacoes.gestores();
+      const gestores = await this.notificacoes.destinatariosComPermissao('LOTE_APAE');
 
       // (a) Meta do mês atingida agora.
       if (

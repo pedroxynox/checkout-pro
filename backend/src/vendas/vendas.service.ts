@@ -544,7 +544,7 @@ export class VendasService {
   private async avisarVendas(dia: Date, total: number): Promise<void> {
     if (!this.notificacoes || total <= 0) return;
     try {
-      const gestores = await this.notificacoes.gestores();
+      const gestores = await this.notificacoes.destinatariosComPermissao('PAINEL_VENDAS_VISUALIZAR');
       if (gestores.length === 0) return;
 
       // (a) Dia recorde: maior que todos os dias anteriores.
