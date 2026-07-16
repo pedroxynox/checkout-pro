@@ -20,11 +20,12 @@ import { FeriadosService, FeriadoView } from './feriados.service';
 
 /**
  * Feriados (uso gerencial). Os nacionais são reconhecidos automaticamente; o
- * gestor cadastra os estaduais/municipais. Gate por FISCAIS_JORNADA (mesma
- * alçada da Central de Jornada, que consome esses feriados).
+ * gestor cadastra os estaduais/municipais. Gate por CENTRAL_JORNADA (mesma
+ * alçada da Central de Jornada, que consome esses feriados) — o fiscal, que só
+ * acompanha a jornada da equipe (FISCAIS_JORNADA), NÃO gerencia feriados.
  */
 @Controller('feriados')
-@Funcionalidade('FISCAIS_JORNADA')
+@Funcionalidade('CENTRAL_JORNADA')
 export class FeriadosController {
   constructor(private readonly service: FeriadosService) {}
 
