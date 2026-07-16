@@ -11,7 +11,7 @@
  *    cobertura do turno de hoje.
  *  - GERENTE/SUPERVISOR: vendas e meta de faturamento (com o "ritmo da meta").
  *  - IMPORTADOR: apenas a carga de arquivos do dia.
- *  - GERENTE_DESENVOLVEDOR: tudo.
+ *  - ADMINISTRADOR: tudo.
  *
  * Fase 1 — sem IA: tudo por REGRAS sobre dados que o backend já fornece, de
  * forma defensiva (cada chamada tem catch; só busca o que o perfil precisa).

@@ -19,7 +19,7 @@ Validación más reciente:
 ## 2. Producto y perfiles
 
 Perfiles de acceso:
-- `GERENTE_DESENVOLVEDOR`: acceso total y administración de datos/configuración.
+- `ADMINISTRADOR`: acceso total y administración de datos/configuración.
 - `GERENTE`: operación y gestión, con restricciones estructurales según la allowlist.
 - `SUPERVISOR`: operación y supervisión de equipos/jornada.
 - `FISCAL`: rutinas de caja, punto y consulta según permisos.
@@ -104,7 +104,7 @@ Fuente principal: `backend/src/ponto/ponto.domain.ts`.
 - El horario válido es el impreso en el comprobante; el usuario confirma/corrige el OCR antes de guardar.
 
 Alertas:
-- destinatarios: `SUPERVISOR`, `GERENTE` y `GERENTE_DESENVOLVEDOR`;
+- destinatarios: `SUPERVISOR`, `GERENTE` y `ADMINISTRADOR`;
 - nunca bloquean una batida si falla la notificación;
 - batida y cron comparten deduplicación por persona/día/etapa;
 - cron cada minuto y cobertura de fiscales/operadores;
@@ -141,7 +141,7 @@ Son conceptos distintos:
 - El contrato de experiencia se deriva de `dataAdmissao` y se procesa para **operadores activos**.
 - Experiencia máxima: 90 días; efectivación automática a partir del día 91.
 - El cron alerta durante los 5 días anteriores al marco de 90 días.
-- Los destinatarios actuales del cron de experiencia son `FISCAL`, `SUPERVISOR`, `GERENTE` y `GERENTE_DESENVOLVEDOR` a través del selector `gestores()`; no describirlo como exclusivo de gerentes mientras el código mantenga ese alcance.
+- Los destinatarios actuales del cron de experiencia son `FISCAL`, `SUPERVISOR`, `GERENTE` y `ADMINISTRADOR` a través del selector `gestores()`; no describirlo como exclusivo de gerentes mientras el código mantenga ese alcance.
 - Decisiones manuales antiguas se conservan por compatibilidad histórica/API, pero no son la fuente principal del estado actual.
 
 ### 5.5 Notificaciones

@@ -66,7 +66,7 @@ export class VendasController {
     const jaEnviado = (await this.vendasService.status(data)).enviado;
     const podeReenviar =
       usuario?.perfil === 'GERENTE' ||
-      usuario?.perfil === 'GERENTE_DESENVOLVEDOR' ||
+      usuario?.perfil === 'ADMINISTRADOR' ||
       usuario?.perfil === 'IMPORTADOR';
     if (jaEnviado && !podeReenviar) {
       throw new ForbiddenException(

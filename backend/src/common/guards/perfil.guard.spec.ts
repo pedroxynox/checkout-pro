@@ -43,7 +43,7 @@ describe('PerfilGuard', () => {
   it('gerente desenvolvedor é autorizado em funcionalidade administrativa', () => {
     expect(
       guardCom('OPERADORES_CRUD').canActivate(
-        contexto('GERENTE_DESENVOLVEDOR'),
+        contexto('ADMINISTRADOR'),
       ),
     ).toBe(true);
   });

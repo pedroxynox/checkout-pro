@@ -9,7 +9,7 @@
 >
 > **Autorização:** por *funcionalidade* (allowlist por perfil, ver
 > `acessos.domain.ts`). A coluna **Permissão** indica a funcionalidade exigida.
-> `GERENTE_DESENVOLVEDOR` tem acesso total a tudo. Quando um método sobrepõe a
+> `ADMINISTRADOR` tem acesso total a tudo. Quando um método sobrepõe a
 > permissão da classe, vale a do método.
 >
 > **Erros:** erros de domínio são traduzidos a HTTP por um filtro global

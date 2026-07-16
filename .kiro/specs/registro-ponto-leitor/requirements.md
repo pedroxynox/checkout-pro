@@ -120,7 +120,7 @@ Critérios de aceitação:
 
 Critérios de aceitação:
 1. `PONTO_REGISTRAR` — registrar/editar/remover batidas de qualquer colaborador
-   (perfis: FISCAL, SUPERVISOR, GERENTE; e GERENTE_DESENVOLVEDOR por padrão).
+   (perfis: FISCAL, SUPERVISOR, GERENTE; e ADMINISTRADOR por padrão).
 2. `PONTO_VISUALIZAR` — ver o painel de ponto/jornada (mesmos perfis).
 3. As funcionalidades DEVEM ser declaradas na fonte única
    (`acessos.domain.ts`) e **espelhadas** no mobile (`auth/funcionalidades.ts`),

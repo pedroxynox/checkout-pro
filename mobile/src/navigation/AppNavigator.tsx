@@ -146,14 +146,14 @@ export function AppNavigator(): React.ReactElement {
           options={{ title: 'Relógio Ponto' }}
         />
       )}
-      {podeAcessar('FISCAIS_JORNADA') && (
+      {podeAcessar('CENTRAL_JORNADA') && (
         <Stack.Screen
           name="CentralJornada"
           component={CentralJornadaScreen}
           options={{ title: 'Central de Jornada' }}
         />
       )}
-      {podeAcessar('FISCAIS_JORNADA') && (
+      {podeAcessar('CENTRAL_JORNADA') && (
         <Stack.Screen
           name="Feriados"
           component={FeriadosScreen}

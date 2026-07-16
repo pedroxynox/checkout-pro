@@ -71,7 +71,7 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('o gerente desenvolvedor vê todas as áreas disponíveis (menos as "em breve")', async () => {
-    montarAuth('GERENTE_DESENVOLVEDOR');
+    montarAuth('ADMINISTRADOR');
     render(<HomeScreen navigation={navegacaoFake()} route={{} as never} />);
     // Descarrega as atualizações de estado assíncronas dos hooks (Resumo do
     // Dia) dentro de act(...) para evitar o warning; os tiles renderizam de

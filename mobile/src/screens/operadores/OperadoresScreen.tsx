@@ -911,7 +911,7 @@ export function OperadoresScreen(): React.ReactElement {
   const { podeAcessar, perfil } = useAuth();
   const { dataInicial } = useConfigSistema();
   const podeProgramarFuturo = perfil
-    ? ['GERENTE', 'GERENTE_DESENVOLVEDOR', 'SUPERVISOR'].includes(perfil)
+    ? ['GERENTE', 'ADMINISTRADOR', 'SUPERVISOR'].includes(perfil)
     : false;
 
   // Relógio em tempo real (HH:MM:SS, Brasília).

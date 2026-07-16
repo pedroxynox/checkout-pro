@@ -75,20 +75,24 @@ describe('AcessosService', () => {
     it('gerente desenvolvedor é autorizado em qualquer funcionalidade', () => {
       const service = criarServico([]);
       expect(
-        service.autorizar('GERENTE_DESENVOLVEDOR', 'OPERADORES_CRUD'),
+        service.autorizar('ADMINISTRADOR', 'OPERADORES_CRUD'),
       ).toBe(true);
-      expect(service.autorizar('GERENTE_DESENVOLVEDOR', 'ADMIN_DADOS')).toBe(
+      expect(service.autorizar('ADMINISTRADOR', 'ADMIN_DADOS')).toBe(
         true,
       );
     });
 
-    it('gerente comum é restrito: opera o dia a dia mas não gestão de dados', () => {
+    it('gerente gere o dia a dia e pessoas, mas só o desenvolvedor zera/limpa dados', () => {
       const service = criarServico([]);
       expect(service.autorizar('GERENTE', 'INSUMOS')).toBe(true);
       expect(service.autorizar('GERENTE', 'INSUMOS_GERENCIAR')).toBe(true);
-      expect(service.autorizar('GERENTE', 'OPERADORES_CRUD')).toBe(false);
-      expect(service.autorizar('GERENTE', 'USUARIOS_CRUD')).toBe(false);
-      expect(service.autorizar('GERENTE', 'LOTE_APAE_GERENCIAR')).toBe(false);
+      expect(service.autorizar('GERENTE', 'OPERADORES_CRUD')).toBe(true);
+      expect(service.autorizar('GERENTE', 'USUARIOS_CRUD')).toBe(true);
+      expect(service.autorizar('GERENTE', 'LOTE_APAE_GERENCIAR')).toBe(true);
+      expect(service.autorizar('GERENTE', 'ESCALA_EDITAR')).toBe(true);
+      expect(service.autorizar('GERENTE', 'PONTO_EDITAR')).toBe(true);
+      expect(service.autorizar('GERENTE', 'CENTRAL_JORNADA')).toBe(true);
+      // Único ponto ainda exclusivo do administrador (acesso total).
       expect(service.autorizar('GERENTE', 'ADMIN_DADOS')).toBe(false);
     });
 
@@ -104,7 +108,7 @@ describe('AcessosService', () => {
         service.exigirAutorizacao('FISCAL', 'OPERADORES_CRUD'),
       ).toThrow(PermissaoInsuficienteError);
       expect(() =>
-        service.exigirAutorizacao('GERENTE_DESENVOLVEDOR', 'OPERADORES_CRUD'),
+        service.exigirAutorizacao('ADMINISTRADOR', 'OPERADORES_CRUD'),
       ).not.toThrow();
     });
   });

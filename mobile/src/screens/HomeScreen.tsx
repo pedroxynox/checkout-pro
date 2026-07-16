@@ -129,8 +129,8 @@ export function HomeScreen({
   const rotuloPerfil =
     perfil === 'GERENTE'
       ? 'Gerente'
-      : perfil === 'GERENTE_DESENVOLVEDOR'
-        ? 'Gerente Desenvolvedor'
+      : perfil === 'ADMINISTRADOR'
+        ? 'Administrador'
         : perfil === 'SUPERVISOR'
           ? 'Supervisor'
           : perfil === 'IMPORTADOR'

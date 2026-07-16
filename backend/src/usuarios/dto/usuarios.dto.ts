@@ -11,15 +11,15 @@ export class CadastrarUsuarioDto {
   nome!: string;
 
   @IsIn(
-    ['GERENTE', 'GERENTE_DESENVOLVEDOR', 'SUPERVISOR', 'FISCAL', 'IMPORTADOR'],
+    ['GERENTE', 'ADMINISTRADOR', 'SUPERVISOR', 'FISCAL', 'IMPORTADOR'],
     {
       message:
-        'O perfil deve ser GERENTE, GERENTE_DESENVOLVEDOR, SUPERVISOR, FISCAL ou IMPORTADOR.',
+        'O perfil deve ser GERENTE, ADMINISTRADOR, SUPERVISOR, FISCAL ou IMPORTADOR.',
     },
   )
   perfil!:
     | 'GERENTE'
-    | 'GERENTE_DESENVOLVEDOR'
+    | 'ADMINISTRADOR'
     | 'SUPERVISOR'
     | 'FISCAL'
     | 'IMPORTADOR';

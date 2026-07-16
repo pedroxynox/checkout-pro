@@ -53,7 +53,7 @@ flowchart TD
 **Fluxo do reinício (Req 1, 2, 3, 4):**
 
 1. Gestor confirma no app (marcador explícito) e o app chama `POST /admin/reset-operacional` com `{ confirmacao: 'ZERAR' }`.
-2. `PerfilGuard` exige `ADMIN_DADOS` (só `GERENTE_DESENVOLVEDOR`) → sem permissão = **403**, sem apagar nada.
+2. `PerfilGuard` exige `ADMIN_DADOS` (só `ADMINISTRADOR`) → sem permissão = **403**, sem apagar nada.
 3. O service valida o marcador de confirmação → ausente = **400**, sem apagar nada.
 4. O service percorre o **plano de reinício puro** (ordem que respeita FKs) dentro de `prisma.$transaction`, acumulando a contagem por entidade e zerando `insumos.saldo`.
 5. Retorna `Resumo_de_Reinicio`. Se qualquer passo falhar, a transação reverte (Req 4.2).

@@ -402,7 +402,7 @@ export function RegistroPontoScreen(): React.ReactElement {
   return (
     <Tela aoAtualizar={pessoa ? carregarJornada : undefined} atualizando={carregando}>
       {/* Atalho para a Central de Jornada (controle do ciclo 26→25). */}
-      {podeAcessar('FISCAIS_JORNADA') && (
+      {podeAcessar('CENTRAL_JORNADA') && (
         <Pressable
           onPress={() => navigation.navigate('CentralJornada')}
           style={styles.cardCentral}
@@ -641,12 +641,18 @@ export function RegistroPontoScreen(): React.ReactElement {
                       </Text>
                     ) : null}
                   </View>
-                  <Pressable onPress={() => abrirEdicao(b)} hitSlop={8} style={styles.acao}>
-                    <Ionicons name="create-outline" size={18} color={cores.primaria} />
-                  </Pressable>
-                  <Pressable onPress={() => void removerBatida(b.id)} hitSlop={8} style={styles.acao}>
-                    <Ionicons name="trash-outline" size={18} color={cores.vermelho} />
-                  </Pressable>
+                  {/* Corrigir/remover batidas exige PONTO_EDITAR (gestão). O
+                      fiscal só registra batidas novas, então não vê estes botões. */}
+                  {podeAcessar('PONTO_EDITAR') ? (
+                    <>
+                      <Pressable onPress={() => abrirEdicao(b)} hitSlop={8} style={styles.acao}>
+                        <Ionicons name="create-outline" size={18} color={cores.primaria} />
+                      </Pressable>
+                      <Pressable onPress={() => void removerBatida(b.id)} hitSlop={8} style={styles.acao}>
+                        <Ionicons name="trash-outline" size={18} color={cores.vermelho} />
+                      </Pressable>
+                    </>
+                  ) : null}
                 </View>
               ))}
             </Cartao>

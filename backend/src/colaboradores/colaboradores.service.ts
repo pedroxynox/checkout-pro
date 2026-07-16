@@ -36,7 +36,7 @@ function perfilDaFuncao(
   if (funcao === 'FISCAL') return 'FISCAL';
   if (funcao === 'SUPERVISOR') return 'SUPERVISOR';
   if (funcao === 'GESTOR') {
-    return gerenteDesenvolvedor ? 'GERENTE_DESENVOLVEDOR' : 'GERENTE';
+    return gerenteDesenvolvedor ? 'ADMINISTRADOR' : 'GERENTE';
   }
   return null;
 }
@@ -45,8 +45,8 @@ function perfilDaFuncao(
  * Garante que só o gerente desenvolvedor conceda acesso de nível gerencial.
  * Impede escalada de privilégios: quem administra colaboradores (ex.:
  * supervisor, que tem OPERADORES_CRUD) não pode criar/promover uma conta para
- * GESTOR (que vira GERENTE/GERENTE_DESENVOLVEDOR) nem marcar
- * `gerenteDesenvolvedor`. Só o próprio GERENTE_DESENVOLVEDOR pode fazê-lo.
+ * GESTOR (que vira GERENTE/ADMINISTRADOR) nem marcar
+ * `gerenteDesenvolvedor`. Só o próprio ADMINISTRADOR pode fazê-lo.
  */
 function validarPermissaoDeFuncao(
   perfilSolicitante: PerfilSolicitante | undefined,
@@ -55,7 +55,7 @@ function validarPermissaoDeFuncao(
 ): void {
   const concedeAcessoGerencial =
     funcao === 'GESTOR' || gerenteDesenvolvedor === true;
-  if (concedeAcessoGerencial && perfilSolicitante !== 'GERENTE_DESENVOLVEDOR') {
+  if (concedeAcessoGerencial && perfilSolicitante !== 'ADMINISTRADOR') {
     throw new PermissaoInsuficienteFuncaoError();
   }
 }

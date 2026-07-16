@@ -38,7 +38,7 @@ Deploy conhecido: API e web no Render. Código mergeado não equivale a deploy c
 
 ## Perfis
 
-`GERENTE_DESENVOLVEDOR`, `GERENTE`, `SUPERVISOR`, `FISCAL`, `IMPORTADOR`. Cadastro Unificado (`Colaborador`) é a fonte de pessoas; operadores não precisam de login.
+`ADMINISTRADOR`, `GERENTE`, `SUPERVISOR`, `FISCAL`, `IMPORTADOR`. Cadastro Unificado (`Colaborador`) é a fonte de pessoas; operadores não precisam de login.
 
 ## Módulos backend
 
@@ -83,7 +83,7 @@ Regras TAC:
 - Feriado = domingo: 7h20, extras 100%.
 - `SEIS_X_UM_DOIS_X_UM` é o tipo de contrato que governa as regras de jornada.
 - O contrato de experiência é outro conceito: aplica-se a operadores ativos, dura até 90 dias, alerta nos 5 dias anteriores e efetiva no dia 91.
-- O cron de experiência notifica hoje `FISCAL`, `SUPERVISOR`, `GERENTE` e `GERENTE_DESENVOLVEDOR`.
+- O cron de experiência notifica hoje `FISCAL`, `SUPERVISOR`, `GERENTE` e `ADMINISTRADOR`.
 
 ### Notificações
 1. `NotificacoesService.enviar` persiste a notificação.

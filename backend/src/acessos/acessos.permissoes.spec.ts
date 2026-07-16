@@ -11,7 +11,7 @@ import {
  * Testes-guarda das permissões. Garantem duas invariantes importantes da
  * "fonte única de verdade":
  *
- *  1. O perfil GERENTE_DESENVOLVEDOR enxerga **absolutamente tudo** — toda
+ *  1. O perfil ADMINISTRADOR enxerga **absolutamente tudo** — toda
  *     funcionalidade do catálogo, sem exceção.
  *  2. Toda funcionalidade liberada a qualquer perfil existe no catálogo
  *     `TODAS_FUNCIONALIDADES` (evita "permissão fantasma" digitada errado).
@@ -19,17 +19,17 @@ import {
 describe('Permissões (fonte única de verdade)', () => {
   const catalogo = new Set<string>(TODAS_FUNCIONALIDADES);
 
-  it('GERENTE_DESENVOLVEDOR enxerga absolutamente todas as funcionalidades', () => {
+  it('ADMINISTRADOR enxerga absolutamente todas as funcionalidades', () => {
     for (const func of TODAS_FUNCIONALIDADES) {
-      expect(decidirAutorizacao('GERENTE_DESENVOLVEDOR', func)).toBe(true);
+      expect(decidirAutorizacao('ADMINISTRADOR', func)).toBe(true);
     }
   });
 
-  it('GERENTE_DESENVOLVEDOR continua autorizado mesmo para funcionalidade futura/desconhecida', () => {
+  it('ADMINISTRADOR continua autorizado mesmo para funcionalidade futura/desconhecida', () => {
     // Reforça que o acesso do desenvolvedor não depende de lista: qualquer
     // funcionalidade nova é liberada automaticamente.
     expect(
-      decidirAutorizacao('GERENTE_DESENVOLVEDOR', 'FUNCIONALIDADE_NOVA'),
+      decidirAutorizacao('ADMINISTRADOR', 'FUNCIONALIDADE_NOVA'),
     ).toBe(true);
   });
 

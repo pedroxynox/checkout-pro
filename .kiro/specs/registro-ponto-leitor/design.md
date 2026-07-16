@@ -181,7 +181,7 @@ nome, `dd/mm/aaaa`, `HH:mm`).
 Em `backend/src/acessos/acessos.domain.ts`:
 - Adicionar `PONTO_REGISTRAR` e `PONTO_VISUALIZAR` a `TODAS_FUNCIONALIDADES`.
 - Incluir ambas em `FUNCIONALIDADES_FISCAL` (e, por herança, supervisor/gerente).
-- `GERENTE_DESENVOLVEDOR` já recebe tudo automaticamente.
+- `ADMINISTRADOR` já recebe tudo automaticamente.
 
 Espelhar as duas strings em `mobile/src/auth/funcionalidades.ts` (ADR 0002).
 

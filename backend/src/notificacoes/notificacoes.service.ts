@@ -155,7 +155,7 @@ export class NotificacoesService {
     Perfil.FISCAL,
     Perfil.SUPERVISOR,
     Perfil.GERENTE,
-    Perfil.GERENTE_DESENVOLVEDOR,
+    Perfil.ADMINISTRADOR,
   ];
 
   /**
@@ -221,7 +221,7 @@ export class NotificacoesService {
     const destinatarios = await this.prisma.usuario.findMany({
       where: {
         perfil: {
-          in: [Perfil.SUPERVISOR, Perfil.GERENTE, Perfil.GERENTE_DESENVOLVEDOR],
+          in: [Perfil.SUPERVISOR, Perfil.GERENTE, Perfil.ADMINISTRADOR],
         },
       },
     });

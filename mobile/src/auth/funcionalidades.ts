@@ -16,7 +16,7 @@ import { Perfil } from '../api/types';
 
 /**
  * Catálogo completo de funcionalidades do sistema (igual ao backend). O perfil
- * GERENTE_DESENVOLVEDOR enxerga todas elas; o tipo `Funcionalidade` garante que
+ * ADMINISTRADOR enxerga todas elas; o tipo `Funcionalidade` garante que
  * as listas de cada perfil só usem funcionalidades existentes.
  */
 export const TODAS_FUNCIONALIDADES = [
@@ -40,10 +40,14 @@ export const TODAS_FUNCIONALIDADES = [
   // Fiscais
   'FISCAIS_STATUS',
   'FISCAIS_JORNADA',
+  // Central de Jornada (portal gerencial do ciclo de folha 26→25).
+  'CENTRAL_JORNADA',
   'ESCALA_VISUALIZAR',
   'ESCALA_EDITAR',
-  // Registro de Ponto (leitor de comprovante)
+  // Registro de Ponto (leitor de comprovante): registrar batidas novas
+  // (PONTO_REGISTRAR) vs. corrigir/remover batidas (PONTO_EDITAR).
   'PONTO_REGISTRAR',
+  'PONTO_EDITAR',
   'PONTO_VISUALIZAR',
   // Operação diária
   'CHECKLIST',
@@ -79,18 +83,18 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
   'LOTE_APAE',
   'INSUMOS',
   'FISCAIS_STATUS',
+  // Jornada da equipe (horas trabalhadas e intervalos); NÃO a Central de Jornada.
+  'FISCAIS_JORNADA',
   'ESCALA_VISUALIZAR',
   'CHECKLIST',
   'NOTIFICACOES',
   'ALERTAS_FILA',
   'NORMATIVAS',
   'INDICADORES_VISUALIZAR',
-  'PAINEL_VENDAS_VISUALIZAR',
-  'PAINEL_VENDAS_EDITAR',
   'INDICADOR_QUEBRA',
   'OPERADORES_AUSENCIAS',
-  // Registro de ponto: o fiscal pode ler o comprovante de qualquer colaborador e
-  // ver o painel de jornada.
+  // Registro de ponto: o fiscal registra batidas novas e vê o painel, mas não
+  // corrige/remove batidas já registradas (isso exige PONTO_EDITAR).
   'PONTO_REGISTRAR',
   'PONTO_VISUALIZAR',
   // Somente leitura do status de carga do dia, para o Briefing ter a MESMA
@@ -102,10 +106,16 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
 /** Funcionalidades do SUPERVISOR: tudo do fiscal + operadores + requisições + fechamento. */
 export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] = Object.freeze([
   ...FUNCIONALIDADES_FISCAL,
+  // Painel de vendas: o supervisor visualiza (o fiscal não vê mais). A edição
+  // permanece exclusiva de gerente/administrador.
+  'PAINEL_VENDAS_VISUALIZAR',
   'OPERADORES_CRUD',
   'INSUMOS_GERENCIAR',
   'FECHAMENTO',
-  'FISCAIS_JORNADA',
+  // Edição da escala, correção de batidas e Central de Jornada.
+  'ESCALA_EDITAR',
+  'PONTO_EDITAR',
+  'CENTRAL_JORNADA',
   'CONTRATOS_VISUALIZAR',
   'FEEDFORWARD_VISUALIZAR',
   'FEEDFORWARD_GERIR',
@@ -126,17 +136,18 @@ const FUNCIONALIDADES_IMPORTADOR_SET = new Set<string>(
 );
 
 /**
- * Funcionalidades do GERENTE comum (espelho do backend): vê tudo + operação do
- * dia a dia, MAS não a gestão estrutural de dados (registrar lote APAE, gestão
- * de pessoas/operadores, edição de escala, zerar/limpar dados) — isso é só do
- * GERENTE_DESENVOLVEDOR. Alterar status de fiscal não é por funcionalidade
- * (só o próprio fiscal ou o desenvolvedor).
+ * Funcionalidades do GERENTE (espelho do backend): vê tudo + operação e gestão
+ * do dia a dia, incluindo cadastro de operadores, gestão de usuários, edição de
+ * escala, correção de batidas e gestão do lote APAE. Só NÃO inclui zerar/limpar
+ * dados (ADMIN_DADOS), exclusivo do ADMINISTRADOR. Alterar status de
+ * fiscal não é por funcionalidade (só o próprio fiscal ou o desenvolvedor).
  */
 export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze([
   'INDICADORES_VISUALIZAR',
   'PAINEL_VENDAS_VISUALIZAR',
   'PAINEL_VENDAS_EDITAR',
   'ESCALA_VISUALIZAR',
+  'ESCALA_EDITAR',
   'NOTIFICACOES',
   'ALERTAS_FILA',
   'NORMATIVAS',
@@ -145,11 +156,16 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
   'INSUMOS',
   'INSUMOS_GERENCIAR',
   'LOTE_APAE',
+  'LOTE_APAE_GERENCIAR',
   'CHECKLIST',
   'OPERADORES_AUSENCIAS',
+  'OPERADORES_CRUD',
+  'USUARIOS_CRUD',
   'FISCAIS_STATUS',
   'FISCAIS_JORNADA',
+  'CENTRAL_JORNADA',
   'PONTO_REGISTRAR',
+  'PONTO_EDITAR',
   'PONTO_VISUALIZAR',
   'CONTRATOS_VISUALIZAR',
   'CONTRATOS_GERIR',
@@ -162,7 +178,7 @@ const FUNCIONALIDADES_GERENTE_SET = new Set<string>(FUNCIONALIDADES_GERENTE);
 
 /**
  * Decide se um perfil pode acessar uma funcionalidade (Req 7.2):
- * - GERENTE_DESENVOLVEDOR: acesso total (vê absolutamente tudo, inclusive
+ * - ADMINISTRADOR: acesso total (vê absolutamente tudo, inclusive
  *   qualquer funcionalidade futura do catálogo).
  * - GERENTE: apenas o conjunto de gerente (ver tudo + operação do dia a dia).
  * - SUPERVISOR: conjunto do supervisor.
@@ -170,7 +186,7 @@ const FUNCIONALIDADES_GERENTE_SET = new Set<string>(FUNCIONALIDADES_GERENTE);
  * - FISCAL: conjunto operacional do fiscal.
  */
 export function podeAcessar(perfil: Perfil, funcionalidade: string): boolean {
-  if (perfil === 'GERENTE_DESENVOLVEDOR') {
+  if (perfil === 'ADMINISTRADOR') {
     // Acesso TOTAL: libera sem consultar lista para garantir que o
     // desenvolvedor sempre veja tudo (Req: "ver absolutamente tudo").
     return true;
