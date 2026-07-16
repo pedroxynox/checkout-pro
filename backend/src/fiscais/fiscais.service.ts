@@ -29,9 +29,15 @@ import {
 } from './colaborador-vinculo';
 import {
   calcularJornadaDia,
+  StatusJornadaPonto,
   statusFiscalDeJornada,
 } from '../ponto/ponto.domain';
 import { FUNCOES_PONTO_NAO_FISCAL } from '../ponto/pessoas-ponto';
+import {
+  agoraNaBrasilia,
+  diaEncerradoEmBrasilia,
+  fimDoDiaBrasiliaEmUtc,
+} from '../common/datas';
 
 /** Item do painel em tempo real: um fiscal e seu status atual. */
 export interface ItemPainel {
@@ -55,6 +61,9 @@ export interface ItemJornada extends Jornada {
   colaboradorId: string | null;
   primeiroNome: string;
   status: StatusFiscal;
+  /** Estado canônico da jornada, inclusive INCOMPLETO em dias históricos. */
+  jornadaStatus: StatusJornadaPonto;
+  faltando: string[];
 }
 
 /** Resumo do status atual de um fiscal (retornado após definir status). */
@@ -321,33 +330,93 @@ export class FiscaisService {
    * cuja jornada é calculada a partir das batidas do Registro de Ponto.
    */
   async jornadaDoDia(data: Date = new Date()): Promise<ItemJornada[]> {
-    const agora = new Date();
-    const fim = inicioDoProximoDia(data);
-    // Para dias passados, conta no máximo até o fim do dia; para hoje, até agora.
-    const limite = agora < fim ? agora : fim;
-    const [fiscais, registros, mapaCol, operadores] = await Promise.all([
-      this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
-      this.prisma.registroPontoFiscal.findMany({
-        where: { data: inicioDoDia(data) },
-        orderBy: { em: 'asc' },
-      }),
-      this.mapaColaboradores(),
-      this.jornadaOperadoresDoDia(inicioDoDia(data), limite),
-    ]);
+    const dia = inicioDoDia(data);
+    const agoraReal = new Date();
+    const agoraPonto = agoraNaBrasilia();
+    const fimRotulado = inicioDoProximoDia(dia);
+    const diaEncerrado = diaEncerradoEmBrasilia(dia, agoraPonto);
+    // BatidaPonto usa hora de parede rotulada como UTC; RegistroPontoFiscal usa
+    // instante UTC real. Cada fonte precisa do limite na sua própria referência.
+    const limitePonto = diaEncerrado ? fimRotulado : agoraPonto;
+    const limiteFiscal = diaEncerrado ? fimDoDiaBrasiliaEmUtc(dia) : agoraReal;
+    const [fiscais, registros, mapaCol, batidasFiscais, operadores] =
+      await Promise.all([
+        this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
+        this.prisma.registroPontoFiscal.findMany({
+          where: { data: dia },
+          orderBy: { em: 'asc' },
+        }),
+        this.mapaColaboradores(),
+        this.prisma.batidaPonto.findMany({
+          where: { tipoPessoa: 'FISCAL', data: dia },
+          orderBy: { hora: 'asc' },
+          select: { id: true, pessoaId: true, hora: true },
+        }),
+        this.jornadaOperadoresDoDia(dia, limitePonto, diaEncerrado),
+      ]);
     const porFiscal = this.agrupar(registros);
+    const batidasPorFiscal = new Map<string, { id: string; hora: Date }[]>();
+    for (const batida of batidasFiscais) {
+      const atuais = batidasPorFiscal.get(batida.pessoaId) ?? [];
+      atuais.push({ id: batida.id, hora: batida.hora });
+      batidasPorFiscal.set(batida.pessoaId, atuais);
+    }
+    const primeiraMarcacao = (fiscalId: string): number =>
+      batidasPorFiscal.get(fiscalId)?.[0]?.hora.getTime() ??
+      porFiscal.get(fiscalId)?.[0]?.em.getTime() ??
+      Number.MAX_SAFE_INTEGER;
     const dosFiscais: ItemJornada[] = fiscais
-      // Só fiscais que bateram ponto hoje (mesma regra dos operadores): quem
-      // não registrou não aparece no painel.
-      .filter((f) => (porFiscal.get(f.id) ?? []).length > 0)
-      // Ordena pela 1ª batida do dia: quem abriu primeiro aparece primeiro.
-      .sort(
-        (a, b) =>
-          porFiscal.get(a.id)![0].em.getTime() -
-          porFiscal.get(b.id)![0].em.getTime(),
+      // Prefere as batidas canônicas; mantém o log legado como fallback para
+      // fiscais que ainda não passaram pelo Relógio Ponto.
+      .filter(
+        (f) =>
+          (batidasPorFiscal.get(f.id) ?? []).length > 0 ||
+          (porFiscal.get(f.id) ?? []).length > 0,
       )
+      .sort((a, b) => primeiraMarcacao(a.id) - primeiraMarcacao(b.id))
       .map((f) => {
-        const regs = porFiscal.get(f.id)!;
         const col = mapaCol.get(f.id);
+        const batidas = batidasPorFiscal.get(f.id);
+        if (batidas && batidas.length > 0) {
+          const j = calcularJornadaDia(
+            batidas,
+            limitePonto,
+            dia.getUTCDay(),
+            false,
+            diaEncerrado,
+          );
+          return {
+            fiscalId: f.id,
+            pessoaId: f.id,
+            tipoPessoa: 'FISCAL' as const,
+            funcao: 'FISCAL',
+            colaboradorId: col?.colaboradorId ?? null,
+            primeiroNome: primeiroNome(col?.nome ?? f.nome),
+            status: statusFiscalDeJornada(j.status),
+            jornadaStatus: j.status,
+            faltando: j.faltando,
+            tempoTrabalhandoMs: j.trabalhadoMs,
+            tempoIntervaloMs: j.intervaloMs,
+            cargaHorariaMs: j.trabalhadoMs,
+          };
+        }
+
+        const regs = porFiscal.get(f.id)!;
+        const ultimoStatus = statusAtual(regs) ?? 'FORA_EXPEDIENTE';
+        const jornadaStatus: StatusJornadaPonto =
+          diaEncerrado && ultimoStatus !== 'FORA_EXPEDIENTE'
+            ? 'INCOMPLETO'
+            : ultimoStatus === 'DISPONIVEL'
+              ? 'TRABALHANDO'
+              : ultimoStatus === 'INTERVALO'
+                ? 'EM_INTERVALO'
+                : 'ENCERRADO';
+        const faltando =
+          jornadaStatus !== 'INCOMPLETO'
+            ? []
+            : ultimoStatus === 'INTERVALO'
+              ? ['retorno do intervalo', 'encerramento']
+              : ['encerramento'];
         return {
           fiscalId: f.id,
           pessoaId: f.id,
@@ -355,8 +424,11 @@ export class FiscaisService {
           funcao: 'FISCAL',
           colaboradorId: col?.colaboradorId ?? null,
           primeiroNome: primeiroNome(col?.nome ?? f.nome),
-          status: statusAtual(regs) ?? 'FORA_EXPEDIENTE',
-          ...calcularJornada(regs, limite),
+          status:
+            jornadaStatus === 'INCOMPLETO' ? 'FORA_EXPEDIENTE' : ultimoStatus,
+          jornadaStatus,
+          faltando,
+          ...calcularJornada(regs, limiteFiscal, diaEncerrado),
         };
       });
     // Fiscais acima, operadores abaixo — cada grupo já ordenado pela 1ª batida.
@@ -372,6 +444,7 @@ export class FiscaisService {
   private async jornadaOperadoresDoDia(
     dia: Date,
     limite: Date,
+    diaEncerrado: boolean,
   ): Promise<ItemJornada[]> {
     const [colaboradores, batidas] = await Promise.all([
       this.prisma.colaborador.findMany({
@@ -403,7 +476,13 @@ export class FiscaisService {
             porPessoa.get(b.id)![0].hora.getTime(),
         )
         .map((c) => {
-          const j = calcularJornadaDia(porPessoa.get(c.id)!, limite, diaSemana);
+          const j = calcularJornadaDia(
+            porPessoa.get(c.id)!,
+            limite,
+            diaSemana,
+            false,
+            diaEncerrado,
+          );
           return {
             fiscalId: c.id,
             pessoaId: c.id,
@@ -412,6 +491,8 @@ export class FiscaisService {
             colaboradorId: c.id,
             primeiroNome: primeiroNome(c.nome),
             status: statusFiscalDeJornada(j.status),
+            jornadaStatus: j.status,
+            faltando: j.faltando,
             tempoTrabalhandoMs: j.trabalhadoMs,
             tempoIntervaloMs: j.intervaloMs,
             cargaHorariaMs: j.trabalhadoMs,
@@ -464,16 +545,17 @@ export class FiscaisService {
    * (mesma regra da jornada diária, `calcularJornadaDia`).
    */
   async horasExtrasMes(mes?: Date): Promise<ItemHorasExtras[]> {
-    const referencia = mes ?? new Date();
+    const agoraReal = new Date();
+    const agoraPonto = agoraNaBrasilia();
+    const referencia = mes ?? agoraPonto;
     const inicioMes = new Date(
       Date.UTC(referencia.getUTCFullYear(), referencia.getUTCMonth(), 1),
     );
     const fimMes = new Date(
       Date.UTC(referencia.getUTCFullYear(), referencia.getUTCMonth() + 1, 1),
     );
-    // Limita ao dia de hoje se for o mês atual.
-    const agora = new Date();
-    const limite = agora < fimMes ? agora : fimMes;
+    // Limita ao dia de hoje se for o mês atual. Batidas usam hora rotulada.
+    const limitePonto = agoraPonto < fimMes ? agoraPonto : fimMes;
 
     const [fiscais, registros, operadores] = await Promise.all([
       this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
@@ -481,7 +563,7 @@ export class FiscaisService {
         where: { data: { gte: inicioMes, lt: fimMes } },
         orderBy: { em: 'asc' },
       }),
-      this.horasExtrasOperadoresMes(inicioMes, fimMes, limite),
+      this.horasExtrasOperadoresMes(inicioMes, fimMes, limitePonto),
     ]);
 
     // Agrupar registros por fiscalId e por data (dia).
@@ -509,9 +591,11 @@ export class FiscaisService {
         for (const [diaKey, regs] of mapaFiscal.entries()) {
           const diaDate = new Date(diaKey);
           const diaSemana = diaDate.getUTCDay();
-          const fimDia = inicioDoProximoDia(diaDate);
-          const limiteDia = limite < fimDia ? limite : fimDia;
-          const jornada = calcularJornada(regs, limiteDia);
+          const diaEncerrado = diaEncerradoEmBrasilia(diaDate, agoraPonto);
+          const limiteDia = diaEncerrado
+            ? fimDoDiaBrasiliaEmUtc(diaDate)
+            : agoraReal;
+          const jornada = calcularJornada(regs, limiteDia, diaEncerrado);
           const extra = jornada.cargaHorariaMs - jornadaEsperadaMs(diaSemana);
           if (extra > 0) {
             // Domingo = adicional de 100%; demais dias = 50%.
@@ -583,7 +667,14 @@ export class FiscaisService {
           const diaSemana = diaDate.getUTCDay();
           const fimDia = inicioDoProximoDia(diaDate);
           const limiteDia = limite < fimDia ? limite : fimDia;
-          const j = calcularJornadaDia(regs, limiteDia, diaSemana);
+          const diaEncerrado = fimDia.getTime() <= limite.getTime();
+          const j = calcularJornadaDia(
+            regs,
+            limiteDia,
+            diaSemana,
+            false,
+            diaEncerrado,
+          );
           // Domingo entra no 100%; demais dias no 50% (regra do domínio).
           horasExtras50Ms += j.horasExtras50Ms;
           horasExtras100Ms += j.horasExtras100Ms;
@@ -605,7 +696,8 @@ export class FiscaisService {
     const fiscal = await this.prisma.fiscal.findFirst({ where: { usuarioId } });
     if (!fiscal) return null;
 
-    const agora = new Date();
+    const agoraReal = new Date();
+    const agoraPonto = agoraNaBrasilia();
     const dias: {
       data: string;
       diaSemana: number;
@@ -614,8 +706,8 @@ export class FiscaisService {
     }[] = [];
 
     for (let i = 6; i >= 0; i--) {
-      const dia = new Date(agora);
-      dia.setDate(dia.getDate() - i);
+      const dia = new Date(agoraPonto);
+      dia.setUTCDate(dia.getUTCDate() - i);
       const dataInicio = inicioDoDia(dia);
       const diaSemana = dataInicio.getUTCDay();
 
@@ -628,9 +720,11 @@ export class FiscaisService {
         status: r.status as StatusFiscal,
         em: r.em,
       }));
-      const fimDia = inicioDoProximoDia(dia);
-      const limite = agora < fimDia ? agora : fimDia;
-      const jornada = calcularJornada(regs, limite);
+      const diaEncerrado = diaEncerradoEmBrasilia(dataInicio, agoraPonto);
+      const limite = diaEncerrado
+        ? fimDoDiaBrasiliaEmUtc(dataInicio)
+        : agoraReal;
+      const jornada = calcularJornada(regs, limite, diaEncerrado);
 
       dias.push({
         data: dataInicio.toISOString().slice(0, 10),
@@ -747,16 +841,17 @@ export class FiscaisService {
 
   /** Previsão de horas extras ao final do mês (projeção linear). */
   async previsaoExtras() {
-    const agora = new Date();
+    const agoraReal = new Date();
+    const agoraPonto = agoraNaBrasilia();
     const inicioMes = new Date(
-      Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1),
+      Date.UTC(agoraPonto.getUTCFullYear(), agoraPonto.getUTCMonth(), 1),
     );
     const fimMes = new Date(
-      Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 1),
+      Date.UTC(agoraPonto.getUTCFullYear(), agoraPonto.getUTCMonth() + 1, 1),
     );
 
     // Dias úteis transcorridos no mês (excluindo domingos).
-    const diasTranscorridos = this.diasUteisEntre(inicioMes, agora);
+    const diasTranscorridos = this.diasUteisEntre(inicioMes, agoraPonto);
     const diasTotaisMes = this.diasUteisEntre(inicioMes, fimMes);
 
     if (diasTranscorridos === 0) return [];
@@ -792,9 +887,11 @@ export class FiscaisService {
           const diaSemana = diaDate.getUTCDay();
           if (isDomingo(diaSemana)) continue;
 
-          const fimDia = new Date(diaDate.getTime() + 24 * 60 * 60 * 1000);
-          const limite = agora < fimDia ? agora : fimDia;
-          const jornada = calcularJornada(regs, limite);
+          const diaEncerrado = diaEncerradoEmBrasilia(diaDate, agoraPonto);
+          const limite = diaEncerrado
+            ? fimDoDiaBrasiliaEmUtc(diaDate)
+            : agoraReal;
+          const jornada = calcularJornada(regs, limite, diaEncerrado);
           const esperado = jornadaEsperadaMs(diaSemana);
           const extra = jornada.cargaHorariaMs - esperado;
           if (extra > 0) extrasAtualMs += extra;

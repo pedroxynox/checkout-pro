@@ -45,3 +45,12 @@ export class DataHoraPontoInvalidaError extends ErroDominio {
     super('Data ou hora da batida inválida.');
   }
 }
+
+/** Cada pessoa pode possuir no máximo quatro batidas no mesmo dia. */
+export class LimiteBatidasDiaError extends ErroDominio {
+  readonly statusHttp = HttpStatus.CONFLICT;
+
+  constructor() {
+    super('Limite de 4 batidas atingido para esta pessoa neste dia.');
+  }
+}

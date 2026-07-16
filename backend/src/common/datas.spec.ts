@@ -1,4 +1,6 @@
 import {
+  diaEncerradoEmBrasilia,
+  fimDoDiaBrasiliaEmUtc,
   periodoFolha,
   periodoFolhaDeslocado,
   rotuloPeriodoFolha,
@@ -42,5 +44,22 @@ describe('periodoFolha (ciclo 26→25)', () => {
   it('rótulo do ciclo mostra o intervalo 26 → 25', () => {
     const p = periodoFolha(new Date(Date.UTC(2026, 5, 26)));
     expect(rotuloPeriodoFolha(p)).toBe('26/06 – 25/07');
+  });
+});
+
+describe('fechamento do dia em Brasília', () => {
+  const dia = new Date('2026-07-16T00:00:00.000Z');
+
+  it('não encerra o dia entre 21h e meia-noite locais', () => {
+    const agoraBrasilia = new Date('2026-07-16T23:30:00.000Z');
+    expect(diaEncerradoEmBrasilia(dia, agoraBrasilia)).toBe(false);
+  });
+
+  it('encerra somente na virada civil e converte o fim para 03h UTC real', () => {
+    const meiaNoiteBrasilia = new Date('2026-07-17T00:00:00.000Z');
+    expect(diaEncerradoEmBrasilia(dia, meiaNoiteBrasilia)).toBe(true);
+    expect(fimDoDiaBrasiliaEmUtc(dia).toISOString()).toBe(
+      '2026-07-17T03:00:00.000Z',
+    );
   });
 });

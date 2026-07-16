@@ -72,6 +72,21 @@ const JORNADA_VAZIA = {
   batidas: [],
 };
 
+const JORNADA_QUATRO = {
+  ...JORNADA_VAZIA,
+  jornada: {
+    ...JORNADA_VAZIA.jornada,
+    trabalhadoMs: 25200000,
+    status: 'ENCERRADO',
+  },
+  batidas: [
+    { id: 'b1', hora: '2026-07-13T07:00:00.000Z', tipo: 'ENTRADA' },
+    { id: 'b2', hora: '2026-07-13T12:00:00.000Z', tipo: 'SAIDA_INTERVALO' },
+    { id: 'b3', hora: '2026-07-13T14:00:00.000Z', tipo: 'RETORNO_INTERVALO' },
+    { id: 'b4', hora: '2026-07-13T16:00:00.000Z', tipo: 'ENCERRAMENTO' },
+  ],
+};
+
 describe('RegistroPontoScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -122,6 +137,23 @@ describe('RegistroPontoScreen', () => {
     );
     const arg = pontoService.registrarBatida.mock.calls[0][0];
     expect(arg.hora).toMatch(/T07:56:00/);
+  });
+
+  it('não oferece uma quinta batida e mantém correção e exclusão disponíveis', async () => {
+    pontoService.jornadaDoDia.mockResolvedValue(JORNADA_QUATRO);
+
+    render(<RegistroPontoScreen />);
+    fireEvent.changeText(screen.getByPlaceholderText('Digite o nome…'), 'Ana');
+    fireEvent.press(await screen.findByText('Ana Souza'));
+
+    expect(
+      await screen.findByText(
+        'Limite de 4 batidas atingido. Você ainda pode corrigir ou excluir uma batida.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText('Registrar batida')).toBeNull();
+    expect(screen.getByText('Entrada')).toBeTruthy();
+    expect(screen.getByText('Encerramento')).toBeTruthy();
   });
 
   it('lê o comprovante, sugere o colaborador e pré-preenche a hora', async () => {

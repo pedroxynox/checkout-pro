@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { BatidaPonto, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { inicioDoDia } from '../common/datas';
+import { diaEncerradoEmBrasilia, inicioDoDia } from '../common/datas';
 import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
 import {
   type EtapaAlertaTac,
@@ -25,6 +25,7 @@ import {
   DataHoraPontoInvalidaError,
   HoraForaDoDiaError,
   HoraFuturaError,
+  LimiteBatidasDiaError,
   PessoaPontoInativaError,
   PessoaPontoNaoEncontradaError,
 } from './ponto.errors';
@@ -126,6 +127,24 @@ export class PontoService {
     @Optional() private readonly notificacoes?: NotificacoesService,
     @Optional() private readonly feriados?: FeriadosService,
   ) {}
+
+  /** Executa uma mutação de batidas com isolamento forte e retry de conflito. */
+  private async transacaoSerializavel<T>(
+    operacao: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    for (let tentativa = 0; ; tentativa += 1) {
+      try {
+        return await this.prisma.$transaction(operacao, {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        });
+      } catch (erro) {
+        const conflitoSerializacao =
+          erro instanceof Prisma.PrismaClientKnownRequestError &&
+          erro.code === 'P2034';
+        if (!conflitoSerializacao || tentativa >= 4) throw erro;
+      }
+    }
+  }
 
   /**
    * Busca pessoas por nome para escolher de quem é o comprovante: fiscais (da
@@ -291,21 +310,33 @@ export class PontoService {
       dto.pessoaId,
       tipoPessoa,
     );
-    await this.prisma.batidaPonto.create({
-      data: {
-        pessoaId: dto.pessoaId,
-        tipoPessoa,
-        colaboradorId,
-        data: dia,
-        hora,
-        // Tipo provisório — `reclassificar` ajusta pela ordem do dia.
-        tipo: 'ENTRADA',
-        origem: dto.origem ?? 'MANUAL',
-        confianca: dto.confianca ?? null,
-        comprovanteUrl: dto.comprovanteUrl ?? null,
-        registradoPor: usuario.sub,
-        registradoPorNome: usuario.nome ?? null,
-      },
+    const dadosBatida: Prisma.BatidaPontoUncheckedCreateInput = {
+      pessoaId: dto.pessoaId,
+      tipoPessoa,
+      colaboradorId,
+      data: dia,
+      hora,
+      // Tipo provisório — a mesma transação ajusta toda a ordem do dia.
+      tipo: 'ENTRADA',
+      origem: dto.origem ?? 'MANUAL',
+      confianca: dto.confianca ?? null,
+      comprovanteUrl: dto.comprovanteUrl ?? null,
+      registradoPor: usuario.sub,
+      registradoPorNome: usuario.nome ?? null,
+    };
+
+    // SERIALIZABLE transforma count + create + reclassificação em uma única
+    // decisão por pessoa/dia. Se duas solicitações disputarem a 4ª vaga, o
+    // PostgreSQL aborta uma delas (P2034); no retry ela já encontra quatro e
+    // recebe LimiteBatidasDiaError, portanto uma 5ª batida não é persistida.
+    await this.transacaoSerializavel(async (tx) => {
+      const totalBatidas = await tx.batidaPonto.count({
+        where: { pessoaId: dto.pessoaId, tipoPessoa, data: dia },
+      });
+      if (totalBatidas >= 4) throw new LimiteBatidasDiaError();
+
+      await tx.batidaPonto.create({ data: dadosBatida });
+      await this.reclassificarNoCliente(tx, dto.pessoaId, tipoPessoa, dia);
     });
     // Aprende o vínculo "nome lido → pessoa" quando a batida veio do leitor,
     // para reconhecer a pessoa na hora nas próximas leituras. Best-effort: uma
@@ -313,7 +344,6 @@ export class PontoService {
     if (dto.origem === 'LEITOR' && dto.nomeLido) {
       await this.aprenderAlias({ ...dto, colaboradorId }, tipoPessoa);
     }
-    await this.reclassificar(dto.pessoaId, dia);
     await this.sincronizarStatusFiscal(dto.pessoaId, tipoPessoa, dia);
     const resposta = await this.jornadaDoDia(dto.pessoaId, tipoPessoa, dia);
     // Avisa a supervisão/gerência ao entrar em risco de TAC ou em TAC.
@@ -571,9 +601,19 @@ export class PontoService {
       data.hora = hora;
     }
     if (dto.tipo) data.tipo = dto.tipo;
-    await this.prisma.batidaPonto.update({ where: { id }, data });
-    // Se a hora mudou, a ordem do dia pode ter mudado → reclassifica.
-    if (dto.hora) await this.reclassificar(batida.pessoaId, batida.data);
+    await this.transacaoSerializavel(async (tx) => {
+      await tx.batidaPonto.update({ where: { id }, data });
+      // Se a hora mudou, a ordem do dia pode ter mudado → reclassifica dentro
+      // da mesma transação para não disputar com registros ou exclusões.
+      if (dto.hora) {
+        await this.reclassificarNoCliente(
+          tx,
+          batida.pessoaId,
+          batida.tipoPessoa,
+          batida.data,
+        );
+      }
+    });
     await this.sincronizarStatusFiscal(
       batida.pessoaId,
       batida.tipoPessoa,
@@ -586,8 +626,15 @@ export class PontoService {
   async removerBatida(id: string): Promise<JornadaDiaResposta> {
     const batida = await this.buscarOuFalhar(id);
     await this.validacaoData.exigirDataPermitida(batida.data);
-    await this.prisma.batidaPonto.delete({ where: { id } });
-    await this.reclassificar(batida.pessoaId, batida.data);
+    await this.transacaoSerializavel(async (tx) => {
+      await tx.batidaPonto.delete({ where: { id } });
+      await this.reclassificarNoCliente(
+        tx,
+        batida.pessoaId,
+        batida.tipoPessoa,
+        batida.data,
+      );
+    });
     await this.sincronizarStatusFiscal(
       batida.pessoaId,
       batida.tipoPessoa,
@@ -604,7 +651,11 @@ export class PontoService {
   ): Promise<JornadaDiaResposta> {
     const dia = inicioDoDia(data);
     const batidas = await this.prisma.batidaPonto.findMany({
-      where: { pessoaId, data: dia },
+      where: {
+        pessoaId,
+        tipoPessoa: tipoPessoa as 'FISCAL' | 'OPERADOR',
+        data: dia,
+      },
       orderBy: { hora: 'asc' },
     });
     // Feriado segue a regra do domingo (base 7h20 + 100%). Best-effort: sem o
@@ -612,11 +663,13 @@ export class PontoService {
     const ehFeriado = this.feriados
       ? await this.feriados.ehFeriado(dia)
       : false;
+    const agora = agoraNaBrasilia();
     const j = calcularJornadaDia(
       batidas.map((b) => ({ id: b.id, hora: b.hora })),
-      agoraNaBrasilia(),
+      agora,
       dia.getUTCDay(),
       ehFeriado,
+      diaEncerradoEmBrasilia(dia, agora),
     );
     return {
       pessoaId,
@@ -638,34 +691,39 @@ export class PontoService {
       batidas: batidas.map((b) => ({
         id: b.id,
         hora: b.hora.toISOString(),
-        tipo: b.tipo as TipoBatida,
+        tipo:
+          j.batidas.find((classificada) => classificada.id === b.id)?.tipo ??
+          (b.tipo as TipoBatida),
         origem: b.origem,
         registradoPorNome: b.registradoPorNome,
       })),
     };
   }
 
-  /** Reatribui o tipo de cada batida do dia pela ordem cronológica. */
-  private async reclassificar(pessoaId: string, data: Date): Promise<void> {
+  /** Reatribui o tipo das batidas pela ordem usando o cliente transacional. */
+  private async reclassificarNoCliente(
+    cliente: Prisma.TransactionClient,
+    pessoaId: string,
+    tipoPessoa: 'FISCAL' | 'OPERADOR',
+    data: Date,
+  ): Promise<void> {
     const dia = inicioDoDia(data);
-    const batidas = await this.prisma.batidaPonto.findMany({
-      where: { pessoaId, data: dia },
+    const batidas = await cliente.batidaPonto.findMany({
+      where: { pessoaId, tipoPessoa, data: dia },
       orderBy: { hora: 'asc' },
     });
     const classificadas = classificarBatidas(
       batidas.map((b) => ({ id: b.id, hora: b.hora })),
     );
-    const updates = classificadas
-      .map((c) => {
-        const orig = batidas.find((b) => b.id === c.id);
-        if (!orig || orig.tipo === c.tipo) return null;
-        return this.prisma.batidaPonto.update({
-          where: { id: c.id },
-          data: { tipo: c.tipo },
+    for (const classificada of classificadas) {
+      const original = batidas.find((b) => b.id === classificada.id);
+      if (original && original.tipo !== classificada.tipo) {
+        await cliente.batidaPonto.update({
+          where: { id: classificada.id },
+          data: { tipo: classificada.tipo },
         });
-      })
-      .filter((u): u is Prisma.Prisma__BatidaPontoClient<BatidaPonto> => !!u);
-    await Promise.all(updates);
+      }
+    }
   }
 
   /**
