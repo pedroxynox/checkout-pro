@@ -1,19 +1,22 @@
 /**
  * Script de seed (cadastro inicial) do Check-out PRO.
  *
+ * ÚNICO login de fábrica: o ADMINISTRADOR. As pessoas (fiscais, gerentes e
+ * demais colaboradores) NÃO são mais semeadas aqui — devem ser cadastradas no
+ * app (Colaboradores), e o login criado por lá. Assim, ao excluir uma pessoa
+ * em "Acesso", ela não reaparece.
+ *
  * Cria de forma idempotente (upsert por chave única, sem duplicação):
- *  - Fiscais por turno, cada um com um `Usuario` de login individual e único
- *    (Req 6.4.2-6.4.5, 6.4.8, 6.4.11, 7.1.4).
- *  - Gerentes (perfil GERENTE), cada um com um `Usuario` de login individual
- *    (Req 6.4.6, 6.4.7).
+ *  - O usuário ADMINISTRADOR (login individual e único).
  *  - Os 39 operadores do cadastro inicial (Req 6.5.2), excluindo a operadora
- *    desligada e os nomes sempre ignorados.
+ *    desligada e os nomes sempre ignorados. (Operadores NÃO têm login.)
+ *  - Dados de configuração do setor (insumos, pedidos recorrentes, metas etc.).
  *
  * Executar: `npm run seed` (ou `npm run db:seed`) no diretório `backend/`.
  * Requer um DATABASE_URL apontando para um PostgreSQL acessível.
  */
 import * as bcrypt from 'bcrypt';
-import { CategoriaInsumo, Perfil, PrismaClient, TurnoFiscal } from '@prisma/client';
+import { CategoriaInsumo, Perfil, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -42,32 +45,6 @@ function slugLogin(nome: string): string {
     .replace(/\s+/g, '.');
 }
 
-interface SeedFiscal {
-  nome: string;
-  matricula: string;
-  turno: TurnoFiscal;
-  especial?: boolean;
-}
-
-// Fiscais cadastradas com matrícula (login por matrícula). A senha inicial é a
-// própria matrícula (pode ser alterada depois).
-const FISCAIS: SeedFiscal[] = [
-  // Turno de abertura (Req 6.4.2)
-  { nome: 'Carmen Felicia Moreno', matricula: '232150', turno: TurnoFiscal.ABERTURA },
-  { nome: 'Fabiana Sirley Sarafim', matricula: '243183', turno: TurnoFiscal.ABERTURA },
-  // Josiane Cardoso possui escala especial individual (Req 6.4.8)
-  { nome: 'Josiane Cardoso da Silva', matricula: '227315', turno: TurnoFiscal.ABERTURA, especial: true },
-  // Turno intermediário (Req 6.4.3)
-  { nome: 'Sheila Vieira', matricula: '234958', turno: TurnoFiscal.INTERMEDIARIO },
-  { nome: 'Auri Nellys Coronado De Garcia', matricula: '232849', turno: TurnoFiscal.INTERMEDIARIO, especial: true },
-  { nome: 'Raquel Silve De Oliveira Beneton', matricula: '248011', turno: TurnoFiscal.INTERMEDIARIO },
-  // Turno de fechamento (Req 6.4.4)
-  { nome: 'Karen Nicholle Mendoza Barro', matricula: '223747', turno: TurnoFiscal.FECHAMENTO },
-  { nome: 'Betzabeth Elisa Castellano Reyes', matricula: '231787', turno: TurnoFiscal.FECHAMENTO },
-  { nome: 'Maryolis Alexandra Lanza Lamar', matricula: '239242', turno: TurnoFiscal.FECHAMENTO },
-  { nome: 'Yannelyt Elizabet Lopez Subero', matricula: '233902', turno: TurnoFiscal.FECHAMENTO },
-];
-
 interface SeedGerente {
   nome: string;
   /** Matrícula usada como login (login por matrícula). Se ausente, usa o slug. */
@@ -78,8 +55,8 @@ interface SeedGerente {
   perfil?: Perfil;
 }
 
-// Gerentes com perfil GERENTE (Req 6.4.6). O login é a matrícula, quando
-// informada; caso contrário, o slug do nome.
+// ÚNICA conta de fábrica: o ADMINISTRADOR (acesso total). Todo o restante do
+// pessoal é cadastrado no app (Colaboradores). O login é a matrícula.
 const GERENTES: SeedGerente[] = [
   {
     nome: 'Pedro Munoz',
@@ -89,7 +66,6 @@ const GERENTES: SeedGerente[] = [
     // senha real, muito menos para a conta de acesso total.
     perfil: Perfil.ADMINISTRADOR,
   },
-  { nome: 'Arlete Pacheco Fernandes' },
 ];
 
 // 39 operadores do cadastro inicial (Req 6.5.2). Não inclui Patricia Del Valle
@@ -136,40 +112,6 @@ const OPERADORES: string[] = [
   'BARBARA FABIANA BATISTA',
   'CAMILA RIBEIRO DA COSTA',
 ];
-
-async function seedFiscais(): Promise<void> {
-  for (const f of FISCAIS) {
-    const login = f.matricula;
-    // Senha inicial = a própria matrícula (login por matrícula).
-    const senhaHash = await bcrypt.hash(f.matricula, 10);
-    // Usuário individual e único por fiscal (Req 6.4.11, 7.1.4).
-    const usuario = await prisma.usuario.upsert({
-      where: { login },
-      update: { perfil: Perfil.FISCAL, nome: f.nome },
-      create: {
-        login,
-        nome: f.nome,
-        senhaHash,
-        perfil: Perfil.FISCAL,
-      },
-    });
-
-    await prisma.fiscal.upsert({
-      where: { nome: f.nome },
-      update: {
-        turno: f.turno,
-        especial: f.especial ?? false,
-        usuarioId: usuario.id,
-      },
-      create: {
-        nome: f.nome,
-        turno: f.turno,
-        especial: f.especial ?? false,
-        usuarioId: usuario.id,
-      },
-    });
-  }
-}
 
 /**
  * Backfill idempotente das fichas `Colaborador` (funcao FISCAL) a partir dos
@@ -665,7 +607,6 @@ async function main(): Promise<void> {
   // Gera o hash da senha inicial uma única vez antes de criar os usuários.
   senhaHashInicial = await bcrypt.hash(SENHA_INICIAL, 10);
 
-  await seedFiscais();
   await seedColaboradoresFiscais();
   await seedGerentes();
   await seedOperadores();

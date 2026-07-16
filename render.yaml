@@ -5,7 +5,9 @@
 #   2. Um serviço web Node com o backend NestJS (plano free).
 #
 # O serviço web, no build, instala dependências, gera o Prisma Client e compila.
-# No start, aplica as migrações, executa o seed (idempotente) e sobe a API.
+# No start, aplica as migrações e sobe a API. O SEED NÃO roda automaticamente
+# (evita "ressuscitar" pessoas excluídas em "Acesso"). Para um banco novo/vazio,
+# rode o seed UMA vez manualmente: `npx prisma db seed` no diretório backend.
 #
 # Observação sobre o plano gratuito:
 #   - O serviço web "dorme" após ~15 min sem uso; a primeira requisição depois
@@ -28,10 +30,12 @@ services:
     # --include=dev força a instalação das devDependencies (NestJS CLI, Prisma,
     # ts-node) mesmo com NODE_ENV=production, necessárias para build e seed.
     buildCommand: npm install --include=dev && npx prisma generate && npm run build
-    # Migrações e seed rodam ANTES de subir o serviço — evita timeout de porta no
+    # As migrações rodam ANTES de subir o serviço — evita timeout de porta no
     # Render por causa do advisory lock do Prisma segurar a partida enquanto o
-    # Render aguarda a porta abrir.
-    preDeployCommand: npx prisma migrate deploy && npx prisma db seed
+    # Render aguarda a porta abrir. O seed NÃO roda aqui de propósito: assim uma
+    # pessoa excluída em "Acesso" não volta a cada deploy. Rode o seed manualmente
+    # apenas em um banco novo/vazio.
+    preDeployCommand: npx prisma migrate deploy
     startCommand: node dist/main.js
     healthCheckPath: /health
     envVars:
