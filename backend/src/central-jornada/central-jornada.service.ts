@@ -38,6 +38,8 @@ export interface CentralPessoaResumo {
   horasAtestadoMs: number;
   faltas: number;
   diasTac: number;
+  /** Dias com conflito: bateu ponto E tem uma ausência marcada no mesmo dia. */
+  conflitos: number;
   /** Saldo (banco de horas) = extras (50+100) − horas que deve. 1h = 1h. */
   saldoMs: number;
 }
@@ -70,6 +72,18 @@ export interface CentralDiaDetalhe {
   ausenciaId?: string;
   /** true se a falta está marcada como débito de horas. */
   debito?: boolean;
+  /**
+   * Conflito: neste dia a pessoa BATEU PONTO e também tem uma ausência marcada
+   * (falta/atestado/permesso). As horas vêm das batidas (a ausência é ignorada
+   * no cálculo), mas o conflito fica sinalizado para o gestor resolver — apagar
+   * a batida indevida ou a falta indevida.
+   */
+  conflitoAusencia?: {
+    ausenciaId: string;
+    motivoJustificativa: string | null;
+    statusJustificativa: string;
+    debito: boolean;
+  };
 }
 
 export interface CentralPeriodo {
@@ -88,6 +102,7 @@ export interface CentralResumo {
     horasAtestadoMs: number;
     faltas: number;
     diasTac: number;
+    conflitos: number;
     saldoMs: number;
   };
   pessoas: CentralPessoaResumo[];
@@ -251,6 +266,7 @@ export class CentralJornadaService {
     let horasAtestadoMs = 0;
     let faltas = 0;
     let diasTac = 0;
+    let conflitos = 0;
     const dias: CentralDiaDetalhe[] = [];
 
     for (
@@ -288,6 +304,18 @@ export class CentralJornadaService {
           devidasDia = baseMs - j.trabalhadoMs;
           horasDevidasMs += devidasDia;
         }
+        // Conflito: bateu ponto E tem ausência marcada no mesmo dia. As horas
+        // vêm das batidas (a ausência é ignorada no cálculo), mas sinalizamos
+        // para o gestor decidir qual está errada.
+        const conflito = ausencia
+          ? {
+              ausenciaId: ausencia.id,
+              motivoJustificativa: ausencia.motivoJustificativa,
+              statusJustificativa: ausencia.statusJustificativa,
+              debito: ausencia.debitoHoras,
+            }
+          : undefined;
+        if (conflito) conflitos += 1;
         dias.push({
           data: k,
           diaSemana,
@@ -303,6 +331,7 @@ export class CentralJornadaService {
           devidasMs: devidasDia,
           tac: j.tac,
           motivosTac: j.motivosTac,
+          conflitoAusencia: conflito,
         });
       } else if (ausencia) {
         faltas += 1;
@@ -364,6 +393,7 @@ export class CentralJornadaService {
         horasAtestadoMs,
         faltas,
         diasTac,
+        conflitos,
         saldoMs,
       },
       dias,
@@ -405,6 +435,7 @@ export class CentralJornadaService {
         horasAtestadoMs: acc.horasAtestadoMs + p.horasAtestadoMs,
         faltas: acc.faltas + p.faltas,
         diasTac: acc.diasTac + p.diasTac,
+        conflitos: acc.conflitos + p.conflitos,
         saldoMs: acc.saldoMs + p.saldoMs,
       }),
       {
@@ -414,6 +445,7 @@ export class CentralJornadaService {
         horasAtestadoMs: 0,
         faltas: 0,
         diasTac: 0,
+        conflitos: 0,
         saldoMs: 0,
       },
     );

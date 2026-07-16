@@ -360,6 +360,9 @@ describe('PontoService — validações de pessoa, data e hora', () => {
         update: jest.fn().mockResolvedValue({}),
         delete: jest.fn().mockResolvedValue({}),
       },
+      ausencia: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
       alertaTacEnviado: {
         create: jest.fn(),
         createMany: jest.fn(),
@@ -372,16 +375,19 @@ describe('PontoService — validações de pessoa, data e hora', () => {
     const validacaoData = {
       exigirDataPermitida: jest.fn().mockResolvedValue(undefined),
     };
+    const notificacoes = {
+      notificarSupervisaoEGerencia: jest.fn().mockResolvedValue([]),
+    };
     const service = new PontoService(
       prisma as never,
       validacaoData as never,
       undefined,
       undefined,
-      undefined,
+      notificacoes as never,
       undefined,
     );
     jest.spyOn(service, 'jornadaDoDia').mockResolvedValue(resposta(0));
-    return { prisma, validacaoData, service };
+    return { prisma, validacaoData, notificacoes, service };
   }
 
   it('valida a data inicial e grava a ficha ativa resolvida pelo servidor', async () => {
@@ -542,6 +548,48 @@ describe('PontoService — validações de pessoa, data e hora', () => {
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(2);
     expect(prisma.batidaPonto.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('avisa a supervisão quando registra ponto num dia com ausência marcada', async () => {
+    const { prisma, notificacoes, service } = montar();
+    prisma.ausencia.findFirst.mockResolvedValue({ id: 'aus-1' });
+
+    await service.registrarBatida(
+      {
+        pessoaId: 'colaborador-1',
+        tipoPessoa: 'OPERADOR',
+        data: '2026-07-10',
+        hora: '2026-07-10T08:00:00.000Z',
+      },
+      usuario,
+    );
+
+    expect(notificacoes.notificarSupervisaoEGerencia).toHaveBeenCalledWith(
+      expect.objectContaining({
+        titulo: expect.stringContaining('Conflito'),
+      }),
+    );
+  });
+
+  it('não repete o aviso de conflito em batidas seguintes do mesmo dia', async () => {
+    const { prisma, notificacoes, service } = montar();
+    prisma.ausencia.findFirst.mockResolvedValue({ id: 'aus-1' });
+    // Já existe uma batida às 07:00 → a nova (12:00) não é a primeira do dia.
+    prisma.batidaPonto.findMany.mockResolvedValue([
+      { hora: new Date('2026-07-10T07:00:00.000Z') },
+    ]);
+
+    await service.registrarBatida(
+      {
+        pessoaId: 'colaborador-1',
+        tipoPessoa: 'OPERADOR',
+        data: '2026-07-10',
+        hora: '2026-07-10T12:00:00.000Z',
+      },
+      usuario,
+    );
+
+    expect(notificacoes.notificarSupervisaoEGerencia).not.toHaveBeenCalled();
   });
 
   it('rejeita pessoa inexistente ou sem ficha ativa', async () => {

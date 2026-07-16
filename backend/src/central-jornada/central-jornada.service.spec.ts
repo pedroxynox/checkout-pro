@@ -283,4 +283,72 @@ describe('CentralJornadaService.resumoCiclo', () => {
       faltando: ['encerramento'],
     });
   });
+
+  it('sinaliza conflito quando há batidas e ausência no mesmo dia', async () => {
+    const prismaFake = {
+      colaborador: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            nome: 'Ana',
+            funcao: 'OPERADOR',
+            matricula: 'A',
+            usuarioId: null,
+          },
+        ]),
+      },
+      // Dia 28/06 completo (07-12 + 14-16 = 7h) — bateu ponto normalmente…
+      batidaPonto: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            batida('e1', '2026-06-28', '07:00'),
+            batida('e2', '2026-06-28', '12:00'),
+            batida('e3', '2026-06-28', '14:00'),
+            batida('e4', '2026-06-28', '16:00'),
+          ]),
+      },
+      // …mas há uma ausência (atestado) marcada no MESMO dia → conflito.
+      ausencia: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'aus-1',
+            pessoaId: 'c1',
+            colaboradorId: 'c1',
+            data: dia('2026-06-28'),
+            debitoHoras: false,
+            motivoJustificativa: 'ATESTADO_MEDICO',
+            statusJustificativa: 'JUSTIFICADA',
+          },
+        ]),
+      },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const feriadosFake = {
+      mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
+    };
+    const service = new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+    );
+
+    const r = await service.resumoCiclo(0);
+    // As horas vêm das batidas; a ausência NÃO conta como falta, mas o dia
+    // fica marcado como conflito.
+    expect(r.pessoas[0].conflitos).toBe(1);
+    expect(r.pessoas[0].faltas).toBe(0);
+    expect(r.pessoas[0].cargaTrabalhadaMs).toBe(7 * 3_600_000);
+    expect(r.totais.conflitos).toBe(1);
+
+    const det = await service.detalhePessoa('c1', 0);
+    const diaConf = det.dias.find((d) => d.data.startsWith('2026-06-28'));
+    expect(diaConf?.tipo).toBe('TRABALHO');
+    expect(diaConf?.conflitoAusencia).toMatchObject({
+      ausenciaId: 'aus-1',
+      motivoJustificativa: 'ATESTADO_MEDICO',
+      statusJustificativa: 'JUSTIFICADA',
+      debito: false,
+    });
+  });
 });

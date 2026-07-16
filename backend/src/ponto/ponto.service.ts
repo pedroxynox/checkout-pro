@@ -336,25 +336,36 @@ export class PontoService {
     // delas (P2034); no retry ela já vê o estado atualizado e é recusada,
     // então nunca há 5ª batida nem duplicada persistida. A publicação em tempo
     // real e os avisos ficam FORA da transação (efeitos externos, pós-commit).
-    const transicoes = await this.transacaoSerializavel(async (tx) => {
-      const batidasDoDia = await tx.batidaPonto.findMany({
-        where: { pessoaId: dto.pessoaId, tipoPessoa, data: dia },
-        select: { hora: true },
-      });
-      if (batidasDoDia.length >= 4) throw new LimiteBatidasDiaError();
-      if (
-        batidaDuplicada(
-          hora.getTime(),
-          batidasDoDia.map((b) => b.hora.getTime()),
-        )
-      ) {
-        throw new BatidaDuplicadaError();
-      }
+    const { transicoes, eraPrimeira } = await this.transacaoSerializavel(
+      async (tx) => {
+        const batidasDoDia = await tx.batidaPonto.findMany({
+          where: { pessoaId: dto.pessoaId, tipoPessoa, data: dia },
+          select: { hora: true },
+        });
+        if (batidasDoDia.length >= 4) throw new LimiteBatidasDiaError();
+        if (
+          batidaDuplicada(
+            hora.getTime(),
+            batidasDoDia.map((b) => b.hora.getTime()),
+          )
+        ) {
+          throw new BatidaDuplicadaError();
+        }
 
-      await tx.batidaPonto.create({ data: dadosBatida });
-      await this.reclassificarNoCliente(tx, dto.pessoaId, tipoPessoa, dia);
-      return this.sincronizarFiscalNoCliente(tx, dto.pessoaId, tipoPessoa, dia);
-    });
+        await tx.batidaPonto.create({ data: dadosBatida });
+        await this.reclassificarNoCliente(tx, dto.pessoaId, tipoPessoa, dia);
+        const transicoesFiscal = await this.sincronizarFiscalNoCliente(
+          tx,
+          dto.pessoaId,
+          tipoPessoa,
+          dia,
+        );
+        return {
+          transicoes: transicoesFiscal,
+          eraPrimeira: batidasDoDia.length === 0,
+        };
+      },
+    );
     // Aprende o vínculo "nome lido → pessoa" quando a batida veio do leitor,
     // para reconhecer a pessoa na hora nas próximas leituras. Best-effort: uma
     // falha aqui não deve impedir o registro da batida.
@@ -362,6 +373,17 @@ export class PontoService {
       await this.aprenderAlias({ ...dto, colaboradorId }, tipoPessoa);
     }
     await this.publicarStatusFiscal(dto.pessoaId, transicoes);
+    // Detecta o cruzamento ponto ↔ ausência: se a pessoa registrou ponto num
+    // dia em que também há falta/atestado/permesso marcado, avisa a supervisão
+    // (uma vez, na primeira batida do dia). Não bloqueia — o gestor resolve.
+    if (eraPrimeira) {
+      await this.avisarConflitoAusenciaSeNecessario(
+        dto.pessoaId,
+        colaboradorId,
+        tipoPessoa,
+        dia,
+      );
+    }
     const resposta = await this.jornadaDoDia(dto.pessoaId, tipoPessoa, dia);
     // Avisa a supervisão/gerência ao entrar em risco de TAC ou em TAC.
     await this.avisarAlertaTacSeNecessario(
@@ -565,6 +587,40 @@ export class PontoService {
       nome = c?.nome ?? null;
     }
     return (nome ?? 'Colaborador').trim().split(/\s+/)[0];
+  }
+
+  /**
+   * Avisa a supervisão/gerência quando uma batida cai num dia que já tem uma
+   * ausência (falta/atestado/permesso) marcada para a mesma pessoa — um
+   * conflito a resolver. Best-effort: uma falha nunca trava o registro.
+   *
+   * A ausência é buscada tanto pela identidade da batida (`pessoaId`, que para
+   * fiscal é o Fiscal.id) quanto pela ficha (`colaboradorId`), cobrindo os dois
+   * jeitos de a falta ter sido lançada.
+   */
+  private async avisarConflitoAusenciaSeNecessario(
+    pessoaId: string,
+    colaboradorId: string,
+    tipoPessoa: 'FISCAL' | 'OPERADOR',
+    dia: Date,
+  ): Promise<void> {
+    if (!this.notificacoes) return;
+    try {
+      const ausencia = await this.prisma.ausencia.findFirst({
+        where: { data: dia, pessoaId: { in: [pessoaId, colaboradorId] } },
+        select: { id: true },
+      });
+      if (!ausencia) return;
+      const nome = await this.nomeDaPessoa(pessoaId, tipoPessoa);
+      const dd = String(dia.getUTCDate()).padStart(2, '0');
+      const mm = String(dia.getUTCMonth() + 1).padStart(2, '0');
+      await this.notificacoes.notificarSupervisaoEGerencia({
+        titulo: '⚠️ Conflito: ponto e falta no mesmo dia',
+        mensagem: `${nome} registrou ponto em ${dd}/${mm}, mas também tem uma ausência marcada nesse dia. Verifique qual está correta.`,
+      });
+    } catch {
+      // Best-effort: a detecção do conflito nunca deve travar a batida.
+    }
   }
 
   /** Memoriza "nome lido → pessoa" (best-effort) para o leitor aprender. */
