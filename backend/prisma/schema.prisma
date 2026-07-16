@@ -662,6 +662,37 @@ model AlertaTacEnviado {
   @@map("alertas_tac_enviados")
 }
 
+// Tipo de evento no histórico de alertas de TAC de um dia:
+// - AVISADO: um aviso de risco/TAC foi enviado (a `etapa` diz qual);
+// - CORRIGIDO: após uma correção de batida, a jornada saiu da etapa antes
+//   avisada (o risco/TAC deixou de valer); a reserva daquela etapa é liberada
+//   para permitir um novo aviso se a situação reincidir;
+// - REINCIDENTE: um novo excesso foi avisado DEPOIS de um CORRIGIDO no mesmo
+//   dia — uma situação nova de verdade, não a repetição do mesmo estado.
+enum TipoEventoTac {
+  AVISADO
+  CORRIGIDO
+  REINCIDENTE
+}
+
+// Histórico compreensível dos alertas de TAC por pessoa/dia (para a supervisão):
+// registra, em ordem, o risco detectado/avisado, a jornada corrigida e um novo
+// exceso. Append-only — cada linha é um evento imutável. `pessoaId` é id "solto"
+// (fiscal ou colaborador), sem FK rígida (ADR 0005). Complementa
+// `AlertaTacEnviado` (que é só a trava de deduplicação): aqui fica a trilha.
+model EventoAlertaTac {
+  id       String          @id @default(uuid())
+  pessoaId String
+  dia      DateTime
+  tipo     TipoEventoTac
+  etapa    EtapaAlertaTac?
+  motivos  String?
+  em       DateTime        @default(now())
+
+  @@index([pessoaId, dia])
+  @@map("eventos_alerta_tac")
+}
+
 model EscalaEntry {
   id            String  @id @default(uuid())
   funcionarioId String

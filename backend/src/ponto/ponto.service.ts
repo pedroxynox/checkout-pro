@@ -56,6 +56,25 @@ function agoraNaBrasilia(): Date {
  */
 const OFFSET_BRASILIA_PARA_UTC_MS = 3 * 60 * 60 * 1000;
 
+/** Etapas de alerta em ordem crescente de gravidade. */
+const ETAPAS_TAC_CRESCENTE: readonly EtapaAlertaTac[] = [
+  'RISCO_1H30',
+  'RISCO_1H40',
+  'TAC',
+];
+
+/** Índice de gravidade de uma etapa (maior = mais grave); -1 quando nula. */
+function ordemEtapa(etapa: EtapaAlertaTac | null): number {
+  return etapa ? ETAPAS_TAC_CRESCENTE.indexOf(etapa) : -1;
+}
+
+/** Rótulo curto de uma etapa, para as mensagens de correção. */
+function rotuloEtapa(etapa: EtapaAlertaTac): string {
+  if (etapa === 'RISCO_1H30') return 'risco de TAC';
+  if (etapa === 'RISCO_1H40') return 'risco alto de TAC';
+  return 'TAC';
+}
+
 /** Uma batida como exibida ao app. */
 export interface BatidaView {
   id: string;
@@ -87,6 +106,21 @@ export interface JornadaDiaResposta {
   data: string;
   jornada: JornadaView;
   batidas: BatidaView[];
+}
+
+/** Um evento da trilha de alertas de TAC (serializável). */
+export interface EventoTacView {
+  tipo: 'AVISADO' | 'CORRIGIDO' | 'REINCIDENTE';
+  etapa: EtapaAlertaTac | null;
+  motivos: string | null;
+  em: string;
+}
+
+/** Histórico de alertas de TAC de uma pessoa num dia. */
+export interface HistoricoTacResposta {
+  pessoaId: string;
+  data: string;
+  eventos: EventoTacView[];
 }
 
 /** Pessoa selecionável para registrar o ponto. */
@@ -500,6 +534,14 @@ export class PontoService {
       if (reserva === 'RESERVADO') {
         await this.registrarEtapasConsumidas(pessoaId, dia, etapasConsumidas);
       }
+      // Trilha para a supervisão: um novo excesso avisado DEPOIS de uma
+      // correção no mesmo dia é uma reincidência (situação nova de verdade).
+      await this.registrarEventoAvisado(
+        pessoaId,
+        dia,
+        etapa,
+        resposta.jornada.motivosTac,
+      );
       for (const chave of chavesConsumidas) {
         this.alertasTacAvisados.add(chave);
       }
@@ -576,6 +618,166 @@ export class PontoService {
       // Best-effort: se não conseguir liberar, o pior caso é não reenviar esta
       // etapa preventiva; nunca trava a batida.
     }
+  }
+
+  /**
+   * Grava na trilha (`EventoAlertaTac`) que um aviso foi enviado. Se já houve um
+   * CORRIGIDO neste dia, registra como REINCIDENTE (novo excesso real) em vez de
+   * AVISADO. Best-effort: a trilha nunca deve travar o aviso.
+   */
+  private async registrarEventoAvisado(
+    pessoaId: string,
+    dia: Date,
+    etapa: EtapaAlertaTac,
+    motivos: string[],
+  ): Promise<void> {
+    try {
+      const corrigidoAntes = await this.prisma.eventoAlertaTac.findFirst({
+        where: { pessoaId, dia, tipo: 'CORRIGIDO' },
+        select: { id: true },
+      });
+      await this.prisma.eventoAlertaTac.create({
+        data: {
+          pessoaId,
+          dia,
+          tipo: corrigidoAntes ? 'REINCIDENTE' : 'AVISADO',
+          etapa,
+          motivos: motivos.length > 0 ? motivos.join('; ') : null,
+        },
+      });
+    } catch {
+      // Best-effort: a trilha é um complemento; sua falha nunca afeta o aviso.
+    }
+  }
+
+  /**
+   * Reavalia o alerta de TAC depois de uma correção/exclusão de batida.
+   *
+   * Se a jornada saiu de uma etapa que JÁ tinha sido avisada (a correção
+   * resolveu o excesso), então: (1) libera a reserva das etapas acima da atual
+   * em `AlertaTacEnviado`, para que um novo excesso futuro possa ser avisado de
+   * novo; (2) grava um evento CORRIGIDO na trilha; (3) avisa a supervisão de que
+   * a jornada foi corrigida. Se a correção NÃO reduziu a etapa, não faz nada
+   * aqui (o `avisarAlertaTacSeNecessario` chamado em seguida cuida de avisar uma
+   * etapa mais grave, se for o caso). Best-effort em todas as escritas.
+   */
+  private async reavaliarAlertaTacAposCorrecao(
+    pessoaId: string,
+    tipoPessoa: 'FISCAL' | 'OPERADOR',
+    dia: Date,
+    resposta: JornadaDiaResposta,
+  ): Promise<void> {
+    const etapaAtual = etapaAlertaTac(
+      resposta.jornada.horasExtrasMs,
+      resposta.jornada.tac,
+    );
+
+    let enviados: { etapa: EtapaAlertaTac }[];
+    try {
+      enviados = await this.prisma.alertaTacEnviado.findMany({
+        where: { pessoaId, dia },
+        select: { etapa: true },
+      });
+    } catch {
+      return; // Sem acesso ao banco não há como reavaliar.
+    }
+
+    const maiorEnviada = enviados.reduce<EtapaAlertaTac | null>(
+      (maior, { etapa }) =>
+        ordemEtapa(etapa) > ordemEtapa(maior) ? etapa : maior,
+      null,
+    );
+    // Só é "correção" se antes avisamos uma etapa que agora não vale mais.
+    if (!maiorEnviada || ordemEtapa(etapaAtual) >= ordemEtapa(maiorEnviada)) {
+      return;
+    }
+
+    const etapasLiberadas = ETAPAS_TAC_CRESCENTE.filter(
+      (e) => ordemEtapa(e) > ordemEtapa(etapaAtual),
+    );
+    const chaveDia = dia.toISOString();
+    for (const e of etapasLiberadas) {
+      this.alertasTacAvisados.delete(`${pessoaId}:${chaveDia}:${e}`);
+      this.alertasTacEmEnvio.delete(`${pessoaId}:${chaveDia}:${e}`);
+    }
+    try {
+      await this.prisma.alertaTacEnviado.deleteMany({
+        where: { pessoaId, dia, etapa: { in: etapasLiberadas } },
+      });
+    } catch {
+      // Best-effort: se não liberar, no pior caso não reavisa uma reincidência.
+    }
+    // A jornada continua numa etapa menor (etapaAtual) — que já foi
+    // necessariamente atingida antes (a escalada é monotônica). Garante a
+    // reserva dela e das inferiores para que o `avisarAlertaTacSeNecessario`
+    // seguinte NÃO a trate como um novo excesso e a marque como REINCIDENTE por
+    // engano (borda de reinício em que a reserva inferior se perdeu).
+    if (etapaAtual) {
+      const etapasMantidas = ETAPAS_TAC_CRESCENTE.filter(
+        (e) => ordemEtapa(e) <= ordemEtapa(etapaAtual),
+      );
+      await this.registrarEtapasConsumidas(pessoaId, dia, etapasMantidas);
+      const chaveDia = dia.toISOString();
+      for (const e of etapasMantidas) {
+        this.alertasTacAvisados.add(`${pessoaId}:${chaveDia}:${e}`);
+      }
+    }
+    try {
+      await this.prisma.eventoAlertaTac.create({
+        data: { pessoaId, dia, tipo: 'CORRIGIDO', etapa: maiorEnviada },
+      });
+    } catch {
+      // Best-effort: a trilha é um complemento.
+    }
+    if (this.notificacoes) {
+      try {
+        const nome = await this.nomeDaPessoa(pessoaId, tipoPessoa);
+        // Título fiel à etapa resolvida: só é "TAC corrigido" quando o que
+        // caiu era o próprio TAC; um risco resolvido não vira "TAC".
+        const titulo =
+          maiorEnviada === 'TAC'
+            ? '✅ TAC corrigido'
+            : '✅ Risco de TAC resolvido';
+        await this.notificacoes.notificarSupervisaoEGerencia({
+          titulo,
+          mensagem: `A jornada de ${nome} foi corrigida e não está mais em ${rotuloEtapa(maiorEnviada)}.`,
+        });
+      } catch {
+        // Best-effort: avisar a correção nunca deve travar a edição.
+      }
+    }
+  }
+
+  /**
+   * Histórico de alertas de TAC de uma pessoa num dia (trilha para a gestão):
+   * risco/TAC avisado, jornada corrigida e novo excesso, em ordem cronológica.
+   */
+  async historicoTac(
+    pessoaId: string,
+    data: Date,
+  ): Promise<HistoricoTacResposta> {
+    // Valida a data como no resto do módulo: uma data inválida vira 400 (e não
+    // um 500 ao chegar como `Invalid Date` na consulta do Prisma).
+    if (Number.isNaN(data.getTime())) {
+      throw new DataHoraPontoInvalidaError();
+    }
+    const dia = inicioDoDia(data);
+    const eventos = await this.prisma.eventoAlertaTac.findMany({
+      where: { pessoaId, dia },
+      // Desempate estável por `id` para uma ordem determinística quando dois
+      // eventos compartilham o mesmo instante (`em`, precisão de ms).
+      orderBy: [{ em: 'asc' }, { id: 'asc' }],
+    });
+    return {
+      pessoaId,
+      data: dia.toISOString(),
+      eventos: eventos.map((e) => ({
+        tipo: e.tipo,
+        etapa: e.etapa,
+        motivos: e.motivos,
+        em: e.em.toISOString(),
+      })),
+    };
   }
 
   private conteudoAlertaTac(
@@ -747,7 +949,18 @@ export class PontoService {
       );
     });
     await this.publicarStatusFiscal(batida.pessoaId, transicoes);
-    return this.jornadaDoDia(batida.pessoaId, batida.tipoPessoa, batida.data);
+    const resposta = await this.jornadaDoDia(
+      batida.pessoaId,
+      batida.tipoPessoa,
+      batida.data,
+    );
+    await this.recalcularAlertaTacAposEdicao(
+      batida.pessoaId,
+      batida.tipoPessoa,
+      inicioDoDia(batida.data),
+      resposta,
+    );
+    return resposta;
   }
 
   /** Remove uma batida e reclassifica o dia. */
@@ -770,7 +983,39 @@ export class PontoService {
       );
     });
     await this.publicarStatusFiscal(batida.pessoaId, transicoes);
-    return this.jornadaDoDia(batida.pessoaId, batida.tipoPessoa, batida.data);
+    const resposta = await this.jornadaDoDia(
+      batida.pessoaId,
+      batida.tipoPessoa,
+      batida.data,
+    );
+    await this.recalcularAlertaTacAposEdicao(
+      batida.pessoaId,
+      batida.tipoPessoa,
+      inicioDoDia(batida.data),
+      resposta,
+    );
+    return resposta;
+  }
+
+  /**
+   * Recalcula os avisos de TAC depois de corrigir/excluir uma batida: primeiro
+   * detecta a correção (saiu de uma etapa antes avisada → marca CORRIGIDO e
+   * libera para reavisar), depois avisa se a correção agravou a jornada para
+   * uma etapa ainda não comunicada. Best-effort: nunca trava a edição.
+   */
+  private async recalcularAlertaTacAposEdicao(
+    pessoaId: string,
+    tipoPessoa: 'FISCAL' | 'OPERADOR',
+    dia: Date,
+    resposta: JornadaDiaResposta,
+  ): Promise<void> {
+    await this.reavaliarAlertaTacAposCorrecao(
+      pessoaId,
+      tipoPessoa,
+      dia,
+      resposta,
+    );
+    await this.avisarAlertaTacSeNecessario(pessoaId, tipoPessoa, dia, resposta);
   }
 
   /** Batidas + jornada calculada de um dia. */
