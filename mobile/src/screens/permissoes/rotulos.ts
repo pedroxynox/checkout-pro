@@ -136,6 +136,7 @@ export const ROTULOS_FUNCIONALIDADE: Record<string, RotuloFuncionalidade> = {
   },
   NOTIFICACOES: {
     titulo: 'Notificações',
+    descricao: 'Receber avisos e ver o centro de notificações',
     area: 'Avisos',
   },
   ALERTAS_FILA: {
