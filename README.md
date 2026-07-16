@@ -101,7 +101,7 @@ EXPO_PUBLIC_API_URL=http://localhost:3000 npm run start
 | `GEMINI_API_KEY` / `GEMINI_MODEL` | Cluby; modelo padrão `gemini-2.5-flash` |
 | `HORARIO_FIM_DO_DIA` | horário dos alertas operacionais |
 | `SENHA_INICIAL` | senha usada pelo seed |
-| `RETENCAO_INATIVOS_MESES` | retenção antes da purga; padrão 12 meses |
+| `RETENCAO_INATIVOS_MESES` | retenção antes da purga; padrão 3 meses |
 
 ### Mobile
 

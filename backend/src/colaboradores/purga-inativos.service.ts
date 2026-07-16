@@ -4,7 +4,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Janela de retenção padrão (meses) caso a env não esteja configurada. */
-const RETENCAO_PADRAO_MESES = 12;
+const RETENCAO_PADRAO_MESES = 3;
 
 /** Resumo do que a purga apagou (por entidade). */
 export interface ResumoPurgaInativos {
@@ -26,7 +26,7 @@ export interface ResumoPurgaInativos {
  * identificadores são removidos em cascata com a ficha.
  *
  * **Janela de retenção (proteção legal):** só entram na purga os colaboradores
- * desligados há mais de `RETENCAO_INATIVOS_MESES` meses (padrão 12). O histórico
+ * desligados há mais de `RETENCAO_INATIVOS_MESES` meses (padrão 3). O histórico
  * disciplinar/trabalhista de um desligado recente é preservado durante toda a
  * janela — importante para eventuais disputas trabalhistas.
  *

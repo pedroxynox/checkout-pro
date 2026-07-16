@@ -82,13 +82,13 @@ export class EnvironmentVariables {
 
   // Janela de retenção (em meses) dos colaboradores desligados antes da purga
   // mensal apagar a ficha e o histórico de RRHH. Protege o histórico
-  // disciplinar/trabalhista de desligados recentes. Padrão conservador: 12
-  // meses. Aumente conforme a exigência legal do cliente.
+  // disciplinar/trabalhista de desligados recentes. Padrão: 3 meses. Aumente
+  // conforme a exigência legal do cliente.
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @IsOptional()
-  RETENCAO_INATIVOS_MESES = 12;
+  RETENCAO_INATIVOS_MESES = 3;
 }
 
 /**
