@@ -20,6 +20,24 @@ import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 
+/** Rótulos amigáveis dos equipamentos (para o resumo da card). */
+const ROTULO_EQUIPAMENTO: Record<string, string> = {
+  CPU: 'CPU',
+  TECLADO: 'Teclado',
+  SCANNER: 'Scanner',
+  PINPAD: 'Pinpad',
+  MONITOR: 'Monitor',
+  IMPRESSORA: 'Impressora',
+  GAVETA: 'Gaveta',
+  BALANCA: 'Balança',
+  OUTRO: 'Outro',
+};
+
+/** "PDV 01", "PDV 02"... (número com dois dígitos para alinhar as cards). */
+function rotuloPdv(numero: number): string {
+  return `PDV ${String(numero).padStart(2, '0')}`;
+}
+
 export function CheckOutsScreen({
   navigation,
 }: PropsTela<'CheckOuts'>): React.ReactElement {
@@ -50,6 +68,9 @@ export function CheckOutsScreen({
         <View style={styles.grade}>
           {tablero.dados.checkouts.map((c) => {
             const temAvaria = c.abertos > 0;
+            const equipamentos = (c.equipamentos ?? [])
+              .map((e) => ROTULO_EQUIPAMENTO[e] ?? e)
+              .join(' · ');
             return (
               <TouchableOpacity
                 key={c.numero}
@@ -59,22 +80,45 @@ export function CheckOutsScreen({
                 }
                 style={[styles.caixa, temAvaria ? styles.caixaAvaria : styles.caixaOk]}
               >
+                <View style={styles.caixaTopo}>
+                  <Text style={styles.pdv}>{rotuloPdv(c.numero)}</Text>
+                  {temAvaria ? (
+                    <View style={styles.selo}>
+                      <Ionicons name="alert" size={12} color={cores.textoInverso} />
+                      <Text style={styles.seloTexto}>{c.abertos}</Text>
+                    </View>
+                  ) : (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={cores.verde}
+                    />
+                  )}
+                </View>
+
                 <Text
                   style={[
-                    styles.numero,
-                    temAvaria ? styles.textoAvaria : styles.textoOk,
+                    styles.status,
+                    temAvaria ? styles.statusAvaria : styles.statusOk,
                   ]}
                 >
-                  {c.numero}
+                  {temAvaria
+                    ? `${c.abertos} ${c.abertos > 1 ? 'avarias abertas' : 'avaria aberta'}`
+                    : 'Sem problemas'}
                 </Text>
-                {temAvaria ? (
-                  <View style={styles.selo}>
-                    <Ionicons name="alert" size={12} color={cores.textoInverso} />
-                    <Text style={styles.seloTexto}>{c.abertos}</Text>
+
+                {equipamentos ? (
+                  <Text style={styles.equipamentos} numberOfLines={2}>
+                    {equipamentos}
+                  </Text>
+                ) : null}
+
+                {c.recorrente ? (
+                  <View style={styles.recorrente}>
+                    <Ionicons name="repeat" size={12} color={cores.amarelo} />
+                    <Text style={styles.recorrenteTexto}>Falha recorrente</Text>
                   </View>
-                ) : (
-                  <Ionicons name="checkmark" size={14} color={cores.verde} />
-                )}
+                ) : null}
               </TouchableOpacity>
             );
           })}
@@ -88,16 +132,17 @@ const styles = StyleSheet.create({
   grade: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: espacamento.sm,
+    justifyContent: 'space-between',
+    rowGap: espacamento.sm,
   },
   caixa: {
-    width: 64,
-    height: 64,
+    // Duas cards por linha (PDV 01 | PDV 02, e abaixo PDV 03 | PDV 04).
+    width: '48%',
+    minHeight: 88,
     borderRadius: raio.md,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 1,
-    gap: 2,
+    padding: espacamento.md,
+    gap: espacamento.xs,
   },
   caixaOk: {
     backgroundColor: cores.superficie,
@@ -107,9 +152,16 @@ const styles = StyleSheet.create({
     backgroundColor: cores.vermelhoFundo,
     borderColor: cores.vermelho,
   },
-  numero: { ...tipografia.subtitulo, fontWeight: '700' },
-  textoOk: { color: cores.texto },
-  textoAvaria: { color: cores.vermelho },
+  caixaTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pdv: { ...tipografia.subtitulo, color: cores.texto },
+  status: { ...tipografia.rotulo },
+  statusOk: { color: cores.verde },
+  statusAvaria: { color: cores.vermelho },
+  equipamentos: { ...tipografia.legenda, color: cores.textoSecundario },
   selo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -122,6 +174,17 @@ const styles = StyleSheet.create({
   seloTexto: {
     ...tipografia.legenda,
     color: cores.textoInverso,
+    fontWeight: '700',
+  },
+  recorrente: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  recorrenteTexto: {
+    ...tipografia.legenda,
+    color: cores.amarelo,
     fontWeight: '700',
   },
 });

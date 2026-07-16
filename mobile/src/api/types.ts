@@ -96,10 +96,15 @@ export interface ReporteCheckout {
   resolvidoEm?: string | null;
 }
 
-/** Um check-out no tablero e quantas avarias abertas tem. */
+/** Um check-out no tablero: estado e resumo para a card. */
 export interface CheckoutResumo {
   numero: number;
+  /** Nº de avarias abertas. */
   abertos: number;
+  /** Equipamentos com avaria aberta (códigos), para exibir na card. */
+  equipamentos: string[];
+  /** true se há problema recorrente no mês (manutenção sugerida). */
+  recorrente: boolean;
 }
 
 /** Tablero da seção Check-Outs: total de caixas + estado de cada uma. */
