@@ -805,7 +805,7 @@ export class OperadorTurnoService {
       const inicio = new Date(fim.getTime() - 7 * 24 * 60 * 60 * 1000);
       const analitica = await this.analiticaFaltas(inicio, fim);
       if (analitica.total === 0) return;
-      const gestores = await this.notificacoes.gestores();
+      const gestores = await this.notificacoes.destinatariosComPermissao('OPERADORES_AUSENCIAS');
       if (gestores.length === 0) return;
 
       const topo = analitica.porOperador
@@ -843,7 +843,7 @@ export class OperadorTurnoService {
       });
       const disponiveis = escalados.length - faltas;
       if (disponiveis < COBERTURA_MINIMA) {
-        const gestores = await this.notificacoes.gestores();
+        const gestores = await this.notificacoes.destinatariosComPermissao('OPERADORES_AUSENCIAS');
         if (gestores.length === 0) return;
         await this.notificacoes.enviar(gestores, {
           titulo: '⚠️ Cobertura baixa hoje',

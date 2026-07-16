@@ -46,6 +46,9 @@ describe('NotificacoesService', () => {
             }),
           ),
       },
+      perfilPermissao: {
+        findMany: () => Promise.resolve([]),
+      },
       notificacao: {
         create: ({ data }: { data: Omit<NotifFake, 'id' | 'criadaEm'> }) => {
           const novo: NotifFake = {

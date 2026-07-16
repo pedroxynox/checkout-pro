@@ -46,7 +46,7 @@ export class ContratosAlertasService {
     const alertas = await this.contratos.avaliarAlertasDoDia(hoje);
     if (alertas.length === 0) return;
 
-    const gestores = await this.notificacoes.gestores();
+    const gestores = await this.notificacoes.destinatariosComPermissao('CONTRATOS_VISUALIZAR');
     if (gestores.length === 0) return;
 
     const diaISO = hoje.toISOString().slice(0, 10);

@@ -74,6 +74,9 @@ describe('AlertasService (cron com relógio injetável)', () => {
             }),
           ),
       },
+      perfilPermissao: {
+        findMany: () => Promise.resolve([]),
+      },
       notificacao: {
         create: ({ data }: { data: NotificacaoCriada }) => {
           criadas.push(data);
@@ -175,7 +178,7 @@ describe('AlertasService (cron com relógio injetável)', () => {
   });
 
   describe('alerta de importações pendentes', () => {
-    it('notifica todos os perfis operacionais quando há pendentes', async () => {
+    it('detecta pendentes mas NÃO envia mais aviso (descontinuado)', async () => {
       const { service, criadas } = montar({
         agora: new Date('2024-03-10T18:00:00.000Z'),
         pendentesImportacao: ['CANCELAMENTO_ITENS', 'DEVOLUCOES'],
@@ -183,14 +186,9 @@ describe('AlertasService (cron com relógio injetável)', () => {
 
       const pendentes = await service.dispararAlertaImportacoesPendentes();
 
+      // A detecção continua (para log/diagnóstico), mas nenhum aviso é enviado.
       expect(pendentes).toEqual(['CANCELAMENTO_ITENS', 'DEVOLUCOES']);
-      // Um único aviso, entregue a todos os perfis operacionais (g1, f1, f2).
-      expect(criadas.map((c) => c.usuarioId).sort()).toEqual([
-        'f1',
-        'f2',
-        'g1',
-      ]);
-      expect(criadas[0].titulo).toBe('Importações pendentes');
+      expect(criadas).toHaveLength(0);
     });
 
     it('não notifica quando não há pendentes', async () => {

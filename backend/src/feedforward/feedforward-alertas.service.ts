@@ -42,7 +42,8 @@ export class FeedforwardAlertasService {
     const vencidos = await this.feedforward.pontosVencidosDoDia(hoje);
     if (vencidos.length === 0) return;
 
-    const destinatarios = await this.feedforward.destinatariosAcompanhamento();
+    const destinatarios =
+      await this.notificacoes.destinatariosComPermissao('FEEDFORWARD_VISUALIZAR');
     if (destinatarios.length === 0) return;
 
     const diaISO = hoje.toISOString().slice(0, 10);

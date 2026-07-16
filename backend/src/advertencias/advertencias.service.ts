@@ -158,7 +158,7 @@ export class AdvertenciasService {
     }
 
     if (criadas > 0) {
-      const gestores = await this.notificacoes.gestores();
+      const gestores = await this.notificacoes.destinatariosComPermissao('ADVERTENCIAS_DECIDIR');
       if (gestores.length > 0) {
         await this.notificacoes.enviar(gestores, {
           titulo: '⚠️ Solicitação de advertência (falta não justificada)',

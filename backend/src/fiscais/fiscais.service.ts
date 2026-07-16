@@ -248,7 +248,8 @@ export class FiscaisService {
     // Notifica gestores (gerente, supervisor, gerente desenvolvedor).
     const mensagem = mensagemTransicao(nome, anterior, status);
     if (mensagem && this.notificacoes) {
-      const gestores = await this.notificacoes.gestores();
+      const gestores =
+        await this.notificacoes.destinatariosComPermissao('CENTRAL_JORNADA');
       await this.notificacoes.enviar(gestores, {
         titulo: 'Fiscais',
         mensagem,
@@ -565,7 +566,8 @@ export class FiscaisService {
       where: { id: fiscalId },
     });
     if (fiscal && this.notificacoes) {
-      const gestores = await this.notificacoes.gestores();
+      const gestores =
+        await this.notificacoes.destinatariosComPermissao('FISCAIS_STATUS');
       await this.notificacoes.enviar(gestores, {
         titulo: 'Falta de fiscal',
         mensagem: `${primeiroNome(fiscal.nome)} informou falta hoje.`,

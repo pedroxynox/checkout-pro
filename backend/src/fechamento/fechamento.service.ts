@@ -157,7 +157,7 @@ export class FechamentoService {
   /** Notifica os gestores que o fechamento do dia foi concluído com sucesso. */
   private async notificar(dia: Date): Promise<void> {
     try {
-      const gestores = await this.notificacoes.gestores();
+      const gestores = await this.notificacoes.destinatariosComPermissao('FECHAMENTO');
       if (gestores.length === 0) {
         return;
       }

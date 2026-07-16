@@ -241,7 +241,7 @@ export class OperadoresService {
         where: { pessoaId, data: { gte: ini, lt: fim } },
       });
       if (qtd !== LIMITE_FALTAS_MES) return;
-      const gestores = await this.notificacoes.gestores();
+      const gestores = await this.notificacoes.destinatariosComPermissao('OPERADORES_AUSENCIAS');
       if (gestores.length === 0) return;
       await this.notificacoes.enviar(gestores, {
         titulo: '🔴 Operador com muitas faltas',

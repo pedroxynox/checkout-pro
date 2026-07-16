@@ -46,7 +46,12 @@ describe('RequisicoesService', () => {
         count: jest.fn(() => Promise.resolve(0)),
       },
     };
-    const notificacoes = { enviar: jest.fn(() => Promise.resolve([])) };
+    const notificacoes = {
+      enviar: jest.fn(() => Promise.resolve([])),
+      destinatariosComPermissao: jest.fn(() =>
+        Promise.resolve([{ id: 'g1' }, { id: 's1' }]),
+      ),
+    };
     const insumos = { registrarEntrada: jest.fn(() => Promise.resolve(100)) };
     const service = new RequisicoesService(
       prismaFake as never,

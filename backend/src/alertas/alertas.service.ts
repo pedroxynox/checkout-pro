@@ -9,7 +9,6 @@ import { TipoChecklist } from '../checklist/checklist.domain';
 import { ArrecadacaoService } from '../arrecadacao/arrecadacao.service';
 import { FechamentoService } from '../fechamento/fechamento.service';
 import {
-  CONFIG_ARRECADACAO,
   TIPOS_ARRECADACAO,
   TipoArrecadacao,
 } from '../arrecadacao/arrecadacao.domain';
@@ -218,16 +217,12 @@ export class AlertasService implements OnModuleInit {
     if (pendentes.length === 0) {
       return [];
     }
-    const gerenciais = await this.notificacoesService.loginGerencial();
-    const titulos = pendentes.map((tipo) => CONFIG_ARRECADACAO[tipo].titulo);
-    await this.notificacoesService.enviar(gerenciais, {
-      titulo: 'Importações pendentes',
-      mensagem: `Há indicadores pendentes de importação hoje: ${titulos.join(
+    // Aviso de "Importações pendentes" DESCONTINUADO por decisão de negócio:
+    // não é mais enviado. A detecção permanece apenas para log/diagnóstico.
+    this.logger.log(
+      `Importações pendentes detectadas (aviso desativado): ${pendentes.join(
         ', ',
       )}.`,
-    });
-    this.logger.warn(
-      `Alerta de importações pendentes disparado: ${pendentes.join(', ')}.`,
     );
     return pendentes;
   }
@@ -245,7 +240,8 @@ export class AlertasService implements OnModuleInit {
     if (completo) {
       return false;
     }
-    const destinatarios = await this.notificacoesService.destinatariosGerais();
+    const destinatarios =
+      await this.notificacoesService.destinatariosComPermissao('NOTIFICACOES');
     await this.notificacoesService.enviar(destinatarios, {
       titulo: 'Fechamento pendente',
       mensagem:

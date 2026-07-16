@@ -126,7 +126,7 @@ export class PedidosRecorrentesService {
     }
 
     if (sugestoesCriadas.length > 0) {
-      const gestores = await this.notificacoes.gestores();
+      const gestores = await this.notificacoes.destinatariosComPermissao('INSUMOS_GERENCIAR');
       await this.notificacoes.enviar(gestores, {
         titulo: '📋 Pedido da semana gerado',
         mensagem: `Sugestão de pedido para amanhã:\n${sugestoesCriadas.join('\n')}\n\nConfirme no app para dar entrada.`,
