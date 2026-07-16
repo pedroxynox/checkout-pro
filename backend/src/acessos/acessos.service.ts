@@ -66,10 +66,19 @@ export class AcessosService {
       tokenVersion: usuario.tokenVersion,
     });
 
+    const perfilOverrides = await this.prisma.perfilPermissao.findMany({
+      where: { perfil: usuario.perfil },
+      select: { funcionalidade: true, concedida: true },
+    });
+
     return {
       token,
       perfil,
-      permissoes: permissoesEfetivas(perfil, usuario.permissoes ?? []),
+      permissoes: permissoesEfetivas(
+        perfil,
+        perfilOverrides,
+        usuario.permissoes ?? [],
+      ),
     };
   }
 
@@ -113,9 +122,15 @@ export class AcessosService {
     usuario: UsuarioAutenticado,
     funcionalidades: string[],
   ): void {
-    const overrides: OverridePermissao[] = usuario.permissoesOverrides ?? [];
+    const perfilOverrides: OverridePermissao[] = usuario.perfilOverrides ?? [];
+    const userOverrides: OverridePermissao[] = usuario.permissoesOverrides ?? [];
     const permitido = funcionalidades.some((f) =>
-      decidirAutorizacaoComOverrides(usuario.perfil, f, overrides),
+      decidirAutorizacaoComOverrides(
+        usuario.perfil,
+        f,
+        perfilOverrides,
+        userOverrides,
+      ),
     );
     if (!permitido) {
       throw new PermissaoInsuficienteError();
@@ -154,19 +169,29 @@ export class AcessosService {
   async identidade(
     usuario: UsuarioAutenticado,
   ): Promise<UsuarioAutenticado & { permissoes: string[] }> {
-    const registro = await this.prisma.usuario.findUnique({
-      where: { id: usuario.sub },
-      select: {
-        nome: true,
-        permissoes: { select: { funcionalidade: true, concedida: true } },
-      },
-    });
+    const [registro, perfilOverrides] = await Promise.all([
+      this.prisma.usuario.findUnique({
+        where: { id: usuario.sub },
+        select: {
+          nome: true,
+          permissoes: { select: { funcionalidade: true, concedida: true } },
+        },
+      }),
+      this.prisma.perfilPermissao.findMany({
+        where: { perfil: usuario.perfil },
+        select: { funcionalidade: true, concedida: true },
+      }),
+    ]);
     return {
       sub: usuario.sub,
       login: usuario.login,
       perfil: usuario.perfil,
       nome: registro?.nome ?? usuario.nome ?? null,
-      permissoes: permissoesEfetivas(usuario.perfil, registro?.permissoes ?? []),
+      permissoes: permissoesEfetivas(
+        usuario.perfil,
+        perfilOverrides,
+        registro?.permissoes ?? [],
+      ),
     };
   }
 }

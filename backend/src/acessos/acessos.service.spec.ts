@@ -29,6 +29,9 @@ describe('AcessosService', () => {
         findMany: () =>
           Promise.resolve(usuarios.map((u) => ({ login: u.login }))),
       },
+      perfilPermissao: {
+        findMany: () => Promise.resolve([]),
+      },
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return new AcessosService(prismaFake as any, jwt);

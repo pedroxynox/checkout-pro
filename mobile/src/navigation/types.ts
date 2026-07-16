@@ -54,6 +54,9 @@ export type RootStackParamList = {
   Usuarios: undefined;
   Permissoes: undefined;
   PermissoesUsuario: { usuarioId: string; login: string; nome?: string | null };
+  PermissoesHistorico: undefined;
+  PermissoesPerfis: undefined;
+  PermissoesPerfil: { perfil: string; rotulo: string };
   AlertasFila: undefined;
   Normativas: undefined;
   IndicadorQuebra: undefined;

@@ -15,6 +15,11 @@ export interface UsuarioAutenticado {
    * `JwtAuthGuard` a partir do banco. Ausente/vazio = usa o padrão do perfil.
    */
   permissoesOverrides?: OverridePermissao[];
+  /**
+   * Ajustes do PADRÃO do perfil (Central de Permissões ▸ Padrões por perfil),
+   * carregados pelo `JwtAuthGuard`. Aplicados antes dos ajustes por login.
+   */
+  perfilOverrides?: OverridePermissao[];
 }
 
 /**

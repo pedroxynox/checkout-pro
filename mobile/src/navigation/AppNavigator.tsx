@@ -43,6 +43,9 @@ import { ReiniciarDadosScreen } from '../screens/centroControle/ReiniciarDadosSc
 import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
 import { PermissoesScreen } from '../screens/permissoes/PermissoesScreen';
 import { PermissoesUsuarioScreen } from '../screens/permissoes/PermissoesUsuarioScreen';
+import { PermissoesHistoricoScreen } from '../screens/permissoes/PermissoesHistoricoScreen';
+import { PermissoesPerfisScreen } from '../screens/permissoes/PermissoesPerfisScreen';
+import { PermissoesPerfilScreen } from '../screens/permissoes/PermissoesPerfilScreen';
 import { AlertasFilaScreen } from '../screens/alertasFila/AlertasFilaScreen';
 import { NormativasScreen } from '../screens/normativas/NormativasScreen';
 import { IndicadorQuebraScreen } from '../screens/quebra/IndicadorQuebraScreen';
@@ -270,6 +273,21 @@ export function AppNavigator(): React.ReactElement {
             name="PermissoesUsuario"
             component={PermissoesUsuarioScreen}
             options={{ title: 'Permissões do login' }}
+          />
+          <Stack.Screen
+            name="PermissoesHistorico"
+            component={PermissoesHistoricoScreen}
+            options={{ title: 'Histórico de permissões' }}
+          />
+          <Stack.Screen
+            name="PermissoesPerfis"
+            component={PermissoesPerfisScreen}
+            options={{ title: 'Padrões por perfil' }}
+          />
+          <Stack.Screen
+            name="PermissoesPerfil"
+            component={PermissoesPerfilScreen}
+            options={{ title: 'Padrão do perfil' }}
           />
         </>
       )}

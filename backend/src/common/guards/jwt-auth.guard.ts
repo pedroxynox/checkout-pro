@@ -66,13 +66,21 @@ export class JwtAuthGuard implements CanActivate {
     // "token inválido". Uma leitura por PK (indexada) por requisição — na mesma
     // consulta trazemos os ajustes de permissão por login (Central de
     // Permissões), sem custo de round-trip adicional.
-    const usuario = await this.prisma.usuario.findUnique({
-      where: { id: payload.sub },
-      select: {
-        tokenVersion: true,
-        permissoes: { select: { funcionalidade: true, concedida: true } },
-      },
-    });
+    const [usuario, perfilOverrides] = await Promise.all([
+      this.prisma.usuario.findUnique({
+        where: { id: payload.sub },
+        select: {
+          tokenVersion: true,
+          permissoes: { select: { funcionalidade: true, concedida: true } },
+        },
+      }),
+      // Ajustes do PADRÃO do perfil (Central de Permissões). Tabela minúscula e
+      // indexada por perfil; consulta barata feita em paralelo.
+      this.prisma.perfilPermissao.findMany({
+        where: { perfil: payload.perfil },
+        select: { funcionalidade: true, concedida: true },
+      }),
+    ]);
     // Rejeita se o usuário foi removido ou se o token foi revogado
     // (versão diferente da atual — ex.: após redefinição de senha ou mudança
     // de permissões). Tokens antigos sem `tokenVersion` são tratados como 0.
@@ -86,6 +94,7 @@ export class JwtAuthGuard implements CanActivate {
       nome: payload.nome ?? null,
       perfil: payload.perfil,
       permissoesOverrides: usuario.permissoes,
+      perfilOverrides,
     };
     return true;
   }

@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
@@ -15,8 +16,11 @@ import {
 } from '../common/decorators/usuario-atual.decorator';
 import { DefinirPermissoesDto } from './dto/permissoes.dto';
 import {
+  ItemAuditoria,
+  PermissoesDoPerfil,
   PermissoesDoUsuario,
   PermissoesService,
+  ResumoPerfil,
 } from './permissoes.service';
 
 /**
@@ -59,5 +63,48 @@ export class PermissoesController {
     @UsuarioAtual() admin: UsuarioAutenticado,
   ): Promise<PermissoesDoUsuario> {
     return this.service.restaurarPadrao(id, admin?.login);
+  }
+
+  // ---- Padrões por perfil ----
+
+  /** Resumo dos perfis ajustáveis (com contagem de itens personalizados). */
+  @Get('perfis')
+  perfis(): Promise<ResumoPerfil[]> {
+    return this.service.listarPerfis();
+  }
+
+  /** Padrão (código ± ajustes) de um perfil ajustável. */
+  @Get('perfil/:perfil')
+  doPerfil(@Param('perfil') perfil: string): Promise<PermissoesDoPerfil> {
+    return this.service.permissoesDoPerfil(perfil);
+  }
+
+  /** Define o padrão de um perfil (afeta todos os usuários do perfil). */
+  @Put('perfil/:perfil')
+  definirPerfil(
+    @Param('perfil') perfil: string,
+    @Body() dto: DefinirPermissoesDto,
+    @UsuarioAtual() admin: UsuarioAutenticado,
+  ): Promise<PermissoesDoPerfil> {
+    return this.service.definirPerfil(perfil, dto.permissoes, admin?.login);
+  }
+
+  /** Restaura o perfil ao padrão de código (remove os ajustes de perfil). */
+  @Post('perfil/:perfil/restaurar')
+  @HttpCode(HttpStatus.OK)
+  restaurarPerfil(
+    @Param('perfil') perfil: string,
+    @UsuarioAtual() admin: UsuarioAutenticado,
+  ): Promise<PermissoesDoPerfil> {
+    return this.service.restaurarPerfil(perfil, admin?.login);
+  }
+
+  // ---- Histórico (auditoria) ----
+
+  /** Últimas mudanças de permissão (por login e por perfil). */
+  @Get('historico')
+  historico(@Query('limite') limite?: string): Promise<ItemAuditoria[]> {
+    const n = Number(limite);
+    return this.service.historico(Number.isFinite(n) && n > 0 ? n : 100);
   }
 }
