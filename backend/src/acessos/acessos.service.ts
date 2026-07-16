@@ -5,7 +5,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
 import {
   decidirAutorizacao,
+  decidirAutorizacaoComOverrides,
   loginDisponivelEntre,
+  OverridePermissao,
+  permissoesEfetivas,
   Perfil,
 } from './acessos.domain';
 import {
@@ -17,6 +20,8 @@ import {
 export interface ResultadoLogin {
   token: string;
   perfil: Perfil;
+  /** Permissões EFETIVAS do usuário (padrão do perfil ± ajustes por login). */
+  permissoes: string[];
 }
 
 /**
@@ -43,6 +48,9 @@ export class AcessosService {
   async autenticar(login: string, senha: string): Promise<ResultadoLogin> {
     const usuario = await this.prisma.usuario.findUnique({
       where: { login },
+      include: {
+        permissoes: { select: { funcionalidade: true, concedida: true } },
+      },
     });
 
     if (!usuario || !(await bcrypt.compare(senha, usuario.senhaHash))) {
@@ -58,7 +66,11 @@ export class AcessosService {
       tokenVersion: usuario.tokenVersion,
     });
 
-    return { token, perfil };
+    return {
+      token,
+      perfil,
+      permissoes: permissoesEfetivas(perfil, usuario.permissoes ?? []),
+    };
   }
 
   /**
@@ -93,6 +105,24 @@ export class AcessosService {
   }
 
   /**
+   * Como `exigirAlgumaAutorizacao`, mas considerando os ajustes de permissão
+   * POR LOGIN (Central de Permissões) carregados em `request.usuario`. É a
+   * autorização que vale de verdade nos endpoints (usada pelo `PerfilGuard`).
+   */
+  exigirAlgumaAutorizacaoDoUsuario(
+    usuario: UsuarioAutenticado,
+    funcionalidades: string[],
+  ): void {
+    const overrides: OverridePermissao[] = usuario.permissoesOverrides ?? [];
+    const permitido = funcionalidades.some((f) =>
+      decidirAutorizacaoComOverrides(usuario.perfil, f, overrides),
+    );
+    if (!permitido) {
+      throw new PermissaoInsuficienteError();
+    }
+  }
+
+  /**
    * Verifica se um login está disponível, garantindo a unicidade/exclusividade
    * de login (Req 7.1.4, 7.1.6): nenhum login é compartilhado entre usuários.
    * Apoia-se na restrição de unicidade de `Usuario.login` no banco.
@@ -121,11 +151,22 @@ export class AcessosService {
    * a partir do banco (independente de o token ter sido emitido antes do
    * campo existir).
    */
-  async identidade(usuario: UsuarioAutenticado): Promise<UsuarioAutenticado> {
+  async identidade(
+    usuario: UsuarioAutenticado,
+  ): Promise<UsuarioAutenticado & { permissoes: string[] }> {
     const registro = await this.prisma.usuario.findUnique({
       where: { id: usuario.sub },
-      select: { nome: true },
+      select: {
+        nome: true,
+        permissoes: { select: { funcionalidade: true, concedida: true } },
+      },
     });
-    return { ...usuario, nome: registro?.nome ?? usuario.nome ?? null };
+    return {
+      sub: usuario.sub,
+      login: usuario.login,
+      perfil: usuario.perfil,
+      nome: registro?.nome ?? usuario.nome ?? null,
+      permissoes: permissoesEfetivas(usuario.perfil, registro?.permissoes ?? []),
+    };
   }
 }

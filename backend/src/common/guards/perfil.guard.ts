@@ -47,11 +47,12 @@ export class PerfilGuard implements CanActivate {
       throw new ForbiddenException('Usuário não autenticado.');
     }
 
-    // Autoriza se o perfil tiver acesso a QUALQUER uma das funcionalidades
-    // (semântica OR). Lança PermissaoInsuficienteError quando nenhuma é
-    // permitida; o filtro de exceções mapeia para 403 com mensagem em PT.
-    this.acessosService.exigirAlgumaAutorizacao(
-      usuario.perfil,
+    // Autoriza se o usuário tiver acesso a QUALQUER uma das funcionalidades
+    // (semântica OR), já considerando os ajustes por login (Central de
+    // Permissões). Lança PermissaoInsuficienteError quando nenhuma é permitida;
+    // o filtro de exceções mapeia para 403 com mensagem em PT.
+    this.acessosService.exigirAlgumaAutorizacaoDoUsuario(
+      usuario,
       funcionalidades,
     );
     return true;

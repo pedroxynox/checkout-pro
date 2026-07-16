@@ -52,6 +52,8 @@ export type RootStackParamList = {
   ReiniciarDados: undefined;
   PerfilColaborador: { colaboradorId: string };
   Usuarios: undefined;
+  Permissoes: undefined;
+  PermissoesUsuario: { usuarioId: string; login: string; nome?: string | null };
   AlertasFila: undefined;
   Normativas: undefined;
   IndicadorQuebra: undefined;

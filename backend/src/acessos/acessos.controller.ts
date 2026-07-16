@@ -39,9 +39,15 @@ export class AcessosController {
     return this.acessosService.autenticar(dto.login, dto.senha);
   }
 
-  /** Retorna a identidade do usuário autenticado (perfil e login). */
+  /**
+   * Retorna a identidade do usuário autenticado (perfil, login e as permissões
+   * EFETIVAS — padrão do perfil ± ajustes por login). O app usa `permissoes`
+   * para decidir o que exibir.
+   */
   @Get('eu')
-  eu(@UsuarioAtual() usuario: UsuarioAutenticado): Promise<UsuarioAutenticado> {
+  eu(
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<UsuarioAutenticado & { permissoes: string[] }> {
     return this.acessosService.identidade(usuario);
   }
 }

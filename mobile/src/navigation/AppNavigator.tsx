@@ -41,6 +41,8 @@ import { NaoReconhecidosScreen } from '../screens/indicadores/NaoReconhecidosScr
 import { InsumosDadosScreen } from '../screens/centroControle/InsumosDadosScreen';
 import { ReiniciarDadosScreen } from '../screens/centroControle/ReiniciarDadosScreen';
 import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
+import { PermissoesScreen } from '../screens/permissoes/PermissoesScreen';
+import { PermissoesUsuarioScreen } from '../screens/permissoes/PermissoesUsuarioScreen';
 import { AlertasFilaScreen } from '../screens/alertasFila/AlertasFilaScreen';
 import { NormativasScreen } from '../screens/normativas/NormativasScreen';
 import { IndicadorQuebraScreen } from '../screens/quebra/IndicadorQuebraScreen';
@@ -256,6 +258,20 @@ export function AppNavigator(): React.ReactElement {
           component={UsuariosScreen}
           options={{ title: 'Acesso' }}
         />
+      )}
+      {podeAcessar('PERMISSOES_GERENCIAR') && (
+        <>
+          <Stack.Screen
+            name="Permissoes"
+            component={PermissoesScreen}
+            options={{ title: 'Permissões' }}
+          />
+          <Stack.Screen
+            name="PermissoesUsuario"
+            component={PermissoesUsuarioScreen}
+            options={{ title: 'Permissões do login' }}
+          />
+        </>
       )}
       {podeAcessar('ALERTAS_FILA') && (
         <Stack.Screen

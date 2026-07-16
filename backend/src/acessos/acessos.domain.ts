@@ -89,6 +89,8 @@ export const TODAS_FUNCIONALIDADES = [
   'INDICADOR_QUEBRA',
   // Configuração do rodízio de domingo (Centro de Controle) — só administrador.
   'ESCALA_DOMINGO_CONFIG',
+  // Central de Permissões (ajustar permissões por login) — só administrador.
+  'PERMISSOES_GERENCIAR',
   // Administração de dados (zerar/limpar) — só administrador
   'ADMIN_DADOS',
 ] as const;
@@ -266,6 +268,126 @@ export function decidirAutorizacao(
     return FUNCIONALIDADES_IMPORTADOR_SET.has(funcionalidade);
   }
   return FUNCIONALIDADES_FISCAL_SET.has(funcionalidade);
+}
+
+/**
+ * ============================================================================
+ * Central de Permissões — permissões POR LOGIN (perfil como padrão + ajustes).
+ * ============================================================================
+ */
+
+/**
+ * Um ajuste (desvio) de permissão para um usuário específico, relativo ao
+ * padrão do seu perfil. `concedida = true` adiciona a funcionalidade; `false`
+ * a remove.
+ */
+export interface OverridePermissao {
+  funcionalidade: string;
+  concedida: boolean;
+}
+
+/**
+ * Funcionalidades **protegidas**: exclusivas do ADMINISTRADOR e NÃO ajustáveis
+ * pela Central de Permissões (não podem ser concedidas nem manipuladas para
+ * outros perfis). Evita escalada de privilégios: ninguém pode se dar acesso a
+ * gerir pessoas, importar, zerar dados, configurar o rodízio nem à própria
+ * Central de Permissões.
+ */
+export const FUNCIONALIDADES_PROTEGIDAS: readonly string[] = Object.freeze([
+  'USUARIOS_CRUD',
+  'ADMIN_DADOS',
+  'ESCALA_DOMINGO_CONFIG',
+  'IMPORTACOES',
+  'PERMISSOES_GERENCIAR',
+  // Leitura interna sem área de menu — não faz sentido ajustar manualmente.
+  'CARGA_STATUS_VISUALIZAR',
+]);
+
+const FUNCIONALIDADES_PROTEGIDAS_SET = new Set<string>(
+  FUNCIONALIDADES_PROTEGIDAS,
+);
+
+/**
+ * Indica se uma funcionalidade pode ser ajustada por login na Central de
+ * Permissões (existe no catálogo e não é protegida).
+ */
+export function podeSerAjustada(funcionalidade: string): boolean {
+  return (
+    (TODAS_FUNCIONALIDADES as readonly string[]).includes(funcionalidade) &&
+    !FUNCIONALIDADES_PROTEGIDAS_SET.has(funcionalidade)
+  );
+}
+
+/** Lista, em ordem do catálogo, as funcionalidades ajustáveis por login. */
+export const FUNCIONALIDADES_AJUSTAVEIS: readonly string[] = Object.freeze(
+  TODAS_FUNCIONALIDADES.filter((f) => !FUNCIONALIDADES_PROTEGIDAS_SET.has(f)),
+);
+
+/** Conjunto padrão de funcionalidades de um perfil (sem ajustes por login). */
+export function conjuntoBaseDoPerfil(perfil: Perfil): readonly string[] {
+  if (perfil === 'ADMINISTRADOR') {
+    return TODAS_FUNCIONALIDADES;
+  }
+  if (perfil === 'GERENTE') {
+    return FUNCIONALIDADES_GERENTE;
+  }
+  if (perfil === 'SUPERVISOR') {
+    return FUNCIONALIDADES_SUPERVISOR;
+  }
+  if (perfil === 'IMPORTADOR') {
+    return FUNCIONALIDADES_IMPORTADOR;
+  }
+  return FUNCIONALIDADES_FISCAL;
+}
+
+/**
+ * Decide o acesso considerando os ajustes por login (perfil como padrão +
+ * overrides). O ADMINISTRADOR mantém acesso TOTAL e **imutável** (os ajustes
+ * são ignorados). Ajustes sobre funcionalidades protegidas também são
+ * ignorados por segurança — a autoridade final é sempre esta função.
+ */
+export function decidirAutorizacaoComOverrides(
+  perfil: Perfil,
+  funcionalidade: string,
+  overrides: readonly OverridePermissao[],
+): boolean {
+  if (perfil === 'ADMINISTRADOR') {
+    return true;
+  }
+  if (!FUNCIONALIDADES_PROTEGIDAS_SET.has(funcionalidade)) {
+    const ajuste = overrides.find((o) => o.funcionalidade === funcionalidade);
+    if (ajuste) {
+      return ajuste.concedida;
+    }
+  }
+  return decidirAutorizacao(perfil, funcionalidade);
+}
+
+/**
+ * Calcula o conjunto EFETIVO de funcionalidades de um usuário: o padrão do
+ * perfil com os ajustes aplicados (ajustes protegidos são ignorados). É o que
+ * o backend entrega ao app para decidir o que aparece na tela.
+ */
+export function permissoesEfetivas(
+  perfil: Perfil,
+  overrides: readonly OverridePermissao[],
+): string[] {
+  if (perfil === 'ADMINISTRADOR') {
+    return [...TODAS_FUNCIONALIDADES];
+  }
+  const efetivas = new Set<string>(conjuntoBaseDoPerfil(perfil));
+  for (const ajuste of overrides) {
+    if (FUNCIONALIDADES_PROTEGIDAS_SET.has(ajuste.funcionalidade)) {
+      continue;
+    }
+    if (ajuste.concedida) {
+      efetivas.add(ajuste.funcionalidade);
+    } else {
+      efetivas.delete(ajuste.funcionalidade);
+    }
+  }
+  // Mantém a ordem do catálogo para uma saída estável.
+  return TODAS_FUNCIONALIDADES.filter((f) => efetivas.has(f));
 }
 
 /** Representa um usuário e a sua credencial (forma resolvida/abstrata). */

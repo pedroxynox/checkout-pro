@@ -143,8 +143,18 @@ export function AuthProvider({
       entrar,
       entrarComToken,
       sair,
-      podeAcessar: (funcionalidade: string) =>
-        usuario ? podeAcessar(usuario.perfil, funcionalidade) : false,
+      podeAcessar: (funcionalidade: string) => {
+        if (!usuario) {
+          return false;
+        }
+        // Fonte de verdade: as permissões EFETIVAS enviadas pelo backend
+        // (padrão do perfil ± ajustes por login da Central de Permissões).
+        // Se ausentes (backend antigo), cai no padrão local do perfil.
+        if (usuario.permissoes) {
+          return usuario.permissoes.includes(funcionalidade);
+        }
+        return podeAcessar(usuario.perfil, funcionalidade);
+      },
     }),
     [carregando, usuario, entrar, entrarComToken, sair],
   );

@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { Perfil } from '../../acessos/acessos.domain';
+import { OverridePermissao, Perfil } from '../../acessos/acessos.domain';
 
 /**
  * Identidade do usuário autenticado, extraída do token JWT pelo
@@ -10,6 +10,11 @@ export interface UsuarioAutenticado {
   login: string;
   nome?: string | null;
   perfil: Perfil;
+  /**
+   * Ajustes de permissão por login (Central de Permissões), carregados pelo
+   * `JwtAuthGuard` a partir do banco. Ausente/vazio = usa o padrão do perfil.
+   */
+  permissoesOverrides?: OverridePermissao[];
 }
 
 /**
