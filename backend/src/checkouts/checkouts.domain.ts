@@ -69,36 +69,74 @@ export function quantidadeValida(n: number): boolean {
 /** Resumo mínimo de um reporte usado pelo cálculo do tablero. */
 export interface ReporteResumo {
   checkoutNumero: number;
-  status: string;
+  equipamento: string;
 }
 
-/** Item do tablero: um check-out e quantos reportes abertos tem. */
+/** Item do tablero: um check-out, seu estado e um resumo para a card. */
 export interface CheckoutResumo {
   numero: number;
+  /** Nº de avarias ABERTAS na caixa. */
   abertos: number;
+  /** Equipamentos com avaria ABERTA (códigos, sem repetição) — resumo da card. */
+  equipamentos: string[];
+  /**
+   * true se algum equipamento desta caixa atingiu o limiar de recorrência no
+   * mês (LIMIAR_RECORRENCIA) — sinaliza necessidade de manutenção/troca.
+   */
+  recorrente: boolean;
 }
 
 /**
- * Monta o tablero: para cada caixa de 1..quantidade, conta os reportes ABERTOS.
- * Reportes de caixas acima da quantidade atual (ex.: após reduzir o número)
- * são ignorados aqui, mas seu histórico permanece no banco.
+ * Monta o tablero: para cada caixa de 1..quantidade, resume as avarias ABERTAS
+ * (contagem + equipamentos afetados) e marca se há problema RECORRENTE no mês
+ * (o mesmo equipamento falhou LIMIAR_RECORRENCIA+ vezes na caixa).
+ *
+ * - `abertos`: reportes com status ABERTO (já filtrados pelo chamador).
+ * - `reportesDoMes`: todos os reportes do mês corrente (qualquer status), base
+ *   do cálculo de recorrência.
+ *
+ * Reportes de caixas acima da quantidade atual (ex.: após reduzir o número) são
+ * ignorados aqui, mas seu histórico permanece no banco.
  */
 export function montarTablero(
   quantidade: number,
-  reportes: readonly ReporteResumo[],
+  abertos: readonly ReporteResumo[],
+  reportesDoMes: readonly ReporteResumo[] = [],
 ): CheckoutResumo[] {
   const abertosPorCaixa = new Map<number, number>();
-  for (const r of reportes) {
-    if (r.status === 'ABERTO') {
-      abertosPorCaixa.set(
-        r.checkoutNumero,
-        (abertosPorCaixa.get(r.checkoutNumero) ?? 0) + 1,
-      );
+  const equipamentosPorCaixa = new Map<number, Set<string>>();
+  for (const r of abertos) {
+    abertosPorCaixa.set(
+      r.checkoutNumero,
+      (abertosPorCaixa.get(r.checkoutNumero) ?? 0) + 1,
+    );
+    const set = equipamentosPorCaixa.get(r.checkoutNumero) ?? new Set<string>();
+    set.add(r.equipamento);
+    equipamentosPorCaixa.set(r.checkoutNumero, set);
+  }
+
+  // Recorrência: conta por (caixa, equipamento) no mês; marca a caixa quando
+  // algum equipamento atinge o limiar.
+  const contagemMes = new Map<string, number>();
+  for (const r of reportesDoMes) {
+    const chave = `${r.checkoutNumero}|${r.equipamento}`;
+    contagemMes.set(chave, (contagemMes.get(chave) ?? 0) + 1);
+  }
+  const recorrentes = new Set<number>();
+  for (const [chave, total] of contagemMes) {
+    if (total >= LIMIAR_RECORRENCIA) {
+      recorrentes.add(Number(chave.split('|')[0]));
     }
   }
+
   const itens: CheckoutResumo[] = [];
   for (let numero = 1; numero <= quantidade; numero++) {
-    itens.push({ numero, abertos: abertosPorCaixa.get(numero) ?? 0 });
+    itens.push({
+      numero,
+      abertos: abertosPorCaixa.get(numero) ?? 0,
+      equipamentos: Array.from(equipamentosPorCaixa.get(numero) ?? []),
+      recorrente: recorrentes.has(numero),
+    });
   }
   return itens;
 }

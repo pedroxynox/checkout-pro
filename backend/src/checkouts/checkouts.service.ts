@@ -67,16 +67,25 @@ export class CheckoutsService {
     return quantidade;
   }
 
-  /** Tablero: cada caixa (1..N) com a contagem de avarias abertas. */
+  /**
+   * Tablero: cada caixa (1..N) com a contagem de avarias ABERTAS, os
+   * equipamentos afetados e a marca de problema recorrente no mês.
+   */
   async tablero(): Promise<TableroCheckouts> {
-    const [quantidade, abertos] = await Promise.all([
+    const desde = primeiroDiaDoMes(new Date());
+    const [quantidade, abertos, doMes] = await Promise.all([
       this.obterQuantidade(),
       this.prisma.checkoutReporte.findMany({
         where: { status: 'ABERTO' },
-        select: { checkoutNumero: true, status: true },
+        select: { checkoutNumero: true, equipamento: true },
+      }),
+      // Base da recorrência: todos os reportes do mês (qualquer status).
+      this.prisma.checkoutReporte.findMany({
+        where: { reportadoEm: { gte: desde } },
+        select: { checkoutNumero: true, equipamento: true },
       }),
     ]);
-    return { quantidade, checkouts: montarTablero(quantidade, abertos) };
+    return { quantidade, checkouts: montarTablero(quantidade, abertos, doMes) };
   }
 
   /** Reportes de um check-out (abertos primeiro, depois por data desc). */
