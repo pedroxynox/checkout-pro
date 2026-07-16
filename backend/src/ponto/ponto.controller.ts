@@ -18,7 +18,12 @@ import {
   LerComprovanteDto,
   RegistrarBatidaDto,
 } from './dto/ponto.dto';
-import { JornadaDiaResposta, PessoaPonto, PontoService } from './ponto.service';
+import {
+  HistoricoTacResposta,
+  JornadaDiaResposta,
+  PessoaPonto,
+  PontoService,
+} from './ponto.service';
 import {
   PontoOcrService,
   RespostaLeituraComprovante,
@@ -70,6 +75,19 @@ export class PontoController {
     return this.service.jornadaDoDia(
       pessoaId,
       tipoPessoa ?? 'FISCAL',
+      data ? new Date(data) : new Date(),
+    );
+  }
+
+  /** Histórico de alertas de TAC de uma pessoa num dia (trilha p/ a gestão). */
+  @Get('alertas-tac/historico')
+  @Funcionalidade('PONTO_VISUALIZAR')
+  historicoTac(
+    @Query('pessoaId') pessoaId: string,
+    @Query('data') data?: string,
+  ): Promise<HistoricoTacResposta> {
+    return this.service.historicoTac(
+      pessoaId,
       data ? new Date(data) : new Date(),
     );
   }

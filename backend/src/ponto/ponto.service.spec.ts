@@ -11,6 +11,7 @@ import {
 import { JornadaDiaResposta, PontoService } from './ponto.service';
 import {
   BatidaDuplicadaError,
+  DataHoraPontoInvalidaError,
   HoraForaDoDiaError,
   HoraFuturaError,
   LimiteBatidasDiaError,
@@ -1062,5 +1063,201 @@ describe('PontoService — operação atômica e ponte de fiscal', () => {
 
     // A batida foi persistida (commit) mesmo com o WebSocket falhando.
     expect(prisma.batidaPonto.create).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('PontoService — recálculo e histórico de TAC ao corrigir', () => {
+  const DIA_C = new Date('2025-06-02T00:00:00.000Z');
+
+  function montarCorrecao() {
+    const eventos: Array<Record<string, unknown>> = [];
+    const prisma = {
+      $transaction: jest.fn(),
+      fiscal: { findUnique: jest.fn() },
+      colaborador: { findUnique: jest.fn() },
+      batidaPonto: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'b1',
+          pessoaId: 'p1',
+          tipoPessoa: 'OPERADOR',
+          data: DIA_C,
+          hora: new Date('2025-06-02T08:00:00.000Z'),
+          tipo: 'ENTRADA',
+        }),
+        update: jest.fn().mockResolvedValue({}),
+        delete: jest.fn().mockResolvedValue({}),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      alertaTacEnviado: {
+        findMany: jest.fn().mockResolvedValue([{ etapa: 'TAC' }]),
+        create: jest.fn().mockResolvedValue({}),
+        createMany: jest.fn().mockResolvedValue({ count: 0 }),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      eventoAlertaTac: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
+        create: jest.fn((args: { data: Record<string, unknown> }) => {
+          eventos.push(args.data);
+          return Promise.resolve(args.data);
+        }),
+      },
+    };
+    prisma.$transaction.mockImplementation(
+      (operacao: (tx: typeof prisma) => unknown) => operacao(prisma),
+    );
+    const validacaoData = {
+      exigirDataPermitida: jest.fn().mockResolvedValue(undefined),
+    };
+    const notificacoes = {
+      notificarSupervisaoEGerencia: jest.fn().mockResolvedValue([]),
+    };
+    const service = new PontoService(
+      prisma as unknown as PrismaService,
+      validacaoData as unknown as ValidacaoDataService,
+      undefined,
+      undefined,
+      notificacoes as unknown as NotificacoesService,
+      undefined,
+    );
+    return { prisma, notificacoes, service, eventos };
+  }
+
+  it('ao corrigir uma batida que tira o TAC: marca CORRIGIDO, libera a reserva e avisa a correção', async () => {
+    const { prisma, notificacoes, service, eventos } = montarCorrecao();
+    // Após a correção a jornada não tem mais extras (nenhuma etapa atual).
+    jest.spyOn(service, 'jornadaDoDia').mockResolvedValue(resposta(0, false));
+
+    await service.editarBatida('b1', {});
+
+    // Libera as reservas de todas as etapas acima de "nenhuma".
+    expect(prisma.alertaTacEnviado.deleteMany).toHaveBeenCalledWith({
+      where: {
+        pessoaId: 'p1',
+        dia: DIA_C,
+        etapa: { in: ['RISCO_1H30', 'RISCO_1H40', 'TAC'] },
+      },
+    });
+    // Grava o evento CORRIGIDO na trilha.
+    expect(eventos).toContainEqual(
+      expect.objectContaining({ tipo: 'CORRIGIDO', etapa: 'TAC' }),
+    );
+    // Avisa a supervisão de que a jornada foi corrigida.
+    expect(notificacoes.notificarSupervisaoEGerencia).toHaveBeenCalledWith(
+      expect.objectContaining({ titulo: '✅ TAC corrigido' }),
+    );
+  });
+
+  it('não marca correção quando a jornada continua em TAC após editar', async () => {
+    const { prisma, notificacoes, service, eventos } = montarCorrecao();
+    // A etapa TAC já estava reservada: a reserva recusa uma nova (P2002).
+    prisma.alertaTacEnviado.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('dup', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+    jest
+      .spyOn(service, 'jornadaDoDia')
+      .mockResolvedValue(resposta(LIMITE_EXTRAS_MS + 60_000, true));
+
+    await service.editarBatida('b1', {});
+
+    expect(prisma.alertaTacEnviado.deleteMany).not.toHaveBeenCalled();
+    expect(eventos.find((e) => e.tipo === 'CORRIGIDO')).toBeUndefined();
+    // Como o TAC já fora avisado, não reenvia nada.
+    expect(notificacoes.notificarSupervisaoEGerencia).not.toHaveBeenCalled();
+  });
+
+  it('registra AVISADO na trilha quando não houve correção antes', async () => {
+    const { service, eventos } = montarCorrecao();
+    await service.avisarAlertaTacSeNecessario(
+      'p1',
+      'OPERADOR',
+      DIA_C,
+      resposta(RISCO_TAC_1H30_MS),
+    );
+    expect(eventos).toContainEqual(
+      expect.objectContaining({ tipo: 'AVISADO', etapa: 'RISCO_1H30' }),
+    );
+  });
+
+  it('um novo excesso DEPOIS de um CORRIGIDO é registrado como REINCIDENTE', async () => {
+    const { prisma, service, eventos } = montarCorrecao();
+    // Já houve uma correção neste dia (situação nova de verdade ao reincidir).
+    prisma.eventoAlertaTac.findFirst.mockResolvedValue({ id: 'ev-corrigido' });
+
+    await service.avisarAlertaTacSeNecessario(
+      'p1',
+      'OPERADOR',
+      DIA_C,
+      resposta(RISCO_TAC_1H30_MS),
+    );
+
+    expect(eventos).toContainEqual(
+      expect.objectContaining({ tipo: 'REINCIDENTE', etapa: 'RISCO_1H30' }),
+    );
+  });
+
+  it('historicoTac devolve os eventos do dia em ordem cronológica', async () => {
+    const { prisma, service } = montarCorrecao();
+    prisma.eventoAlertaTac.findMany.mockResolvedValue([
+      {
+        tipo: 'AVISADO',
+        etapa: 'TAC',
+        motivos: 'Excedeu 1h50 de horas extras',
+        em: new Date('2025-06-02T18:00:00.000Z'),
+      },
+      {
+        tipo: 'CORRIGIDO',
+        etapa: 'TAC',
+        motivos: null,
+        em: new Date('2025-06-02T19:00:00.000Z'),
+      },
+    ]);
+
+    const hist = await service.historicoTac('p1', DIA_C);
+
+    expect(hist.eventos).toHaveLength(2);
+    expect(hist.eventos[0]).toEqual({
+      tipo: 'AVISADO',
+      etapa: 'TAC',
+      motivos: 'Excedeu 1h50 de horas extras',
+      em: '2025-06-02T18:00:00.000Z',
+    });
+    expect(hist.eventos[1].tipo).toBe('CORRIGIDO');
+  });
+
+  it('numa redução parcial (TAC → risco) conserva a reserva da etapa vigente e não marca REINCIDENTE', async () => {
+    const { prisma, service, eventos } = montarCorrecao();
+    prisma.alertaTacEnviado.findMany.mockResolvedValue([
+      { etapa: 'RISCO_1H30' },
+      { etapa: 'RISCO_1H40' },
+      { etapa: 'TAC' },
+    ]);
+    // Após editar, a jornada caiu do TAC para o risco de 1h40 (ainda em risco).
+    jest
+      .spyOn(service, 'jornadaDoDia')
+      .mockResolvedValue(resposta(RISCO_TAC_1H40_MS, false));
+
+    await service.editarBatida('b1', {});
+
+    // Libera só a etapa acima da atual (TAC); mantém 1h30 e 1h40.
+    expect(prisma.alertaTacEnviado.deleteMany).toHaveBeenCalledWith({
+      where: { pessoaId: 'p1', dia: DIA_C, etapa: { in: ['TAC'] } },
+    });
+    expect(eventos).toContainEqual(
+      expect.objectContaining({ tipo: 'CORRIGIDO', etapa: 'TAC' }),
+    );
+    // A etapa vigente (1h40) segue reservada: não reavisa nem marca reincidência.
+    expect(eventos.find((e) => e.tipo === 'REINCIDENTE')).toBeUndefined();
+    expect(eventos.find((e) => e.tipo === 'AVISADO')).toBeUndefined();
+  });
+
+  it('historicoTac rejeita uma data inválida (400 em vez de 500)', async () => {
+    const { service } = montarCorrecao();
+    await expect(
+      service.historicoTac('p1', new Date('data-invalida')),
+    ).rejects.toBeInstanceOf(DataHoraPontoInvalidaError);
   });
 });
