@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,8 +11,11 @@ import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator
 import {
   CheckoutResumo,
   ehEquipamentoValido,
+  LIMIAR_RECORRENCIA,
   montarTablero,
+  primeiroDiaDoMes,
   quantidadeValida,
+  rotuloEquipamento,
 } from './checkouts.domain';
 
 const CONFIG_ID = 'sistema';
@@ -116,6 +120,22 @@ export class CheckoutsService {
       throw new BadRequestException('Equipamento inválido.');
     }
 
+    // Evita ruído: se já existe uma avaria ABERTA do mesmo equipamento nesta
+    // caixa, não cria outra — avisa que já está reportada.
+    const jaAberta = await this.prisma.checkoutReporte.findFirst({
+      where: {
+        checkoutNumero: input.checkoutNumero,
+        equipamento: input.equipamento,
+        status: 'ABERTO',
+      },
+      select: { id: true },
+    });
+    if (jaAberta) {
+      throw new ConflictException(
+        `Já existe uma avaria aberta de ${rotuloEquipamento(input.equipamento)} no Check-out ${input.checkoutNumero}. Aguarde a resolução.`,
+      );
+    }
+
     const reporte = await this.prisma.checkoutReporte.create({
       data: {
         checkoutNumero: input.checkoutNumero,
@@ -132,10 +152,32 @@ export class CheckoutsService {
     try {
       await this.notificacoes.notificarComPermissao('CHECKOUTS_GERENCIAR', {
         titulo: `🖥️ Avaria no Check-out ${reporte.checkoutNumero}`,
-        mensagem: `${primeiroNome(reporte.reportadoPorNome)} reportou "${reporte.equipamento}": ${reporte.descricao}`,
+        mensagem: `${primeiroNome(reporte.reportadoPorNome)} reportou ${rotuloEquipamento(reporte.equipamento)}: ${reporte.descricao}`,
       });
     } catch {
       // best-effort: a notificação nunca bloqueia o registro.
+    }
+
+    // Aviso de problema RECORRENTE: se este equipamento já falhou LIMIAR vezes
+    // nesta caixa no mês, avisa a gestão para avaliar manutenção/troca. Dispara
+    // exatamente ao atingir o limiar (não repete nas próximas ocorrências).
+    try {
+      const desde = primeiroDiaDoMes(new Date());
+      const totalNoMes = await this.prisma.checkoutReporte.count({
+        where: {
+          checkoutNumero: reporte.checkoutNumero,
+          equipamento: reporte.equipamento,
+          reportadoEm: { gte: desde },
+        },
+      });
+      if (totalNoMes === LIMIAR_RECORRENCIA) {
+        await this.notificacoes.notificarComPermissao('CHECKOUTS_GERENCIAR', {
+          titulo: `🔁 Problema recorrente no Check-out ${reporte.checkoutNumero}`,
+          mensagem: `${rotuloEquipamento(reporte.equipamento)} já apresentou ${totalNoMes} avarias neste mês nesta caixa. Vale avaliar manutenção ou troca.`,
+        });
+      }
+    } catch {
+      // best-effort.
     }
 
     return reporte;
