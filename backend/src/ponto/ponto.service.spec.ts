@@ -16,6 +16,7 @@ import {
   LimiteBatidasDiaError,
   PessoaPontoInativaError,
   PessoaPontoNaoEncontradaError,
+  PontoEmFolgaError,
 } from './ponto.errors';
 
 const DIA = new Date('2025-06-02T00:00:00.000Z');
@@ -328,7 +329,7 @@ describe('PontoService — validações de pessoa, data e hora', () => {
     nome: 'Gestor',
   } as UsuarioAutenticado;
 
-  function montar() {
+  function montar(escalaDomingo?: unknown) {
     const prisma = {
       $transaction: jest.fn(),
       fiscal: {
@@ -385,6 +386,7 @@ describe('PontoService — validações de pessoa, data e hora', () => {
       undefined,
       notificacoes as never,
       undefined,
+      escalaDomingo as never,
     );
     jest.spyOn(service, 'jornadaDoDia').mockResolvedValue(resposta(0));
     return { prisma, validacaoData, notificacoes, service };
@@ -547,6 +549,164 @@ describe('PontoService — validações de pessoa, data e hora', () => {
     );
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(2);
+    expect(prisma.batidaPonto.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('bloqueia o registro em dia de folga fixa da semana', async () => {
+    const { prisma, service } = montar();
+    // 13/07/2026 é segunda-feira; folgaDiaSemana 1 = segunda.
+    prisma.colaborador.findUnique.mockResolvedValue({
+      id: 'colaborador-1',
+      ativo: true,
+      funcao: 'OPERADOR',
+      folgaDiaSemana: 1,
+      grupoDomingo: null,
+    });
+
+    await expect(
+      service.registrarBatida(
+        {
+          pessoaId: 'colaborador-1',
+          tipoPessoa: 'OPERADOR',
+          data: '2026-07-13',
+          hora: '2026-07-13T08:00:00.000Z',
+        },
+        usuario,
+      ),
+    ).rejects.toBeInstanceOf(PontoEmFolgaError);
+    expect(prisma.batidaPonto.create).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia o registro no domingo de folga (fora do rodízio)', async () => {
+    const { prisma, service } = montar();
+    // 12/07/2026 é domingo; sem grupo = folga fixa de domingo.
+    prisma.colaborador.findUnique.mockResolvedValue({
+      id: 'colaborador-1',
+      ativo: true,
+      funcao: 'OPERADOR',
+      folgaDiaSemana: 3,
+      grupoDomingo: null,
+    });
+
+    await expect(
+      service.registrarBatida(
+        {
+          pessoaId: 'colaborador-1',
+          tipoPessoa: 'OPERADOR',
+          data: '2026-07-12',
+          hora: '2026-07-12T08:00:00.000Z',
+        },
+        usuario,
+      ),
+    ).rejects.toBeInstanceOf(PontoEmFolgaError);
+  });
+
+  it('bloqueia também o fiscal em dia de folga fixa', async () => {
+    const { prisma, service } = montar();
+    prisma.colaborador.findUnique.mockResolvedValue({
+      id: 'colaborador-fiscal',
+      ativo: true,
+      funcao: 'FISCAL',
+      folgaDiaSemana: 1, // segunda (13/07/2026)
+      grupoDomingo: null,
+    });
+
+    await expect(
+      service.registrarBatida(
+        {
+          pessoaId: 'fiscal-1',
+          tipoPessoa: 'FISCAL',
+          data: '2026-07-13',
+          hora: '2026-07-13T08:00:00.000Z',
+        },
+        usuario,
+      ),
+    ).rejects.toBeInstanceOf(PontoEmFolgaError);
+    expect(prisma.batidaPonto.create).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia no domingo em que o grupo folga pelo rodízio', async () => {
+    // Âncora 05/07 folga G1; ordem G1→G3→G2 → 12/07 folga G3.
+    const escalaDomingo = {
+      obterAncora: jest.fn().mockResolvedValue({
+        data: new Date('2026-07-05T00:00:00.000Z'),
+        ordem: ['G1', 'G3', 'G2'],
+      }),
+    };
+    const { prisma, service } = montar(escalaDomingo);
+    prisma.colaborador.findUnique.mockResolvedValue({
+      id: 'colaborador-1',
+      ativo: true,
+      funcao: 'OPERADOR',
+      folgaDiaSemana: 3,
+      grupoDomingo: 'G3',
+    });
+
+    await expect(
+      service.registrarBatida(
+        {
+          pessoaId: 'colaborador-1',
+          tipoPessoa: 'OPERADOR',
+          data: '2026-07-12',
+          hora: '2026-07-12T08:00:00.000Z',
+        },
+        usuario,
+      ),
+    ).rejects.toBeInstanceOf(PontoEmFolgaError);
+    expect(escalaDomingo.obterAncora).toHaveBeenCalled();
+  });
+
+  it('permite no domingo em que o grupo trabalha pelo rodízio', async () => {
+    // 12/07 folga G3 → G1 trabalha.
+    const escalaDomingo = {
+      obterAncora: jest.fn().mockResolvedValue({
+        data: new Date('2026-07-05T00:00:00.000Z'),
+        ordem: ['G1', 'G3', 'G2'],
+      }),
+    };
+    const { prisma, service } = montar(escalaDomingo);
+    prisma.colaborador.findUnique.mockResolvedValue({
+      id: 'colaborador-1',
+      ativo: true,
+      funcao: 'OPERADOR',
+      folgaDiaSemana: 3,
+      grupoDomingo: 'G1',
+    });
+
+    await service.registrarBatida(
+      {
+        pessoaId: 'colaborador-1',
+        tipoPessoa: 'OPERADOR',
+        data: '2026-07-12',
+        hora: '2026-07-12T08:00:00.000Z',
+      },
+      usuario,
+    );
+
+    expect(prisma.batidaPonto.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('permite o registro em dia normal (não é folga)', async () => {
+    const { prisma, service } = montar();
+    // 13/07/2026 é segunda; folga fixa na terça (2) → segunda é dia normal.
+    prisma.colaborador.findUnique.mockResolvedValue({
+      id: 'colaborador-1',
+      ativo: true,
+      funcao: 'OPERADOR',
+      folgaDiaSemana: 2,
+      grupoDomingo: null,
+    });
+
+    await service.registrarBatida(
+      {
+        pessoaId: 'colaborador-1',
+        tipoPessoa: 'OPERADOR',
+        data: '2026-07-13',
+        hora: '2026-07-13T08:00:00.000Z',
+      },
+      usuario,
+    );
+
     expect(prisma.batidaPonto.create).toHaveBeenCalledTimes(1);
   });
 

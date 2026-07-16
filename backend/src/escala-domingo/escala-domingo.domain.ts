@@ -102,3 +102,41 @@ export function proximosDomingos(apartir: Date, n: number): Date[] {
   }
   return out;
 }
+
+/**
+ * Decide se `dia` é FOLGA (descanso) do colaborador. Regra unificada usada pelo
+ * Relógio Ponto para bloquear o fichaje em dia de folga, para fiscais e
+ * operadores (a folga dos dois vem do mesmo cadastro: `folgaDiaSemana` +
+ * `grupoDomingo`).
+ *
+ * - Segunda a sábado: folga fixa do cadastro (`folgaDiaSemana`).
+ * - Domingo: rodízio por grupos. Sem grupo (fora do rodízio) = folga fixa de
+ *   domingo. Com grupo mas SEM âncora configurada, não afirmamos folga (evita
+ *   bloquear por engano enquanto o rodízio não foi definido) — devolve false.
+ *
+ * `dia` deve estar em meia-noite UTC do dia civil (padrão do sistema); o dia da
+ * semana é lido em UTC.
+ */
+export function ehDiaDeFolga(
+  ficha: { folgaDiaSemana: number | null; grupoDomingo: string | null },
+  dia: Date,
+  ancoraDomingo: { data: Date; ordem: readonly GrupoDomingo[] } | null,
+): boolean {
+  if (dia.getUTCDay() === 0) {
+    // Folga fixa explícita no domingo (folgaDiaSemana = 0) sempre prevalece.
+    if (ficha.folgaDiaSemana === 0) return true;
+    // Fora do rodízio (sem grupo) = folga fixa aos domingos.
+    if (!ehGrupoValido(ficha.grupoDomingo)) return true;
+    // Tem grupo, mas o rodízio ainda não foi ancorado: não dá para afirmar.
+    if (!ancoraDomingo) return false;
+    return !trabalhaNoDomingo(
+      ficha.grupoDomingo,
+      dia,
+      ancoraDomingo.data,
+      ancoraDomingo.ordem,
+    );
+  }
+  return (
+    ficha.folgaDiaSemana != null && dia.getUTCDay() === ficha.folgaDiaSemana
+  );
+}

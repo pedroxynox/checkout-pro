@@ -66,3 +66,12 @@ export class BatidaDuplicadaError extends ErroDominio {
     super('Já existe uma batida nesse horário. Verifique se não é repetida.');
   }
 }
+
+/** A pessoa está de folga (descanso) neste dia — não é possível bater ponto. */
+export class PontoEmFolgaError extends ErroDominio {
+  readonly statusHttp = HttpStatus.CONFLICT;
+
+  constructor() {
+    super('A pessoa está de folga neste dia. Não é possível registrar ponto.');
+  }
+}
