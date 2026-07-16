@@ -1,0 +1,47 @@
+import { HttpStatus } from '@nestjs/common';
+import { ErroDominio } from '../common/errors/erro-dominio';
+
+/** A pessoa informada não existe no cadastro correspondente. */
+export class PessoaPontoNaoEncontradaError extends ErroDominio {
+  readonly statusHttp = HttpStatus.NOT_FOUND;
+
+  constructor() {
+    super('Pessoa não encontrada para registrar o ponto.');
+  }
+}
+
+/** A pessoa existe, mas está desligada ou não possui ficha ativa elegível. */
+export class PessoaPontoInativaError extends ErroDominio {
+  readonly statusHttp = HttpStatus.CONFLICT;
+
+  constructor() {
+    super('A pessoa está inativa ou não está habilitada para registrar ponto.');
+  }
+}
+
+/** A data e a hora do comprovante precisam pertencer ao mesmo dia civil. */
+export class HoraForaDoDiaError extends ErroDominio {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
+
+  constructor() {
+    super('A hora da batida deve pertencer ao dia selecionado.');
+  }
+}
+
+/** Não é permitido registrar ou mover uma batida para o futuro. */
+export class HoraFuturaError extends ErroDominio {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
+
+  constructor() {
+    super('Não é possível registrar uma batida em uma data ou hora futura.');
+  }
+}
+
+/** Proteção para chamadas internas que não passaram pela validação dos DTOs. */
+export class DataHoraPontoInvalidaError extends ErroDominio {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
+
+  constructor() {
+    super('Data ou hora da batida inválida.');
+  }
+}

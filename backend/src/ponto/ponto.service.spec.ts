@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
 import {
@@ -8,6 +9,12 @@ import {
   RISCO_TAC_1H40_MS,
 } from './ponto.domain';
 import { JornadaDiaResposta, PontoService } from './ponto.service';
+import {
+  HoraForaDoDiaError,
+  HoraFuturaError,
+  PessoaPontoInativaError,
+  PessoaPontoNaoEncontradaError,
+} from './ponto.errors';
 
 const DIA = new Date('2025-06-02T00:00:00.000Z');
 const OUTRO_DIA = new Date('2025-06-01T00:00:00.000Z');
@@ -37,11 +44,18 @@ function resposta(horasExtrasMs: number, tac = false): JornadaDiaResposta {
 describe('PontoService — alertas preventivos de TAC', () => {
   let prisma: {
     fiscal: { findUnique: jest.Mock };
-    colaborador: { findUnique: jest.Mock };
+    usuario: { findUnique: jest.Mock; findMany: jest.Mock };
+    colaborador: {
+      findUnique: jest.Mock;
+      findFirst: jest.Mock;
+      findMany: jest.Mock;
+    };
     batidaPonto: {
       create: jest.Mock;
       findMany: jest.Mock;
+      findUnique: jest.Mock;
       update: jest.Mock;
+      delete: jest.Mock;
     };
     alertaTacEnviado: {
       create: jest.Mock;
@@ -52,18 +66,33 @@ describe('PontoService — alertas preventivos de TAC', () => {
   let notificacoes: {
     notificarSupervisaoEGerencia: jest.Mock;
   };
+  let validacaoData: { exigirDataPermitida: jest.Mock };
   let service: PontoService;
 
   beforeEach(() => {
     prisma = {
       fiscal: {
-        findUnique: jest.fn().mockResolvedValue({ nome: 'Ana Souza' }),
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'pessoa-1',
+          nome: 'Ana Souza',
+          usuarioId: 'usuario-fiscal',
+        }),
       },
-      colaborador: { findUnique: jest.fn() },
+      usuario: {
+        findUnique: jest.fn().mockResolvedValue({ login: 'ANA' }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      colaborador: {
+        findUnique: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue({ id: 'colaborador-1' }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
       batidaPonto: {
         create: jest.fn().mockResolvedValue({}),
         findMany: jest.fn().mockResolvedValue([]),
+        findUnique: jest.fn(),
         update: jest.fn(),
+        delete: jest.fn(),
       },
       // Dedup persistente: por padrão a reserva é aceita (linha nova gravada).
       alertaTacEnviado: {
@@ -75,8 +104,12 @@ describe('PontoService — alertas preventivos de TAC', () => {
     notificacoes = {
       notificarSupervisaoEGerencia: jest.fn().mockResolvedValue([]),
     };
+    validacaoData = {
+      exigirDataPermitida: jest.fn().mockResolvedValue(undefined),
+    };
     service = new PontoService(
       prisma as unknown as PrismaService,
+      validacaoData as unknown as ValidacaoDataService,
       undefined,
       undefined,
       notificacoes as unknown as NotificacoesService,
@@ -277,5 +310,261 @@ describe('PontoService — alertas preventivos de TAC', () => {
     expect(prisma.alertaTacEnviado.deleteMany).toHaveBeenCalledWith({
       where: { pessoaId: 'pessoa-1', dia: DIA, etapa: 'RISCO_1H30' },
     });
+  });
+});
+
+describe('PontoService — validações de pessoa, data e hora', () => {
+  const usuario = {
+    sub: 'usuario-gestor',
+    nome: 'Gestor',
+  } as UsuarioAutenticado;
+
+  function montar() {
+    const prisma = {
+      fiscal: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'fiscal-1',
+          nome: 'Ana Fiscal',
+          usuarioId: 'usuario-fiscal',
+        }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      usuario: {
+        findUnique: jest.fn().mockResolvedValue({ login: 'ANA' }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      colaborador: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'colaborador-1',
+          ativo: true,
+          funcao: 'OPERADOR',
+        }),
+        findFirst: jest.fn().mockResolvedValue({ id: 'colaborador-fiscal' }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      batidaPonto: {
+        create: jest.fn().mockResolvedValue({}),
+        findMany: jest.fn().mockResolvedValue([]),
+        findUnique: jest.fn(),
+        update: jest.fn().mockResolvedValue({}),
+        delete: jest.fn().mockResolvedValue({}),
+      },
+      alertaTacEnviado: {
+        create: jest.fn(),
+        createMany: jest.fn(),
+        deleteMany: jest.fn(),
+      },
+    };
+    const validacaoData = {
+      exigirDataPermitida: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = new PontoService(
+      prisma as never,
+      validacaoData as never,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
+    jest.spyOn(service, 'jornadaDoDia').mockResolvedValue(resposta(0));
+    return { prisma, validacaoData, service };
+  }
+
+  it('valida a data inicial e grava a ficha ativa resolvida pelo servidor', async () => {
+    const { prisma, validacaoData, service } = montar();
+
+    await service.registrarBatida(
+      {
+        pessoaId: 'colaborador-1',
+        colaboradorId: 'id-forjado',
+        tipoPessoa: 'OPERADOR',
+        data: '2026-07-10',
+        hora: '2026-07-10T08:00:00.000Z',
+      },
+      usuario,
+    );
+
+    expect(validacaoData.exigirDataPermitida).toHaveBeenCalledWith(
+      new Date('2026-07-10T00:00:00.000Z'),
+    );
+    expect(prisma.batidaPonto.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          pessoaId: 'colaborador-1',
+          colaboradorId: 'colaborador-1',
+        }),
+      }),
+    );
+  });
+
+  it('rejeita pessoa inexistente ou sem ficha ativa', async () => {
+    const inexistente = montar();
+    inexistente.prisma.fiscal.findUnique.mockResolvedValue(null);
+    await expect(
+      inexistente.service.registrarBatida(
+        {
+          pessoaId: 'nao-existe',
+          tipoPessoa: 'FISCAL',
+          data: '2026-07-10',
+          hora: '2026-07-10T08:00:00.000Z',
+        },
+        usuario,
+      ),
+    ).rejects.toBeInstanceOf(PessoaPontoNaoEncontradaError);
+
+    const inativa = montar();
+    inativa.prisma.colaborador.findFirst.mockResolvedValue(null);
+    await expect(
+      inativa.service.registrarBatida(
+        {
+          pessoaId: 'fiscal-1',
+          tipoPessoa: 'FISCAL',
+          data: '2026-07-10',
+          hora: '2026-07-10T08:00:00.000Z',
+        },
+        usuario,
+      ),
+    ).rejects.toBeInstanceOf(PessoaPontoInativaError);
+  });
+
+  it('rejeita hora de outro dia e hora futura', async () => {
+    const foraDoDia = montar();
+    await expect(
+      foraDoDia.service.registrarBatida(
+        {
+          pessoaId: 'colaborador-1',
+          tipoPessoa: 'OPERADOR',
+          data: '2026-07-10',
+          hora: '2026-07-11T00:01:00.000Z',
+        },
+        usuario,
+      ),
+    ).rejects.toBeInstanceOf(HoraForaDoDiaError);
+
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-07-16T12:00:00.000Z')); // 09:00 em Brasília
+    try {
+      const futura = montar();
+      await expect(
+        futura.service.registrarBatida(
+          {
+            pessoaId: 'colaborador-1',
+            tipoPessoa: 'OPERADOR',
+            data: '2026-07-16',
+            hora: '2026-07-16T09:01:00.000Z',
+          },
+          usuario,
+        ),
+      ).rejects.toBeInstanceOf(HoraFuturaError);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('prioriza o vínculo direto do fiscal antes do fallback por matrícula', async () => {
+    const { prisma, service } = montar();
+    prisma.colaborador.findFirst
+      .mockReset()
+      .mockResolvedValueOnce({ id: 'col-vinculo-direto' })
+      .mockResolvedValueOnce({ id: 'col-fallback-incorreto' });
+
+    await service.registrarBatida(
+      {
+        pessoaId: 'fiscal-1',
+        tipoPessoa: 'FISCAL',
+        data: '2026-07-10',
+        hora: '2026-07-10T08:00:00.000Z',
+      },
+      usuario,
+    );
+
+    expect(prisma.colaborador.findFirst).toHaveBeenCalledTimes(1);
+    expect(prisma.batidaPonto.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          colaboradorId: 'col-vinculo-direto',
+        }),
+      }),
+    );
+  });
+
+  it('permite corrigir dias passados válidos, mas nunca mover para outro dia', async () => {
+    const { prisma, validacaoData, service } = montar();
+    prisma.batidaPonto.findUnique.mockResolvedValue({
+      id: 'batida-1',
+      pessoaId: 'colaborador-1',
+      tipoPessoa: 'OPERADOR',
+      data: new Date('2026-07-10T00:00:00.000Z'),
+      hora: new Date('2026-07-10T08:00:00.000Z'),
+      tipo: 'ENTRADA',
+    });
+
+    await service.editarBatida('batida-1', {
+      hora: '2026-07-10T08:15:00.000Z',
+    });
+    expect(validacaoData.exigirDataPermitida).toHaveBeenCalledWith(
+      new Date('2026-07-10T00:00:00.000Z'),
+    );
+    expect(prisma.batidaPonto.update).toHaveBeenCalled();
+
+    await expect(
+      service.editarBatida('batida-1', {
+        hora: '2026-07-11T08:15:00.000Z',
+      }),
+    ).rejects.toBeInstanceOf(HoraForaDoDiaError);
+  });
+
+  it('aplica a data inicial também ao excluir uma batida', async () => {
+    const { prisma, validacaoData, service } = montar();
+    const batida = {
+      id: 'batida-1',
+      pessoaId: 'colaborador-1',
+      tipoPessoa: 'OPERADOR',
+      data: new Date('2026-07-10T00:00:00.000Z'),
+      hora: new Date('2026-07-10T08:00:00.000Z'),
+      tipo: 'ENTRADA',
+    };
+    prisma.batidaPonto.findUnique.mockResolvedValue(batida);
+    validacaoData.exigirDataPermitida.mockRejectedValue(
+      new Error('data anterior'),
+    );
+
+    await expect(service.removerBatida('batida-1')).rejects.toThrow(
+      'data anterior',
+    );
+    expect(prisma.batidaPonto.delete).not.toHaveBeenCalled();
+  });
+
+  it('lista e busca fiscais pelo nome canônico somente com ficha ativa', async () => {
+    const { prisma, service } = montar();
+    prisma.fiscal.findMany.mockResolvedValue([
+      { id: 'fiscal-ativo', nome: 'Ana', usuarioId: 'u1' },
+      { id: 'fiscal-inativo', nome: 'Bruno', usuarioId: 'u2' },
+    ]);
+    prisma.usuario.findMany.mockResolvedValue([
+      { id: 'u1', login: 'ANA' },
+      { id: 'u2', login: 'BRUNO' },
+    ]);
+    prisma.colaborador.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'col-ana',
+          nome: 'Ana Fiscal',
+          matricula: 'ANA',
+          usuarioId: 'u1',
+        },
+      ])
+      .mockResolvedValueOnce([]);
+
+    const pessoas = await service.buscarPessoas('Fiscal');
+
+    expect(pessoas).toEqual([
+      {
+        id: 'fiscal-ativo',
+        nome: 'Ana Fiscal',
+        tipoPessoa: 'FISCAL',
+        colaboradorId: 'col-ana',
+      },
+    ]);
   });
 });

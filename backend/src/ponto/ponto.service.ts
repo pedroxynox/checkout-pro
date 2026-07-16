@@ -19,6 +19,15 @@ import { PontoOcrService } from './ponto-ocr.service';
 import { FUNCOES_PONTO_NAO_FISCAL } from './pessoas-ponto';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { FeriadosService } from '../feriados/feriados.service';
+import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
+import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
+import {
+  DataHoraPontoInvalidaError,
+  HoraForaDoDiaError,
+  HoraFuturaError,
+  PessoaPontoInativaError,
+  PessoaPontoNaoEncontradaError,
+} from './ponto.errors';
 
 // As batidas são gravadas com a HORA DO COMPROVANTE (hora de parede de Brasília)
 // rotulada como UTC (ex.: "09:00" → "...T09:00:00Z"). Para medir o segmento
@@ -105,6 +114,7 @@ export class PontoService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly validacaoData: ValidacaoDataService,
     // Ponte batidas → status do fiscal. Opcional para não quebrar testes
     // unitários que exercitam só a persistência das batidas.
     @Optional() private readonly fiscais?: FiscaisService,
@@ -124,35 +134,63 @@ export class PontoService {
    */
   async buscarPessoas(busca?: string): Promise<PessoaPonto[]> {
     const termo = busca?.trim();
-    const whereFiscal: Prisma.FiscalWhereInput = termo
-      ? { nome: { contains: termo, mode: 'insensitive' } }
-      : {};
+    const normalizarBusca = (valor: string): string =>
+      valor
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('pt-BR');
+    const termoNormalizado = termo ? normalizarBusca(termo) : null;
     const whereColaborador: Prisma.ColaboradorWhereInput = {
       ativo: true,
       funcao: { in: FUNCOES_PONTO_NAO_FISCAL },
       ...(termo ? { nome: { contains: termo, mode: 'insensitive' } } : {}),
     };
 
-    const [fiscais, colaboradores] = await Promise.all([
-      this.prisma.fiscal.findMany({
-        where: whereFiscal,
-        orderBy: { nome: 'asc' },
-        take: 20,
-      }),
-      this.prisma.colaborador.findMany({
-        where: whereColaborador,
-        orderBy: { nome: 'asc' },
-        take: 20,
-      }),
-    ]);
+    const [fiscais, usuarios, colaboradoresFiscais, colaboradores] =
+      await Promise.all([
+        this.prisma.fiscal.findMany({
+          orderBy: { nome: 'asc' },
+          select: { id: true, nome: true, usuarioId: true },
+        }),
+        this.prisma.usuario.findMany({ select: { id: true, login: true } }),
+        this.prisma.colaborador.findMany({
+          where: { ativo: true, funcao: 'FISCAL' },
+          select: { id: true, nome: true, matricula: true, usuarioId: true },
+        }),
+        this.prisma.colaborador.findMany({
+          where: whereColaborador,
+          orderBy: { nome: 'asc' },
+          take: 20,
+        }),
+      ]);
 
+    // Fiscal só aparece quando possui uma ficha canônica ATIVA. O vínculo é o
+    // mesmo usado pela Central/Jornada: conta compartilhada ou matrícula/login.
+    const fiscalParaColaborador = mapearFiscalColaborador(
+      fiscais,
+      usuarios,
+      colaboradoresFiscais,
+    );
     const pessoas: PessoaPonto[] = [
-      ...fiscais.map((f) => ({
-        id: f.id,
-        nome: f.nome,
-        tipoPessoa: 'FISCAL' as const,
-        colaboradorId: null,
-      })),
+      ...fiscais.flatMap((f) => {
+        const vinculo = fiscalParaColaborador.get(f.id);
+        if (!vinculo) return [];
+        if (
+          termoNormalizado &&
+          !normalizarBusca(f.nome).includes(termoNormalizado) &&
+          !normalizarBusca(vinculo.nome).includes(termoNormalizado)
+        ) {
+          return [];
+        }
+        return [
+          {
+            id: f.id,
+            nome: vinculo.nome,
+            tipoPessoa: 'FISCAL' as const,
+            colaboradorId: vinculo.colaboradorId,
+          },
+        ];
+      }),
       ...colaboradores.map((c) => ({
         id: c.id,
         nome: c.nome,
@@ -163,20 +201,103 @@ export class PontoService {
     return pessoas.sort((a, b) => a.nome.localeCompare(b.nome)).slice(0, 20);
   }
 
+  /** Valida a pessoa no servidor e devolve sua ficha canônica ativa. */
+  private async colaboradorAtivoDaPessoa(
+    pessoaId: string,
+    tipoPessoa: 'FISCAL' | 'OPERADOR',
+  ): Promise<string> {
+    if (tipoPessoa === 'OPERADOR') {
+      const colaborador = await this.prisma.colaborador.findUnique({
+        where: { id: pessoaId },
+        select: { id: true, ativo: true, funcao: true },
+      });
+      if (!colaborador) throw new PessoaPontoNaoEncontradaError();
+      if (
+        !colaborador.ativo ||
+        !FUNCOES_PONTO_NAO_FISCAL.includes(colaborador.funcao)
+      ) {
+        throw new PessoaPontoInativaError();
+      }
+      return colaborador.id;
+    }
+
+    const fiscal = await this.prisma.fiscal.findUnique({
+      where: { id: pessoaId },
+      select: { id: true, usuarioId: true },
+    });
+    if (!fiscal) throw new PessoaPontoNaoEncontradaError();
+    if (!fiscal.usuarioId) throw new PessoaPontoInativaError();
+
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: fiscal.usuarioId },
+      select: { login: true },
+    });
+    // O vínculo direto por conta tem prioridade absoluta. A matrícula/login é
+    // apenas fallback, como no helper canônico usado pela Central de Jornada.
+    let colaborador = await this.prisma.colaborador.findFirst({
+      where: {
+        ativo: true,
+        funcao: 'FISCAL',
+        usuarioId: fiscal.usuarioId,
+      },
+      select: { id: true },
+    });
+    if (!colaborador && usuario?.login) {
+      colaborador = await this.prisma.colaborador.findFirst({
+        where: {
+          ativo: true,
+          funcao: 'FISCAL',
+          matricula: {
+            equals: usuario.login.trim(),
+            mode: 'insensitive',
+          },
+        },
+        select: { id: true },
+      });
+    }
+    if (!colaborador) throw new PessoaPontoInativaError();
+    return colaborador.id;
+  }
+
+  /** Converte uma data recebida internamente, protegendo chamadas sem DTO. */
+  private dataValida(valor: string | Date): Date {
+    const data = valor instanceof Date ? new Date(valor) : new Date(valor);
+    if (Number.isNaN(data.getTime())) throw new DataHoraPontoInvalidaError();
+    return data;
+  }
+
+  /** Garante que a hora pertence ao dia e não aponta para o futuro. */
+  private validarHoraDoDia(dia: Date, hora: Date): void {
+    if (inicioDoDia(hora).getTime() !== dia.getTime()) {
+      throw new HoraForaDoDiaError();
+    }
+    if (hora.getTime() > agoraNaBrasilia().getTime()) {
+      throw new HoraFuturaError();
+    }
+  }
+
   /** Registra uma nova batida e devolve a jornada do dia recalculada. */
   async registrarBatida(
     dto: RegistrarBatidaDto,
     usuario: UsuarioAutenticado,
   ): Promise<JornadaDiaResposta> {
-    const dia = inicioDoDia(new Date(dto.data));
+    const dia = inicioDoDia(this.dataValida(dto.data));
+    const hora = this.dataValida(dto.hora);
+    this.validarHoraDoDia(dia, hora);
+    await this.validacaoData.exigirDataPermitida(dia);
+
     const tipoPessoa = dto.tipoPessoa ?? 'FISCAL';
+    const colaboradorId = await this.colaboradorAtivoDaPessoa(
+      dto.pessoaId,
+      tipoPessoa,
+    );
     await this.prisma.batidaPonto.create({
       data: {
         pessoaId: dto.pessoaId,
         tipoPessoa,
-        colaboradorId: dto.colaboradorId ?? null,
+        colaboradorId,
         data: dia,
-        hora: new Date(dto.hora),
+        hora,
         // Tipo provisório — `reclassificar` ajusta pela ordem do dia.
         tipo: 'ENTRADA',
         origem: dto.origem ?? 'MANUAL',
@@ -190,7 +311,7 @@ export class PontoService {
     // para reconhecer a pessoa na hora nas próximas leituras. Best-effort: uma
     // falha aqui não deve impedir o registro da batida.
     if (dto.origem === 'LEITOR' && dto.nomeLido) {
-      await this.aprenderAlias(dto, tipoPessoa);
+      await this.aprenderAlias({ ...dto, colaboradorId }, tipoPessoa);
     }
     await this.reclassificar(dto.pessoaId, dia);
     await this.sincronizarStatusFiscal(dto.pessoaId, tipoPessoa, dia);
@@ -441,8 +562,14 @@ export class PontoService {
     dto: EditarBatidaDto,
   ): Promise<JornadaDiaResposta> {
     const batida = await this.buscarOuFalhar(id);
+    await this.validacaoData.exigirDataPermitida(batida.data);
+
     const data: Prisma.BatidaPontoUpdateInput = { origem: 'EDITADO' };
-    if (dto.hora) data.hora = new Date(dto.hora);
+    if (dto.hora) {
+      const hora = this.dataValida(dto.hora);
+      this.validarHoraDoDia(inicioDoDia(batida.data), hora);
+      data.hora = hora;
+    }
     if (dto.tipo) data.tipo = dto.tipo;
     await this.prisma.batidaPonto.update({ where: { id }, data });
     // Se a hora mudou, a ordem do dia pode ter mudado → reclassifica.
@@ -458,6 +585,7 @@ export class PontoService {
   /** Remove uma batida e reclassifica o dia. */
   async removerBatida(id: string): Promise<JornadaDiaResposta> {
     const batida = await this.buscarOuFalhar(id);
+    await this.validacaoData.exigirDataPermitida(batida.data);
     await this.prisma.batidaPonto.delete({ where: { id } });
     await this.reclassificar(batida.pessoaId, batida.data);
     await this.sincronizarStatusFiscal(
