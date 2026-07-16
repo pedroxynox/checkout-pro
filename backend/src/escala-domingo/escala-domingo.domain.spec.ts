@@ -1,5 +1,6 @@
 import {
   GrupoDomingo,
+  ehDiaDeFolga,
   ehDomingo,
   ehGrupoValido,
   grupoFolgaNoDomingo,
@@ -80,5 +81,61 @@ describe('rodízio de domingo', () => {
       d.toISOString().slice(0, 10),
     );
     expect(seq).toEqual(['2026-07-19', '2026-07-26', '2026-08-02']);
+  });
+});
+
+describe('ehDiaDeFolga', () => {
+  const ancora = { data: DOM1, ordem: ORDEM };
+  // 20/07/2026 é segunda; 24/07 é sexta.
+  const SEGUNDA = new Date('2026-07-20T00:00:00.000Z');
+  const SEXTA = new Date('2026-07-24T00:00:00.000Z');
+
+  it('dia de semana: folga fixa do cadastro', () => {
+    // folgaDiaSemana 1 = segunda.
+    expect(
+      ehDiaDeFolga({ folgaDiaSemana: 1, grupoDomingo: null }, SEGUNDA, ancora),
+    ).toBe(true);
+    expect(
+      ehDiaDeFolga({ folgaDiaSemana: 1, grupoDomingo: null }, SEXTA, ancora),
+    ).toBe(false);
+  });
+
+  it('sem folga fixa definida, dia de semana não é folga', () => {
+    expect(
+      ehDiaDeFolga(
+        { folgaDiaSemana: null, grupoDomingo: null },
+        SEGUNDA,
+        ancora,
+      ),
+    ).toBe(false);
+  });
+
+  it('domingo sem grupo (fora do rodízio) é sempre folga', () => {
+    expect(
+      ehDiaDeFolga({ folgaDiaSemana: 3, grupoDomingo: null }, DOM1, ancora),
+    ).toBe(true);
+  });
+
+  it('domingo com grupo segue o rodízio', () => {
+    // DOM1 folga G1 → G1 é folga; G2/G3 trabalham.
+    expect(
+      ehDiaDeFolga({ folgaDiaSemana: 3, grupoDomingo: 'G1' }, DOM1, ancora),
+    ).toBe(true);
+    expect(
+      ehDiaDeFolga({ folgaDiaSemana: 3, grupoDomingo: 'G2' }, DOM1, ancora),
+    ).toBe(false);
+  });
+
+  it('domingo com grupo mas sem âncora não afirma folga (não bloqueia)', () => {
+    expect(
+      ehDiaDeFolga({ folgaDiaSemana: 3, grupoDomingo: 'G1' }, DOM1, null),
+    ).toBe(false);
+  });
+
+  it('folga fixa no domingo (folgaDiaSemana=0) prevalece sobre o rodízio', () => {
+    // DOM1 o grupo G2 trabalha (folga G1), mas a folga fixa de domingo vence.
+    expect(
+      ehDiaDeFolga({ folgaDiaSemana: 0, grupoDomingo: 'G2' }, DOM1, ancora),
+    ).toBe(true);
   });
 });

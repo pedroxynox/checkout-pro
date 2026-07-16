@@ -20,6 +20,8 @@ import { PontoOcrService } from './ponto-ocr.service';
 import { FUNCOES_PONTO_NAO_FISCAL } from './pessoas-ponto';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { FeriadosService } from '../feriados/feriados.service';
+import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
+import { ehDiaDeFolga } from '../escala-domingo/escala-domingo.domain';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 import {
@@ -30,6 +32,7 @@ import {
   LimiteBatidasDiaError,
   PessoaPontoInativaError,
   PessoaPontoNaoEncontradaError,
+  PontoEmFolgaError,
 } from './ponto.errors';
 
 /** Transição de status do fiscal derivada de uma batida (em UTC real). */
@@ -131,6 +134,9 @@ export class PontoService {
     // persistência das batidas não precisam deles.
     @Optional() private readonly notificacoes?: NotificacoesService,
     @Optional() private readonly feriados?: FeriadosService,
+    // Rodízio de domingo (âncora do ciclo G1/G2/G3). Opcional: sem ele, o
+    // bloqueio de folga em domingo só vale para quem está fora do rodízio.
+    @Optional() private readonly escalaDomingo?: EscalaDomingoService,
   ) {}
 
   /** Executa uma mutação de batidas com isolamento forte e retry de conflito. */
@@ -283,6 +289,31 @@ export class PontoService {
     return colaborador.id;
   }
 
+  /**
+   * Rejeita o registro de ponto quando o dia é FOLGA (descanso) da pessoa: dia
+   * de folga fixo da semana (`folgaDiaSemana`) ou domingo de folga pelo rodízio
+   * (`grupoDomingo` + âncora). Sem a ficha, não bloqueia (defensivo).
+   */
+  private async exigirDiaSemFolga(
+    colaboradorId: string,
+    dia: Date,
+  ): Promise<void> {
+    const ficha = await this.prisma.colaborador.findUnique({
+      where: { id: colaboradorId },
+      select: { folgaDiaSemana: true, grupoDomingo: true },
+    });
+    if (!ficha) return;
+    // A âncora do rodízio só é necessária aos domingos; nos demais dias a folga
+    // depende apenas de `folgaDiaSemana` (evita uma consulta desnecessária).
+    const ancora =
+      dia.getUTCDay() === 0 && this.escalaDomingo
+        ? await this.escalaDomingo.obterAncora()
+        : null;
+    if (ehDiaDeFolga(ficha, dia, ancora)) {
+      throw new PontoEmFolgaError();
+    }
+  }
+
   /** Converte uma data recebida internamente, protegendo chamadas sem DTO. */
   private dataValida(valor: string | Date): Date {
     const data = valor instanceof Date ? new Date(valor) : new Date(valor);
@@ -315,6 +346,9 @@ export class PontoService {
       dto.pessoaId,
       tipoPessoa,
     );
+    // Bloqueia o fichaje em dia de folga (descanso) — folga fixa da semana ou
+    // domingo de folga pelo rodízio. Fiscais e operadores usam o mesmo cadastro.
+    await this.exigirDiaSemFolga(colaboradorId, dia);
     const dadosBatida: Prisma.BatidaPontoUncheckedCreateInput = {
       pessoaId: dto.pessoaId,
       tipoPessoa,
