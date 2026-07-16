@@ -145,21 +145,45 @@ model UsuarioPermissao {
   @@map("usuario_permissoes")
 }
 
-// Trilha de auditoria (append-only) das mudanças de permissão por login.
-// Registra CADA ajuste: quem mudou, para quem, qual funcionalidade e o valor.
+// Ajuste do PADRÃO de um PERFIL (Central de Permissões ▸ Padrões por perfil).
+// Cada linha é um DESVIO do padrão definido em código para um perfil inteiro
+// (FISCAL/SUPERVISOR/GERENTE): `concedida = true` adiciona, `false` remove. Vale
+// para todos os usuários daquele perfil (antes dos ajustes individuais). Só o
+// ADMINISTRADOR gerencia; ADMINISTRADOR e IMPORTADOR não são ajustáveis.
+model PerfilPermissao {
+  id             String   @id @default(uuid())
+  perfil         Perfil
+  funcionalidade String
+  concedida      Boolean
+  definidoPor    String?  // login do administrador que fez o ajuste
+  criadoEm       DateTime @default(now())
+  atualizadoEm   DateTime @updatedAt
+
+  @@unique([perfil, funcionalidade])
+  @@index([perfil])
+  @@map("perfil_permissoes")
+}
+
+// Trilha de auditoria (append-only) das mudanças de permissão. Registra CADA
+// ajuste, tanto POR LOGIN (usuarioAlvoId/loginAlvo) quanto POR PERFIL
+// (perfilAlvo): quem mudou, o alvo, a funcionalidade e o valor aplicado.
 model PermissaoAuditoria {
   id             String   @id @default(uuid())
-  usuarioAlvoId  String
-  loginAlvo      String
+  // Alvo por login (nulo quando a mudança é de um perfil inteiro).
+  usuarioAlvoId  String?
+  loginAlvo      String?
+  // Alvo por perfil (nulo quando a mudança é de um login específico).
+  perfilAlvo     String?
   funcionalidade String
   // Valor aplicado: true = concedida, false = revogada, null = restaurada ao
-  // padrão do perfil (ajuste removido).
+  // padrão (ajuste removido).
   concedida      Boolean?
   acao           String // 'AJUSTE' | 'RESTAURACAO'
   definidoPor    String? // login do administrador
   em             DateTime @default(now())
 
   @@index([usuarioAlvoId])
+  @@index([em])
   @@map("permissao_auditoria")
 }
 

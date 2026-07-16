@@ -51,6 +51,7 @@ describe('JwtAuthGuard', () => {
     const findUnique = jest.fn().mockResolvedValue(usuarioNoBanco);
     const prisma = {
       usuario: { findUnique },
+      perfilPermissao: { findMany: jest.fn().mockResolvedValue([]) },
     } as unknown as PrismaService;
     return { guard: new JwtAuthGuard(jwt, reflector, prisma), findUnique };
   }

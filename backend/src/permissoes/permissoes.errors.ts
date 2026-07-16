@@ -40,3 +40,11 @@ export class AjustePermissaoInvalidoError extends PermissoesError {
     );
   }
 }
+
+/** Perfil cujo padrão não é editável (ADMINISTRADOR/IMPORTADOR ou inválido). */
+export class PerfilNaoAjustavelError extends PermissoesError {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
+  constructor(perfil: string) {
+    super(`O padrão do perfil "${perfil}" não pode ser ajustado.`);
+  }
+}

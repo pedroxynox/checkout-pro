@@ -3,7 +3,12 @@
  * permissões POR LOGIN como desvios do padrão do perfil.
  */
 import { apiClient } from '../client';
-import { PermissoesDoUsuario } from '../types';
+import {
+  ItemAuditoria,
+  PermissoesDoPerfil,
+  PermissoesDoUsuario,
+  ResumoPerfil,
+} from '../types';
 
 export const permissoesService = {
   /** Catálogo de funcionalidades ajustáveis por login. */
@@ -30,5 +35,39 @@ export const permissoesService = {
       `/permissoes/usuario/${usuarioId}/restaurar`,
       {},
     );
+  },
+
+  // ----- Padrões por perfil -----
+
+  /** Resumo dos perfis ajustáveis (com contagem de personalizações). */
+  perfis(): Promise<ResumoPerfil[]> {
+    return apiClient.get<ResumoPerfil[]>('/permissoes/perfis');
+  },
+
+  /** Padrão (código + ajustes) de um perfil. */
+  doPerfil(perfil: string): Promise<PermissoesDoPerfil> {
+    return apiClient.get<PermissoesDoPerfil>(`/permissoes/perfil/${perfil}`);
+  },
+
+  /** Define o padrão de um perfil (afeta todos os usuários do perfil). */
+  definirPerfil(perfil: string, permissoes: string[]): Promise<PermissoesDoPerfil> {
+    return apiClient.put<PermissoesDoPerfil>(`/permissoes/perfil/${perfil}`, {
+      permissoes,
+    });
+  },
+
+  /** Restaura o perfil ao padrão de código (remove os ajustes de perfil). */
+  restaurarPerfil(perfil: string): Promise<PermissoesDoPerfil> {
+    return apiClient.post<PermissoesDoPerfil>(
+      `/permissoes/perfil/${perfil}/restaurar`,
+      {},
+    );
+  },
+
+  // ----- Histórico -----
+
+  /** Últimas mudanças de permissão (por login e por perfil). */
+  historico(limite = 100): Promise<ItemAuditoria[]> {
+    return apiClient.get<ItemAuditoria[]>('/permissoes/historico', { limite });
   },
 };

@@ -51,6 +51,39 @@ export interface PermissoesDoUsuario {
   itens: ItemPermissaoUsuario[];
 }
 
+/** Estado de uma funcionalidade no padrão de um perfil (Padrões por perfil). */
+export interface ItemPermissaoPerfil {
+  funcionalidade: string;
+  ligada: boolean;
+  padraoDeCodigo: boolean;
+  personalizada: boolean;
+}
+
+/** Padrão de um perfil para o painel. */
+export interface PermissoesDoPerfil {
+  perfil: Perfil;
+  itens: ItemPermissaoPerfil[];
+}
+
+/** Resumo de um perfil ajustável (lista de perfis). */
+export interface ResumoPerfil {
+  perfil: Perfil;
+  personalizados: number;
+}
+
+/** Entrada da trilha de auditoria (histórico de mudanças de permissão). */
+export interface ItemAuditoria {
+  id: string;
+  tipoAlvo: 'USUARIO' | 'PERFIL';
+  loginAlvo?: string | null;
+  perfilAlvo?: string | null;
+  funcionalidade: string;
+  concedida?: boolean | null;
+  acao: string;
+  definidoPor?: string | null;
+  em: string;
+}
+
 /** Conta de usuário gerenciável no painel de pessoas (login por matrícula). */
 export interface UsuarioConta {
   id: string;

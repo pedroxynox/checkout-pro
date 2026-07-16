@@ -323,7 +323,21 @@ export const FUNCIONALIDADES_AJUSTAVEIS: readonly string[] = Object.freeze(
   TODAS_FUNCIONALIDADES.filter((f) => !FUNCIONALIDADES_PROTEGIDAS_SET.has(f)),
 );
 
-/** Conjunto padrão de funcionalidades de um perfil (sem ajustes por login). */
+/**
+ * Perfis cujo PADRÃO pode ser editado na Central de Permissões. ADMINISTRADOR
+ * (acesso total) e IMPORTADOR (login dedicado) não são ajustáveis.
+ */
+export const PERFIS_AJUSTAVEIS: readonly Perfil[] = Object.freeze([
+  'FISCAL',
+  'SUPERVISOR',
+  'GERENTE',
+]);
+
+/**
+ * Conjunto padrão de funcionalidades de um perfil definido EM CÓDIGO — a linha
+ * de base imutável. É o ponto de partida sobre o qual se aplicam os ajustes de
+ * perfil (banco) e, depois, os ajustes por login.
+ */
 export function conjuntoBaseDoPerfil(perfil: Perfil): readonly string[] {
   if (perfil === 'ADMINISTRADOR') {
     return TODAS_FUNCIONALIDADES;
@@ -340,52 +354,91 @@ export function conjuntoBaseDoPerfil(perfil: Perfil): readonly string[] {
   return FUNCIONALIDADES_FISCAL;
 }
 
+/** Aplica ajustes (ignorando protegidos) a um conjunto e devolve novo Set. */
+function aplicarOverrides(
+  base: Iterable<string>,
+  overrides: readonly OverridePermissao[],
+): Set<string> {
+  const resultado = new Set<string>(base);
+  for (const ajuste of overrides) {
+    if (FUNCIONALIDADES_PROTEGIDAS_SET.has(ajuste.funcionalidade)) {
+      continue;
+    }
+    if (ajuste.concedida) {
+      resultado.add(ajuste.funcionalidade);
+    } else {
+      resultado.delete(ajuste.funcionalidade);
+    }
+  }
+  return resultado;
+}
+
 /**
- * Decide o acesso considerando os ajustes por login (perfil como padrão +
- * overrides). O ADMINISTRADOR mantém acesso TOTAL e **imutável** (os ajustes
- * são ignorados). Ajustes sobre funcionalidades protegidas também são
- * ignorados por segurança — a autoridade final é sempre esta função.
+ * Conjunto padrão EFETIVO de um perfil: a base de código com os ajustes de
+ * PERFIL aplicados (banco). É o padrão que vale para todos os usuários daquele
+ * perfil, antes dos ajustes por login.
+ */
+export function conjuntoEfetivoDoPerfil(
+  perfil: Perfil,
+  perfilOverrides: readonly OverridePermissao[] = [],
+): string[] {
+  if (perfil === 'ADMINISTRADOR') {
+    return [...TODAS_FUNCIONALIDADES];
+  }
+  const efetivas = aplicarOverrides(conjuntoBaseDoPerfil(perfil), perfilOverrides);
+  return TODAS_FUNCIONALIDADES.filter((f) => efetivas.has(f));
+}
+
+/**
+ * Decide o acesso considerando as três camadas: base do perfil (código) →
+ * ajustes de PERFIL (banco) → ajustes por LOGIN. Precedência: o ajuste por
+ * login vence o de perfil, que vence o padrão de código. O ADMINISTRADOR tem
+ * acesso TOTAL e **imutável**; funcionalidades protegidas nunca são ajustadas.
  */
 export function decidirAutorizacaoComOverrides(
   perfil: Perfil,
   funcionalidade: string,
-  overrides: readonly OverridePermissao[],
+  perfilOverrides: readonly OverridePermissao[],
+  userOverrides: readonly OverridePermissao[],
 ): boolean {
   if (perfil === 'ADMINISTRADOR') {
     return true;
   }
   if (!FUNCIONALIDADES_PROTEGIDAS_SET.has(funcionalidade)) {
-    const ajuste = overrides.find((o) => o.funcionalidade === funcionalidade);
-    if (ajuste) {
-      return ajuste.concedida;
+    const ajusteUsuario = userOverrides.find(
+      (o) => o.funcionalidade === funcionalidade,
+    );
+    if (ajusteUsuario) {
+      return ajusteUsuario.concedida;
+    }
+    const ajustePerfil = perfilOverrides.find(
+      (o) => o.funcionalidade === funcionalidade,
+    );
+    if (ajustePerfil) {
+      return ajustePerfil.concedida;
     }
   }
   return decidirAutorizacao(perfil, funcionalidade);
 }
 
 /**
- * Calcula o conjunto EFETIVO de funcionalidades de um usuário: o padrão do
- * perfil com os ajustes aplicados (ajustes protegidos são ignorados). É o que
- * o backend entrega ao app para decidir o que aparece na tela.
+ * Calcula o conjunto EFETIVO de funcionalidades de um usuário: base do perfil
+ * (código) → ajustes de perfil → ajustes por login. É o que o backend entrega
+ * ao app para decidir o que aparece na tela.
  */
 export function permissoesEfetivas(
   perfil: Perfil,
-  overrides: readonly OverridePermissao[],
+  perfilOverrides: readonly OverridePermissao[],
+  userOverrides: readonly OverridePermissao[],
 ): string[] {
   if (perfil === 'ADMINISTRADOR') {
     return [...TODAS_FUNCIONALIDADES];
   }
-  const efetivas = new Set<string>(conjuntoBaseDoPerfil(perfil));
-  for (const ajuste of overrides) {
-    if (FUNCIONALIDADES_PROTEGIDAS_SET.has(ajuste.funcionalidade)) {
-      continue;
-    }
-    if (ajuste.concedida) {
-      efetivas.add(ajuste.funcionalidade);
-    } else {
-      efetivas.delete(ajuste.funcionalidade);
-    }
-  }
+  const comPerfil = aplicarOverrides(
+    conjuntoBaseDoPerfil(perfil),
+    perfilOverrides,
+  );
+  const efetivas = aplicarOverrides(comPerfil, userOverrides);
   // Mantém a ordem do catálogo para uma saída estável.
   return TODAS_FUNCIONALIDADES.filter((f) => efetivas.has(f));
 }
