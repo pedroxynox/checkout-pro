@@ -331,6 +331,101 @@ describe('FiscaisService e EscalaService', () => {
     expect(f1?.horasExtrasMs).toBe(2 * HORA + 40 * 60_000 + 3 * HORA);
   });
 
+  it('feriado em dia útil conta como domingo: base 7h20 e extras a 100% (fiscal)', async () => {
+    const prisma = criarPrisma();
+    const feriadoDia = new Date('2024-03-11T00:00:00.000Z').getTime();
+    const feriados = {
+      mapaNoPeriodo: jest
+        .fn()
+        .mockResolvedValue(new Map([[feriadoDia, 'Feriado Teste']])),
+      ehFeriado: jest.fn().mockResolvedValue(true),
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fiscais = new FiscaisService(
+      prisma as never,
+      undefined,
+      undefined,
+      undefined,
+      feriados as never,
+    );
+    const HORA = 3_600_000;
+
+    // Segunda 11/03/2024, mas FERIADO: 08–18 = 10h. Base de domingo (7h20) →
+    // 2h40 de extra a 100% (igual ao Relógio Ponto e à Central), não 3h a 50%.
+    await fiscais.definirStatus(
+      'f1',
+      'DISPONIVEL',
+      new Date('2024-03-11T08:00:00Z'),
+    );
+    await fiscais.definirStatus(
+      'f1',
+      'FORA_EXPEDIENTE',
+      new Date('2024-03-11T18:00:00Z'),
+    );
+
+    const extras = await fiscais.horasExtrasMes(
+      new Date('2024-03-15T00:00:00Z'),
+    );
+    const f1 = extras.find((e) => e.pessoaId === 'f1');
+    expect(f1?.horasExtras100Ms).toBe(2 * HORA + 40 * 60_000);
+    expect(f1?.horasExtras50Ms).toBe(0);
+  });
+
+  it('feriado em dia útil conta como 100% também para operador (batidas)', async () => {
+    const prisma = criarPrisma();
+    const feriadoDia = new Date('2024-03-11T00:00:00.000Z').getTime();
+    const feriados = {
+      mapaNoPeriodo: jest
+        .fn()
+        .mockResolvedValue(new Map([[feriadoDia, 'Feriado Teste']])),
+      ehFeriado: jest.fn().mockResolvedValue(true),
+    };
+    prisma.colaborador.findMany = jest
+      .fn()
+      .mockResolvedValue([{ id: 'op1', nome: 'Op Um', funcao: 'OPERADOR' }]);
+    // 06:00→12:00 (6h) + 14:00→16:20 (2h20) = 8h20; base domingo 7h20 → 1h.
+    prisma.batidaPonto.findMany = jest.fn().mockResolvedValue([
+      {
+        id: 'a',
+        pessoaId: 'op1',
+        hora: new Date('2024-03-11T06:00:00.000Z'),
+        data: new Date('2024-03-11T00:00:00.000Z'),
+      },
+      {
+        id: 'b',
+        pessoaId: 'op1',
+        hora: new Date('2024-03-11T12:00:00.000Z'),
+        data: new Date('2024-03-11T00:00:00.000Z'),
+      },
+      {
+        id: 'c',
+        pessoaId: 'op1',
+        hora: new Date('2024-03-11T14:00:00.000Z'),
+        data: new Date('2024-03-11T00:00:00.000Z'),
+      },
+      {
+        id: 'd',
+        pessoaId: 'op1',
+        hora: new Date('2024-03-11T16:20:00.000Z'),
+        data: new Date('2024-03-11T00:00:00.000Z'),
+      },
+    ]);
+    const fiscais = new FiscaisService(
+      prisma as never,
+      undefined,
+      undefined,
+      undefined,
+      feriados as never,
+    );
+
+    const extras = await fiscais.horasExtrasMes(
+      new Date('2024-03-15T00:00:00Z'),
+    );
+    const op = extras.find((e) => e.pessoaId === 'op1');
+    expect(op?.horasExtras100Ms).toBe(3_600_000); // 1h a 100%
+    expect(op?.horasExtras50Ms).toBe(0);
+  });
+
   it('registra a falta do fiscal no dia', async () => {
     const prisma = criarPrisma();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

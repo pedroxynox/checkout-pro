@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
+import { FeriadosModule } from '../feriados/feriados.module';
 import { FiscaisController } from './fiscais.controller';
 import { FiscaisService } from './fiscais.service';
 import { FiscaisHorarioService } from './fiscais-horario.service';
@@ -20,7 +21,12 @@ import { FiscalStatusEventos } from './fiscais.eventos';
  * status e nas faltas. O `PrismaService` é global.
  */
 @Module({
-  imports: [NotificacoesModule, DataInicialModule, EscalaDomingoModule],
+  imports: [
+    NotificacoesModule,
+    DataInicialModule,
+    EscalaDomingoModule,
+    FeriadosModule,
+  ],
   providers: [
     FiscaisService,
     FiscaisHorarioService,

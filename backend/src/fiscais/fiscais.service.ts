@@ -33,6 +33,7 @@ import {
   statusFiscalDeJornada,
 } from '../ponto/ponto.domain';
 import { FUNCOES_PONTO_NAO_FISCAL } from '../ponto/pessoas-ponto';
+import { FeriadosService } from '../feriados/feriados.service';
 import {
   agoraNaBrasilia,
   diaEncerradoEmBrasilia,
@@ -112,7 +113,25 @@ export class FiscaisService {
     @Optional() private readonly eventos?: FiscalStatusEventos,
     @Optional() private readonly notificacoes?: NotificacoesService,
     @Optional() private readonly validacaoData?: ValidacaoDataService,
+    // Feriados: unifica o tratamento com o Relógio Ponto e a Central — um
+    // feriado segue a regra do domingo (base 7h20, extras a 100%). Opcional
+    // para não quebrar testes unitários que exercitam só a persistência.
+    @Optional() private readonly feriados?: FeriadosService,
   ) {}
+
+  /**
+   * Conjunto dos dias (00:00 UTC) que são feriado no período `[inicio, fim)`.
+   * Fonte única compartilhada com a Central (`FeriadosService`). Vazio quando o
+   * serviço de feriados não está disponível (mantém o comportamento antigo).
+   */
+  private async feriadosNoPeriodo(
+    inicio: Date,
+    fimExclusivo: Date,
+  ): Promise<Set<number>> {
+    if (!this.feriados) return new Set();
+    const mapa = await this.feriados.mapaNoPeriodo(inicio, fimExclusivo);
+    return new Set(mapa.keys());
+  }
 
   /** Fiscal vinculado ao usuário autenticado (erro se não houver). */
   async meuFiscal(usuarioId: string): Promise<Fiscal> {
@@ -349,6 +368,11 @@ export class FiscaisService {
     // instante UTC real. Cada fonte precisa do limite na sua própria referência.
     const limitePonto = diaEncerrado ? fimRotulado : agoraPonto;
     const limiteFiscal = diaEncerrado ? fimDoDiaBrasiliaEmUtc(dia) : agoraReal;
+    // Feriado segue a regra do domingo (base 7h20, extras 100%), igual ao
+    // Relógio Ponto e à Central.
+    const ehFeriado = this.feriados
+      ? await this.feriados.ehFeriado(dia)
+      : false;
     const [fiscais, registros, mapaCol, batidasFiscais, operadores] =
       await Promise.all([
         this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
@@ -362,7 +386,7 @@ export class FiscaisService {
           orderBy: { hora: 'asc' },
           select: { id: true, pessoaId: true, hora: true },
         }),
-        this.jornadaOperadoresDoDia(dia, limitePonto, diaEncerrado),
+        this.jornadaOperadoresDoDia(dia, limitePonto, diaEncerrado, ehFeriado),
       ]);
     const porFiscal = this.agrupar(registros);
     const batidasPorFiscal = new Map<string, { id: string; hora: Date }[]>();
@@ -392,7 +416,7 @@ export class FiscaisService {
             batidas,
             limitePonto,
             dia.getUTCDay(),
-            false,
+            ehFeriado,
             diaEncerrado,
           );
           return {
@@ -455,6 +479,7 @@ export class FiscaisService {
     dia: Date,
     limite: Date,
     diaEncerrado: boolean,
+    ehFeriado: boolean,
   ): Promise<ItemJornada[]> {
     const [colaboradores, batidas] = await Promise.all([
       this.prisma.colaborador.findMany({
@@ -490,7 +515,7 @@ export class FiscaisService {
             porPessoa.get(c.id)!,
             limite,
             diaSemana,
-            false,
+            ehFeriado,
             diaEncerrado,
           );
           return {
@@ -566,6 +591,9 @@ export class FiscaisService {
     );
     // Limita ao dia de hoje se for o mês atual. Batidas usam hora rotulada.
     const limitePonto = agoraPonto < fimMes ? agoraPonto : fimMes;
+    // Feriados do mês (fonte única compartilhada com a Central): feriado conta
+    // como domingo (base 7h20, extras 100%).
+    const feriadoSet = await this.feriadosNoPeriodo(inicioMes, fimMes);
 
     const [fiscais, registros, operadores] = await Promise.all([
       this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
@@ -573,7 +601,7 @@ export class FiscaisService {
         where: { data: { gte: inicioMes, lt: fimMes } },
         orderBy: { em: 'asc' },
       }),
-      this.horasExtrasOperadoresMes(inicioMes, fimMes, limitePonto),
+      this.horasExtrasOperadoresMes(inicioMes, fimMes, limitePonto, feriadoSet),
     ]);
 
     // Agrupar registros por fiscalId e por data (dia).
@@ -601,15 +629,20 @@ export class FiscaisService {
         for (const [diaKey, regs] of mapaFiscal.entries()) {
           const diaDate = new Date(diaKey);
           const diaSemana = diaDate.getUTCDay();
+          const ehFeriado = feriadoSet.has(diaDate.getTime());
           const diaEncerrado = diaEncerradoEmBrasilia(diaDate, agoraPonto);
           const limiteDia = diaEncerrado
             ? fimDoDiaBrasiliaEmUtc(diaDate)
             : agoraReal;
           const jornada = calcularJornada(regs, limiteDia, diaEncerrado);
-          const extra = jornada.cargaHorariaMs - jornadaEsperadaMs(diaSemana);
+          // Feriado segue a regra do domingo: base 7h20 e extras a 100%.
+          const contaComo100 = isDomingo(diaSemana) || ehFeriado;
+          const base = ehFeriado
+            ? jornadaEsperadaMs(0)
+            : jornadaEsperadaMs(diaSemana);
+          const extra = jornada.cargaHorariaMs - base;
           if (extra > 0) {
-            // Domingo = adicional de 100%; demais dias = 50%.
-            if (isDomingo(diaSemana)) horasExtras100Ms += extra;
+            if (contaComo100) horasExtras100Ms += extra;
             else horasExtras50Ms += extra;
           }
         }
@@ -639,6 +672,7 @@ export class FiscaisService {
     inicioMes: Date,
     fimMes: Date,
     limite: Date,
+    feriadoSet: Set<number>,
   ): Promise<ItemHorasExtras[]> {
     const [colaboradores, batidas] = await Promise.all([
       this.prisma.colaborador.findMany({
@@ -675,6 +709,7 @@ export class FiscaisService {
         for (const [diaKey, regs] of mapaPessoa.entries()) {
           const diaDate = new Date(diaKey);
           const diaSemana = diaDate.getUTCDay();
+          const ehFeriado = feriadoSet.has(diaDate.getTime());
           const fimDia = inicioDoProximoDia(diaDate);
           const limiteDia = limite < fimDia ? limite : fimDia;
           const diaEncerrado = fimDia.getTime() <= limite.getTime();
@@ -682,10 +717,10 @@ export class FiscaisService {
             regs,
             limiteDia,
             diaSemana,
-            false,
+            ehFeriado,
             diaEncerrado,
           );
-          // Domingo entra no 100%; demais dias no 50% (regra do domínio).
+          // Domingo e feriado entram no 100%; demais dias no 50% (regra do domínio).
           horasExtras50Ms += j.horasExtras50Ms;
           horasExtras100Ms += j.horasExtras100Ms;
         }
@@ -708,6 +743,14 @@ export class FiscaisService {
 
     const agoraReal = new Date();
     const agoraPonto = agoraNaBrasilia();
+    const inicioJanela = inicioDoDia(
+      new Date(agoraPonto.getTime() - 6 * 24 * 60 * 60 * 1000),
+    );
+    // Feriado segue a regra do domingo: esperado do dia é 0 (como no domingo).
+    const feriadoSet = await this.feriadosNoPeriodo(
+      inicioJanela,
+      inicioDoProximoDia(agoraPonto),
+    );
     const dias: {
       data: string;
       diaSemana: number;
@@ -720,6 +763,7 @@ export class FiscaisService {
       dia.setUTCDate(dia.getUTCDate() - i);
       const dataInicio = inicioDoDia(dia);
       const diaSemana = dataInicio.getUTCDay();
+      const ehFeriado = feriadoSet.has(dataInicio.getTime());
 
       const registros = await this.prisma.registroPontoFiscal.findMany({
         where: { fiscalId: fiscal.id, data: dataInicio },
@@ -740,7 +784,8 @@ export class FiscaisService {
         data: dataInicio.toISOString().slice(0, 10),
         diaSemana,
         trabalhadoMs: jornada.cargaHorariaMs,
-        esperadoMs: isDomingo(diaSemana) ? 0 : jornadaEsperadaMs(diaSemana),
+        esperadoMs:
+          isDomingo(diaSemana) || ehFeriado ? 0 : jornadaEsperadaMs(diaSemana),
       });
     }
 
@@ -860,9 +905,16 @@ export class FiscaisService {
       Date.UTC(agoraPonto.getUTCFullYear(), agoraPonto.getUTCMonth() + 1, 1),
     );
 
-    // Dias úteis transcorridos no mês (excluindo domingos).
-    const diasTranscorridos = this.diasUteisEntre(inicioMes, agoraPonto);
-    const diasTotaisMes = this.diasUteisEntre(inicioMes, fimMes);
+    // Feriado conta como domingo: fica fora da projeção de extras "de dia útil"
+    // — tanto do acúmulo (numerador) quanto da contagem de dias (denominador).
+    const feriadoSet = await this.feriadosNoPeriodo(inicioMes, fimMes);
+    // Dias úteis transcorridos no mês (excluindo domingos e feriados).
+    const diasTranscorridos = this.diasUteisEntre(
+      inicioMes,
+      agoraPonto,
+      feriadoSet,
+    );
+    const diasTotaisMes = this.diasUteisEntre(inicioMes, fimMes, feriadoSet);
 
     if (diasTranscorridos === 0) return [];
 
@@ -895,7 +947,9 @@ export class FiscaisService {
         for (const [diaKey, regs] of mapaFiscal.entries()) {
           const diaDate = new Date(diaKey);
           const diaSemana = diaDate.getUTCDay();
-          if (isDomingo(diaSemana)) continue;
+          if (isDomingo(diaSemana) || feriadoSet.has(diaDate.getTime())) {
+            continue;
+          }
 
           const diaEncerrado = diaEncerradoEmBrasilia(diaDate, agoraPonto);
           const limite = diaEncerrado
@@ -961,12 +1015,18 @@ export class FiscaisService {
     return { contexto: linhas.join('\n') };
   }
 
-  /** Conta dias úteis (excluindo domingos) entre duas datas. */
-  private diasUteisEntre(inicio: Date, fim: Date): number {
+  /** Conta dias úteis (excluindo domingos e feriados) entre duas datas. */
+  private diasUteisEntre(
+    inicio: Date,
+    fim: Date,
+    feriadoSet: Set<number> = new Set(),
+  ): number {
     let count = 0;
     const cursor = new Date(inicio);
     while (cursor < fim) {
-      if (cursor.getUTCDay() !== 0) count++;
+      if (cursor.getUTCDay() !== 0 && !feriadoSet.has(cursor.getTime())) {
+        count++;
+      }
       cursor.setUTCDate(cursor.getUTCDate() + 1);
     }
     return count;
