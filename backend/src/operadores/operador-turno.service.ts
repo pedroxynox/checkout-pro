@@ -1,6 +1,6 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { Colaborador, OperadorTurno } from '@prisma/client';
+import { Colaborador, OperadorTurno, TurnoColaborador } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import {
@@ -92,6 +92,12 @@ export interface ColaboradorDia {
   id: string;
   nome: string;
   genero: string | null;
+  /**
+   * Turno fixo do colaborador, conforme o Cadastro (ABERTURA/INTERMEDIARIO/
+   * FECHAMENTO/APOIO). É a fonte oficial para agrupar a escala por turno.
+   * `null` quando o colaborador ainda não tem turno definido no cadastro.
+   */
+  turno: TurnoColaborador | null;
   status: StatusCelula;
   entrada: string | null;
   saida: string | null;
@@ -185,11 +191,14 @@ function iso(data: Date): string {
  * o OperadorTurno antigo fica OCULTO (não é mais lido aqui). Horários ausentes
  * viram "" e a folga ausente vira -1 (nunca casa um dia da semana).
  */
-function comoOperadorTurno(c: Colaborador): OperadorTurno {
+type OperadorEscala = OperadorTurno & { turno: TurnoColaborador | null };
+
+function comoOperadorTurno(c: Colaborador): OperadorEscala {
   return {
     id: c.id,
     nome: c.nome,
     genero: c.genero,
+    turno: c.turno ?? null,
     entradaSemana: c.entradaSemana ?? '',
     saidaSemana: c.saidaSemana ?? '',
     entradaFds: c.entradaFds ?? '',
@@ -228,6 +237,7 @@ export class OperadorTurnoService {
       id: string;
       nome: string;
       genero: string | null;
+      turno: TurnoColaborador | null;
       trabalha: boolean;
       entrada: string | null;
       saida: string | null;
@@ -255,6 +265,7 @@ export class OperadorTurnoService {
         id: c.id,
         nome: c.nome,
         genero: c.genero ?? null,
+        turno: c.turno ?? null,
         trabalha,
         entrada: trabalha ? (c.entradaDom ?? null) : null,
         saida: trabalha ? (c.saidaDom ?? null) : null,
@@ -273,7 +284,7 @@ export class OperadorTurnoService {
    * Lista os operadores ATIVOS para a escala. Fonte: Cadastro Unificado de
    * Colaboradores (funcao OPERADOR). O OperadorTurno antigo fica oculto.
    */
-  async listar(): Promise<OperadorTurno[]> {
+  async listar(): Promise<OperadorEscala[]> {
     const cols = await this.prisma.colaborador.findMany({
       where: { funcao: 'OPERADOR', ativo: true },
       orderBy: [
@@ -438,6 +449,7 @@ export class OperadorTurnoService {
       id: string;
       nome: string;
       genero: string | null;
+      turno: TurnoColaborador | null;
       entrada: string | null;
       saida: string | null;
     }): ColaboradorDia => {
@@ -446,6 +458,7 @@ export class OperadorTurnoService {
         id: base.id,
         nome: base.nome,
         genero: base.genero,
+        turno: base.turno,
         status: aus ? 'FALTA' : 'TRABALHA',
         entrada: base.entrada,
         saida: base.saida,
@@ -461,10 +474,12 @@ export class OperadorTurnoService {
       id: string;
       nome: string;
       genero: string | null;
+      turno: TurnoColaborador | null;
     }): ColaboradorDia => ({
       id: base.id,
       nome: base.nome,
       genero: base.genero,
+      turno: base.turno,
       status: 'FOLGA',
       entrada: null,
       saida: null,
@@ -480,18 +495,30 @@ export class OperadorTurnoService {
                 id: it.id,
                 nome: it.nome,
                 genero: it.genero,
+                turno: it.turno,
                 entrada: it.entrada,
                 saida: it.saida,
               })
-            : folga({ id: it.id, nome: it.nome, genero: it.genero }),
+            : folga({
+                id: it.id,
+                nome: it.nome,
+                genero: it.genero,
+                turno: it.turno,
+              }),
         )
       : operadores.map((op) =>
           op.folgaDiaSemana === diaSemana
-            ? folga({ id: op.id, nome: op.nome, genero: op.genero ?? null })
+            ? folga({
+                id: op.id,
+                nome: op.nome,
+                genero: op.genero ?? null,
+                turno: op.turno,
+              })
             : linhaComFalta({
                 id: op.id,
                 nome: op.nome,
                 genero: op.genero ?? null,
+                turno: op.turno,
                 entrada: fds ? op.entradaFds : op.entradaSemana,
                 saida: fds ? op.saidaFds : op.saidaSemana,
               }),

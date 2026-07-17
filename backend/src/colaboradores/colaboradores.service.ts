@@ -26,6 +26,7 @@ import {
   MatriculaColaboradorDuplicadaError,
   PermissaoInsuficienteFuncaoError,
   SenhaAcessoObrigatoriaError,
+  TurnoObrigatorioError,
 } from './colaboradores.errors';
 
 /** Funções que têm acesso ao app (login). Operador NÃO entra no app. */
@@ -57,6 +58,25 @@ function validarPermissaoDeFuncao(
     funcao === 'GESTOR' || gerenteDesenvolvedor === true;
   if (concedeAcessoGerencial && perfilSolicitante !== 'ADMINISTRADOR') {
     throw new PermissaoInsuficienteFuncaoError();
+  }
+}
+
+/**
+ * Fiscal e operador trabalham num turno fixo (é o que agrupa a escala do dia),
+ * então o turno é obrigatório para eles. Supervisor, gerente e administrador
+ * não têm turno fixo.
+ */
+function funcaoExigeTurno(funcao: FuncaoColaborador): boolean {
+  return funcao === 'FISCAL' || funcao === 'OPERADOR';
+}
+
+/** Garante o turno quando a função exige (fiscal/operador). */
+function validarTurnoObrigatorio(
+  funcao: FuncaoColaborador,
+  turno: TurnoColaborador | null | undefined,
+): void {
+  if (funcaoExigeTurno(funcao) && !turno) {
+    throw new TurnoObrigatorioError();
   }
 }
 
@@ -192,6 +212,8 @@ export class ColaboradoresService {
       funcao,
       input.gerenteDesenvolvedor,
     );
+    // Fiscal e operador precisam de turno fixo (agrupa a escala do dia).
+    validarTurnoObrigatorio(funcao, input.turno ?? null);
     const perfilAcesso = perfilDaFuncao(funcao, input.gerenteDesenvolvedor);
 
     const jaMatricula = await this.prisma.colaborador.findUnique({
@@ -383,6 +405,16 @@ export class ColaboradoresService {
         input.funcao ?? atual.funcao,
         input.gerenteDesenvolvedor,
       );
+    }
+
+    // Fiscal e operador precisam de turno fixo. Valida só quando a função ou o
+    // turno mudam, para não travar a edição de outros campos de cadastros
+    // antigos que ainda não têm turno.
+    if (input.funcao !== undefined || input.turno !== undefined) {
+      const funcaoEfetiva = input.funcao ?? atual.funcao;
+      const turnoEfetivo =
+        input.turno !== undefined ? input.turno : atual.turno;
+      validarTurnoObrigatorio(funcaoEfetiva, turnoEfetivo ?? null);
     }
 
     const data: Prisma.ColaboradorUpdateInput = {};
