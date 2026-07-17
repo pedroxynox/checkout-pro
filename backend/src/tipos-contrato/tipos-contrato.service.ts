@@ -32,7 +32,16 @@ interface ParametrosRegra {
  */
 @Injectable()
 export class TiposContratoService {
+  // Cache das regras por contrato (mudam pouco; limpo em qualquer mutação).
+  private readonly cacheRegras = new Map<string, RegrasContrato>();
+  private cacheRegrasPadrao: RegrasContrato | null = null;
+
   constructor(private readonly prisma: PrismaService) {}
+
+  private invalidarCache(): void {
+    this.cacheRegras.clear();
+    this.cacheRegrasPadrao = null;
+  }
 
   /** Lista os contratos (só ativos por padrão; o padrão vem primeiro). */
   async listar(incluirInativos = false): Promise<TipoContratoJornada[]> {
@@ -46,7 +55,7 @@ export class TiposContratoService {
   async criar(dto: CriarTipoContratoDto): Promise<TipoContratoJornada> {
     this.validarCoerencia(dto);
     await this.exigirNomeLivre(dto.nome.trim());
-    return this.prisma.tipoContratoJornada.create({
+    const criado = await this.prisma.tipoContratoJornada.create({
       data: {
         nome: dto.nome.trim(),
         descricao: dto.descricao?.trim() || null,
@@ -63,8 +72,11 @@ export class TiposContratoService {
         riscoTac1h30Min: dto.riscoTac1h30Min,
         riscoTac1h40Min: dto.riscoTac1h40Min,
         intervaloMinimoEntreBatidasMin: dto.intervaloMinimoEntreBatidasMin ?? 2,
+        intervaloObrigatorio: dto.intervaloObrigatorio ?? false,
       },
     });
+    this.invalidarCache();
+    return criado;
   }
 
   /** Edita um tipo de contrato existente. */
@@ -119,6 +131,9 @@ export class TiposContratoService {
       ...(dto.intervaloMinimoEntreBatidasMin !== undefined
         ? { intervaloMinimoEntreBatidasMin: dto.intervaloMinimoEntreBatidasMin }
         : {}),
+      ...(dto.intervaloObrigatorio !== undefined
+        ? { intervaloObrigatorio: dto.intervaloObrigatorio }
+        : {}),
     };
     // Desativar o padrão é proibido (é o fallback do cálculo).
     if (dto.ativo === false && atual.padrao) {
@@ -126,7 +141,12 @@ export class TiposContratoService {
         'Não é possível desativar o contrato padrão.',
       );
     }
-    return this.prisma.tipoContratoJornada.update({ where: { id }, data });
+    const atualizado = await this.prisma.tipoContratoJornada.update({
+      where: { id },
+      data,
+    });
+    this.invalidarCache();
+    return atualizado;
   }
 
   /** Ativa ou desativa um contrato. O padrão não pode ser desativado. */
@@ -137,13 +157,15 @@ export class TiposContratoService {
         'Não é possível desativar o contrato padrão.',
       );
     }
-    return this.prisma.tipoContratoJornada.update({
+    const salvo = await this.prisma.tipoContratoJornada.update({
       where: { id },
       data: { ativo },
     });
+    this.invalidarCache();
+    return salvo;
   }
 
-  /** Remove um contrato. O padrão não pode ser removido. */
+  /** Remove um contrato. O padrão e os que estão EM USO não podem ser removidos. */
   async remover(id: string): Promise<void> {
     const atual = await this.obterOuFalhar(id);
     if (atual.padrao) {
@@ -151,7 +173,16 @@ export class TiposContratoService {
         'Não é possível excluir o contrato padrão.',
       );
     }
+    const emUso = await this.prisma.colaborador.count({
+      where: { tipoContratoJornadaId: id },
+    });
+    if (emUso > 0) {
+      throw new BadRequestException(
+        `Este contrato está em uso por ${emUso} colaborador(es). Reatribua-os antes de remover (ou apenas desative o contrato).`,
+      );
+    }
     await this.prisma.tipoContratoJornada.delete({ where: { id } });
+    this.invalidarCache();
   }
 
   /**
@@ -160,11 +191,41 @@ export class TiposContratoService {
    * colaborador). Cai no `REGRAS_PADRAO` do código se nem o padrão existir.
    */
   async regrasDoContrato(id?: string | null): Promise<RegrasContrato> {
-    const modelo = id
-      ? await this.prisma.tipoContratoJornada.findUnique({ where: { id } })
-      : await this.contratoPadrao();
-    const efetivo = modelo ?? (await this.contratoPadrao());
-    return efetivo ? regrasContratoDeModelo(efetivo) : REGRAS_PADRAO;
+    if (id) {
+      const emCache = this.cacheRegras.get(id);
+      if (emCache) return emCache;
+      const modelo = await this.prisma.tipoContratoJornada.findUnique({
+        where: { id },
+      });
+      if (modelo) {
+        const regras = regrasContratoDeModelo(modelo);
+        this.cacheRegras.set(id, regras);
+        return regras;
+      }
+      // Id desconhecido (ex.: contrato removido): cai no padrão.
+    }
+    if (!this.cacheRegrasPadrao) {
+      const padrao = await this.contratoPadrao();
+      this.cacheRegrasPadrao = padrao
+        ? regrasContratoDeModelo(padrao)
+        : REGRAS_PADRAO;
+    }
+    return this.cacheRegrasPadrao;
+  }
+
+  /**
+   * Regras de jornada do colaborador (pelo contrato atribuído) ou do padrão
+   * quando ele não tem contrato próprio. Ponto de entrada do cálculo por pessoa.
+   */
+  async regrasDoColaborador(
+    colaboradorId?: string | null,
+  ): Promise<RegrasContrato> {
+    if (!colaboradorId) return this.regrasDoContrato(null);
+    const colab = await this.prisma.colaborador.findUnique({
+      where: { id: colaboradorId },
+      select: { tipoContratoJornadaId: true },
+    });
+    return this.regrasDoContrato(colab?.tipoContratoJornadaId ?? null);
   }
 
   private async contratoPadrao(): Promise<TipoContratoJornada | null> {

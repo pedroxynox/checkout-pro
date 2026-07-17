@@ -103,6 +103,7 @@ export class ColaboradoresController {
         saidaDom: dto.saidaDom,
         dataAdmissao: dto.dataAdmissao,
         tipoContrato: dto.tipoContrato as TipoContrato | undefined,
+        tipoContratoJornadaId: dto.tipoContratoJornadaId,
       },
       usuario.perfil,
     );
@@ -184,6 +185,7 @@ export class ColaboradoresController {
         saidaDom: dto.saidaDom,
         dataAdmissao: dto.dataAdmissao,
         tipoContrato: dto.tipoContrato as TipoContrato | undefined,
+        tipoContratoJornadaId: dto.tipoContratoJornadaId,
         ativo: dto.ativo,
       },
       usuario.perfil,

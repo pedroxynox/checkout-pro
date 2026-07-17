@@ -100,6 +100,10 @@ export class CadastrarColaboradorDto {
   @IsOptional()
   @IsIn(TIPOS_CONTRATO, { message: 'Tipo de contrato inválido.' })
   tipoContrato?: string;
+
+  @IsOptional()
+  @IsString()
+  tipoContratoJornadaId?: string | null;
 }
 
 /** Edição de colaborador — todos os campos opcionais. */
@@ -186,6 +190,10 @@ export class EditarColaboradorDto {
   @IsOptional()
   @IsIn(TIPOS_CONTRATO, { message: 'Tipo de contrato inválido.' })
   tipoContrato?: string;
+
+  @IsOptional()
+  @IsString()
+  tipoContratoJornadaId?: string | null;
 
   @IsOptional()
   @IsBoolean()

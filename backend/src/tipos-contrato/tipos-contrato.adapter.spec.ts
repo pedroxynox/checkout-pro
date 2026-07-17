@@ -20,6 +20,7 @@ function modelo6x1(): TipoContratoJornada {
     riscoTac1h30Min: 90,
     riscoTac1h40Min: 100,
     intervaloMinimoEntreBatidasMin: 2,
+    intervaloObrigatorio: false,
     criadoEm: new Date(),
     atualizadoEm: new Date(),
   };
@@ -67,5 +68,18 @@ describe('regrasContratoDeModelo', () => {
     expect(r.cargaBaseMs(1)).toBe(360 * MIN); // segunda 6h
     expect(r.cargaBaseMs(0)).toBe(0); // domingo folga
     expect(r.temAdicional100(0)).toBe(false);
+  });
+
+  it('propaga o intervalo obrigatório (contrato de 6h)', () => {
+    const seisH: TipoContratoJornada = {
+      ...modelo6x1(),
+      id: 'c3',
+      nome: '6h intervalo obrigatório',
+      intervaloMinimoMin: 20,
+      intervaloObrigatorio: true,
+    };
+    const r = regrasContratoDeModelo(seisH);
+    expect(r.intervaloObrigatorio).toBe(true);
+    expect(r.intervaloMinimoMs).toBe(20 * MIN);
   });
 });

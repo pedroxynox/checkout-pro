@@ -107,6 +107,11 @@ export interface ColaboradorInput {
   /** Tipo de contrato (regras de jornada). Ausente = mantém/usa o default. */
   tipoContrato?: TipoContrato;
   /**
+   * Tipo de contrato de jornada data-driven (catálogo). undefined = não altera;
+   * null = remove (volta ao padrão); string = atribui esse contrato.
+   */
+  tipoContratoJornadaId?: string | null;
+  /**
    * Senha de acesso ao app. No cadastro de fiscal/supervisor/gerente é
    * obrigatória (cria a conta com login = matrícula). Na edição, quando
    * informada, redefine a senha.
@@ -231,6 +236,10 @@ export class ColaboradoresService {
         dataAdmissao: normalizarAdmissao(input.dataAdmissao),
         // Ausente → Prisma aplica o default (6x1 - 2x1).
         tipoContrato: input.tipoContrato,
+        // Contrato de jornada data-driven (opcional). Sem ele, usa o padrão.
+        tipoContratoJornada: input.tipoContratoJornadaId
+          ? { connect: { id: input.tipoContratoJornadaId } }
+          : undefined,
         usuarioId,
         identificadores: {
           create: [
@@ -373,6 +382,11 @@ export class ColaboradoresService {
       data.dataAdmissao = normalizarAdmissao(input.dataAdmissao);
     if (input.tipoContrato !== undefined)
       data.tipoContrato = input.tipoContrato;
+    // Contrato de jornada data-driven: string atribui, null remove (volta ao padrão).
+    if (input.tipoContratoJornadaId !== undefined)
+      data.tipoContratoJornada = input.tipoContratoJornadaId
+        ? { connect: { id: input.tipoContratoJornadaId } }
+        : { disconnect: true };
     if (input.ativo !== undefined) {
       data.ativo = input.ativo;
       // Marca/limpa a data de desligamento (base da janela de retenção da

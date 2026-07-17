@@ -13,11 +13,13 @@ import {
 } from '../escala-domingo/escala-domingo.domain';
 import {
   INTERVALO_MINIMO_ENTRE_BATIDAS_MS,
+  REGRAS_PADRAO,
+  RegrasContrato,
   calcularJornadaDia,
   StatusJornadaPonto,
 } from '../ponto/ponto.domain';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
-import { jornadaEsperadaMs } from '../fiscais/fiscais.domain';
+import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 import {
   agoraNaBrasilia,
@@ -235,12 +237,28 @@ export class CentralJornadaService {
     // Fechamento do ciclo. Opcional: sem ele, não há bloqueio por ciclo fechado
     // (os testes unitários de cálculo não precisam dele).
     @Optional() private readonly cicloFolha?: CicloFolhaService,
+    // Regras por tipo de contrato (data-driven). Opcional: sem ele, o cálculo
+    // usa o contrato padrão (6x1), preservando o comportamento vigente.
+    @Optional() private readonly tiposContrato?: TiposContratoService,
   ) {}
 
-  private baseDoDia(dia: Date, ehFeriado: boolean): number {
+  /** Regras do contrato (data-driven) ou o padrão quando não há serviço/id. */
+  private async regrasDe(
+    tipoContratoJornadaId?: string | null,
+  ): Promise<RegrasContrato> {
+    return this.tiposContrato
+      ? this.tiposContrato.regrasDoContrato(tipoContratoJornadaId ?? null)
+      : REGRAS_PADRAO;
+  }
+
+  private baseDoDia(
+    dia: Date,
+    ehFeriado: boolean,
+    regras: RegrasContrato,
+  ): number {
     return ehFeriado
-      ? jornadaEsperadaMs(0)
-      : jornadaEsperadaMs(dia.getUTCDay());
+      ? regras.cargaBaseMs(0)
+      : regras.cargaBaseMs(dia.getUTCDay());
   }
 
   /** Carrega os dados brutos do ciclo (pessoas, batidas, ausências, feriados). */
@@ -271,6 +289,8 @@ export class CentralJornadaService {
             entradaSemana: true,
             entradaFds: true,
             entradaDom: true,
+            // Contrato de jornada (data-driven) para resolver as regras da pessoa.
+            tipoContratoJornadaId: true,
           },
         }),
         this.prisma.batidaPonto.findMany({
@@ -359,6 +379,7 @@ export class CentralJornadaService {
     limite: Date,
     ficha: FichaEscala,
     ancora: AncoraDomingo | null,
+    regras: RegrasContrato,
   ): {
     resumo: Omit<
       CentralPessoaResumo,
@@ -401,7 +422,7 @@ export class CentralJornadaService {
       const diaSemana = dia.getUTCDay();
       const ehFeriado = feriadoMap.has(dia.getTime());
       const feriadoNome = feriadoMap.get(dia.getTime());
-      const baseMs = this.baseDoDia(dia, ehFeriado);
+      const baseMs = this.baseDoDia(dia, ehFeriado, regras);
       const regs = batidasPorDia.get(k);
       const ausencia = ausenciaPorDia.get(k);
       const diaCompleto = inicioDoProximoDia(dia).getTime() <= limite.getTime();
@@ -415,6 +436,7 @@ export class CentralJornadaService {
           diaSemana,
           ehFeriado,
           diaCompleto,
+          regras,
         );
         cargaTrabalhadaMs += j.trabalhadoMs;
         extras50Ms += j.horasExtras50Ms;
@@ -543,26 +565,30 @@ export class CentralJornadaService {
     const dados = await this.carregarCiclo(deslocamento);
     const batidas = dados.batidas as BatidaMin[];
 
-    const pessoas: CentralPessoaResumo[] = dados.pessoas.map((c) => {
-      const { resumo } = this.calcularPessoa(
-        this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador),
-        batidas,
-        dados.ausencias,
-        dados.feriadoMap,
-        dados.inicio,
-        dados.fimExclusivo,
-        dados.limite,
-        c,
-        dados.ancora,
-      );
-      return {
-        colaboradorId: c.id,
-        nome: c.nome,
-        primeiroNome: primeiroNome(c.nome),
-        funcao: c.funcao,
-        ...resumo,
-      };
-    });
+    const pessoas: CentralPessoaResumo[] = await Promise.all(
+      dados.pessoas.map(async (c) => {
+        const regras = await this.regrasDe(c.tipoContratoJornadaId);
+        const { resumo } = this.calcularPessoa(
+          this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador),
+          batidas,
+          dados.ausencias,
+          dados.feriadoMap,
+          dados.inicio,
+          dados.fimExclusivo,
+          dados.limite,
+          c,
+          dados.ancora,
+          regras,
+        );
+        return {
+          colaboradorId: c.id,
+          nome: c.nome,
+          primeiroNome: primeiroNome(c.nome),
+          funcao: c.funcao,
+          ...resumo,
+        };
+      }),
+    );
     // Sem filtro de "movimento": a Central lista TODAS as fichas não-gerentes
     // (operador/supervisor/fiscal), mesmo zeradas, já em ordem alfabética
     // (a query carrega os colaboradores com orderBy nome asc).
@@ -606,6 +632,7 @@ export class CentralJornadaService {
   ): Promise<{ periodo: CentralPeriodo; dias: CentralDiaDetalhe[] }> {
     const dados = await this.carregarCiclo(deslocamento);
     const ficha = dados.pessoas.find((p) => p.id === colaboradorId);
+    const regras = await this.regrasDe(ficha?.tipoContratoJornadaId);
     const { dias } = this.calcularPessoa(
       this.idsDaPessoa(colaboradorId, dados.fiscalIdsPorColaborador),
       dados.batidas as BatidaMin[],
@@ -616,6 +643,7 @@ export class CentralJornadaService {
       dados.limite,
       ficha ?? FICHA_ESCALA_VAZIA,
       dados.ancora,
+      regras,
     );
     return { periodo: this.montarPeriodo(dados.periodo, deslocamento), dias };
   }
@@ -645,6 +673,7 @@ export class CentralJornadaService {
 
     for (const c of dados.pessoas) {
       const ids = this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador);
+      const regras = await this.regrasDe(c.tipoContratoJornadaId);
       const { dias } = this.calcularPessoa(
         ids,
         batidas,
@@ -655,6 +684,7 @@ export class CentralJornadaService {
         dados.limite,
         c,
         dados.ancora,
+        regras,
       );
 
       // Horas das batidas da pessoa por dia (para detectar duplicidade).
@@ -762,6 +792,7 @@ export class CentralJornadaService {
 
     for (const c of dados.pessoas) {
       const ids = this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador);
+      const regras = await this.regrasDe(c.tipoContratoJornadaId);
       const { resumo, dias } = this.calcularPessoa(
         ids,
         batidas,
@@ -772,6 +803,7 @@ export class CentralJornadaService {
         dados.limite,
         c,
         dados.ancora,
+        regras,
       );
       pessoas.push({
         colaboradorId: c.id,

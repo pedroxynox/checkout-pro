@@ -6,6 +6,7 @@ import {
   MAX_TRABALHO_SEM_INTERVALO_MS,
   RISCO_TAC_1H30_MS,
   RISCO_TAC_1H40_MS,
+  REGRAS_PADRAO,
   BatidaEntrada,
   batidaDuplicada,
   calcularJornadaDia,
@@ -379,5 +380,69 @@ describe('batidaDuplicada', () => {
   it('compara contra todas as batidas existentes', () => {
     const horas = [base, base + 4 * 3_600_000];
     expect(batidaDuplicada(base + 4 * 3_600_000 + 30_000, horas)).toBe(true);
+  });
+});
+
+
+describe('calcularJornadaDia · intervalo obrigatório (contratos data-driven)', () => {
+  // Contrato de 6h com intervalo obrigatório: encerrar sem intervalo é TAC.
+  const REGRAS_6H_INTERVALO = {
+    ...REGRAS_PADRAO,
+    cargaBaseMs: () => 6 * 60 * 60_000, // 6h
+    maxTrabalhoSemIntervaloMs: 6 * 60 * 60_000, // duas batidas até 6h encerram
+    intervaloMinimoMs: 20 * 60_000, // 20 min
+    intervaloObrigatorio: true,
+  };
+
+  it('encerrar a jornada SEM intervalo é TAC', () => {
+    // Duas batidas (entrada e encerramento) sem intervalo no meio.
+    const j = calcularJornadaDia(
+      [batida('e', '08:00'), batida('s', '14:00')],
+      H('18:00'),
+      SEGUNDA,
+      false,
+      true,
+      REGRAS_6H_INTERVALO,
+    );
+    expect(j.status).toBe('ENCERRADO');
+    expect(j.tac).toBe(true);
+    expect(j.motivosTac).toContain('Não fez o intervalo obrigatório');
+  });
+
+  it('com intervalo válido (≥ 20min) não é TAC por intervalo', () => {
+    const j = calcularJornadaDia(
+      [
+        batida('e', '08:00'),
+        batida('si', '11:00'),
+        batida('ri', '11:30'),
+        batida('f', '14:30'),
+      ],
+      H('18:00'),
+      SEGUNDA,
+      false,
+      true,
+      REGRAS_6H_INTERVALO,
+    );
+    expect(j.status).toBe('ENCERRADO');
+    expect(j.motivosTac).not.toContain('Não fez o intervalo obrigatório');
+  });
+
+  it('contrato de 4h corridas (intervalo NÃO obrigatório) não gera TAC sem intervalo', () => {
+    const REGRAS_4H = {
+      ...REGRAS_PADRAO,
+      cargaBaseMs: () => 4 * 60 * 60_000,
+      maxTrabalhoSemIntervaloMs: 4 * 60 * 60_000,
+      intervaloObrigatorio: false,
+    };
+    const j = calcularJornadaDia(
+      [batida('e', '08:00'), batida('s', '12:00')],
+      H('18:00'),
+      SEGUNDA,
+      false,
+      true,
+      REGRAS_4H,
+    );
+    expect(j.status).toBe('ENCERRADO');
+    expect(j.tac).toBe(false);
   });
 });

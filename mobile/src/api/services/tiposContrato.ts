@@ -25,6 +25,8 @@ export interface TipoContratoJornada {
   riscoTac1h30Min: number;
   riscoTac1h40Min: number;
   intervaloMinimoEntreBatidasMin: number;
+  /** Quando true, encerrar a jornada sem intervalo é TAC. */
+  intervaloObrigatorio: boolean;
 }
 
 /** Campos editáveis de um tipo de contrato (criar/editar). */
@@ -40,6 +42,7 @@ export interface TipoContratoInput {
   riscoTac1h30Min: number;
   riscoTac1h40Min: number;
   intervaloMinimoEntreBatidasMin?: number;
+  intervaloObrigatorio?: boolean;
   ativo?: boolean;
 }
 

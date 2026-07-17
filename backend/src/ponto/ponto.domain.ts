@@ -72,6 +72,14 @@ export interface RegrasContrato {
   riscoTac1h40Ms: number;
   /** Distância mínima entre batidas para não serem tratadas como duplicadas. */
   intervaloMinimoEntreBatidasMs: number;
+  /**
+   * Quando true, o intervalo é OBRIGATÓRIO: encerrar a jornada sem ter feito
+   * intervalo (duas batidas) é TAC. Quando false (padrão 6x1), uma jornada
+   * curta pode ser encerrada sem intervalo sem gerar TAC (ex.: contrato de 4h
+   * corridas). Um intervalo feito, mas curto demais, já é TAC pelo
+   * `intervaloMinimoMs`.
+   */
+  intervaloObrigatorio: boolean;
 }
 
 /**
@@ -88,6 +96,9 @@ export const REGRAS_SEIS_X_UM_DOIS_X_UM: RegrasContrato = {
   riscoTac1h30Ms: RISCO_TAC_1H30_MS,
   riscoTac1h40Ms: RISCO_TAC_1H40_MS,
   intervaloMinimoEntreBatidasMs: INTERVALO_MINIMO_ENTRE_BATIDAS_MS,
+  // No 6x1 uma jornada curta pode encerrar sem intervalo sem virar TAC
+  // (comportamento atual preservado).
+  intervaloObrigatorio: false,
 };
 
 /** Regras usadas por padrão (contrato vigente 6x1–2x1). */
@@ -362,6 +373,11 @@ export function calcularJornadaDia(
   // Intervalo acima de 3h vale mesmo se ainda estiver em intervalo.
   if (saida && intervaloMs > regras.intervaloMaximoMs) {
     motivosTac.push('Intervalo acima de 3h');
+  }
+  // Intervalo OBRIGATÓRIO: encerrou a jornada sem ter feito intervalo → TAC.
+  // Só quando o dia está de fato encerrado sem nenhum intervalo registrado.
+  if (regras.intervaloObrigatorio && status === 'ENCERRADO' && intervaloMs === 0) {
+    motivosTac.push('Não fez o intervalo obrigatório');
   }
 
   return {

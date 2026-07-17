@@ -1392,6 +1392,8 @@ export interface Colaborador {
   dataAdmissao: string | null;
   /** Tipo de contrato (regras de jornada). */
   tipoContrato: TipoContrato;
+  /** Tipo de contrato de jornada data-driven (catálogo); null = usa o padrão. */
+  tipoContratoJornadaId: string | null;
 }
 
 /** Dados para cadastrar/editar um colaborador. */
@@ -1422,6 +1424,8 @@ export interface ColaboradorInput {
   dataAdmissao?: string;
   /** Tipo de contrato (regras de jornada). */
   tipoContrato?: TipoContrato;
+  /** Contrato de jornada data-driven (catálogo); null remove (volta ao padrão). */
+  tipoContratoJornadaId?: string | null;
   ativo?: boolean;
 }
 
