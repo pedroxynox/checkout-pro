@@ -40,6 +40,7 @@ import { CentralJornadaModule } from './central-jornada/central-jornada.module';
 import { PermissoesModule } from './permissoes/permissoes.module';
 import { CheckoutsModule } from './checkouts/checkouts.module';
 import { CicloFolhaModule } from './ciclo-folha/ciclo-folha.module';
+import { TiposContratoModule } from './tipos-contrato/tipos-contrato.module';
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { CicloFolhaModule } from './ciclo-folha/ciclo-folha.module';
     PermissoesModule,
     CheckoutsModule,
     CicloFolhaModule,
+    TiposContratoModule,
   ],
   controllers: [AppController],
   providers: [

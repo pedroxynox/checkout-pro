@@ -1048,6 +1048,38 @@ enum TipoContrato {
   SEIS_X_UM_DOIS_X_UM
 }
 
+// Catálogo de TIPOS DE CONTRATO de jornada, editável pela gestão (Centro de
+// Controle): cria/ativa/desativa contratos SEM tocar no código. Cada linha
+// guarda os parâmetros de `RegrasContrato` (todos em MINUTOS) que o cálculo da
+// jornada (`calcularJornadaDia`) já consome de forma genérica. O contrato
+// vigente "6x1 - 2x1" é semeado como `padrao`/`ativo` na migração — mesmos
+// valores de hoje, sem mudança de comportamento.
+model TipoContratoJornada {
+  id        String  @id @default(uuid())
+  nome      String  @unique
+  descricao String?
+  ativo     Boolean @default(true)
+  // Contrato vigente (fallback do cálculo). No máximo um deve ser `padrao`.
+  padrao    Boolean @default(false)
+
+  // Carga horária base do dia, em MINUTOS, por dia da semana (7 valores,
+  // índice 0=domingo … 6=sábado).
+  cargaBaseMinPorDia Int[]
+  // Dias da semana (0=domingo) que têm adicional de 100%.
+  diasComAdicional100 Int[]
+
+  maxTrabalhoSemIntervaloMin     Int
+  intervaloMinimoMin             Int
+  intervaloMaximoMin             Int
+  limiteExtrasMin                Int
+  riscoTac1h30Min                Int
+  riscoTac1h40Min                Int
+  intervaloMinimoEntreBatidasMin Int @default(2)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @default(now()) @updatedAt
+}
+
 enum TurnoColaborador {
   ABERTURA
   INTERMEDIARIO

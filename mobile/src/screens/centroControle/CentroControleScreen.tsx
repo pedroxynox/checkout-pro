@@ -82,6 +82,13 @@ const ITENS: ItemControle[] = [
     funcionalidade: 'IMPORTACOES',
   },
   {
+    rota: 'TiposContrato',
+    titulo: 'Tipos de contrato',
+    descricao: 'Criar e ativar contratos de jornada (5x2, 6h/dia…) e suas regras',
+    icone: 'briefcase-outline',
+    funcionalidade: 'ADMIN_DADOS',
+  },
+  {
     rota: 'InsumosDados',
     titulo: 'Insumos',
     descricao: 'Zerar estoque e limpar histórico de requisições',
