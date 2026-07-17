@@ -1077,6 +1077,9 @@ model TipoContratoJornada {
   intervaloMinimoEntreBatidasMin Int     @default(2)
   // Quando true, encerrar a jornada sem intervalo é TAC (intervalo obrigatório).
   intervaloObrigatorio           Boolean @default(false)
+  // Escala: se o contrato participa do rodízio de domingo (2x1). Quando false,
+  // o colaborador com este contrato não trabalha domingo (grupoDomingo = null).
+  trabalhaDomingo                Boolean @default(true)
 
   // Colaboradores que usam este contrato (para bloquear a remoção quando em uso).
   colaboradores Colaborador[]

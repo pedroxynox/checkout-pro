@@ -40,6 +40,7 @@ interface FormState {
   risco40: string;
   intBatidas: string;
   intervaloObrigatorio: boolean;
+  trabalhaDomingo: boolean;
 }
 
 /** Formulário em branco (valores iniciais sensatos, o usuário ajusta a carga). */
@@ -57,6 +58,7 @@ function formVazio(): FormState {
     risco40: '100',
     intBatidas: '2',
     intervaloObrigatorio: false,
+    trabalhaDomingo: true,
   };
 }
 
@@ -75,6 +77,7 @@ function formDe(c: TipoContratoJornada): FormState {
     risco40: String(c.riscoTac1h40Min),
     intBatidas: String(c.intervaloMinimoEntreBatidasMin),
     intervaloObrigatorio: c.intervaloObrigatorio,
+    trabalhaDomingo: c.trabalhaDomingo,
   };
 }
 
@@ -170,6 +173,7 @@ export function TiposContratoScreen(): React.ReactElement {
       riscoTac1h40Min: risco40,
       intervaloMinimoEntreBatidasMin: inteiro(form.intBatidas),
       intervaloObrigatorio: form.intervaloObrigatorio,
+      trabalhaDomingo: form.trabalhaDomingo,
     };
     setSalvando(true);
     try {
@@ -362,6 +366,23 @@ export function TiposContratoScreen(): React.ReactElement {
           4h).
         </Text>
 
+        <Text style={styles.secao}>Domingo</Text>
+        <View style={styles.chips}>
+          <Text
+            onPress={() => set('trabalhaDomingo', !form.trabalhaDomingo)}
+            style={[styles.chip, form.trabalhaDomingo && styles.chipAtivo]}
+          >
+            {form.trabalhaDomingo
+              ? 'Trabalha domingo (rodízio) ✓'
+              : 'Não trabalha domingo'}
+          </Text>
+        </View>
+        <Text style={styles.ajuda}>
+          Se trabalha domingo, o colaborador com este contrato entra no rodízio
+          (2x1) e você escolhe o grupo no cadastro. Se não, ele nunca fica com
+          grupo de domingo.
+        </Text>
+
         <Botao
           titulo={editandoId ? 'Salvar alterações' : 'Criar contrato'}
           aoPressionar={salvar}
@@ -423,6 +444,7 @@ export function TiposContratoScreen(): React.ReactElement {
               · Intervalo {hhmm(c.intervaloMinimoMin)}–{hhmm(c.intervaloMaximoMin)} ·
               TAC a {hhmm(c.limiteExtrasMin)}
               {c.intervaloObrigatorio ? ' · intervalo obrigatório' : ''}
+              {c.trabalhaDomingo ? '' : ' · sem domingo'}
             </Text>
 
             <View style={styles.acoes}>

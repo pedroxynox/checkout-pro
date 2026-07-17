@@ -21,6 +21,7 @@ function modelo6x1(): TipoContratoJornada {
     riscoTac1h40Min: 100,
     intervaloMinimoEntreBatidasMin: 2,
     intervaloObrigatorio: false,
+    trabalhaDomingo: true,
     criadoEm: new Date(),
     atualizadoEm: new Date(),
   };

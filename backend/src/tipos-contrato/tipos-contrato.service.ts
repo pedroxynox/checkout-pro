@@ -73,6 +73,7 @@ export class TiposContratoService {
         riscoTac1h40Min: dto.riscoTac1h40Min,
         intervaloMinimoEntreBatidasMin: dto.intervaloMinimoEntreBatidasMin ?? 2,
         intervaloObrigatorio: dto.intervaloObrigatorio ?? false,
+        trabalhaDomingo: dto.trabalhaDomingo ?? true,
       },
     });
     this.invalidarCache();
@@ -133,6 +134,9 @@ export class TiposContratoService {
         : {}),
       ...(dto.intervaloObrigatorio !== undefined
         ? { intervaloObrigatorio: dto.intervaloObrigatorio }
+        : {}),
+      ...(dto.trabalhaDomingo !== undefined
+        ? { trabalhaDomingo: dto.trabalhaDomingo }
         : {}),
     };
     // Desativar o padrão é proibido (é o fallback do cálculo).

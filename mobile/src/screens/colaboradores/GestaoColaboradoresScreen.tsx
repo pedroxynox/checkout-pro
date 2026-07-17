@@ -121,6 +121,13 @@ export function GestaoColaboradoresScreen({
   // o formulário pede só o essencial (nome, matrícula, login, cargo e senha).
   const ehGestor = funcao === 'GESTOR';
 
+  // Rodízio de domingo só aparece se o contrato escolhido trabalha domingo.
+  // Sem contrato atribuído = padrão (trabalha domingo) → mostra.
+  const contratoSelecionado = (contratos.dados ?? []).find(
+    (c) => c.id === contratoJornadaId,
+  );
+  const mostrarDomingo = !contratoSelecionado || contratoSelecionado.trabalhaDomingo;
+
   const filtrados = useMemo(() => {
     const dados = lista.dados ?? [];
     const b = busca.trim().toLowerCase();
@@ -276,8 +283,9 @@ export function GestaoColaboradoresScreen({
             entradaFds: entFds.trim() || undefined,
             saidaFds: saiFds.trim() || undefined,
             folgaDiaSemana: folga ?? undefined,
-            // Domingo: grupo (ou null = "não trabalha domingo") e o horário.
-            grupoDomingo: grupoDom,
+            // Domingo: grupo (ou null). Se o contrato não trabalha domingo,
+            // nunca envia grupo (o backend também normaliza por segurança).
+            grupoDomingo: mostrarDomingo ? grupoDom : null,
             entradaDom: entDom.trim() || undefined,
             saidaDom: saiDom.trim() || undefined,
             dataAdmissao: admissaoISO,
@@ -527,28 +535,39 @@ export function GestaoColaboradoresScreen({
                 ))}
               </View>
 
-              {/* Domingo: rodízio por grupos (G1/G2/G3). A cada domingo um grupo
-                  folga e os outros dois trabalham. Sem grupo = não trabalha domingo. */}
-              <Text style={styles.rotulo}>Grupo de domingo (rodízio)</Text>
-              <View style={styles.chips}>
-                {['G1', 'G2', 'G3'].map((g) => (
-                  <Text
-                    key={g}
-                    onPress={() => setGrupoDom(grupoDom === g ? null : g)}
-                    style={[styles.chip, grupoDom === g && styles.chipAtivo]}
-                  >
-                    {g}
+              {/* Domingo: rodízio por grupos (G1/G2/G3). Só aparece quando o
+                  contrato do colaborador trabalha domingo; caso contrário, ele
+                  nunca entra no rodízio (grupo fica nulo). */}
+              {mostrarDomingo ? (
+                <>
+                  <Text style={styles.rotulo}>Grupo de domingo (rodízio)</Text>
+                  <View style={styles.chips}>
+                    {['G1', 'G2', 'G3'].map((g) => (
+                      <Text
+                        key={g}
+                        onPress={() => setGrupoDom(grupoDom === g ? null : g)}
+                        style={[styles.chip, grupoDom === g && styles.chipAtivo]}
+                      >
+                        {g}
+                      </Text>
+                    ))}
+                  </View>
+                  <Text style={styles.ajudaLogin}>
+                    Cada domingo folga um grupo e trabalham os outros dois (cada
+                    grupo trabalha 2 domingos e folga 1). Sem grupo = não trabalha
+                    aos domingos.
                   </Text>
-                ))}
-              </View>
-              <Text style={styles.ajudaLogin}>
-                Cada domingo folga um grupo e trabalham os outros dois (cada grupo
-                trabalha 2 domingos e folga 1). Sem grupo = não trabalha aos domingos.
-              </Text>
-              <View style={styles.linha}>
-                <CampoTexto rotulo="Entrada Domingo" value={entDom} onChangeText={setEntDom} placeholder="08:00" containerStyle={styles.metade} />
-                <CampoTexto rotulo="Saída Domingo" value={saiDom} onChangeText={setSaiDom} placeholder="15:20" containerStyle={styles.metade} />
-              </View>
+                  <View style={styles.linha}>
+                    <CampoTexto rotulo="Entrada Domingo" value={entDom} onChangeText={setEntDom} placeholder="08:00" containerStyle={styles.metade} />
+                    <CampoTexto rotulo="Saída Domingo" value={saiDom} onChangeText={setSaiDom} placeholder="15:20" containerStyle={styles.metade} />
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.ajudaLogin}>
+                  Este contrato não trabalha domingo — o colaborador fica fora do
+                  rodízio.
+                </Text>
+              )}
 
               <CampoTexto
                 rotulo="Data de admissão (contrato)"
