@@ -66,12 +66,12 @@ function validarPermissaoDeFuncao(
  * então o turno é obrigatório para eles. Supervisor, gerente e administrador
  * não têm turno fixo.
  */
-function funcaoExigeTurno(funcao: FuncaoColaborador): boolean {
+export function funcaoExigeTurno(funcao: FuncaoColaborador): boolean {
   return funcao === 'FISCAL' || funcao === 'OPERADOR';
 }
 
 /** Garante o turno quando a função exige (fiscal/operador). */
-function validarTurnoObrigatorio(
+export function validarTurnoObrigatorio(
   funcao: FuncaoColaborador,
   turno: TurnoColaborador | null | undefined,
 ): void {
