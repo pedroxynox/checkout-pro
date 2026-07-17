@@ -87,6 +87,10 @@ export class CriarTipoContratoDto {
 
   @IsOptional()
   @IsBoolean()
+  trabalhaDomingo?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   ativo?: boolean;
 }
 
@@ -168,6 +172,10 @@ export class AtualizarTipoContratoDto {
   @IsOptional()
   @IsBoolean()
   intervaloObrigatorio?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  trabalhaDomingo?: boolean;
 
   @IsOptional()
   @IsBoolean()

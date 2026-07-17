@@ -163,6 +163,23 @@ export class ColaboradoresService {
    * caso de fiscal, o registro de fiscal (mantendo o painel/jornada/escala
    * funcionando). Operadores não recebem login (sem acesso ao app).
    */
+  /**
+   * Se o contrato de jornada informado NÃO trabalha domingo, o colaborador não
+   * pode ficar no rodízio de domingo — devolve null. Caso contrário, mantém o
+   * grupo informado.
+   */
+  private async grupoDomingoEfetivo(
+    grupoDomingo: string | null,
+    tipoContratoJornadaId?: string | null,
+  ): Promise<string | null> {
+    if (!grupoDomingo || !tipoContratoJornadaId) return grupoDomingo;
+    const contrato = await this.prisma.tipoContratoJornada.findUnique({
+      where: { id: tipoContratoJornadaId },
+      select: { trabalhaDomingo: true },
+    });
+    return contrato && !contrato.trabalhaDomingo ? null : grupoDomingo;
+  }
+
   async cadastrar(
     input: ColaboradorInput,
     perfilSolicitante?: PerfilSolicitante,
@@ -218,6 +235,12 @@ export class ColaboradoresService {
       usuarioId = conta.id;
     }
 
+    // Se o contrato não trabalha domingo, o colaborador não entra no rodízio.
+    const grupoDomingoEfetivo = await this.grupoDomingoEfetivo(
+      input.grupoDomingo ?? null,
+      input.tipoContratoJornadaId,
+    );
+
     const colaborador = await this.prisma.colaborador.create({
       data: {
         matricula,
@@ -230,7 +253,7 @@ export class ColaboradoresService {
         entradaFds: input.entradaFds ?? null,
         saidaFds: input.saidaFds ?? null,
         folgaDiaSemana: input.folgaDiaSemana ?? null,
-        grupoDomingo: input.grupoDomingo ?? null,
+        grupoDomingo: grupoDomingoEfetivo,
         entradaDom: input.entradaDom ?? null,
         saidaDom: input.saidaDom ?? null,
         dataAdmissao: normalizarAdmissao(input.dataAdmissao),
@@ -387,6 +410,15 @@ export class ColaboradoresService {
       data.tipoContratoJornada = input.tipoContratoJornadaId
         ? { connect: { id: input.tipoContratoJornadaId } }
         : { disconnect: true };
+    // Ao atribuir um contrato que NÃO trabalha domingo, o colaborador sai do
+    // rodízio (grupoDomingo = null), mesmo que não tenha sido tocado no form.
+    if (input.tipoContratoJornadaId) {
+      const contrato = await this.prisma.tipoContratoJornada.findUnique({
+        where: { id: input.tipoContratoJornadaId },
+        select: { trabalhaDomingo: true },
+      });
+      if (contrato && !contrato.trabalhaDomingo) data.grupoDomingo = null;
+    }
     if (input.ativo !== undefined) {
       data.ativo = input.ativo;
       // Marca/limpa a data de desligamento (base da janela de retenção da

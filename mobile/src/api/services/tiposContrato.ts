@@ -27,6 +27,8 @@ export interface TipoContratoJornada {
   intervaloMinimoEntreBatidasMin: number;
   /** Quando true, encerrar a jornada sem intervalo é TAC. */
   intervaloObrigatorio: boolean;
+  /** Se o contrato participa do rodízio de domingo (2x1). */
+  trabalhaDomingo: boolean;
 }
 
 /** Campos editáveis de um tipo de contrato (criar/editar). */
@@ -43,6 +45,7 @@ export interface TipoContratoInput {
   riscoTac1h40Min: number;
   intervaloMinimoEntreBatidasMin?: number;
   intervaloObrigatorio?: boolean;
+  trabalhaDomingo?: boolean;
   ativo?: boolean;
 }
 
