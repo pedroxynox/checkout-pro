@@ -737,6 +737,53 @@ model EventoAlertaTac {
   @@map("eventos_alerta_tac")
 }
 
+// Estado de fechamento de um ciclo de folha (26→25). A âncora é o `inicio` do
+// ciclo (dia 26, 00:00 UTC). SÓ existe linha quando o ciclo foi fechado alguma
+// vez: sem linha = ABERTO. Um ciclo FECHADO bloqueia modificações ordinárias
+// (batidas, débito); reabrir exige autorização (só administrador) e volta a
+// ABERTO, mantendo o registro de quem fechou/reabriu.
+enum StatusCicloFolha {
+  ABERTO
+  FECHADO
+}
+
+model CicloFolha {
+  id              String           @id @default(uuid())
+  inicio          DateTime         @unique
+  fimExclusivo    DateTime
+  status          StatusCicloFolha @default(FECHADO)
+  fechadoPor      String?
+  fechadoPorNome  String?
+  fechadoEm       DateTime?
+  reabertoPor     String?
+  reabertoPorNome String?
+  reabertoEm      DateTime?
+  criadoEm        DateTime         @default(now())
+  atualizadoEm    DateTime         @updatedAt
+
+  @@map("ciclos_folha")
+}
+
+// Tipo de evento na trilha de um ciclo (fechamento/reabertura).
+enum TipoEventoCiclo {
+  FECHADO
+  REABERTO
+}
+
+// Trilha append-only de fechamentos/reaberturas de um ciclo (trazabilidade:
+// quem fez, quando). `inicio` é a âncora do ciclo.
+model CicloFolhaEvento {
+  id      String          @id @default(uuid())
+  inicio  DateTime
+  tipo    TipoEventoCiclo
+  por     String
+  porNome String?
+  em      DateTime        @default(now())
+
+  @@index([inicio])
+  @@map("ciclos_folha_eventos")
+}
+
 model EscalaEntry {
   id            String  @id @default(uuid())
   funcionarioId String

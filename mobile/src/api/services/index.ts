@@ -14,6 +14,8 @@ export { pontoService } from './ponto';
 export { feriadosService } from './feriados';
 export type { Feriado, AmbitoFeriado } from './feriados';
 export { centralJornadaService } from './centralJornada';
+export { cicloFolhaService } from './cicloFolha';
+export type { EstadoCicloFolha, EventoCicloView } from './cicloFolha';
 export type {
   CentralResumo,
   CentralPessoaResumo,

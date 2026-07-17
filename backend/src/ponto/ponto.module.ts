@@ -4,6 +4,7 @@ import { FeriadosModule } from '../feriados/feriados.module';
 import { FiscaisModule } from '../fiscais/fiscais.module';
 import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
+import { CicloFolhaModule } from '../ciclo-folha/ciclo-folha.module';
 import { PontoController } from './ponto.controller';
 import { PontoService } from './ponto.service';
 import { PontoAlertasService } from './ponto-alertas.service';
@@ -23,6 +24,7 @@ import { PontoOcrService } from './ponto-ocr.service';
     FiscaisModule,
     DataInicialModule,
     EscalaDomingoModule,
+    CicloFolhaModule,
   ],
   controllers: [PontoController],
   providers: [PontoService, PontoAlertasService, PontoOcrService],

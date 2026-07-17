@@ -3,6 +3,7 @@ import { Ausencia } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
+import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import { inicioDoDia } from '../common/datas';
 import {
   AusenciaRegistro,
@@ -140,6 +141,9 @@ export class OperadoresService {
     private readonly prisma: PrismaService,
     @Optional() private readonly notificacoes?: NotificacoesService,
     @Optional() private readonly validacaoData?: ValidacaoDataService,
+    // Fechamento do ciclo: bloqueia mexer em faltas de um ciclo já fechado.
+    // Opcional para não quebrar testes unitários de ausências.
+    @Optional() private readonly cicloFolha?: CicloFolhaService,
   ) {}
 
   // O cadastro/edição/listagem de operadores pelo model simples `Operador` foi
@@ -159,6 +163,8 @@ export class OperadoresService {
   ): Promise<Ausencia> {
     // Rejeita datas anteriores à Data_Inicial_Sistema (Req 6.1–6.3).
     await this.validacaoData?.exigirDataPermitida(data);
+    // Bloqueia lançar falta num ciclo de folha já fechado.
+    await this.cicloFolha?.exigirCicloAberto(data);
     const existentes = await this.prisma.ausencia.findMany({
       where: { pessoaId },
       select: { pessoaId: true, data: true },
@@ -241,7 +247,9 @@ export class OperadoresService {
         where: { pessoaId, data: { gte: ini, lt: fim } },
       });
       if (qtd !== LIMITE_FALTAS_MES) return;
-      const gestores = await this.notificacoes.destinatariosComPermissao('OPERADORES_AUSENCIAS');
+      const gestores = await this.notificacoes.destinatariosComPermissao(
+        'OPERADORES_AUSENCIAS',
+      );
       if (gestores.length === 0) return;
       await this.notificacoes.enviar(gestores, {
         titulo: '🔴 Operador com muitas faltas',
@@ -283,6 +291,8 @@ export class OperadoresService {
     }
     // Rejeita datas anteriores à Data_Inicial_Sistema (valida a mais antiga).
     await this.validacaoData?.exigirDataPermitida(d0);
+    // Bloqueia lançar faltas num ciclo de folha já fechado (âncora no início).
+    await this.cicloFolha?.exigirCicloAberto(d0);
 
     const colaborador = await this.prisma.colaborador.findUnique({
       where: { id: pessoaId },
@@ -369,6 +379,14 @@ export class OperadoresService {
 
   /** Remove uma ausência registrada (Req 6.2.4). */
   async removerAusencia(ausenciaId: string): Promise<void> {
+    // Bloqueia remover uma falta de um ciclo de folha já fechado.
+    if (this.cicloFolha) {
+      const a = await this.prisma.ausencia.findUnique({
+        where: { id: ausenciaId },
+        select: { data: true },
+      });
+      if (a) await this.cicloFolha.exigirCicloAberto(a.data);
+    }
     await this.prisma.ausencia.delete({ where: { id: ausenciaId } });
   }
 
@@ -388,6 +406,8 @@ export class OperadoresService {
       where: { id: ausenciaId },
     });
     if (!existente) throw new AusenciaNaoEncontradaError();
+    // Bloqueia justificar/reabrir uma falta de um ciclo de folha já fechado.
+    await this.cicloFolha?.exigirCicloAberto(existente.data);
     return this.prisma.ausencia.update({
       where: { id: ausenciaId },
       data: dadosJustificativa(input, autor),

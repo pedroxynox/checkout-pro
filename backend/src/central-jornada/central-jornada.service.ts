@@ -16,6 +16,7 @@ import {
   calcularJornadaDia,
   StatusJornadaPonto,
 } from '../ponto/ponto.domain';
+import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import { jornadaEsperadaMs } from '../fiscais/fiscais.domain';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 import {
@@ -278,6 +279,9 @@ export class CentralJornadaService {
     // Rodízio de domingo, para resolver o turno esperado aos domingos.
     // Opcional: sem ele, o atraso de domingo simplesmente não é calculado.
     @Optional() private readonly escalaDomingo?: EscalaDomingoService,
+    // Fechamento do ciclo. Opcional: sem ele, não há bloqueio por ciclo fechado
+    // (os testes unitários de cálculo não precisam dele).
+    @Optional() private readonly cicloFolha?: CicloFolhaService,
   ) {}
 
   private baseDoDia(dia: Date, ehFeriado: boolean): number {
@@ -973,6 +977,10 @@ export class CentralJornadaService {
     });
     if (!ausencia) {
       throw new NotFoundException('Falta não encontrada.');
+    }
+    // Bloqueia a edição quando o ciclo de folha daquele dia está fechado.
+    if (this.cicloFolha) {
+      await this.cicloFolha.exigirCicloAberto(ausencia.data);
     }
     return this.prisma.ausencia.update({
       where: { id: ausenciaId },

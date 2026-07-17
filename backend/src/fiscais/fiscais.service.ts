@@ -3,6 +3,7 @@ import { Fiscal, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
+import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import {
   Jornada,
   RegistroPonto,
@@ -117,6 +118,8 @@ export class FiscaisService {
     // feriado segue a regra do domingo (base 7h20, extras a 100%). Opcional
     // para não quebrar testes unitários que exercitam só a persistência.
     @Optional() private readonly feriados?: FeriadosService,
+    // Fechamento do ciclo: bloqueia marcar falta num ciclo já fechado.
+    @Optional() private readonly cicloFolha?: CicloFolhaService,
   ) {}
 
   /**
@@ -543,6 +546,9 @@ export class FiscaisService {
     dia: Date = new Date(),
   ): Promise<void> {
     const data = inicioDoDia(dia);
+
+    // Bloqueia marcar falta num ciclo de folha já fechado.
+    await this.cicloFolha?.exigirCicloAberto(data);
 
     // Valida: se está de folga hoje, não pode marcar falta.
     if (await this.isFolgaHoje(fiscalId, dia)) {
