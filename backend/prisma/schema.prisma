@@ -607,6 +607,10 @@ enum TipoPessoaPonto {
 // papelito (`hora`), não a de carregamento (`criadoEm`).
 model BatidaPonto {
   id                String          @id @default(uuid())
+  // Chave de idempotência gerada no cliente (fila offline): garante que um
+  // reenvio da MESMA batida (reconexão, retry) não crie uma duplicata. Nulo
+  // para batidas registradas direto online por versões que não a enviam.
+  clienteId         String?         @unique
   pessoaId          String
   tipoPessoa        TipoPessoaPonto @default(FISCAL)
   colaboradorId     String?

@@ -17,6 +17,15 @@ type Origem = (typeof ORIGENS)[number];
 
 /** Registra uma batida do dia (hora do comprovante) para um colaborador. */
 export class RegistrarBatidaDto {
+  /**
+   * Chave de idempotência gerada no cliente (fila offline). Reenvios da MESMA
+   * batida (reconexão/retry) com o mesmo `clienteId` não criam duplicata: o
+   * servidor devolve a jornada já existente.
+   */
+  @IsOptional()
+  @IsString()
+  clienteId?: string;
+
   @IsString()
   @IsNotEmpty({ message: 'A pessoa é obrigatória.' })
   pessoaId!: string;

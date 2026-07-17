@@ -23,6 +23,18 @@ jest.mock('../../auth/AuthContext', () => ({
   useAuth: () => ({ podeAcessar: () => false }),
 }));
 
+// Sem OfflineProvider no teste: fornece um contexto offline neutro (a fila é
+// exercitada nos testes de src/offline/).
+jest.mock('../../offline/OfflineContext', () => ({
+  useOfflineContexto: () => ({
+    online: true,
+    pendentes: 0,
+    definirOnline: jest.fn(),
+    enfileirar: jest.fn(),
+    sincronizarAgora: jest.fn(),
+  }),
+}));
+
 jest.mock('../../api/services', () => ({
   pontoService: {
     buscarPessoas: jest.fn(),

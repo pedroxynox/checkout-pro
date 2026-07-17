@@ -365,11 +365,45 @@ export class PontoService {
     }
   }
 
+  /**
+   * Reenvio idempotente: se já existe uma batida com este `clienteId`, devolve
+   * a jornada do dia dela (sem criar duplicata); null se ainda não existe.
+   *
+   * A idempotência só vale para o MESMO registro: um `clienteId` reutilizado
+   * para OUTRA pessoa é uso indevido do cliente e é tratado como duplicata
+   * (nunca devolve a jornada de outra pessoa por engano).
+   */
+  private async jornadaIdempotente(
+    dto: RegistrarBatidaDto,
+  ): Promise<JornadaDiaResposta | null> {
+    if (!dto.clienteId) return null;
+    const existente = await this.prisma.batidaPonto.findUnique({
+      where: { clienteId: dto.clienteId },
+      select: { pessoaId: true, tipoPessoa: true, data: true },
+    });
+    if (!existente) return null;
+    if (
+      existente.pessoaId !== dto.pessoaId ||
+      existente.tipoPessoa !== (dto.tipoPessoa ?? 'FISCAL')
+    ) {
+      throw new BatidaDuplicadaError();
+    }
+    return this.jornadaDoDia(
+      existente.pessoaId,
+      existente.tipoPessoa,
+      existente.data,
+    );
+  }
+
   /** Registra uma nova batida e devolve a jornada do dia recalculada. */
   async registrarBatida(
     dto: RegistrarBatidaDto,
     usuario: UsuarioAutenticado,
   ): Promise<JornadaDiaResposta> {
+    // Idempotência: se esta batida já foi gravada antes (mesmo `clienteId`),
+    // devolve a jornada existente sem criar duplicata (reenvio da fila offline).
+    const idempotente = await this.jornadaIdempotente(dto);
+    if (idempotente) return idempotente;
     const dia = inicioDoDia(this.dataValida(dto.data));
     const hora = this.dataValida(dto.hora);
     this.validarHoraDoDia(dia, hora);
@@ -384,6 +418,7 @@ export class PontoService {
     // domingo de folga pelo rodízio. Fiscais e operadores usam o mesmo cadastro.
     await this.exigirDiaSemFolga(colaboradorId, dia);
     const dadosBatida: Prisma.BatidaPontoUncheckedCreateInput = {
+      clienteId: dto.clienteId ?? null,
       pessoaId: dto.pessoaId,
       tipoPessoa,
       colaboradorId,
@@ -404,36 +439,53 @@ export class PontoService {
     // delas (P2034); no retry ela já vê o estado atualizado e é recusada,
     // então nunca há 5ª batida nem duplicada persistida. A publicação em tempo
     // real e os avisos ficam FORA da transação (efeitos externos, pós-commit).
-    const { transicoes, eraPrimeira } = await this.transacaoSerializavel(
-      async (tx) => {
-        const batidasDoDia = await tx.batidaPonto.findMany({
-          where: { pessoaId: dto.pessoaId, tipoPessoa, data: dia },
-          select: { hora: true },
-        });
-        if (batidasDoDia.length >= 4) throw new LimiteBatidasDiaError();
-        if (
-          batidaDuplicada(
-            hora.getTime(),
-            batidasDoDia.map((b) => b.hora.getTime()),
-          )
-        ) {
-          throw new BatidaDuplicadaError();
-        }
+    let transicoes: TransicaoFiscal[] | null;
+    let eraPrimeira: boolean;
+    try {
+      ({ transicoes, eraPrimeira } = await this.transacaoSerializavel(
+        async (tx) => {
+          const batidasDoDia = await tx.batidaPonto.findMany({
+            where: { pessoaId: dto.pessoaId, tipoPessoa, data: dia },
+            select: { hora: true },
+          });
+          if (batidasDoDia.length >= 4) throw new LimiteBatidasDiaError();
+          if (
+            batidaDuplicada(
+              hora.getTime(),
+              batidasDoDia.map((b) => b.hora.getTime()),
+            )
+          ) {
+            throw new BatidaDuplicadaError();
+          }
 
-        await tx.batidaPonto.create({ data: dadosBatida });
-        await this.reclassificarNoCliente(tx, dto.pessoaId, tipoPessoa, dia);
-        const transicoesFiscal = await this.sincronizarFiscalNoCliente(
-          tx,
-          dto.pessoaId,
-          tipoPessoa,
-          dia,
-        );
-        return {
-          transicoes: transicoesFiscal,
-          eraPrimeira: batidasDoDia.length === 0,
-        };
-      },
-    );
+          await tx.batidaPonto.create({ data: dadosBatida });
+          await this.reclassificarNoCliente(tx, dto.pessoaId, tipoPessoa, dia);
+          const transicoesFiscal = await this.sincronizarFiscalNoCliente(
+            tx,
+            dto.pessoaId,
+            tipoPessoa,
+            dia,
+          );
+          return {
+            transicoes: transicoesFiscal,
+            eraPrimeira: batidasDoDia.length === 0,
+          };
+        },
+      ));
+    } catch (erro) {
+      // Corrida de idempotência: outro reenvio concorrente do mesmo `clienteId`
+      // gravou a batida primeiro (viola o índice único). Não é duplicata: devolve
+      // a jornada já existente em vez de propagar o erro.
+      if (
+        dto.clienteId &&
+        erro instanceof Prisma.PrismaClientKnownRequestError &&
+        erro.code === 'P2002'
+      ) {
+        const idempotenteAposCorrida = await this.jornadaIdempotente(dto);
+        if (idempotenteAposCorrida) return idempotenteAposCorrida;
+      }
+      throw erro;
+    }
     // Aprende o vínculo "nome lido → pessoa" quando a batida veio do leitor,
     // para reconhecer a pessoa na hora nas próximas leituras. Best-effort: uma
     // falha aqui não deve impedir o registro da batida.

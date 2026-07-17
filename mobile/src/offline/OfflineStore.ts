@@ -13,8 +13,9 @@ import { adicionarAcao } from './fila';
 import { PersistenciaOffline } from './persistencia';
 import { AcaoPendente, PayloadPorTipo, TipoAcao } from './tipos';
 
-/** Gera um identificador único simples para uma ação (sem dependências). */
-function gerarId(): string {
+/** Gera um identificador único simples (sem dependências). Também usado como
+ * chave de idempotência (`clienteId`) das batidas registradas offline. */
+export function gerarId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 

@@ -13,7 +13,10 @@
  */
 
 /** Tipos de ação que podem ser enfileiradas para sincronização posterior. */
-export type TipoAcao = 'RETIRADA_FARDO' | 'ALTERACAO_STATUS_FISCAL';
+export type TipoAcao =
+  | 'RETIRADA_FARDO'
+  | 'ALTERACAO_STATUS_FISCAL'
+  | 'REGISTRO_BATIDA';
 
 /** Status possíveis de um fiscal (espelha o backend). */
 export type StatusFiscalOffline =
@@ -34,10 +37,38 @@ export interface PayloadAlteracaoStatus {
   status: StatusFiscalOffline;
 }
 
+/**
+ * Carga de um registro de batida (Relógio Ponto) feito sem conexão. Guarda a
+ * HORA DO COMPROVANTE (`hora`) e a `data` do dia, que são enviadas tal como
+ * capturadas — a sincronização posterior NÃO as substitui pela hora de envio.
+ * A idempotência usa o `id` da ação como `clienteId` no backend, então um
+ * reenvio não duplica a batida.
+ */
+export interface PayloadRegistroBatida {
+  /**
+   * Chave de idempotência, gerada no cliente ANTES da primeira tentativa
+   * (online). Reusada no reenvio pela fila: se o servidor chegou a gravar a
+   * batida na tentativa online mas a resposta se perdeu (timeout/queda), o
+   * reenvio com o mesmo `clienteId` NÃO cria duplicata.
+   */
+  clienteId: string;
+  pessoaId: string;
+  tipoPessoa?: 'FISCAL' | 'OPERADOR';
+  colaboradorId?: string | null;
+  /** Dia da batida (ISO yyyy-mm-dd). */
+  data: string;
+  /** Hora do comprovante (ISO), preservada no envio posterior. */
+  hora: string;
+  origem?: 'MANUAL' | 'LEITOR' | 'EDITADO';
+  nomeLido?: string;
+  confianca?: number;
+}
+
 /** Mapeia cada tipo de ação à sua carga. */
 export interface PayloadPorTipo {
   RETIRADA_FARDO: PayloadRetiradaFardo;
   ALTERACAO_STATUS_FISCAL: PayloadAlteracaoStatus;
+  REGISTRO_BATIDA: PayloadRegistroBatida;
 }
 
 /** Uma ação pendente genérica na fila offline. */
@@ -69,6 +100,12 @@ export interface ResultadoSincronizacao {
   descartadas: number;
   /** Ações que permaneceram na fila (falha de envio ou offline). */
   pendentes: number;
+  /**
+   * Ações removidas por rejeição definitiva do backend (erro de validação/
+   * negócio 4xx — ex.: dia de folga, limite de batidas). Não são reenviadas
+   * para não travar a fila; ficam registradas apenas na contagem.
+   */
+  rejeitadas: number;
   /** Indica se a sincronização foi pulada por estar offline. */
   offline: boolean;
 }

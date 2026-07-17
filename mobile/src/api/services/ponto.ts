@@ -39,6 +39,8 @@ export const pontoService = {
     nomeLido?: string;
     /** Confiança (0–1) da leitura que originou a batida. */
     confianca?: number;
+    /** Chave de idempotência (fila offline): um reenvio não duplica a batida. */
+    clienteId?: string;
   }): Promise<JornadaDiaPonto> {
     return apiClient.post<JornadaDiaPonto>('/ponto/batidas', input);
   },

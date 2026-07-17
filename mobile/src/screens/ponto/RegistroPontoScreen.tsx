@@ -41,6 +41,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
 import { useAuth } from '../../auth/AuthContext';
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
+import { useOfflineContexto } from '../../offline/OfflineContext';
+import { gerarId } from '../../offline/OfflineStore';
 
 const ROTULO_TIPO: Record<TipoBatida, string> = {
   ENTRADA: 'Entrada',
@@ -99,6 +101,9 @@ export function RegistroPontoScreen(): React.ReactElement {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { podeAcessar } = useAuth();
   const { dataInicial } = useConfigSistema();
+  // Fila offline: se não houver conexão, a batida é guardada no dispositivo e
+  // enviada ao reconectar (sem duplicar, via chave de idempotência).
+  const { enfileirar: enfileirarOffline } = useOfflineContexto();
   const [data, setData] = useState(hojeISO());
 
   // Autosserviço do fiscal logado: se o usuário atual é fiscal, pode informar
@@ -352,6 +357,10 @@ export function RegistroPontoScreen(): React.ReactElement {
     }
     setSalvando(true);
     setErroForm(null);
+    // Chave de idempotência da batida, fixada ANTES da tentativa online e
+    // reusada se cair na fila offline: se o servidor gravar mas a resposta se
+    // perder, o reenvio com o mesmo clienteId não duplica.
+    const clienteId = gerarId();
     try {
       const horaISO = `${data}T${horaTexto}:00.000Z`;
       // Veio do leitor quando temos um nome lido pendente (e não é edição):
@@ -360,6 +369,7 @@ export function RegistroPontoScreen(): React.ReactElement {
       const resp = editandoId
         ? await pontoService.editarBatida(editandoId, { hora: horaISO })
         : await pontoService.registrarBatida({
+            clienteId,
             pessoaId: pessoa.id,
             tipoPessoa: pessoa.tipoPessoa,
             colaboradorId: pessoa.colaboradorId ?? undefined,
@@ -381,7 +391,49 @@ export function RegistroPontoScreen(): React.ReactElement {
       }
       setEditandoId(null);
     } catch (e) {
-      setErroForm(e instanceof ApiError ? e.message : 'Não foi possível salvar a batida.');
+      // Sem conexão (ApiError status 0) numa batida NOVA: guarda na fila offline
+      // e informa; será enviada ao reconectar, sem duplicar (idempotência pela
+      // chave da ação). Edições exigem a batida no servidor, então não caem aqui.
+      const semRede = e instanceof ApiError && e.status === 0;
+      if (!editandoId && semRede) {
+        try {
+          const horaISO = `${data}T${horaTexto}:00.000Z`;
+          const veioDoLeitor = !!nomeLidoPendente;
+          await enfileirarOffline(
+            'REGISTRO_BATIDA',
+            {
+              // Mesmo clienteId da tentativa online (idempotência ponta a ponta).
+              clienteId,
+              pessoaId: pessoa.id,
+              tipoPessoa: pessoa.tipoPessoa,
+              colaboradorId: pessoa.colaboradorId ?? undefined,
+              data,
+              hora: horaISO,
+              origem: veioDoLeitor ? 'LEITOR' : 'MANUAL',
+              nomeLido: veioDoLeitor ? nomeLidoPendente ?? undefined : undefined,
+              confianca: veioDoLeitor ? confiancaPendente ?? undefined : undefined,
+            },
+            pessoa.id,
+          );
+          setMostrarForm(false);
+          setHoraTexto('');
+          setSessao((s) => s + 1);
+          setNomeLidoPendente(null);
+          setConfiancaPendente(null);
+          if (loteAtivo) trocarPessoa();
+          setEditandoId(null);
+          notificar(
+            'Sem conexão',
+            'A batida foi guardada no aparelho e será enviada automaticamente ao reconectar.',
+          );
+        } catch {
+          setErroForm('Não foi possível guardar a batida no aparelho.');
+        }
+      } else {
+        setErroForm(
+          e instanceof ApiError ? e.message : 'Não foi possível salvar a batida.',
+        );
+      }
     } finally {
       setSalvando(false);
     }

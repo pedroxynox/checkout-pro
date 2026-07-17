@@ -17,7 +17,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { fiscaisService, insumosService } from '../api/services';
+import { fiscaisService, insumosService, pontoService } from '../api/services';
 import { OfflineStore } from './OfflineStore';
 import {
   abrirPersistenciaSqlite,
@@ -36,6 +36,7 @@ const executoresProducao: ExecutoresSincronizacao = criarExecutoresApi({
   // O fiscal é identificado pelo login no backend; o fiscalId enfileirado é
   // usado apenas para resolver conflitos (last-write-wins).
   alterarStatus: (_fiscalId, status) => fiscaisService.definirStatus(status),
+  registrarBatida: (input) => pontoService.registrarBatida(input),
 });
 
 export function OfflineProvider({
