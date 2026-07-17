@@ -231,9 +231,20 @@ export class EscalaService {
     for (const f of fiscais) mapa.set(f.id, f.nome);
     for (const c of colaboradores) mapa.set(c.id, c.nome);
     for (const u of usuarios) if (u.nome) mapa.set(u.id, u.nome);
+    const colPorId = new Map(colaboradores.map((c) => [c.id, c]));
 
     // Vínculo Fiscal → ficha única (colaborador), para nome canônico + perfil.
     const mapaCol = mapearFiscalColaborador(fiscais, usuarios, colaboradores);
+
+    // Vínculo AUTORITATIVO gravado na própria escala (funcionarioId →
+    // colaboradorId). É a fonte confiável mesmo quando a conta de acesso do
+    // fiscal foi removida/desvinculada (aí o `mapaCol` falha e a pessoa
+    // apareceria como "sem ficha", escapando do filtro de inativos).
+    const colabPorFuncionario = new Map<string, string>();
+    for (const e of entries) {
+      if (e.colaboradorId)
+        colabPorFuncionario.set(e.funcionarioId, e.colaboradorId);
+    }
 
     // Pessoas inativas (desligadas do quadro) NÃO aparecem na escala, mesmo que
     // sua escala semanal ainda exista no banco. (No domingo já é filtrado.)
@@ -244,11 +255,20 @@ export class EscalaService {
     return itens
       .map((it) => {
         const col = mapaCol.get(it.funcionarioId);
+        const colaboradorId =
+          col?.colaboradorId ??
+          colabPorFuncionario.get(it.funcionarioId) ??
+          null;
+        const ficha = colaboradorId ? colPorId.get(colaboradorId) : undefined;
         return {
           ...it,
-          nome: col?.nome ?? mapa.get(it.funcionarioId) ?? it.funcionarioId,
-          colaboradorId: col?.colaboradorId ?? null,
-          matricula: col?.matricula ?? null,
+          nome:
+            col?.nome ??
+            ficha?.nome ??
+            mapa.get(it.funcionarioId) ??
+            it.funcionarioId,
+          colaboradorId,
+          matricula: col?.matricula ?? ficha?.matricula ?? null,
         };
       })
       .filter((it) => !(it.colaboradorId && inativos.has(it.colaboradorId)));
