@@ -43,9 +43,17 @@ export function CheckOutsScreen({
 }: PropsTela<'CheckOuts'>): React.ReactElement {
   const tablero = useRequisicao(() => checkoutsService.tablero(), []);
 
-  const comAvaria = (tablero.dados?.checkouts ?? []).filter(
-    (c) => c.abertos > 0,
-  ).length;
+  const checkouts = tablero.dados?.checkouts ?? [];
+  const comAvaria = checkouts.filter((c) => c.abertos > 0).length;
+  // Ordena para destacar os problemas: primeiro os PDVs com avaria aberta
+  // (mais avarias antes); os demais seguem em ordem numérica.
+  const checkoutsOrdenados = [...checkouts].sort((a, b) => {
+    const prioridadeA = a.abertos > 0 ? 0 : 1;
+    const prioridadeB = b.abertos > 0 ? 0 : 1;
+    if (prioridadeA !== prioridadeB) return prioridadeA - prioridadeB;
+    if (a.abertos !== b.abertos) return b.abertos - a.abertos;
+    return a.numero - b.numero;
+  });
 
   return (
     <Tela aoAtualizar={tablero.recarregar} atualizando={tablero.atualizando}>
@@ -66,7 +74,7 @@ export function CheckOutsScreen({
         <EstadoVazio icone="desktop-outline" titulo="Nenhum check-out configurado" />
       ) : (
         <View style={styles.grade}>
-          {tablero.dados.checkouts.map((c) => {
+          {checkoutsOrdenados.map((c) => {
             const temAvaria = c.abertos > 0;
             const equipamentos = (c.equipamentos ?? [])
               .map((e) => ROTULO_EQUIPAMENTO[e] ?? e)
