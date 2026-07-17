@@ -11,6 +11,7 @@ import {
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import { MarcarDebitoDto } from './dto/central-jornada.dto';
 import {
+  CentralExportacao,
   CentralInconsistencias,
   CentralJornadaService,
   CentralResumo,
@@ -45,6 +46,12 @@ export class CentralJornadaController {
     @Query('ciclo') ciclo?: string,
   ): Promise<CentralInconsistencias> {
     return this.service.inconsistenciasCiclo(deslocamentoDe(ciclo));
+  }
+
+  /** Exportação do ciclo (revisão antes do fechamento) + CSV. */
+  @Get('exportacao')
+  exportacao(@Query('ciclo') ciclo?: string): Promise<CentralExportacao> {
+    return this.service.exportarCiclo(deslocamentoDe(ciclo));
   }
 
   /** Comparativo dos últimos `qtd` ciclos (1..12). */

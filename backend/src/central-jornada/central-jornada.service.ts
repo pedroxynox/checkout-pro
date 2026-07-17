@@ -163,8 +163,95 @@ export interface CentralInconsistencias {
   itens: InconsistenciaItem[];
 }
 
+/** Uma linha do relatório de exportação (um dia relevante de um colaborador). */
+export interface LinhaExportacaoCiclo {
+  colaboradorId: string;
+  nome: string;
+  funcao: FuncaoColaborador;
+  data: string;
+  diaSemana: number;
+  tipo: CentralDiaDetalhe['tipo'];
+  trabalhadoMs: number;
+  baseMs: number;
+  extras50Ms: number;
+  extras100Ms: number;
+  devidasMs: number;
+  atestado: boolean;
+  tac: boolean;
+  motivosTac: string[];
+  /** Inconsistências do dia (incompleta, conflito, atraso, duplicada, TAC). */
+  problemas: string[];
+}
+
+/** Exportação completa do ciclo para revisão/folha (antes do fechamento). */
+export interface CentralExportacao {
+  periodo: CentralPeriodo;
+  geradoEm: string;
+  totais: {
+    extras50Ms: number;
+    extras100Ms: number;
+    horasDevidasMs: number;
+    horasAtestadoMs: number;
+    faltas: number;
+    diasTac: number;
+    conflitos: number;
+    atrasos: number;
+    saldoMs: number;
+    inconsistencias: number;
+  };
+  pessoas: CentralPessoaResumo[];
+  linhas: LinhaExportacaoCiclo[];
+  /** Relatório em CSV (separador ";") pronto para compartilhar/planilha. */
+  csv: string;
+}
+
 function primeiroNome(nome: string): string {
   return nome.trim().split(/\s+/)[0] ?? nome;
+}
+
+const DIAS_SEMANA_BR = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+/** Duração em "H:MM" (ex.: 27000000 → "7:30"). */
+function msParaHm(ms: number): string {
+  const totalMin = Math.round(ms / 60_000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}:${String(m).padStart(2, '0')}`;
+}
+
+/** Data ISO → "dd/mm/aaaa" (usa a data de parede, sem fuso). */
+function dataBr(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(
+    d.getUTCMonth() + 1,
+  ).padStart(2, '0')}/${d.getUTCFullYear()}`;
+}
+
+function rotuloFuncaoExport(f: FuncaoColaborador): string {
+  if (f === 'FISCAL') return 'Fiscal';
+  if (f === 'SUPERVISOR') return 'Supervisor';
+  if (f === 'OPERADOR') return 'Operador';
+  return 'Gestor';
+}
+
+function rotuloTipoLinha(tipo: CentralDiaDetalhe['tipo']): string {
+  switch (tipo) {
+    case 'FALTA':
+      return 'Falta';
+    case 'FALTA_DEBITO':
+      return 'Falta (débito)';
+    case 'ATESTADO':
+      return 'Atestado';
+    case 'INCOMPLETO':
+      return 'Incompleta';
+    default:
+      return 'Trabalho';
+  }
+}
+
+/** Escapa um campo para CSV (separador ";"): aspas quando há ; " ou quebra. */
+function csvCampo(valor: string): string {
+  return /[;"\n]/.test(valor) ? `"${valor.replace(/"/g, '""')}"` : valor;
 }
 
 /** Ficha de escala vazia (sem turno) — usada quando a ficha não é encontrada. */
@@ -592,7 +679,9 @@ export class CentralJornadaService {
    * filtros por pessoa/função/tipo são aplicados na tela (a lista completa do
    * ciclo é leve).
    */
-  async inconsistenciasCiclo(deslocamento = 0): Promise<CentralInconsistencias> {
+  async inconsistenciasCiclo(
+    deslocamento = 0,
+  ): Promise<CentralInconsistencias> {
     const dados = await this.carregarCiclo(deslocamento);
     const batidas = dados.batidas as BatidaMin[];
     const itens: InconsistenciaItem[] = [];
@@ -669,7 +758,8 @@ export class CentralJornadaService {
           itens.push({
             ...base(d),
             tipo: 'DUPLICADA',
-            detalhe: 'Batidas muito próximas no mesmo dia (possível duplicidade)',
+            detalhe:
+              'Batidas muito próximas no mesmo dia (possível duplicidade)',
           });
         }
       }
@@ -677,7 +767,9 @@ export class CentralJornadaService {
 
     // Mais recentes primeiro; empate por nome.
     itens.sort((a, b) =>
-      a.data === b.data ? a.nome.localeCompare(b.nome) : b.data.localeCompare(a.data),
+      a.data === b.data
+        ? a.nome.localeCompare(b.nome)
+        : b.data.localeCompare(a.data),
     );
 
     const contar = (t: InconsistenciaItem['tipo']) =>
@@ -694,6 +786,168 @@ export class CentralJornadaService {
         total: itens.length,
       },
       itens,
+    };
+  }
+
+  /** Monta o CSV (separador ";") a partir das linhas do relatório. */
+  private montarCsv(linhas: LinhaExportacaoCiclo[]): string {
+    const cabecalho = [
+      'Colaborador',
+      'Função',
+      'Data',
+      'Dia',
+      'Tipo',
+      'Trabalhado',
+      'Base',
+      'Extras 50%',
+      'Extras 100%',
+      'Devidas',
+      'Atestado',
+      'TAC',
+      'Motivos TAC',
+      'Problemas',
+    ];
+    const corpo = linhas.map((l) =>
+      [
+        l.nome,
+        rotuloFuncaoExport(l.funcao),
+        dataBr(l.data),
+        DIAS_SEMANA_BR[l.diaSemana] ?? '',
+        rotuloTipoLinha(l.tipo),
+        msParaHm(l.trabalhadoMs),
+        msParaHm(l.baseMs),
+        msParaHm(l.extras50Ms),
+        msParaHm(l.extras100Ms),
+        msParaHm(l.devidasMs),
+        l.atestado ? 'Sim' : '',
+        l.tac ? 'Sim' : '',
+        l.motivosTac.join(' | '),
+        l.problemas.join(' | '),
+      ]
+        .map(csvCampo)
+        .join(';'),
+    );
+    return [cabecalho.join(';'), ...corpo].join('\n');
+  }
+
+  /**
+   * Exportação do ciclo (26→25) para revisão antes do fechamento: uma linha por
+   * dia relevante de cada colaborador (trabalho, incompleta, falta, atestado),
+   * com trabalhado/base, extras 50/100, horas devidas, atestado, TAC e as
+   * inconsistências do dia — mais os totais do time e um CSV pronto para
+   * planilha/compartilhamento.
+   */
+  async exportarCiclo(deslocamento = 0): Promise<CentralExportacao> {
+    const dados = await this.carregarCiclo(deslocamento);
+    const batidas = dados.batidas as BatidaMin[];
+    const pessoas: CentralPessoaResumo[] = [];
+    const linhas: LinhaExportacaoCiclo[] = [];
+    let inconsistencias = 0;
+
+    for (const c of dados.pessoas) {
+      const ids = this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador);
+      const { resumo, dias } = this.calcularPessoa(
+        ids,
+        batidas,
+        dados.ausencias,
+        dados.feriadoMap,
+        dados.inicio,
+        dados.fimExclusivo,
+        dados.limite,
+        c,
+        dados.ancora,
+      );
+      pessoas.push({
+        colaboradorId: c.id,
+        nome: c.nome,
+        primeiroNome: primeiroNome(c.nome),
+        funcao: c.funcao,
+        ...resumo,
+      });
+
+      const horasPorDia = new Map<string, number[]>();
+      for (const b of batidas) {
+        if (!this.daPessoa(b, ids)) continue;
+        const k = inicioDoDia(b.data).toISOString();
+        const arr = horasPorDia.get(k) ?? [];
+        arr.push(b.hora.getTime());
+        horasPorDia.set(k, arr);
+      }
+
+      for (const d of dias) {
+        // Só dias relevantes entram no relatório (ignora "sem registro").
+        if (d.tipo === 'SEM_REGISTRO') continue;
+        const problemas: string[] = [];
+        if (d.tipo === 'INCOMPLETO') problemas.push('Incompleta');
+        if (d.conflitoAusencia) problemas.push('Conflito ponto/ausência');
+        if (d.atrasoMinutos != null) {
+          problemas.push(`Atraso ${d.atrasoMinutos}min`);
+        }
+        if (d.tac) problemas.push('TAC');
+        const horas = horasPorDia.get(d.data);
+        if (horas && this.temBatidasProximas(horas)) {
+          problemas.push('Duplicada');
+        }
+        inconsistencias += problemas.length;
+        linhas.push({
+          colaboradorId: c.id,
+          nome: c.nome,
+          funcao: c.funcao,
+          data: d.data,
+          diaSemana: d.diaSemana,
+          tipo: d.tipo,
+          trabalhadoMs: d.trabalhadoMs,
+          baseMs: d.baseMs,
+          extras50Ms: d.extras50Ms,
+          extras100Ms: d.extras100Ms,
+          devidasMs: d.devidasMs,
+          atestado: d.tipo === 'ATESTADO',
+          tac: d.tac,
+          motivosTac: d.motivosTac,
+          problemas,
+        });
+      }
+    }
+
+    // Ordena por colaborador (nome) e, dentro dele, por data crescente.
+    linhas.sort((a, b) =>
+      a.nome === b.nome
+        ? a.data.localeCompare(b.data)
+        : a.nome.localeCompare(b.nome),
+    );
+
+    const totais = pessoas.reduce(
+      (acc, p) => ({
+        extras50Ms: acc.extras50Ms + p.extras50Ms,
+        extras100Ms: acc.extras100Ms + p.extras100Ms,
+        horasDevidasMs: acc.horasDevidasMs + p.horasDevidasMs,
+        horasAtestadoMs: acc.horasAtestadoMs + p.horasAtestadoMs,
+        faltas: acc.faltas + p.faltas,
+        diasTac: acc.diasTac + p.diasTac,
+        conflitos: acc.conflitos + p.conflitos,
+        atrasos: acc.atrasos + p.atrasos,
+        saldoMs: acc.saldoMs + p.saldoMs,
+      }),
+      {
+        extras50Ms: 0,
+        extras100Ms: 0,
+        horasDevidasMs: 0,
+        horasAtestadoMs: 0,
+        faltas: 0,
+        diasTac: 0,
+        conflitos: 0,
+        atrasos: 0,
+        saldoMs: 0,
+      },
+    );
+
+    return {
+      periodo: this.montarPeriodo(dados.periodo, deslocamento),
+      geradoEm: new Date().toISOString(),
+      totais: { ...totais, inconsistencias },
+      pessoas,
+      linhas,
+      csv: this.montarCsv(linhas),
     };
   }
 

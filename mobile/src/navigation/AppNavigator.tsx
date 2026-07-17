@@ -24,6 +24,7 @@ import { JornadaFiscaisScreen } from '../screens/fiscais/JornadaFiscaisScreen';
 import { RegistroPontoScreen } from '../screens/ponto/RegistroPontoScreen';
 import { CentralJornadaScreen } from '../screens/ponto/CentralJornadaScreen';
 import { InconsistenciasScreen } from '../screens/ponto/InconsistenciasScreen';
+import { ExportarCicloScreen } from '../screens/ponto/ExportarCicloScreen';
 import { FeriadosScreen } from '../screens/ponto/FeriadosScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
 import { OperadoresScreen } from '../screens/operadores/OperadoresScreen';
@@ -167,6 +168,13 @@ export function AppNavigator(): React.ReactElement {
           name="Inconsistencias"
           component={InconsistenciasScreen}
           options={{ title: 'Inconsistências' }}
+        />
+      )}
+      {podeAcessar('CENTRAL_JORNADA') && (
+        <Stack.Screen
+          name="ExportarCiclo"
+          component={ExportarCicloScreen}
+          options={{ title: 'Exportar ciclo' }}
         />
       )}
       {podeAcessar('CENTRAL_JORNADA') && (
