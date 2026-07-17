@@ -1,8 +1,10 @@
 /**
  * Central de Jornada — portal de controle da jornada de cada colaborador no
- * ciclo de folha (26→25). Mostra o resumo do time, a lista por pessoa (carga,
- * extras 50/100, horas que deve, atestado, faltas, TAC e saldo), o detalhe
- * diário (drill-down) com a ação de marcar falta como débito, e o comparativo
+ * ciclo de folha (26→25). No topo, um cartão "hero" com o ciclo (período, dias
+ * restantes e barra de dias percorridos) e o saldo atual do time. Em seguida,
+ * três atalhos de ação (inconsistências, revisar/fechar ciclo e feriados) com
+ * contador/estado, o resumo do time em métricas com ícone, a lista por pessoa
+ * (drill-down diário com a ação de marcar falta como débito) e o comparativo
  * dos últimos ciclos. Aplica-se ao contrato 6x1-2x1.
  */
 import { Ionicons } from '@expo/vector-icons';
@@ -11,16 +13,20 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
-import { centralJornadaService } from '../../api/services';
+import { centralJornadaService, feriadosService } from '../../api/services';
 import {
   CentralComparativo,
   CentralDiaDetalhe,
+  CentralInconsistencias,
+  CentralPeriodo,
   CentralPessoaResumo,
   CentralResumo,
 } from '../../api/services/centralJornada';
 import { useAuth } from '../../auth/AuthContext';
 import {
   Cartao,
+  CartaoAcao,
+  CartaoMetrica,
   Carregando,
   EstadoVazio,
   MensagemErro,
@@ -29,16 +35,12 @@ import {
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
-import { formatarDuracao } from '../../utils/formato';
+import { formatarDuracao, hojeISO } from '../../utils/formato';
 import { notificar } from '../../utils/dialogos';
-import { cores, espacamento, raio, tipografia } from '../../theme';
-
-const AZUL = '#2563EB';
-const VERDE = cores.sucesso ?? '#1E9E5A';
-const VERMELHO = cores.erro ?? '#DC2626';
-const AMARELO = cores.amarelo ?? '#C99700';
+import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 
 const NOMES_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const MS_DIA = 24 * 60 * 60 * 1000;
 
 /** Saldo com sinal: "+2h 30min" / "−7h". */
 function formatarSaldo(ms: number): string {
@@ -52,6 +54,11 @@ function rotuloFuncao(f: string): string {
   if (f === 'SUPERVISOR') return 'Supervisor';
   if (f === 'OPERADOR') return 'Operador';
   return 'Gestor';
+}
+
+/** Instante (ms) do dia-calendário de um ISO, ancorado em UTC (00:00Z). */
+function diaUTC(iso: string): number {
+  return new Date(`${iso.slice(0, 10)}T00:00:00.000Z`).getTime();
 }
 
 function dataCurta(iso: string): string {
@@ -76,6 +83,25 @@ function rotuloTipoDia(tipo: CentralDiaDetalhe['tipo']): string {
   }
 }
 
+/** Progresso do ciclo em dias: percorridos, total e dias restantes. */
+function progressoCiclo(periodo: CentralPeriodo): {
+  decorridos: number;
+  total: number;
+  restantes: number;
+  fracao: number;
+} {
+  const inicio = diaUTC(periodo.inicio);
+  const fim = diaUTC(periodo.fim);
+  const hoje = diaUTC(hojeISO());
+  const total = Math.max(1, Math.round((fim - inicio) / MS_DIA) + 1);
+  const decorridos = Math.min(
+    total,
+    Math.max(0, Math.round((hoje - inicio) / MS_DIA) + 1),
+  );
+  const restantes = Math.max(0, total - decorridos);
+  return { decorridos, total, restantes, fracao: decorridos / total };
+}
+
 export function CentralJornadaScreen(): React.ReactElement {
   const { podeAcessar } = useAuth();
   const navigation =
@@ -90,6 +116,12 @@ export function CentralJornadaScreen(): React.ReactElement {
     () => centralJornadaService.resumo(ciclo),
     [ciclo],
   );
+  // Contadores dos atalhos (pendências do ciclo e feriados registrados).
+  const inconsistencias = useRequisicao<CentralInconsistencias>(
+    () => centralJornadaService.inconsistencias(ciclo),
+    [ciclo],
+  );
+  const feriados = useRequisicao(() => feriadosService.listar(), []);
   const detalhe = useRequisicao<{
     periodo: unknown;
     dias: CentralDiaDetalhe[];
@@ -101,7 +133,10 @@ export function CentralJornadaScreen(): React.ReactElement {
     [expandido, ciclo],
   );
   const comparativo = useRequisicao<CentralComparativo[]>(
-    () => (verComparativo ? centralJornadaService.comparativos(6) : Promise.resolve([])),
+    () =>
+      verComparativo
+        ? centralJornadaService.comparativos(6)
+        : Promise.resolve([]),
     [verComparativo],
   );
 
@@ -116,105 +151,163 @@ export function CentralJornadaScreen(): React.ReactElement {
     }
   }
 
+  function recarregarTudo(): void {
+    resumo.recarregar();
+    inconsistencias.recarregar();
+    feriados.recarregar();
+  }
+
   // Todos os colaboradores não-gerentes aparecem (mesmo sem movimento), em
   // ordem alfabética por nome.
   const pessoas = (resumo.dados?.pessoas ?? [])
     .slice()
     .sort((a, b) => a.nome.localeCompare(b.nome));
 
+  const totalPendencias = inconsistencias.dados?.totais.total ?? 0;
+  // "Registrados" = feriados manuais (estaduais/municipais); os nacionais são
+  // automáticos e não contam como cadastro do usuário.
+  const feriadosRegistrados = (feriados.dados ?? []).filter(
+    (f) => !f.automatico,
+  ).length;
+
   return (
-    <Tela aoAtualizar={resumo.recarregar} atualizando={resumo.atualizando}>
-      {/* Seletor de ciclo (26→25) */}
-      <Cartao style={styles.cardCiclo}>
-        <Pressable
-          onPress={() => setCiclo((c) => c - 1)}
-          style={styles.setaBtn}
-          hitSlop={10}
-        >
-          <Ionicons name="chevron-back" size={22} color={cores.primaria} />
-        </Pressable>
-        <View style={styles.cicloCentro}>
-          <Text style={styles.cicloLabel}>Ciclo de folha</Text>
-          <Text style={styles.cicloRotulo}>
-            {resumo.dados?.periodo.rotulo ?? '—'}
-          </Text>
-        </View>
-        <Pressable
-          onPress={() => setCiclo((c) => Math.min(0, c + 1))}
-          style={[styles.setaBtn, ciclo >= 0 && styles.setaDesabilitada]}
-          disabled={ciclo >= 0}
-          hitSlop={10}
-        >
-          <Ionicons
-            name="chevron-forward"
-            size={22}
-            color={ciclo >= 0 ? cores.textoSecundario : cores.primaria}
-          />
-        </Pressable>
-      </Cartao>
+    <Tela aoAtualizar={recarregarTudo} atualizando={resumo.atualizando}>
+      {/* Hero: ciclo (período + progresso em dias) e saldo atual do time. */}
+      <HeroCiclo
+        periodo={resumo.dados?.periodo ?? null}
+        saldoMs={resumo.dados?.totais.saldoMs ?? 0}
+        ciclo={ciclo}
+        aoAnterior={() => setCiclo((c) => c - 1)}
+        aoProximo={() => setCiclo((c) => Math.min(0, c + 1))}
+      />
 
-      {/* Atalho para o painel de inconsistências (revisão de problemas). */}
-      <Pressable
-        onPress={() => navigation.navigate('Inconsistencias')}
-        style={styles.feriadosBtn}
-      >
-        <Ionicons name="alert-circle-outline" size={16} color={cores.primaria} />
-        <Text style={styles.feriadosBtnTexto}>Ver inconsistências</Text>
-      </Pressable>
-
-      {/* Atalho para revisar e fechar/reabrir o ciclo. */}
-      <Pressable
-        onPress={() => navigation.navigate('ExportarCiclo')}
-        style={styles.feriadosBtn}
-      >
-        <Ionicons name="checkmark-done-outline" size={16} color={cores.primaria} />
-        <Text style={styles.feriadosBtnTexto}>Revisar / fechar ciclo</Text>
-      </Pressable>
-
-      {/* Atalho para gerenciar feriados (contam como domingo/100%). */}
-      <Pressable
-        onPress={() => navigation.navigate('Feriados')}
-        style={styles.feriadosBtn}
-      >
-        <Ionicons name="calendar-outline" size={16} color={cores.primaria} />
-        <Text style={styles.feriadosBtnTexto}>Gerenciar feriados</Text>
-      </Pressable>
+      {/* Atalhos de ação com contador/estado. */}
+      <View style={styles.acoes}>
+        <CartaoAcao
+          icone="alert-circle"
+          cor={cores.vermelho}
+          fundo={cores.vermelhoFundo}
+          titulo="Revisar inconsistências"
+          estado={
+            totalPendencias > 0
+              ? `${totalPendencias} pendência${totalPendencias === 1 ? '' : 's'}`
+              : 'Sem pendências'
+          }
+          estadoCor={totalPendencias > 0 ? cores.vermelho : cores.verde}
+          aoPressionar={() => navigation.navigate('Inconsistencias')}
+        />
+        <CartaoAcao
+          icone="checkmark-circle"
+          cor={cores.verde}
+          fundo={cores.verdeFundo}
+          titulo="Revisar / fechar ciclo"
+          estado={
+            totalPendencias > 0
+              ? `${totalPendencias} a resolver`
+              : 'Pronto para revisão'
+          }
+          estadoCor={totalPendencias > 0 ? cores.amarelo : cores.verde}
+          aoPressionar={() => navigation.navigate('ExportarCiclo')}
+        />
+        <CartaoAcao
+          icone="calendar"
+          cor={cores.azul}
+          fundo={cores.azulFundo}
+          titulo="Gerenciar feriados"
+          estado={`${feriadosRegistrados} registrado${feriadosRegistrados === 1 ? '' : 's'}`}
+          estadoCor={cores.azul}
+          aoPressionar={() => navigation.navigate('Feriados')}
+        />
+      </View>
 
       {resumo.carregando ? (
         <Carregando />
       ) : resumo.erro ? (
-        <MensagemErro mensagem={resumo.erro} aoTentarNovamente={resumo.recarregar} />
+        <MensagemErro
+          mensagem={resumo.erro}
+          aoTentarNovamente={resumo.recarregar}
+        />
       ) : (
         <>
-          {/* Resumo do time */}
+          {/* Resumo do time (métricas com ícone) */}
           {resumo.dados && (
             <Cartao style={styles.cardResumo}>
               <Text style={styles.secaoTitulo}>Resumo do time</Text>
               <View style={styles.gridResumo}>
-                <Metrica rotulo="Extras 50%" valor={formatarDuracao(resumo.dados.totais.extras50Ms)} cor={AZUL} />
-                <Metrica rotulo="Extras 100%" valor={formatarDuracao(resumo.dados.totais.extras100Ms)} cor={AZUL} />
-                <Metrica rotulo="Deve" valor={formatarDuracao(resumo.dados.totais.horasDevidasMs)} cor={VERMELHO} />
-                <Metrica rotulo="Atestado" valor={formatarDuracao(resumo.dados.totais.horasAtestadoMs)} cor={cores.texto} />
-                <Metrica rotulo="Faltas" valor={String(resumo.dados.totais.faltas)} cor={VERMELHO} />
-                <Metrica rotulo="TAC" valor={String(resumo.dados.totais.diasTac)} cor={AMARELO} />
-                {resumo.dados.totais.conflitos > 0 && (
-                  <Metrica
-                    rotulo="Conflitos"
-                    valor={String(resumo.dados.totais.conflitos)}
-                    cor={VERMELHO}
-                  />
-                )}
+                <CartaoMetrica
+                  icone="time-outline"
+                  cor={cores.verde}
+                  fundo={cores.verdeFundo}
+                  valor={formatarDuracao(resumo.dados.totais.extras50Ms)}
+                  rotulo="Extras 50%"
+                />
+                <CartaoMetrica
+                  icone="time-outline"
+                  cor={cores.verde}
+                  fundo={cores.verdeFundo}
+                  valor={formatarDuracao(resumo.dados.totais.extras100Ms)}
+                  rotulo="Extras 100%"
+                />
+                <CartaoMetrica
+                  icone="hourglass-outline"
+                  cor={cores.vermelho}
+                  fundo={cores.vermelhoFundo}
+                  valor={formatarDuracao(resumo.dados.totais.horasDevidasMs)}
+                  rotulo="Deve"
+                />
+                <CartaoMetrica
+                  icone="shield-outline"
+                  cor={cores.azul}
+                  fundo={cores.azulFundo}
+                  valor={formatarDuracao(resumo.dados.totais.horasAtestadoMs)}
+                  rotulo="Atestado"
+                />
+                <CartaoMetrica
+                  icone="person-outline"
+                  cor={cores.laranja}
+                  fundo={cores.laranjaFundo}
+                  valor={String(resumo.dados.totais.faltas)}
+                  rotulo="Faltas"
+                />
+                <CartaoMetrica
+                  icone="document-text-outline"
+                  cor={cores.roxo}
+                  fundo={cores.roxoFundo}
+                  valor={String(resumo.dados.totais.diasTac)}
+                  rotulo="TAC"
+                />
                 {resumo.dados.totais.atrasos > 0 && (
-                  <Metrica
-                    rotulo="Atrasos"
+                  <CartaoMetrica
+                    icone="alarm-outline"
+                    cor={cores.laranja}
+                    fundo={cores.laranjaFundo}
                     valor={String(resumo.dados.totais.atrasos)}
-                    cor={AMARELO}
+                    rotulo="Atrasos"
                   />
                 )}
-                <Metrica
-                  rotulo="Saldo"
+                {resumo.dados.totais.conflitos > 0 && (
+                  <CartaoMetrica
+                    icone="warning-outline"
+                    cor={cores.vermelho}
+                    fundo={cores.vermelhoFundo}
+                    valor={String(resumo.dados.totais.conflitos)}
+                    rotulo="Conflitos"
+                  />
+                )}
+                <CartaoMetrica
+                  icone="scale-outline"
+                  cor={
+                    resumo.dados.totais.saldoMs >= 0
+                      ? cores.verde
+                      : cores.vermelho
+                  }
+                  fundo={
+                    resumo.dados.totais.saldoMs >= 0
+                      ? cores.verdeFundo
+                      : cores.vermelhoFundo
+                  }
                   valor={formatarSaldo(resumo.dados.totais.saldoMs)}
-                  cor={resumo.dados.totais.saldoMs >= 0 ? VERDE : VERMELHO}
+                  rotulo="Saldo"
                 />
               </View>
             </Cartao>
@@ -242,7 +335,7 @@ export function CentralJornadaScreen(): React.ReactElement {
                   expandido === p.colaboradorId && detalhe.carregando
                 }
                 dias={
-                  expandido === p.colaboradorId ? detalhe.dados?.dias ?? [] : []
+                  expandido === p.colaboradorId ? (detalhe.dados?.dias ?? []) : []
                 }
                 podeMarcarDebito={podeMarcarDebito}
                 aoAlternarDebito={alternarDebito}
@@ -261,7 +354,9 @@ export function CentralJornadaScreen(): React.ReactElement {
               color={cores.primaria}
             />
             <Text style={styles.comparativoBtnTexto}>
-              {verComparativo ? 'Ocultar comparativo' : 'Ver comparativo por ciclo'}
+              {verComparativo
+                ? 'Ocultar comparativo'
+                : 'Ver comparativo por ciclo'}
             </Text>
           </Pressable>
           {verComparativo &&
@@ -279,16 +374,21 @@ export function CentralJornadaScreen(): React.ReactElement {
                       <Text style={styles.compItem}>
                         100%: {formatarDuracao(c.totais.extras100Ms)}
                       </Text>
-                      <Text style={[styles.compItem, { color: VERMELHO }]}>
+                      <Text style={[styles.compItem, { color: cores.vermelho }]}>
                         Faltas: {c.totais.faltas}
                       </Text>
-                      <Text style={[styles.compItem, { color: AMARELO }]}>
+                      <Text style={[styles.compItem, { color: cores.amarelo }]}>
                         TAC: {c.totais.diasTac}
                       </Text>
                       <Text
                         style={[
                           styles.compItem,
-                          { color: c.totais.saldoMs >= 0 ? VERDE : VERMELHO },
+                          {
+                            color:
+                              c.totais.saldoMs >= 0
+                                ? cores.verde
+                                : cores.vermelho,
+                          },
                         ]}
                       >
                         Saldo: {formatarSaldo(c.totais.saldoMs)}
@@ -304,19 +404,90 @@ export function CentralJornadaScreen(): React.ReactElement {
   );
 }
 
-function Metrica({
-  rotulo,
-  valor,
-  cor,
+/** Cartão "hero" do topo: ciclo (período + progresso) e saldo atual do time. */
+function HeroCiclo({
+  periodo,
+  saldoMs,
+  ciclo,
+  aoAnterior,
+  aoProximo,
 }: {
-  rotulo: string;
-  valor: string;
-  cor: string;
+  periodo: CentralPeriodo | null;
+  saldoMs: number;
+  ciclo: number;
+  aoAnterior: () => void;
+  aoProximo: () => void;
 }): React.ReactElement {
+  const prog = periodo ? progressoCiclo(periodo) : null;
+  const saldoCor =
+    saldoMs > 0 ? cores.verde : saldoMs < 0 ? cores.vermelho : cores.texto;
+  const saldoLegenda =
+    saldoMs > 0 ? 'Horas a favor' : saldoMs < 0 ? 'Você deve horas' : 'Saldo zerado';
+
   return (
-    <View style={styles.metrica}>
-      <Text style={[styles.metricaValor, { color: cor }]}>{valor}</Text>
-      <Text style={styles.metricaRotulo}>{rotulo}</Text>
+    <View style={styles.hero}>
+      {/* Linha do ciclo: navegação + período. */}
+      <View style={styles.heroTopo}>
+        <Pressable onPress={aoAnterior} style={styles.setaBtn} hitSlop={10}>
+          <Ionicons name="chevron-back" size={20} color={cores.primaria} />
+        </Pressable>
+        <View style={styles.heroCentro}>
+          <View style={styles.heroCicloLabelLinha}>
+            <View style={styles.heroIconeCiclo}>
+              <Ionicons
+                name="calendar-outline"
+                size={14}
+                color={cores.primaria}
+              />
+            </View>
+            <Text style={styles.heroCicloLabel}>Ciclo de folha</Text>
+          </View>
+          <Text style={styles.heroPeriodo}>{periodo?.rotulo ?? '—'}</Text>
+          <Text style={styles.heroDiasRestantes}>
+            {prog ? `${prog.restantes} dias restantes` : ' '}
+          </Text>
+        </View>
+        <Pressable
+          onPress={aoProximo}
+          style={[styles.setaBtn, ciclo >= 0 && styles.setaDesabilitada]}
+          disabled={ciclo >= 0}
+          hitSlop={10}
+        >
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={ciclo >= 0 ? cores.textoSecundario : cores.primaria}
+          />
+        </Pressable>
+      </View>
+
+      <View style={styles.heroDivisor} />
+
+      {/* Saldo atual + barra de dias percorridos do ciclo. */}
+      <View style={styles.heroSaldoBloco}>
+        <Text style={styles.heroSaldoLabel}>Saldo atual</Text>
+        <Text style={[styles.heroSaldoValor, { color: saldoCor }]}>
+          {formatarSaldo(saldoMs)}
+        </Text>
+        <Text style={styles.heroSaldoLegenda}>{saldoLegenda}</Text>
+        {prog && (
+          <>
+            <View style={styles.barraTrilha}>
+              <View
+                style={[
+                  styles.barraPreenchida,
+                  {
+                    width: `${Math.round(prog.fracao * 100)}%` as `${number}%`,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.heroProgressoTexto}>
+              Dia {prog.decorridos} de {prog.total} do ciclo
+            </Text>
+          </>
+        )}
+      </View>
     </View>
   );
 }
@@ -350,7 +521,7 @@ function PessoaCartao({
           <Text
             style={[
               styles.pessoaSaldo,
-              { color: pessoa.saldoMs >= 0 ? VERDE : VERMELHO },
+              { color: pessoa.saldoMs >= 0 ? cores.verde : cores.vermelho },
             ]}
           >
             {formatarSaldo(pessoa.saldoMs)}
@@ -365,30 +536,66 @@ function PessoaCartao({
       </Pressable>
 
       <View style={styles.pessoaChips}>
-        <Selo texto={`Carga ${formatarDuracao(pessoa.cargaTrabalhadaMs)}`} cor={cores.texto} fundo={cores.fundo} />
+        <Selo
+          texto={`Carga ${formatarDuracao(pessoa.cargaTrabalhadaMs)}`}
+          cor={cores.texto}
+          fundo={cores.fundo}
+        />
         {pessoa.extras50Ms > 0 && (
-          <Selo texto={`+50% ${formatarDuracao(pessoa.extras50Ms)}`} cor={AZUL} fundo="#EFF6FF" />
+          <Selo
+            texto={`+50% ${formatarDuracao(pessoa.extras50Ms)}`}
+            cor={cores.azul}
+            fundo={cores.azulFundo}
+          />
         )}
         {pessoa.extras100Ms > 0 && (
-          <Selo texto={`+100% ${formatarDuracao(pessoa.extras100Ms)}`} cor={AZUL} fundo="#EFF6FF" />
+          <Selo
+            texto={`+100% ${formatarDuracao(pessoa.extras100Ms)}`}
+            cor={cores.azul}
+            fundo={cores.azulFundo}
+          />
         )}
         {pessoa.horasDevidasMs > 0 && (
-          <Selo texto={`Deve ${formatarDuracao(pessoa.horasDevidasMs)}`} cor={VERMELHO} fundo="#FEECEC" />
+          <Selo
+            texto={`Deve ${formatarDuracao(pessoa.horasDevidasMs)}`}
+            cor={cores.vermelho}
+            fundo={cores.vermelhoFundo}
+          />
         )}
         {pessoa.horasAtestadoMs > 0 && (
-          <Selo texto={`Atestado ${formatarDuracao(pessoa.horasAtestadoMs)}`} cor={cores.texto} fundo={cores.fundo} />
+          <Selo
+            texto={`Atestado ${formatarDuracao(pessoa.horasAtestadoMs)}`}
+            cor={cores.texto}
+            fundo={cores.fundo}
+          />
         )}
         {pessoa.faltas > 0 && (
-          <Selo texto={`${pessoa.faltas} falta(s)`} cor={VERMELHO} fundo="#FEECEC" />
+          <Selo
+            texto={`${pessoa.faltas} falta(s)`}
+            cor={cores.vermelho}
+            fundo={cores.vermelhoFundo}
+          />
         )}
         {pessoa.diasTac > 0 && (
-          <Selo texto={`TAC: ${pessoa.diasTac}`} cor={AMARELO} fundo="#FBF3DA" />
+          <Selo
+            texto={`TAC: ${pessoa.diasTac}`}
+            cor={cores.amarelo}
+            fundo={cores.amareloFundo}
+          />
         )}
         {pessoa.conflitos > 0 && (
-          <Selo texto={`Conflito: ${pessoa.conflitos}`} cor={VERMELHO} fundo="#FEECEC" />
+          <Selo
+            texto={`Conflito: ${pessoa.conflitos}`}
+            cor={cores.vermelho}
+            fundo={cores.vermelhoFundo}
+          />
         )}
         {pessoa.atrasos > 0 && (
-          <Selo texto={`Atraso: ${pessoa.atrasos}`} cor={AMARELO} fundo="#FBF3DA" />
+          <Selo
+            texto={`Atraso: ${pessoa.atrasos}`}
+            cor={cores.amarelo}
+            fundo={cores.amareloFundo}
+          />
         )}
       </View>
 
@@ -413,9 +620,15 @@ function PessoaCartao({
                     {d.tipo === 'TRABALHO'
                       ? ` • ${formatarDuracao(d.trabalhadoMs)} de ${formatarDuracao(d.baseMs)}`
                       : ''}
-                    {d.extras50Ms > 0 ? ` • +50% ${formatarDuracao(d.extras50Ms)}` : ''}
-                    {d.extras100Ms > 0 ? ` • +100% ${formatarDuracao(d.extras100Ms)}` : ''}
-                    {d.devidasMs > 0 ? ` • deve ${formatarDuracao(d.devidasMs)}` : ''}
+                    {d.extras50Ms > 0
+                      ? ` • +50% ${formatarDuracao(d.extras50Ms)}`
+                      : ''}
+                    {d.extras100Ms > 0
+                      ? ` • +100% ${formatarDuracao(d.extras100Ms)}`
+                      : ''}
+                    {d.devidasMs > 0
+                      ? ` • deve ${formatarDuracao(d.devidasMs)}`
+                      : ''}
                   </Text>
                   {d.tipo === 'INCOMPLETO' && d.faltando.length > 0 && (
                     <Text style={styles.diaIncompleto}>
@@ -423,11 +636,14 @@ function PessoaCartao({
                     </Text>
                   )}
                   {d.tac && (
-                    <Text style={styles.diaTac}>TAC: {d.motivosTac.join('; ')}</Text>
+                    <Text style={styles.diaTac}>
+                      TAC: {d.motivosTac.join('; ')}
+                    </Text>
                   )}
                   {d.conflitoAusencia && (
                     <Text style={styles.diaConflito}>
-                      ⚠️ Também há falta/atestado marcado neste dia. Verifique qual está correto.
+                      ⚠️ Também há falta/atestado marcado neste dia. Verifique
+                      qual está correto.
                     </Text>
                   )}
                   {d.atrasoMinutos != null && (
@@ -467,34 +683,119 @@ function PessoaCartao({
 }
 
 const styles = StyleSheet.create({
-  cardCiclo: {
+  // Hero
+  hero: {
+    backgroundColor: cores.superficie,
+    borderRadius: raio.lg,
+    borderWidth: 1,
+    borderColor: cores.divisor,
+    padding: espacamento.lg,
+    marginBottom: espacamento.md,
+    ...sombra.cartao,
+  },
+  heroTopo: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  setaBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: raio.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: cores.superficieAlternativa,
+  },
+  setaDesabilitada: { opacity: 0.4 },
+  heroCentro: { flex: 1, alignItems: 'center', paddingHorizontal: espacamento.sm },
+  heroCicloLabelLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+  },
+  heroIconeCiclo: {
+    width: 22,
+    height: 22,
+    borderRadius: raio.sm,
+    backgroundColor: cores.primariaClara,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroCicloLabel: { ...tipografia.legenda, color: cores.textoSecundario },
+  heroPeriodo: {
+    ...tipografia.subtitulo,
+    color: cores.texto,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  heroDiasRestantes: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+  },
+  heroDivisor: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: cores.divisor,
+    marginVertical: espacamento.md,
+  },
+  heroSaldoBloco: { alignItems: 'center' },
+  heroSaldoLabel: { ...tipografia.legenda, color: cores.textoSecundario },
+  heroSaldoValor: {
+    ...tipografia.titulo,
+    fontSize: 34,
+    marginTop: 2,
+  },
+  heroSaldoLegenda: {
+    ...tipografia.rotulo,
+    color: cores.textoSecundario,
+    marginTop: 2,
+    marginBottom: espacamento.sm,
+  },
+  barraTrilha: {
+    width: '100%',
+    height: 8,
+    borderRadius: raio.pill,
+    backgroundColor: cores.divisor,
+    overflow: 'hidden',
+  },
+  barraPreenchida: {
+    height: '100%',
+    borderRadius: raio.pill,
+    backgroundColor: cores.primaria,
+  },
+  heroProgressoTexto: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: espacamento.xs,
+  },
+  // Ações
+  acoes: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espacamento.sm,
     marginBottom: espacamento.md,
   },
-  setaBtn: { padding: espacamento.xs },
-  setaDesabilitada: { opacity: 0.4 },
-  cicloCentro: { alignItems: 'center', flex: 1 },
-  cicloLabel: { ...tipografia.legenda, color: cores.textoSecundario },
-  cicloRotulo: { ...tipografia.rotulo, color: cores.texto, fontWeight: '700', marginTop: 2 },
+  // Resumo do time
   cardResumo: { marginBottom: espacamento.md },
-  secaoTitulo: { ...tipografia.rotulo, color: cores.texto, fontWeight: '700', marginBottom: espacamento.sm },
-  gridResumo: { flexDirection: 'row', flexWrap: 'wrap', gap: espacamento.sm },
-  metrica: {
-    minWidth: '28%',
-    flexGrow: 1,
-    backgroundColor: cores.fundo,
-    borderRadius: raio.md,
-    paddingVertical: espacamento.sm,
-    alignItems: 'center',
+  secaoTitulo: {
+    ...tipografia.secao,
+    color: cores.texto,
+    marginBottom: espacamento.sm,
   },
-  metricaValor: { ...tipografia.rotulo, fontWeight: '700' },
-  metricaRotulo: { ...tipografia.legenda, color: cores.textoSecundario, marginTop: 2 },
+  gridResumo: { flexDirection: 'row', flexWrap: 'wrap', gap: espacamento.sm },
+  // Pessoa
   cardPessoa: { marginBottom: espacamento.sm },
-  pessoaTopo: { flexDirection: 'row', alignItems: 'center', gap: espacamento.sm },
+  pessoaTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+  },
   pessoaNome: { ...tipografia.rotulo, color: cores.texto, fontWeight: '700' },
-  pessoaFuncao: { ...tipografia.legenda, color: cores.textoSecundario, marginTop: 2 },
+  pessoaFuncao: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+  },
   pessoaSaldoBox: { alignItems: 'flex-end', marginRight: espacamento.xs },
   pessoaSaldo: { ...tipografia.rotulo, fontWeight: '700' },
   pessoaSaldoLabel: { ...tipografia.legenda, color: cores.textoSecundario },
@@ -510,7 +811,11 @@ const styles = StyleSheet.create({
     borderTopColor: cores.divisor,
     paddingTop: espacamento.sm,
   },
-  detalheVazio: { ...tipografia.legenda, color: cores.textoSecundario, paddingVertical: espacamento.sm },
+  detalheVazio: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    paddingVertical: espacamento.sm,
+  },
   diaLinha: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -518,30 +823,50 @@ const styles = StyleSheet.create({
     paddingVertical: espacamento.xs,
   },
   diaData: { ...tipografia.rotulo, color: cores.texto },
-  diaInfo: { ...tipografia.legenda, color: cores.textoSecundario, marginTop: 2 },
-  diaIncompleto: { ...tipografia.legenda, color: VERMELHO, marginTop: 2, fontWeight: '600' },
-  diaTac: { ...tipografia.legenda, color: AMARELO, marginTop: 2, fontWeight: '600' },
-  diaConflito: { ...tipografia.legenda, color: VERMELHO, marginTop: 2, fontWeight: '600' },
-  diaAtraso: { ...tipografia.legenda, color: AMARELO, marginTop: 2, fontWeight: '600' },
+  diaInfo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+  },
+  diaIncompleto: {
+    ...tipografia.legenda,
+    color: cores.vermelho,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  diaTac: {
+    ...tipografia.legenda,
+    color: cores.amarelo,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  diaConflito: {
+    ...tipografia.legenda,
+    color: cores.vermelho,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  diaAtraso: {
+    ...tipografia.legenda,
+    color: cores.amarelo,
+    marginTop: 2,
+    fontWeight: '600',
+  },
   debitoBtn: {
     paddingHorizontal: espacamento.sm,
     paddingVertical: 6,
     borderRadius: raio.pill,
     borderWidth: 1,
-    borderColor: VERMELHO,
+    borderColor: cores.vermelho,
   },
-  debitoBtnAtivo: { backgroundColor: VERMELHO },
-  debitoBtnTexto: { ...tipografia.legenda, color: VERMELHO, fontWeight: '700' },
-  debitoBtnTextoAtivo: { color: '#fff' },
-  feriadosBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: espacamento.xs,
-    paddingVertical: espacamento.sm,
-    marginBottom: espacamento.sm,
+  debitoBtnAtivo: { backgroundColor: cores.vermelho },
+  debitoBtnTexto: {
+    ...tipografia.legenda,
+    color: cores.vermelho,
+    fontWeight: '700',
   },
-  feriadosBtnTexto: { ...tipografia.rotulo, color: cores.primaria, fontWeight: '600' },
+  debitoBtnTextoAtivo: { color: cores.textoInverso },
+  // Comparativo
   comparativoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -549,10 +874,27 @@ const styles = StyleSheet.create({
     gap: espacamento.xs,
     paddingVertical: espacamento.md,
   },
-  comparativoBtnTexto: { ...tipografia.rotulo, color: cores.primaria, fontWeight: '600' },
-  compLinha: { paddingVertical: espacamento.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: cores.divisor },
-  compRotulo: { ...tipografia.rotulo, color: cores.texto, fontWeight: '700', marginBottom: 4 },
-  compValores: { flexDirection: 'row', flexWrap: 'wrap', gap: espacamento.sm },
+  comparativoBtnTexto: {
+    ...tipografia.rotulo,
+    color: cores.primaria,
+    fontWeight: '600',
+  },
+  compLinha: {
+    paddingVertical: espacamento.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: cores.divisor,
+  },
+  compRotulo: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  compValores: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espacamento.sm,
+  },
   compItem: { ...tipografia.legenda, color: cores.textoSecundario },
 });
 
