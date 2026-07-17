@@ -1,13 +1,12 @@
 /**
- * Exportação do ciclo (26→25) para revisão antes do fechamento (uso gerencial —
- * CENTRAL_JORNADA). Mostra os totais do time e uma prévia das linhas (jornadas,
- * extras, débitos, atestados, TAC e inconsistências) e permite compartilhar o
- * relatório em CSV (para planilha/folha) pela folha de compartilhamento do
- * aparelho.
+ * Revisão e fechamento do ciclo (26→25) — uso gerencial (CENTRAL_JORNADA).
+ * Mostra os totais do time e uma prévia das linhas (jornadas, extras, débitos,
+ * atestados, TAC e inconsistências) para revisar antes de fechar, e permite
+ * fechar/reabrir o ciclo.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { centralJornadaService, cicloFolhaService } from '../../api/services';
 import {
   CentralExportacao,
@@ -56,14 +55,6 @@ function rotuloTipo(tipo: LinhaExportacaoCiclo['tipo']): string {
       return 'Incompleta';
     default:
       return 'Trabalho';
-  }
-}
-
-async function compartilhar(csv: string, rotulo: string): Promise<void> {
-  try {
-    await Share.share({ message: csv }, { subject: `Ponto ${rotulo}` });
-  } catch {
-    notificar('Erro', 'Não foi possível abrir o compartilhamento.');
   }
 }
 
@@ -170,8 +161,8 @@ export function ExportarCicloScreen(): React.ReactElement {
           <Cartao>
             <Text style={styles.secaoTitulo}>Revisão do ciclo</Text>
             <Text style={styles.revisaoNota}>
-              Confira os números antes de fechar o ciclo. O relatório completo
-              vai no CSV.
+              Confira os números antes de fechar o ciclo. A prévia abaixo lista
+              as jornadas, faltas, atestados e inconsistências.
             </Text>
             <View style={styles.chips}>
               <Selo texto={`Extras 50% ${formatarDuracao(dados.totais.extras50Ms)}`} cor={AZUL} fundo="#EFF6FF" />
@@ -181,14 +172,6 @@ export function ExportarCicloScreen(): React.ReactElement {
               <Selo texto={`Faltas ${dados.totais.faltas}`} cor={VERMELHO} fundo="#FEECEC" />
               <Selo texto={`TAC ${dados.totais.diasTac}`} cor={AMARELO} fundo="#FBF3DA" />
               <Selo texto={`Inconsistências ${dados.totais.inconsistencias}`} cor={AMARELO} fundo="#FBF3DA" />
-            </View>
-            <View style={styles.botaoExportar}>
-              <Botao
-                titulo="Compartilhar CSV"
-                aoPressionar={() =>
-                  void compartilhar(dados.csv, dados.periodo.rotulo)
-                }
-              />
             </View>
           </Cartao>
 

@@ -174,7 +174,7 @@ export function AppNavigator(): React.ReactElement {
         <Stack.Screen
           name="ExportarCiclo"
           component={ExportarCicloScreen}
-          options={{ title: 'Exportar ciclo' }}
+          options={{ title: 'Revisar / fechar ciclo' }}
         />
       )}
       {podeAcessar('CENTRAL_JORNADA') && (

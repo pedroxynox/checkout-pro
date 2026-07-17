@@ -7,6 +7,26 @@
 
 ---
 
+## Melhorias do Relógio Ponto — lote de PRs (2026-07-16)
+
+Sequência de entregas que endureceram o Relógio Ponto e a Central de Jornada. Cada item foi um PR verificado e mergeado separadamente:
+
+- **Validações e regras de batida:** permissões de débito de ausência; respeito à data inicial; só pessoas ativas; rejeição de horas futuras/fora do dia; máximo de 4 batidas com significado por quantidade (1–4); jornadas antigas incompletas não acumulam.
+- **Duplicados e operação atômica:** batidas iguais/próximas recusadas; registro idempotente por `clienteId`.
+- **Feriados unificados** (feriado = domingo) e **cálculo por contrato** (`RegrasContrato`, catálogo `contrato-regras.ts`, extensível sem duplicar o cálculo).
+- **Alertas TAC corrigíveis:** ao corrigir/excluir uma batida o TAC é recalculado (CORRIGIDO/REINCIDENTE) com trilha (`EventoAlertaTac`).
+- **Memória do leitor (OCR) protegida:** uma seleção isolada não substitui uma associação aprendida (exige confirmações repetidas).
+- **Fila offline de batidas:** guarda no aparelho e sincroniza ao reconectar, preservando a hora do comprovante e sem duplicar.
+- **Escala e ausências:** bloqueio de ponto em folga; conflito ponto↔ausência; atraso na entrada.
+- **Unificação fiscal:** horas extras dos fiscais passam a usar as batidas como fonte canônica.
+- **Retenção de inativos:** histórico de desligados mantido por 3 meses (configurável) antes da purga.
+- **Painel de inconsistências** (incompletas, duplicadas, conflitos, atrasos, TAC) com filtros; **revisão do ciclo**; **fechamento/reabertura controlada** do ciclo 26→25 (fechar = gestão; reabrir = administrador), com trilha de quem fez e quando.
+- **Claridade:** confirmação antes de excluir, aviso de consequência (extras/TAC), explicação do cálculo e estados diferenciados.
+
+Migrations relacionadas: `9zq` (alertas TAC), `9zu` (eventos TAC), `9zv` (memória do leitor), `9zw` (idempotência de batida), `9zx` (ciclo de folha).
+
+---
+
 ## Central de Jornada lista TODOS os colaboradores não-gerentes (2026-07-15)
 
 Antes, a Central mostrava só quem teve movimento no ciclo (bateu ponto, falta,

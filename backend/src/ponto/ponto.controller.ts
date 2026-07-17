@@ -45,9 +45,10 @@ export class PontoController {
   ) {}
 
   /**
-   * Lê o comprovante (Fase B): recebe o texto já lido (ML Kit no Android) OU a
-   * imagem (OCR no nosso servidor, para a web) e devolve nome/data/hora e os
-   * colaboradores sugeridos, para o usuário confirmar antes de gravar.
+   * Lê o comprovante (Fase B): recebe o TEXTO já lido no aparelho (ML Kit no
+   * Android) e devolve nome/data/hora e os colaboradores sugeridos, para o
+   * usuário confirmar antes de gravar. O OCR da imagem no servidor está
+   * desativado; na web o registro é manual.
    */
   @Post('ocr')
   @Funcionalidade('PONTO_REGISTRAR')
@@ -57,7 +58,7 @@ export class PontoController {
     return this.ocr.lerComprovante(dto);
   }
 
-  /** Busca pessoas (fiscais) por nome para escolher de quem é o comprovante. */
+  /** Busca pessoas (fiscais e operadores ativos) por nome para o comprovante. */
   @Get('pessoas')
   @Funcionalidade('PONTO_REGISTRAR')
   buscarPessoas(@Query('busca') busca?: string): Promise<PessoaPonto[]> {

@@ -162,13 +162,13 @@ export function CentralJornadaScreen(): React.ReactElement {
         <Text style={styles.feriadosBtnTexto}>Ver inconsistências</Text>
       </Pressable>
 
-      {/* Atalho para exportar o ciclo (revisão antes do fechamento). */}
+      {/* Atalho para revisar e fechar/reabrir o ciclo. */}
       <Pressable
         onPress={() => navigation.navigate('ExportarCiclo')}
         style={styles.feriadosBtn}
       >
-        <Ionicons name="download-outline" size={16} color={cores.primaria} />
-        <Text style={styles.feriadosBtnTexto}>Exportar ciclo</Text>
+        <Ionicons name="checkmark-done-outline" size={16} color={cores.primaria} />
+        <Text style={styles.feriadosBtnTexto}>Revisar / fechar ciclo</Text>
       </Pressable>
 
       {/* Atalho para gerenciar feriados (contam como domingo/100%). */}
