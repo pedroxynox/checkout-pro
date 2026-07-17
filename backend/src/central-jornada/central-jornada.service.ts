@@ -202,57 +202,10 @@ export interface CentralExportacao {
   };
   pessoas: CentralPessoaResumo[];
   linhas: LinhaExportacaoCiclo[];
-  /** Relatório em CSV (separador ";") pronto para compartilhar/planilha. */
-  csv: string;
 }
 
 function primeiroNome(nome: string): string {
   return nome.trim().split(/\s+/)[0] ?? nome;
-}
-
-const DIAS_SEMANA_BR = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-
-/** Duração em "H:MM" (ex.: 27000000 → "7:30"). */
-function msParaHm(ms: number): string {
-  const totalMin = Math.round(ms / 60_000);
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  return `${h}:${String(m).padStart(2, '0')}`;
-}
-
-/** Data ISO → "dd/mm/aaaa" (usa a data de parede, sem fuso). */
-function dataBr(iso: string): string {
-  const d = new Date(iso);
-  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(
-    d.getUTCMonth() + 1,
-  ).padStart(2, '0')}/${d.getUTCFullYear()}`;
-}
-
-function rotuloFuncaoExport(f: FuncaoColaborador): string {
-  if (f === 'FISCAL') return 'Fiscal';
-  if (f === 'SUPERVISOR') return 'Supervisor';
-  if (f === 'OPERADOR') return 'Operador';
-  return 'Gestor';
-}
-
-function rotuloTipoLinha(tipo: CentralDiaDetalhe['tipo']): string {
-  switch (tipo) {
-    case 'FALTA':
-      return 'Falta';
-    case 'FALTA_DEBITO':
-      return 'Falta (débito)';
-    case 'ATESTADO':
-      return 'Atestado';
-    case 'INCOMPLETO':
-      return 'Incompleta';
-    default:
-      return 'Trabalho';
-  }
-}
-
-/** Escapa um campo para CSV (separador ";"): aspas quando há ; " ou quebra. */
-function csvCampo(valor: string): string {
-  return /[;"\n]/.test(valor) ? `"${valor.replace(/"/g, '""')}"` : valor;
 }
 
 /** Ficha de escala vazia (sem turno) — usada quando a ficha não é encontrada. */
@@ -793,53 +746,12 @@ export class CentralJornadaService {
     };
   }
 
-  /** Monta o CSV (separador ";") a partir das linhas do relatório. */
-  private montarCsv(linhas: LinhaExportacaoCiclo[]): string {
-    const cabecalho = [
-      'Colaborador',
-      'Função',
-      'Data',
-      'Dia',
-      'Tipo',
-      'Trabalhado',
-      'Base',
-      'Extras 50%',
-      'Extras 100%',
-      'Devidas',
-      'Atestado',
-      'TAC',
-      'Motivos TAC',
-      'Problemas',
-    ];
-    const corpo = linhas.map((l) =>
-      [
-        l.nome,
-        rotuloFuncaoExport(l.funcao),
-        dataBr(l.data),
-        DIAS_SEMANA_BR[l.diaSemana] ?? '',
-        rotuloTipoLinha(l.tipo),
-        msParaHm(l.trabalhadoMs),
-        msParaHm(l.baseMs),
-        msParaHm(l.extras50Ms),
-        msParaHm(l.extras100Ms),
-        msParaHm(l.devidasMs),
-        l.atestado ? 'Sim' : '',
-        l.tac ? 'Sim' : '',
-        l.motivosTac.join(' | '),
-        l.problemas.join(' | '),
-      ]
-        .map(csvCampo)
-        .join(';'),
-    );
-    return [cabecalho.join(';'), ...corpo].join('\n');
-  }
-
   /**
    * Exportação do ciclo (26→25) para revisão antes do fechamento: uma linha por
    * dia relevante de cada colaborador (trabalho, incompleta, falta, atestado),
    * com trabalhado/base, extras 50/100, horas devidas, atestado, TAC e as
-   * inconsistências do dia — mais os totais do time e um CSV pronto para
-   * planilha/compartilhamento.
+   * inconsistências do dia — mais os totais do time. Serve de base para a
+   * revisão do ciclo antes do fechamento.
    */
   async exportarCiclo(deslocamento = 0): Promise<CentralExportacao> {
     const dados = await this.carregarCiclo(deslocamento);
@@ -951,7 +863,6 @@ export class CentralJornadaService {
       totais: { ...totais, inconsistencias },
       pessoas,
       linhas,
-      csv: this.montarCsv(linhas),
     };
   }
 

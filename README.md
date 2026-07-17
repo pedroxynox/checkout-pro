@@ -24,9 +24,9 @@ Aplicação web e Android para gestão da frente de caixa de supermercado. O pro
 
 - **Acessos e pessoas:** login por matrícula, JWT com revogação por `tokenVersion`, permissões por funcionalidade, Cadastro Unificado de Colaboradores e perfis de gerente desenvolvedor, gerente, supervisor, fiscal e importador.
 - **Operação diária:** importação de vendas e arrecadação por `.txt`, fechamento inteligente, metas, indicadores, painel de vendas e tratamento de lançamentos não reconhecidos.
-- **Registro de Ponto:** batidas manuais ou por comprovante fotografado, OCR no servidor/web e ML Kit no Android, confirmação antes da gravação, jornada calculada e alertas de risco/TAC.
-- **Central de Jornada:** ciclo de apuração **26→25** e consolidação de operadores, supervisores e fiscais; o backend compara até 12 ciclos e o app exibe atualmente seis, com carga trabalhada/base diária, extras 50%/100%, horas devidas, atestados, faltas, TAC e saldo.
-- **Escala e calendário:** contrato `SEIS_X_UM_DOIS_X_UM`; feriados nacionais automáticos e estaduais/municipais manuais; feriado segue a regra de domingo.
+- **Registro de Ponto:** batidas manuais ou por comprovante lido no aparelho (ML Kit no Android; web registra manual — o OCR no servidor está desativado), confirmação antes da gravação, memória de nomes protegida, fila offline com reenvio sem duplicar, jornada calculada (regras de 1–4 batidas) e alertas de risco/TAC que se recalculam ao corrigir.
+- **Central de Jornada:** ciclo de apuração **26→25** e consolidação de operadores, supervisores e fiscais, com carga/base, extras 50%/100%, horas devidas, atestados, faltas, TAC, conflitos e atrasos; painel de inconsistências, revisão do ciclo e fechamento/reabertura controlada (reabrir exige administrador).
+- **Escala e calendário:** contrato `SEIS_X_UM_DOIS_X_UM` (regras de jornada numa estrutura extensível por contrato); feriados nacionais automáticos e estaduais/municipais manuais; feriado segue a regra de domingo.
 - **RRHH:** faltas e justificativas, incidências/sanções, solicitações de advertência, contratos de experiência, feedforward e perfil inteligente do colaborador.
 - **Estoque e rotinas:** insumos, requisições, pedidos recorrentes, Sacolas APAE, checklist com imagem/hash e notificações.
 - **Cluby:** assistente com Google Gemini e conversa persistida; procedimentos/normativas em escala continuam desativados até a implantação de RAG.

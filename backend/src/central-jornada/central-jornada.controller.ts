@@ -48,7 +48,7 @@ export class CentralJornadaController {
     return this.service.inconsistenciasCiclo(deslocamentoDe(ciclo));
   }
 
-  /** Exportação do ciclo (revisão antes do fechamento) + CSV. */
+  /** Dados do ciclo para revisão antes do fechamento. */
   @Get('exportacao')
   exportacao(@Query('ciclo') ciclo?: string): Promise<CentralExportacao> {
     return this.service.exportarCiclo(deslocamentoDe(ciclo));

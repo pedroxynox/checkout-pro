@@ -159,8 +159,6 @@ export interface CentralExportacao {
   };
   pessoas: CentralPessoaResumo[];
   linhas: LinhaExportacaoCiclo[];
-  /** Relatório em CSV (separador ";") pronto para compartilhar/planilha. */
-  csv: string;
 }
 
 export const centralJornadaService = {

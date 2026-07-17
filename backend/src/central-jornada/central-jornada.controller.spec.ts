@@ -13,8 +13,6 @@ describe('CentralJornadaController — permissão do débito de horas', () => {
     expect(decidirAutorizacao('FISCAL', 'CENTRAL_JORNADA')).toBe(false);
     expect(decidirAutorizacao('SUPERVISOR', 'CENTRAL_JORNADA')).toBe(true);
     expect(decidirAutorizacao('GERENTE', 'CENTRAL_JORNADA')).toBe(true);
-    expect(decidirAutorizacao('ADMINISTRADOR', 'CENTRAL_JORNADA')).toBe(
-      true,
-    );
+    expect(decidirAutorizacao('ADMINISTRADOR', 'CENTRAL_JORNADA')).toBe(true);
   });
 });

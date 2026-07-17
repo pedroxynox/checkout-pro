@@ -4,7 +4,6 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
-import { Share } from 'react-native';
 import { ExportarCicloScreen } from './ExportarCicloScreen';
 
 jest.mock('../../api/services', () => ({
@@ -61,7 +60,6 @@ const EXPORT = {
       problemas: ['TAC'],
     },
   ],
-  csv: 'Colaborador;Função;Data\nAna Souza;Operador;29/06/2026',
 };
 
 const STATUS_ABERTO = {
@@ -89,22 +87,6 @@ describe('ExportarCicloScreen', () => {
     expect(await screen.findByText('Revisão do ciclo')).toBeTruthy();
     expect(screen.getByText('Ana Souza')).toBeTruthy();
     expect(screen.getByText(/Prévia \(1 linha\)/)).toBeTruthy();
-  });
-
-  it('compartilha o CSV ao tocar em Compartilhar', async () => {
-    const spy = jest.spyOn(Share, 'share').mockResolvedValue({
-      action: 'sharedAction',
-    } as never);
-
-    render(<ExportarCicloScreen />);
-    await screen.findByText('Revisão do ciclo');
-
-    fireEvent.press(screen.getByText('Compartilhar CSV'));
-
-    expect(spy).toHaveBeenCalledWith(
-      expect.objectContaining({ message: EXPORT.csv }),
-      expect.objectContaining({ subject: 'Ponto 26/06 – 25/07' }),
-    );
   });
 
   it('fecha o ciclo ao tocar em Fechar ciclo (com confirmação)', async () => {

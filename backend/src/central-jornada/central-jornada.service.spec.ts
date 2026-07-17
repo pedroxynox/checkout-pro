@@ -650,7 +650,7 @@ describe('CentralJornadaService.exportarCiclo', () => {
     );
   }
 
-  it('gera linhas por dia relevante, totais e um CSV com cabeçalho', async () => {
+  it('gera linhas por dia relevante e resumo por pessoa', async () => {
     const batidas = [
       // 29/06: dia completo de 7h (trabalho).
       batida('c1', '2026-06-29', '07:00'),
@@ -668,10 +668,9 @@ describe('CentralJornadaService.exportarCiclo', () => {
     expect(linha?.tipo).toBe('TRABALHO');
     expect(linha?.trabalhadoMs).toBe(7 * 3_600_000);
     expect(exp.linhas.every((l) => l.tipo !== 'SEM_REGISTRO')).toBe(true);
-    // Resumo por pessoa e CSV pronto.
+    // Resumo por pessoa.
     expect(exp.pessoas).toHaveLength(1);
-    expect(exp.csv.split('\n')[0]).toContain('Colaborador;Função;Data');
-    expect(exp.csv).toContain('Ana Souza');
+    expect(exp.pessoas[0].nome).toBe('Ana Souza');
   });
 
   it('inclui atestado e conta as inconsistências do ciclo', async () => {
