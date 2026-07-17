@@ -30,10 +30,12 @@ import {
 } from './colaborador-vinculo';
 import {
   calcularJornadaDia,
+  RegrasContrato,
   StatusJornadaPonto,
   statusFiscalDeJornada,
 } from '../ponto/ponto.domain';
 import { FUNCOES_PONTO_NAO_FISCAL } from '../ponto/pessoas-ponto';
+import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { FeriadosService } from '../feriados/feriados.service';
 import {
   agoraNaBrasilia,
@@ -120,7 +122,22 @@ export class FiscaisService {
     @Optional() private readonly feriados?: FeriadosService,
     // Fechamento do ciclo: bloqueia marcar falta num ciclo já fechado.
     @Optional() private readonly cicloFolha?: CicloFolhaService,
+    // Regras por tipo de contrato (data-driven). Opcional: sem ele, o cálculo
+    // usa o contrato padrão (6x1), preservando o comportamento vigente.
+    @Optional() private readonly tiposContrato?: TiposContratoService,
   ) {}
+
+  /**
+   * Regras de jornada do colaborador (contrato atribuído) para o cálculo.
+   * `undefined` quando não há serviço — o `calcularJornadaDia` cai no padrão.
+   */
+  private async regrasDe(
+    colaboradorId?: string | null,
+  ): Promise<RegrasContrato | undefined> {
+    return this.tiposContrato
+      ? this.tiposContrato.regrasDoColaborador(colaboradorId ?? null)
+      : undefined;
+  }
 
   /**
    * Conjunto dos dias (00:00 UTC) que são feriado no período `[inicio, fim)`.
@@ -403,26 +420,61 @@ export class FiscaisService {
       batidasPorFiscal.get(fiscalId)?.[0]?.hora.getTime() ??
       porFiscal.get(fiscalId)?.[0]?.em.getTime() ??
       Number.MAX_SAFE_INTEGER;
-    const dosFiscais: ItemJornada[] = fiscais
-      // Prefere as batidas canônicas; mantém o log legado como fallback para
-      // fiscais que ainda não passaram pelo Relógio Ponto.
-      .filter(
-        (f) =>
-          (batidasPorFiscal.get(f.id) ?? []).length > 0 ||
-          (porFiscal.get(f.id) ?? []).length > 0,
-      )
-      .sort((a, b) => primeiraMarcacao(a.id) - primeiraMarcacao(b.id))
-      .map((f) => {
-        const col = mapaCol.get(f.id);
-        const batidas = batidasPorFiscal.get(f.id);
-        if (batidas && batidas.length > 0) {
-          const j = calcularJornadaDia(
-            batidas,
-            limitePonto,
-            dia.getUTCDay(),
-            ehFeriado,
-            diaEncerrado,
-          );
+    const dosFiscais: ItemJornada[] = await Promise.all(
+      fiscais
+        // Prefere as batidas canônicas; mantém o log legado como fallback para
+        // fiscais que ainda não passaram pelo Relógio Ponto.
+        .filter(
+          (f) =>
+            (batidasPorFiscal.get(f.id) ?? []).length > 0 ||
+            (porFiscal.get(f.id) ?? []).length > 0,
+        )
+        .sort((a, b) => primeiraMarcacao(a.id) - primeiraMarcacao(b.id))
+        .map(async (f) => {
+          const col = mapaCol.get(f.id);
+          const regras = await this.regrasDe(col?.colaboradorId ?? null);
+          const batidas = batidasPorFiscal.get(f.id);
+          if (batidas && batidas.length > 0) {
+            const j = calcularJornadaDia(
+              batidas,
+              limitePonto,
+              dia.getUTCDay(),
+              ehFeriado,
+              diaEncerrado,
+              regras,
+            );
+            return {
+              fiscalId: f.id,
+              pessoaId: f.id,
+              tipoPessoa: 'FISCAL' as const,
+              funcao: 'FISCAL',
+              colaboradorId: col?.colaboradorId ?? null,
+              primeiroNome: primeiroNome(col?.nome ?? f.nome),
+              status: statusFiscalDeJornada(j.status),
+              jornadaStatus: j.status,
+              faltando: j.faltando,
+              tempoTrabalhandoMs: j.trabalhadoMs,
+              tempoIntervaloMs: j.intervaloMs,
+              cargaHorariaMs: j.trabalhadoMs,
+            };
+          }
+
+          const regs = porFiscal.get(f.id)!;
+          const ultimoStatus = statusAtual(regs) ?? 'FORA_EXPEDIENTE';
+          const jornadaStatus: StatusJornadaPonto =
+            diaEncerrado && ultimoStatus !== 'FORA_EXPEDIENTE'
+              ? 'INCOMPLETO'
+              : ultimoStatus === 'DISPONIVEL'
+                ? 'TRABALHANDO'
+                : ultimoStatus === 'INTERVALO'
+                  ? 'EM_INTERVALO'
+                  : 'ENCERRADO';
+          const faltando =
+            jornadaStatus !== 'INCOMPLETO'
+              ? []
+              : ultimoStatus === 'INTERVALO'
+                ? ['retorno do intervalo', 'encerramento']
+                : ['encerramento'];
           return {
             fiscalId: f.id,
             pessoaId: f.id,
@@ -430,45 +482,14 @@ export class FiscaisService {
             funcao: 'FISCAL',
             colaboradorId: col?.colaboradorId ?? null,
             primeiroNome: primeiroNome(col?.nome ?? f.nome),
-            status: statusFiscalDeJornada(j.status),
-            jornadaStatus: j.status,
-            faltando: j.faltando,
-            tempoTrabalhandoMs: j.trabalhadoMs,
-            tempoIntervaloMs: j.intervaloMs,
-            cargaHorariaMs: j.trabalhadoMs,
+            status:
+              jornadaStatus === 'INCOMPLETO' ? 'FORA_EXPEDIENTE' : ultimoStatus,
+            jornadaStatus,
+            faltando,
+            ...calcularJornada(regs, limiteFiscal, diaEncerrado),
           };
-        }
-
-        const regs = porFiscal.get(f.id)!;
-        const ultimoStatus = statusAtual(regs) ?? 'FORA_EXPEDIENTE';
-        const jornadaStatus: StatusJornadaPonto =
-          diaEncerrado && ultimoStatus !== 'FORA_EXPEDIENTE'
-            ? 'INCOMPLETO'
-            : ultimoStatus === 'DISPONIVEL'
-              ? 'TRABALHANDO'
-              : ultimoStatus === 'INTERVALO'
-                ? 'EM_INTERVALO'
-                : 'ENCERRADO';
-        const faltando =
-          jornadaStatus !== 'INCOMPLETO'
-            ? []
-            : ultimoStatus === 'INTERVALO'
-              ? ['retorno do intervalo', 'encerramento']
-              : ['encerramento'];
-        return {
-          fiscalId: f.id,
-          pessoaId: f.id,
-          tipoPessoa: 'FISCAL' as const,
-          funcao: 'FISCAL',
-          colaboradorId: col?.colaboradorId ?? null,
-          primeiroNome: primeiroNome(col?.nome ?? f.nome),
-          status:
-            jornadaStatus === 'INCOMPLETO' ? 'FORA_EXPEDIENTE' : ultimoStatus,
-          jornadaStatus,
-          faltando,
-          ...calcularJornada(regs, limiteFiscal, diaEncerrado),
-        };
-      });
+        }),
+    );
     // Fiscais acima, operadores abaixo — cada grupo já ordenado pela 1ª batida.
     return [...dosFiscais, ...operadores];
   }
@@ -505,7 +526,7 @@ export class FiscaisService {
     }
 
     const diaSemana = dia.getUTCDay();
-    return (
+    return Promise.all(
       colaboradores
         .filter((c) => porPessoa.has(c.id))
         // Ordena pela 1ª batida do dia (quem abriu primeiro aparece primeiro).
@@ -514,13 +535,15 @@ export class FiscaisService {
             porPessoa.get(a.id)![0].hora.getTime() -
             porPessoa.get(b.id)![0].hora.getTime(),
         )
-        .map((c) => {
+        .map(async (c) => {
+          const regras = await this.regrasDe(c.id);
           const j = calcularJornadaDia(
             porPessoa.get(c.id)!,
             limite,
             diaSemana,
             ehFeriado,
             diaEncerrado,
+            regras,
           );
           return {
             fiscalId: c.id,
@@ -536,7 +559,7 @@ export class FiscaisService {
             tempoIntervaloMs: j.intervaloMs,
             cargaHorariaMs: j.trabalhadoMs,
           };
-        })
+        }),
     );
   }
 
@@ -601,25 +624,27 @@ export class FiscaisService {
     // como domingo (base 7h20, extras 100%).
     const feriadoSet = await this.feriadosNoPeriodo(inicioMes, fimMes);
 
-    const [fiscais, registros, batidasFiscais, operadores] = await Promise.all([
-      this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
-      this.prisma.registroPontoFiscal.findMany({
-        where: { data: { gte: inicioMes, lt: fimMes } },
-        orderBy: { em: 'asc' },
-      }),
-      this.prisma.batidaPonto.findMany({
-        where: { tipoPessoa: 'FISCAL', data: { gte: inicioMes, lt: fimMes } },
-        orderBy: { hora: 'asc' },
-        select: { id: true, pessoaId: true, hora: true, data: true },
-      }),
-      this.horasExtrasOperadoresMes(
-        inicioMes,
-        fimMes,
-        agoraPonto,
-        agoraReal,
-        feriadoSet,
-      ),
-    ]);
+    const [fiscais, registros, batidasFiscais, mapaCol, operadores] =
+      await Promise.all([
+        this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
+        this.prisma.registroPontoFiscal.findMany({
+          where: { data: { gte: inicioMes, lt: fimMes } },
+          orderBy: { em: 'asc' },
+        }),
+        this.prisma.batidaPonto.findMany({
+          where: { tipoPessoa: 'FISCAL', data: { gte: inicioMes, lt: fimMes } },
+          orderBy: { hora: 'asc' },
+          select: { id: true, pessoaId: true, hora: true, data: true },
+        }),
+        this.mapaColaboradores(),
+        this.horasExtrasOperadoresMes(
+          inicioMes,
+          fimMes,
+          agoraPonto,
+          agoraReal,
+          feriadoSet,
+        ),
+      ]);
 
     // Log legado por fiscal/dia (fallback) e batidas canônicas por fiscal/dia.
     const registrosPorFiscalDia = new Map<
@@ -651,39 +676,45 @@ export class FiscaisService {
       mapaFiscal.get(diaKey)!.push({ id: b.id, hora: b.hora });
     }
 
-    const dosFiscais: ItemHorasExtras[] = fiscais.map((f) => {
-      const regDias = registrosPorFiscalDia.get(f.id);
-      const batDias = batidasPorFiscalDia.get(f.id);
-      // União dos dias com log OU com batidas (batidas-first, log de fallback).
-      const dias = new Set<string>([
-        ...(regDias?.keys() ?? []),
-        ...(batDias?.keys() ?? []),
-      ]);
-      let horasExtras50Ms = 0;
-      let horasExtras100Ms = 0;
-      for (const diaKey of dias) {
-        const diaDate = new Date(diaKey);
-        const e = this.extrasDoDia(
-          batDias?.get(diaKey),
-          regDias?.get(diaKey),
-          diaDate,
-          feriadoSet.has(diaDate.getTime()),
-          agoraPonto,
-          agoraReal,
+    const dosFiscais: ItemHorasExtras[] = await Promise.all(
+      fiscais.map(async (f) => {
+        const regras = await this.regrasDe(
+          mapaCol.get(f.id)?.colaboradorId ?? null,
         );
-        horasExtras50Ms += e.horasExtras50Ms;
-        horasExtras100Ms += e.horasExtras100Ms;
-      }
-      return {
-        fiscalId: f.id,
-        pessoaId: f.id,
-        tipoPessoa: 'FISCAL' as const,
-        primeiroNome: primeiroNome(f.nome),
-        horasExtras50Ms,
-        horasExtras100Ms,
-        horasExtrasMs: horasExtras50Ms + horasExtras100Ms,
-      };
-    });
+        const regDias = registrosPorFiscalDia.get(f.id);
+        const batDias = batidasPorFiscalDia.get(f.id);
+        // União dos dias com log OU com batidas (batidas-first, log de fallback).
+        const dias = new Set<string>([
+          ...(regDias?.keys() ?? []),
+          ...(batDias?.keys() ?? []),
+        ]);
+        let horasExtras50Ms = 0;
+        let horasExtras100Ms = 0;
+        for (const diaKey of dias) {
+          const diaDate = new Date(diaKey);
+          const e = this.extrasDoDia(
+            batDias?.get(diaKey),
+            regDias?.get(diaKey),
+            diaDate,
+            feriadoSet.has(diaDate.getTime()),
+            agoraPonto,
+            agoraReal,
+            regras,
+          );
+          horasExtras50Ms += e.horasExtras50Ms;
+          horasExtras100Ms += e.horasExtras100Ms;
+        }
+        return {
+          fiscalId: f.id,
+          pessoaId: f.id,
+          tipoPessoa: 'FISCAL' as const,
+          primeiroNome: primeiroNome(f.nome),
+          horasExtras50Ms,
+          horasExtras100Ms,
+          horasExtrasMs: horasExtras50Ms + horasExtras100Ms,
+        };
+      }),
+    );
 
     return [...dosFiscais, ...operadores];
   }
@@ -704,6 +735,7 @@ export class FiscaisService {
     ehFeriado: boolean,
     agoraPonto: Date,
     agoraReal: Date,
+    regras?: RegrasContrato,
   ): {
     trabalhadoMs: number;
     horasExtras50Ms: number;
@@ -719,6 +751,7 @@ export class FiscaisService {
         diaSemana,
         ehFeriado,
         diaEncerrado,
+        regras,
       );
       return {
         trabalhadoMs: j.trabalhadoMs,
@@ -782,36 +815,40 @@ export class FiscaisService {
       mapaPessoa.get(diaKey)!.push({ id: b.id, hora: b.hora });
     }
 
-    return colaboradores
-      .filter((c) => porPessoaDia.has(c.id))
-      .map((c) => {
-        let horasExtras50Ms = 0;
-        let horasExtras100Ms = 0;
-        const mapaPessoa = porPessoaDia.get(c.id)!;
-        for (const [diaKey, regs] of mapaPessoa.entries()) {
-          const diaDate = new Date(diaKey);
-          // Operadores só têm batidas (sem log legado) — mesma fonte canônica.
-          const e = this.extrasDoDia(
-            regs,
-            undefined,
-            diaDate,
-            feriadoSet.has(diaDate.getTime()),
-            agoraPonto,
-            agoraReal,
-          );
-          horasExtras50Ms += e.horasExtras50Ms;
-          horasExtras100Ms += e.horasExtras100Ms;
-        }
-        return {
-          fiscalId: c.id,
-          pessoaId: c.id,
-          tipoPessoa: 'OPERADOR' as const,
-          primeiroNome: primeiroNome(c.nome),
-          horasExtras50Ms,
-          horasExtras100Ms,
-          horasExtrasMs: horasExtras50Ms + horasExtras100Ms,
-        };
-      });
+    return Promise.all(
+      colaboradores
+        .filter((c) => porPessoaDia.has(c.id))
+        .map(async (c) => {
+          const regras = await this.regrasDe(c.id);
+          let horasExtras50Ms = 0;
+          let horasExtras100Ms = 0;
+          const mapaPessoa = porPessoaDia.get(c.id)!;
+          for (const [diaKey, regs] of mapaPessoa.entries()) {
+            const diaDate = new Date(diaKey);
+            // Operadores só têm batidas (sem log legado) — mesma fonte canônica.
+            const e = this.extrasDoDia(
+              regs,
+              undefined,
+              diaDate,
+              feriadoSet.has(diaDate.getTime()),
+              agoraPonto,
+              agoraReal,
+              regras,
+            );
+            horasExtras50Ms += e.horasExtras50Ms;
+            horasExtras100Ms += e.horasExtras100Ms;
+          }
+          return {
+            fiscalId: c.id,
+            pessoaId: c.id,
+            tipoPessoa: 'OPERADOR' as const,
+            primeiroNome: primeiroNome(c.nome),
+            horasExtras50Ms,
+            horasExtras100Ms,
+            horasExtrasMs: horasExtras50Ms + horasExtras100Ms,
+          };
+        }),
+    );
   }
 
   /** Histórico semanal do próprio fiscal (últimos 7 dias trabalhados). */
