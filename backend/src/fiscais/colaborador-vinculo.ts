@@ -41,8 +41,8 @@ export interface ColaboradorDoFiscal {
 }
 
 /** Normaliza uma matrícula para comparação (sem espaços, maiúsculas). */
-function normalizarMatricula(valor: string): string {
-  return valor.trim().toUpperCase();
+function normalizarMatricula(valor: string | null | undefined): string {
+  return (valor ?? '').trim().toUpperCase();
 }
 
 /**
