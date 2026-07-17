@@ -105,6 +105,9 @@ export function GestaoColaboradoresScreen({
   const [gerenteDev, setGerenteDev] = useState(false);
 
   const temAcesso = FUNCOES_COM_ACESSO.includes(funcao);
+  // Gerente/Administrador (GESTOR) não têm escala, tipo de contrato nem gênero:
+  // o formulário pede só o essencial (nome, matrícula, login, cargo e senha).
+  const ehGestor = funcao === 'GESTOR';
 
   const filtrados = useMemo(() => {
     const dados = lista.dados ?? [];
@@ -244,22 +247,28 @@ export function GestaoColaboradoresScreen({
       matricula: matricula.trim(),
       login: login.trim() || undefined,
       funcao,
-      genero,
-      turno: turno ?? undefined,
-      entradaSemana: entSem.trim() || undefined,
-      saidaSemana: saiSem.trim() || undefined,
-      entradaFds: entFds.trim() || undefined,
-      saidaFds: saiFds.trim() || undefined,
-      folgaDiaSemana: folga ?? undefined,
-      // Domingo: envia o grupo (ou null para "não trabalha domingo") e o horário.
-      grupoDomingo: grupoDom,
-      entradaDom: entDom.trim() || undefined,
-      saidaDom: saiDom.trim() || undefined,
-      dataAdmissao: admissaoISO,
-      tipoContrato,
       // Acesso ao app (apenas funções com acesso).
       senha: temAcesso && senha.trim() ? senha.trim() : undefined,
       gerenteDesenvolvedor: funcao === 'GESTOR' ? gerenteDev : undefined,
+      // Gerente/Administrador não têm escala, contrato nem gênero — só o
+      // essencial acima. As demais funções enviam a escala/contrato normalmente.
+      ...(ehGestor
+        ? {}
+        : {
+            genero,
+            turno: turno ?? undefined,
+            entradaSemana: entSem.trim() || undefined,
+            saidaSemana: saiSem.trim() || undefined,
+            entradaFds: entFds.trim() || undefined,
+            saidaFds: saiFds.trim() || undefined,
+            folgaDiaSemana: folga ?? undefined,
+            // Domingo: grupo (ou null = "não trabalha domingo") e o horário.
+            grupoDomingo: grupoDom,
+            entradaDom: entDom.trim() || undefined,
+            saidaDom: saiDom.trim() || undefined,
+            dataAdmissao: admissaoISO,
+            tipoContrato,
+          }),
     };
 
     setSalvando(true);
@@ -364,21 +373,22 @@ export function GestaoColaboradoresScreen({
             ))}
           </View>
 
-          <Text style={styles.rotulo}>Tipo de contrato</Text>
-          <View style={styles.chips}>
-            {CONTRATOS.map((c) => (
-              <Text
-                key={c.v}
-                onPress={() => setTipoContrato(c.v)}
-                style={[
-                  styles.chip,
-                  tipoContrato === c.v && styles.chipAtivo,
-                ]}
-              >
-                {c.r}
-              </Text>
-            ))}
-          </View>
+          {!ehGestor && (
+            <>
+              <Text style={styles.rotulo}>Tipo de contrato</Text>
+              <View style={styles.chips}>
+                {CONTRATOS.map((c) => (
+                  <Text
+                    key={c.v}
+                    onPress={() => setTipoContrato(c.v)}
+                    style={[styles.chip, tipoContrato === c.v && styles.chipAtivo]}
+                  >
+                    {c.r}
+                  </Text>
+                ))}
+              </View>
+            </>
+          )}
 
           <Text style={styles.rotulo}>Conta de acesso (login do app)</Text>
           {temAcesso ? (
@@ -419,89 +429,93 @@ export function GestaoColaboradoresScreen({
             </Text>
           )}
 
-          <Text style={styles.rotulo}>Gênero (avatar)</Text>
-          <View style={styles.chips}>
-            {(['F', 'M'] as const).map((g) => (
-              <Text
-                key={g}
-                onPress={() => setGenero(g)}
-                style={[styles.chip, genero === g && styles.chipAtivo]}
-              >
-                {g === 'F' ? 'Mulher' : 'Homem'}
+          {!ehGestor && (
+            <>
+              <Text style={styles.rotulo}>Gênero (avatar)</Text>
+              <View style={styles.chips}>
+                {(['F', 'M'] as const).map((g) => (
+                  <Text
+                    key={g}
+                    onPress={() => setGenero(g)}
+                    style={[styles.chip, genero === g && styles.chipAtivo]}
+                  >
+                    {g === 'F' ? 'Mulher' : 'Homem'}
+                  </Text>
+                ))}
+              </View>
+
+              <Text style={styles.rotulo}>Turno</Text>
+              <View style={styles.chips}>
+                {TURNOS.map((t) => (
+                  <Text
+                    key={t.v}
+                    onPress={() => setTurno(turno === t.v ? null : t.v)}
+                    style={[styles.chip, turno === t.v && styles.chipAtivo]}
+                  >
+                    {t.r}
+                  </Text>
+                ))}
+              </View>
+
+              <View style={styles.linha}>
+                <CampoTexto rotulo="Entrada Seg–Qui" value={entSem} onChangeText={setEntSem} placeholder="08:00" containerStyle={styles.metade} />
+                <CampoTexto rotulo="Saída Seg–Qui" value={saiSem} onChangeText={setSaiSem} placeholder="17:00" containerStyle={styles.metade} />
+              </View>
+              <View style={styles.linha}>
+                <CampoTexto rotulo="Entrada Sex–Sáb" value={entFds} onChangeText={setEntFds} placeholder="09:00" containerStyle={styles.metade} />
+                <CampoTexto rotulo="Saída Sex–Sáb" value={saiFds} onChangeText={setSaiFds} placeholder="18:00" containerStyle={styles.metade} />
+              </View>
+
+              <Text style={styles.rotulo}>Dia de folga</Text>
+              <View style={styles.chips}>
+                {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                  <Text
+                    key={d}
+                    onPress={() => setFolga(folga === d ? null : d)}
+                    style={[styles.chip, folga === d && styles.chipAtivo]}
+                  >
+                    {NOMES_DIA[d]}
+                  </Text>
+                ))}
+              </View>
+
+              {/* Domingo: rodízio por grupos (G1/G2/G3). A cada domingo um grupo
+                  folga e os outros dois trabalham. Sem grupo = não trabalha domingo. */}
+              <Text style={styles.rotulo}>Grupo de domingo (rodízio)</Text>
+              <View style={styles.chips}>
+                {['G1', 'G2', 'G3'].map((g) => (
+                  <Text
+                    key={g}
+                    onPress={() => setGrupoDom(grupoDom === g ? null : g)}
+                    style={[styles.chip, grupoDom === g && styles.chipAtivo]}
+                  >
+                    {g}
+                  </Text>
+                ))}
+              </View>
+              <Text style={styles.ajudaLogin}>
+                Cada domingo folga um grupo e trabalham os outros dois (cada grupo
+                trabalha 2 domingos e folga 1). Sem grupo = não trabalha aos domingos.
               </Text>
-            ))}
-          </View>
+              <View style={styles.linha}>
+                <CampoTexto rotulo="Entrada Domingo" value={entDom} onChangeText={setEntDom} placeholder="08:00" containerStyle={styles.metade} />
+                <CampoTexto rotulo="Saída Domingo" value={saiDom} onChangeText={setSaiDom} placeholder="15:20" containerStyle={styles.metade} />
+              </View>
 
-          <Text style={styles.rotulo}>Turno</Text>
-          <View style={styles.chips}>
-            {TURNOS.map((t) => (
-              <Text
-                key={t.v}
-                onPress={() => setTurno(turno === t.v ? null : t.v)}
-                style={[styles.chip, turno === t.v && styles.chipAtivo]}
-              >
-                {t.r}
+              <CampoTexto
+                rotulo="Data de admissão (contrato)"
+                value={admissao}
+                onChangeText={(t) => setAdmissao(mascaraDataBR(t))}
+                placeholder="dd/mm/aaaa (ex.: 01/05/2026)"
+                keyboardType="number-pad"
+                autoCapitalize="none"
+              />
+              <Text style={styles.ajudaLogin}>
+                Base do tempo de casa e do contrato de experiência (45/90 dias).
+                Pode ser uma data passada. Deixe vazio se ainda não souber.
               </Text>
-            ))}
-          </View>
-
-          <View style={styles.linha}>
-            <CampoTexto rotulo="Entrada Seg–Qui" value={entSem} onChangeText={setEntSem} placeholder="08:00" containerStyle={styles.metade} />
-            <CampoTexto rotulo="Saída Seg–Qui" value={saiSem} onChangeText={setSaiSem} placeholder="17:00" containerStyle={styles.metade} />
-          </View>
-          <View style={styles.linha}>
-            <CampoTexto rotulo="Entrada Sex–Sáb" value={entFds} onChangeText={setEntFds} placeholder="09:00" containerStyle={styles.metade} />
-            <CampoTexto rotulo="Saída Sex–Sáb" value={saiFds} onChangeText={setSaiFds} placeholder="18:00" containerStyle={styles.metade} />
-          </View>
-
-          <Text style={styles.rotulo}>Dia de folga</Text>
-          <View style={styles.chips}>
-            {[1, 2, 3, 4, 5, 6, 0].map((d) => (
-              <Text
-                key={d}
-                onPress={() => setFolga(folga === d ? null : d)}
-                style={[styles.chip, folga === d && styles.chipAtivo]}
-              >
-                {NOMES_DIA[d]}
-              </Text>
-            ))}
-          </View>
-
-          {/* Domingo: rodízio por grupos (G1/G2/G3). A cada domingo um grupo
-              folga e os outros dois trabalham. Sem grupo = não trabalha domingo. */}
-          <Text style={styles.rotulo}>Grupo de domingo (rodízio)</Text>
-          <View style={styles.chips}>
-            {['G1', 'G2', 'G3'].map((g) => (
-              <Text
-                key={g}
-                onPress={() => setGrupoDom(grupoDom === g ? null : g)}
-                style={[styles.chip, grupoDom === g && styles.chipAtivo]}
-              >
-                {g}
-              </Text>
-            ))}
-          </View>
-          <Text style={styles.ajudaLogin}>
-            Cada domingo folga um grupo e trabalham os outros dois (cada grupo
-            trabalha 2 domingos e folga 1). Sem grupo = não trabalha aos domingos.
-          </Text>
-          <View style={styles.linha}>
-            <CampoTexto rotulo="Entrada Domingo" value={entDom} onChangeText={setEntDom} placeholder="08:00" containerStyle={styles.metade} />
-            <CampoTexto rotulo="Saída Domingo" value={saiDom} onChangeText={setSaiDom} placeholder="15:20" containerStyle={styles.metade} />
-          </View>
-
-          <CampoTexto
-            rotulo="Data de admissão (contrato)"
-            value={admissao}
-            onChangeText={(t) => setAdmissao(mascaraDataBR(t))}
-            placeholder="dd/mm/aaaa (ex.: 01/05/2026)"
-            keyboardType="number-pad"
-            autoCapitalize="none"
-          />
-          <Text style={styles.ajudaLogin}>
-            Base do tempo de casa e do contrato de experiência (45/90 dias).
-            Pode ser uma data passada. Deixe vazio se ainda não souber.
-          </Text>
+            </>
+          )}
 
           <Botao titulo="Salvar" aoPressionar={salvar} carregando={salvando} />
           <Botao
