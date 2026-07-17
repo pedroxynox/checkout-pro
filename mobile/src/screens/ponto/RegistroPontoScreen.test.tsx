@@ -130,6 +130,26 @@ describe('RegistroPontoScreen', () => {
     expect(await screen.findByText('Jornada do dia')).toBeTruthy();
   });
 
+  it('descreve o estado da jornada e explica o cálculo sob demanda', async () => {
+    pontoService.jornadaDoDia.mockResolvedValue(JORNADA_QUATRO);
+
+    render(<RegistroPontoScreen />);
+    fireEvent.changeText(screen.getByPlaceholderText('Digite o nome…'), 'Ana');
+    fireEvent.press(await screen.findByText('Ana Souza'));
+
+    // Estado diferenciado com uma frase que o explica (tarefa 47).
+    expect(
+      await screen.findByText('Jornada do dia concluída (finalizada).'),
+    ).toBeTruthy();
+
+    // A explicação do cálculo aparece só ao tocar em "Como é calculado?" (46).
+    expect(screen.queryByText(/Trabalhado: soma dos períodos/)).toBeNull();
+    fireEvent.press(screen.getByText('Como é calculado?'));
+    expect(
+      await screen.findByText(/Trabalhado: soma dos períodos/),
+    ).toBeTruthy();
+  });
+
   it('registra uma batida manual', async () => {
     render(<RegistroPontoScreen />);
     fireEvent.changeText(

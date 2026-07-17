@@ -67,6 +67,22 @@ function seloStatus(s: StatusJornadaPonto): { texto: string; cor: string; fundo:
   }
 }
 
+/** Frase curta que explica cada estado da jornada (evita confundi-los). */
+function descricaoStatus(s: StatusJornadaPonto): string {
+  switch (s) {
+    case 'TRABALHANDO':
+      return 'Em expediente agora — a jornada está em andamento.';
+    case 'EM_INTERVALO':
+      return 'Em intervalo agora — o intervalo não conta como trabalho.';
+    case 'ENCERRADO':
+      return 'Jornada do dia concluída (finalizada).';
+    case 'INCOMPLETO':
+      return 'Faltou registrar uma batida — o dia não pôde ser fechado.';
+    default:
+      return 'Nenhuma batida registrada neste dia.';
+  }
+}
+
 /** Hora "HH:mm" a partir do ISO gravado (a hora do comprovante, sem fuso). */
 function horaLabel(iso: string): string {
   return iso.slice(11, 16);
@@ -355,6 +371,19 @@ export function RegistroPontoScreen(): React.ReactElement {
       setErroForm('Informe a hora no formato HH:mm (ex.: 07:56).');
       return;
     }
+    // Aviso de consequência (tarefa 52): corrigir a hora num dia com horas
+    // extras/TAC recalcula esses valores — confirma antes de aplicar.
+    if (editandoId) {
+      const jornada = dados?.jornada;
+      if (jornada && (jornada.horasExtrasMs > 0 || jornada.tac)) {
+        const ok = await confirmar(
+          'Confirmar correção',
+          'Este dia tem horas extras/TAC. Corrigir a hora vai recalcular esses valores. Deseja continuar?',
+          'Corrigir',
+        );
+        if (!ok) return;
+      }
+    }
     setSalvando(true);
     setErroForm(null);
     // Chave de idempotência da batida, fixada ANTES da tentativa online e
@@ -439,9 +468,23 @@ export function RegistroPontoScreen(): React.ReactElement {
     }
   }
 
-  async function removerBatida(id: string): Promise<void> {
+  async function removerBatida(b: BatidaPontoView): Promise<void> {
+    if (!pessoa) return;
+    // Consequência (tarefa 52): se o dia tem horas extras ou TAC, a exclusão vai
+    // recalcular esses valores — avisa antes, junto da confirmação (tarefa 29).
+    const jornada = dados?.jornada;
+    const consequencia =
+      jornada && (jornada.horasExtrasMs > 0 || jornada.tac)
+        ? ' Atenção: isso vai recalcular as horas extras/TAC do dia.'
+        : '';
+    const ok = await confirmar(
+      'Excluir batida',
+      `Excluir a batida das ${horaLabel(b.hora)} (${ROTULO_TIPO[b.tipo]}) de ${pessoa.nome} em ${formatarData(data)}?${consequencia}`,
+      'Excluir',
+    );
+    if (!ok) return;
     try {
-      const resp = await pontoService.removerBatida(id);
+      const resp = await pontoService.removerBatida(b.id);
       setDados(resp);
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Não foi possível remover a batida.');
@@ -700,7 +743,7 @@ export function RegistroPontoScreen(): React.ReactElement {
                       <Pressable onPress={() => abrirEdicao(b)} hitSlop={8} style={styles.acao}>
                         <Ionicons name="create-outline" size={18} color={cores.primaria} />
                       </Pressable>
-                      <Pressable onPress={() => void removerBatida(b.id)} hitSlop={8} style={styles.acao}>
+                      <Pressable onPress={() => void removerBatida(b)} hitSlop={8} style={styles.acao}>
                         <Ionicons name="trash-outline" size={18} color={cores.vermelho} />
                       </Pressable>
                     </>
@@ -772,6 +815,7 @@ export function RegistroPontoScreen(): React.ReactElement {
 function PainelJornada({ dados }: { dados: JornadaDiaPonto }): React.ReactElement {
   const j = dados.jornada;
   const status = seloStatus(j.status);
+  const [verComoCalcula, setVerComoCalcula] = useState(false);
   const extras =
     j.horasExtrasMs > 0
       ? `${formatarDuracao(j.horasExtrasMs)} (${j.horasExtras100Ms > 0 ? '100%' : '50%'})`
@@ -783,6 +827,9 @@ function PainelJornada({ dados }: { dados: JornadaDiaPonto }): React.ReactElemen
         <Text style={styles.secaoTitulo}>Jornada do dia</Text>
         <Selo texto={status.texto} cor={status.cor} fundo={status.fundo} />
       </View>
+
+      {/* Descrição do estado atual, para não confundir os cinco status. */}
+      <Text style={styles.statusDescricao}>{descricaoStatus(j.status)}</Text>
 
       <View style={styles.metricas}>
         <View style={styles.metrica}>
@@ -802,6 +849,47 @@ function PainelJornada({ dados }: { dados: JornadaDiaPonto }): React.ReactElemen
       <Text style={styles.baseTexto}>
         Carga base do dia: {formatarDuracao(j.baseMs)}
       </Text>
+
+      {/* Explicação do cálculo (tarefa 46): de onde saem os números. */}
+      <Pressable
+        onPress={() => setVerComoCalcula((v) => !v)}
+        style={styles.comoCalculaBtn}
+        accessibilityRole="button"
+      >
+        <Ionicons
+          name={verComoCalcula ? 'chevron-up' : 'help-circle-outline'}
+          size={16}
+          color={cores.primaria}
+        />
+        <Text style={styles.comoCalculaTexto}>
+          {verComoCalcula ? 'Ocultar como é calculado' : 'Como é calculado?'}
+        </Text>
+      </Pressable>
+      {verComoCalcula ? (
+        <View style={styles.comoCalculaBox}>
+          <Text style={styles.comoCalculaLinha}>
+            • Trabalhado: soma dos períodos entre a entrada e a saída, sem contar
+            o intervalo.
+          </Text>
+          <Text style={styles.comoCalculaLinha}>
+            • Horas extras: o que passou da carga base do dia (
+            {formatarDuracao(j.baseMs)}) —{' '}
+            {j.horasExtras100Ms > 0
+              ? '100% (domingo/feriado)'
+              : '50% (dia útil)'}
+            .
+          </Text>
+          <Text style={styles.comoCalculaLinha}>
+            • Intervalo: tempo entre a saída e o retorno; não conta como
+            trabalho.
+          </Text>
+          <Text style={styles.comoCalculaLinha}>
+            {j.tac
+              ? `• TAC neste dia: ${j.motivosTac.join('; ')}.`
+              : '• TAC: acima de 1h50 de extras, ou intervalo abaixo de 1h / acima de 3h.'}
+          </Text>
+        </View>
+      ) : null}
 
       {j.alertaIminente ? (
         <View style={[styles.faixa, { backgroundColor: cores.amareloFundo }]}>
@@ -1018,6 +1106,31 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginTop: espacamento.sm,
+  },
+  statusDescricao: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: espacamento.xs,
+    marginBottom: espacamento.sm,
+  },
+  comoCalculaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+    marginTop: espacamento.sm,
+  },
+  comoCalculaTexto: {
+    ...tipografia.rotulo,
+    color: cores.primaria,
+    fontWeight: '600',
+  },
+  comoCalculaBox: {
+    marginTop: espacamento.xs,
+    gap: espacamento.xs,
+  },
+  comoCalculaLinha: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
   },
   faixa: {
     flexDirection: 'row',

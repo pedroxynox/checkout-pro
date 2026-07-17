@@ -206,8 +206,8 @@ export function CentralJornadaScreen(): React.ReactElement {
           {pessoas.length === 0 ? (
             <EstadoVazio
               icone="people-outline"
-              titulo="Sem movimento"
-              descricao="Ninguém bateu ponto nem teve falta neste ciclo."
+              titulo="Nenhum colaborador"
+              descricao="Não há colaboradores para exibir neste ciclo. Cadastre colaboradores para acompanhar a jornada."
             />
           ) : (
             pessoas.map((p) => (
@@ -379,7 +379,9 @@ function PessoaCartao({
           {detalheCarregando ? (
             <Carregando />
           ) : diasComMovimento.length === 0 ? (
-            <Text style={styles.detalheVazio}>Sem dias com movimento no ciclo.</Text>
+            <Text style={styles.detalheVazio}>
+              {pessoa.primeiroNome} não tem batidas nem faltas neste ciclo.
+            </Text>
           ) : (
             diasComMovimento.map((d) => (
               <View key={d.data} style={styles.diaLinha}>
