@@ -16,6 +16,7 @@ import {
   diaEncerradoEmBrasilia,
   fimDoDiaBrasiliaEmUtc,
 } from '../common/datas';
+import { FiscaisService } from './fiscais.service';
 
 /**
  * Serviço de alertas inteligentes para fiscais.
@@ -42,6 +43,9 @@ export class FiscaisAlertasService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificacoes: NotificacoesService,
+    // Fonte única do status real (mesma inteligência da Escala/Jornada). Usado
+    // para não alertar "intervalo longo" de quem já está fora do expediente.
+    private readonly fiscais: FiscaisService,
     // Feriado conta como domingo: fica de fora do acúmulo de extras "de dia
     // útil". Opcional para não quebrar instanciações sem o serviço.
     @Optional() private readonly feriados?: FeriadosService,
@@ -84,12 +88,24 @@ export class FiscaisAlertasService {
 
     const LIMITE_INTERVALO_MS = 135 * 60 * 1000; // 2h15min
 
+    // Status REAL (mesma inteligência da Escala/Jornada): reflete o fim do
+    // expediente mesmo sem batida de encerramento. Assim não alertamos
+    // "intervalo longo / lembre-se de voltar" de quem já encerrou o turno — a
+    // falta de retorno vira uma incidência à parte.
+    const statusReal = new Map(
+      (await this.fiscais.painel()).map((p) => [p.fiscalId, p.status]),
+    );
+
     for (const [fiscalId, regs] of porFiscal.entries()) {
       if (this.alertasIntervaloEnviados.has(fiscalId)) continue;
 
       // Verificar se o último status é INTERVALO.
       const ultimo = regs[regs.length - 1];
       if (!ultimo || ultimo.status !== 'INTERVALO') continue;
+
+      // Coerência com a Escala/Jornada: se a pessoa já está fora do expediente
+      // (turno encerrado), não faz sentido pedir para "voltar do intervalo".
+      if (statusReal.get(fiscalId) !== 'INTERVALO') continue;
 
       // Calcular quanto tempo está em intervalo.
       const tempoIntervalo = agora.getTime() - ultimo.em.getTime();
