@@ -83,6 +83,10 @@ export class CriarTipoContratoDto {
 
   @IsOptional()
   @IsBoolean()
+  intervaloObrigatorio?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   ativo?: boolean;
 }
 
@@ -160,6 +164,10 @@ export class AtualizarTipoContratoDto {
   @Min(0)
   @Max(120)
   intervaloMinimoEntreBatidasMin?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  intervaloObrigatorio?: boolean;
 
   @IsOptional()
   @IsBoolean()

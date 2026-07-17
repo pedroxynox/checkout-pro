@@ -12,7 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
-import { colaboradoresService } from '../../api/services';
+import { colaboradoresService, tiposContratoService } from '../../api/services';
+import type { TipoContratoJornada } from '../../api/services';
 import {
   Colaborador,
   FuncaoColaborador,
@@ -73,6 +74,13 @@ export function GestaoColaboradoresScreen({
   route,
 }: PropsTela<'GestaoColaboradores'>): React.ReactElement {
   const lista = useRequisicao<Colaborador[]>(() => colaboradoresService.listar(), []);
+  // Contratos de jornada ativos (para o seletor). Só o admin tem acesso ao
+  // endpoint; para os demais a chamada falha e cai numa lista vazia (o seletor
+  // simplesmente não aparece).
+  const contratos = useRequisicao<TipoContratoJornada[]>(
+    () => tiposContratoService.listar(false).catch(() => []),
+    [],
+  );
 
   const [busca, setBusca] = useState('');
   const [formAberto, setFormAberto] = useState(false);
@@ -87,6 +95,10 @@ export function GestaoColaboradoresScreen({
   const [funcao, setFuncao] = useState<FuncaoColaborador>('OPERADOR');
   const [tipoContrato, setTipoContrato] = useState<TipoContrato>(
     'SEIS_X_UM_DOIS_X_UM',
+  );
+  // Contrato de jornada data-driven atribuído (null = usa o padrão).
+  const [contratoJornadaId, setContratoJornadaId] = useState<string | null>(
+    null,
   );
   const [genero, setGenero] = useState<'M' | 'F'>('F');
   const [turno, setTurno] = useState<TurnoColaborador | null>(null);
@@ -140,6 +152,7 @@ export function GestaoColaboradoresScreen({
     setSenha('');
     setGerenteDev(false);
     setTipoContrato('SEIS_X_UM_DOIS_X_UM');
+    setContratoJornadaId(null);
   };
 
   const abrirNovo = () => {
@@ -180,6 +193,7 @@ export function GestaoColaboradoresScreen({
     setSaiDom(c.saidaDom ?? '');
     setAdmissao(c.dataAdmissao ? isoParaDataBR(c.dataAdmissao) : '');
     setTipoContrato(c.tipoContrato ?? 'SEIS_X_UM_DOIS_X_UM');
+    setContratoJornadaId(c.tipoContratoJornadaId ?? null);
     setEditAtivo(c.ativo);
     setSenha('');
     setGerenteDev(false);
@@ -268,6 +282,8 @@ export function GestaoColaboradoresScreen({
             saidaDom: saiDom.trim() || undefined,
             dataAdmissao: admissaoISO,
             tipoContrato,
+            // Contrato de jornada data-driven (null = usa o padrão 6x1).
+            tipoContratoJornadaId: contratoJornadaId,
           }),
     };
 
@@ -387,6 +403,38 @@ export function GestaoColaboradoresScreen({
                   </Text>
                 ))}
               </View>
+
+              {/* Contrato de jornada (catálogo data-driven). "Padrão" usa as
+                  regras do contrato vigente; os demais aplicam suas próprias
+                  regras (carga, intervalo, TAC). Só aparece para o admin. */}
+              {(contratos.dados?.length ?? 0) > 0 && (
+                <>
+                  <Text style={styles.rotulo}>Contrato de jornada</Text>
+                  <View style={styles.chips}>
+                    <Text
+                      onPress={() => setContratoJornadaId(null)}
+                      style={[
+                        styles.chip,
+                        contratoJornadaId === null && styles.chipAtivo,
+                      ]}
+                    >
+                      Padrão
+                    </Text>
+                    {(contratos.dados ?? []).map((ct) => (
+                      <Text
+                        key={ct.id}
+                        onPress={() => setContratoJornadaId(ct.id)}
+                        style={[
+                          styles.chip,
+                          contratoJornadaId === ct.id && styles.chipAtivo,
+                        ]}
+                      >
+                        {ct.nome}
+                      </Text>
+                    ))}
+                  </View>
+                </>
+              )}
             </>
           )}
 

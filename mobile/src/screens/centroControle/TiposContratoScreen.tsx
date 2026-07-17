@@ -39,6 +39,7 @@ interface FormState {
   risco30: string;
   risco40: string;
   intBatidas: string;
+  intervaloObrigatorio: boolean;
 }
 
 /** Formulário em branco (valores iniciais sensatos, o usuário ajusta a carga). */
@@ -55,6 +56,7 @@ function formVazio(): FormState {
     risco30: '90',
     risco40: '100',
     intBatidas: '2',
+    intervaloObrigatorio: false,
   };
 }
 
@@ -72,6 +74,7 @@ function formDe(c: TipoContratoJornada): FormState {
     risco30: String(c.riscoTac1h30Min),
     risco40: String(c.riscoTac1h40Min),
     intBatidas: String(c.intervaloMinimoEntreBatidasMin),
+    intervaloObrigatorio: c.intervaloObrigatorio,
   };
 }
 
@@ -166,6 +169,7 @@ export function TiposContratoScreen(): React.ReactElement {
       riscoTac1h30Min: risco30,
       riscoTac1h40Min: risco40,
       intervaloMinimoEntreBatidasMin: inteiro(form.intBatidas),
+      intervaloObrigatorio: form.intervaloObrigatorio,
     };
     setSalvando(true);
     try {
@@ -336,6 +340,28 @@ export function TiposContratoScreen(): React.ReactElement {
           </View>
         </View>
 
+        <Text style={styles.secao}>Intervalo</Text>
+        <View style={styles.chips}>
+          <Text
+            onPress={() =>
+              set('intervaloObrigatorio', !form.intervaloObrigatorio)
+            }
+            style={[
+              styles.chip,
+              form.intervaloObrigatorio && styles.chipAtivo,
+            ]}
+          >
+            {form.intervaloObrigatorio
+              ? 'Intervalo obrigatório ✓'
+              : 'Intervalo opcional'}
+          </Text>
+        </View>
+        <Text style={styles.ajuda}>
+          Se obrigatório, encerrar a jornada sem intervalo é TAC (ex.: contrato
+          de 6h). Se opcional, é permitido trabalhar corrido (ex.: contrato de
+          4h).
+        </Text>
+
         <Botao
           titulo={editandoId ? 'Salvar alterações' : 'Criar contrato'}
           aoPressionar={salvar}
@@ -396,6 +422,7 @@ export function TiposContratoScreen(): React.ReactElement {
                 : 'nenhum'}{' '}
               · Intervalo {hhmm(c.intervaloMinimoMin)}–{hhmm(c.intervaloMaximoMin)} ·
               TAC a {hhmm(c.limiteExtrasMin)}
+              {c.intervaloObrigatorio ? ' · intervalo obrigatório' : ''}
             </Text>
 
             <View style={styles.acoes}>
@@ -432,6 +459,12 @@ const styles = StyleSheet.create({
     ...tipografia.corpo,
     color: cores.textoSecundario,
     marginBottom: espacamento.md,
+  },
+  ajuda: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    fontStyle: 'italic',
+    marginTop: espacamento.xs,
   },
   secao: {
     ...tipografia.rotulo,

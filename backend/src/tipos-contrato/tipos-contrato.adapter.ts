@@ -35,5 +35,6 @@ export function regrasContratoDeModelo(
     riscoTac1h40Ms: modelo.riscoTac1h40Min * MIN_MS,
     intervaloMinimoEntreBatidasMs:
       modelo.intervaloMinimoEntreBatidasMin * MIN_MS,
+    intervaloObrigatorio: modelo.intervaloObrigatorio,
   };
 }

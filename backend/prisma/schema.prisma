@@ -1074,7 +1074,12 @@ model TipoContratoJornada {
   limiteExtrasMin                Int
   riscoTac1h30Min                Int
   riscoTac1h40Min                Int
-  intervaloMinimoEntreBatidasMin Int @default(2)
+  intervaloMinimoEntreBatidasMin Int     @default(2)
+  // Quando true, encerrar a jornada sem intervalo é TAC (intervalo obrigatório).
+  intervaloObrigatorio           Boolean @default(false)
+
+  // Colaboradores que usam este contrato (para bloquear a remoção quando em uso).
+  colaboradores Colaborador[]
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @default(now()) @updatedAt
@@ -1103,6 +1108,12 @@ model Colaborador {
   // Tipo de contrato (regras de jornada). Default "6x1 - 2x1" (único hoje), que
   // ativa o comportamento do Relógio Ponto / Central de Jornada.
   tipoContrato TipoContrato @default(SEIS_X_UM_DOIS_X_UM)
+
+  // Tipo de contrato de jornada data-driven (catálogo editável). Quando nulo, o
+  // cálculo usa o contrato "padrão" (vigente). Aditivo: fichas antigas ficam
+  // nulas até o gestor atribuir um contrato.
+  tipoContratoJornadaId String?
+  tipoContratoJornada   TipoContratoJornada? @relation(fields: [tipoContratoJornadaId], references: [id])
 
   // Data do desligamento (quando `ativo` passou a false). Base da JANELA DE
   // RETENÇÃO: a purga mensal de inativos só apaga a ficha e o histórico de RRHH

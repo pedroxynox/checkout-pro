@@ -20,6 +20,7 @@ import { PontoOcrService } from './ponto-ocr.service';
 import { FUNCOES_PONTO_NAO_FISCAL } from './pessoas-ponto';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { FeriadosService } from '../feriados/feriados.service';
+import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { ehDiaDeFolga } from '../escala-domingo/escala-domingo.domain';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
@@ -175,6 +176,9 @@ export class PontoService {
     // Fechamento do ciclo de folha. Opcional: sem ele, não há bloqueio por
     // ciclo fechado (testes unitários de persistência não precisam dele).
     @Optional() private readonly cicloFolha?: CicloFolhaService,
+    // Regras por tipo de contrato (data-driven). Opcional: sem ele, o cálculo
+    // usa o contrato padrão (6x1), preservando o comportamento vigente.
+    @Optional() private readonly tiposContrato?: TiposContratoService,
   ) {}
 
   /** Bloqueia a modificação quando o ciclo de folha da data está fechado. */
@@ -1105,12 +1109,20 @@ export class PontoService {
       ? await this.feriados.ehFeriado(dia)
       : false;
     const agora = agoraNaBrasilia();
+    // Regras do contrato do colaborador (o colaboradorId vem das batidas do
+    // dia). Sem o serviço, `regras` fica indefinido e o cálculo usa o padrão.
+    const colaboradorId =
+      batidas.find((b) => b.colaboradorId)?.colaboradorId ?? null;
+    const regras = this.tiposContrato
+      ? await this.tiposContrato.regrasDoColaborador(colaboradorId)
+      : undefined;
     const j = calcularJornadaDia(
       batidas.map((b) => ({ id: b.id, hora: b.hora })),
       agora,
       dia.getUTCDay(),
       ehFeriado,
       diaEncerradoEmBrasilia(dia, agora),
+      regras,
     );
     return {
       pessoaId,

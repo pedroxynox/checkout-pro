@@ -72,9 +72,13 @@ function montar() {
         return Promise.resolve(removido);
       }),
     },
+    colaborador: {
+      // Sobrescrito nos testes que precisam simular "em uso".
+      count: jest.fn(() => Promise.resolve(0)),
+    },
   };
   const service = new TiposContratoService(prisma as unknown as PrismaService);
-  return { service, store };
+  return { service, store, prisma };
 }
 
 describe('TiposContratoService', () => {
@@ -130,6 +134,17 @@ describe('TiposContratoService', () => {
     const { service, store } = montar();
     store.push({ id: 'p', nome: '6x1', ativo: true, padrao: true });
     await expect(service.remover('p')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('não remove um contrato EM USO por colaboradores', async () => {
+    const { service, store, prisma } = montar();
+    store.push({ id: 'c', nome: '5x2', ativo: true, padrao: false });
+    (
+      prisma.colaborador.count as jest.Mock
+    ).mockResolvedValueOnce(3);
+    await expect(service.remover('c')).rejects.toBeInstanceOf(
       BadRequestException,
     );
   });
