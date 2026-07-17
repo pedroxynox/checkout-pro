@@ -47,6 +47,53 @@ export const MAX_TRABALHO_SEM_INTERVALO_MS = 4 * 60 * 60_000 + 50 * 60_000; // 4
 export const INTERVALO_MINIMO_ENTRE_BATIDAS_MS = 2 * 60_000; // 2 min
 
 /**
+ * Regras de jornada que dependem do TIPO DE CONTRATO. Reúne, numa única
+ * estrutura, os parâmetros que antes ficavam soltos como constantes — para que
+ * um novo contrato seja adicionado sem duplicar o cálculo: basta fornecer outro
+ * `RegrasContrato` e o `calcularJornadaDia` passa a valer para ele. O contrato
+ * vigente (6x1–2x1) é o `REGRAS_PADRAO`; nenhum valor muda aqui.
+ */
+export interface RegrasContrato {
+  /** Carga horária base do dia (ms), por dia da semana (0=domingo). */
+  cargaBaseMs(diaSemana: number): number;
+  /** true quando o dia tem adicional de 100% (domingo, no 6x1). O feriado é
+   *  tratado como domingo à parte, no próprio cálculo. */
+  temAdicional100(diaSemana: number): boolean;
+  /** Duas batidas até este limite encerram a jornada sem intervalo (ms). */
+  maxTrabalhoSemIntervaloMs: number;
+  /** Intervalo abaixo deste mínimo → TAC (ms). */
+  intervaloMinimoMs: number;
+  /** Intervalo acima deste máximo → TAC (ms). */
+  intervaloMaximoMs: number;
+  /** Horas extras acima deste limite → TAC (ms). */
+  limiteExtrasMs: number;
+  /** Extras a partir dos quais há risco preventivo de 1h30 e 1h40 (ms). */
+  riscoTac1h30Ms: number;
+  riscoTac1h40Ms: number;
+  /** Distância mínima entre batidas para não serem tratadas como duplicadas. */
+  intervaloMinimoEntreBatidasMs: number;
+}
+
+/**
+ * Regras do contrato 6x1–2x1 (o único hoje). Centraliza os parâmetros que já
+ * existiam como constantes acima, sem alterar nenhum valor.
+ */
+export const REGRAS_SEIS_X_UM_DOIS_X_UM: RegrasContrato = {
+  cargaBaseMs: (diaSemana) => jornadaEsperadaMs(diaSemana),
+  temAdicional100: (diaSemana) => diaSemana === 0,
+  maxTrabalhoSemIntervaloMs: MAX_TRABALHO_SEM_INTERVALO_MS,
+  intervaloMinimoMs: INTERVALO_MINIMO_MS,
+  intervaloMaximoMs: INTERVALO_MAXIMO_MS,
+  limiteExtrasMs: LIMITE_EXTRAS_MS,
+  riscoTac1h30Ms: RISCO_TAC_1H30_MS,
+  riscoTac1h40Ms: RISCO_TAC_1H40_MS,
+  intervaloMinimoEntreBatidasMs: INTERVALO_MINIMO_ENTRE_BATIDAS_MS,
+};
+
+/** Regras usadas por padrão (contrato vigente 6x1–2x1). */
+export const REGRAS_PADRAO: RegrasContrato = REGRAS_SEIS_X_UM_DOIS_X_UM;
+
+/**
  * true se `horaMs` está a menos de `intervaloMinimoMs` de alguma das horas já
  * registradas (horas iguais ou próximas demais). Puro e sem efeitos colaterais.
  */
@@ -114,6 +161,7 @@ export function tipoPorOrdem(indice: number): TipoBatida {
  */
 export function classificarBatidas(
   batidas: readonly BatidaEntrada[],
+  maxSemIntervaloMs: number = REGRAS_PADRAO.maxTrabalhoSemIntervaloMs,
 ): BatidaClassificada[] {
   const ordenadas = [...batidas].sort(
     (a, b) => a.hora.getTime() - b.hora.getTime(),
@@ -121,7 +169,7 @@ export function classificarBatidas(
   const jornadaSemIntervalo =
     ordenadas.length === 2 &&
     ordenadas[1].hora.getTime() - ordenadas[0].hora.getTime() <=
-      MAX_TRABALHO_SEM_INTERVALO_MS;
+      maxSemIntervaloMs;
 
   return ordenadas.map((b, i) => ({
     id: b.id,
@@ -210,14 +258,16 @@ export function calcularJornadaDia(
   diaSemana: number,
   ehFeriado = false,
   diaEncerrado = false,
+  regras: RegrasContrato = REGRAS_PADRAO,
 ): JornadaPonto {
-  const classificadas = classificarBatidas(batidas);
+  const classificadas = classificarBatidas(
+    batidas,
+    regras.maxTrabalhoSemIntervaloMs,
+  );
   // Feriado segue a MESMA regra do domingo: carga-base de domingo e extras a
   // 100% (o rodízio por grupos, esse sim, é exclusivo do domingo).
-  const contaComo100 = diaSemana === 0 || ehFeriado;
-  const baseMs = ehFeriado
-    ? jornadaEsperadaMs(0)
-    : jornadaEsperadaMs(diaSemana);
+  const contaComo100 = regras.temAdicional100(diaSemana) || ehFeriado;
+  const baseMs = regras.cargaBaseMs(ehFeriado ? 0 : diaSemana);
 
   if (classificadas.length === 0) {
     return {
@@ -299,18 +349,18 @@ export function calcularJornadaDia(
   const horasExtras100Ms = contaComo100 ? horasExtrasMs : 0;
 
   const emAndamento = status === 'TRABALHANDO' || status === 'EM_INTERVALO';
-  const alertaIminente = emAndamento && horasExtrasMs >= ALERTA_EXTRAS_MS;
+  const alertaIminente = emAndamento && horasExtrasMs >= regras.riscoTac1h30Ms;
 
   const motivosTac: string[] = [];
-  if (horasExtrasMs > LIMITE_EXTRAS_MS) {
+  if (horasExtrasMs > regras.limiteExtrasMs) {
     motivosTac.push('Excedeu 1h50 de horas extras');
   }
   // Intervalo abaixo de 1h só é conclusivo quando o intervalo terminou.
-  if (retorno && intervaloMs < INTERVALO_MINIMO_MS) {
+  if (retorno && intervaloMs < regras.intervaloMinimoMs) {
     motivosTac.push('Intervalo abaixo de 1h');
   }
   // Intervalo acima de 3h vale mesmo se ainda estiver em intervalo.
-  if (saida && intervaloMs > INTERVALO_MAXIMO_MS) {
+  if (saida && intervaloMs > regras.intervaloMaximoMs) {
     motivosTac.push('Intervalo acima de 3h');
   }
 
