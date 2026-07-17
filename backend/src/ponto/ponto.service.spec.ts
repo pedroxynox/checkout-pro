@@ -420,6 +420,56 @@ describe('PontoService — validações de pessoa, data e hora', () => {
     );
   });
 
+  it('grava o clienteId (idempotência) ao registrar uma batida nova', async () => {
+    const { prisma, service } = montar();
+    prisma.batidaPonto.findUnique.mockResolvedValue(null);
+
+    await service.registrarBatida(
+      {
+        clienteId: 'cli-abc',
+        pessoaId: 'colaborador-1',
+        tipoPessoa: 'OPERADOR',
+        data: '2026-07-10',
+        hora: '2026-07-10T08:00:00.000Z',
+      },
+      usuario,
+    );
+
+    expect(prisma.batidaPonto.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ clienteId: 'cli-abc' }),
+      }),
+    );
+  });
+
+  it('reenvio com o mesmo clienteId não duplica: devolve a jornada existente', async () => {
+    const { prisma, service } = montar();
+    // Já existe uma batida com este clienteId (reenvio da fila offline).
+    prisma.batidaPonto.findUnique.mockResolvedValue({
+      pessoaId: 'colaborador-1',
+      tipoPessoa: 'OPERADOR',
+      data: new Date('2026-07-10T00:00:00.000Z'),
+    });
+
+    await service.registrarBatida(
+      {
+        clienteId: 'cli-repetido',
+        pessoaId: 'colaborador-1',
+        tipoPessoa: 'OPERADOR',
+        data: '2026-07-10',
+        hora: '2026-07-10T08:00:00.000Z',
+      },
+      usuario,
+    );
+
+    // Não cria uma segunda batida: o reenvio é idempotente.
+    expect(prisma.batidaPonto.create).not.toHaveBeenCalled();
+    expect(prisma.batidaPonto.findUnique).toHaveBeenCalledWith({
+      where: { clienteId: 'cli-repetido' },
+      select: { pessoaId: true, tipoPessoa: true, data: true },
+    });
+  });
+
   it('rejeita a quinta batida antes de gravar', async () => {
     const { prisma, service } = montar();
     prisma.batidaPonto.findMany.mockResolvedValue([

@@ -25,17 +25,23 @@ function relogioIncremental(inicio = 1000): () => number {
 function executoresFake(): ExecutoresSincronizacao & {
   fardos: unknown[];
   status: unknown[];
+  batidas: unknown[];
 } {
   const fardos: unknown[] = [];
   const status: unknown[] = [];
+  const batidas: unknown[] = [];
   return {
     fardos,
     status,
+    batidas,
     retirarFardo: jest.fn(async (p) => {
       fardos.push(p);
     }),
     alterarStatusFiscal: jest.fn(async (p) => {
       status.push(p);
+    }),
+    registrarBatida: jest.fn(async (p) => {
+      batidas.push(p);
     }),
   };
 }
@@ -151,5 +157,111 @@ describe('useOffline — operação offline e sincronização', () => {
       throw new Error('sem conexão');
     });
     expect(offline).toEqual([{ funcionarioId: 'Ana', efetiva: 'FOLGA' }]);
+  });
+});
+
+
+describe('sincronização de batidas de ponto (offline)', () => {
+  function erroComStatus(status: number): Error {
+    return Object.assign(new Error(`erro ${status}`), { status });
+  }
+
+  it('envia a batida ao sincronizar, preservando a hora e o clienteId (idempotência)', async () => {
+    const store = new OfflineStore(
+      new PersistenciaMemoria(),
+      relogioIncremental(),
+    );
+    const executores = executoresFake();
+
+    await store.enfileirar(
+      'REGISTRO_BATIDA',
+      {
+        clienteId: 'cli-1',
+        pessoaId: 'p1',
+        tipoPessoa: 'FISCAL',
+        data: '2026-07-10',
+        hora: '2026-07-10T08:00:00.000Z',
+        origem: 'LEITOR',
+      },
+      'p1',
+    );
+
+    const r = await sincronizar(store, executores, { online: true });
+
+    expect(r.sincronizadas).toBe(1);
+    expect(executores.batidas).toEqual([
+      expect.objectContaining({
+        pessoaId: 'p1',
+        // A hora do comprovante é preservada (não vira a hora de envio).
+        hora: '2026-07-10T08:00:00.000Z',
+        // O clienteId fixado na 1ª tentativa é reenviado (idempotência).
+        clienteId: 'cli-1',
+      }),
+    ]);
+    expect(await store.quantidadePendente()).toBe(0);
+  });
+
+  it('descarta uma batida rejeitada pelo backend (4xx) sem travar a fila', async () => {
+    const store = new OfflineStore(
+      new PersistenciaMemoria(),
+      relogioIncremental(),
+    );
+    const executores = executoresFake();
+    // A batida (mais antiga) é rejeitada com 409 (ex.: dia de folga).
+    (executores.registrarBatida as jest.Mock).mockRejectedValueOnce(
+      erroComStatus(409),
+    );
+
+    await store.enfileirar(
+      'REGISTRO_BATIDA',
+      {
+        clienteId: 'cli-rej',
+        pessoaId: 'p1',
+        data: '2026-07-10',
+        hora: '2026-07-10T08:00:00.000Z',
+      },
+      'p1',
+    );
+    await store.enfileirar(
+      'RETIRADA_FARDO',
+      { codigoBarras: '1', insumoId: 'i1' },
+      'i1',
+    );
+
+    const r = await sincronizar(store, executores, { online: true });
+
+    // A batida rejeitada é removida; a ação seguinte (fardo) é enviada.
+    expect(r.rejeitadas).toBe(1);
+    expect(r.sincronizadas).toBe(1);
+    expect(executores.fardos).toHaveLength(1);
+    expect(await store.quantidadePendente()).toBe(0);
+  });
+
+  it('mantém a batida na fila quando falha por rede (status 0, transitório)', async () => {
+    const store = new OfflineStore(
+      new PersistenciaMemoria(),
+      relogioIncremental(),
+    );
+    const executores = executoresFake();
+    (executores.registrarBatida as jest.Mock).mockRejectedValueOnce(
+      erroComStatus(0),
+    );
+
+    await store.enfileirar(
+      'REGISTRO_BATIDA',
+      {
+        clienteId: 'cli-net',
+        pessoaId: 'p1',
+        data: '2026-07-10',
+        hora: '2026-07-10T08:00:00.000Z',
+      },
+      'p1',
+    );
+
+    const r = await sincronizar(store, executores, { online: true });
+
+    expect(r.rejeitadas).toBe(0);
+    expect(r.sincronizadas).toBe(0);
+    expect(await store.quantidadePendente()).toBe(1);
   });
 });
