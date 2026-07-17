@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
+import { CicloFolhaModule } from '../ciclo-folha/ciclo-folha.module';
 import { OperadoresController } from './operadores.controller';
 import { OperadoresService } from './operadores.service';
 import { OperadorTurnoController } from './operador-turno.controller';
@@ -18,7 +19,12 @@ import { OperadorTurnoService } from './operador-turno.service';
  * crítica). O `PrismaService` é provido globalmente pelo `PrismaModule`.
  */
 @Module({
-  imports: [NotificacoesModule, DataInicialModule, EscalaDomingoModule],
+  imports: [
+    NotificacoesModule,
+    DataInicialModule,
+    EscalaDomingoModule,
+    CicloFolhaModule,
+  ],
   providers: [OperadoresService, OperadorTurnoService],
   controllers: [OperadoresController, OperadorTurnoController],
   exports: [OperadoresService],

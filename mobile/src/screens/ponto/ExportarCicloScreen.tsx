@@ -8,11 +8,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
-import { centralJornadaService } from '../../api/services';
+import { centralJornadaService, cicloFolhaService } from '../../api/services';
 import {
   CentralExportacao,
   LinhaExportacaoCiclo,
 } from '../../api/services/centralJornada';
+import { EstadoCicloFolha } from '../../api/services/cicloFolha';
+import { ApiError } from '../../api/client';
+import { useAuth } from '../../auth/AuthContext';
 import {
   Botao,
   Cartao,
@@ -24,12 +27,13 @@ import {
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { formatarDuracao } from '../../utils/formato';
-import { notificar } from '../../utils/dialogos';
+import { confirmar, notificar } from '../../utils/dialogos';
 import { cores, espacamento, tipografia } from '../../theme';
 
 const AZUL = '#2563EB';
 const VERMELHO = cores.erro ?? '#DC2626';
 const AMARELO = cores.amarelo ?? '#C99700';
+const VERDE = cores.sucesso ?? '#1E9E5A';
 const NOMES_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MAX_PREVIA = 20;
 
@@ -70,9 +74,62 @@ export function ExportarCicloScreen(): React.ReactElement {
     [ciclo],
   );
 
+  const { podeAcessar } = useAuth();
+  const statusReq = useRequisicao<EstadoCicloFolha>(
+    () => cicloFolhaService.status(ciclo),
+    [ciclo],
+  );
+
   const dados = req.dados;
+  const cicloStatus = statusReq.dados;
+  const podeFechar = podeAcessar('CENTRAL_JORNADA');
+  const podeReabrir = podeAcessar('ADMIN_DADOS');
   const previa = dados?.linhas.slice(0, MAX_PREVIA) ?? [];
   const restante = (dados?.linhas.length ?? 0) - previa.length;
+
+  async function fecharCiclo(): Promise<void> {
+    const ok = await confirmar(
+      'Fechar ciclo',
+      `Fechar o ciclo ${cicloStatus?.periodo.rotulo ?? ''}? Depois de fechado, as batidas e faltas do período ficam bloqueadas para edição.`,
+      'Fechar',
+    );
+    if (!ok) return;
+    try {
+      await cicloFolhaService.fechar(ciclo);
+      statusReq.recarregar();
+      notificar(
+        'Ciclo fechado',
+        'O ciclo foi fechado. As alterações ficam bloqueadas até uma reabertura autorizada.',
+      );
+    } catch (e) {
+      notificar(
+        'Erro',
+        e instanceof ApiError ? e.message : 'Não foi possível fechar o ciclo.',
+      );
+    }
+  }
+
+  async function reabrirCiclo(): Promise<void> {
+    const ok = await confirmar(
+      'Reabrir ciclo',
+      `Reabrir o ciclo ${cicloStatus?.periodo.rotulo ?? ''}? Isso libera novamente as edições do período.`,
+      'Reabrir',
+    );
+    if (!ok) return;
+    try {
+      await cicloFolhaService.reabrir(ciclo);
+      statusReq.recarregar();
+      notificar(
+        'Ciclo reaberto',
+        'O ciclo foi reaberto. As edições do período estão liberadas.',
+      );
+    } catch (e) {
+      notificar(
+        'Erro',
+        e instanceof ApiError ? e.message : 'Não foi possível reabrir o ciclo.',
+      );
+    }
+  }
 
   return (
     <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
@@ -134,6 +191,60 @@ export function ExportarCicloScreen(): React.ReactElement {
               />
             </View>
           </Cartao>
+
+          {/* Fechamento do ciclo: bloqueia edições depois de revisado */}
+          {cicloStatus ? (
+            <Cartao>
+              <View style={styles.statusTopo}>
+                <Text style={styles.secaoTitulo}>Fechamento do ciclo</Text>
+                <Selo
+                  texto={cicloStatus.status === 'FECHADO' ? 'Fechado' : 'Aberto'}
+                  cor={cicloStatus.status === 'FECHADO' ? VERMELHO : VERDE}
+                  fundo={cicloStatus.status === 'FECHADO' ? '#FEECEC' : '#E7F6EE'}
+                />
+              </View>
+              {cicloStatus.status === 'FECHADO' ? (
+                <>
+                  <Text style={styles.statusInfo}>
+                    Fechado
+                    {cicloStatus.fechadoPorNome
+                      ? ` por ${cicloStatus.fechadoPorNome}`
+                      : ''}
+                    . As batidas e faltas do período estão bloqueadas para
+                    edição.
+                  </Text>
+                  {podeReabrir ? (
+                    <View style={styles.botaoExportar}>
+                      <Botao
+                        titulo="Reabrir ciclo"
+                        variante="secundario"
+                        aoPressionar={() => void reabrirCiclo()}
+                      />
+                    </View>
+                  ) : (
+                    <Text style={styles.statusInfo}>
+                      A reabertura exige autorização de administrador.
+                    </Text>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Text style={styles.statusInfo}>
+                    O ciclo está aberto. Feche-o após revisar para bloquear
+                    alterações do período.
+                  </Text>
+                  {podeFechar ? (
+                    <View style={styles.botaoExportar}>
+                      <Botao
+                        titulo="Fechar ciclo"
+                        aoPressionar={() => void fecharCiclo()}
+                      />
+                    </View>
+                  ) : null}
+                </>
+              )}
+            </Cartao>
+          ) : null}
 
           {/* Prévia das linhas do relatório */}
           {previa.length === 0 ? (
@@ -212,6 +323,17 @@ const styles = StyleSheet.create({
     gap: espacamento.xs,
   },
   botaoExportar: { marginTop: espacamento.md },
+  statusTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: espacamento.xs,
+  },
+  statusInfo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: espacamento.xs,
+  },
   linha: {
     flexDirection: 'row',
     alignItems: 'center',

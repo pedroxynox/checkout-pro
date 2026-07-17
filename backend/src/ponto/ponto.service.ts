@@ -22,6 +22,7 @@ import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { FeriadosService } from '../feriados/feriados.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { ehDiaDeFolga } from '../escala-domingo/escala-domingo.domain';
+import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 import {
@@ -171,7 +172,17 @@ export class PontoService {
     // Rodízio de domingo (âncora do ciclo G1/G2/G3). Opcional: sem ele, o
     // bloqueio de folga em domingo só vale para quem está fora do rodízio.
     @Optional() private readonly escalaDomingo?: EscalaDomingoService,
+    // Fechamento do ciclo de folha. Opcional: sem ele, não há bloqueio por
+    // ciclo fechado (testes unitários de persistência não precisam dele).
+    @Optional() private readonly cicloFolha?: CicloFolhaService,
   ) {}
+
+  /** Bloqueia a modificação quando o ciclo de folha da data está fechado. */
+  private async exigirCicloAberto(data: Date): Promise<void> {
+    if (this.cicloFolha) {
+      await this.cicloFolha.exigirCicloAberto(data);
+    }
+  }
 
   /** Executa uma mutação de batidas com isolamento forte e retry de conflito. */
   private async transacaoSerializavel<T>(
@@ -408,6 +419,7 @@ export class PontoService {
     const hora = this.dataValida(dto.hora);
     this.validarHoraDoDia(dia, hora);
     await this.validacaoData.exigirDataPermitida(dia);
+    await this.exigirCicloAberto(dia);
 
     const tipoPessoa = dto.tipoPessoa ?? 'FISCAL';
     const colaboradorId = await this.colaboradorAtivoDaPessoa(
@@ -954,6 +966,7 @@ export class PontoService {
   ): Promise<JornadaDiaResposta> {
     const batida = await this.buscarOuFalhar(id);
     await this.validacaoData.exigirDataPermitida(batida.data);
+    await this.exigirCicloAberto(batida.data);
 
     const data: Prisma.BatidaPontoUpdateInput = { origem: 'EDITADO' };
     if (dto.hora) {
@@ -1019,6 +1032,7 @@ export class PontoService {
   async removerBatida(id: string): Promise<JornadaDiaResposta> {
     const batida = await this.buscarOuFalhar(id);
     await this.validacaoData.exigirDataPermitida(batida.data);
+    await this.exigirCicloAberto(batida.data);
     const transicoes = await this.transacaoSerializavel(async (tx) => {
       await tx.batidaPonto.delete({ where: { id } });
       await this.reclassificarNoCliente(

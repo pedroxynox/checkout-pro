@@ -9,6 +9,7 @@ import {
   RISCO_TAC_1H40_MS,
 } from './ponto.domain';
 import { JornadaDiaResposta, PontoService } from './ponto.service';
+import { CicloFechadoError } from '../ciclo-folha/ciclo-folha.errors';
 import {
   BatidaDuplicadaError,
   DataHoraPontoInvalidaError,
@@ -330,7 +331,7 @@ describe('PontoService — validações de pessoa, data e hora', () => {
     nome: 'Gestor',
   } as UsuarioAutenticado;
 
-  function montar(escalaDomingo?: unknown) {
+  function montar(escalaDomingo?: unknown, cicloFolha?: unknown) {
     const prisma = {
       $transaction: jest.fn(),
       fiscal: {
@@ -388,10 +389,32 @@ describe('PontoService — validações de pessoa, data e hora', () => {
       notificacoes as never,
       undefined,
       escalaDomingo as never,
+      cicloFolha as never,
     );
     jest.spyOn(service, 'jornadaDoDia').mockResolvedValue(resposta(0));
     return { prisma, validacaoData, notificacoes, service };
   }
+
+  it('bloqueia registrar batida quando o ciclo de folha está fechado', async () => {
+    const cicloFolha = {
+      exigirCicloAberto: jest.fn().mockRejectedValue(new CicloFechadoError()),
+    };
+    const { prisma, service } = montar(undefined, cicloFolha);
+
+    await expect(
+      service.registrarBatida(
+        {
+          pessoaId: 'colaborador-1',
+          tipoPessoa: 'OPERADOR',
+          data: '2026-07-10',
+          hora: '2026-07-10T08:00:00.000Z',
+        },
+        usuario,
+      ),
+    ).rejects.toBeInstanceOf(CicloFechadoError);
+    expect(cicloFolha.exigirCicloAberto).toHaveBeenCalled();
+    expect(prisma.batidaPonto.create).not.toHaveBeenCalled();
+  });
 
   it('valida a data inicial e grava a ficha ativa resolvida pelo servidor', async () => {
     const { prisma, validacaoData, service } = montar();

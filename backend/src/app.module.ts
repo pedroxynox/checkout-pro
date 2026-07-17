@@ -39,6 +39,7 @@ import { FeriadosModule } from './feriados/feriados.module';
 import { CentralJornadaModule } from './central-jornada/central-jornada.module';
 import { PermissoesModule } from './permissoes/permissoes.module';
 import { CheckoutsModule } from './checkouts/checkouts.module';
+import { CicloFolhaModule } from './ciclo-folha/ciclo-folha.module';
 
 @Module({
   imports: [
@@ -82,6 +83,7 @@ import { CheckoutsModule } from './checkouts/checkouts.module';
     CentralJornadaModule,
     PermissoesModule,
     CheckoutsModule,
+    CicloFolhaModule,
   ],
   controllers: [AppController],
   providers: [

@@ -3,6 +3,7 @@ import {
   AusenciaDuplicadaError,
   PeriodoAusenciaInvalidoError,
 } from './operadores.errors';
+import { CicloFechadoError } from '../ciclo-folha/ciclo-folha.errors';
 
 /**
  * Testes de exemplo (unitários) do `OperadoresService`. Usam um
@@ -21,7 +22,7 @@ describe('OperadoresService', () => {
     data: Date;
   }
 
-  function criarServico(): OperadoresService {
+  function criarServico(cicloFolha?: unknown): OperadoresService {
     const ausencias: AusenciaFake[] = [];
     let seq = 0;
 
@@ -88,9 +89,25 @@ describe('OperadoresService', () => {
       $transaction: (fn: (tx: any) => any) => fn(prismaFake),
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return new OperadoresService(prismaFake as any);
+    return new OperadoresService(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      prismaFake as any,
+      undefined,
+      undefined,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      cicloFolha as any,
+    );
   }
+
+  it('bloqueia registrar ausência num ciclo de folha fechado', async () => {
+    const cicloFolha = {
+      exigirCicloAberto: jest.fn().mockRejectedValue(new CicloFechadoError()),
+    };
+    const service = criarServico(cicloFolha);
+    await expect(
+      service.registrarAusencia('p1', new Date(Date.UTC(2026, 5, 10))),
+    ).rejects.toBeInstanceOf(CicloFechadoError);
+  });
 
   describe('ausência a prazo (por período)', () => {
     it('cria falta justificada por dia e converte dias que já tinham falta', async () => {
