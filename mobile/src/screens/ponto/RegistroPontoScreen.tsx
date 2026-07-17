@@ -14,6 +14,7 @@ import { fiscaisService, pontoService } from '../../api/services';
 import {
   BatidaPontoView,
   CandidatoPonto,
+  ItemJornadaFiscal,
   JornadaDiaPonto,
   MeuResumoFiscal,
   PessoaPonto,
@@ -51,6 +52,20 @@ const ROTULO_TIPO: Record<TipoBatida, string> = {
   ENCERRAMENTO: 'Encerramento',
   EXTRA: 'Batida extra',
 };
+
+/** Ordem e rótulos curtos das 4 marcações na card "Marcações do dia". */
+const MARCACOES_ORDEM: { tipo: TipoBatida; rotulo: string }[] = [
+  { tipo: 'ENTRADA', rotulo: 'Entrada' },
+  { tipo: 'SAIDA_INTERVALO', rotulo: 'Saída' },
+  { tipo: 'RETORNO_INTERVALO', rotulo: 'Volta' },
+  { tipo: 'ENCERRAMENTO', rotulo: 'Encerramento' },
+];
+
+/** Menor hora (ISO) entre as marcações — para ordenar a lista pela 1ª batida. */
+function primeiraMarcacaoMs(item: ItemJornadaFiscal): number {
+  const horas = (item.marcacoes ?? []).map((m) => Date.parse(m.hora));
+  return horas.length ? Math.min(...horas) : Number.MAX_SAFE_INTEGER;
+}
 
 function seloStatus(s: StatusJornadaPonto): { texto: string; cor: string; fundo: string } {
   switch (s) {
@@ -231,6 +246,24 @@ export function RegistroPontoScreen(): React.ReactElement {
     if (pessoa) void carregarJornada();
     else setDados(null);
   }, [pessoa, data, carregarJornada]);
+
+  // Marcações do dia (card informativa): todos os que bateram ponto HOJE, com
+  // seus horários. Sempre o dia em curso, independente da data selecionada.
+  const [marcacoesDia, setMarcacoesDia] = useState<ItemJornadaFiscal[] | null>(
+    null,
+  );
+  const podeVerMarcacoes = podeAcessar('CENTRAL_JORNADA');
+  const carregarMarcacoesDia = useCallback(async () => {
+    if (!podeVerMarcacoes) return;
+    try {
+      setMarcacoesDia(await fiscaisService.jornada());
+    } catch {
+      /* card complementar; falha não quebra a tela */
+    }
+  }, [podeVerMarcacoes]);
+  useEffect(() => {
+    void carregarMarcacoesDia();
+  }, [carregarMarcacoesDia]);
 
   function selecionarPessoa(p: PessoaPonto): void {
     setPessoa(p);
@@ -513,6 +546,46 @@ export function RegistroPontoScreen(): React.ReactElement {
           </View>
           <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />
         </Pressable>
+      )}
+
+      {/* Marcações do dia (informativo): quem bateu ponto HOJE, por ordem de
+          batida, com os horários do dia. Somente leitura, dia em curso. */}
+      {podeVerMarcacoes && (
+        <Cartao>
+          <Text style={styles.secaoTitulo}>Marcações do dia</Text>
+          {(() => {
+            const lista = [...(marcacoesDia ?? [])]
+              .filter((p) => (p.marcacoes ?? []).length > 0)
+              .sort((a, b) => primeiraMarcacaoMs(a) - primeiraMarcacaoMs(b));
+            if (lista.length === 0) {
+              return (
+                <Text style={styles.marcVazio}>
+                  Ninguém bateu ponto ainda hoje.
+                </Text>
+              );
+            }
+            return lista.map((p) => (
+              <View key={p.pessoaId} style={styles.marcPessoa}>
+                <Text style={styles.marcNome} numberOfLines={1}>
+                  {p.primeiroNome}
+                </Text>
+                <View style={styles.marcHoras}>
+                  {MARCACOES_ORDEM.map(({ tipo, rotulo }) => {
+                    const m = (p.marcacoes ?? []).find((x) => x.tipo === tipo);
+                    return (
+                      <View key={tipo} style={styles.marcSlot}>
+                        <Text style={styles.marcRotulo}>{rotulo}</Text>
+                        <Text style={styles.marcHora}>
+                          {m ? horaLabel(m.hora) : '—'}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            ));
+          })()}
+        </Cartao>
       )}
 
       {/* Autosserviço do fiscal logado: informar a própria falta de hoje. */}
@@ -1175,6 +1248,37 @@ const styles = StyleSheet.create({
   batidaSub: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
+  },
+  marcVazio: {
+    ...tipografia.corpo,
+    color: cores.textoSecundario,
+  },
+  marcPessoa: {
+    paddingVertical: espacamento.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: cores.divisor,
+  },
+  marcNome: {
+    ...tipografia.corpo,
+    fontWeight: '700',
+    color: cores.texto,
+    marginBottom: espacamento.xs,
+  },
+  marcHoras: {
+    flexDirection: 'row',
+  },
+  marcSlot: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  marcRotulo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  marcHora: {
+    ...tipografia.subtitulo,
+    fontWeight: '700',
+    color: cores.texto,
   },
   acao: {
     padding: espacamento.xs,

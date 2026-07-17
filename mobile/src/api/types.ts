@@ -727,6 +727,14 @@ export interface ItemJornadaFiscal extends JornadaTempos {
     | 'ENCERRADO'
     | 'INCOMPLETO';
   faltando: string[];
+  /** Marcações (batidas) do dia: entrada, saída, volta e encerramento. */
+  marcacoes?: MarcacaoDiaView[];
+}
+
+/** Uma marcação (batida) do dia, para a card informativa "Marcações do dia". */
+export interface MarcacaoDiaView {
+  tipo: TipoBatida;
+  hora: string;
 }
 
 /** Acumulado de horas extras do mês por pessoa (fiscal ou colaborador). */

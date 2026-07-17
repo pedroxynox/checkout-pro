@@ -30,9 +30,11 @@ import {
 } from './colaborador-vinculo';
 import {
   calcularJornadaDia,
+  classificarBatidas,
   RegrasContrato,
   StatusJornadaPonto,
   statusFiscalDeJornada,
+  TipoBatida,
 } from '../ponto/ponto.domain';
 import { FUNCOES_PONTO_NAO_FISCAL } from '../ponto/pessoas-ponto';
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
@@ -54,6 +56,22 @@ export interface ItemPainel {
   desde: string | null;
 }
 
+/** Uma marcação (batida) do dia: tipo canônico + hora (ISO). */
+export interface MarcacaoDia {
+  tipo: TipoBatida;
+  hora: string;
+}
+
+/**
+ * Converte batidas classificadas (tipo + hora) para marcações do dia (hora ISO)
+ * — usado na card informativa "Marcações do dia".
+ */
+function marcacoesDe(
+  batidas: readonly { tipo: TipoBatida; hora: Date }[],
+): MarcacaoDia[] {
+  return batidas.map((b) => ({ tipo: b.tipo, hora: b.hora.toISOString() }));
+}
+
 /** Item do log de jornada do dia (tempos por pessoa: fiscal ou colaborador). */
 export interface ItemJornada extends Jornada {
   /** Id da pessoa: Fiscal.id (fiscais) ou Colaborador.id (demais). */
@@ -68,6 +86,8 @@ export interface ItemJornada extends Jornada {
   /** Estado canônico da jornada, inclusive INCOMPLETO em dias históricos. */
   jornadaStatus: StatusJornadaPonto;
   faltando: string[];
+  /** Marcações (batidas) do dia, em ordem: entrada, saída, volta, encerramento. */
+  marcacoes: MarcacaoDia[];
 }
 
 /** Resumo do status atual de um fiscal (retornado após definir status). */
@@ -510,6 +530,7 @@ export class FiscaisService {
               status: statusFiscalDeJornada(j.status),
               jornadaStatus: j.status,
               faltando: j.faltando,
+              marcacoes: marcacoesDe(j.batidas),
               tempoTrabalhandoMs: j.trabalhadoMs,
               tempoIntervaloMs: j.intervaloMs,
               cargaHorariaMs: j.trabalhadoMs,
@@ -543,6 +564,13 @@ export class FiscaisService {
               jornadaStatus === 'INCOMPLETO' ? 'FORA_EXPEDIENTE' : ultimoStatus,
             jornadaStatus,
             faltando,
+            marcacoes: marcacoesDe(
+              classificarBatidas(
+                regs.map((r, i) => ({ id: String(i), hora: r.em })),
+                regras?.maxTrabalhoSemIntervaloMs,
+                regras?.intervaloObrigatorio ?? false,
+              ),
+            ),
             ...calcularJornada(regs, limiteFiscal, diaEncerrado),
           };
         }),
@@ -612,6 +640,7 @@ export class FiscaisService {
             status: statusFiscalDeJornada(j.status),
             jornadaStatus: j.status,
             faltando: j.faltando,
+            marcacoes: marcacoesDe(j.batidas),
             tempoTrabalhandoMs: j.trabalhadoMs,
             tempoIntervaloMs: j.intervaloMs,
             cargaHorariaMs: j.trabalhadoMs,
