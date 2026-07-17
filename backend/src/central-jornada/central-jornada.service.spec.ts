@@ -512,3 +512,96 @@ describe('CentralJornadaService.resumoCiclo', () => {
     expect(d?.atrasoMinutos).toBeUndefined();
   });
 });
+
+
+describe('CentralJornadaService.inconsistenciasCiclo', () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-07-10T12:00:00.000Z'));
+  });
+  afterAll(() => jest.useRealTimers());
+
+  function servicoInconsist(
+    batidas: ReturnType<typeof batida>[],
+    ausencias: unknown[],
+  ): CentralJornadaService {
+    const prismaFake = {
+      colaborador: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            nome: 'Ana Souza',
+            funcao: 'OPERADOR',
+            matricula: 'A',
+            usuarioId: null,
+            folgaDiaSemana: null,
+            grupoDomingo: null,
+            entradaSemana: null,
+            entradaFds: null,
+            entradaDom: null,
+          },
+        ]),
+      },
+      batidaPonto: { findMany: jest.fn().mockResolvedValue(batidas) },
+      ausencia: { findMany: jest.fn().mockResolvedValue(ausencias) },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const feriadosFake = {
+      mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
+    };
+    return new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+    );
+  }
+
+  it('detecta jornada incompleta e conflito ponto↔ausência', async () => {
+    const batidas = [
+      // 28/06: só uma batida num dia passado → jornada incompleta.
+      batida('u1', '2026-06-28', '07:00'),
+      // 29/06: dia completo (7h), mas há ausência no mesmo dia → conflito.
+      batida('c1', '2026-06-29', '07:00'),
+      batida('c2', '2026-06-29', '12:00'),
+      batida('c3', '2026-06-29', '14:00'),
+      batida('c4', '2026-06-29', '16:00'),
+    ];
+    const ausencias = [
+      {
+        id: 'aus-1',
+        pessoaId: 'c1',
+        colaboradorId: 'c1',
+        data: dia('2026-06-29'),
+        debitoHoras: false,
+        motivoJustificativa: 'ATESTADO_MEDICO',
+        statusJustificativa: 'JUSTIFICADA',
+      },
+    ];
+    const service = servicoInconsist(batidas, ausencias);
+
+    const r = await service.inconsistenciasCiclo(0);
+    const tipos = r.itens.map((i) => i.tipo);
+
+    expect(tipos).toContain('INCOMPLETA');
+    expect(tipos).toContain('CONFLITO_AUSENCIA');
+    expect(r.totais.conflitos).toBe(1);
+    expect(r.totais.incompletas).toBeGreaterThanOrEqual(1);
+    // Cada item traz a pessoa e o dia afetados.
+    expect(r.itens[0]).toMatchObject({ nome: 'Ana Souza', colaboradorId: 'c1' });
+  });
+
+  it('detecta batidas duplicadas (muito próximas) no mesmo dia', async () => {
+    const batidas = [
+      batida('d1', '2026-06-27', '07:00'),
+      batida('d2', '2026-06-27', '07:01'), // 1 min depois → duplicada
+      batida('d3', '2026-06-27', '12:00'),
+      batida('d4', '2026-06-27', '16:00'),
+    ];
+    const service = servicoInconsist(batidas, []);
+
+    const r = await service.inconsistenciasCiclo(0);
+
+    expect(r.totais.duplicadas).toBe(1);
+    expect(r.itens.some((i) => i.tipo === 'DUPLICADA')).toBe(true);
+  });
+});

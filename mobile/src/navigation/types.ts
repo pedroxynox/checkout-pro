@@ -34,6 +34,7 @@ export type RootStackParamList = {
   JornadaFiscais: undefined;
   RegistroPonto: undefined;
   CentralJornada: undefined;
+  Inconsistencias: undefined;
   Feriados: undefined;
   Checklist: undefined;
   Operadores: undefined;

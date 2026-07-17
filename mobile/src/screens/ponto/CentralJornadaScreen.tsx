@@ -153,6 +153,15 @@ export function CentralJornadaScreen(): React.ReactElement {
         </Pressable>
       </Cartao>
 
+      {/* Atalho para o painel de inconsistências (revisão de problemas). */}
+      <Pressable
+        onPress={() => navigation.navigate('Inconsistencias')}
+        style={styles.feriadosBtn}
+      >
+        <Ionicons name="alert-circle-outline" size={16} color={cores.primaria} />
+        <Text style={styles.feriadosBtnTexto}>Ver inconsistências</Text>
+      </Pressable>
+
       {/* Atalho para gerenciar feriados (contam como domingo/100%). */}
       <Pressable
         onPress={() => navigation.navigate('Feriados')}
