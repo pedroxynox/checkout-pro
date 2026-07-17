@@ -5,6 +5,7 @@ import { diaEncerradoEmBrasilia, inicioDoDia } from '../common/datas';
 import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
 import {
   type EtapaAlertaTac,
+  RegrasContrato,
   StatusJornadaPonto,
   TipoBatida,
   batidaDuplicada,
@@ -1154,6 +1155,20 @@ export class PontoService {
   }
 
   /** Reatribui o tipo das batidas pela ordem usando o cliente transacional. */
+  /**
+   * Regras de jornada do contrato do colaborador dono das batidas do dia (ou
+   * `undefined` quando não há serviço de contratos → usa o padrão). Usado para
+   * classificar corretamente (encerramento corrido x saída para intervalo).
+   */
+  private async regrasDaPessoa(
+    batidas: readonly { colaboradorId: string | null }[],
+  ): Promise<RegrasContrato | undefined> {
+    if (!this.tiposContrato) return undefined;
+    const colaboradorId =
+      batidas.find((b) => b.colaboradorId)?.colaboradorId ?? null;
+    return this.tiposContrato.regrasDoColaborador(colaboradorId);
+  }
+
   private async reclassificarNoCliente(
     cliente: Prisma.TransactionClient,
     pessoaId: string,
@@ -1165,8 +1180,13 @@ export class PontoService {
       where: { pessoaId, tipoPessoa, data: dia },
       orderBy: { hora: 'asc' },
     });
+    // A classificação (2 batidas = encerramento corrido ou saída para intervalo)
+    // depende do contrato do colaborador (intervalo obrigatório ou não).
+    const regras = await this.regrasDaPessoa(batidas);
     const classificadas = classificarBatidas(
       batidas.map((b) => ({ id: b.id, hora: b.hora })),
+      regras?.maxTrabalhoSemIntervaloMs,
+      regras?.intervaloObrigatorio ?? false,
     );
     for (const classificada of classificadas) {
       const original = batidas.find((b) => b.id === classificada.id);
@@ -1204,8 +1224,14 @@ export class PontoService {
       where: { pessoaId, tipoPessoa: 'FISCAL', data: dia },
       orderBy: { hora: 'asc' },
     });
+    // Mesma regra dependente do contrato: para um contrato com intervalo
+    // obrigatório, a 2ª batida vira "saída para intervalo" (status INTERVALO),
+    // não um encerramento (FORA_EXPEDIENTE).
+    const regras = await this.regrasDaPessoa(batidas);
     const classificadas = classificarBatidas(
       batidas.map((b) => ({ id: b.id, hora: b.hora })),
+      regras?.maxTrabalhoSemIntervaloMs,
+      regras?.intervaloObrigatorio ?? false,
     );
 
     const transicoes: TransicaoFiscal[] = [];

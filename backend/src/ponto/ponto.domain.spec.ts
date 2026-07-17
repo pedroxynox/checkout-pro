@@ -383,51 +383,66 @@ describe('batidaDuplicada', () => {
   });
 });
 
-
 describe('calcularJornadaDia · intervalo obrigatório (contratos data-driven)', () => {
-  // Contrato de 6h com intervalo obrigatório: encerrar sem intervalo é TAC.
-  const REGRAS_6H_INTERVALO = {
+  // Contrato COM intervalo obrigatório (ex.: 6x1, 6h): 2 batidas = saída para
+  // intervalo (nunca encerramento corrido); o dia só encerra se o intervalo
+  // ultrapassar o máximo (3h). O TAC por intervalo irregular sai no retorno.
+  const REGRAS_COM_INTERVALO = {
     ...REGRAS_PADRAO,
     cargaBaseMs: () => 6 * 60 * 60_000, // 6h
-    maxTrabalhoSemIntervaloMs: 6 * 60 * 60_000, // duas batidas até 6h encerram
     intervaloMinimoMs: 20 * 60_000, // 20 min
     intervaloObrigatorio: true,
+    // intervaloMaximoMs = 3h (herdado de REGRAS_PADRAO).
   };
 
-  it('encerrar a jornada SEM intervalo é TAC', () => {
-    // Duas batidas (entrada e encerramento) sem intervalo no meio.
+  it('2 batidas com intervalo em curso (≤ máximo) ficam EM_INTERVALO, não encerram', () => {
+    // Caso real: entrou 08:28, saiu para intervalo 12:11, ainda em intervalo.
     const j = calcularJornadaDia(
-      [batida('e', '08:00'), batida('s', '14:00')],
-      H('18:00'),
+      [batida('e', '08:28'), batida('s', '12:11')],
+      H('12:30'),
       SEGUNDA,
       false,
-      true,
-      REGRAS_6H_INTERVALO,
+      false, // dia em andamento
+      REGRAS_COM_INTERVALO,
     );
-    expect(j.status).toBe('ENCERRADO');
-    expect(j.tac).toBe(true);
-    expect(j.motivosTac).toContain('Não fez o intervalo obrigatório');
+    expect(j.status).toBe('EM_INTERVALO');
+    expect(j.batidas[1].tipo).toBe('SAIDA_INTERVALO');
   });
 
-  it('com intervalo válido (≥ 20min) não é TAC por intervalo', () => {
+  it('intervalo em curso acima do máximo (3h) encerra a jornada (sem TAC ainda)', () => {
+    const j = calcularJornadaDia(
+      [batida('e', '08:00'), batida('s', '12:00')],
+      H('15:30'), // 3h30 desde a saída → passou de 3h
+      SEGUNDA,
+      false,
+      false,
+      REGRAS_COM_INTERVALO,
+    );
+    expect(j.status).toBe('ENCERRADO');
+    expect(j.trabalhadoMs).toBe(4 * 60 * 60_000); // 08:00→12:00
+    expect(j.tac).toBe(false); // o TAC só se confirma quando ela bate o retorno
+  });
+
+  it('retorno do intervalo acima do máximo (3h) gera TAC ao bater ponto', () => {
     const j = calcularJornadaDia(
       [
         batida('e', '08:00'),
         batida('si', '11:00'),
-        batida('ri', '11:30'),
-        batida('f', '14:30'),
+        batida('ri', '14:30'), // intervalo de 3h30 (> 3h)
+        batida('f', '17:00'),
       ],
       H('18:00'),
       SEGUNDA,
       false,
       true,
-      REGRAS_6H_INTERVALO,
+      REGRAS_COM_INTERVALO,
     );
     expect(j.status).toBe('ENCERRADO');
-    expect(j.motivosTac).not.toContain('Não fez o intervalo obrigatório');
+    expect(j.tac).toBe(true);
+    expect(j.motivosTac).toContain('Intervalo acima de 3h');
   });
 
-  it('contrato de 4h corridas (intervalo NÃO obrigatório) não gera TAC sem intervalo', () => {
+  it('contrato de 4h corridas (sem intervalo obrigatório): 2 batidas encerram, sem TAC', () => {
     const REGRAS_4H = {
       ...REGRAS_PADRAO,
       cargaBaseMs: () => 4 * 60 * 60_000,
