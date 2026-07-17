@@ -88,6 +88,40 @@ export interface CentralComparativo {
   totais: CentralTotais;
 }
 
+/** Tipo de problema no painel de inconsistências. */
+export type TipoInconsistencia =
+  | 'INCOMPLETA'
+  | 'DUPLICADA'
+  | 'CONFLITO_AUSENCIA'
+  | 'ATRASO'
+  | 'TAC';
+
+/** Um problema detectado num dia de um colaborador. */
+export interface InconsistenciaItem {
+  colaboradorId: string;
+  nome: string;
+  primeiroNome: string;
+  funcao: FuncaoPessoa;
+  data: string;
+  diaSemana: number;
+  ehFeriado: boolean;
+  tipo: TipoInconsistencia;
+  detalhe: string;
+}
+
+export interface CentralInconsistencias {
+  periodo: CentralPeriodo;
+  totais: {
+    incompletas: number;
+    duplicadas: number;
+    conflitos: number;
+    atrasos: number;
+    tac: number;
+    total: number;
+  };
+  itens: InconsistenciaItem[];
+}
+
 export const centralJornadaService = {
   /** Resumo do ciclo (por pessoa + totais). `ciclo` 0 = atual, -1 = anterior. */
   resumo(ciclo = 0): Promise<CentralResumo> {
@@ -101,6 +135,14 @@ export const centralJornadaService = {
     return apiClient.get<CentralComparativo[]>('/central-jornada/comparativos', {
       qtd: String(qtd),
     });
+  },
+
+  /** Painel de inconsistências do ciclo. `ciclo` 0 = atual, -1 = anterior. */
+  inconsistencias(ciclo = 0): Promise<CentralInconsistencias> {
+    return apiClient.get<CentralInconsistencias>(
+      '/central-jornada/inconsistencias',
+      { ciclo: String(ciclo) },
+    );
   },
 
   /** Detalhe diário de um colaborador no ciclo. */

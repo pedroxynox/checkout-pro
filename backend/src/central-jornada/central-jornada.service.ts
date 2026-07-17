@@ -11,7 +11,11 @@ import {
   entradaEsperadaNoDia,
   minutosDeAtraso,
 } from '../escala-domingo/escala-domingo.domain';
-import { calcularJornadaDia, StatusJornadaPonto } from '../ponto/ponto.domain';
+import {
+  INTERVALO_MINIMO_ENTRE_BATIDAS_MS,
+  calcularJornadaDia,
+  StatusJornadaPonto,
+} from '../ponto/ponto.domain';
 import { jornadaEsperadaMs } from '../fiscais/fiscais.domain';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 import {
@@ -122,6 +126,41 @@ export interface CentralResumo {
     saldoMs: number;
   };
   pessoas: CentralPessoaResumo[];
+}
+
+/** Um problema detectado num dia de um colaborador (painel de inconsistências). */
+export interface InconsistenciaItem {
+  colaboradorId: string;
+  nome: string;
+  primeiroNome: string;
+  funcao: FuncaoColaborador;
+  /** Dia (ISO) da ocorrência. */
+  data: string;
+  diaSemana: number;
+  ehFeriado: boolean;
+  /**
+   * Tipo do problema:
+   * - INCOMPLETA: jornada de um dia passado sem fechamento;
+   * - DUPLICADA: batidas muito próximas no mesmo dia (possível duplicidade);
+   * - CONFLITO_AUSENCIA: bateu ponto E tem falta/atestado no mesmo dia;
+   * - ATRASO: entrada além da tolerância do turno (fora da escala);
+   * - TAC: dia irregular (excesso de extras ou intervalo fora da faixa).
+   */
+  tipo: 'INCOMPLETA' | 'DUPLICADA' | 'CONFLITO_AUSENCIA' | 'ATRASO' | 'TAC';
+  detalhe: string;
+}
+
+export interface CentralInconsistencias {
+  periodo: CentralPeriodo;
+  totais: {
+    incompletas: number;
+    duplicadas: number;
+    conflitos: number;
+    atrasos: number;
+    tac: number;
+    total: number;
+  };
+  itens: InconsistenciaItem[];
 }
 
 function primeiroNome(nome: string): string {
@@ -535,6 +574,127 @@ export class CentralJornadaService {
       dados.ancora,
     );
     return { periodo: this.montarPeriodo(dados.periodo, deslocamento), dias };
+  }
+
+  /** true se há duas batidas no mesmo dia próximas demais (possível duplicidade). */
+  private temBatidasProximas(horasMs: number[]): boolean {
+    const ord = [...horasMs].sort((a, b) => a - b);
+    for (let i = 1; i < ord.length; i++) {
+      if (ord[i] - ord[i - 1] < INTERVALO_MINIMO_ENTRE_BATIDAS_MS) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Painel de inconsistências do ciclo: varre o dia a dia de cada colaborador e
+   * devolve uma lista achatada dos problemas — jornadas incompletas, batidas
+   * duplicadas, conflito ponto↔ausência, atraso (fora da escala) e TAC. Os
+   * filtros por pessoa/função/tipo são aplicados na tela (a lista completa do
+   * ciclo é leve).
+   */
+  async inconsistenciasCiclo(deslocamento = 0): Promise<CentralInconsistencias> {
+    const dados = await this.carregarCiclo(deslocamento);
+    const batidas = dados.batidas as BatidaMin[];
+    const itens: InconsistenciaItem[] = [];
+
+    for (const c of dados.pessoas) {
+      const ids = this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador);
+      const { dias } = this.calcularPessoa(
+        ids,
+        batidas,
+        dados.ausencias,
+        dados.feriadoMap,
+        dados.inicio,
+        dados.fimExclusivo,
+        dados.limite,
+        c,
+        dados.ancora,
+      );
+
+      // Horas das batidas da pessoa por dia (para detectar duplicidade).
+      const horasPorDia = new Map<string, number[]>();
+      for (const b of batidas) {
+        if (!this.daPessoa(b, ids)) continue;
+        const k = inicioDoDia(b.data).toISOString();
+        const arr = horasPorDia.get(k) ?? [];
+        arr.push(b.hora.getTime());
+        horasPorDia.set(k, arr);
+      }
+
+      const base = (d: CentralDiaDetalhe) => ({
+        colaboradorId: c.id,
+        nome: c.nome,
+        primeiroNome: primeiroNome(c.nome),
+        funcao: c.funcao,
+        data: d.data,
+        diaSemana: d.diaSemana,
+        ehFeriado: d.ehFeriado,
+      });
+
+      for (const d of dias) {
+        if (d.tipo === 'INCOMPLETO') {
+          itens.push({
+            ...base(d),
+            tipo: 'INCOMPLETA',
+            detalhe: d.faltando.length
+              ? `Falta registrar: ${d.faltando.join(', ')}`
+              : 'Jornada incompleta',
+          });
+        }
+        if (d.conflitoAusencia) {
+          itens.push({
+            ...base(d),
+            tipo: 'CONFLITO_AUSENCIA',
+            detalhe: 'Bateu ponto e tem falta/atestado marcado no mesmo dia',
+          });
+        }
+        if (d.atrasoMinutos != null) {
+          itens.push({
+            ...base(d),
+            tipo: 'ATRASO',
+            detalhe: `Entrada ${d.atrasoMinutos} min além do turno${
+              d.entradaPrevista ? ` (previsto ${d.entradaPrevista})` : ''
+            }`,
+          });
+        }
+        if (d.tac) {
+          itens.push({
+            ...base(d),
+            tipo: 'TAC',
+            detalhe: d.motivosTac.join('; ') || 'Dia em TAC',
+          });
+        }
+        const horas = horasPorDia.get(d.data);
+        if (horas && this.temBatidasProximas(horas)) {
+          itens.push({
+            ...base(d),
+            tipo: 'DUPLICADA',
+            detalhe: 'Batidas muito próximas no mesmo dia (possível duplicidade)',
+          });
+        }
+      }
+    }
+
+    // Mais recentes primeiro; empate por nome.
+    itens.sort((a, b) =>
+      a.data === b.data ? a.nome.localeCompare(b.nome) : b.data.localeCompare(a.data),
+    );
+
+    const contar = (t: InconsistenciaItem['tipo']) =>
+      itens.filter((i) => i.tipo === t).length;
+
+    return {
+      periodo: this.montarPeriodo(dados.periodo, deslocamento),
+      totais: {
+        incompletas: contar('INCOMPLETA'),
+        duplicadas: contar('DUPLICADA'),
+        conflitos: contar('CONFLITO_AUSENCIA'),
+        atrasos: contar('ATRASO'),
+        tac: contar('TAC'),
+        total: itens.length,
+      },
+      itens,
+    };
   }
 
   /** Comparativo dos últimos `qtd` ciclos (totais do time por período). */
