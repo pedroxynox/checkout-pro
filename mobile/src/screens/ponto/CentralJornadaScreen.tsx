@@ -421,8 +421,6 @@ function HeroCiclo({
   const prog = periodo ? progressoCiclo(periodo) : null;
   const saldoCor =
     saldoMs > 0 ? cores.verde : saldoMs < 0 ? cores.vermelho : cores.texto;
-  const saldoLegenda =
-    saldoMs > 0 ? 'Horas a favor' : saldoMs < 0 ? 'Você deve horas' : 'Saldo zerado';
 
   return (
     <View style={styles.hero}>
@@ -469,7 +467,6 @@ function HeroCiclo({
         <Text style={[styles.heroSaldoValor, { color: saldoCor }]}>
           {formatarSaldo(saldoMs)}
         </Text>
-        <Text style={styles.heroSaldoLegenda}>{saldoLegenda}</Text>
         {prog && (
           <>
             <View style={styles.barraTrilha}>
@@ -744,12 +741,7 @@ const styles = StyleSheet.create({
     ...tipografia.titulo,
     fontSize: 34,
     marginTop: 2,
-  },
-  heroSaldoLegenda: {
-    ...tipografia.rotulo,
-    color: cores.textoSecundario,
-    marginTop: 2,
-    marginBottom: espacamento.sm,
+    marginBottom: espacamento.md,
   },
   barraTrilha: {
     width: '100%',
