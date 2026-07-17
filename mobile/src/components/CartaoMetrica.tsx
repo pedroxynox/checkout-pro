@@ -34,7 +34,12 @@ export function CartaoMetrica({
         <Ionicons name={icone} size={20} color={cor} />
       </View>
       <View style={styles.texto}>
-        <Text style={styles.valor} numberOfLines={1}>
+        <Text
+          style={styles.valor}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
           {valor}
         </Text>
         <Text style={styles.rotulo} numberOfLines={1}>
@@ -72,6 +77,7 @@ const styles = StyleSheet.create({
   },
   valor: {
     ...tipografia.subtitulo,
+    fontSize: 16,
     color: cores.texto,
   },
   rotulo: {
