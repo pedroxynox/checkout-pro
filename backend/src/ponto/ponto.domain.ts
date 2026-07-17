@@ -173,11 +173,17 @@ export function tipoPorOrdem(indice: number): TipoBatida {
 export function classificarBatidas(
   batidas: readonly BatidaEntrada[],
   maxSemIntervaloMs: number = REGRAS_PADRAO.maxTrabalhoSemIntervaloMs,
+  intervaloObrigatorio = false,
 ): BatidaClassificada[] {
   const ordenadas = [...batidas].sort(
     (a, b) => a.hora.getTime() - b.hora.getTime(),
   );
+  // Duas batidas próximas encerram a jornada SEM intervalo apenas quando o
+  // contrato NÃO exige intervalo (ex.: 4h corridas). Se o intervalo é
+  // obrigatório (6x1, 6h), a 2ª batida é sempre "saída para intervalo" — nunca
+  // um encerramento —, e o dia só encerra pela duração do intervalo.
   const jornadaSemIntervalo =
+    !intervaloObrigatorio &&
     ordenadas.length === 2 &&
     ordenadas[1].hora.getTime() - ordenadas[0].hora.getTime() <=
       maxSemIntervaloMs;
@@ -274,6 +280,7 @@ export function calcularJornadaDia(
   const classificadas = classificarBatidas(
     batidas,
     regras.maxTrabalhoSemIntervaloMs,
+    regras.intervaloObrigatorio,
   );
   // Feriado segue a MESMA regra do domingo: carga-base de domingo e extras a
   // 100% (o rodízio por grupos, esse sim, é exclusivo do domingo).
@@ -323,7 +330,18 @@ export function calcularJornadaDia(
   } else if (classificadas.length === 2) {
     trabalhadoMs = dur(entrada.hora, segunda.hora.getTime());
     if (segunda.tipo === 'ENCERRAMENTO') {
-      // Até 4h50, duas batidas formam uma jornada válida sem intervalo.
+      // Até 4h50, duas batidas formam uma jornada válida sem intervalo
+      // (contratos SEM intervalo obrigatório, ex.: 4h corridas).
+      status = 'ENCERRADO';
+    } else if (
+      regras.intervaloObrigatorio &&
+      !diaEncerrado &&
+      dur(segunda.hora, agoraMs) > regras.intervaloMaximoMs
+    ) {
+      // Intervalo em curso ultrapassou o máximo (ex.: 3h): a pessoa não voltou,
+      // considera-se que encerrou (foi embora). O tempo fora NÃO conta como
+      // intervalo válido, e a jornada fica com o que trabalhou até a saída.
+      // O TAC por intervalo irregular só é confirmado quando ela bate o retorno.
       status = 'ENCERRADO';
     } else if (diaEncerrado) {
       // A segunda batida abriu um intervalo que nunca foi encerrado. Não se
@@ -373,11 +391,6 @@ export function calcularJornadaDia(
   // Intervalo acima de 3h vale mesmo se ainda estiver em intervalo.
   if (saida && intervaloMs > regras.intervaloMaximoMs) {
     motivosTac.push('Intervalo acima de 3h');
-  }
-  // Intervalo OBRIGATÓRIO: encerrou a jornada sem ter feito intervalo → TAC.
-  // Só quando o dia está de fato encerrado sem nenhum intervalo registrado.
-  if (regras.intervaloObrigatorio && status === 'ENCERRADO' && intervaloMs === 0) {
-    motivosTac.push('Não fez o intervalo obrigatório');
   }
 
   return {
