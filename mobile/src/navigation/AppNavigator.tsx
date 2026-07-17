@@ -42,6 +42,7 @@ import { MetasScreen } from '../screens/metas/MetasScreen';
 import { NaoReconhecidosScreen } from '../screens/indicadores/NaoReconhecidosScreen';
 import { InsumosDadosScreen } from '../screens/centroControle/InsumosDadosScreen';
 import { ReiniciarDadosScreen } from '../screens/centroControle/ReiniciarDadosScreen';
+import { TiposContratoScreen } from '../screens/centroControle/TiposContratoScreen';
 import { UsuariosScreen } from '../screens/usuarios/UsuariosScreen';
 import { CheckOutsScreen } from '../screens/checkouts/CheckOutsScreen';
 import { CheckOutDetalheScreen } from '../screens/checkouts/CheckOutDetalheScreen';
@@ -361,6 +362,11 @@ export function AppNavigator(): React.ReactElement {
             name="ReiniciarDados"
             component={ReiniciarDadosScreen}
             options={{ title: 'Zerar dados operacionais' }}
+          />
+          <Stack.Screen
+            name="TiposContrato"
+            component={TiposContratoScreen}
+            options={{ title: 'Tipos de contrato' }}
           />
         </>
       )}
