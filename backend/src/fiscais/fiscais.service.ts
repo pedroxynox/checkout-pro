@@ -347,30 +347,87 @@ export class FiscaisService {
     });
   }
 
-  /** Painel de todos os fiscais com o status atual (tempo real via WebSocket). */
+  /**
+   * Painel de todos os fiscais com o status atual (tempo real via WebSocket).
+   *
+   * O status usa a MESMA inteligência da jornada do dia (`calcularJornadaDia`):
+   * prefere as batidas do Relógio Ponto e aplica as regras de contrato, então
+   * reflete o fim do expediente mesmo SEM uma batida de encerramento — ex.: um
+   * fiscal que saiu para intervalo e não voltou (intervalo além do máximo)
+   * aparece como FORA_EXPEDIENTE, e não mais preso em "Intervalo". Sem batidas,
+   * cai no log legado (`RegistroPontoFiscal`), aplicando o encerramento do dia.
+   */
   async painel(): Promise<ItemPainel[]> {
-    const agora = new Date();
-    const [fiscais, registros, mapaCol] = await Promise.all([
+    const agoraReal = new Date();
+    const dia = inicioDoDia(agoraReal);
+    const agoraPonto = agoraNaBrasilia();
+    const diaEncerrado = diaEncerradoEmBrasilia(dia, agoraPonto);
+    const limitePonto = diaEncerrado ? inicioDoProximoDia(dia) : agoraPonto;
+    const ehFeriado = this.feriados
+      ? await this.feriados.ehFeriado(dia)
+      : false;
+
+    const [fiscais, registros, batidasFiscais, mapaCol] = await Promise.all([
       this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
       this.prisma.registroPontoFiscal.findMany({
-        where: { data: inicioDoDia(agora) },
+        where: { data: dia },
         orderBy: { em: 'asc' },
+      }),
+      this.prisma.batidaPonto.findMany({
+        where: { tipoPessoa: 'FISCAL', data: dia },
+        orderBy: { hora: 'asc' },
+        select: { id: true, pessoaId: true, hora: true },
       }),
       this.mapaColaboradores(),
     ]);
     const porFiscal = this.agrupar(registros);
-    return fiscais.map((f) => {
-      const regs = porFiscal.get(f.id) ?? [];
-      const ultimo = regs[regs.length - 1] ?? null;
-      const col = mapaCol.get(f.id);
-      return {
-        fiscalId: f.id,
-        colaboradorId: col?.colaboradorId ?? null,
-        primeiroNome: primeiroNome(col?.nome ?? f.nome),
-        status: statusAtual(regs) ?? 'FORA_EXPEDIENTE',
-        desde: ultimo ? ultimo.em.toISOString() : null,
-      };
-    });
+    const batidasPorFiscal = new Map<string, { id: string; hora: Date }[]>();
+    for (const b of batidasFiscais) {
+      const atuais = batidasPorFiscal.get(b.pessoaId) ?? [];
+      atuais.push({ id: b.id, hora: b.hora });
+      batidasPorFiscal.set(b.pessoaId, atuais);
+    }
+
+    return Promise.all(
+      fiscais.map(async (f) => {
+        const regs = porFiscal.get(f.id) ?? [];
+        const batidas = batidasPorFiscal.get(f.id) ?? [];
+        const col = mapaCol.get(f.id);
+        let status: StatusFiscal;
+        let desde: string | null;
+        if (batidas.length > 0) {
+          // Fonte canônica: batidas do Relógio Ponto + regras do contrato.
+          const regras = await this.regrasDe(col?.colaboradorId ?? null);
+          const j = calcularJornadaDia(
+            batidas,
+            limitePonto,
+            dia.getUTCDay(),
+            ehFeriado,
+            diaEncerrado,
+            regras,
+          );
+          status = statusFiscalDeJornada(j.status);
+          desde = batidas[batidas.length - 1].hora.toISOString();
+        } else {
+          // Fallback: log legado de status. Aplica o encerramento do dia para
+          // não ficar preso em Disponível/Intervalo depois do expediente.
+          const ultimo = regs[regs.length - 1] ?? null;
+          const bruto = statusAtual(regs) ?? 'FORA_EXPEDIENTE';
+          status =
+            diaEncerrado && bruto !== 'FORA_EXPEDIENTE'
+              ? 'FORA_EXPEDIENTE'
+              : bruto;
+          desde = ultimo ? ultimo.em.toISOString() : null;
+        }
+        return {
+          fiscalId: f.id,
+          colaboradorId: col?.colaboradorId ?? null,
+          primeiroNome: primeiroNome(col?.nome ?? f.nome),
+          status,
+          desde,
+        };
+      }),
+    );
   }
 
   /**

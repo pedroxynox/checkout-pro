@@ -934,17 +934,25 @@ export function OperadoresScreen(): React.ReactElement {
   const conexaoFiscaisRef = useRef<ConexaoFiscais | null>(null);
   useEffect(() => {
     let ativo = true;
-    fiscaisService
-      .painel()
-      .then((p) => {
-        if (!ativo) return;
-        const mapa: Record<string, StatusFiscal> = {};
-        for (const f of p) mapa[f.fiscalId] = f.status;
-        setStatusFiscais(mapa);
-      })
-      .catch(() => {
-        /* status ao vivo é complementar; falha não quebra a escala */
-      });
+    const carregarPainel = () => {
+      fiscaisService
+        .painel()
+        .then((p) => {
+          if (!ativo) return;
+          const mapa: Record<string, StatusFiscal> = {};
+          for (const f of p) mapa[f.fiscalId] = f.status;
+          setStatusFiscais(mapa);
+        })
+        .catch(() => {
+          /* status ao vivo é complementar; falha não quebra a escala */
+        });
+    };
+    carregarPainel();
+    // Reconsulta periódica: transições por TEMPO (fim do turno, ou intervalo
+    // além do máximo sem retorno) NÃO geram batida de ponto, então o WebSocket
+    // sozinho deixaria o selo preso no último valor (ex.: "Intervalo"). A cada
+    // 60s o painel volta a refletir o estado real (igual à jornada).
+    const intervalo = setInterval(carregarPainel, 60_000);
     void conectarPainelFiscais({
       aoAtualizarStatus: (ev) =>
         setStatusFiscais((prev) => ({ ...prev, [ev.fiscalId]: ev.status })),
@@ -954,6 +962,7 @@ export function OperadoresScreen(): React.ReactElement {
     });
     return () => {
       ativo = false;
+      clearInterval(intervalo);
       conexaoFiscaisRef.current?.desconectar();
       conexaoFiscaisRef.current = null;
     };
