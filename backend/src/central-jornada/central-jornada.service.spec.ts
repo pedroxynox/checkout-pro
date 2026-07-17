@@ -513,7 +513,6 @@ describe('CentralJornadaService.resumoCiclo', () => {
   });
 });
 
-
 describe('CentralJornadaService.inconsistenciasCiclo', () => {
   beforeAll(() => {
     jest.useFakeTimers();
@@ -587,7 +586,10 @@ describe('CentralJornadaService.inconsistenciasCiclo', () => {
     expect(r.totais.conflitos).toBe(1);
     expect(r.totais.incompletas).toBeGreaterThanOrEqual(1);
     // Cada item traz a pessoa e o dia afetados.
-    expect(r.itens[0]).toMatchObject({ nome: 'Ana Souza', colaboradorId: 'c1' });
+    expect(r.itens[0]).toMatchObject({
+      nome: 'Ana Souza',
+      colaboradorId: 'c1',
+    });
   });
 
   it('detecta batidas duplicadas (muito próximas) no mesmo dia', async () => {
@@ -603,5 +605,97 @@ describe('CentralJornadaService.inconsistenciasCiclo', () => {
 
     expect(r.totais.duplicadas).toBe(1);
     expect(r.itens.some((i) => i.tipo === 'DUPLICADA')).toBe(true);
+  });
+});
+
+describe('CentralJornadaService.exportarCiclo', () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-07-10T12:00:00.000Z'));
+  });
+  afterAll(() => jest.useRealTimers());
+
+  function servicoExport(
+    batidas: ReturnType<typeof batida>[],
+    ausencias: unknown[],
+  ): CentralJornadaService {
+    const prismaFake = {
+      colaborador: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            nome: 'Ana Souza',
+            funcao: 'OPERADOR',
+            matricula: 'A',
+            usuarioId: null,
+            folgaDiaSemana: null,
+            grupoDomingo: null,
+            entradaSemana: null,
+            entradaFds: null,
+            entradaDom: null,
+          },
+        ]),
+      },
+      batidaPonto: { findMany: jest.fn().mockResolvedValue(batidas) },
+      ausencia: { findMany: jest.fn().mockResolvedValue(ausencias) },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const feriadosFake = {
+      mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
+    };
+    return new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+    );
+  }
+
+  it('gera linhas por dia relevante, totais e um CSV com cabeçalho', async () => {
+    const batidas = [
+      // 29/06: dia completo de 7h (trabalho).
+      batida('c1', '2026-06-29', '07:00'),
+      batida('c2', '2026-06-29', '12:00'),
+      batida('c3', '2026-06-29', '14:00'),
+      batida('c4', '2026-06-29', '16:00'),
+    ];
+    const service = servicoExport(batidas, []);
+
+    const exp = await service.exportarCiclo(0);
+
+    // Uma linha para o dia trabalhado (dias sem registro não entram).
+    const linha = exp.linhas.find((l) => l.data.startsWith('2026-06-29'));
+    expect(linha).toBeDefined();
+    expect(linha?.tipo).toBe('TRABALHO');
+    expect(linha?.trabalhadoMs).toBe(7 * 3_600_000);
+    expect(exp.linhas.every((l) => l.tipo !== 'SEM_REGISTRO')).toBe(true);
+    // Resumo por pessoa e CSV pronto.
+    expect(exp.pessoas).toHaveLength(1);
+    expect(exp.csv.split('\n')[0]).toContain('Colaborador;Função;Data');
+    expect(exp.csv).toContain('Ana Souza');
+  });
+
+  it('inclui atestado e conta as inconsistências do ciclo', async () => {
+    const ausencias = [
+      {
+        id: 'aus-1',
+        pessoaId: 'c1',
+        colaboradorId: 'c1',
+        data: dia('2026-06-30'),
+        debitoHoras: false,
+        motivoJustificativa: 'ATESTADO_MEDICO',
+        statusJustificativa: 'JUSTIFICADA',
+      },
+    ];
+    // 28/06: uma única batida num dia passado → incompleta (inconsistência).
+    const batidas = [batida('c1', '2026-06-28', '07:00')];
+    const service = servicoExport(batidas, ausencias);
+
+    const exp = await service.exportarCiclo(0);
+
+    expect(exp.linhas.some((l) => l.atestado)).toBe(true);
+    expect(exp.totais.inconsistencias).toBeGreaterThanOrEqual(1);
+    expect(exp.linhas.some((l) => l.problemas.includes('Incompleta'))).toBe(
+      true,
+    );
   });
 });

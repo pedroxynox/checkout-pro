@@ -122,6 +122,47 @@ export interface CentralInconsistencias {
   itens: InconsistenciaItem[];
 }
 
+/** Uma linha do relatório de exportação (um dia relevante de um colaborador). */
+export interface LinhaExportacaoCiclo {
+  colaboradorId: string;
+  nome: string;
+  funcao: FuncaoPessoa;
+  data: string;
+  diaSemana: number;
+  tipo: TipoDiaJornada;
+  trabalhadoMs: number;
+  baseMs: number;
+  extras50Ms: number;
+  extras100Ms: number;
+  devidasMs: number;
+  atestado: boolean;
+  tac: boolean;
+  motivosTac: string[];
+  problemas: string[];
+}
+
+/** Exportação do ciclo para revisão/folha (antes do fechamento). */
+export interface CentralExportacao {
+  periodo: CentralPeriodo;
+  geradoEm: string;
+  totais: {
+    extras50Ms: number;
+    extras100Ms: number;
+    horasDevidasMs: number;
+    horasAtestadoMs: number;
+    faltas: number;
+    diasTac: number;
+    conflitos: number;
+    atrasos: number;
+    saldoMs: number;
+    inconsistencias: number;
+  };
+  pessoas: CentralPessoaResumo[];
+  linhas: LinhaExportacaoCiclo[];
+  /** Relatório em CSV (separador ";") pronto para compartilhar/planilha. */
+  csv: string;
+}
+
 export const centralJornadaService = {
   /** Resumo do ciclo (por pessoa + totais). `ciclo` 0 = atual, -1 = anterior. */
   resumo(ciclo = 0): Promise<CentralResumo> {
@@ -143,6 +184,13 @@ export const centralJornadaService = {
       '/central-jornada/inconsistencias',
       { ciclo: String(ciclo) },
     );
+  },
+
+  /** Exportação do ciclo (revisão antes do fechamento) + CSV. */
+  exportacao(ciclo = 0): Promise<CentralExportacao> {
+    return apiClient.get<CentralExportacao>('/central-jornada/exportacao', {
+      ciclo: String(ciclo),
+    });
   },
 
   /** Detalhe diário de um colaborador no ciclo. */
