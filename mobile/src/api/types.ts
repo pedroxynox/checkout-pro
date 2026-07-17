@@ -1292,6 +1292,11 @@ export interface ColaboradorDia {
   id: string;
   nome: string;
   genero: string | null;
+  /**
+   * Turno fixo do colaborador conforme o Cadastro. É a fonte oficial para
+   * agrupar a escala do dia. `null` quando ainda não tem turno definido.
+   */
+  turno: TurnoColaborador | null;
   status: StatusCelula;
   entrada: string | null;
   saida: string | null;

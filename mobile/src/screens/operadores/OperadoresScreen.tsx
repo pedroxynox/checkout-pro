@@ -106,53 +106,28 @@ function mesAtualISO(): { inicio: string; fim: string } {
 }
 
 /**
- * Turnos (por hora de entrada) para agrupar o roster do dia. A folga NÃO entra
- * aqui — vai para um card separado no fim ("Folga operadores").
+ * Turnos (definidos no Cadastro de cada colaborador) para agrupar o roster do
+ * dia. A folga NÃO entra aqui — vai para um card separado no fim ("Folga
+ * operadores"). "Sem turno" agrupa quem ainda não tem turno definido no
+ * cadastro (deve ser corrigido no cadastro do colaborador).
  */
 const TURNOS: { chave: string; titulo: string }[] = [
   { chave: 'ABERTURA', titulo: 'Abertura' },
   { chave: 'INTERMEDIARIO', titulo: 'Intermediário' },
   { chave: 'FECHAMENTO', titulo: 'Fechamento' },
   { chave: 'APOIO', titulo: 'Horários de apoio' },
+  { chave: 'SEM_TURNO', titulo: 'Sem turno definido' },
 ];
 
-/** Minutos do dia a partir de "HH:mm". */
-function minutos(hhmm: string): number {
-  const [h, m] = hhmm.split(':');
-  return parseInt(h, 10) * 60 + parseInt(m, 10);
-}
-
 /**
- * Turno de apoio: entra antes das 14h E tem carga horária de ~6h no dia
- * (jornada reduzida). Distingue dos turnos normais (8h+).
- */
-const APOIO_CARGA_MIN = 6 * 60; // 6h de carga horária
-function ehApoio(c: ColaboradorDia): boolean {
-  if (c.status === 'FOLGA' || !c.entrada || !c.saida) return false;
-  const ent = minutos(c.entrada);
-  const carga = minutos(c.saida) - ent;
-  // Entra antes das 14h e cumpre ~6h (tolerância de 30 min).
-  return ent < 14 * 60 && Math.abs(carga - APOIO_CARGA_MIN) <= 30;
-}
-
-/**
- * Classifica o turno pela hora de ENTRADA (com o apoio à parte), igual ao
- * backend (`classificarTurnoOperador`) e ao spec (Req 6.6.2–6.6.4):
- *  - Apoio: entra antes das 14h e cumpre ~6h de carga (jornada reduzida);
- *  - Abertura: entrada antes das 10:00;
- *  - Intermediário: das 10:00 às 12:59;
- *  - Fechamento: das 13:00 em diante.
- *
- * Fonte da verdade: `backend/src/operadores/operadores.domain.ts`. Não inverter
- * intermediário/fechamento (já foi invertido por engano e contava errado).
+ * Turno do colaborador conforme o **Cadastro** (fonte da verdade). A escala
+ * não adivinha mais pela hora de entrada: usa o turno fixo selecionado no
+ * cadastro (Abertura/Intermediário/Fechamento/Apoio). Quem está de folga vai
+ * para o card de folga; quem ainda não tem turno definido cai em "Sem turno".
  */
 function turnoDe(c: ColaboradorDia): string {
-  if (c.status === 'FOLGA' || !c.entrada) return 'FOLGA';
-  if (ehApoio(c)) return 'APOIO';
-  const min = minutos(c.entrada);
-  if (min < 10 * 60) return 'ABERTURA';
-  if (min < 13 * 60) return 'INTERMEDIARIO';
-  return 'FECHAMENTO';
+  if (c.status === 'FOLGA') return 'FOLGA';
+  return c.turno ?? 'SEM_TURNO';
 }
 
 /** Ícone de avatar por gênero ('M'/'F'); fallback simples pelo nome. */
@@ -174,14 +149,21 @@ function relogioBrasilia(): string {
   }).format(new Date());
 }
 
-/** Conta apenas os presentes (TRABALHA) por turno de entrada — exclui faltas. */
+/** Conta apenas os presentes (TRABALHA) por turno do cadastro — exclui faltas. */
 function contarTurnos(cols: ColaboradorDia[]): {
   ABERTURA: number;
   INTERMEDIARIO: number;
   FECHAMENTO: number;
   APOIO: number;
+  SEM_TURNO: number;
 } {
-  const c = { ABERTURA: 0, INTERMEDIARIO: 0, FECHAMENTO: 0, APOIO: 0 };
+  const c = {
+    ABERTURA: 0,
+    INTERMEDIARIO: 0,
+    FECHAMENTO: 0,
+    APOIO: 0,
+    SEM_TURNO: 0,
+  };
   for (const x of cols) {
     if (x.status !== 'TRABALHA') continue; // exclui folgas e faltas
     const t = turnoDe(x);
@@ -189,7 +171,8 @@ function contarTurnos(cols: ColaboradorDia[]): {
       t === 'ABERTURA' ||
       t === 'INTERMEDIARIO' ||
       t === 'FECHAMENTO' ||
-      t === 'APOIO'
+      t === 'APOIO' ||
+      t === 'SEM_TURNO'
     ) {
       c[t] += 1;
     }
@@ -361,6 +344,9 @@ function fiscalComoColaboradorDia(
     id: f.colaboradorId,
     nome: f.nome ?? f.funcionarioId,
     genero: null,
+    // A seção de Fiscais é renderizada em bloco próprio (não é agrupada por
+    // `turnoDe`), então o turno não é lido aqui.
+    turno: null,
     status,
     entrada: folga ? null : (ef.entrada ?? null),
     saida: folga ? null : (ef.saida ?? null),
@@ -1395,6 +1381,13 @@ export function OperadoresScreen(): React.ReactElement {
                     <Resumo valor={ct.FECHAMENTO} rotulo="Fechamento" cor={cores.verde} />
                     {ct.APOIO > 0 ? (
                       <Resumo valor={ct.APOIO} rotulo="Apoio" cor={cores.verde} />
+                    ) : null}
+                    {ct.SEM_TURNO > 0 ? (
+                      <Resumo
+                        valor={ct.SEM_TURNO}
+                        rotulo="Sem turno"
+                        cor={cores.laranja}
+                      />
                     ) : null}
                   </>
                 );

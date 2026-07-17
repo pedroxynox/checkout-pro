@@ -237,6 +237,15 @@ export function GestaoColaboradoresScreen({
       notificar('Senha muito curta', 'A senha deve ter no mínimo 6 caracteres.');
       return;
     }
+    // Turno obrigatório para fiscal e operador: é o que agrupa a escala do dia.
+    // Supervisor, gerente e administrador não têm turno fixo.
+    if ((funcao === 'FISCAL' || funcao === 'OPERADOR') && !turno) {
+      notificar(
+        'Turno obrigatório',
+        'Selecione o turno (Abertura, Intermediário, Fechamento ou Apoio) para fiscal e operador.',
+      );
+      return;
+    }
     for (const [rotulo, valor] of [
       ['Entrada Seg–Qui', entSem],
       ['Saída Seg–Qui', saiSem],
@@ -500,7 +509,10 @@ export function GestaoColaboradoresScreen({
                 ))}
               </View>
 
-              <Text style={styles.rotulo}>Turno</Text>
+              <Text style={styles.rotulo}>
+                Turno
+                {funcao === 'FISCAL' || funcao === 'OPERADOR' ? ' *' : ''}
+              </Text>
               <View style={styles.chips}>
                 {TURNOS.map((t) => (
                   <Text

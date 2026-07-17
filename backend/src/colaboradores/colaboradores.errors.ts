@@ -82,6 +82,20 @@ export class ColaboradorNaoEncontradoError extends ColaboradoresError {
 }
 
 /**
+ * Fiscal e operador precisam de um turno fixo (Abertura/Intermediário/
+ * Fechamento/Apoio), pois é ele que agrupa a escala do dia. Supervisor,
+ * gerente e administrador não têm turno fixo.
+ */
+export class TurnoObrigatorioError extends ColaboradoresError {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
+  constructor() {
+    super(
+      'Selecione o turno (Abertura, Intermediário, Fechamento ou Apoio). O turno é obrigatório para fiscal e operador.',
+    );
+  }
+}
+
+/**
  * Tentativa de criar/promover uma conta de gerente (ou gerente desenvolvedor)
  * sem ter o perfil necessário para isso. Só o gerente desenvolvedor pode
  * conceder acesso de nível gerencial, evitando escalada de privilégios por
