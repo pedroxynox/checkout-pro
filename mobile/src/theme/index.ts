@@ -38,6 +38,15 @@ export const cores = {
   vermelho: '#EF4444',
   vermelhoFundo: '#FEE2E2',
 
+  // Acentos auxiliares (cartões de métrica/ação com ícone em caixa suave).
+  // Azul vivo para info/horas-extra; roxo para TAC; laranja para faltas/atrasos.
+  azul: '#2563EB',
+  azulFundo: '#EFF6FF',
+  roxo: '#9333EA',
+  roxoFundo: '#F5F0FF',
+  laranja: '#F97316',
+  laranjaFundo: '#FFF1E8',
+
   // Estados auxiliares
   sucesso: '#10B981',
   alerta: '#F59E0B',

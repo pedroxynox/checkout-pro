@@ -2,6 +2,8 @@ export { Tela } from './Tela';
 export { Botao } from './Botao';
 export { CampoTexto } from './CampoTexto';
 export { Cartao } from './Cartao';
+export { CartaoMetrica } from './CartaoMetrica';
+export { CartaoAcao } from './CartaoAcao';
 export { Selo } from './Selo';
 export { Carregando, MensagemErro, EstadoVazio } from './Estados';
 export { Segmentado, LinhaInfo } from './Diversos';
