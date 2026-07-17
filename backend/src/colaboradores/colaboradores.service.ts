@@ -340,7 +340,30 @@ export class ColaboradoresService {
   private async sincronizarEscalaFiscal(
     colaborador: Colaborador,
   ): Promise<void> {
-    if (colaborador.funcao !== 'FISCAL' || !colaborador.usuarioId) return;
+    if (colaborador.funcao !== 'FISCAL') return;
+
+    // Inativo/desligado: remove a escala semanal (geral) para não aparecer nem
+    // contar no quadro. Remove pelo vínculo gravado (colaboradorId) e também
+    // pelo fiscal (funcionarioId), cobrindo escalas antigas sem colaboradorId.
+    if (colaborador.ativo === false) {
+      await this.prisma.escalaEntry.deleteMany({
+        where: { colaboradorId: colaborador.id, especial: false },
+      });
+      if (colaborador.usuarioId) {
+        const fiscal = await this.prisma.fiscal.findFirst({
+          where: { usuarioId: colaborador.usuarioId },
+          select: { id: true },
+        });
+        if (fiscal) {
+          await this.prisma.escalaEntry.deleteMany({
+            where: { funcionarioId: fiscal.id, especial: false },
+          });
+        }
+      }
+      return;
+    }
+
+    if (!colaborador.usuarioId) return;
     const escala = {
       entradaSemana: colaborador.entradaSemana,
       saidaSemana: colaborador.saidaSemana,
@@ -714,6 +737,13 @@ export class ColaboradoresService {
     } else if (ativo === true) {
       data.desligadoEm = null;
     }
-    return this.prisma.colaborador.update({ where: { id }, data });
+    const atualizado = await this.prisma.colaborador.update({
+      where: { id },
+      data,
+    });
+    // Inativar limpa a escala semanal (sai do quadro); reativar a recria a
+    // partir dos horários do cadastro.
+    await this.sincronizarEscalaFiscal(atualizado);
+    return atualizado;
   }
 }
