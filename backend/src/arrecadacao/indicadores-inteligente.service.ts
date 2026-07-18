@@ -93,7 +93,13 @@ export interface PainelAtencao {
 /** Um destaque (top operador) de uma categoria. */
 export interface DestaqueOperador {
   nome: string;
+  /** Valor (R$) da categoria no mês. */
   total: number;
+  /**
+   * % sobre as vendas da loja no mês (só no "menos cancelou": o cancelamento do
+   * operador dividido pelas vendas totais da loja × 100).
+   */
+  percentual?: number;
 }
 
 /** Destaques do mês: top operador por categoria. */
@@ -104,7 +110,11 @@ export interface DestaquesMes {
   recargas: DestaqueOperador | null;
   /** Quem mais cancelou itens (por VALOR) — para acompanhar. */
   cancelamentoItens: DestaqueOperador | null;
-  /** Operador ativo que MENOS cancelou itens (premiação). total = valor cancelado. */
+  /**
+   * Operador que MENOS cancelou itens no mês (premiação), medido em % SOBRE AS
+   * VENDAS da loja (`percentual`). Só concorre quem está ATIVO e com assiduidade
+   * perfeita (sem faltas no período). `total` = valor cancelado (referência).
+   */
   menosCancelou: DestaqueOperador | null;
 }
 
@@ -357,10 +367,18 @@ export class IndicadoresInteligenteService {
       topPorTipo('CANCELAMENTO_ITENS'),
     ]);
 
-    // "Menos cancelou": entre os OPERADORES cadastrados com contribuição
-    // (troco/recargas) no mês, o que teve o menor cancelamento de itens (0 é o
-    // ideal). Desempate: maior contribuição.
-    const [contribRegs, cancelRegs] = await Promise.all([
+    // "Menos cancelou" (premiação): entre os OPERADORES cadastrados ATIVOS, com
+    // contribuição no mês e ASSIDUIDADE PERFEITA (sem faltas no período), o que
+    // teve o MENOR cancelamento de itens medido em % SOBRE AS VENDAS da loja
+    // (não em dinheiro). Inativos ainda somam nos totais da loja, mas não
+    // disputam o destaque individual. Desempate: maior contribuição.
+    const [
+      contribRegs,
+      cancelRegs,
+      colaboradoresAtivos,
+      faltasRegs,
+      vendasRegs,
+    ] = await Promise.all([
       this.prisma.registroArrecadacao.findMany({
         where: {
           tipo: { in: ['TROCO_SOLIDARIO', 'RECARGAS_CELULAR'] },
@@ -372,7 +390,24 @@ export class IndicadoresInteligenteService {
         where: { tipo: 'CANCELAMENTO_ITENS', data: { gte, lt } },
         select: { matricula: true, valor: true },
       }),
+      this.prisma.colaborador.findMany({
+        where: { ativo: true },
+        select: { id: true },
+      }),
+      this.prisma.ausencia.findMany({
+        where: { data: { gte, lt } },
+        select: { pessoaId: true },
+      }),
+      this.prisma.vendaDiaria.findMany({
+        where: { data: { gte, lt } },
+        select: { valor: true },
+      }),
     ]);
+
+    const ativos = new Set(colaboradoresAtivos.map((c) => c.id));
+    // Assiduidade perfeita = nenhuma falta registrada no período.
+    const comFalta = new Set(faltasRegs.map((a) => a.pessoaId));
+    const totalVendas = vendasRegs.reduce((s, v) => s + Number(v.valor), 0);
 
     const contrib = new Map<string, { nome: string; total: number }>();
     for (const r of contribRegs) {
@@ -399,6 +434,8 @@ export class IndicadoresInteligenteService {
     } | null = null;
     for (const [id, c] of contrib.entries()) {
       if (c.total <= 0) continue;
+      if (!ativos.has(id)) continue; // inativo: some do destaque individual
+      if (comFalta.has(id)) continue; // sem assiduidade perfeita: não concorre
       const cancelTotal = cancel.get(id) ?? 0;
       if (
         melhor === null ||
@@ -409,7 +446,15 @@ export class IndicadoresInteligenteService {
       }
     }
     const menosCancelou: DestaqueOperador | null = melhor
-      ? { nome: melhor.nome, total: arredondar(melhor.cancelTotal) }
+      ? {
+          nome: melhor.nome,
+          total: arredondar(melhor.cancelTotal),
+          // % sobre as vendas da loja no mês (base loja, não por operador).
+          percentual:
+            totalVendas > 0
+              ? arredondar((melhor.cancelTotal / totalVendas) * 100)
+              : 0,
+        }
       : null;
 
     return { trocoSolidario, recargas, cancelamentoItens, menosCancelou };

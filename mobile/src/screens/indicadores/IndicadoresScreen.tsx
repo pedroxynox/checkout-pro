@@ -193,8 +193,8 @@ export function IndicadoresScreen({
                       <Text style={styles.destaqueNome}>{destaques.menosCancelou.nome}</Text>
                     </View>
                     <Text style={[styles.destaqueValor, { color: cores.verde }]}>
-                      {destaques.menosCancelou.total > 0
-                        ? formatarMoeda(destaques.menosCancelou.total)
+                      {(destaques.menosCancelou.percentual ?? 0) > 0
+                        ? `${destaques.menosCancelou.percentual}% das vendas`
                         : 'Zero'}
                     </Text>
                   </View>
@@ -202,7 +202,8 @@ export function IndicadoresScreen({
 
                 <Text style={styles.destaquesNota}>
                   Troco e recargas: maior arrecadação. Cancelamento: maior valor —
-                  para acompanhar. "Menos cancelou": destaque positivo entre os ativos.
+                  para acompanhar. "Menos cancelou": em % sobre as vendas, só
+                  entre ativos com assiduidade perfeita (sem faltas no mês).
                 </Text>
               </View>
             )}

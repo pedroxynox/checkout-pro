@@ -293,6 +293,8 @@ export interface MetaMensal {
 export interface DestaqueOperador {
   nome: string;
   total: number;
+  /** % sobre as vendas da loja no mês (usado no "menos cancelou"). */
+  percentual?: number;
 }
 
 /** Destaques do mês: top operador por categoria. */
