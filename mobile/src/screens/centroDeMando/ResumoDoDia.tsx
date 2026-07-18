@@ -47,7 +47,7 @@ import {
   TipoArrecadacao,
 } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
-import { useAssistente } from '../../assistente/AssistenteContext';
+
 import { Cartao } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, raio, sombra, tipografia } from '../../theme';
@@ -194,7 +194,7 @@ function MedidorCircular({
 
 export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
   const { podeAcessar, perfil } = useAuth();
-  const { pedirBriefing } = useAssistente();
+
   const temas = temasDoPerfil(perfil);
 
   const req = useRequisicao(async () => {
@@ -463,46 +463,8 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
   const corVar =
     variacaoDia == null ? cores.textoSecundario : subiu ? cores.verde : cores.vermelho;
 
-  // Briefing da Cluby: monta uma pergunta com os números do dia para que a
-  // Cluby (IA) devolva um resumo curto e diga o que priorizar.
-  const perguntaBriefing = (() => {
-    const partes: string[] = [`saúde do negócio ${saude.nota}/100`];
-    if (vendasDia) {
-      partes.push(
-        `vendas de ${rotuloVendasCurto} ${formatarMoeda(vendasDia.atual)}${
-          variacaoDia != null
-            ? ` (${variacaoDia >= 0 ? '+' : ''}${Math.round(
-                variacaoDia,
-              )}% vs. mesmo dia da semana passada)`
-            : ''
-        }`,
-      );
-    }
-    if (ritmoMeta && !ritmoMeta.batida) {
-      partes.push(
-        `falta ~${formatarMoeda(ritmoMeta.porDia)}/dia para bater a meta do mês`,
-      );
-    }
-    if (pendentesLabels.length > 0) {
-      partes.push(`${pendentesLabels.length} arquivo(s) pendente(s)`);
-    }
-    if (criticos.length > 0) partes.push(`${criticos.length} insumo(s) crítico(s)`);
-    if (indicadoresForaMeta > 0) {
-      partes.push(`${indicadoresForaMeta} indicador(es) fora da meta`);
-    }
-    if (temCobertura) {
-      partes.push(`cobertura de hoje: ${trabalhando} no turno, ${faltas} falta(s)`);
-    } else if (faltas > 0) {
-      partes.push(`${faltas} falta(s) de operadores`);
-    }
-    return (
-      'Me dê um briefing rápido do dia com base nestes números: ' +
-      `${partes.join('; ')}. O que devo priorizar agora? Responda curto e prático.`
-    );
-  })();
-
-  // Briefing automático (por REGRAS, sem IA e sem custo): um resumo curto que
-  // aparece sozinho no topo. O botão abaixo abre a Cluby para aprofundar.
+  // Resumo automático (por REGRAS, sem IA e sem custo): um resumo curto que
+  // aparece sozinho no topo, montado a partir dos números do dia.
   const horaSaudacao =
     horaAgora < 12 ? 'Bom dia' : horaAgora < 18 ? 'Boa tarde' : 'Boa noite';
   const resumoNarrativo = (() => {
@@ -552,15 +514,6 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           <Text style={styles.briefingTitulo}>Resumo de hoje</Text>
         </View>
         <Text style={styles.briefingNarrativa}>{resumoNarrativo}</Text>
-        <Pressable
-          onPress={() => pedirBriefing(perguntaBriefing)}
-          style={({ pressed }) => [styles.briefingAcao, pressed && styles.briefingPress]}
-          accessibilityRole="button"
-          accessibilityLabel="Conversar com a Cluby sobre o resumo"
-        >
-          <Text style={styles.briefingAcaoTexto}>Conversar com a Cluby</Text>
-          <ChevronRight size={13} color={cores.primaria} />
-        </Pressable>
       </View>
 
       {/* Vendas do dia de referência (hoje se já carregado; senão, ontem) —
@@ -775,9 +728,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
   },
-  briefingPress: {
-    opacity: 0.7,
-  },
   briefingIcone: {
     width: 28,
     height: 28,
@@ -800,19 +750,6 @@ const styles = StyleSheet.create({
     color: cores.primariaEscura,
     marginTop: 9,
     lineHeight: 18,
-  },
-  briefingAcao: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    marginTop: 9,
-    alignSelf: 'flex-start',
-  },
-  briefingAcaoTexto: {
-    ...tipografia.rotulo,
-    fontSize: 11,
-    fontWeight: '800',
-    color: cores.primaria,
   },
   coberturaLinha: {
     flexDirection: 'row',

@@ -16,6 +16,7 @@ import { ApiError } from '../../api/client';
 // atalho para a Central de Jornada, que não é exercitado aqui).
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: jest.fn() }),
+  useRoute: () => ({ params: {} }),
 }));
 
 // Sem AuthProvider no teste: o atalho da Central de Jornada fica oculto.

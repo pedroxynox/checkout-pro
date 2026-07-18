@@ -1,65 +1,58 @@
 /**
  * Barra de abas inferior do app autenticado.
  *
- * Abas: Início (Home), Tarefas (pendências do dia, com selo), [Cluby central],
+ * Abas: Início (Home), Tarefas (pendências do dia, com selo), [Ponto central],
  * Notificações (com selo) e Perfil.
  *
- * O botão central é a **Cluby** — elevado, com degradê e ícone de "sparkles"
- * (sem robô). Ao tocar, abre o chat (tela Mensagens). As telas de módulo
- * continuam na pilha (AppNavigator), empurradas por cima das abas.
+ * O botão central é o **Ponto** — elevado, com degradê e ícone de câmera. Ao
+ * tocar, abre direto a câmera do leitor de ponto (tela Relógio Ponto). As telas
+ * de módulo continuam na pilha (AppNavigator), empurradas por cima das abas.
  */
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  Bell,
-  ClipboardList,
-  Home as HomeIcon,
-  Sparkles,
-  User,
-} from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Bell, Camera, ClipboardList, Home as HomeIcon, User } from 'lucide-react-native';
+import React from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAssistente } from '../assistente/AssistenteContext';
 import { useAuth } from '../auth/AuthContext';
 import { useNotificacoes } from '../notificacoes/NotificacoesContext';
 import { HomeScreen } from '../screens/HomeScreen';
-import { ClubyChat } from '../screens/mensagens/MensagensScreen';
 import { NotificacoesScreen } from '../screens/notificacoes/NotificacoesScreen';
 import { PerfilScreen } from '../screens/perfil/PerfilScreen';
 import { TarefasScreen } from '../screens/tarefas/TarefasScreen';
 import { usePulsoDoDia } from '../screens/centroDeMando/usePulsoDoDia';
 import { cores, gradientes } from '../theme';
-import { MainTabParamList } from './types';
+import { MainTabParamList, RootStackParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-/** Botão central elevado da Cluby (abre a janela flutuante do chat). */
-function BotaoCluby({ onAbrir }: { onAbrir: () => void }): React.ReactElement {
+/** Botão central elevado: abre a câmera do leitor de ponto (Relógio Ponto). */
+function BotaoPonto({ onAbrir }: { onAbrir: () => void }): React.ReactElement {
   return (
-    <View style={styles.clubyContainer} pointerEvents="box-none">
+    <View style={styles.pontoContainer} pointerEvents="box-none">
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Abrir a Cluby"
+        accessibilityLabel="Ler ponto pela câmera"
         onPress={onAbrir}
-        style={({ pressed }) => [styles.clubyPressable, pressed && styles.clubyPress]}
+        style={({ pressed }) => [styles.pontoPressable, pressed && styles.pontoPress]}
       >
         <LinearGradient
           colors={gradientes.header}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.clubyCirculo}
+          style={styles.pontoCirculo}
         >
-          <Sparkles size={24} color={cores.textoInverso} />
+          <Camera size={24} color={cores.textoInverso} />
         </LinearGradient>
-        <Text style={styles.clubyLabel}>Cluby</Text>
-        <View style={styles.clubyDot} />
+        <Text style={styles.pontoLabel}>Ponto</Text>
       </Pressable>
     </View>
   );
 }
 
-/** Slot vazio da aba central: a Cluby não é uma aba, abre como janela flutuante. */
+/** Slot vazio da aba central: o Ponto não é uma aba, navega para o leitor. */
 function TelaVazia(): null {
   return null;
 }
@@ -67,13 +60,12 @@ function TelaVazia(): null {
 export function MainTabs(): React.ReactElement {
   const { perfil, podeAcessar } = useAuth();
   const { naoLidas } = useNotificacoes();
-  // Janela flutuante da Cluby (modal por cima das abas).
-  const [clubyAberta, setClubyAberta] = useState(false);
-  const { pedido } = useAssistente();
-  // Quando outra tela pede um briefing (ex.: Resumo do Dia), abre a Cluby.
-  useEffect(() => {
-    if (pedido) setClubyAberta(true);
-  }, [pedido]);
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  // Botão central: abre a câmera do leitor de ponto. Nonce (timestamp) para
+  // reabrir a câmera mesmo em toques repetidos.
+  const abrirLeitorPonto = () =>
+    navigation.navigate('RegistroPonto', { abrirScanner: Date.now() });
   // Selo de pendências na aba Tarefas (defensivo, por regras).
   const { totalPendencias } = usePulsoDoDia(perfil, podeAcessar);
   // Respeita a área segura inferior (barra de gestos no Android/iOS e a barra
@@ -81,8 +73,7 @@ export function MainTabs(): React.ReactElement {
   const insets = useSafeAreaInsets();
 
   return (
-    <>
-      <Tab.Navigator
+    <Tab.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: cores.primaria },
         headerTintColor: cores.textoInverso,
@@ -148,8 +139,8 @@ export function MainTabs(): React.ReactElement {
         component={TelaVazia}
         options={{
           headerShown: false,
-          title: 'Cluby',
-          tabBarButton: () => <BotaoCluby onAbrir={() => setClubyAberta(true)} />,
+          title: 'Ponto',
+          tabBarButton: () => <BotaoPonto onAbrir={abrirLeitorPonto} />,
         }}
       />
       <Tab.Screen
@@ -170,55 +161,24 @@ export function MainTabs(): React.ReactElement {
         }}
       />
     </Tab.Navigator>
-
-      <Modal
-        visible={clubyAberta}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setClubyAberta(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setClubyAberta(false)}
-            accessibilityLabel="Fechar a Cluby"
-          />
-          <View style={styles.modalCard}>
-            <ClubyChat onFechar={() => setClubyAberta(false)} />
-          </View>
-        </View>
-      </Modal>
-    </>
   );
 }
 
 const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(10, 37, 64, 0.45)',
-  },
-  modalCard: {
-    height: '88%',
-    backgroundColor: cores.fundo,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    overflow: 'hidden',
-  },
-  clubyContainer: {
+  pontoContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-start',
   },
-  clubyPressable: {
+  pontoPressable: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  clubyPress: {
+  pontoPress: {
     opacity: 0.9,
     transform: [{ scale: 0.96 }],
   },
-  clubyCirculo: {
+  pontoCirculo: {
     width: 58,
     height: 58,
     borderRadius: 29,
@@ -234,20 +194,12 @@ const styles = StyleSheet.create({
     shadowRadius: 22,
     elevation: 10,
   },
-  clubyLabel: {
+  pontoLabel: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 11,
     fontWeight: '600',
     color: '#0A3D91',
     marginTop: 4,
-  },
-  // Pequeno indicador azul abaixo do texto "Cluby".
-  clubyDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#0A3D91',
-    marginTop: 3,
   },
 });
 
