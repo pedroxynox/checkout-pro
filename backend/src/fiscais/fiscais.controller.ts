@@ -7,6 +7,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { agoraNaBrasilia } from '../common/datas';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
   UsuarioAtual,
@@ -73,7 +74,9 @@ export class FiscaisController {
   @Get('jornada')
   @Funcionalidade('FISCAIS_JORNADA')
   jornada(@Query('data') data?: string): Promise<ItemJornada[]> {
-    return this.service.jornadaDoDia(data ? new Date(data) : new Date());
+    // Sem `data`, "hoje" é o dia de Brasília (UTC-3) — não o dia UTC do
+    // servidor —, para que as marcações do dia não sumam à noite.
+    return this.service.jornadaDoDia(data ? new Date(data) : agoraNaBrasilia());
   }
 
   /** Acumulado de horas extras do mês (por fiscal) — apenas gestores. */
