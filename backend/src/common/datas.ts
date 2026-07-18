@@ -119,6 +119,22 @@ export function rotuloPeriodoFolha(periodo: {
 export const OFFSET_BRASILIA_MS = -3 * 60 * 60 * 1000;
 
 /**
+ * Dia civil de Brasília (00:00 UTC que rotula o dia LOCAL) de um instante real.
+ *
+ * As datas de negócio são rotuladas em meia-noite UTC do dia de Brasília; como
+ * `inicioDoDia` trunca pelos componentes UTC, um instante REAL precisa ser
+ * deslocado para Brasília antes de truncar — senão, entre 21h e 23h59 locais
+ * (00:00–02:59 UTC do dia seguinte) o instante cairia no dia UTC seguinte.
+ *
+ * Use para agrupar um instante real ("agora", o horário de uma marcação) no dia
+ * a que ele pertence para o usuário. NÃO use com rótulos de dia já truncados
+ * (meia-noite UTC vinda de um `?data=YYYY-MM-DD`), que não devem ser deslocados.
+ */
+export function diaCivilBrasilia(instante: Date = new Date()): Date {
+  return inicioDoDia(new Date(instante.getTime() + OFFSET_BRASILIA_MS));
+}
+
+/**
  * "Agora" no fuso de Brasília. As horas do ponto são tratadas nesse fuso; use
  * este helper para o limite "até agora" dos cálculos de jornada do dia atual.
  */

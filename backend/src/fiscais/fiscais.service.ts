@@ -41,6 +41,7 @@ import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { FeriadosService } from '../feriados/feriados.service';
 import {
   agoraNaBrasilia,
+  diaCivilBrasilia,
   diaEncerradoEmBrasilia,
   fimDoDiaBrasiliaEmUtc,
 } from '../common/datas';
@@ -218,7 +219,7 @@ export class FiscaisService {
     const ultimo = registros[registros.length - 1] ?? null;
     const faltaHoje = !!(await this.prisma.ausencia.findUnique({
       where: {
-        pessoaId_data: { pessoaId: fiscal.id, data: inicioDoDia(agora) },
+        pessoaId_data: { pessoaId: fiscal.id, data: diaCivilBrasilia(agora) },
       },
     }));
     const folgaHoje = await this.isFolgaHoje(fiscal.id, agora);
@@ -239,7 +240,7 @@ export class FiscaisService {
     dia: Date,
   ): Promise<RegistroPonto[]> {
     const rows = await this.prisma.registroPontoFiscal.findMany({
-      where: { fiscalId, data: inicioDoDia(dia) },
+      where: { fiscalId, data: diaCivilBrasilia(dia) },
       orderBy: { em: 'asc' },
     });
     return rows.map((r) => ({ status: r.status as StatusFiscal, em: r.em }));
@@ -264,7 +265,9 @@ export class FiscaisService {
 
     // Valida: se já marcou falta hoje, não pode registrar ponto.
     const faltaHoje = await this.prisma.ausencia.findUnique({
-      where: { pessoaId_data: { pessoaId: fiscalId, data: inicioDoDia(em) } },
+      where: {
+        pessoaId_data: { pessoaId: fiscalId, data: diaCivilBrasilia(em) },
+      },
     });
     if (faltaHoje) {
       throw new FaltaRegistradaError();
@@ -279,7 +282,10 @@ export class FiscaisService {
     const anterior = statusAtual(await this.registrosDoDia(fiscalId, em));
 
     await this.prisma.registroPontoFiscal.create({
-      data: { fiscalId, status, data: inicioDoDia(em), em },
+      // `em` é o instante real; o dia-calendário do registro é o de Brasília
+      // (mesmo dia usado pela leitura da jornada e pelas batidas do Relógio
+      // Ponto), para não gravar no dia UTC seguinte entre 21h e 23h59.
+      data: { fiscalId, status, data: diaCivilBrasilia(em), em },
     });
 
     // Tempo real (painel atualiza sem recarregar).
@@ -378,9 +384,13 @@ export class FiscaisService {
    * cai no log legado (`RegistroPontoFiscal`), aplicando o encerramento do dia.
    */
   async painel(): Promise<ItemPainel[]> {
-    const agoraReal = new Date();
-    const dia = inicioDoDia(agoraReal);
+    // O dia civil de negócio é o de Brasília (UTC-3), não o do relógio UTC do
+    // servidor. Entre 21h e 23h59 de Brasília o UTC já virou o dia seguinte;
+    // usar `new Date()` aqui faria o painel procurar as batidas no dia errado
+    // e as marcações do dia sumiriam. `inicioDoDia(agoraNaBrasilia())` alinha a
+    // leitura ao mesmo dia com que as batidas são gravadas.
     const agoraPonto = agoraNaBrasilia();
+    const dia = inicioDoDia(agoraPonto);
     const diaEncerrado = diaEncerradoEmBrasilia(dia, agoraPonto);
     const limitePonto = diaEncerrado ? inicioDoProximoDia(dia) : agoraPonto;
     const ehFeriado = this.feriados
@@ -456,7 +466,11 @@ export class FiscaisService {
    * demais colaboradores ativos que batem ponto (operadores/supervisores),
    * cuja jornada é calculada a partir das batidas do Registro de Ponto.
    */
-  async jornadaDoDia(data: Date = new Date()): Promise<ItemJornada[]> {
+  async jornadaDoDia(data: Date = agoraNaBrasilia()): Promise<ItemJornada[]> {
+    // "Hoje" é o dia civil de Brasília (UTC-3), coerente com o dia gravado nas
+    // batidas. O default usa `agoraNaBrasilia()` para não cair no dia UTC do
+    // servidor entre 21h e 23h59 (quando o UTC já virou), o que faria as
+    // marcações do dia desaparecerem da jornada da equipe.
     const dia = inicioDoDia(data);
     const agoraReal = new Date();
     const agoraPonto = agoraNaBrasilia();
@@ -654,7 +668,8 @@ export class FiscaisService {
     fiscalId: string,
     dia: Date = new Date(),
   ): Promise<void> {
-    const data = inicioDoDia(dia);
+    // Dia-calendário de Brasília do instante (a falta é sempre "de hoje").
+    const data = diaCivilBrasilia(dia);
 
     // Bloqueia marcar falta num ciclo de folha já fechado.
     await this.cicloFolha?.exigirCicloAberto(data);
