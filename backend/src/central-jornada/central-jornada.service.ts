@@ -226,6 +226,24 @@ const FICHA_ESCALA_VAZIA: FichaEscala = {
  * já é a fonte única de fiscais + operadores). Só considera o contrato
  * "6x1 - 2x1"; futuros contratos terão o próprio comportamento.
  */
+/**
+ * Contribuição de uma pessoa ao SALDO DO TIME (o "saldo atual" da tela):
+ *  - horas 50%: entram só quando POSITIVAS após o débito (o débito de horas
+ *    consome APENAS as 50%); se ficarem negativas, a pessoa aporta 0 — o saldo
+ *    negativo é individual (aparece na card) e não puxa o total do time;
+ *  - horas 100%: entram SEMPRE — nunca são debitadas de ninguém.
+ *
+ * Obs.: o saldo INDIVIDUAL (card) segue sendo 50% + 100% − devidas (pode ficar
+ * negativo). Só o total do time usa esta regra de "positivas".
+ */
+export function contribuicaoSaldoTime(p: {
+  extras50Ms: number;
+  extras100Ms: number;
+  horasDevidasMs: number;
+}): number {
+  return Math.max(0, p.extras50Ms - p.horasDevidasMs) + p.extras100Ms;
+}
+
 @Injectable()
 export class CentralJornadaService {
   constructor(
@@ -603,7 +621,8 @@ export class CentralJornadaService {
         diasTac: acc.diasTac + p.diasTac,
         conflitos: acc.conflitos + p.conflitos,
         atrasos: acc.atrasos + p.atrasos,
-        saldoMs: acc.saldoMs + p.saldoMs,
+        // Saldo do time: só as 50% positivas de cada um + todas as 100%.
+        saldoMs: acc.saldoMs + contribuicaoSaldoTime(p),
       }),
       {
         extras50Ms: 0,
@@ -874,7 +893,8 @@ export class CentralJornadaService {
         diasTac: acc.diasTac + p.diasTac,
         conflitos: acc.conflitos + p.conflitos,
         atrasos: acc.atrasos + p.atrasos,
-        saldoMs: acc.saldoMs + p.saldoMs,
+        // Saldo do time: só as 50% positivas de cada um + todas as 100%.
+        saldoMs: acc.saldoMs + contribuicaoSaldoTime(p),
       }),
       {
         extras50Ms: 0,
