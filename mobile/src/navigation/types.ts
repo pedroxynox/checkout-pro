@@ -32,7 +32,8 @@ export type RootStackParamList = {
   InsumoDetalhe: { insumoId: string; nome: string };
   Requisicoes: undefined;
   JornadaFiscais: undefined;
-  RegistroPonto: undefined;
+  /** `abrirScanner` (nonce) abre a câmera do leitor de ponto ao entrar. */
+  RegistroPonto: { abrirScanner?: number } | undefined;
   CentralJornada: undefined;
   MarcacoesDoDia: undefined;
   Inconsistencias: undefined;

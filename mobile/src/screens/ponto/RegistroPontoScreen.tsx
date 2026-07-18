@@ -36,7 +36,8 @@ import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, formatarDuracao, hojeISO } from '../../utils/formato';
 import { capturarComprovante } from './leitorComprovante';
 import { LeitorComprovanteAoVivo } from './leitorAoVivo';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
 import { useAuth } from '../../auth/AuthContext';
@@ -117,6 +118,7 @@ function rotuloConfianca(c: number): string {
 export function RegistroPontoScreen(): React.ReactElement {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'RegistroPonto'>>();
   const { podeAcessar } = useAuth();
   const { dataInicial } = useConfigSistema();
   // Fila offline: se não houver conexão, a batida é guardada no dispositivo e
@@ -166,6 +168,13 @@ export function RegistroPontoScreen(): React.ReactElement {
   const [confiancaPendente, setConfiancaPendente] = useState<number | null>(
     null,
   );
+
+  // Aberto pelo botão central "Ponto": abre a câmera do leitor ao entrar. Usa
+  // um nonce (timestamp) para reabrir mesmo em toques repetidos na mesma tela.
+  const abrirScannerNonce = route.params?.abrirScanner;
+  useEffect(() => {
+    if (abrirScannerNonce) setScannerAberto(true);
+  }, [abrirScannerNonce]);
 
   // Descobre se o usuário logado é fiscal (para o autosserviço de falta).
   useEffect(() => {
