@@ -77,6 +77,8 @@ describe('OperadoresService', () => {
           }
           return Promise.resolve({});
         },
+        findUnique: ({ where: { id } }: { where: { id: string } }) =>
+          Promise.resolve(ausencias.find((a) => a.id === id) ?? null),
       },
       // Colaborador (para a ausência a prazo): folga aos domingos (dia 0).
       // A folga NÃO deve mais ser ignorada — todos os dias corridos contam.

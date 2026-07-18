@@ -88,3 +88,17 @@ export class HorarioInvalidoError extends OperadoresError {
     );
   }
 }
+
+/**
+ * Lançado quando um FISCAL tenta remover (desmarcar) uma falta que faz parte de
+ * uma AUSÊNCIA A PRAZO (período lançado pelo gestor). Só gerente, supervisor ou
+ * administrador podem remover esses dias.
+ */
+export class AusenciaAPrazoProtegidaError extends OperadoresError {
+  readonly statusHttp = HttpStatus.FORBIDDEN;
+  constructor() {
+    super(
+      'Esta falta faz parte de uma ausência a prazo e só pode ser removida por um gerente ou supervisor.',
+    );
+  }
+}

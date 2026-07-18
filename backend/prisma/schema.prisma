@@ -887,6 +887,11 @@ model Ausencia {
   // manualmente pelo gestor (falta não justificada / abonada como débito).
   debitoHoras Boolean @default(false)
 
+  // Quando true, a falta faz parte de uma AUSÊNCIA A PRAZO (período: férias,
+  // licença) lançada pelo gestor. Esses dias NÃO podem ser desmarcados por um
+  // fiscal na escala — só gerente/supervisor/administrador podem remover.
+  aPrazo Boolean @default(false)
+
   @@unique([pessoaId, data])
   @@index([colaboradorId])
   @@index([statusJustificativa])
