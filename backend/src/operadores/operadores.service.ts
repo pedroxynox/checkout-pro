@@ -23,6 +23,7 @@ import {
   motivoObrigatorio,
 } from '../common/justificativas';
 import {
+  AusenciaAPrazoProtegidaError,
   AusenciaDuplicadaError,
   AusenciaNaoEncontradaError,
   JustificativaInvalidaError,
@@ -316,6 +317,9 @@ export class OperadoresService {
       justificadaPorId: autor.id ?? null,
       justificadaPorNome: autor.nome ?? null,
       justificadaEm: new Date(),
+      // Marca o dia como parte da ausência a prazo: um fiscal não pode
+      // desmarcá-lo na escala (só gerente/supervisor/administrador).
+      aPrazo: true,
     };
 
     // Grava os dias do período de forma ATÔMICA (tudo-ou-nada): se algo falhar
@@ -377,15 +381,23 @@ export class OperadoresService {
     }
   }
 
-  /** Remove uma ausência registrada (Req 6.2.4). */
-  async removerAusencia(ausenciaId: string): Promise<void> {
-    // Bloqueia remover uma falta de um ciclo de folha já fechado.
-    if (this.cicloFolha) {
-      const a = await this.prisma.ausencia.findUnique({
-        where: { id: ausenciaId },
-        select: { data: true },
-      });
-      if (a) await this.cicloFolha.exigirCicloAberto(a.data);
+  /**
+   * Remove uma ausência registrada (Req 6.2.4). Um FISCAL NÃO pode remover uma
+   * falta que faz parte de uma ausência a prazo (período do gestor) — só
+   * gerente/supervisor/administrador.
+   */
+  async removerAusencia(ausenciaId: string, perfil?: string): Promise<void> {
+    const a = await this.prisma.ausencia.findUnique({
+      where: { id: ausenciaId },
+      select: { data: true, aPrazo: true },
+    });
+    if (a) {
+      // Ausência a prazo: fiscal não desmarca (é decisão do gestor).
+      if (a.aPrazo && perfil === 'FISCAL') {
+        throw new AusenciaAPrazoProtegidaError();
+      }
+      // Bloqueia remover uma falta de um ciclo de folha já fechado.
+      if (this.cicloFolha) await this.cicloFolha.exigirCicloAberto(a.data);
     }
     await this.prisma.ausencia.delete({ where: { id: ausenciaId } });
   }

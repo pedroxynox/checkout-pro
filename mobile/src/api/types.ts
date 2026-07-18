@@ -1314,6 +1314,11 @@ export interface ColaboradorDia {
   /** Estado da justificativa da falta (só quando status = FALTA). */
   statusJustificativa?: StatusJustificativa | null;
   justificadaPorNome?: string | null;
+  /**
+   * true quando a falta faz parte de uma AUSÊNCIA A PRAZO (período do gestor):
+   * um fiscal não pode desmarcá-la na escala.
+   */
+  aPrazo?: boolean;
 }
 
 /** Roster de um dia (ordenado por entrada, folga ao fim). */

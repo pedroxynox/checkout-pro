@@ -1050,6 +1050,14 @@ export function OperadoresScreen(): React.ReactElement {
     if (c.status === 'FOLGA' || ocupado) return;
 
     if (c.status === 'FALTA' && c.ausenciaId) {
+      // Ausência a prazo (período do gestor): fiscal não pode desmarcar.
+      if (c.aPrazo && !podeProgramarFuturo) {
+        notificar(
+          'Ausência a prazo',
+          'Esta falta faz parte de uma ausência a prazo e só pode ser removida por um gerente ou supervisor.',
+        );
+        return;
+      }
       const ok = await confirmar(
         'Remover falta',
         `Remover a falta de ${c.nome} em ${formatarData(diaSel)}?`,

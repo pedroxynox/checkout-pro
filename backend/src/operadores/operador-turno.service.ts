@@ -106,6 +106,11 @@ export interface ColaboradorDia {
   statusJustificativa: StatusJustificativa | null;
   /** Quem justificou a falta (auditoria), quando aplicável. */
   justificadaPorNome: string | null;
+  /**
+   * true quando a falta faz parte de uma AUSÊNCIA A PRAZO (período do gestor):
+   * um fiscal não pode desmarcá-la na escala.
+   */
+  aPrazo: boolean;
 }
 
 /** Roster de um dia: colaboradores ordenados por entrada (folga ao fim). */
@@ -439,6 +444,7 @@ export class OperadorTurnoService {
               pessoaId: true,
               statusJustificativa: true,
               justificadaPorNome: true,
+              aPrazo: true,
             },
           })
         : [];
@@ -467,6 +473,7 @@ export class OperadorTurnoService {
           ? (aus.statusJustificativa as StatusJustificativa)
           : null,
         justificadaPorNome: aus?.justificadaPorNome ?? null,
+        aPrazo: aus?.aPrazo ?? false,
       };
     };
 
@@ -486,6 +493,7 @@ export class OperadorTurnoService {
       ausenciaId: null,
       statusJustificativa: null,
       justificadaPorNome: null,
+      aPrazo: false,
     });
 
     const colaboradores: ColaboradorDia[] = ehDom

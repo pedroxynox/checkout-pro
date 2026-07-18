@@ -124,8 +124,11 @@ export class OperadoresController {
   @Delete('ausencias/:id')
   @Funcionalidade('OPERADORES_AUSENCIAS')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async removerAusencia(@Param('id') id: string): Promise<void> {
-    await this.operadoresService.removerAusencia(id);
+  async removerAusencia(
+    @Param('id') id: string,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<void> {
+    await this.operadoresService.removerAusencia(id, usuario?.perfil as string);
   }
 
   /**
