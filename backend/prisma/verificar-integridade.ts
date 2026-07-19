@@ -24,6 +24,8 @@ async function main(): Promise<void> {
       colaboradoresFiscais,
       pontosSemVinculo,
       escalasSemVinculo,
+      ausenciasSemVinculo,
+      batidasSemVinculo,
     ] = await Promise.all([
       prisma.fiscal.findMany({
         select: { id: true, nome: true, usuarioId: true },
@@ -35,6 +37,8 @@ async function main(): Promise<void> {
       }),
       prisma.registroPontoFiscal.count({ where: { colaboradorId: null } }),
       prisma.escalaEntry.count({ where: { colaboradorId: null } }),
+      prisma.ausencia.count({ where: { colaboradorId: null } }),
+      prisma.batidaPonto.count({ where: { colaboradorId: null } }),
     ]);
 
     const r = detectarVinculosOrfaos(fiscais, usuarios, colaboradoresFiscais);
@@ -47,6 +51,8 @@ async function main(): Promise<void> {
       `Ponto do fiscal sem vínculo (colaboradorId nulo): ${pontosSemVinculo}`,
     );
     console.log(`Escala sem vínculo (colaboradorId nulo): ${escalasSemVinculo}`);
+    console.log(`Faltas sem vínculo (colaboradorId nulo): ${ausenciasSemVinculo}`);
+    console.log(`Batidas sem vínculo (colaboradorId nulo): ${batidasSemVinculo}`);
 
     if (r.fiscaisSemFicha.length > 0) {
       console.log(`\nFiscais SEM ficha canônica (${r.fiscaisSemFicha.length}):`);
@@ -64,7 +70,11 @@ async function main(): Promise<void> {
     }
 
     const tudoOk =
-      r.ok && pontosSemVinculo === 0 && escalasSemVinculo === 0;
+      r.ok &&
+      pontosSemVinculo === 0 &&
+      escalasSemVinculo === 0 &&
+      ausenciasSemVinculo === 0 &&
+      batidasSemVinculo === 0;
     if (tudoOk) {
       console.log('\n✅ Integridade OK: nenhum vínculo órfão.');
     } else {

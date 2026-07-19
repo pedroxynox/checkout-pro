@@ -19,6 +19,7 @@ describe('OperadoresService', () => {
   interface AusenciaFake {
     id: string;
     pessoaId: string;
+    colaboradorId?: string | null;
     data: Date;
   }
 
@@ -50,11 +51,16 @@ describe('OperadoresService', () => {
           return Promise.resolve(lista);
         },
         create: ({
-          data: { pessoaId, data },
+          data: { pessoaId, colaboradorId, data },
         }: {
-          data: { pessoaId: string; data: Date };
+          data: { pessoaId: string; colaboradorId?: string | null; data: Date };
         }) => {
-          const nova: AusenciaFake = { id: `au${++seq}`, pessoaId, data };
+          const nova: AusenciaFake = {
+            id: `au${++seq}`,
+            pessoaId,
+            colaboradorId: colaboradorId ?? null,
+            data,
+          };
           ausencias.push(nova);
           return Promise.resolve(nova);
         },
@@ -168,6 +174,11 @@ describe('OperadoresService', () => {
         new Date(Date.UTC(2024, 2, 10)),
       );
       expect(ausencia.pessoaId).toBe('p1');
+      // Fase 4: a falta do operador já nasce vinculada à ficha canônica
+      // (pessoaId do operador é o próprio Colaborador.id).
+      expect((ausencia as { colaboradorId?: string | null }).colaboradorId).toBe(
+        'p1',
+      );
       await expect(
         service.removerAusencia(ausencia.id),
       ).resolves.toBeUndefined();
