@@ -2,8 +2,10 @@
  * Painel de inconsistências da jornada (uso gerencial — CENTRAL_JORNADA).
  * Reúne, por ciclo de folha (26→25), os problemas que precisam de revisão:
  * jornadas incompletas, batidas duplicadas, conflito ponto↔ausência, atraso
- * (fora da escala) e TAC. Filtros por pessoa, função e tipo facilitam a
- * revisão diária de supervisores e gerentes.
+ * (fora da escala) e TAC.
+ *
+ * Para não sobrecarregar a tela, os problemas ficam AGRUPADOS POR DIA em seções
+ * recolhíveis (tocar no dia expande/recolhe). A busca é apenas por pessoa.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
@@ -64,68 +66,40 @@ function estiloTipo(t: TipoInconsistencia): {
   }
 }
 
-/** Opções do filtro por tipo (TODOS + os cinco tipos). */
-const FILTROS_TIPO: { chave: TipoInconsistencia | 'TODOS'; rotulo: string }[] = [
-  { chave: 'TODOS', rotulo: 'Todos' },
-  { chave: 'INCOMPLETA', rotulo: 'Incompletas' },
-  { chave: 'DUPLICADA', rotulo: 'Duplicadas' },
-  { chave: 'CONFLITO_AUSENCIA', rotulo: 'Conflitos' },
-  { chave: 'ATRASO', rotulo: 'Atrasos' },
-  { chave: 'TAC', rotulo: 'TAC' },
-];
-
-const FILTROS_FUNCAO: { chave: string; rotulo: string }[] = [
-  { chave: 'TODOS', rotulo: 'Todas' },
-  { chave: 'FISCAL', rotulo: 'Fiscais' },
-  { chave: 'SUPERVISOR', rotulo: 'Supervisores' },
-  { chave: 'OPERADOR', rotulo: 'Operadores' },
-];
-
-function Chip({
-  ativo,
-  rotulo,
-  aoTocar,
-}: {
-  ativo: boolean;
-  rotulo: string;
-  aoTocar: () => void;
-}): React.ReactElement {
-  return (
-    <Pressable
-      onPress={aoTocar}
-      style={[styles.chip, ativo && styles.chipAtivo]}
-      accessibilityRole="button"
-    >
-      <Text style={[styles.chipTexto, ativo && styles.chipTextoAtivo]}>
-        {rotulo}
-      </Text>
-    </Pressable>
-  );
-}
-
 export function InconsistenciasScreen(): React.ReactElement {
   const [ciclo, setCiclo] = useState(0);
   const [busca, setBusca] = useState('');
-  const [tipoFiltro, setTipoFiltro] = useState<TipoInconsistencia | 'TODOS'>(
-    'TODOS',
-  );
-  const [funcaoFiltro, setFuncaoFiltro] = useState<string>('TODOS');
+  const [diasAbertos, setDiasAbertos] = useState<Set<string>>(new Set());
 
   const req = useRequisicao<CentralInconsistencias>(
     () => centralJornadaService.inconsistencias(ciclo),
     [ciclo],
   );
 
-  const itensFiltrados = useMemo(() => {
+  // Filtra apenas por pessoa (nome) e agrupa por dia (mais recente primeiro).
+  const porDia = useMemo(() => {
     const itens = req.dados?.itens ?? [];
     const alvo = busca.trim().toLowerCase();
-    return itens.filter((i) => {
-      if (tipoFiltro !== 'TODOS' && i.tipo !== tipoFiltro) return false;
-      if (funcaoFiltro !== 'TODOS' && i.funcao !== funcaoFiltro) return false;
-      if (alvo && !i.nome.toLowerCase().includes(alvo)) return false;
-      return true;
+    const filtrados = alvo
+      ? itens.filter((i) => i.nome.toLowerCase().includes(alvo))
+      : itens;
+    const mapa = new Map<string, InconsistenciaItem[]>();
+    for (const item of filtrados) {
+      const arr = mapa.get(item.data) ?? [];
+      arr.push(item);
+      mapa.set(item.data, arr);
+    }
+    return [...mapa.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [req.dados, busca]);
+
+  function alternarDia(data: string): void {
+    setDiasAbertos((prev) => {
+      const proximo = new Set(prev);
+      if (proximo.has(data)) proximo.delete(data);
+      else proximo.add(data);
+      return proximo;
     });
-  }, [req.dados, busca, tipoFiltro, funcaoFiltro]);
+  }
 
   const totais = req.dados?.totais;
 
@@ -142,7 +116,9 @@ export function InconsistenciasScreen(): React.ReactElement {
         </Pressable>
         <View style={styles.cicloCentro}>
           <Text style={styles.cicloLabel}>Ciclo de folha</Text>
-          <Text style={styles.cicloRotulo}>{req.dados?.periodo.rotulo ?? '—'}</Text>
+          <Text style={styles.cicloRotulo}>
+            {req.dados?.periodo.rotulo ?? '—'}
+          </Text>
         </View>
         <Pressable
           onPress={() => setCiclo((c) => Math.min(0, c + 1))}
@@ -175,7 +151,7 @@ export function InconsistenciasScreen(): React.ReactElement {
             </Cartao>
           )}
 
-          {/* Filtros: busca por nome + tipo + função */}
+          {/* Busca apenas por pessoa */}
           <Cartao>
             <CampoTexto
               rotulo="Buscar por pessoa"
@@ -184,41 +160,53 @@ export function InconsistenciasScreen(): React.ReactElement {
               onChangeText={setBusca}
               autoCorrect={false}
             />
-            <Text style={styles.filtroTitulo}>Tipo</Text>
-            <View style={styles.chipsLinha}>
-              {FILTROS_TIPO.map((f) => (
-                <Chip
-                  key={f.chave}
-                  rotulo={f.rotulo}
-                  ativo={tipoFiltro === f.chave}
-                  aoTocar={() => setTipoFiltro(f.chave)}
-                />
-              ))}
-            </View>
-            <Text style={styles.filtroTitulo}>Função</Text>
-            <View style={styles.chipsLinha}>
-              {FILTROS_FUNCAO.map((f) => (
-                <Chip
-                  key={f.chave}
-                  rotulo={f.rotulo}
-                  ativo={funcaoFiltro === f.chave}
-                  aoTocar={() => setFuncaoFiltro(f.chave)}
-                />
-              ))}
-            </View>
           </Cartao>
 
-          {/* Lista filtrada */}
-          {itensFiltrados.length === 0 ? (
+          {/* Problemas agrupados por dia (seções recolhíveis) */}
+          {porDia.length === 0 ? (
             <EstadoVazio
               icone="checkmark-done-outline"
               titulo="Nada a revisar"
-              descricao="Nenhuma inconsistência com os filtros atuais."
+              descricao={
+                busca.trim()
+                  ? 'Nenhuma inconsistência para essa pessoa.'
+                  : 'Nenhuma inconsistência neste ciclo.'
+              }
             />
           ) : (
-            itensFiltrados.map((item, i) => (
-              <ItemInconsistencia key={`${item.colaboradorId}-${item.data}-${item.tipo}-${i}`} item={item} />
-            ))
+            porDia.map(([data, itens]) => {
+              const aberto = diasAbertos.has(data);
+              return (
+                <Cartao key={data} style={styles.cardDia}>
+                  <Pressable
+                    onPress={() => alternarDia(data)}
+                    style={styles.diaHeader}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.diaTitulo}>
+                      {dataCurta(data)}
+                      {itens[0]?.ehFeriado ? ' • Feriado' : ''}
+                    </Text>
+                    <View style={styles.diaBadge}>
+                      <Text style={styles.diaBadgeTexto}>{itens.length}</Text>
+                    </View>
+                    <Ionicons
+                      name={aberto ? 'chevron-up' : 'chevron-down'}
+                      size={20}
+                      color={cores.textoSecundario}
+                    />
+                  </Pressable>
+
+                  {aberto &&
+                    itens.map((item, i) => (
+                      <ItemInconsistencia
+                        key={`${item.colaboradorId}-${item.tipo}-${i}`}
+                        item={item}
+                      />
+                    ))}
+                </Cartao>
+              );
+            })
           )}
         </>
       )}
@@ -233,19 +221,18 @@ function ItemInconsistencia({
 }): React.ReactElement {
   const est = estiloTipo(item.tipo);
   return (
-    <Cartao style={styles.cardItem}>
-      <View style={styles.itemTopo}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.itemNome}>{item.nome}</Text>
-          <Text style={styles.itemSub}>
-            {rotuloFuncao(item.funcao)} • {dataCurta(item.data)}
-            {item.ehFeriado ? ' • Feriado' : ''}
+    <View style={styles.itemLinha}>
+      <View style={{ flex: 1 }}>
+        <View style={styles.itemTopo}>
+          <Text style={styles.itemNome} numberOfLines={1}>
+            {item.nome}
           </Text>
+          <Selo texto={est.rotulo} cor={est.cor} fundo={est.fundo} />
         </View>
-        <Selo texto={est.rotulo} cor={est.cor} fundo={est.fundo} />
+        <Text style={styles.itemSub}>{rotuloFuncao(item.funcao)}</Text>
+        <Text style={styles.itemDetalhe}>{item.detalhe}</Text>
       </View>
-      <Text style={styles.itemDetalhe}>{item.detalhe}</Text>
-    </Cartao>
+    </View>
   );
 }
 
@@ -281,39 +268,38 @@ const styles = StyleSheet.create({
     ...tipografia.corpo,
     color: cores.texto,
   },
-  filtroTitulo: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
+  cardDia: {
     marginTop: espacamento.sm,
-    marginBottom: espacamento.xs,
   },
-  chipsLinha: {
+  diaHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: espacamento.xs,
+    alignItems: 'center',
+    gap: espacamento.sm,
   },
-  chip: {
-    paddingVertical: 6,
-    paddingHorizontal: espacamento.sm,
+  diaTitulo: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    fontWeight: '700',
+    flex: 1,
+  },
+  diaBadge: {
+    minWidth: 24,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
     borderRadius: raio.lg,
-    borderWidth: 1,
-    borderColor: cores.divisor,
-    backgroundColor: cores.superficie ?? '#fff',
+    backgroundColor: '#FEECEC',
+    alignItems: 'center',
   },
-  chipAtivo: {
-    backgroundColor: cores.primaria,
-    borderColor: cores.primaria,
-  },
-  chipTexto: {
+  diaBadgeTexto: {
     ...tipografia.legenda,
-    color: cores.textoSecundario,
-  },
-  chipTextoAtivo: {
-    color: '#fff',
+    color: VERMELHO,
     fontWeight: '700',
   },
-  cardItem: {
+  itemLinha: {
     marginTop: espacamento.sm,
+    paddingTop: espacamento.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: cores.divisor,
   },
   itemTopo: {
     flexDirection: 'row',
@@ -324,6 +310,7 @@ const styles = StyleSheet.create({
     ...tipografia.rotulo,
     color: cores.texto,
     fontWeight: '700',
+    flex: 1,
   },
   itemSub: {
     ...tipografia.legenda,

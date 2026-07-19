@@ -1,6 +1,6 @@
 /**
- * Painel de inconsistências: lista os problemas do ciclo e filtra por tipo,
- * função e nome.
+ * Painel de inconsistências: agrupa os problemas do ciclo por dia (seções
+ * recolhíveis) e filtra apenas por pessoa (nome).
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
@@ -55,32 +55,31 @@ describe('InconsistenciasScreen', () => {
     centralJornadaService.inconsistencias.mockResolvedValue(RESPOSTA);
   });
 
-  it('lista as inconsistências do ciclo', async () => {
+  it('agrupa por dia e expande ao tocar no dia', async () => {
     render(<InconsistenciasScreen />);
-    expect(await screen.findByText('Ana Souza')).toBeTruthy();
-    expect(screen.getByText('Bruno Lima')).toBeTruthy();
-  });
-
-  it('filtra por tipo (Conflitos oculta as incompletas)', async () => {
-    render(<InconsistenciasScreen />);
-    await screen.findByText('Ana Souza');
-
-    fireEvent.press(screen.getByText('Conflitos'));
-
+    // Cabeçalhos de dia aparecem (Ana em 28/06, Bruno em 29/06).
+    const diaAna = await screen.findByText(/28\/06/);
+    expect(screen.getByText(/29\/06/)).toBeTruthy();
+    // Recolhido por padrão: os nomes ainda não aparecem.
     expect(screen.queryByText('Ana Souza')).toBeNull();
-    expect(screen.getByText('Bruno Lima')).toBeTruthy();
+    // Ao tocar no dia, expande e mostra a pessoa daquele dia.
+    fireEvent.press(diaAna);
+    expect(screen.getByText('Ana Souza')).toBeTruthy();
   });
 
-  it('filtra por nome', async () => {
+  it('filtra apenas por pessoa (nome)', async () => {
     render(<InconsistenciasScreen />);
-    await screen.findByText('Ana Souza');
+    await screen.findByText(/28\/06/);
 
     fireEvent.changeText(
       screen.getByPlaceholderText('Nome do colaborador…'),
       'bruno',
     );
 
-    expect(screen.queryByText('Ana Souza')).toBeNull();
+    // O dia da Ana some; fica só o dia do Bruno.
+    expect(screen.queryByText(/28\/06/)).toBeNull();
+    const diaBruno = screen.getByText(/29\/06/);
+    fireEvent.press(diaBruno);
     expect(screen.getByText('Bruno Lima')).toBeTruthy();
   });
 });

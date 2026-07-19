@@ -1,6 +1,6 @@
 /**
- * Exportação do ciclo: mostra os totais para revisão e a prévia das linhas,
- * compartilha o CSV e permite fechar/reabrir o ciclo.
+ * Revisão/fechamento do ciclo: mostra os totais para revisão (sem prévia de
+ * linhas nem exportação de CSV) e permite fechar/reabrir o ciclo.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
@@ -82,11 +82,13 @@ describe('ExportarCicloScreen', () => {
     });
   });
 
-  it('mostra a revisão do ciclo e a prévia das linhas', async () => {
+  it('mostra a revisão do ciclo (totais) sem prévia de linhas', async () => {
     render(<ExportarCicloScreen />);
     expect(await screen.findByText('Revisão do ciclo')).toBeTruthy();
-    expect(screen.getByText('Ana Souza')).toBeTruthy();
-    expect(screen.getByText(/Prévia \(1 linha\)/)).toBeTruthy();
+    expect(screen.getByText(/Inconsistências 1/)).toBeTruthy();
+    // Não há mais prévia de linhas nem CSV.
+    expect(screen.queryByText('Ana Souza')).toBeNull();
+    expect(screen.queryByText(/Prévia/)).toBeNull();
   });
 
   it('fecha o ciclo ao tocar em Fechar ciclo (com confirmação)', async () => {
