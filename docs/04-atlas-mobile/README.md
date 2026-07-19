@@ -5,7 +5,7 @@
 
 Um documento por área de tela do app (`mobile/src/screens/`). Padrão em [`_modelo-tela.md`](./_modelo-tela.md).
 
-**Cobertura:** 0/25 documentados (0%).
+**Cobertura:** 1/25 documentados (4%).
 
 | Item | Documento | Estado |
 |---|---|---|
@@ -14,7 +14,7 @@ Um documento por área de tela do app (`mobile/src/screens/`). Padrão em [`_mod
 | `centroDeMando` | `centroDeMando` | ⬜ pendente |
 | `checklist` | `checklist` | ⬜ pendente |
 | `checkouts` | `checkouts` | ⬜ pendente |
-| `colaboradores` | `colaboradores` | ⬜ pendente |
+| `colaboradores` | [`colaboradores`](./colaboradores.md) | ✅ documentado |
 | `contratos` | `contratos` | ⬜ pendente |
 | `fechamento` | `fechamento` | ⬜ pendente |
 | `fiscais` | `fiscais` | ⬜ pendente |

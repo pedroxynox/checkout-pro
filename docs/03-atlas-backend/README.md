@@ -5,7 +5,7 @@
 
 Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modulo.md`](./_modelo-modulo.md).
 
-**Cobertura:** 0/34 documentados (0%).
+**Cobertura:** 1/34 documentados (3%).
 
 | Item | Documento | Estado |
 |---|---|---|
@@ -18,7 +18,7 @@ Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modul
 | `checklist` | `checklist` | ⬜ pendente |
 | `checkouts` | `checkouts` | ⬜ pendente |
 | `ciclo-folha` | `ciclo-folha` | ⬜ pendente |
-| `colaboradores` | `colaboradores` | ⬜ pendente |
+| `colaboradores` | [`colaboradores`](./colaboradores.md) | ✅ documentado |
 | `common` | `common` | ⬜ pendente |
 | `config` | `config` | ⬜ pendente |
 | `contratos` | `contratos` | ⬜ pendente |
