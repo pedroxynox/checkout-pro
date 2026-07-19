@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 91 arquivos, 574 casos. **Mobile:** 25 arquivos, 95 casos. **Total: 669 casos.**
+> **Backend:** 91 arquivos, 574 casos. **Mobile:** 25 arquivos, 98 casos. **Total: 672 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -132,5 +132,5 @@
 | `src/screens/ponto/RegistroPontoScreen.test.tsx` | 6 | 1 |
 | `src/screens/ponto/leituraComprovanteUtil.test.ts` | 4 | 2 |
 | `src/screens/ponto/montarTextoOcr.test.ts` | 3 | 1 |
-| `src/utils/formato.test.ts` | 7 | 2 |
+| `src/utils/formato.test.ts` | 10 | 3 |
 | `src/utils/relatorioPerfil.test.ts` | 12 | 9 |
