@@ -703,6 +703,8 @@ export interface ItemPainelFiscal {
 /** Resumo do próprio fiscal (status atual + jornada do dia). */
 export interface MeuResumoFiscal extends JornadaTempos {
   fiscalId: string;
+  /** Ficha canônica (Fase 4 · Opção A) — enviada junto do `fiscalId`. */
+  colaboradorId: string | null;
   primeiroNome: string;
   status: StatusFiscal;
   em: string;
@@ -756,6 +758,8 @@ export interface ItemEquipeDiaFiscal extends ItemJornadaFiscal {
 /** Acumulado de horas extras do mês por pessoa (fiscal ou colaborador). */
 export interface ItemHorasExtrasFiscal {
   fiscalId: string;
+  /** Ficha canônica (Fase 4 · Opção A) — enviada junto do `fiscalId`. */
+  colaboradorId: string | null;
   pessoaId: string;
   tipoPessoa: 'FISCAL' | 'OPERADOR';
   primeiroNome: string;
@@ -831,6 +835,8 @@ export interface ItemEscalaConsolidada {
 /** Evento recebido pelo WebSocket do painel de fiscais (tempo real). */
 export interface EventoStatusFiscal {
   fiscalId: string;
+  /** Ficha canônica (Fase 4 · Opção A) — enviada junto do `fiscalId`. */
+  colaboradorId: string | null;
   primeiroNome: string;
   status: StatusFiscal;
   em: string;

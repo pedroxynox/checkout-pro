@@ -74,6 +74,9 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
 - Domingo: banner do rodízio de grupos (ou aviso se não configurado).
 - O relógio atualiza a cada 1s; o status ao vivo dos fiscais só aparece quando
   o dia é hoje; `versaoJustificativas` força recarregar a lista.
+- O mapa de **status ao vivo** é indexado pela **ficha canônica**
+  (`colaboradorId`), com fallback ao `fiscalId` legado — painel, evento WebSocket
+  e a busca na linha da escala usam a mesma chave (Fase 4 · Opção A · A.5).
 
 ## 7. Lógica pura / utilidades
 - `corStatus`/`rotuloStatus`, `turnoDe`, `contarTurnos`, `iconeGenero`,
