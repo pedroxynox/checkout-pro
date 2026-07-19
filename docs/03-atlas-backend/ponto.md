@@ -111,9 +111,13 @@ Recalcula a jornada de quem bateu ponto no dia e delega o aviso de TAC ao
 
 ### `PontoDeteccaoAutomaticaService.verificar()` (cron 5 min)
 Cruza a escala do dia com o Relógio Ponto: marca falta automática (2h após a
-entrada sem batida) e registra não-retorno do intervalo (intervalo em curso
-acima do **máximo do contrato da pessoa**, resolvido por `regrasDoColaborador`;
-3h no 6x1). Best-effort e defensivo por pessoa.
+entrada sem batida) e registra não-retorno do intervalo. O não-retorno usa o
+sinalizador `jornada.naoRetornoIntervalo` (calculado no domínio com o **máximo
+do contrato da pessoa**; 3h no 6x1): saiu para o intervalo, não voltou e passou
+do máximo — **inclusive quando o turno já foi dado por encerrado** por intervalo
+obrigatório excedido. Antes, a checagem exigia o status `EM_INTERVALO` e nunca
+disparava nesses contratos (o turno virava `ENCERRADO` antes). Best-effort e
+defensivo por pessoa.
 
 ## 6. Lógica de domínio (funções puras)
 - `classificarBatidas(batidas, maxSemIntervaloMs, intervaloObrigatorio)` →
@@ -121,7 +125,8 @@ acima do **máximo do contrato da pessoa**, resolvido por `regrasDoColaborador`;
   jornada sem intervalo apenas quando o contrato não o exige.
 - `calcularJornadaDia(batidas, agora, diaSemana, ehFeriado, diaEncerrado, regras)`
   → tempo trabalhado (intervalo não conta), intervalo, extras 50/100, status,
-  alerta iminente, TAC e motivos, e o que falta para o dia.
+  alerta iminente, TAC e motivos, o que falta para o dia e o sinalizador
+  `naoRetornoIntervalo` (saiu para o intervalo e não voltou dentro do máximo).
 - `batidaDuplicada(horaMs, existentes, minimo)` → detecta batidas próximas demais.
 - `etapaAlertaTac(extrasMs, tac)` → devolve só a etapa mais grave (`RISCO_1H30`,
   `RISCO_1H40`, `TAC`).

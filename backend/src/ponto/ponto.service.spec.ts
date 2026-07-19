@@ -41,6 +41,7 @@ function resposta(horasExtrasMs: number, tac = false): JornadaDiaResposta {
       tac,
       motivosTac: tac ? ['Excedeu 1h50 de horas extras'] : [],
       faltando: [],
+      naoRetornoIntervalo: false,
     },
     batidas: [],
   };

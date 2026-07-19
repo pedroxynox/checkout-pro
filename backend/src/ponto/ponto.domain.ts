@@ -256,6 +256,13 @@ export interface JornadaPonto {
   motivosTac: string[];
   /** O que falta para completar o dia (ex.: "retorno do intervalo"). */
   faltando: string[];
+  /**
+   * true quando a pessoa saiu para o intervalo e NÃO voltou dentro do máximo do
+   * contrato (o "não retorno"). Vale inclusive quando o turno já foi dado por
+   * encerrado por intervalo obrigatório excedido — é a base da detecção
+   * automática do não-retorno, que antes escapava nesse caso.
+   */
+  naoRetornoIntervalo: boolean;
   /** Batidas do dia, já classificadas. */
   batidas: BatidaClassificada[];
 }
@@ -300,6 +307,7 @@ export function calcularJornadaDia(
       tac: false,
       motivosTac: [],
       faltando: [],
+      naoRetornoIntervalo: false,
       batidas: classificadas,
     };
   }
@@ -393,6 +401,17 @@ export function calcularJornadaDia(
     motivosTac.push('Intervalo acima de 3h');
   }
 
+  // "Não retorno": saiu para o intervalo, ainda não voltou (sem retorno nem
+  // encerramento) e o intervalo em curso já passou do máximo do contrato. Vale
+  // mesmo quando o turno foi encerrado por intervalo obrigatório excedido —
+  // sem isso, o não-retorno escapava justamente nos contratos com intervalo
+  // obrigatório (o turno virava ENCERRADO antes de o detector agir).
+  const naoRetornoIntervalo =
+    !!saida &&
+    !retorno &&
+    !diaEncerrado &&
+    dur(saida.hora, agoraMs) > regras.intervaloMaximoMs;
+
   return {
     trabalhadoMs,
     intervaloMs,
@@ -405,6 +424,7 @@ export function calcularJornadaDia(
     tac: motivosTac.length > 0,
     motivosTac,
     faltando,
+    naoRetornoIntervalo,
     batidas: classificadas,
   };
 }

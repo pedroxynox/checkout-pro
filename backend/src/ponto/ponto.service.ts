@@ -107,6 +107,8 @@ export interface JornadaView {
   tac: boolean;
   motivosTac: string[];
   faltando: string[];
+  /** Saiu para o intervalo e não voltou dentro do máximo do contrato. */
+  naoRetornoIntervalo: boolean;
 }
 
 /** Resposta do dia: dados da pessoa, jornada calculada e batidas. */
@@ -1226,6 +1228,7 @@ export class PontoService {
         tac: j.tac,
         motivosTac: j.motivosTac,
         faltando: j.faltando,
+        naoRetornoIntervalo: j.naoRetornoIntervalo,
       },
       batidas: batidas.map((b) => ({
         id: b.id,
