@@ -19,6 +19,7 @@ function resposta(pessoaId: string, tipoPessoa: string): JornadaDiaResposta {
       tac: false,
       motivosTac: [],
       faltando: [],
+      naoRetornoIntervalo: false,
     },
     batidas: [],
   };

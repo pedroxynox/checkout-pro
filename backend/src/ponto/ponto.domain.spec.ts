@@ -407,6 +407,8 @@ describe('calcularJornadaDia · intervalo obrigatório (contratos data-driven)',
     );
     expect(j.status).toBe('EM_INTERVALO');
     expect(j.batidas[1].tipo).toBe('SAIDA_INTERVALO');
+    // Ainda dentro do máximo: NÃO é não-retorno.
+    expect(j.naoRetornoIntervalo).toBe(false);
   });
 
   it('intervalo em curso acima do máximo (3h) encerra a jornada (sem TAC ainda)', () => {
@@ -421,6 +423,9 @@ describe('calcularJornadaDia · intervalo obrigatório (contratos data-driven)',
     expect(j.status).toBe('ENCERRADO');
     expect(j.trabalhadoMs).toBe(4 * 60 * 60_000); // 08:00→12:00
     expect(j.tac).toBe(false); // o TAC só se confirma quando ela bate o retorno
+    // Correção: mesmo com o turno encerrado por intervalo obrigatório excedido,
+    // isto É um não-retorno — a detecção automática passa a registrá-lo.
+    expect(j.naoRetornoIntervalo).toBe(true);
   });
 
   it('retorno do intervalo acima do máximo (3h) gera TAC ao bater ponto', () => {
