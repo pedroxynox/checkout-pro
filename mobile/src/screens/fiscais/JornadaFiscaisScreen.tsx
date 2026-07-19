@@ -20,11 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { fiscaisService } from '../../api/services';
 import { useAuth } from '../../auth/AuthContext';
-import {
-  ItemEquipeDiaFiscal,
-  ItemHorasExtrasFiscal,
-  TipoBatida,
-} from '../../api/types';
+import { ItemEquipeDiaFiscal, TipoBatida } from '../../api/types';
 import {
   Carregando,
   Cartao,
@@ -137,16 +133,6 @@ function horaLabel(iso: string): string {
   return iso.slice(11, 16);
 }
 
-/** Nome do mês (para o acumulado de extras) a partir de uma data ISO (yyyy-mm-dd). */
-function nomeMes(dataISO: string): string {
-  const meses = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-  ];
-  const mes = Number(dataISO.slice(5, 7)) - 1;
-  return meses[mes] ?? '';
-}
-
 export function JornadaFiscaisScreen(): React.ReactElement {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -163,25 +149,6 @@ export function JornadaFiscaisScreen(): React.ReactElement {
     [data],
   );
 
-  const horasExtras = useRequisicao<ItemHorasExtrasFiscal[]>(
-    () => fiscaisService.horasExtrasMes(data),
-    [data],
-  );
-
-  /** Mapa de horas extras por pessoaId para lookup rápido. */
-  const mapaExtras = React.useMemo(() => {
-    const m = new Map<string, number>();
-    if (horasExtras.dados) {
-      for (const he of horasExtras.dados) m.set(he.pessoaId, he.horasExtrasMs);
-    }
-    return m;
-  }, [horasExtras.dados]);
-
-  const totalExtrasEquipe = React.useMemo(() => {
-    if (!horasExtras.dados) return 0;
-    return horasExtras.dados.reduce((acc, he) => acc + he.horasExtrasMs, 0);
-  }, [horasExtras.dados]);
-
   /** Contagem por estado (resumo no topo da lista). */
   const resumo = React.useMemo(() => {
     const r = { trabalhando: 0, intervalo: 0, faltas: 0, semRegistrar: 0 };
@@ -194,15 +161,8 @@ export function JornadaFiscaisScreen(): React.ReactElement {
     return r;
   }, [equipe.dados]);
 
-  const recarregarTudo = async () => {
-    await Promise.all([equipe.recarregar(), horasExtras.recarregar()]);
-  };
-
   return (
-    <Tela
-      aoAtualizar={recarregarTudo}
-      atualizando={equipe.atualizando || horasExtras.atualizando}
-    >
+    <Tela aoAtualizar={equipe.recarregar} atualizando={equipe.atualizando}>
       {/* Card com a data selecionada + resumo por estado */}
       <Cartao style={styles.cardData}>
         <View style={styles.dataRow}>
@@ -238,21 +198,6 @@ export function JornadaFiscaisScreen(): React.ReactElement {
         dataMinima={dataInicial}
       />
 
-      {/* Card acumulado de horas extras do mês */}
-      <Cartao style={styles.cardExtras}>
-        <View style={styles.extrasRow}>
-          <View style={[styles.dataIcone, { backgroundColor: AZUL_FUNDO }]}>
-            <Ionicons name="trending-up" size={22} color={AZUL} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.extrasLabel}>Horas extras — {nomeMes(data)}</Text>
-            <Text style={styles.extrasTotalValor}>
-              {formatarDuracao(totalExtrasEquipe)}
-            </Text>
-          </View>
-        </View>
-      </Cartao>
-
       <Text style={styles.secaoTitulo}>Equipe do dia</Text>
       <Text style={styles.secaoDica}>
         {ehHoje
@@ -263,7 +208,7 @@ export function JornadaFiscaisScreen(): React.ReactElement {
       {equipe.carregando ? (
         <Carregando />
       ) : equipe.erro ? (
-        <MensagemErro mensagem={equipe.erro} aoTentarNovamente={recarregarTudo} />
+        <MensagemErro mensagem={equipe.erro} aoTentarNovamente={equipe.recarregar} />
       ) : !equipe.dados || equipe.dados.length === 0 ? (
         <EstadoVazio
           icone="people-outline"
@@ -278,7 +223,6 @@ export function JornadaFiscaisScreen(): React.ReactElement {
         equipe.dados.map((item) => {
           const ap = aparenciaDe(item);
           const navegavel = podeVerPerfil && !!item.colaboradorId;
-          const extrasMs = mapaExtras.get(item.pessoaId) ?? 0;
           return (
             <Pressable
               key={item.pessoaId}
@@ -350,15 +294,6 @@ export function JornadaFiscaisScreen(): React.ReactElement {
                     Falta registrar: {item.faltando.join(', ')}
                   </Text>
                 ) : null}
-
-                {extrasMs > 0 ? (
-                  <View style={styles.extrasFiscalRow}>
-                    <Ionicons name="trending-up" size={14} color={AZUL} />
-                    <Text style={styles.extrasFiscalTexto}>
-                      +{formatarDuracao(extrasMs)} extras no mês
-                    </Text>
-                  </View>
-                ) : null}
               </Cartao>
             </Pressable>
           );
@@ -417,10 +352,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     textAlign: 'center',
   },
-  cardExtras: { marginBottom: 0 },
-  extrasRow: { flexDirection: 'row', alignItems: 'center', gap: espacamento.md },
-  extrasLabel: { ...tipografia.legenda, color: cores.textoSecundario },
-  extrasTotalValor: { ...tipografia.subtitulo, color: AZUL, marginTop: 2 },
   secaoTitulo: {
     ...tipografia.secao,
     color: cores.texto,
@@ -496,20 +427,6 @@ const styles = StyleSheet.create({
     color: cores.vermelho,
     fontWeight: '600',
     marginTop: espacamento.sm,
-  },
-  extrasFiscalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: espacamento.xs,
-    marginTop: espacamento.sm,
-    paddingTop: espacamento.sm,
-    borderTopWidth: 1,
-    borderTopColor: cores.divisor,
-  },
-  extrasFiscalTexto: {
-    ...tipografia.legenda,
-    color: AZUL,
-    fontWeight: '600',
   },
 });
 
