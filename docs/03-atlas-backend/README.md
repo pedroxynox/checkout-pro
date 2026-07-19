@@ -5,33 +5,33 @@
 
 Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modulo.md`](./_modelo-modulo.md).
 
-**Cobertura:** 11/34 documentados (32%).
+**Cobertura:** 21/34 documentados (62%).
 
 | Item | Documento | Estado |
 |---|---|---|
 | `acessos` | [`acessos`](./acessos.md) | ✅ documentado |
-| `advertencias` | `advertencias` | ⬜ pendente |
+| `advertencias` | [`advertencias`](./advertencias.md) | ✅ documentado |
 | `alertas` | `alertas` | ⬜ pendente |
-| `arrecadacao` | `arrecadacao` | ⬜ pendente |
+| `arrecadacao` | [`arrecadacao`](./arrecadacao.md) | ✅ documentado |
 | `assistente` | `assistente` | ⬜ pendente |
 | `central-jornada` | [`central-jornada`](./central-jornada.md) | ✅ documentado |
 | `checklist` | `checklist` | ⬜ pendente |
-| `checkouts` | `checkouts` | ⬜ pendente |
+| `checkouts` | [`checkouts`](./checkouts.md) | ✅ documentado |
 | `ciclo-folha` | [`ciclo-folha`](./ciclo-folha.md) | ✅ documentado |
 | `colaboradores` | [`colaboradores`](./colaboradores.md) | ✅ documentado |
 | `common` | `common` | ⬜ pendente |
 | `config` | `config` | ⬜ pendente |
 | `contratos` | [`contratos`](./contratos.md) | ✅ documentado |
 | `data-inicial` | `data-inicial` | ⬜ pendente |
-| `escala-domingo` | `escala-domingo` | ⬜ pendente |
-| `fechamento` | `fechamento` | ⬜ pendente |
-| `feedforward` | `feedforward` | ⬜ pendente |
-| `feriados` | `feriados` | ⬜ pendente |
+| `escala-domingo` | [`escala-domingo`](./escala-domingo.md) | ✅ documentado |
+| `fechamento` | [`fechamento`](./fechamento.md) | ✅ documentado |
+| `feedforward` | [`feedforward`](./feedforward.md) | ✅ documentado |
+| `feriados` | [`feriados`](./feriados.md) | ✅ documentado |
 | `fiscais` | [`fiscais`](./fiscais.md) | ✅ documentado |
-| `incidencias` | `incidencias` | ⬜ pendente |
+| `incidencias` | [`incidencias`](./incidencias.md) | ✅ documentado |
 | `insumos` | `insumos` | ⬜ pendente |
 | `lote-apae` | `lote-apae` | ⬜ pendente |
-| `metas` | `metas` | ⬜ pendente |
+| `metas` | [`metas`](./metas.md) | ✅ documentado |
 | `notificacoes` | `notificacoes` | ⬜ pendente |
 | `operadores` | [`operadores`](./operadores.md) | ✅ documentado |
 | `permissoes` | [`permissoes`](./permissoes.md) | ✅ documentado |
@@ -42,4 +42,4 @@ Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modul
 | `storage` | `storage` | ⬜ pendente |
 | `tipos-contrato` | [`tipos-contrato`](./tipos-contrato.md) | ✅ documentado |
 | `usuarios` | [`usuarios`](./usuarios.md) | ✅ documentado |
-| `vendas` | `vendas` | ⬜ pendente |
+| `vendas` | [`vendas`](./vendas.md) | ✅ documentado |
