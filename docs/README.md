@@ -31,6 +31,7 @@ Não entende um termo? Veja o [Glossário](00-visao-geral/glossario.md).
 - [Glossário](00-visao-geral/glossario.md) — termos do negócio (TAC, jornada, arrecadação…).
 - [Mapa do projeto](00-visao-geral/mapa-do-projeto.md) — como App ↔ Backend ↔ Banco se conectam.
 - [Onboarding (primeiros 30 minutos)](00-visao-geral/onboarding.md) — subir o projeto do zero.
+- [Prompt para nova sessão do Kiro](00-visao-geral/prompt-para-nova-sessao.md) — o que colar para uma sessão nova entender o projeto e seguir as regras.
 
 ### 01 · Produto
 - [Visão e alcance](01-produto/visao-e-alcance.md)
