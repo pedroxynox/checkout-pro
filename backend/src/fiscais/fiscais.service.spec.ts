@@ -232,6 +232,31 @@ describe('FiscaisService e EscalaService', () => {
     expect(ausencia?.colaboradorId).toBe('colab-1');
   });
 
+  it('definirStatus devolve e publica o colaboradorId (Fase 4 · Opção A · A.5)', async () => {
+    const prisma = criarPrisma();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (prisma as any).colaborador.findFirst = ({ where }: any) =>
+      Promise.resolve(where.usuarioId === 'u1' ? { id: 'colab-1' } : null);
+    const publicar = jest.fn();
+    const fiscais = new FiscaisService(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      prisma as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { publicar } as any,
+    );
+    const r = await fiscais.definirStatus(
+      'f1',
+      'DISPONIVEL',
+      new Date('2024-03-10T08:00:00Z'),
+    );
+    // A resposta e o evento em tempo real carregam a ficha canônica, sem
+    // deixar de enviar o `fiscalId` (compatibilidade com apps instalados).
+    expect(r.colaboradorId).toBe('colab-1');
+    expect(publicar).toHaveBeenCalledWith(
+      expect.objectContaining({ fiscalId: 'f1', colaboradorId: 'colab-1' }),
+    );
+  });
+
   it('painel lista todos os fiscais; sem ponto hoje => FORA_EXPEDIENTE', async () => {
     const prisma = criarPrisma();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

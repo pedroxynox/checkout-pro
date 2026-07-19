@@ -175,7 +175,7 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `fiscais.service.spec.ts` | Status, painel, jornada, fiscal histórico e vínculo `colaboradorId` no ponto/falta/escala (Fase 4) | 18 |
+| `fiscais.service.spec.ts` | Status, painel, jornada, fiscal histórico e vínculo `colaboradorId` no ponto/falta/escala/status (Fase 4) | 19 |
 | `fiscais.properties.spec.ts` | Status atual, transição, jornada, escala (property-based) | 5 |
 | `fiscais.controller.spec.ts` | Rotas do próprio fiscal e log de jornada | 4 |
 | `fiscais.gateway.spec.ts` | Broadcast do painel via WebSocket (integração) | 3 |
@@ -204,4 +204,7 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
   (dual-write / fase *expand*, Passo 4.2) e os **históricos** já foram
   preenchidos por backfill (migração `9zzf`, Passo 4.4). O verificador
   `npm run integridade` aponta qualquer vínculo órfão remanescente antes de
-  aposentar o `fiscalId`.
+  aposentar o `fiscalId`. **A.5 (identidade exposta):** o painel, a jornada, o
+  `meuResumo`, o `horasExtrasMes` e o evento WebSocket `fiscal:status` já enviam
+  `colaboradorId` **ao lado** do `fiscalId` (aditivo), para o app migrar a
+  identidade sem quebrar apps instalados.

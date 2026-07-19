@@ -127,6 +127,8 @@ export interface ItemEquipeDia extends ItemJornada {
 /** Resumo do status atual de um fiscal (retornado após definir status). */
 export interface ResumoStatus {
   fiscalId: string;
+  /** Ficha canônica (Fase 4 · Opção A · A.5) — aditivo, junto do `fiscalId`. */
+  colaboradorId: string | null;
   primeiroNome: string;
   status: StatusFiscal;
   em: string;
@@ -135,6 +137,8 @@ export interface ResumoStatus {
 /** Acumulado de horas extras do mês por pessoa (fiscal ou colaborador). */
 export interface ItemHorasExtras {
   fiscalId: string;
+  /** Ficha canônica (Fase 4 · Opção A · A.5) — aditivo, junto do `fiscalId`. */
+  colaboradorId: string | null;
   pessoaId: string;
   tipoPessoa: 'FISCAL' | 'OPERADOR';
   primeiroNome: string;
@@ -254,6 +258,7 @@ export class FiscaisService {
       return null;
     }
     const agora = new Date();
+    const colaboradorId = await this.colaboradorIdDoFiscal(fiscal);
     const registros = await this.registrosDoDia(fiscal.id, agora);
     const ultimo = registros[registros.length - 1] ?? null;
     const faltaHoje = !!(await this.prisma.ausencia.findUnique({
@@ -264,6 +269,7 @@ export class FiscaisService {
     const folgaHoje = await this.isFolgaHoje(fiscal.id, agora);
     return {
       fiscalId: fiscal.id,
+      colaboradorId,
       primeiroNome: primeiroNome(fiscal.nome),
       status: statusAtual(registros) ?? 'FORA_EXPEDIENTE',
       em: (ultimo?.em ?? agora).toISOString(),
@@ -362,7 +368,7 @@ export class FiscaisService {
     });
 
     // Tempo real (painel atualiza sem recarregar).
-    this.eventos?.publicar({ fiscalId, primeiroNome: pn, status, em });
+    this.eventos?.publicar({ fiscalId, colaboradorId, primeiroNome: pn, status, em });
 
     // Notifica gestores (gerente, supervisor, gerente desenvolvedor).
     const mensagem = mensagemTransicao(nome, anterior, status);
@@ -381,6 +387,7 @@ export class FiscaisService {
 
     return {
       fiscalId,
+      colaboradorId,
       primeiroNome: pn,
       status,
       em: em.toISOString(),
@@ -442,9 +449,11 @@ export class FiscaisService {
     const fiscal = await this.prisma.fiscal.findUnique({
       where: { id: fiscalId },
     });
+    const colaboradorId = await this.colaboradorIdDoFiscal(fiscal);
     const ultimo = ordenadas[ordenadas.length - 1] ?? null;
     this.eventos.publicar({
       fiscalId,
+      colaboradorId,
       primeiroNome: primeiroNome(fiscal?.nome ?? ''),
       status: ultimo?.status ?? 'FORA_EXPEDIENTE',
       em: ultimo?.em ?? new Date(),
@@ -1088,6 +1097,7 @@ export class FiscaisService {
         }
         return {
           fiscalId: f.id,
+          colaboradorId: mapaCol.get(f.id)?.colaboradorId ?? null,
           pessoaId: f.id,
           tipoPessoa: 'FISCAL' as const,
           primeiroNome: primeiroNome(f.nome),
@@ -1222,6 +1232,7 @@ export class FiscaisService {
           }
           return {
             fiscalId: c.id,
+            colaboradorId: c.id,
             pessoaId: c.id,
             tipoPessoa: 'OPERADOR' as const,
             primeiroNome: primeiroNome(c.nome),
