@@ -553,6 +553,7 @@ As faltas pontuais ficam em `Ausencia` (pessoaId = id do Colaborador).
 | `justificadaEm` | `DateTime?` |  |  |
 | `debitoHoras` | `Boolean` |  | manualmente pelo gestor (falta não justificada / abonada como débito). |
 | `aPrazo` | `Boolean` |  | fiscal na escala — só gerente/supervisor/administrador podem remover. |
+| `automatica` | `Boolean` |  | bate o ponto; as lançadas manualmente pelo gestor permanecem. |
 
 ## `Notificacao`
 

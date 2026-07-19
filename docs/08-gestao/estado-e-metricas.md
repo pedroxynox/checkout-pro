@@ -9,23 +9,23 @@
 
 | Área | Arquivos | Linhas | Arquivos de teste | Linhas de teste |
 |---|---|---|---|---|
-| Backend (`backend/src`) | 221 | 34134 | 84 | 13193 |
-| Mobile (`mobile/src`) | 147 | 36375 | 25 | 2600 |
+| Backend (`backend/src`) | 223 | 35015 | 87 | 13605 |
+| Mobile (`mobile/src`) | 147 | 35984 | 25 | 2601 |
 
 ## Estrutura
 
 - **Módulos backend:** 34
 - **Áreas de tela (mobile):** 25
-- **Rotas HTTP:** 196
+- **Rotas HTTP:** 197
 - **Tabelas (Prisma):** 51
 - **Tipos/estados (enums):** 29
-- **Migrações:** 65
+- **Migrações:** 66
 
 ## Testes automatizados
 
-- **Backend:** 541 casos em 84 arquivos
-- **Mobile:** 96 casos em 25 arquivos
-- **Total:** 637 casos
+- **Backend:** 555 casos em 87 arquivos
+- **Mobile:** 95 casos em 25 arquivos
+- **Total:** 650 casos
 
 ## Cobertura do Atlas de Documentação
 

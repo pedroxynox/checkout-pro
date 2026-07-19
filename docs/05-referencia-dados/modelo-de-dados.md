@@ -47,7 +47,7 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `EscalaEntry` | 9 | — |
 | `OperadorTurno` | 10 | As faltas pontuais ficam em `Ausencia` (pessoaId = id do Colaborador). |
 | `Checklist` | 9 | — |
-| `Ausencia` | 14 | — |
+| `Ausencia` | 15 | — |
 | `Notificacao` | 9 | — |
 | `PushToken` | 6 | seguindo o padrão do schema (ADR 0005). |
 | `MensagemAssistente` | 5 | convenção da API Gemini: 'user' (pergunta) ou 'model' (resposta). |

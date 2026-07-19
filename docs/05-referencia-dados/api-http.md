@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **196 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **197 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -181,6 +181,7 @@
 | POST | `/fiscais/eu/status` | `definirMeuStatus` | `—` |
 | POST | `/fiscais/eu/falta` | `informarFalta` | `—` |
 | GET | `/fiscais/jornada` | `jornada` | `FISCAIS_JORNADA` |
+| GET | `/fiscais/equipe-dia` | `equipeDia` | `FISCAIS_JORNADA` |
 | GET | `/fiscais/horas-extras-mes` | `horasExtrasMes` | `FISCAIS_JORNADA` |
 | GET | `/fiscais/folga-hoje` | `folgaHoje` | `FISCAIS_STATUS` |
 | GET | `/fiscais/eu/historico-semanal` | `historicoSemanal` | `—` |

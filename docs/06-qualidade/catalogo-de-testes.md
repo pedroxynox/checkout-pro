@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 84 arquivos, 541 casos. **Mobile:** 25 arquivos, 96 casos. **Total: 637 casos.**
+> **Backend:** 87 arquivos, 555 casos. **Mobile:** 25 arquivos, 95 casos. **Total: 650 casos.**
 
 ## Backend (Jest)
 
@@ -20,6 +20,7 @@
 | `src/app.service.spec.ts` | 5 | 1 |
 | `src/arrecadacao/arrecadacao.nao-reconhecidos.spec.ts` | 2 | 1 |
 | `src/arrecadacao/destaque-menos-cancelou.spec.ts` | 1 | 1 |
+| `src/arrecadacao/indicadores-inteligente.destaques.spec.ts` | 3 | 2 |
 | `src/assistente/gemini.client.spec.ts` | 3 | 1 |
 | `src/central-jornada/central-jornada.controller.spec.ts` | 1 | 1 |
 | `src/central-jornada/central-jornada.service.spec.ts` | 12 | 3 |
@@ -29,6 +30,7 @@
 | `src/checklist/checklist.service.spec.ts` | 8 | 2 |
 | `src/ciclo-folha/ciclo-folha.service.spec.ts` | 4 | 1 |
 | `src/colaboradores/colaboradores.adicionar-identificador.spec.ts` | 4 | 1 |
+| `src/colaboradores/colaboradores.promocao-acesso.spec.ts` | 3 | 1 |
 | `src/colaboradores/colaboradores.turno-obrigatorio.spec.ts` | 9 | 5 |
 | `src/colaboradores/perfil-colaborador.medalhas.spec.ts` | 8 | 5 |
 | `src/colaboradores/perfil-colaborador.properties.spec.ts` | 17 | 2 |
@@ -83,6 +85,7 @@
 | `src/operadores/operadores.properties.spec.ts` | 5 | 1 |
 | `src/operadores/operadores.service.spec.ts` | 10 | 4 |
 | `src/ponto/contrato-regras.spec.ts` | 5 | 2 |
+| `src/ponto/deteccao-automatica.domain.spec.ts` | 8 | 4 |
 | `src/ponto/ponto-alertas.service.spec.ts` | 1 | 1 |
 | `src/ponto/ponto-nome-match.spec.ts` | 6 | 1 |
 | `src/ponto/ponto-ocr.parser.spec.ts` | 17 | 1 |
@@ -119,7 +122,7 @@
 | `src/screens/notificacoes/NotificacoesScreen.test.tsx` | 3 | 1 |
 | `src/screens/operadores/JustificativasScreen.test.tsx` | 2 | 1 |
 | `src/screens/ponto/ExportarCicloScreen.test.tsx` | 2 | 1 |
-| `src/screens/ponto/InconsistenciasScreen.test.tsx` | 3 | 1 |
+| `src/screens/ponto/InconsistenciasScreen.test.tsx` | 2 | 1 |
 | `src/screens/ponto/RegistroPontoScreen.test.tsx` | 6 | 1 |
 | `src/screens/ponto/leituraComprovanteUtil.test.ts` | 4 | 2 |
 | `src/screens/ponto/montarTextoOcr.test.ts` | 3 | 1 |
