@@ -27,6 +27,8 @@
 - **Mobile:** 95 casos em 25 arquivos
 - **Total:** 650 casos
 
+> Contagem por chamadas literais de `it()`/`test()` (determinística). Testes parametrizados (`it.each`) expandem em mais casos na execução do Jest.
+
 ## Cobertura do Atlas de Documentação
 
 - Módulos backend documentados: ver `docs/03-atlas-backend/` (meta: 34).

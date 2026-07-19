@@ -1,171 +1,100 @@
 # Check-out PRO — Gestão Inteligente de Supermercado
 
-Aplicação web e Android para gestão da frente de caixa de supermercado. O produto reúne operação diária, pessoas, jornada, ponto, indicadores, estoque, checklists, notificações e a assistente **Cluby** em um monorepo com backend NestJS e app Expo/React Native.
+Aplicação **web e Android** para gestão da frente de caixa de supermercado.
+Reúne operação diária, pessoas, ponto e jornada, escala, indicadores, vendas,
+estoque, checklists, contratos, disciplina, APAE, notificações e a assistente de
+IA **Cluby** — num **monorepo** com backend **NestJS** e app **Expo/React
+Native**.
 
-> UI e domínio em Português do Brasil. Estado deste documento: **15/07/2026**. O código descrito está mesclado na `main` até o commit `e8c32be`; este registro não confirma que o último commit já tenha sido implantado no Render.
+> UI, domínio e código em **português do Brasil**.
 
-## Estado atual
+---
 
-- Backend: build validado; **71 suítes / 411 testes**.
-- Mobile: type-check e lint validados; **23 suítes / 85 testes**.
-- Última migração Prisma: `9zq_alerta_tac_enviado`.
-- Alertas preventivos de TAC entregues nos PRs **#234 e #235**:
-  - `>= 1h30` de horas extras: **Risco de TAC**;
-  - `>= 1h40`: **Risco alto de TAC**;
-  - `> 1h50`: **TAC**;
-  - destinatários: supervisores e gerentes;
-  - envio best-effort, sem bloquear a batida;
-  - deduplicação por pessoa/dia/etapa **persistente** (tabela `AlertaTacEnviado`, reserva atômica por índice único), compartilhada entre a batida e o cron: sobrevive a reinícios e coordena múltiplas instâncias.
-- Central de Jornada, feriados e contrato `6x1-2x1` entregues nos PRs **#224 e #225**.
-- Auditoria de segurança, privacidade, atomicidade, dependências e desempenho consolidada nos PRs **#211–#214 e #223**.
-- Dependabot ajustado para reduzir upgrades incompatíveis/major nos PRs **#226 e #232**.
+## 📚 Documentação
 
-## Funcionalidades principais
+Toda a documentação vive em [`docs/`](docs/README.md) — comece pelo índice
+mestre:
 
-- **Acessos e pessoas:** login por matrícula, JWT com revogação por `tokenVersion`, permissões por funcionalidade, Cadastro Unificado de Colaboradores e perfis de gerente desenvolvedor, gerente, supervisor, fiscal e importador.
-- **Operação diária:** importação de vendas e arrecadação por `.txt`, fechamento inteligente, metas, indicadores, painel de vendas e tratamento de lançamentos não reconhecidos.
-- **Registro de Ponto:** batidas manuais ou por comprovante lido no aparelho (ML Kit no Android; web registra manual — o OCR no servidor está desativado), confirmação antes da gravação, memória de nomes protegida, fila offline com reenvio sem duplicar, jornada calculada (regras de 1–4 batidas) e alertas de risco/TAC que se recalculam ao corrigir.
-- **Central de Jornada:** ciclo de apuração **26→25** e consolidação de operadores, supervisores e fiscais, com carga/base, extras 50%/100%, horas devidas, atestados, faltas, TAC, conflitos e atrasos; painel de inconsistências, revisão do ciclo e fechamento/reabertura controlada (reabrir exige administrador).
-- **Escala e calendário:** contrato `SEIS_X_UM_DOIS_X_UM` (regras de jornada numa estrutura extensível por contrato); feriados nacionais automáticos e estaduais/municipais manuais; feriado segue a regra de domingo.
-- **RRHH:** faltas e justificativas, incidências/sanções, solicitações de advertência, contratos de experiência, feedforward e perfil inteligente do colaborador.
-- **Estoque e rotinas:** insumos, requisições, pedidos recorrentes, Sacolas APAE, checklist com imagem/hash e notificações.
-- **Cluby:** assistente com Google Gemini e conversa persistida; procedimentos/normativas em escala continuam desativados até a implantação de RAG.
-- **Notificações:** in-app, WebSocket e envio real pelo Expo Push Service. Para Android em produção ainda é necessário configurar FCM e gerar/publicar novo APK.
+### **➡️ [docs/README.md](docs/README.md)**
 
-## Arquitetura
+Atalhos por papel:
 
-```text
-mobile/ (Expo / React Native / Web)
-       └── HTTPS + JWT + Socket.IO
-backend/ (NestJS / Prisma / Cron)
-       └── PostgreSQL + Gemini + Expo Push Service
-```
+- **Dono / gestão:** [Resumo executivo](docs/00-visao-geral/resumo-executivo.md) ·
+  [Estado e métricas](docs/08-gestao/estado-e-metricas.md) ·
+  [Roadmap e pendências](docs/08-gestao/roadmap-e-pendencias.md)
+- **Desenvolvimento:** [Onboarding (30 min)](docs/00-visao-geral/onboarding.md) ·
+  [Arquitetura](docs/02-arquitetura/visao-geral.md) ·
+  [Atlas do backend](docs/03-atlas-backend/) ·
+  [Atlas do mobile](docs/04-atlas-mobile/)
+- **Operação:** [Instalação local](docs/07-operacao/instalacao-local.md) ·
+  [Deploy](docs/07-operacao/deploy.md) ·
+  [Runbook de incidentes](docs/07-operacao/runbook-incidentes.md)
+- **Qualidade:** [Estratégia de testes](docs/06-qualidade/estrategia-de-testes.md) ·
+  [Guia de QA manual](docs/06-qualidade/guia-qa-manual.md)
 
-O backend segue, por módulo, `controller → service → domain/Prisma`. Regras puras ficam em `*.domain.ts`; DTOs validam entrada; erros de domínio são traduzidos por filtro global. O mobile separa API, autenticação, componentes, navegação, telas, offline, tema e utilitários.
+> **Números do projeto** (linhas, testes, rotas, tabelas): fonte única em
+> [Estado e métricas](docs/08-gestao/estado-e-metricas.md) — gerada a partir do
+> código, nunca copiada em outros documentos.
 
-| Camada | Tecnologias |
-| --- | --- |
-| Backend | Node.js, NestJS 10, TypeScript strict, Prisma 5, PostgreSQL, JWT, Socket.IO, `@nestjs/schedule` |
-| Mobile | React Native 0.76, Expo SDK 52, React Navigation, SQLite/offline |
-| IA e push | Gemini `gemini-2.5-flash`, Expo Push Service; FCM necessário no APK Android |
-| Qualidade | Jest, fast-check, Testing Library, ESLint, Prettier |
-| Infra | Render, PostgreSQL, EAS Build |
+---
 
-## Estrutura do repositório
+## Início rápido
 
-```text
-backend/
-├── prisma/                 # schema, migrations e seed
-├── assets/procedimentos/   # imagens do piloto de normativas
-└── src/                    # módulos NestJS
-mobile/
-├── assets/                 # marca e ícones
-└── src/
-    ├── api/ auth/ navigation/
-    ├── components/ hooks/ offline/
-    ├── screens/ theme/ utils/
-    └── ...
-docs/                       # operação, auditorias e ADRs
-.kiro/steering/             # handoff técnico e estado operacional
-```
-
-## Instalação local
-
-Pré-requisitos: Node.js 18 ou superior e PostgreSQL.
+Pré-requisitos: **Node.js 20+** e **PostgreSQL**. Passo a passo completo em
+[Instalação local](docs/07-operacao/instalacao-local.md).
 
 ```bash
+# na raiz do repositório (monorepo com workspaces)
 npm install
 
+# backend
 cd backend
-cp .env.example .env
-npm run prisma:generate
-npm run prisma:migrate
-npm run seed
+cp .env.example .env          # ajuste DATABASE_URL (e JWT_SECRET em produção)
+npm run prisma:generate && npm run prisma:migrate && npm run seed
 npm run start:dev
 
-# em outro terminal
+# em outro terminal — app (web/mobile)
 cd mobile
 EXPO_PUBLIC_API_URL=http://localhost:3000 npm run start
 ```
 
-## Variáveis importantes
+---
 
-### Backend
+## Estrutura do repositório
 
-| Variável | Uso |
-| --- | --- |
-| `DATABASE_URL` | conexão PostgreSQL; obrigatória em produção |
-| `JWT_SECRET` | assinatura JWT; obrigatória em produção |
-| `JWT_EXPIRES_IN` | validade do token; padrão `30d` |
-| `CORS_ORIGINS` | allowlist da web em produção |
-| `GEMINI_API_KEY` / `GEMINI_MODEL` | Cluby; modelo padrão `gemini-2.5-flash` |
-| `HORARIO_FIM_DO_DIA` | horário dos alertas operacionais |
-| `SENHA_INICIAL` | senha usada pelo seed |
-| `RETENCAO_INATIVOS_MESES` | retenção antes da purga; padrão 3 meses |
+```text
+backend/        # API NestJS + Prisma (prisma/ = schema, migrations, seed)
+mobile/         # App Expo / React Native (roda como APK e web)
+docs/           # Documentação (índice em docs/README.md)
+scripts/        # Gerador (docs:gen) e guardião (docs:check) da documentação
+.kiro/steering/ # Handoff técnico e regras (inclui a regra de documentação)
+```
 
-### Mobile
+Arquitetura em uma linha: o app fala com a API por **HTTPS + JWT** (e Socket.IO
+para tempo real); a API acessa o **PostgreSQL** via Prisma e integra **Gemini**
+e **push**. Detalhe em [Arquitetura](docs/02-arquitetura/visao-geral.md).
 
-| Variável | Uso |
-| --- | --- |
-| `EXPO_PUBLIC_API_URL` | URL pública da API |
-
-A entrega de push Android depende também das credenciais **Firebase Cloud Messaging (FCM)** vinculadas ao projeto Expo/EAS; depois da configuração é obrigatório recompilar e distribuir o APK.
+---
 
 ## Verificação
 
 ```bash
-# backend
-cd backend
-npm run prisma:generate
-npm run prisma:validate
-npm run build
-npm test
-
-# mobile
-cd mobile
-npm run type-check
-npm run lint
-npm test -- --runInBand
+npm run verify        # build + testes (backend) e type-check + lint + testes (app)
+npm run docs:check    # guardião da documentação (regenera a referência e valida)
 ```
 
-Os quatro arquivos com diferenças Prettier históricas (`alertas.service.spec.ts`, `fiscais.service.ts`, `insumos.service.ts` e `test/helpers/fake-prisma.ts`) já foram formatados em PR isolado (apenas estilo, sem diff funcional). Com o Prettier 3.9.5, o `--check` global ainda aponta 9 arquivos de domínio por deriva de versão da ferramenta; o CI os normaliza no ato via `eslint --fix`, então não quebram a validação.
+O CI ([`.github/workflows/`](.github/workflows/)) roda essas verificações a cada
+push/PR. O **guardião da documentação** barra o merge quando a referência fica
+defasada ou quando um módulo muda sem atualizar o seu documento no Atlas — ver a
+regra em [`.kiro/steering/documentacao.md`](.kiro/steering/documentacao.md).
 
-## Deploy e APK
-
-- Render hospeda API, web estática e PostgreSQL.
-- O código em `main` pode acionar deploy automático, mas **merge não é prova de deploy concluído**; conferir painel, logs e `/health/ready`.
-- Migrations devem rodar em **Pre-Deploy Command**; o processo web deve iniciar sem ficar aguardando advisory lock do Prisma.
-- O banco deve usar plano persistente/estável antes da entrega ao cliente.
-
-```bash
-cd mobile
-eas build -p android --profile preview
-```
-
-## Pendências prioritárias
-
-1. Configurar FCM e publicar novo APK para ativar push Android com o app fechado.
-2. Validar OCR/ML Kit com comprovantes reais em aparelho Android.
-3. Migrar o PostgreSQL do Render para plano persistente e mover migrations para Pre-Deploy.
-4. Contratar tier do Gemini compatível com uso multiusuário.
-5. Decidir/implementar as áreas ocultas: Alertas de Fila, Normativas e Indicador de Quebra.
-6. Implantar RAG com pgvector e object storage antes de reativar normativas em escala.
-7. Preparar `reset:cliente` + seed limpo antes da entrega; multi-tenancy permanece parqueado.
-8. **Concluído.** Deduplicação persistente dos alertas TAC (tabela `AlertaTacEnviado`, migration `9zq`): sobrevive a reinícios e coordena múltiplas instâncias.
-
-## Documentação
-
-- [`PROJECT_UNDERSTANDING.md`](PROJECT_UNDERSTANDING.md) — snapshot canônico e completo do produto.
-- [`REGISTRO_DE_MUDANCAS.md`](REGISTRO_DE_MUDANCAS.md) — histórico cronológico das entregas.
-- [`GUIA_QA.md`](GUIA_QA.md) — validação manual por perfil e por fluxo.
-- [`.kiro/steering/estado-e-pendientes.md`](.kiro/steering/estado-e-pendientes.md) — handoff operacional e prioridades.
-- [`.kiro/steering/arquitetura.md`](.kiro/steering/arquitetura.md) — mapa técnico.
-- [`docs/ESTADO_Y_PROXIMOS_PASOS.md`](docs/ESTADO_Y_PROXIMOS_PASOS.md) — índice de compatibilidade que aponta para as fontes canônicas.
+---
 
 ## Convenções
 
-- UI, domínio, código, commits e PRs em Português do Brasil; handoff pode ser em espanhol.
-- TypeScript `strict`; evitar `any`.
-- Novas regras: domínio puro + testes quando aplicável; migrations aditivas por padrão.
-- Nova migration deve ordenar depois de `9zq_alerta_tac_enviado`.
-- Trabalhar em branch e PR; não publicar diretamente em `main` sem pedido explícito.
+- **Documentação em português padrão**; toda mudança de código atualiza a
+  documentação correspondente (o guardião no CI garante isso).
+- TypeScript `strict`; regras de negócio em domínio puro + testes.
+- Trabalhar em **branch e PR**; não publicar direto em `main` sem pedido
+  explícito.
+- Migrações **aditivas** por padrão.

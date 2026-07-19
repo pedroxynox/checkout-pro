@@ -424,7 +424,7 @@ function docCatalogoTestes(testes) {
   const totBack = testes.backend.reduce((s, t) => s + t.casos, 0);
   const totMob = testes.mobile.reduce((s, t) => s + t.casos, 0);
   let s = BANNER + '\n# Catálogo de Testes\n\n';
-  s += `> Todos os arquivos de teste automatizado e quantos casos cada um cobre.\n>\n> **Backend:** ${testes.backend.length} arquivos, ${totBack} casos. **Mobile:** ${testes.mobile.length} arquivos, ${totMob} casos. **Total: ${totBack + totMob} casos.**\n\n`;
+  s += `> Todos os arquivos de teste automatizado e quantos casos cada um cobre.\n>\n> **Backend:** ${testes.backend.length} arquivos, ${totBack} casos. **Mobile:** ${testes.mobile.length} arquivos, ${totMob} casos. **Total: ${totBack + totMob} casos.**\n>\n> _A contagem é por chamadas literais de \`it()\`/\`test()\` no código (determinística). Testes parametrizados (\`it.each\`/\`test.each\`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._\n\n`;
   s += '## Backend (Jest)\n\n| Arquivo | Casos | Suites |\n|---|---|---|\n';
   for (const t of testes.backend) {
     s += `| \`${esc(t.arquivo)}\` | ${t.casos} | ${t.suites} |\n`;
@@ -459,6 +459,7 @@ function docMetricas(m, dados) {
   s += `- **Backend:** ${totBack} casos em ${testes.backend.length} arquivos\n`;
   s += `- **Mobile:** ${totMob} casos em ${testes.mobile.length} arquivos\n`;
   s += `- **Total:** ${totBack + totMob} casos\n`;
+  s += `\n> Contagem por chamadas literais de \`it()\`/\`test()\` (determinística). Testes parametrizados (\`it.each\`) expandem em mais casos na execução do Jest.\n`;
   s += '\n## Cobertura do Atlas de Documentação\n\n';
   s += `- Módulos backend documentados: ver \`docs/03-atlas-backend/\` (meta: ${modulos.length}).\n`;
   s += `- Áreas mobile documentadas: ver \`docs/04-atlas-mobile/\` (meta: ${areas.length}).\n`;

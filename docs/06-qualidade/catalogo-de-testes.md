@@ -6,6 +6,8 @@
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
 > **Backend:** 87 arquivos, 555 casos. **Mobile:** 25 arquivos, 95 casos. **Total: 650 casos.**
+>
+> _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
 ## Backend (Jest)
 
