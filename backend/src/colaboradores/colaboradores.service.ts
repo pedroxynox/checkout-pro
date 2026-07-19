@@ -4,7 +4,6 @@ import {
   FuncaoColaborador,
   Perfil,
   Prisma,
-  TipoContrato,
   TurnoColaborador,
   TurnoFiscal,
 } from '@prisma/client';
@@ -124,8 +123,6 @@ export interface ColaboradorInput {
   saidaDom?: string | null;
   /** Data de admissão (base do módulo de Contratos). ISO ou Date; null limpa. */
   dataAdmissao?: string | Date | null;
-  /** Tipo de contrato (regras de jornada). Ausente = mantém/usa o default. */
-  tipoContrato?: TipoContrato;
   /**
    * Tipo de contrato de jornada data-driven (catálogo). undefined = não altera;
    * null = remove (volta ao padrão); string = atribui esse contrato.
@@ -231,6 +228,26 @@ export class ColaboradoresService {
     return conta.id;
   }
 
+  /**
+   * Id do tipo de contrato PADRÃO (o 6x1 vigente), usado quando o gestor não
+   * escolhe um contrato — o vínculo é OBRIGATÓRIO (fonte única das regras de
+   * jornada/TAC). Lança se não houver padrão (situação anômala: o padrão é
+   * semeado na migração `9zy_tipos_contrato_jornada`).
+   */
+  private async idContratoPadrao(): Promise<string> {
+    const padrao = await this.prisma.tipoContratoJornada.findFirst({
+      where: { padrao: true },
+      orderBy: { criadoEm: 'asc' },
+      select: { id: true },
+    });
+    if (!padrao) {
+      throw new Error(
+        'Nenhum tipo de contrato padrão configurado (esperado desde a migração 9zy).',
+      );
+    }
+    return padrao.id;
+  }
+
   async cadastrar(
     input: ColaboradorInput,
     perfilSolicitante?: PerfilSolicitante,
@@ -283,6 +300,10 @@ export class ColaboradoresService {
       input.tipoContratoJornadaId,
     );
 
+    // Vínculo obrigatório ao tipo de contrato: o informado ou o padrão (6x1).
+    const tipoContratoJornadaIdEfetivo =
+      input.tipoContratoJornadaId ?? (await this.idContratoPadrao());
+
     const colaborador = await this.prisma.colaborador.create({
       data: {
         matricula,
@@ -299,12 +320,9 @@ export class ColaboradoresService {
         entradaDom: input.entradaDom ?? null,
         saidaDom: input.saidaDom ?? null,
         dataAdmissao: normalizarAdmissao(input.dataAdmissao),
-        // Ausente → Prisma aplica o default (6x1 - 2x1).
-        tipoContrato: input.tipoContrato,
-        // Contrato de jornada data-driven (opcional). Sem ele, usa o padrão.
-        tipoContratoJornada: input.tipoContratoJornadaId
-          ? { connect: { id: input.tipoContratoJornadaId } }
-          : undefined,
+        // Tipo de contrato de jornada OBRIGATÓRIO (fonte única das regras de
+        // jornada/TAC): usa o escolhido ou o contrato padrão (6x1).
+        tipoContratoJornada: { connect: { id: tipoContratoJornadaIdEfetivo } },
         usuarioId,
         identificadores: {
           create: [
@@ -493,13 +511,14 @@ export class ColaboradoresService {
     if (input.saidaDom !== undefined) data.saidaDom = input.saidaDom;
     if (input.dataAdmissao !== undefined)
       data.dataAdmissao = normalizarAdmissao(input.dataAdmissao);
-    if (input.tipoContrato !== undefined)
-      data.tipoContrato = input.tipoContrato;
-    // Contrato de jornada data-driven: string atribui, null remove (volta ao padrão).
+    // Contrato de jornada (obrigatório): string atribui; null/vazio volta ao
+    // contrato padrão (não desvincula, pois o vínculo é obrigatório).
     if (input.tipoContratoJornadaId !== undefined)
-      data.tipoContratoJornada = input.tipoContratoJornadaId
-        ? { connect: { id: input.tipoContratoJornadaId } }
-        : { disconnect: true };
+      data.tipoContratoJornada = {
+        connect: {
+          id: input.tipoContratoJornadaId || (await this.idContratoPadrao()),
+        },
+      };
     // Ao atribuir um contrato que NÃO trabalha domingo, o colaborador sai do
     // rodízio (grupoDomingo = null), mesmo que não tenha sido tocado no form.
     if (input.tipoContratoJornadaId) {

@@ -66,7 +66,9 @@ dia, intervalos, limites de extras e de TAC — que o cálculo da jornada consom
 10. **Data-driven:** novos contratos entram pela interface do Centro de Controle;
     o cálculo é **genérico** sobre os parâmetros, sem mudança de código.
 11. **Sempre existe um contrato padrão** (semeado na base), que serve de
-    *fallback* do cálculo e **não pode ser desativado nem removido**.
+    *fallback* do cálculo e **não pode ser desativado nem removido**. Todo
+    colaborador tem um tipo de contrato **obrigatório**; sem escolha, recebe o
+    padrão (Fase 0 do spec `solidez-contratos-jornada`).
 12. **Contrato em uso não é removido** — é preciso reatribuir os colaboradores ou
     apenas desativá-lo.
 13. **Coerência dos limites** é validada no servidor: intervalo mínimo menor que o

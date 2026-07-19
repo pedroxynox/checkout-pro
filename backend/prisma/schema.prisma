@@ -1051,14 +1051,6 @@ enum FuncaoColaborador {
   GESTOR
 }
 
-// Tipo de contrato — define as REGRAS DE JORNADA do colaborador. Hoje só existe
-// o "6x1 - 2x1" (escala 6x1 + rodízio de domingo 2x1), que ativa o comportamento
-// do Relógio Ponto (Seg-Qui 7h, Sex-Sáb 8h, domingo/feriado a 100%, TAC a 1h50,
-// intervalo fora da jornada). Futuros contratos terão outras regras.
-enum TipoContrato {
-  SEIS_X_UM_DOIS_X_UM
-}
-
 // Catálogo de TIPOS DE CONTRATO de jornada, editável pela gestão (Centro de
 // Controle): cria/ativa/desativa contratos SEM tocar no código. Cada linha
 // guarda os parâmetros de `RegrasContrato` (todos em MINUTOS) que o cálculo da
@@ -1119,15 +1111,13 @@ model Colaborador {
   genero    String?
   ativo     Boolean           @default(true)
 
-  // Tipo de contrato (regras de jornada). Default "6x1 - 2x1" (único hoje), que
-  // ativa o comportamento do Relógio Ponto / Central de Jornada.
-  tipoContrato TipoContrato @default(SEIS_X_UM_DOIS_X_UM)
-
-  // Tipo de contrato de jornada data-driven (catálogo editável). Quando nulo, o
-  // cálculo usa o contrato "padrão" (vigente). Aditivo: fichas antigas ficam
-  // nulas até o gestor atribuir um contrato.
-  tipoContratoJornadaId String?
-  tipoContratoJornada   TipoContratoJornada? @relation(fields: [tipoContratoJornadaId], references: [id])
+  // Tipo de contrato de jornada (data-driven) — FONTE ÚNICA das regras de
+  // jornada e de TAC do colaborador, e OBRIGATÓRIO: toda ficha pertence a um
+  // tipo de contrato. Quando o gestor não escolhe, o cadastro conecta o
+  // contrato "padrão" (o 6x1 vigente). Ver spec `solidez-contratos-jornada`
+  // (Fase 0). Relação obrigatória: apagar um tipo em uso é bloqueado (Restrict).
+  tipoContratoJornadaId String
+  tipoContratoJornada   TipoContratoJornada @relation(fields: [tipoContratoJornadaId], references: [id])
 
   // Data do desligamento (quando `ativo` passou a false). Base da JANELA DE
   // RETENÇÃO: a purga mensal de inativos só apaga a ficha e o histórico de RRHH

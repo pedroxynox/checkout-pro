@@ -1390,12 +1390,6 @@ export interface MensagemAssistente {
 
 // ----- Cadastro Unificado de Colaboradores -----
 export type FuncaoColaborador = 'OPERADOR' | 'FISCAL' | 'SUPERVISOR' | 'GESTOR';
-/** Tipo de contrato (regras de jornada). Hoje só "6x1 - 2x1". */
-export type TipoContrato = 'SEIS_X_UM_DOIS_X_UM';
-/** Rótulo exibível de cada tipo de contrato. */
-export const ROTULO_TIPO_CONTRATO: Record<TipoContrato, string> = {
-  SEIS_X_UM_DOIS_X_UM: '6x1 - 2x1',
-};
 export type TurnoColaborador =
   | 'ABERTURA'
   | 'INTERMEDIARIO'
@@ -1424,9 +1418,7 @@ export interface Colaborador {
   usuarioId: string | null;
   /** Data de admissão (ISO yyyy-mm-dd) — base do módulo de Contratos. */
   dataAdmissao: string | null;
-  /** Tipo de contrato (regras de jornada). */
-  tipoContrato: TipoContrato;
-  /** Tipo de contrato de jornada data-driven (catálogo); null = usa o padrão. */
+  /** Tipo de contrato de jornada (catálogo); null = usa o padrão (6x1). */
   tipoContratoJornadaId: string | null;
 }
 
@@ -1456,9 +1448,7 @@ export interface ColaboradorInput {
   saidaDom?: string;
   /** Data de admissão (ISO yyyy-mm-dd) — base do módulo de Contratos. */
   dataAdmissao?: string;
-  /** Tipo de contrato (regras de jornada). */
-  tipoContrato?: TipoContrato;
-  /** Contrato de jornada data-driven (catálogo); null remove (volta ao padrão). */
+  /** Tipo de contrato de jornada (catálogo); null = usa o padrão (6x1). */
   tipoContratoJornadaId?: string | null;
   ativo?: boolean;
 }

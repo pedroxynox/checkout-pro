@@ -3,6 +3,13 @@
 Executar na ordem das fases. Cada fase termina com `npm run verify` +
 `npm run docs:check` verdes e um PR próprio. Marcar `[x]` ao concluir.
 
+> **Progresso:** **Fase 0 concluída.** Como a remoção da coluna legada
+> `tipoContrato` exigiu tirar o filtro fixo da Central de Jornada, o **núcleo da
+> Fase 2** (2.1 e 2.2 — Central inclui todos os tipos de contrato, com regras
+> resolvidas por pessoa) foi antecipado junto. Restante da Fase 1 (garantir que
+> todo o fluxo de ponto resolva as regras pelo tipo de contrato) e o polimento
+> da Fase 2 seguem em PRs próprios.
+
 ## Fase 0 — Tipo de Contrato como fonte única (jornada + TAC)
 
 - [ ] 0.1 Backfill: preencher `Colaborador.tipoContratoJornadaId` nulos com o Tipo

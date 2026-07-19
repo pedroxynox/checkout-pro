@@ -37,7 +37,6 @@ automaticamente faltas e não-retornos do intervalo.
 | `ponto-alertas.service.ts` | Cron (1 min): verifica riscos de TAC | 54 |
 | `ponto-deteccao-automatica.service.ts` | Cron (5 min): falta automática e não-retorno | 214 |
 | `deteccao-automatica.domain.ts` | Regras puras: estado do escalado sem batida | 71 |
-| `contrato-regras.ts` | Catálogo de regras por tipo de contrato (código) | 34 |
 | `pessoas-ponto.ts` | Funções (não-fiscais) que batem ponto | 15 |
 | `dto/ponto.dto.ts` | Validação de entrada das rotas | 88 |
 
@@ -181,7 +180,7 @@ acima do máximo). Best-effort e defensivo por pessoa.
 | `ponto-nome-match.spec.ts` | Similaridade de nomes tolerante ao OCR | 6 |
 | `deteccao-automatica.domain.spec.ts` | Estado do escalado sem batida (alerta/falta) | 8 |
 | `ponto-alertas.service.spec.ts` | Cron periódico de riscos de TAC | 1 |
-| `contrato-regras.spec.ts` | `calcularJornadaDia` genérico sobre o contrato | 5 |
+| `contrato-6x1-congelado.spec.ts` | Congela as cargas e os limites de TAC do 6x1 (regra não muda sem intenção) | 6 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

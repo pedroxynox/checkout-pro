@@ -122,12 +122,13 @@ Preparar jornadas controladas; validar tanto o disparo após batida quanto o cro
 - [ ] Cadastrar/remover feriado estadual ou municipal manualmente funciona com a permissão correta; para corrigir um cadastro, remover e criar novamente.
 - [ ] Carnaval e Corpus Christi não aparecem automaticamente; cadastrar manualmente quando a loja os adotar.
 - [ ] Uma batida em feriado usa carga 7h20/extras 100% na jornada e na Central.
-- [ ] Colaborador com contrato `SEIS_X_UM_DOIS_X_UM` apresenta a escala esperada.
+- [ ] Colaborador com o tipo de contrato padrão (6x1) apresenta a escala esperada.
+- [ ] Cadastrar colaborador sem escolher tipo de contrato → recebe o padrão (6x1).
 - [ ] Alternância/configuração de domingos respeita a âncora e a ordem cadastradas.
 
 ## 7. Contratos de experiência
 
-> Este fluxo é diferente de `tipoContrato=SEIS_X_UM_DOIS_X_UM`, que governa a jornada.
+> Este fluxo é diferente do **tipo de contrato** (jornada/TAC), que governa a jornada.
 
 - [ ] Cadastrar **operador ativo** com data de admissão cria/deriva contrato de experiência.
 - [ ] Outros tipos de colaborador não entram na carteira/cron de experiência.

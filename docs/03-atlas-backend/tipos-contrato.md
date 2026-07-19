@@ -111,6 +111,10 @@ Garante: carga base com 7 valores; dias com 100% entre 0 e 6; intervalo mínimo
 5. **Parâmetros em minutos na UI**, convertidos para ms no cálculo.
 6. **Só administrador** (`ADMIN_DADOS`) mexe no catálogo — afeta horas/folha.
 7. **Cache invalidado em qualquer mutação** (as regras mudam pouco).
+8. **Vínculo obrigatório:** todo colaborador pertence a um tipo de contrato
+   (fonte única de jornada/TAC); sem escolha, o cadastro conecta o **padrão**
+   (Fase 0 do spec `solidez-contratos-jornada`). O enum legado `TipoContrato`
+   foi removido.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |

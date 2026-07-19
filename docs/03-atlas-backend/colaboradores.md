@@ -118,8 +118,11 @@ totais de arrecadação/APAE. Roda no cron mensal (dia 1º) e sob demanda.
 ## 7. Estados e enums
 - `FuncaoColaborador`: `OPERADOR` · `FISCAL` · `SUPERVISOR` · `GESTOR`.
 - `TurnoColaborador`: `ABERTURA` · `INTERMEDIARIO` · `FECHAMENTO` · `APOIO`.
-- `TipoContrato` / `TipoContratoJornada` (regras de jornada; ver
-  [`tipos-contrato`](tipos-contrato.md)).
+- `TipoContratoJornada` — o **tipo de contrato** (regras de jornada e TAC),
+  **obrigatório** por colaborador (fonte única; ver
+  [`tipos-contrato`](tipos-contrato.md)). O enum legado `TipoContrato` foi
+  removido na Fase 0 do spec `solidez-contratos-jornada`; sem contrato escolhido,
+  o cadastro conecta o **padrão** (6x1) via `idContratoPadrao`.
 - Mapeamento função → `Perfil` de acesso: ver `perfilDaFuncao` em §6.
 
 ## 8. Dados que o módulo toca
