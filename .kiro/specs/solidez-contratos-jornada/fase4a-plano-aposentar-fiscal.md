@@ -48,9 +48,11 @@ gradual e reversível.
   do fiscal). Aditivo. Com isto a **fase *expand* está completa** em todas as
   tabelas de identidade que têm coluna de vínculo.
 - **A.3 — Migrar leituras internas para `colaboradorId`.** Onde a chave não é
-  exposta ao exterior: `registrosDoDia`, `sincronizarFiscalNoCliente`,
-  `fiscais-horario`, `escalaConsolidada` (já híbrida). Mantém o resultado
-  idêntico; testes de regressão.
+  exposta ao exterior. **Em andamento:** os crons `saudacao-diaria` e
+  `fiscais-horario` já resolvem a conta pela ficha canônica (`colaboradorId` da
+  escala), com fallback ao `Fiscal` legado. Faltam `registrosDoDia`,
+  `sincronizarFiscalNoCliente` e `escalaConsolidada` (já híbrida) — mantendo o
+  resultado idêntico e lendo por ambos os ids na transição.
 - **A.4 — Alertas de TAC por ficha.** Decidir o destino de `pessoaId` em
   `AlertaTacEnviado`/`EventoAlertaTac` (migrar para `colaboradorId` ou manter,
   dado que são efêmeros/append). Baixo impacto funcional.

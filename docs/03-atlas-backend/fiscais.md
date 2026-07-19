@@ -29,7 +29,7 @@ os alertas automáticos e a **escala de trabalho** (geral e horário especial).
 | `fiscais.errors.ts` | Erros de domínio (mapeados para HTTP) | 47 |
 | `fiscais.eventos.ts` | Barramento de eventos de status (produtor↔gateway) | 38 |
 | `fiscais.gateway.ts` | Gateway WebSocket do painel em tempo real | 92 |
-| `fiscais-horario.service.ts` | Cron: lembretes de horário aos fiscais | 118 |
+| `fiscais-horario.service.ts` | Cron: lembretes de horário aos fiscais (conta resolvida pela ficha) | 143 |
 | `fiscais-alertas.service.ts` | Cron: alertas de intervalo longo e cobertura | 416 |
 | `escala.controller.ts` | Rotas da escala de trabalho | 64 |
 | `escala.service.ts` | Regras da escala (geral, especial, consolidada) | 276 |

@@ -23,7 +23,7 @@ fechamento nos horários-limite da operação, e a **saudação diária** motiva
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `alertas.service.ts` | Cron jobs de checklist/fechamento e regra de disparo | 259 |
-| `saudacao-diaria.service.ts` | Cron da saudação diária (fiscais e gestores) | 179 |
+| `saudacao-diaria.service.ts` | Cron da saudação diária (fiscais e gestores) | 205 |
 | `saudacao-diaria.domain.ts` | Regras puras: monta título e mensagem da saudação | 65 |
 | `alertas.module.ts` | Ligações (DI); fornece o relógio injetável (`RELOGIO`) | 31 |
 
@@ -75,7 +75,9 @@ Converte `"HH:mm"` na expressão cron `"m h * * *"`. Testável isoladamente.
 - `saudarFiscais()` (cron a cada minuto): identifica os fiscais que **entram
   agora** (dentro de uma janela de 5 min pela escala do dia) e ainda não foram
   saudados; envia a saudação com o resultado de ontem. Marca o fiscal como
-  saudado cedo (evita reenvio mesmo em erro).
+  saudado cedo (evita reenvio mesmo em erro). A conta é resolvida pela **ficha
+  canônica** (`colaboradorId` da escala → `Colaborador`), com fallback ao
+  registro legado `Fiscal` (Fase 4 · Opção A · A.3).
 - `saudarGestores()` (cron **06:50**): saúda gerentes, gerentes desenvolvedores
   e supervisores.
 - `resetarDiario()` (cron **00:00**): zera o controle de "já saudado" do dia.
@@ -129,6 +131,7 @@ Em `saudacao-diaria.domain.ts`:
 |---|---|---|
 | `alertas.service.spec.ts` | Disparo dos crons com relógio fixo, destinatários e dia operacional | 10 |
 | `saudacao-diaria.domain.spec.ts` | Regras puras da saudação (período, texto por resultado) | 6 |
+| `saudacao-diaria.service.spec.ts` | Resolução da conta do fiscal pela ficha canônica (A.3) | 1 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
