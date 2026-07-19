@@ -75,10 +75,9 @@ Executar na ordem das fases. Cada fase termina com `npm run verify` +
 - [ ] 4.3 Redirecionar escrita (cadastros/edições) para o Cadastro Unificado. _(R4.2)_
   (Escrita de `Fiscal` já é única — `garantirFiscal` no cadastro; bug do login já
   resolvido.)
-- [ ] 4.4 Backfill dos dados restantes + verificação de integridade. _(R4.2, RT.3)_
-  — **fase *expand* concluída:** `RegistroPontoFiscal` já grava `colaboradorId`
-  em registros novos (dual-write). Falta o backfill dos históricos + o
-  `verificar-integridade` (toca dados).
+- [x] 4.4 Backfill dos dados restantes + verificação de integridade. _(R4.2, RT.3)_
+  — dual-write nos novos (4.2) + backfill dos históricos (migração `9zzf`) +
+  verificador `npm run integridade` (`detectarVinculosOrfaos`, com testes).
 - [ ] 4.5 Remover os modelos legados, rotas e telas, um por vez, com testes. _(R4.3)_
 - [ ] 4.6 Atualizar Atlas de [`operadores`](../../../docs/03-atlas-backend/operadores.md)
   e [`fiscais`](../../../docs/03-atlas-backend/fiscais.md). _(RT.4)_
@@ -88,7 +87,8 @@ Executar na ordem das fases. Cada fase termina com `npm run verify` +
 - [ ] T.1 Auditar e centralizar a hora de Brasília em `common/datas`; nenhum módulo
   reimplementa o offset. _(RT.1)_
 - [ ] T.2 Criar os testes "congela-regra" das regras críticas de cada fase. _(RT.2)_
-- [ ] T.3 Implementar `verificar-integridade` (lista vínculos órfãos por id). _(RT.3)_
+- [x] T.3 Implementar `verificar-integridade` (lista vínculos órfãos por id). _(RT.3)_
+  — `npm run integridade` (backend) + lógica pura `detectarVinculosOrfaos`.
 - [ ] T.4 Regenerar a referência (`npm run docs:gen`) e garantir o guardião verde a
   cada fase. _(RT.4, RT.5)_
 

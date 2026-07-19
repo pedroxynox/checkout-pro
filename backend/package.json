@@ -18,7 +18,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:validate": "prisma validate",
     "seed": "ts-node prisma/seed.ts",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "integridade": "ts-node prisma/verificar-integridade.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

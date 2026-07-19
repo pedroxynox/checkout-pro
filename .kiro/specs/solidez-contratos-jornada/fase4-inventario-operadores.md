@@ -99,8 +99,13 @@ cuidado ao migrar:
 
 | Tabela | Campo legado | Ponte já existente | Situação |
 |---|---|---|---|
-| `RegistroPontoFiscal` | `fiscalId` → `Fiscal.id` | `colaboradorId` (nullable) | **Dual-write ativo** em registros novos (Passo 4.2); históricos pendentes de backfill (4.4). |
-| `EscalaEntry` | `funcionarioId` → `Fiscal.id` | `colaboradorId` (nullable) | Preenchido pela sincronização de escala do cadastro; criações avulsas em `escala.service` ainda não preenchem. |
+| `RegistroPontoFiscal` | `fiscalId` → `Fiscal.id` | `colaboradorId` (nullable) | **Vínculo completo:** dual-write nos novos (4.2) + backfill dos históricos (migração `9zzf`, 4.4). |
+| `EscalaEntry` | `funcionarioId` → `Fiscal.id` | `colaboradorId` (nullable) | Sincronização do cadastro + backfill (`9zzf`) cobrem os históricos por conta/matrícula. |
+
+> **Verificador (T.3):** `npm run integridade` (em `backend/`) cruza fiscais,
+> contas e fichas e lista os vínculos órfãos (fiscal sem ficha, ficha sem
+> registro, ponto/escala sem `colaboradorId`). Lógica pura em
+> `src/fiscais/integridade-vinculo.ts`, coberta por testes.
 
 **Consequência prática:** a migração **não** precisa "trocar ids no escuro". A
 coluna `colaboradorId` já convive com o id legado; o Passo 4.4 é **completar o

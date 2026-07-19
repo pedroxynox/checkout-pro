@@ -3,7 +3,7 @@
 
 # Migrações do Banco de Dados
 
-> Histórico ordenado das **67 migrações** (`backend/prisma/migrations/`). Cada migração é uma alteração versionada do banco.
+> Histórico ordenado das **68 migrações** (`backend/prisma/migrations/`). Cada migração é uma alteração versionada do banco.
 
 | # | Migração |
 |---|---|
@@ -74,3 +74,4 @@
 | 65 | `9zzc_ausencia_a_prazo` |
 | 66 | `9zzd_ausencia_automatica` |
 | 67 | `9zze_tipo_contrato_fonte_unica` |
+| 68 | `9zzf_backfill_vinculo_ponto_fiscal` |
