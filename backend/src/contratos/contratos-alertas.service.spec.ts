@@ -42,19 +42,20 @@ describe('ContratosAlertasService', () => {
     expect(conteudo.mensagem).toContain('45 dias');
   });
 
-  it('envia aviso de decisão em atraso com o texto correto', async () => {
+  it('avisa que o contrato será efetivado automaticamente ao completar 90 dias', async () => {
     const { service, enviar } = criar([
       {
         colaboradorId: 'c1',
         nome: 'Bia',
-        alerta: { tipo: 'DECISAO_ATRASO', marco: 'MARCO_90', dias: 2 },
+        alerta: { tipo: 'VENCIMENTO', marco: 'MARCO_90', dias: 2 },
       },
     ]);
     await service.verificarContratos(HOJE);
     const conteudo = (enviar.mock.calls[0] as any[])[1];
-    expect(conteudo.titulo).toContain('atraso');
+    expect(conteudo.titulo).toContain('vencendo');
     expect(conteudo.mensagem).toContain('90 dias');
-    expect(conteudo.mensagem).toContain('há 2 dias');
+    expect(conteudo.mensagem).toContain('efetivado automaticamente');
+    expect(conteudo.mensagem).toContain('em 2 dias');
   });
 
   it('não duplica o mesmo alerta no mesmo dia', async () => {

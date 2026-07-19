@@ -1627,7 +1627,6 @@ export interface ContratoCard {
   proximoMarco: MarcoContrato | null;
   dataProximoMarco: string | null;
   diasParaProximoMarco: number | null;
-  marcoEmAtraso: MarcoContrato | null;
   efetivadoPorDecurso: boolean;
   decisao45: ResultadoDecisao | null;
   decisao90: ResultadoDecisao | null;
@@ -1645,7 +1644,6 @@ export interface ResumoContratoColaborador {
   proximoMarco: MarcoContrato | null;
   dataProximoMarco: string | null;
   diasParaProximoMarco: number | null;
-  marcoEmAtraso: MarcoContrato | null;
   efetivadoPorDecurso: boolean;
   decisao45: ResultadoDecisao | null;
   decisao90: ResultadoDecisao | null;
@@ -1659,7 +1657,6 @@ export interface ResumoCarteiraContratos {
   encerrados: number;
   semAdmissao: number;
   vencendoSemana: number;
-  decisaoPendente: number;
 }
 
 

@@ -103,7 +103,6 @@ const PERFIL = {
     proximoMarco: 'MARCO_90',
     dataProximoMarco: '2026-07-30',
     diasParaProximoMarco: 35,
-    marcoEmAtraso: null,
     efetivadoPorDecurso: false,
     decisao45: 'APROVADO',
     decisao90: null,

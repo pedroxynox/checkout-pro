@@ -38,7 +38,6 @@ const CARD_VENCENDO = {
   proximoMarco: 'MARCO_45',
   dataProximoMarco: '2026-07-04',
   diasParaProximoMarco: 3,
-  marcoEmAtraso: null,
   efetivadoPorDecurso: false,
   decisao45: null,
   decisao90: null,
@@ -51,7 +50,6 @@ const RESUMO = {
   encerrados: 0,
   semAdmissao: 0,
   vencendoSemana: 1,
-  decisaoPendente: 0,
 };
 
 function render_() {

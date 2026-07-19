@@ -26,12 +26,19 @@
      - Reprovar em qualquer marco → **ENCERRADO** (ação sempre explícita; nunca
        reprova sozinho).
      - Passar de 90 dias sem reprovação → **EFETIVADO por decurso de prazo**
-       (lei brasileira), mas segue sinalizando "decisão em atraso" até a decisão
-       do marco de 90 ser registrada. O mesmo vale para o marco de 45 vencido
-       sem decisão (permanece em EXPERIÊNCIA + "decisão em atraso").
+       (lei brasileira). O marco de 45 é aprovado por decurso e a efetivação
+       acontece sozinha no dia 91 — nada fica "pendente".
      - O marco de 90 só pode ser decidido após o de 45 ser **APROVADO**.
-  5. **Alertas** por **cron diário** (08:00 BRT), avisando os gestores quando um
-     marco está a ≤ 5 dias de vencer ou já venceu sem decisão. Como roda uma vez
+
+     > **Atualização (Fase 3, 2026-07):** o ciclo é totalmente automático, então
+     > o conceito de "decisão em atraso" deixou de existir. O campo legado
+     > `marcoEmAtraso`, o tipo de alerta `DECISAO_ATRASO` e a contagem
+     > `decisaoPendente` — que na prática nunca eram acionados — foram
+     > **removidos**. O único alerta do ciclo é o aviso de **vencimento** do
+     > marco de 90 (véspera da efetivação automática).
+  5. **Alertas** por **cron diário** (08:00 BRT), avisando os gestores quando o
+     marco de 90 está a ≤ 5 dias de vencer (véspera da efetivação automática).
+     Como roda uma vez
      por dia, o contador 5→0 emerge naturalmente; um `Set` em memória (resetado
      à meia-noite) é a rede de segurança contra reenvio — **não** é o padrão
      `count === limite` do umbral de incidências (aquele é dirigido por evento).

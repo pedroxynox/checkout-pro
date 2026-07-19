@@ -85,22 +85,23 @@ export interface ResumoContrato {
   dataProximoMarco: Date | null;
   /** Dias para o próximo marco: >0 faltam, 0 é hoje, <0 vencido. */
   diasParaProximoMarco: number | null;
-  /** Marco já vencido e ainda sem decisão (gera "decisão em atraso"). */
-  marcoEmAtraso: MarcoContrato | null;
   /** Efetivado automaticamente por ter cruzado 90 dias sem reprovação. */
   efetivadoPorDecurso: boolean;
   decisao45: ResultadoDecisao | null;
   decisao90: ResultadoDecisao | null;
 }
 
-/** Alerta a enviar aos gestores (consumido pelo cron diário). */
+/**
+ * Alerta a enviar aos gestores (consumido pelo cron diário).
+ *
+ * No ciclo automático o único alerta possível é o aviso de VENCIMENTO do marco
+ * de 90 dias — enviado nos dias imediatamente anteriores à efetivação
+ * automática, para o gestor decidir se encerra antes.
+ */
 export interface AlertaContrato {
-  tipo: 'VENCIMENTO' | 'DECISAO_ATRASO';
+  tipo: 'VENCIMENTO';
   marco: MarcoContrato;
-  /**
-   * VENCIMENTO: dias que faltam para o marco (0..ANTECEDENCIA; 0 = vence hoje).
-   * DECISAO_ATRASO: dias decorridos além do marco (>= 0).
-   */
+  /** Dias que faltam para o marco (0..ANTECEDENCIA; 0 = vence hoje). */
   dias: number;
 }
 
@@ -125,11 +126,6 @@ export function calcularDiasDeCasa(
 ): number {
   if (!dataAdmissao) return 0;
   return diffEmDias(dataAdmissao, hoje);
-}
-
-/** Nº de dias do marco. */
-function diasDoMarco(marco: MarcoContrato): number {
-  return marco === 'MARCO_45' ? DIAS_MARCO_45 : DIAS_MARCO_90;
 }
 
 /** Resultado de um marco a partir da lista de decisões (null se não decidido). */
@@ -162,7 +158,6 @@ export function derivarResumoContrato(
       proximoMarco: null,
       dataProximoMarco: null,
       diasParaProximoMarco: null,
-      marcoEmAtraso: null,
       efetivadoPorDecurso: false,
       decisao45,
       decisao90,
@@ -194,7 +189,6 @@ export function derivarResumoContrato(
       proximoMarco: null,
       dataProximoMarco: null,
       diasParaProximoMarco: null,
-      marcoEmAtraso: null,
       efetivadoPorDecurso: false,
     };
   }
@@ -209,7 +203,6 @@ export function derivarResumoContrato(
       proximoMarco: null,
       dataProximoMarco: null,
       diasParaProximoMarco: null,
-      marcoEmAtraso: null,
       // "por decurso" quando a efetivação veio do tempo (sem aprovação manual).
       efetivadoPorDecurso: decisao90 !== 'APROVADO',
     };
@@ -226,20 +219,16 @@ export function derivarResumoContrato(
     proximoMarco: 'MARCO_90',
     dataProximoMarco: dataMarco90,
     diasParaProximoMarco: diffEmDias(hoje, dataMarco90),
-    marcoEmAtraso: null,
     efetivadoPorDecurso: false,
   };
 }
 
 /**
  * Avalia o alerta a enviar num dado dia (ou `null` se não há nada a alertar).
- * "Decisão em atraso" tem prioridade sobre o aviso de vencimento.
+ * No ciclo automático o único alerta é o aviso de vencimento do marco de 90,
+ * enviado nos 5 dias que antecedem a efetivação automática.
  */
 export function avaliarAlerta(resumo: ResumoContrato): AlertaContrato | null {
-  if (resumo.marcoEmAtraso) {
-    const dias = resumo.diasDeCasa - diasDoMarco(resumo.marcoEmAtraso);
-    return { tipo: 'DECISAO_ATRASO', marco: resumo.marcoEmAtraso, dias };
-  }
   if (
     resumo.estado === 'EXPERIENCIA' &&
     resumo.proximoMarco &&
@@ -261,13 +250,12 @@ export function avaliarAlerta(resumo: ResumoContrato): AlertaContrato | null {
  *  - INATIVO (cinza): sem admissão ou contrato encerrado;
  *  - OK (verde): efetivado, sem decisão pendente;
  *  - ATENCAO (amarelo): em experiência, dentro do prazo normal;
- *  - CRITICO (vermelho): vencendo em <= 5 dias ou com decisão em atraso.
+ *  - CRITICO (vermelho): vencendo em <= 5 dias (véspera da efetivação).
  */
 export function classificarUrgencia(resumo: ResumoContrato): UrgenciaContrato {
   if (resumo.estado === 'SEM_ADMISSAO' || resumo.estado === 'ENCERRADO') {
     return 'INATIVO';
   }
-  if (resumo.marcoEmAtraso) return 'CRITICO';
   if (resumo.estado === 'EFETIVADO') return 'OK';
   // EXPERIÊNCIA sem atraso: crítico se vencendo em <= antecedência, senão atenção.
   if (
@@ -305,7 +293,6 @@ export interface ResumoCarteira {
   encerrados: number;
   semAdmissao: number;
   vencendoSemana: number;
-  decisaoPendente: number;
 }
 
 /** Agrega a carteira de contratos a partir dos resumos individuais. */
@@ -319,7 +306,6 @@ export function resumirCarteira(
     encerrados: 0,
     semAdmissao: 0,
     vencendoSemana: 0,
-    decisaoPendente: 0,
   };
   for (const r of resumos) {
     if (r.estado === 'EXPERIENCIA') out.emExperiencia += 1;
@@ -327,10 +313,8 @@ export function resumirCarteira(
     else if (r.estado === 'ENCERRADO') out.encerrados += 1;
     else out.semAdmissao += 1;
 
-    if (r.marcoEmAtraso) out.decisaoPendente += 1;
     if (
       r.estado === 'EXPERIENCIA' &&
-      !r.marcoEmAtraso &&
       r.diasParaProximoMarco !== null &&
       r.diasParaProximoMarco >= 0 &&
       r.diasParaProximoMarco <= ANTECEDENCIA_ALERTA_DIAS

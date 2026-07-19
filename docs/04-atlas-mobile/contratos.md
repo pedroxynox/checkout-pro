@@ -18,7 +18,7 @@ de casa, a etapa atual e o semáforo de urgência.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `ContratosScreen.tsx` | Carteira de contratos (resumo, filtros e cards) | 425 |
-| `ContratosScreen.test.tsx` | Testes de render/permissão | 130 |
+| `ContratosScreen.test.tsx` | Testes de render/permissão | 128 |
 
 ## 4. Fluxo do usuário
 1. **Carregar:** a tela busca em paralelo os cards (`listar`) e o resumo
@@ -50,7 +50,10 @@ e [`colaboradores`](../03-atlas-backend/colaboradores.md) (no encerramento).
 - Estado local: `busca`, `filtro` (etiqueta ou `todas`), `editandoId` +
   `admissaoInput` (editor inline), `ocupado` (ação em curso).
 - **Ciclo automático:** dentro dos 90 dias é `experiencia`; a partir do dia 91,
-  `efetivado`. Não há decisão manual de marcos na tela.
+  `efetivado`. Não há decisão manual de marcos na tela. Como consequência, os
+  campos legados `marcoEmAtraso` (no card) e `decisaoPendente` (no resumo da
+  carteira) foram **removidos** na Fase 3 — nunca eram acionados no ciclo
+  automático.
 - **Selo/etapa da experiência:** mostra `45D` enquanto `diasDeCasa <= 45` e
   `90D` depois disso (até efetivar).
 - O botão **Encerrar contrato** só aparece no estado `EXPERIENCIA`; **não**
