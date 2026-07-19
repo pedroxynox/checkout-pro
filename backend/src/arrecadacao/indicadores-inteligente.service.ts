@@ -16,6 +16,16 @@ import {
   inicioDaProximaSemana,
 } from './arrecadacao.domain';
 
+/**
+ * Regra dos Destaques do Mês: **apenas OPERADORES concorrem**. Os destaques são
+ * um ranking da operação de caixa (troco solidário, recargas, cancelamento de
+ * itens); fiscais, supervisores e gestores (gerente/administrador) não operam o
+ * PDV e, por decisão de negócio, não devem figurar entre os destaques.
+ */
+export function concorreAosDestaques(funcao: string): boolean {
+  return funcao === 'OPERADOR';
+}
+
 /** Um ponto da série temporal (um dia). */
 export interface PontoTendencia {
   data: string;
@@ -326,8 +336,10 @@ export class IndicadoresInteligenteService {
    * Cada categoria só retorna alguém se houver valor > 0.
    *
    * Considera **apenas colaboradores cadastrados** (casados por matrícula/login
-   * do arquivo); quem não tem cadastro não aparece. As três primeiras
-   * categorias são de operadores (fiscais são excluídos).
+   * do arquivo); quem não tem cadastro não aparece. E, entre os cadastrados,
+   * **apenas OPERADORES concorrem** — fiscais, supervisores e gestores
+   * (gerente/administrador) são excluídos dos destaques (ver
+   * `concorreAosDestaques`).
    */
   async destaquesMes(data: Date): Promise<DestaquesMes> {
     const gte = inicioDoMes(data);
@@ -344,7 +356,8 @@ export class IndicadoresInteligenteService {
       const totais = new Map<string, { nome: string; total: number }>();
       for (const r of regs) {
         const id = vinculo.idDe(tipo, r.matricula);
-        if (!id || vinculo.funcao(id) === 'FISCAL') continue; // não cadastrado / fiscal
+        // Só operadores concorrem (exclui não cadastrado, fiscal, supervisor e gestor).
+        if (!id || !concorreAosDestaques(vinculo.funcao(id))) continue;
         const cur = totais.get(id) ?? {
           nome: vinculo.nome(id) || r.nome,
           total: 0,
@@ -412,7 +425,8 @@ export class IndicadoresInteligenteService {
     const contrib = new Map<string, { nome: string; total: number }>();
     for (const r of contribRegs) {
       const id = vinculo.idDe(r.tipo, r.matricula);
-      if (!id || vinculo.funcao(id) === 'FISCAL') continue;
+      // Só operadores concorrem (exclui fiscal, supervisor e gestor).
+      if (!id || !concorreAosDestaques(vinculo.funcao(id))) continue;
       const cur = contrib.get(id) ?? {
         nome: vinculo.nome(id) || r.nome,
         total: 0,
@@ -423,7 +437,8 @@ export class IndicadoresInteligenteService {
     const cancel = new Map<string, number>();
     for (const r of cancelRegs) {
       const id = vinculo.idDe('CANCELAMENTO_ITENS', r.matricula);
-      if (!id || vinculo.funcao(id) === 'FISCAL') continue;
+      // Só operadores concorrem (exclui fiscal, supervisor e gestor).
+      if (!id || !concorreAosDestaques(vinculo.funcao(id))) continue;
       cancel.set(id, (cancel.get(id) ?? 0) + Number(r.valor));
     }
 
