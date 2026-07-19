@@ -5,41 +5,41 @@
 
 Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modulo.md`](./_modelo-modulo.md).
 
-**Cobertura:** 1/34 documentados (3%).
+**Cobertura:** 11/34 documentados (32%).
 
 | Item | Documento | Estado |
 |---|---|---|
-| `acessos` | `acessos` | ⬜ pendente |
+| `acessos` | [`acessos`](./acessos.md) | ✅ documentado |
 | `advertencias` | `advertencias` | ⬜ pendente |
 | `alertas` | `alertas` | ⬜ pendente |
 | `arrecadacao` | `arrecadacao` | ⬜ pendente |
 | `assistente` | `assistente` | ⬜ pendente |
-| `central-jornada` | `central-jornada` | ⬜ pendente |
+| `central-jornada` | [`central-jornada`](./central-jornada.md) | ✅ documentado |
 | `checklist` | `checklist` | ⬜ pendente |
 | `checkouts` | `checkouts` | ⬜ pendente |
-| `ciclo-folha` | `ciclo-folha` | ⬜ pendente |
+| `ciclo-folha` | [`ciclo-folha`](./ciclo-folha.md) | ✅ documentado |
 | `colaboradores` | [`colaboradores`](./colaboradores.md) | ✅ documentado |
 | `common` | `common` | ⬜ pendente |
 | `config` | `config` | ⬜ pendente |
-| `contratos` | `contratos` | ⬜ pendente |
+| `contratos` | [`contratos`](./contratos.md) | ✅ documentado |
 | `data-inicial` | `data-inicial` | ⬜ pendente |
 | `escala-domingo` | `escala-domingo` | ⬜ pendente |
 | `fechamento` | `fechamento` | ⬜ pendente |
 | `feedforward` | `feedforward` | ⬜ pendente |
 | `feriados` | `feriados` | ⬜ pendente |
-| `fiscais` | `fiscais` | ⬜ pendente |
+| `fiscais` | [`fiscais`](./fiscais.md) | ✅ documentado |
 | `incidencias` | `incidencias` | ⬜ pendente |
 | `insumos` | `insumos` | ⬜ pendente |
 | `lote-apae` | `lote-apae` | ⬜ pendente |
 | `metas` | `metas` | ⬜ pendente |
 | `notificacoes` | `notificacoes` | ⬜ pendente |
-| `operadores` | `operadores` | ⬜ pendente |
-| `permissoes` | `permissoes` | ⬜ pendente |
-| `ponto` | `ponto` | ⬜ pendente |
+| `operadores` | [`operadores`](./operadores.md) | ✅ documentado |
+| `permissoes` | [`permissoes`](./permissoes.md) | ✅ documentado |
+| `ponto` | [`ponto`](./ponto.md) | ✅ documentado |
 | `prisma` | `prisma` | ⬜ pendente |
 | `requisicoes` | `requisicoes` | ⬜ pendente |
 | `reset-operacional` | `reset-operacional` | ⬜ pendente |
 | `storage` | `storage` | ⬜ pendente |
-| `tipos-contrato` | `tipos-contrato` | ⬜ pendente |
-| `usuarios` | `usuarios` | ⬜ pendente |
+| `tipos-contrato` | [`tipos-contrato`](./tipos-contrato.md) | ✅ documentado |
+| `usuarios` | [`usuarios`](./usuarios.md) | ✅ documentado |
 | `vendas` | `vendas` | ⬜ pendente |
