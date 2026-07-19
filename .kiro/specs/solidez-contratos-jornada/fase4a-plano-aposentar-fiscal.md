@@ -6,6 +6,26 @@
 > `npm run verify` + `npm run docs:check` verdes, e só avança quando o anterior
 > estiver estável.
 
+## 0. Estado atual (decisão do dono) — 2026-07
+
+> **Épico PAUSADO de forma consciente após o A.5.2.** O objetivo de negócio
+> (fonte única de verdade, sem bugs de sincronização) **já foi alcançado**: app,
+> backend e dados operam pela ficha canônica (`colaboradorId`), sempre com
+> `fiscalId` como fallback compatível. O modelo `Fiscal` ficou reduzido a um
+> **esqueleto interno** (id de identidade + registros históricos ainda
+> ancorados nele) e **não causa mais problemas ao usuário**.
+>
+> Os passos restantes (**A.6** remover o `Fiscal`; **A.7** remover o legado
+> morto) **transformam/apagam dados históricos no coração da jornada** e **não
+> podem ser validados sem um banco real** (o ambiente de desenvolvimento não tem
+> os dados de produção). Decidiu-se **não** executá-los às cegas: o risco é alto
+> e o ganho de negócio, baixo (é limpeza interna).
+>
+> **Como retomar no futuro (com segurança):** seguir o roteiro A.6→A.8 abaixo,
+> mas **aplicando e validando cada migração de dados num ambiente de testes com
+> dados reais**, com **backup** antes de qualquer `drop`, e rodando
+> `npm run integridade` como rede de segurança entre os passos.
+
 ## 1. O problema em uma frase
 
 Hoje `Fiscal.id` é o `pessoaId` polimórfico (ADR 0005) que identifica a pessoa
