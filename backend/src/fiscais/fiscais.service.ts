@@ -905,10 +905,20 @@ export class FiscaisService {
     if (fiscal && this.notificacoes) {
       const gestores =
         await this.notificacoes.destinatariosComPermissao('FISCAIS_STATUS');
-      await this.notificacoes.enviar(gestores, {
-        titulo: 'Falta de fiscal',
-        mensagem: `${primeiroNome(fiscal.nome)} informou falta hoje.`,
-      });
+      // A mensagem reflete a ORIGEM da falta: quando o sistema a lança
+      // automaticamente (sem ponto até 2h após a entrada), não pode dizer que a
+      // pessoa "informou" a falta — ela pode nem ter aberto o app.
+      const pn = primeiroNome(fiscal.nome);
+      const conteudo = opcoes.automatica
+        ? {
+            titulo: '🔴 Falta automática',
+            mensagem: `${pn} não registrou ponto hoje — falta lançada automaticamente pelo sistema.`,
+          }
+        : {
+            titulo: 'Falta de fiscal',
+            mensagem: `${pn} informou falta hoje.`,
+          };
+      await this.notificacoes.enviar(gestores, conteudo);
     }
   }
 

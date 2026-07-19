@@ -449,11 +449,27 @@ export class OperadoresService {
       orderBy: { data: 'desc' },
     });
     const ids = [...new Set(ausencias.map((a) => a.pessoaId))];
-    const colaboradores = await this.prisma.colaborador.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, nome: true, matricula: true },
-    });
-    const nome = new Map(colaboradores.map((c) => [c.id, c]));
+    // A falta pode ser de um operador (pessoaId = Colaborador.id) OU de um
+    // fiscal (pessoaId = Fiscal.id). Resolvemos o nome nas DUAS tabelas para não
+    // exibir o id cru quando a falta é de um fiscal (ex.: falta automática).
+    const [colaboradores, fiscais] = await Promise.all([
+      this.prisma.colaborador.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, nome: true, matricula: true },
+      }),
+      this.prisma.fiscal.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, nome: true },
+      }),
+    ]);
+    const nome = new Map<string, { nome: string; matricula: string | null }>();
+    for (const c of colaboradores) {
+      nome.set(c.id, { nome: c.nome, matricula: c.matricula });
+    }
+    // Fiscais só entram quando o id ainda não foi resolvido como colaborador.
+    for (const f of fiscais) {
+      if (!nome.has(f.id)) nome.set(f.id, { nome: f.nome, matricula: null });
+    }
     const linhas: AusenciaDetalhada[] = ausencias.map((a) => ({
       id: a.id,
       pessoaId: a.pessoaId,
