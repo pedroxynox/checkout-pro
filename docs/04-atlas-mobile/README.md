@@ -5,32 +5,32 @@
 
 Um documento por área de tela do app (`mobile/src/screens/`). Padrão em [`_modelo-tela.md`](./_modelo-tela.md).
 
-**Cobertura:** 1/25 documentados (4%).
+**Cobertura:** 16/25 documentados (64%).
 
 | Item | Documento | Estado |
 |---|---|---|
 | `alertasFila` | `alertasFila` | ⬜ pendente |
 | `centroControle` | `centroControle` | ⬜ pendente |
 | `centroDeMando` | `centroDeMando` | ⬜ pendente |
-| `checklist` | `checklist` | ⬜ pendente |
-| `checkouts` | `checkouts` | ⬜ pendente |
+| `checklist` | [`checklist`](./checklist.md) | ✅ documentado |
+| `checkouts` | [`checkouts`](./checkouts.md) | ✅ documentado |
 | `colaboradores` | [`colaboradores`](./colaboradores.md) | ✅ documentado |
-| `contratos` | `contratos` | ⬜ pendente |
-| `fechamento` | `fechamento` | ⬜ pendente |
-| `fiscais` | `fiscais` | ⬜ pendente |
-| `importacoes` | `importacoes` | ⬜ pendente |
-| `indicadores` | `indicadores` | ⬜ pendente |
-| `insumos` | `insumos` | ⬜ pendente |
-| `loteApae` | `loteApae` | ⬜ pendente |
+| `contratos` | [`contratos`](./contratos.md) | ✅ documentado |
+| `fechamento` | [`fechamento`](./fechamento.md) | ✅ documentado |
+| `fiscais` | [`fiscais`](./fiscais.md) | ✅ documentado |
+| `importacoes` | [`importacoes`](./importacoes.md) | ✅ documentado |
+| `indicadores` | [`indicadores`](./indicadores.md) | ✅ documentado |
+| `insumos` | [`insumos`](./insumos.md) | ✅ documentado |
+| `loteApae` | [`loteApae`](./loteApae.md) | ✅ documentado |
 | `mensagens` | `mensagens` | ⬜ pendente |
-| `metas` | `metas` | ⬜ pendente |
+| `metas` | [`metas`](./metas.md) | ✅ documentado |
 | `normativas` | `normativas` | ⬜ pendente |
 | `notificacoes` | `notificacoes` | ⬜ pendente |
-| `operadores` | `operadores` | ⬜ pendente |
-| `perfil` | `perfil` | ⬜ pendente |
+| `operadores` | [`operadores`](./operadores.md) | ✅ documentado |
+| `perfil` | [`perfil`](./perfil.md) | ✅ documentado |
 | `permissoes` | `permissoes` | ⬜ pendente |
-| `ponto` | `ponto` | ⬜ pendente |
+| `ponto` | [`ponto`](./ponto.md) | ✅ documentado |
 | `quebra` | `quebra` | ⬜ pendente |
-| `relatorios` | `relatorios` | ⬜ pendente |
-| `tarefas` | `tarefas` | ⬜ pendente |
+| `relatorios` | [`relatorios`](./relatorios.md) | ✅ documentado |
+| `tarefas` | [`tarefas`](./tarefas.md) | ✅ documentado |
 | `usuarios` | `usuarios` | ⬜ pendente |

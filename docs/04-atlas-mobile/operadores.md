@@ -1,0 +1,105 @@
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `mobile/src/screens/operadores/`
+
+# Área: `operadores`
+
+## 1. Propósito
+**Quadro de operadores** com foco no dia: roster do dia (ordenado por entrada,
+folgas ao fim), "Agora no caixa" (ao vivo), fiscais escalados, faltas e
+não-retornos do dia, análise mensal (faltas e não-retornos com risco), o painel
+de **justificativas** e o registro de **ausências a prazo** (férias/licença).
+
+## 2. Quem usa (perfis)
+- **Escala/ausências** (`OPERADORES_AUSENCIAS`): vê justificativas, faltas do
+  dia/mês e o status ao vivo dos fiscais.
+- **Programar período** (Gerente/Administrador/Supervisor): abre "Ausências a
+  prazo".
+- **Jornada da equipe** (`FISCAIS_JORNADA`): atalho para a Jornada de Equipe.
+- **Ver escala** (`ESCALA_VISUALIZAR`): traz a escala de fiscais do dia.
+- Ver [Perfis e permissões](../01-produto/perfis-e-permissoes.md).
+
+## 3. Telas e arquivos
+| Arquivo | Papel | Linhas |
+|---|---|---|
+| `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1822 |
+| `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 394 |
+| `AusenciasAPrazo.tsx` | Card + modal para ausentar por período (falta justificada) | 386 |
+
+## 4. Fluxo do usuário
+1. **Dia:** `OperadoresScreen` mostra o roster do dia selecionado agrupado por
+   turno (do cadastro), com estado por cor (🟢 trabalha · 🔴 falta · ⚪ folga · azul
+   "no retorno"); tocar numa linha abre o Perfil.
+2. **Ao vivo:** "Agora no caixa" traz relógio de Brasília, disponíveis/esperados
+   e avisos de faltas e não-retornos da franja atual; fiscais têm status ao vivo
+   (WebSocket + reconsulta a cada 60s).
+3. **Faltas/não-retornos:** cards do dia e painéis do mês com risco (alto/médio/
+   baixo), dia recorrente e tendência; o painel abre um modal com o mês inteiro
+   e drill-down por colaborador (com advertência por falta não justificada).
+4. **Justificativas:** `JustificativasLista` reúne faltas e não-retornos dos
+   últimos 30 dias; permite justificar (motivo), marcar como não justificada ou
+   reabrir, mostrando quem registrou/justificou.
+5. **Ausências a prazo:** o card abre um modal para ausentar um colaborador por
+   um período, criando faltas justificadas em cada dia (inclusive a folga).
+Trata **carregando / erro / vazio**.
+
+## 5. Dados e integração com o backend
+| Ação na tela | Chamada | Endpoint |
+|---|---|---|
+| Roster do dia | `operadoresService.dia(data)` | `GET /quadro-operadores/dia` |
+| Ao vivo | `operadoresService.aoVivo()` | `GET /quadro-operadores/ao-vivo` |
+| Faltas (mês) | `operadoresService.analiticaFaltas(ini, fim)` | `GET /quadro-operadores/faltas/analitica` |
+| Não-retornos (mês) | `operadoresService.analiticaNaoRetornos(ini, fim)` | `GET /quadro-operadores/nao-retornos/analitica` |
+| Faltas do dia | `operadoresService.listarAusencias(ini, fim)` | `GET /operadores/ausencias` |
+| Justificar falta | `operadoresService.justificarAusencia(id, dados)` | `PATCH /operadores/ausencias/:id/justificativa` |
+| Ausência por período | `operadoresService.registrarAusenciaPeriodo(input)` | `POST /operadores/ausencias/periodo` |
+| Incidências | `escalaService.listarIncidencias(filtros)` | `GET /escala/incidencias` |
+| Justificar não-retorno | `escalaService.justificarIncidencia(id, dados)` | `PATCH /escala/incidencias/:id/justificativa` |
+| Escala de fiscais | `escalaService.consolidada(diaSemana, data)` | `GET /escala/consolidada/:diaSemana` |
+| Painel de fiscais (ao vivo) | `fiscaisService.painel()` + `conectarPainelFiscais` | `GET /fiscais/painel` + WebSocket |
+| Colaboradores | `colaboradoresService.listar(...)` | `GET /colaboradores` |
+
+Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.md),
+[`incidencias`](../03-atlas-backend/incidencias.md),
+[`fiscais`](../03-atlas-backend/fiscais.md) (status ao vivo) e
+[`escala-domingo`](../03-atlas-backend/escala-domingo.md) (rodízio de domingo).
+
+## 6. Estado local e regras de UI
+- **Faltas e não-retornos são detectados automaticamente** pelo ponto; a linha
+  apenas exibe o estado (não há marcação manual no roster).
+- `turnoDe` usa o **turno do cadastro** (Abertura/Intermediário/Fechamento/
+  Apoio); folga vai para um card no fim; sem turno cai em "Sem turno".
+- `COBERTURA_MINIMA = 20`: abaixo disso, aviso de cobertura baixa; a contagem
+  por turno considera só quem trabalha.
+- Fiscais entram no topo, tratados como `ColaboradorDia`; sem ficha vinculada
+  viram linha só de leitura ("Sem ficha").
+- Domingo: banner do rodízio de grupos (ou aviso se não configurado).
+- O relógio atualiza a cada 1s; o status ao vivo dos fiscais só aparece quando
+  o dia é hoje; `versaoJustificativas` força recarregar a lista.
+
+## 7. Lógica pura / utilidades
+- `corStatus`/`rotuloStatus`, `turnoDe`, `contarTurnos`, `iconeGenero`,
+  `relogioBrasilia`, `gruposQueTrabalhamDomingo`, `mesAtualISO`,
+  `fiscalComoColaboradorDia`, `seloJustificativa`.
+- Em `JustificativasScreen`: `janela()` (últimos 30 dias em dia-calendário de
+  Brasília), `coresStatus` e a ordenação por estado.
+- Em `AusenciasAPrazo`: filtro de busca com `MAX_RESULTADOS`, regra de
+  `podeConfirmar` e empurrar o fim junto do início.
+
+## 8. Componentes e hooks compartilhados usados
+- `useRequisicao` — ver [Hooks e utilidades](hooks-e-utilidades.md).
+- `Tela`, `Cartao`, `Selo`, `SeletorData`, `CampoTexto`, `Botao`, `Aviso`,
+  `EstadoVazio`, `MensagemErro`, `Carregando`, `Modal`/`ScrollView` (RN);
+  `ApiError`, `confirmar`/`notificar`, `conectarPainelFiscais` (socket),
+  `ROTULO_STATUS_FISCAL` — ver [Componentes compartilhados](componentes-compartilhados.md).
+
+## 9. Testes
+| Arquivo de teste | O que valida | Casos |
+|---|---|---|
+| `JustificativasScreen.test.tsx` | Falta pendente com quem registrou e justificar com motivo | 2 |
+
+## 10. Riscos, dívidas e pendências
+- 🔧 `OperadoresScreen.tsx` (>1800 linhas) reúne roster, ao vivo, análise
+  mensal, justificativas e sub-componentes; forte candidato a divisão.
+- ⚠️ O status ao vivo combina WebSocket + reconsulta de 60s porque transições
+  por tempo não geram batida.
+- ⚠️ Faltas de fiscais são alternadas por ausências do dia (eles não estão no
+  roster de operadores); depende de `OPERADORES_AUSENCIAS`.
