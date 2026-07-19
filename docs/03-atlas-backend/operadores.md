@@ -84,8 +84,11 @@ Abona (`JUSTIFICADA`, exige motivo), reabre (`PENDENTE`, limpa tudo) ou marca
 se não existir; bloqueia ciclo fechado.
 
 #### `listarAusencias(periodo, apenasPendentes?)`
-Lista as faltas do período com nome (resolvido em `Colaborador` **e** `Fiscal`)
-e os dados da justificativa; pendentes no topo, mais recentes primeiro.
+Lista as faltas do período com nome e os dados da justificativa; pendentes no
+topo, mais recentes primeiro. O nome é resolvido pela **ficha canônica**
+(`Colaborador`), via `pessoaId` (operador) ou `colaboradorId` (fiscal); o modelo
+legado `Fiscal` só é consultado como fallback para faltas antigas sem vínculo
+(Fase 4 · Opção A · A.3).
 
 #### `relatorioAusencias(periodo)` · `classificarTurnoOperador(entrada)` · `contagemPorTurno(operadores)`
 Delegam às funções puras homônimas do domínio.
@@ -124,7 +127,8 @@ Delegam às funções puras homônimas do domínio.
 
 ## 8. Dados que o módulo toca
 - **Escreve:** `Ausencia` (cria/atualiza/remove; grava `colaboradorId`).
-- **Lê:** `Ausencia`, `Colaborador`, `Fiscal`, `OperadorTurno` (Quadro/roster).
+- **Lê:** `Ausencia`, `Colaborador`, `Fiscal` (apenas fallback de nome),
+  `OperadorTurno` (Quadro/roster).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
 
 ## 9. Dependências
@@ -153,6 +157,7 @@ Delegam às funções puras homônimas do domínio.
 | `ausencia-a-prazo.spec.ts` | Proteção da falta a prazo (fiscal x gestão) | 3 |
 | `operador-turno.roster-turno.spec.ts` | Turno do cadastro no roster do dia | 2 |
 | `operadores.controller.spec.ts` | Rota de ausência (fluxo do controller) | 1 |
+| `listar-ausencias-ficha.spec.ts` | Nome da falta resolvido pela ficha canônica (A.3) | 1 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
@@ -163,4 +168,5 @@ Delegam às funções puras homônimas do domínio.
 - 🔧 `operador-turno.service.ts` (892 linhas) concentra grade, roster, ao vivo e
   analítica; candidato a extrair sub-serviços.
 - ⚠️ **`pessoaId` polimórfico:** uma ausência pode referenciar `Colaborador` ou
-  `Fiscal`; a resolução do nome busca nas duas tabelas para não exibir o id cru.
+  `Fiscal`; a resolução do nome prefere a ficha canônica (`colaboradorId`) e usa
+  o `Fiscal` só como fallback (Fase 4 · Opção A).

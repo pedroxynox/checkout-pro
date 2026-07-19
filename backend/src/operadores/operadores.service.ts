@@ -451,33 +451,39 @@ export class OperadoresService {
       },
       orderBy: { data: 'desc' },
     });
-    const ids = [...new Set(ausencias.map((a) => a.pessoaId))];
-    // A falta pode ser de um operador (pessoaId = Colaborador.id) OU de um
-    // fiscal (pessoaId = Fiscal.id). Resolvemos o nome nas DUAS tabelas para não
-    // exibir o id cru quando a falta é de um fiscal (ex.: falta automática).
-    const [colaboradores, fiscais] = await Promise.all([
-      this.prisma.colaborador.findMany({
-        where: { id: { in: ids } },
-        select: { id: true, nome: true, matricula: true },
-      }),
-      this.prisma.fiscal.findMany({
-        where: { id: { in: ids } },
-        select: { id: true, nome: true },
-      }),
-    ]);
-    const nome = new Map<string, { nome: string; matricula: string | null }>();
-    for (const c of colaboradores) {
-      nome.set(c.id, { nome: c.nome, matricula: c.matricula });
+    // Nome/ficha: preferimos a FICHA CANÔNICA (Colaborador). Para operador o
+    // `pessoaId` já é a ficha; para fiscal usamos o vínculo `colaboradorId`
+    // gravado na falta (Fase 4 · Opção A · A.3). O modelo legado `Fiscal` fica
+    // só como fallback, para faltas antigas ainda sem vínculo.
+    const idsColaborador = new Set<string>();
+    for (const a of ausencias) {
+      idsColaborador.add(a.pessoaId);
+      if (a.colaboradorId) idsColaborador.add(a.colaboradorId);
     }
-    // Fiscais só entram quando o id ainda não foi resolvido como colaborador.
-    for (const f of fiscais) {
-      if (!nome.has(f.id)) nome.set(f.id, { nome: f.nome, matricula: null });
-    }
+    const colaboradores = await this.prisma.colaborador.findMany({
+      where: { id: { in: [...idsColaborador] } },
+      select: { id: true, nome: true, matricula: true },
+    });
+    const colPorId = new Map(colaboradores.map((c) => [c.id, c]));
+    const fichaDe = (a: { pessoaId: string; colaboradorId: string | null }) =>
+      (a.colaboradorId ? colPorId.get(a.colaboradorId) : undefined) ??
+      colPorId.get(a.pessoaId);
+    // Fallback legado: apenas as faltas que AINDA não têm ficha canônica.
+    const semFicha = [
+      ...new Set(ausencias.filter((a) => !fichaDe(a)).map((a) => a.pessoaId)),
+    ];
+    const fiscais = semFicha.length
+      ? await this.prisma.fiscal.findMany({
+          where: { id: { in: semFicha } },
+          select: { id: true, nome: true },
+        })
+      : [];
+    const fiscalPorId = new Map(fiscais.map((f) => [f.id, f]));
     const linhas: AusenciaDetalhada[] = ausencias.map((a) => ({
       id: a.id,
       pessoaId: a.pessoaId,
-      nome: nome.get(a.pessoaId)?.nome ?? a.pessoaId,
-      matricula: nome.get(a.pessoaId)?.matricula ?? null,
+      nome: fichaDe(a)?.nome ?? fiscalPorId.get(a.pessoaId)?.nome ?? a.pessoaId,
+      matricula: fichaDe(a)?.matricula ?? null,
       data: a.data.toISOString().slice(0, 10),
       registradaPorNome: a.registradaPorNome,
       statusJustificativa: a.statusJustificativa as StatusJustificativa,
