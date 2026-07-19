@@ -243,10 +243,6 @@ export function RegistroPontoScreen(): React.ReactElement {
     else setDados(null);
   }, [pessoa, data, carregarJornada]);
 
-  // "Marcações do dia" agora fica em tela própria (MarcacoesDoDia), aberta pela
-  // card abaixo. Aqui só decidimos se a card aparece (mesma alçada da Central).
-  const podeVerMarcacoes = podeAcessar('CENTRAL_JORNADA');
-
   function selecionarPessoa(p: PessoaPonto): void {
     setPessoa(p);
     setBusca('');
@@ -524,26 +520,6 @@ export function RegistroPontoScreen(): React.ReactElement {
             <Text style={styles.cardCentralTitulo}>Central de Jornada</Text>
             <Text style={styles.cardCentralSub}>
               Carga, horas extras, faltas e saldo por colaborador (ciclo 26→25)
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />
-        </Pressable>
-      )}
-
-      {/* Atalho para a tela "Marcações do dia" (quem bateu ponto hoje + os
-          horários). Fica em tela própria para não sobrecarregar esta. */}
-      {podeVerMarcacoes && (
-        <Pressable
-          onPress={() => navigation.navigate('MarcacoesDoDia')}
-          style={styles.cardCentral}
-        >
-          <View style={styles.cardCentralIcone}>
-            <Ionicons name="time-outline" size={22} color={cores.primaria} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardCentralTitulo}>Marcações do dia</Text>
-            <Text style={styles.cardCentralSub}>
-              Quem bateu ponto hoje e os horários do dia
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />

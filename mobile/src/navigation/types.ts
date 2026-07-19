@@ -35,7 +35,6 @@ export type RootStackParamList = {
   /** `abrirScanner` (nonce) abre a câmera do leitor de ponto ao entrar. */
   RegistroPonto: { abrirScanner?: number } | undefined;
   CentralJornada: undefined;
-  MarcacoesDoDia: undefined;
   Inconsistencias: undefined;
   ExportarCiclo: undefined;
   Feriados: undefined;
