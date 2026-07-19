@@ -28,7 +28,7 @@ automaticamente faltas e não-retornos do intervalo.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `ponto.controller.ts` | Rotas HTTP (OCR, pessoas, dia, batidas, histórico TAC) | 122 |
-| `ponto.service.ts` | Regras de aplicação: persistência, classificação, avisos de TAC | 1352 |
+| `ponto.service.ts` | Regras de aplicação: persistência, classificação, avisos de TAC | 1359 |
 | `ponto.domain.ts` | Regras puras: classificação e cálculo da jornada/TAC | 410 |
 | `ponto.errors.ts` | Erros de domínio (mapeados para HTTP) | 94 |
 | `ponto.module.ts` | Ligações (DI) do módulo | 45 |
@@ -144,8 +144,10 @@ acima do **máximo do contrato da pessoa**, resolvido por `regrasDoColaborador`;
 
 ## 8. Dados que o módulo toca
 - **Escreve:** `BatidaPonto`, `AlertaTacEnviado`, `EventoAlertaTac`,
-  `AliasLeituraPonto`, `RegistroPontoFiscal` (via `FiscaisService`), `Ausencia`
-  (falta automática, remoção), `IncidenciaEscala` (não-retorno).
+  `AliasLeituraPonto`, `RegistroPontoFiscal` (via `FiscaisService`; a ponte
+  batidas → status agora repassa o `colaboradorId` da batida para gravar o
+  vínculo com a ficha canônica — Fase 4), `Ausencia` (falta automática,
+  remoção), `IncidenciaEscala` (não-retorno).
 - **Lê:** `Fiscal`, `Usuario`, `Colaborador`, `Ausencia`, `CicloFolha`,
   `TipoContratoJornada` (via serviços).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).

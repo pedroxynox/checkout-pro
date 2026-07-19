@@ -57,21 +57,28 @@ Executar na ordem das fases. Cada fase termina com `npm run verify` +
 
 ## Fase 3 — Contratos de experiência
 
-- [ ] 3.1 Padronizar nomenclatura (Contrato de Experiência vs. Tipo de Contrato) em
+- [x] 3.1 Padronizar nomenclatura (Contrato de Experiência vs. Tipo de Contrato) em
   documentação e rótulos. _(R3.1)_
-- [ ] 3.2 Remover/depreciar `marcoEmAtraso` sem afetar os alertas. _(R3.2)_
-- [ ] 3.3 Ampliar as propriedades do ciclo automático (45/90/91 + avisos). _(R3.3, RT.2)_
-- [ ] 3.4 Atualizar Atlas de [`contratos`](../../../docs/03-atlas-backend/contratos.md). _(RT.4)_
+- [x] 3.2 Remover/depreciar `marcoEmAtraso` sem afetar os alertas. _(R3.2)_
+- [x] 3.3 Ampliar as propriedades do ciclo automático (45/90/91 + avisos). _(R3.3, RT.2)_
+- [x] 3.4 Atualizar Atlas de [`contratos`](../../../docs/03-atlas-backend/contratos.md). _(RT.4)_
 
 ## Fase 4 — Consolidar operadores (retirar o legado)
 
 - [x] 4.1 Inventário dos consumidores dos modelos legados
   (`Operador`/`OperadorTurno`/`Fiscal`). _(R4.1)_ — ver
   [`fase4-inventario-operadores.md`](fase4-inventario-operadores.md).
-- [ ] 4.2 Garantir equivalente canônico (`Colaborador`/`Fiscal`) para cada
-  consumidor. _(R4.1)_
+- [x] 4.2 Garantir equivalente canônico (`Colaborador`/`Fiscal`) para cada
+  consumidor. _(R4.1)_ — confirmado no inventário: `Colaborador` (funcao FISCAL)
+  cobre os campos e o adaptador `fiscais/colaborador-vinculo.ts` já resolve o
+  vínculo por conta/matrícula.
 - [ ] 4.3 Redirecionar escrita (cadastros/edições) para o Cadastro Unificado. _(R4.2)_
+  (Escrita de `Fiscal` já é única — `garantirFiscal` no cadastro; bug do login já
+  resolvido.)
 - [ ] 4.4 Backfill dos dados restantes + verificação de integridade. _(R4.2, RT.3)_
+  — **fase *expand* concluída:** `RegistroPontoFiscal` já grava `colaboradorId`
+  em registros novos (dual-write). Falta o backfill dos históricos + o
+  `verificar-integridade` (toca dados).
 - [ ] 4.5 Remover os modelos legados, rotas e telas, um por vez, com testes. _(R4.3)_
 - [ ] 4.6 Atualizar Atlas de [`operadores`](../../../docs/03-atlas-backend/operadores.md)
   e [`fiscais`](../../../docs/03-atlas-backend/fiscais.md). _(RT.4)_
