@@ -58,6 +58,10 @@ como fallback.
 - **A.4 — Alertas de TAC por ficha.** Decidir o destino de `pessoaId` em
   `AlertaTacEnviado`/`EventoAlertaTac` (migrar para `colaboradorId` ou manter,
   dado que são efêmeros/append). Baixo impacto funcional.
+- **A.5.1 — Expor `colaboradorId` (backend, aditivo). ✅ Concluído.** Painel,
+  jornada, `meuResumo`, `horasExtrasMes` e o evento WebSocket `fiscal:status`
+  passam a enviar `colaboradorId` junto do `fiscalId`. Nada é removido: apps
+  instalados seguem usando `fiscalId`.
 - **A.5 — Trocar a identidade EXPOSTA (o passo mais delicado).** Fazer o painel,
   a jornada, o `meuResumo`, o evento WebSocket `fiscal:status` e a fila offline
   usarem `colaboradorId` como identidade. **Exige mudança coordenada

@@ -9,6 +9,12 @@ import { StatusFiscal } from './fiscais.domain';
  */
 export interface FiscalStatusEvento {
   fiscalId: string;
+  /**
+   * Ficha canônica do fiscal (Cadastro Unificado). Aditivo (Fase 4 · Opção A ·
+   * A.5): permite o app migrar a identidade de `fiscalId` para `colaboradorId`
+   * sem quebrar — `fiscalId` continua sendo enviado durante a transição.
+   */
+  colaboradorId: string | null;
   primeiroNome: string;
   status: StatusFiscal;
   em: Date;

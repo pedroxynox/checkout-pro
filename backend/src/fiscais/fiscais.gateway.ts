@@ -53,6 +53,7 @@ export class FiscaisGateway
       (evento: FiscalStatusEvento) => {
         this.server.emit(EVENTO_STATUS_FISCAL, {
           fiscalId: evento.fiscalId,
+          colaboradorId: evento.colaboradorId,
           primeiroNome: evento.primeiroNome,
           status: evento.status,
           em: evento.em.toISOString(),
