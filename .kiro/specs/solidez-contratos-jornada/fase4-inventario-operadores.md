@@ -157,6 +157,49 @@ verdes, e só avança quando o anterior estiver estável.
 - ✅ **Baixo risco geral de dados** — a ponte `colaboradorId` já existe nas duas
   tabelas críticas; a migração completa, e não inicia, a transição.
 
+## 8.1 Mapa completo do identificador `fiscal.id` (achado ao preparar o 4.3)
+
+Ao preparar a redireção das leituras, confirmou-se que o `Fiscal.id` **é a
+identidade da pessoa** em todo o subsistema de ponto/jornada — o `pessoaId`
+polimórfico "solto" do ADR 0005. Isto é mais profundo do que "11 leitores": para
+aposentar o `Fiscal`, essa identidade precisa migrar para `Colaborador.id` nas
+tabelas abaixo.
+
+| Tabela | Campo que hoje guarda `Fiscal.id` | Já tem coluna `colaboradorId`? |
+|---|---|---|
+| `registros_ponto_fiscal` | `fiscalId` | ✅ (dual-write + backfill `9zzf`) |
+| `escala_entries` | `funcionarioId` | ✅ (sincronização + backfill `9zzf`) |
+| `batidas_ponto` | `pessoaId` (tipoPessoa FISCAL) | ✅ (gravado em `registrarBatida`) |
+| `ausencias` | `pessoaId` | ✅ (coluna existe) |
+| `alertas_tac_enviados` | `pessoaId` | ❌ (só dedup diário — efêmero) |
+| `eventos_alerta_tac` | `pessoaId` | ❌ (trilha append-only de alertas) |
+
+**Leitura do achado:** a fundação de dados (coluna `colaboradorId`) já existe nas
+tabelas que importam; as duas sem coluna são bookkeeping de alertas TAC (diário/
+histórico, baixo impacto). O que falta é o passo **de código** mais delicado:
+trocar, nas leituras, a identidade `fiscalId` por `colaboradorId` — e isso mexe
+no **coração da jornada** (batidas, faltas, painel, status, escala).
+
+## 8.2 Decisão de arquitetura (a alinhar antes do 4.3/4.5)
+
+Duas estratégias, cada uma com seu perfil de risco:
+
+- **Opção A — Aposentar o `Fiscal` de vez.** Migrar as leituras e a identidade de
+  pessoa de `fiscal.id` → `colaborador.id` em ponto/escala/faltas/alertas e, por
+  fim, remover o modelo `Fiscal`. **Ganho:** fonte de verdade única, de verdade.
+  **Custo/risco:** alto — mexe no núcleo da jornada; exige migração cuidadosa,
+  testes de regressão pesados e passos pequenos.
+- **Opção B — Manter o `Fiscal` como "identidade de ponto" e limpar só o morto.**
+  Aceitar o `fiscal.id` como o `pessoaId` polimórfico do ponto (ADR 0005) e focar
+  em remover o legado **realmente morto** (`Operador`/`OperadorTurno`/
+  `RegistroOperacional`, zero usos). **Ganho:** limpeza concreta e imediata.
+  **Custo/risco:** baixo em código, mas a remoção **apaga dados históricos** —
+  precisa de decisão do dono (hoje esses modelos são mantidos "para histórico").
+
+**Recomendação:** avançar pela **Opção B primeiro** (ganho seguro e imediato,
+com backup dos dados históricos antes do drop) e tratar a **Opção A** como um
+épico próprio, com sessão dedicada — dado o risco no núcleo da jornada.
+
 ## 9. Rastreabilidade
 
 - Requisitos: **R4.1**, **R4.2**, **R4.3** (ver `requirements.md`).
