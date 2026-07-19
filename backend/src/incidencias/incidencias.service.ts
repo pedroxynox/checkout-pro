@@ -52,6 +52,11 @@ export interface RegistrarIncidenciaInput {
   /** Vínculo opcional com a ocorrência que motivou a sanção (informativo). */
   causaTipo?: string;
   causaData?: string;
+  /**
+   * Origem do registro: 'MANUAL' (padrão) ou 'DETECTADO_PONTO' (auto-detectado
+   * pela jornada — ex.: não retorno do intervalo detectado pelo Relógio Ponto).
+   */
+  origem?: 'MANUAL' | 'DETECTADO_PONTO';
 }
 
 /** Campos editáveis de uma incidência. */
@@ -210,7 +215,7 @@ export class IncidenciasService {
           horaSaida: dto.horaSaida ?? null,
           horaEsperadaRetorno,
           horaReal: dto.horaReal ?? null,
-          origem: 'MANUAL',
+          origem: dto.origem ?? 'MANUAL',
           motivo: dto.motivo ?? null,
           observacao: dto.observacao ?? null,
           registradoPorId: autor?.id ?? null,

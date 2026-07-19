@@ -739,6 +739,20 @@ export interface MarcacaoDiaView {
   hora: string;
 }
 
+/**
+ * Item da "Jornada de Equipe" do dia: TODOS os escalados (inclusive quem ainda
+ * não bateu ponto, em branco), com a jornada calculada, a entrada prevista, a
+ * marca de falta e o alerta visual de atraso (1h sem registrar).
+ */
+export interface ItemEquipeDiaFiscal extends ItemJornadaFiscal {
+  /** Hora de entrada prevista no dia ("HH:mm"), ou null. */
+  entradaPrevista: string | null;
+  /** true quando há uma falta (ausência) marcada para a pessoa no dia. */
+  falta: boolean;
+  /** true: escalado, sem batidas e já passou 1h da entrada (só visual). */
+  alertaAtraso: boolean;
+}
+
 /** Acumulado de horas extras do mês por pessoa (fiscal ou colaborador). */
 export interface ItemHorasExtrasFiscal {
   fiscalId: string;

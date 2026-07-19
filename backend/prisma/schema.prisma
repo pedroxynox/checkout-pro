@@ -892,6 +892,12 @@ model Ausencia {
   // fiscal na escala — só gerente/supervisor/administrador podem remover.
   aPrazo Boolean @default(false)
 
+  // Quando true, a falta foi criada AUTOMATICAMENTE pela detecção do Relógio
+  // Ponto (colaborador escalado que não bateu ponto até 2h após a entrada
+  // prevista). Só as faltas automáticas são removidas quando a pessoa finalmente
+  // bate o ponto; as lançadas manualmente pelo gestor permanecem.
+  automatica Boolean @default(false)
+
   @@unique([pessoaId, data])
   @@index([colaboradorId])
   @@index([statusJustificativa])

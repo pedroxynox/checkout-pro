@@ -16,6 +16,7 @@ import {
 import { DefinirStatusDto } from './dto/fiscais.dto';
 import {
   FiscaisService,
+  ItemEquipeDia,
   ItemFolga,
   ItemHorasExtras,
   ItemJornada,
@@ -77,6 +78,18 @@ export class FiscaisController {
     // Sem `data`, "hoje" é o dia de Brasília (UTC-3) — não o dia UTC do
     // servidor —, para que as marcações do dia não sumam à noite.
     return this.service.jornadaDoDia(data ? new Date(data) : agoraNaBrasilia());
+  }
+
+  /**
+   * "Jornada de Equipe" do dia: TODOS os escalados (inclusive quem ainda não
+   * bateu ponto, em branco), com a jornada calculada, a entrada prevista, a
+   * marca de falta e o alerta visual de atraso. Alimenta o painel da equipe e
+   * as "Marcações do dia".
+   */
+  @Get('equipe-dia')
+  @Funcionalidade('FISCAIS_JORNADA')
+  equipeDia(@Query('data') data?: string): Promise<ItemEquipeDia[]> {
+    return this.service.equipeDoDia(data ? new Date(data) : agoraNaBrasilia());
   }
 
   /** Acumulado de horas extras do mês (por fiscal) — apenas gestores. */
