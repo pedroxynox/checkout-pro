@@ -65,6 +65,10 @@ Módulos do backend relacionados: [`fiscais`](../03-atlas-backend/fiscais.md)
   e reexibe a cada segundo. Um `tick` de 1s roda só quando há alguém em
   intervalo; a tela também recarrega os dados a cada 60s (só hoje) para
   ressincronizar a base e captar retornos/encerramentos.
+- **Aviso de não retorno:** ao ultrapassar o intervalo máximo de 3h
+  (`INTERVALO_MAXIMO_MS` do ponto — acima disso é TAC), o cronômetro fica
+  **vermelho** e troca o texto para "Intervalo acima do máximo", alertando o
+  gestor de um possível não retorno antes mesmo de o card virar "Encerrado".
 - No modal, os horários são opcionais e validados por `HHMM_RE`; campos vazios
   são enviados como `undefined`. O tipo padrão é `NAO_RETORNO_INTERVALO` (ou os
   do perfil), com seletor de tipo só quando `permitirEscolherTipo`.
