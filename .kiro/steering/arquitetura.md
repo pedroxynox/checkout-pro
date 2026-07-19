@@ -78,7 +78,7 @@ Regras TAC:
 - Dedupe é PERSISTENTE e diária (`AlertaTacEnviado`), com trilha de eventos (`EventoAlertaTac`).
 
 ### Regras de jornada (Relógio Ponto)
-Parâmetros do contrato vigente 6x1–2x1 (`REGRAS_SEIS_X_UM_DOIS_X_UM` em `ponto.domain`; catálogo extensível em `contrato-regras.ts`). Carga base: 7h (seg–qui), 8h (sex–sáb), 7h20 (domingo/feriado).
+Parâmetros vindos do **tipo de contrato** do colaborador (data-driven, tabela `TipoContratoJornada`), convertidos para `RegrasContrato`. O 6x1 vigente é o contrato **padrão**; `REGRAS_PADRAO` em `ponto.domain` é apenas fallback de emergência. Carga base do padrão: 7h (seg–qui), 8h (sex–sáb), 7h20 (domingo/feriado).
 
 - **Batidas por dia:** máximo 4 (a 5ª é recusada). O tipo é derivado da ordem, não editável à mão.
   - 1 batida: hoje = trabalhando; dia passado = incompleta (não acumula).
@@ -102,7 +102,7 @@ Parâmetros do contrato vigente 6x1–2x1 (`REGRAS_SEIS_X_UM_DOIS_X_UM` em `pont
 - Carnaval/Corpus Christi não automáticos.
 - A API permite cadastrar e remover feriados manuais; correção exige remover e cadastrar novamente.
 - Feriado = domingo: 7h20, extras 100%.
-- `SEIS_X_UM_DOIS_X_UM` é o único tipo de contrato hoje e governa as regras de jornada. As regras vivem numa estrutura `RegrasContrato` (carga base, intervalos, limites de TAC); um novo contrato é adicionado no catálogo `contrato-regras.ts` sem duplicar o cálculo.
+- O **tipo de contrato** do colaborador (data-driven, obrigatório) governa as regras de jornada/TAC. As regras vivem numa estrutura `RegrasContrato` (carga base, intervalos, limites de TAC); novos tipos entram pela UI (catálogo `TipoContratoJornada`), sem tocar no código. O enum legado `TipoContrato` foi removido (spec `solidez-contratos-jornada`, Fase 0).
 - O contrato de experiência é outro conceito: aplica-se a operadores ativos, dura até 90 dias, alerta nos 5 dias anteriores e efetiva no dia 91.
 - O cron de experiência notifica hoje `FISCAL`, `SUPERVISOR`, `GERENTE` e `ADMINISTRADOR`.
 

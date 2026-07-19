@@ -17,8 +17,6 @@ import type { TipoContratoJornada } from '../../api/services';
 import {
   Colaborador,
   FuncaoColaborador,
-  ROTULO_TIPO_CONTRATO,
-  TipoContrato,
   TurnoColaborador,
 } from '../../api/types';
 import {
@@ -47,12 +45,6 @@ const FUNCOES: { v: FuncaoColaborador; r: string }[] = [
 
 /** Funções que entram no app (precisam de login/senha). Operador não entra. */
 const FUNCOES_COM_ACESSO: FuncaoColaborador[] = ['FISCAL', 'SUPERVISOR', 'GESTOR'];
-
-// Tipos de contrato (regras de jornada). Hoje só "6x1 - 2x1"; a lista cresce
-// conforme novos contratos forem criados.
-const CONTRATOS: { v: TipoContrato; r: string }[] = (
-  Object.entries(ROTULO_TIPO_CONTRATO) as [TipoContrato, string][]
-).map(([v, r]) => ({ v, r }));
 
 const TURNOS: { v: TurnoColaborador; r: string }[] = [
   { v: 'ABERTURA', r: 'Abertura' },
@@ -93,10 +85,7 @@ export function GestaoColaboradoresScreen({
   const [matricula, setMatricula] = useState('');
   const [login, setLogin] = useState('');
   const [funcao, setFuncao] = useState<FuncaoColaborador>('OPERADOR');
-  const [tipoContrato, setTipoContrato] = useState<TipoContrato>(
-    'SEIS_X_UM_DOIS_X_UM',
-  );
-  // Contrato de jornada data-driven atribuído (null = usa o padrão).
+  // Tipo de contrato de jornada atribuído (null = usa o padrão 6x1).
   const [contratoJornadaId, setContratoJornadaId] = useState<string | null>(
     null,
   );
@@ -158,7 +147,6 @@ export function GestaoColaboradoresScreen({
     setAdmissao('');
     setSenha('');
     setGerenteDev(false);
-    setTipoContrato('SEIS_X_UM_DOIS_X_UM');
     setContratoJornadaId(null);
   };
 
@@ -199,7 +187,6 @@ export function GestaoColaboradoresScreen({
     setEntDom(c.entradaDom ?? '');
     setSaiDom(c.saidaDom ?? '');
     setAdmissao(c.dataAdmissao ? isoParaDataBR(c.dataAdmissao) : '');
-    setTipoContrato(c.tipoContrato ?? 'SEIS_X_UM_DOIS_X_UM');
     setContratoJornadaId(c.tipoContratoJornadaId ?? null);
     setEditAtivo(c.ativo);
     setSenha('');
@@ -298,8 +285,7 @@ export function GestaoColaboradoresScreen({
             entradaDom: entDom.trim() || undefined,
             saidaDom: saiDom.trim() || undefined,
             dataAdmissao: admissaoISO,
-            tipoContrato,
-            // Contrato de jornada data-driven (null = usa o padrão 6x1).
+            // Tipo de contrato de jornada (null = usa o padrão 6x1).
             tipoContratoJornadaId: contratoJornadaId,
           }),
     };
@@ -406,52 +392,36 @@ export function GestaoColaboradoresScreen({
             ))}
           </View>
 
-          {!ehGestor && (
+          {/* Tipo de contrato (catálogo data-driven). "Padrão" usa o contrato
+              vigente (6x1); os demais aplicam suas próprias regras de jornada e
+              TAC (carga, intervalo, limites). O catálogo só é listado para o
+              admin; quem não escolhe recebe o contrato padrão no backend. */}
+          {!ehGestor && (contratos.dados?.length ?? 0) > 0 && (
             <>
               <Text style={styles.rotulo}>Tipo de contrato</Text>
               <View style={styles.chips}>
-                {CONTRATOS.map((c) => (
+                <Text
+                  onPress={() => setContratoJornadaId(null)}
+                  style={[
+                    styles.chip,
+                    contratoJornadaId === null && styles.chipAtivo,
+                  ]}
+                >
+                  Padrão
+                </Text>
+                {(contratos.dados ?? []).map((ct) => (
                   <Text
-                    key={c.v}
-                    onPress={() => setTipoContrato(c.v)}
-                    style={[styles.chip, tipoContrato === c.v && styles.chipAtivo]}
+                    key={ct.id}
+                    onPress={() => setContratoJornadaId(ct.id)}
+                    style={[
+                      styles.chip,
+                      contratoJornadaId === ct.id && styles.chipAtivo,
+                    ]}
                   >
-                    {c.r}
+                    {ct.nome}
                   </Text>
                 ))}
               </View>
-
-              {/* Contrato de jornada (catálogo data-driven). "Padrão" usa as
-                  regras do contrato vigente; os demais aplicam suas próprias
-                  regras (carga, intervalo, TAC). Só aparece para o admin. */}
-              {(contratos.dados?.length ?? 0) > 0 && (
-                <>
-                  <Text style={styles.rotulo}>Contrato de jornada</Text>
-                  <View style={styles.chips}>
-                    <Text
-                      onPress={() => setContratoJornadaId(null)}
-                      style={[
-                        styles.chip,
-                        contratoJornadaId === null && styles.chipAtivo,
-                      ]}
-                    >
-                      Padrão
-                    </Text>
-                    {(contratos.dados ?? []).map((ct) => (
-                      <Text
-                        key={ct.id}
-                        onPress={() => setContratoJornadaId(ct.id)}
-                        style={[
-                          styles.chip,
-                          contratoJornadaId === ct.id && styles.chipAtivo,
-                        ]}
-                      >
-                        {ct.nome}
-                      </Text>
-                    ))}
-                  </View>
-                </>
-              )}
             </>
           )}
 

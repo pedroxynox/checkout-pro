@@ -688,9 +688,8 @@ valores de hoje, sem mudança de comportamento.
 | `funcao` | `FuncaoColaborador` |  |  |
 | `genero` | `String?` |  |  |
 | `ativo` | `Boolean` |  |  |
-| `tipoContrato` | `TipoContrato` |  | ativa o comportamento do Relógio Ponto / Central de Jornada. |
-| `tipoContratoJornadaId` | `String?` |  | nulas até o gestor atribuir um contrato. |
-| `tipoContratoJornada` | `TipoContratoJornada?` | relação |  |
+| `tipoContratoJornadaId` | `String` |  | (Fase 0). Relação obrigatória: apagar um tipo em uso é bloqueado (Restrict). |
+| `tipoContratoJornada` | `TipoContratoJornada` | relação |  |
 | `desligadoEm` | `DateTime?` |  | (proteção legal). Null enquanto o colaborador estiver ativo. |
 | `dataAdmissao` | `DateTime?` |  | Data_Inicial_Sistema (admissões históricas são legítimas — ver ADR 0008). |
 | `turno` | `TurnoColaborador?` |  | Escala (apenas operadores normalmente). Opcional para não obrigar fiscais. |

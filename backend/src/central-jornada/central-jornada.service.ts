@@ -292,7 +292,8 @@ export class CentralJornadaService {
           where: {
             ativo: true,
             funcao: { in: FUNCOES_PONTO },
-            tipoContrato: 'SEIS_X_UM_DOIS_X_UM',
+            // Inclui TODOS os tipos de contrato; as regras de cada pessoa são
+            // resolvidas por `regrasDe(tipoContratoJornadaId)` (Fase 2 do spec).
           },
           orderBy: { nome: 'asc' },
           select: {
@@ -385,7 +386,7 @@ export class CentralJornadaService {
         id: colaboradorId,
         ativo: true,
         funcao: { in: FUNCOES_PONTO },
-        tipoContrato: 'SEIS_X_UM_DOIS_X_UM',
+        // Qualquer tipo de contrato; regras resolvidas por pessoa (Fase 2).
       },
       select: {
         id: true,

@@ -86,7 +86,7 @@
 | `src/operadores/operadores.justificativa.spec.ts` | 6 | 1 |
 | `src/operadores/operadores.properties.spec.ts` | 5 | 1 |
 | `src/operadores/operadores.service.spec.ts` | 10 | 4 |
-| `src/ponto/contrato-regras.spec.ts` | 5 | 2 |
+| `src/ponto/contrato-6x1-congelado.spec.ts` | 5 | 1 |
 | `src/ponto/deteccao-automatica.domain.spec.ts` | 8 | 4 |
 | `src/ponto/ponto-alertas.service.spec.ts` | 1 | 1 |
 | `src/ponto/ponto-nome-match.spec.ts` | 6 | 1 |

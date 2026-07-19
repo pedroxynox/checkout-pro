@@ -126,6 +126,20 @@ const OPERADORES: string[] = [
  * duplicam fichas nem identificadores.
  */
 async function seedColaboradoresFiscais(): Promise<void> {
+  // Tipo de contrato PADRÃO (o 6x1 vigente, semeado na migração 9zy). O vínculo
+  // do colaborador ao seu tipo de contrato é OBRIGATÓRIO (fonte única das regras
+  // de jornada/TAC), então toda ficha criada aqui conecta o padrão.
+  const padrao = await prisma.tipoContratoJornada.findFirst({
+    where: { padrao: true },
+    orderBy: { criadoEm: 'asc' },
+    select: { id: true },
+  });
+  if (!padrao) {
+    throw new Error(
+      'Seed: nenhum tipo de contrato padrão encontrado (rode as migrações antes do seed).',
+    );
+  }
+
   const fiscais = await prisma.fiscal.findMany({
     where: { usuarioId: { not: null } },
     select: { nome: true, usuarioId: true },
@@ -157,6 +171,7 @@ async function seedColaboradoresFiscais(): Promise<void> {
           nome: f.nome,
           funcao: 'FISCAL',
           usuarioId: f.usuarioId,
+          tipoContratoJornada: { connect: { id: padrao.id } },
         },
       });
     }

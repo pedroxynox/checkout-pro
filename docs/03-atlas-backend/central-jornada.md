@@ -99,7 +99,7 @@ completos), atestados, faltas, TAC, conflitos e atrasos.
   débito da falta).
 
 ## 8. Dados que o módulo toca
-- **Lê:** `Colaborador` (só contrato `SEIS_X_UM_DOIS_X_UM`), `BatidaPonto`,
+- **Lê:** `Colaborador` (todos os tipos de contrato), `BatidaPonto`,
   `Ausencia`, `Fiscal`, `Usuario`, feriados e âncora de domingo (via serviços).
 - **Escreve:** `Ausencia.debitoHoras` (marcar débito).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
@@ -137,7 +137,9 @@ completos), atestados, faltas, TAC, conflitos e atrasos.
 - 🔧 `central-jornada.service.ts` (1086 linhas) concentra carga, cálculo e
   agregação; os tipos de resposta (`Central*`) e o cálculo diário podem ser
   extraídos conforme crescer.
-- ⚠️ Só considera o contrato `SEIS_X_UM_DOIS_X_UM` (filtro fixo na query):
-  novos contratos exigirão ampliar esse filtro para aparecerem na Central.
+- ✅ Inclui **todos os tipos de contrato** (Fase 2 do spec
+  `solidez-contratos-jornada`): o filtro fixo por `tipoContrato` foi removido e as
+  regras de jornada/TAC são resolvidas **por pessoa** via
+  `regrasDe(tipoContratoJornadaId)`.
 - 🔧 O comparativo (`comparativos`) recalcula cada ciclo sob demanda (N
   `resumoCiclo`); se a base crescer muito, pode valer cache/snapshot.

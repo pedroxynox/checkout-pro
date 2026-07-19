@@ -51,6 +51,10 @@ Módulo do backend relacionado: [`colaboradores`](../03-atlas-backend/colaborado
 - `FUNCOES_COM_ACESSO = ['FISCAL','SUPERVISOR','GESTOR']`: só para essas funções
   o campo **senha** aparece e é enviado. Operador não tem acesso.
 - Gestor/administrador não mostram escala/contrato/gênero (só o essencial).
+- **Tipo de contrato:** um único seletor data-driven (o catálogo de tipos de
+  contrato de jornada). "Padrão" usa o 6x1 vigente; a lista só aparece para o
+  admin. O seletor legado (enum `TipoContrato`) foi removido na Fase 0 do spec
+  `solidez-contratos-jornada`.
 - Domingo: o grupo só aparece se o contrato trabalha domingo (o backend também
   normaliza por segurança).
 
