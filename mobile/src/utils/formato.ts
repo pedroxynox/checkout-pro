@@ -151,6 +151,23 @@ export function formatarDuracao(ms: number): string {
   return `${horas}h ${min.toString().padStart(2, '0')}min`;
 }
 
+/**
+ * Cronômetro AO VIVO "H:MM:SS" (ou "M:SS" abaixo de 1h) a partir de ms. Usado
+ * para exibir um tempo em curso que corre a cada segundo — ex.: o intervalo de
+ * uma pessoa na jornada de equipe, atualizado em tempo real.
+ */
+export function formatarCronometro(ms: number): string {
+  const totalSeg = Math.max(0, Math.floor((Number.isFinite(ms) ? ms : 0) / 1000));
+  const h = Math.floor(totalSeg / 3600);
+  const m = Math.floor((totalSeg % 3600) / 60);
+  const s = totalSeg % 60;
+  const ss = s.toString().padStart(2, '0');
+  if (h > 0) {
+    return `${h}:${m.toString().padStart(2, '0')}:${ss}`;
+  }
+  return `${m}:${ss}`;
+}
+
 
 /**
  * Máscara de milhar (pt-BR) aplicada ENQUANTO se digita um valor em R$: agrupa

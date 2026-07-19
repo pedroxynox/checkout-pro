@@ -5,7 +5,7 @@
  * o dia-calendário continue sendo o de Brasília — evitando que, à noite, o app
  * mostre/registre o dia seguinte.
  */
-import { diaSemanaHoje, hojeISO } from './formato';
+import { diaSemanaHoje, formatarCronometro, hojeISO } from './formato';
 
 
 import { mascaraMilhar, parseNumeroBR } from './formato';
@@ -62,5 +62,23 @@ describe('mascaraMilhar (separador de milhar pt-BR)', () => {
     expect(parseNumeroBR('1.234,5')).toBe(1234.5);
     expect(parseNumeroBR('0,75')).toBe(0.75);
     expect(parseNumeroBR('')).toBe(0);
+  });
+});
+
+
+describe('formatarCronometro', () => {
+  it('mostra M:SS abaixo de 1h', () => {
+    expect(formatarCronometro(0)).toBe('0:00');
+    expect(formatarCronometro(65 * 1000)).toBe('1:05');
+    expect(formatarCronometro((59 * 60 + 59) * 1000)).toBe('59:59');
+  });
+
+  it('mostra H:MM:SS a partir de 1h', () => {
+    expect(formatarCronometro(3600 * 1000)).toBe('1:00:00');
+    expect(formatarCronometro((3 * 3600 + 5 * 60 + 9) * 1000)).toBe('3:05:09');
+  });
+
+  it('nunca é negativo', () => {
+    expect(formatarCronometro(-5000)).toBe('0:00');
   });
 });

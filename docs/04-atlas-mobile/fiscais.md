@@ -20,7 +20,7 @@ intervalo" e sanções) reutilizado para criar/editar/excluir.
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `JornadaFiscaisScreen.tsx` | Jornada de equipe do dia (roster + marcações + estado) | 433 |
+| `JornadaFiscaisScreen.tsx` | Jornada de equipe do dia (roster + marcações + estado) | 497 |
 | `RegistrarIncidenciaModal.tsx` | Modal de criar/editar/excluir incidência de escala | 445 |
 
 ## 4. Fluxo do usuário
@@ -29,7 +29,9 @@ intervalo" e sanções) reutilizado para criar/editar/excluir.
    (trabalhando/intervalo/sem registrar/faltas).
 2. **Cards:** cada colaborador exibe, em linha, Entrada · Intervalo · Retorno ·
    Saída · Carga (tempo trabalhado em tempo real), o estado com cor e a entrada
-   prevista; jornadas incompletas mostram o que falta registrar.
+   prevista; jornadas incompletas mostram o que falta registrar. Quem está
+   **em intervalo** exibe um **cronômetro ao vivo** do tempo de intervalo (só no
+   dia de hoje), que avança de segundo em segundo.
 3. **Perfil:** com `OPERADORES_AUSENCIAS`, tocar num card com ficha abre o
    Perfil do colaborador.
 4. **Incidência:** `RegistrarIncidenciaModal` cria (com valores pré-preenchidos,
@@ -57,6 +59,12 @@ Módulos do backend relacionados: [`fiscais`](../03-atlas-backend/fiscais.md)
   incompleto > intervalo > encerrado > trabalhando > aguardando.
 - O chip "sem registrar" (atraso) só aparece quando o dia é hoje; ao ver dias
   anteriores, mostram-se apenas as batidas registradas.
+- **Cronômetro de intervalo ao vivo:** para quem está `EM_INTERVALO` no dia de
+  hoje, a tela soma o tempo de intervalo vindo do backend (`tempoIntervaloMs`,
+  calculado até o instante do carregamento) com o tempo decorrido desde a carga,
+  e reexibe a cada segundo. Um `tick` de 1s roda só quando há alguém em
+  intervalo; a tela também recarrega os dados a cada 60s (só hoje) para
+  ressincronizar a base e captar retornos/encerramentos.
 - No modal, os horários são opcionais e validados por `HHMM_RE`; campos vazios
   são enviados como `undefined`. O tipo padrão é `NAO_RETORNO_INTERVALO` (ou os
   do perfil), com seletor de tipo só quando `permitirEscolherTipo`.

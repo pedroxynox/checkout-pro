@@ -32,7 +32,12 @@ import {
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
-import { formatarData, formatarDuracao, hojeISO } from '../../utils/formato';
+import {
+  formatarCronometro,
+  formatarData,
+  formatarDuracao,
+  hojeISO,
+} from '../../utils/formato';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 
 const VERDE = cores.sucesso ?? '#1E9E5A';
@@ -148,6 +153,35 @@ export function JornadaFiscaisScreen(): React.ReactElement {
     () => fiscaisService.equipeDia(data),
     [data],
   );
+
+  // Cronômetro AO VIVO do intervalo. O backend devolve `tempoIntervaloMs`
+  // calculado "até agora" no instante do carregamento; somando o tempo
+  // decorrido desde então (`carregadoEm`) temos o valor atual exato, sem
+  // desvio. Recalcula a cada segundo enquanto houver alguém EM_INTERVALO hoje.
+  const carregadoEm = React.useRef(Date.now());
+  React.useEffect(() => {
+    carregadoEm.current = Date.now();
+  }, [equipe.dados]);
+
+  const temIntervalo = (equipe.dados ?? []).some(
+    (i) => i.jornadaStatus === 'EM_INTERVALO',
+  );
+  const [, setTique] = React.useState(0);
+  React.useEffect(() => {
+    if (!ehHoje || !temIntervalo) return;
+    const id = setInterval(() => setTique((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [ehHoje, temIntervalo]);
+
+  // Reconsulta periódica (60s) para re-sincronizar a base e capturar transições
+  // (retorno do intervalo, encerramento). Só faz sentido para o dia de hoje.
+  const recarregarRef = React.useRef(equipe.recarregar);
+  recarregarRef.current = equipe.recarregar;
+  React.useEffect(() => {
+    if (!ehHoje) return;
+    const id = setInterval(() => recarregarRef.current(), 60_000);
+    return () => clearInterval(id);
+  }, [ehHoje]);
 
   /** Contagem por estado (resumo no topo da lista). */
   const resumo = React.useMemo(() => {
@@ -266,6 +300,20 @@ export function JornadaFiscaisScreen(): React.ReactElement {
                   <Text style={styles.entradaPrevista}>
                     Entrada prevista: {item.entradaPrevista}
                   </Text>
+                ) : null}
+
+                {/* Intervalo em curso AO VIVO (corre a cada segundo, só hoje) */}
+                {item.jornadaStatus === 'EM_INTERVALO' ? (
+                  <View style={styles.intervaloVivo}>
+                    <Ionicons name="cafe" size={14} color={AMARELO} />
+                    <Text style={styles.intervaloVivoTexto}>
+                      Em intervalo há{' '}
+                      {formatarCronometro(
+                        item.tempoIntervaloMs +
+                          (ehHoje ? Date.now() - carregadoEm.current : 0),
+                      )}
+                    </Text>
+                  </View>
                 ) : null}
 
                 {/* Marcações do dia + carga (em linha) */}
@@ -406,6 +454,22 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginTop: espacamento.sm,
+  },
+  intervaloVivo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginTop: espacamento.sm,
+    backgroundColor: cores.amareloFundo,
+    borderRadius: raio.md,
+    paddingVertical: espacamento.xs,
+    paddingHorizontal: espacamento.sm,
+  },
+  intervaloVivoTexto: {
+    ...tipografia.legenda,
+    color: AMARELO,
+    fontWeight: '700',
+    marginLeft: espacamento.xs,
   },
   slots: {
     flexDirection: 'row',
