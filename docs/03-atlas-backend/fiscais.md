@@ -35,6 +35,7 @@ os alertas automáticos e a **escala de trabalho** (geral e horário especial).
 | `escala.service.ts` | Regras da escala (geral, especial, consolidada) | 276 |
 | `escala.domain.ts` | Regras puras: escala efetiva, consolidada, semanal | 166 |
 | `colaborador-vinculo.ts` | Regra pura: mapeia fiscal → colaborador (ficha) | 84 |
+| `integridade-vinculo.ts` | Regra pura: detecta vínculos órfãos fiscal ↔ ficha | 96 |
 | `dto/fiscais.dto.ts` | Validação de entrada (status e escala) | 59 |
 
 ## 4. Endpoints (rotas HTTP)
@@ -128,6 +129,9 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
   `temEscalaDefinida` (o cadastro é a fonte única — Opção A).
 - `mapearFiscalColaborador(...)` → une o fiscal à ficha do colaborador por conta
   de acesso ou, em fallback, por matrícula.
+- `detectarVinculosOrfaos(fiscais, usuarios, fichas)` → diagnóstico de
+  integridade (Fase 4): lista fiscais sem ficha canônica e fichas FISCAL sem
+  registro de fiscal. Base do verificador `npm run integridade`.
 
 ## 7. Estados e enums
 - `StatusFiscal`: `DISPONIVEL` · `INTERVALO` · `FORA_EXPEDIENTE`. O status atual
@@ -177,6 +181,7 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 | `jornada-marcacoes.spec.ts` | Jornada a partir das marcações do dia | 2 |
 | `escala-colaborador.spec.ts` | Geração da escala semanal a partir do cadastro | 4 |
 | `escala-inativo.spec.ts` | Escala de colaborador inativo | 1 |
+| `integridade-vinculo.spec.ts` | Detecção de vínculos órfãos fiscal ↔ ficha (Fase 4) | 6 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
@@ -192,7 +197,8 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 - 🔧 **Modelos em transição (Fase 4):** `Fiscal` convive com o Cadastro
   Unificado de colaboradores — ver
   [ADR 0004](../02-arquitetura/decisoes/0004-cadastro-unificado-e-escala-opcao-a.md).
-  O `RegistroPontoFiscal` já grava o `colaboradorId` em registros **novos**
-  (dual-write / fase *expand*); os registros **históricos** ainda dependem do
-  `fiscalId` e serão preenchidos por backfill (Passo 4.4 do spec
-  `solidez-contratos-jornada`).
+  O `RegistroPontoFiscal` grava o `colaboradorId` em registros **novos**
+  (dual-write / fase *expand*, Passo 4.2) e os **históricos** já foram
+  preenchidos por backfill (migração `9zzf`, Passo 4.4). O verificador
+  `npm run integridade` aponta qualquer vínculo órfão remanescente antes de
+  aposentar o `fiscalId`.
