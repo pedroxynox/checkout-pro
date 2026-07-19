@@ -331,7 +331,11 @@ describe('PontoService — validações de pessoa, data e hora', () => {
     nome: 'Gestor',
   } as UsuarioAutenticado;
 
-  function montar(escalaDomingo?: unknown, cicloFolha?: unknown) {
+  function montar(
+    escalaDomingo?: unknown,
+    cicloFolha?: unknown,
+    fiscais?: unknown,
+  ) {
     const prisma = {
       $transaction: jest.fn(),
       fiscal: {
@@ -384,7 +388,7 @@ describe('PontoService — validações de pessoa, data e hora', () => {
     const service = new PontoService(
       prisma as never,
       validacaoData as never,
-      undefined,
+      fiscais as never,
       undefined,
       notificacoes as never,
       undefined,
@@ -394,6 +398,28 @@ describe('PontoService — validações de pessoa, data e hora', () => {
     jest.spyOn(service, 'jornadaDoDia').mockResolvedValue(resposta(0));
     return { prisma, validacaoData, notificacoes, service };
   }
+
+  it('publica o status ao vivo do operador ao bater ponto (WebSocket)', async () => {
+    const publicarStatusColaborador = jest.fn().mockResolvedValue(undefined);
+    const { service } = montar(undefined, undefined, {
+      publicarStatusColaborador,
+    });
+    await service.registrarBatida(
+      {
+        pessoaId: 'colaborador-1',
+        tipoPessoa: 'OPERADOR',
+        data: '2026-07-10',
+        hora: '2026-07-10T08:00:00.000Z',
+      },
+      usuario,
+    );
+    // A jornada mockada devolve status TRABALHANDO → DISPONIVEL; o operador é
+    // identificado pela ficha canônica resolvida no servidor.
+    expect(publicarStatusColaborador).toHaveBeenCalledWith(
+      'colaborador-1',
+      'DISPONIVEL',
+    );
+  });
 
   it('bloqueia registrar batida quando o ciclo de folha está fechado', async () => {
     const cicloFolha = {

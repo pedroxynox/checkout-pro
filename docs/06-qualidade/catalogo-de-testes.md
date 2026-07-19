@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 90 arquivos, 571 casos. **Mobile:** 25 arquivos, 95 casos. **Total: 666 casos.**
+> **Backend:** 91 arquivos, 574 casos. **Mobile:** 25 arquivos, 95 casos. **Total: 669 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -68,6 +68,7 @@
 | `src/fiscais/fiscais.service.spec.ts` | 19 | 1 |
 | `src/fiscais/integridade-vinculo.spec.ts` | 6 | 1 |
 | `src/fiscais/jornada-marcacoes.spec.ts` | 2 | 1 |
+| `src/fiscais/status-operador.spec.ts` | 2 | 1 |
 | `src/incidencias/incidencias.justificativa.spec.ts` | 4 | 3 |
 | `src/incidencias/incidencias.properties.spec.ts` | 6 | 1 |
 | `src/incidencias/incidencias.sancoes.spec.ts` | 7 | 2 |
@@ -96,7 +97,7 @@
 | `src/ponto/ponto-ocr.parser.spec.ts` | 17 | 1 |
 | `src/ponto/ponto-ocr.service.spec.ts` | 7 | 2 |
 | `src/ponto/ponto.domain.spec.ts` | 38 | 7 |
-| `src/ponto/ponto.service.spec.ts` | 41 | 4 |
+| `src/ponto/ponto.service.spec.ts` | 42 | 4 |
 | `src/requisicoes/requisicoes.controller.spec.ts` | 4 | 1 |
 | `src/requisicoes/requisicoes.service.spec.ts` | 3 | 1 |
 | `src/reset-operacional/reset-operacional.domain.spec.ts` | 8 | 3 |

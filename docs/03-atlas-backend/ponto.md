@@ -65,8 +65,10 @@ automaticamente faltas e não-retornos do intervalo.
   ciclo aberto; resolve a ficha ativa; bloqueia dia de folga; grava a batida em
   transação `SERIALIZABLE` (com retry em conflito P2034), reclassifica o dia e
   reescreve o log do fiscal; fora da transação: aprende o alias do leitor,
-  publica o status do fiscal, remove a falta automática, avisa conflito com
-  ausência e dispara o alerta de TAC.
+  publica o status ao vivo (fiscal via `publicarStatusDoDia`; **operador via
+  `FiscaisService.publicarStatusColaborador`** — para o painel da escala
+  refletir o operador em tempo real), remove a falta automática, avisa conflito
+  com ausência e dispara o alerta de TAC.
 - **Regras aplicadas:** limite de 4 batidas/dia; anti-duplicidade (< 2 min);
   recusa do retorno após o intervalo máximo.
 - **Erros possíveis:** `LimiteBatidasDiaError`, `BatidaDuplicadaError`,
