@@ -76,7 +76,7 @@ O sistema cruza a **escala do dia** com o Relógio de Ponto e, de forma defensiv
 13. marca **falta automática** quando passam **2 horas da entrada esperada** sem
     nenhuma batida;
 14. registra **não-retorno do intervalo** quando um intervalo em curso ultrapassa
-    o máximo;
+    o **intervalo máximo do contrato da pessoa** (3h no 6x1);
 15. **bater ponto remove a falta automática** do dia (as faltas lançadas
     manualmente permanecem).
 
