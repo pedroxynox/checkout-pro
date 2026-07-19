@@ -364,6 +364,116 @@ export class CentralJornadaService {
     };
   }
 
+  /**
+   * Carrega os dados do ciclo de UMA pessoa só (drill-down). Diferente de
+   * `carregarCiclo`, NÃO traz as batidas/ausências de todo o time — apenas as
+   * do colaborador (a própria ficha + os ids de fiscal vinculados). É o que faz
+   * o detalhe abrir rápido: antes, tocar numa pessoa recarregava o ciclo
+   * inteiro só para calcular uma.
+   */
+  private async carregarCicloDaPessoa(
+    deslocamento: number,
+    colaboradorId: string,
+  ) {
+    const periodo = periodoFolhaDeslocado(agoraNaBrasilia(), deslocamento);
+    const { inicio, fimExclusivo } = periodo;
+    const agora = agoraNaBrasilia();
+    const limite = agora < fimExclusivo ? agora : fimExclusivo;
+
+    const encontrados = await this.prisma.colaborador.findMany({
+      where: {
+        id: colaboradorId,
+        ativo: true,
+        funcao: { in: FUNCOES_PONTO },
+        tipoContrato: 'SEIS_X_UM_DOIS_X_UM',
+      },
+      select: {
+        id: true,
+        nome: true,
+        funcao: true,
+        matricula: true,
+        usuarioId: true,
+        folgaDiaSemana: true,
+        grupoDomingo: true,
+        entradaSemana: true,
+        entradaFds: true,
+        entradaDom: true,
+        tipoContratoJornadaId: true,
+      },
+    });
+    const pessoa = encontrados.find((c) => c.id === colaboradorId) ?? null;
+    if (!pessoa) {
+      return {
+        periodo,
+        inicio,
+        fimExclusivo,
+        limite,
+        pessoa: null,
+        ids: new Set<string>([colaboradorId]),
+        batidas: [] as BatidaMin[],
+        ausencias: [] as Ausencia[],
+        feriadoMap: new Map<number, string>(),
+        ancora: null as AncoraDomingo | null,
+      };
+    }
+
+    // Resolve os ids de fiscal desta ficha (batida de fiscal usa Fiscal.id).
+    const [fiscais, usuarios] = await Promise.all([
+      this.prisma.fiscal.findMany({
+        select: { id: true, nome: true, usuarioId: true },
+      }),
+      this.prisma.usuario.findMany({ select: { id: true, login: true } }),
+    ]);
+    const fiscalParaColaborador = mapearFiscalColaborador(fiscais, usuarios, [
+      pessoa,
+    ]);
+    const fiscalIds: string[] = [];
+    for (const [fiscalId, vinculo] of fiscalParaColaborador) {
+      if (vinculo.colaboradorId === colaboradorId) fiscalIds.push(fiscalId);
+    }
+    const ids = new Set<string>([colaboradorId, ...fiscalIds]);
+    const idList = [...ids];
+
+    // Só as batidas/ausências DESTA pessoa no ciclo (por ficha ou por fiscalId).
+    const [batidas, ausencias, feriadoMap, ancora] = await Promise.all([
+      this.prisma.batidaPonto.findMany({
+        where: {
+          data: { gte: inicio, lt: fimExclusivo },
+          OR: [{ colaboradorId }, { pessoaId: { in: idList } }],
+        },
+        orderBy: { hora: 'asc' },
+        select: {
+          id: true,
+          hora: true,
+          data: true,
+          pessoaId: true,
+          colaboradorId: true,
+        },
+      }),
+      this.prisma.ausencia.findMany({
+        where: {
+          data: { gte: inicio, lt: fimExclusivo },
+          OR: [{ colaboradorId }, { pessoaId: { in: idList } }],
+        },
+      }),
+      this.feriados.mapaNoPeriodo(inicio, fimExclusivo),
+      this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
+    ]);
+
+    return {
+      periodo,
+      inicio,
+      fimExclusivo,
+      limite,
+      pessoa,
+      ids,
+      batidas: batidas as BatidaMin[],
+      ausencias,
+      feriadoMap,
+      ancora,
+    };
+  }
+
   /** Todos os ids que representam um colaborador: a própria ficha + seus fiscais. */
   private idsDaPessoa(
     colaboradorId: string,
@@ -398,6 +508,10 @@ export class CentralJornadaService {
     ficha: FichaEscala,
     ancora: AncoraDomingo | null,
     regras: RegrasContrato,
+    // Quando false, calcula só os TOTAIS (não monta o array `dias`). O resumo
+    // do ciclo usa isso para não construir o detalhe diário de todo mundo —
+    // que só é necessário no drill-down por pessoa (detalhePessoa).
+    coletarDias = true,
   ): {
     resumo: Omit<
       CentralPessoaResumo,
@@ -491,25 +605,26 @@ export class CentralJornadaService {
         const atrasoMinutos =
           minutosDeAtraso(entradaPrevista, entradaReal) ?? undefined;
         if (atrasoMinutos != null) atrasos += 1;
-        dias.push({
-          data: k,
-          diaSemana,
-          ehFeriado,
-          feriadoNome,
-          tipo: j.status === 'INCOMPLETO' ? 'INCOMPLETO' : 'TRABALHO',
-          status: j.status,
-          faltando: j.faltando,
-          trabalhadoMs: j.trabalhadoMs,
-          baseMs,
-          extras50Ms: j.horasExtras50Ms,
-          extras100Ms: j.horasExtras100Ms,
-          devidasMs: devidasDia,
-          tac: j.tac,
-          motivosTac: j.motivosTac,
-          conflitoAusencia: conflito,
-          entradaPrevista,
-          atrasoMinutos,
-        });
+        if (coletarDias)
+          dias.push({
+            data: k,
+            diaSemana,
+            ehFeriado,
+            feriadoNome,
+            tipo: j.status === 'INCOMPLETO' ? 'INCOMPLETO' : 'TRABALHO',
+            status: j.status,
+            faltando: j.faltando,
+            trabalhadoMs: j.trabalhadoMs,
+            baseMs,
+            extras50Ms: j.horasExtras50Ms,
+            extras100Ms: j.horasExtras100Ms,
+            devidasMs: devidasDia,
+            tac: j.tac,
+            motivosTac: j.motivosTac,
+            conflitoAusencia: conflito,
+            entradaPrevista,
+            atrasoMinutos,
+          });
       } else if (ausencia) {
         faltas += 1;
         let tipo: CentralDiaDetalhe['tipo'] = 'FALTA';
@@ -522,25 +637,26 @@ export class CentralJornadaService {
           devidasDia = baseMs;
           tipo = 'FALTA_DEBITO';
         }
-        dias.push({
-          data: k,
-          diaSemana,
-          ehFeriado,
-          feriadoNome,
-          tipo,
-          status: 'SEM_REGISTRO',
-          faltando: [],
-          trabalhadoMs: 0,
-          baseMs,
-          extras50Ms: 0,
-          extras100Ms: 0,
-          devidasMs: devidasDia,
-          tac: false,
-          motivosTac: [],
-          ausenciaId: ausencia.id,
-          debito: ausencia.debitoHoras,
-        });
-      } else {
+        if (coletarDias)
+          dias.push({
+            data: k,
+            diaSemana,
+            ehFeriado,
+            feriadoNome,
+            tipo,
+            status: 'SEM_REGISTRO',
+            faltando: [],
+            trabalhadoMs: 0,
+            baseMs,
+            extras50Ms: 0,
+            extras100Ms: 0,
+            devidasMs: devidasDia,
+            tac: false,
+            motivosTac: [],
+            ausenciaId: ausencia.id,
+            debito: ausencia.debitoHoras,
+          });
+      } else if (coletarDias) {
         dias.push({
           data: k,
           diaSemana,
@@ -597,6 +713,8 @@ export class CentralJornadaService {
           c,
           dados.ancora,
           regras,
+          // Só totais: o resumo não precisa do detalhe diário de cada pessoa.
+          false,
         );
         return {
           colaboradorId: c.id,
@@ -649,18 +767,19 @@ export class CentralJornadaService {
     colaboradorId: string,
     deslocamento = 0,
   ): Promise<{ periodo: CentralPeriodo; dias: CentralDiaDetalhe[] }> {
-    const dados = await this.carregarCiclo(deslocamento);
-    const ficha = dados.pessoas.find((p) => p.id === colaboradorId);
-    const regras = await this.regrasDe(ficha?.tipoContratoJornadaId);
+    // Carrega SÓ os dados desta pessoa (não o ciclo inteiro) — o detalhe abre
+    // rápido mesmo com muitos colaboradores.
+    const dados = await this.carregarCicloDaPessoa(deslocamento, colaboradorId);
+    const regras = await this.regrasDe(dados.pessoa?.tipoContratoJornadaId);
     const { dias } = this.calcularPessoa(
-      this.idsDaPessoa(colaboradorId, dados.fiscalIdsPorColaborador),
-      dados.batidas as BatidaMin[],
+      dados.ids,
+      dados.batidas,
       dados.ausencias,
       dados.feriadoMap,
       dados.inicio,
       dados.fimExclusivo,
       dados.limite,
-      ficha ?? FICHA_ESCALA_VAZIA,
+      dados.pessoa ?? FICHA_ESCALA_VAZIA,
       dados.ancora,
       regras,
     );

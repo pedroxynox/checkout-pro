@@ -3,6 +3,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { TipoArrecadacao } from '../api/types';
+import type { CentralPessoaResumo } from '../api/services/centralJornada';
 
 /** Abas da barra inferior (área autenticada). */
 export type MainTabParamList = {
@@ -35,6 +36,12 @@ export type RootStackParamList = {
   /** `abrirScanner` (nonce) abre a câmera do leitor de ponto ao entrar. */
   RegistroPonto: { abrirScanner?: number } | undefined;
   CentralJornada: undefined;
+  /** Detalhe diário da jornada de um colaborador no ciclo (aberto pela Central). */
+  DetalheJornada: {
+    colaboradorId: string;
+    ciclo: number;
+    pessoa: CentralPessoaResumo;
+  };
   Inconsistencias: undefined;
   ExportarCiclo: undefined;
   Feriados: undefined;
