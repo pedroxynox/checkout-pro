@@ -5,13 +5,13 @@
 
 Um documento por área de tela do app (`mobile/src/screens/`). Padrão em [`_modelo-tela.md`](./_modelo-tela.md).
 
-**Cobertura:** 16/25 documentados (64%).
+**Cobertura:** 25/25 documentados (100%).
 
 | Item | Documento | Estado |
 |---|---|---|
-| `alertasFila` | `alertasFila` | ⬜ pendente |
-| `centroControle` | `centroControle` | ⬜ pendente |
-| `centroDeMando` | `centroDeMando` | ⬜ pendente |
+| `alertasFila` | [`alertasFila`](./alertasFila.md) | ✅ documentado |
+| `centroControle` | [`centroControle`](./centroControle.md) | ✅ documentado |
+| `centroDeMando` | [`centroDeMando`](./centroDeMando.md) | ✅ documentado |
 | `checklist` | [`checklist`](./checklist.md) | ✅ documentado |
 | `checkouts` | [`checkouts`](./checkouts.md) | ✅ documentado |
 | `colaboradores` | [`colaboradores`](./colaboradores.md) | ✅ documentado |
@@ -22,15 +22,15 @@ Um documento por área de tela do app (`mobile/src/screens/`). Padrão em [`_mod
 | `indicadores` | [`indicadores`](./indicadores.md) | ✅ documentado |
 | `insumos` | [`insumos`](./insumos.md) | ✅ documentado |
 | `loteApae` | [`loteApae`](./loteApae.md) | ✅ documentado |
-| `mensagens` | `mensagens` | ⬜ pendente |
+| `mensagens` | [`mensagens`](./mensagens.md) | ✅ documentado |
 | `metas` | [`metas`](./metas.md) | ✅ documentado |
-| `normativas` | `normativas` | ⬜ pendente |
-| `notificacoes` | `notificacoes` | ⬜ pendente |
+| `normativas` | [`normativas`](./normativas.md) | ✅ documentado |
+| `notificacoes` | [`notificacoes`](./notificacoes.md) | ✅ documentado |
 | `operadores` | [`operadores`](./operadores.md) | ✅ documentado |
 | `perfil` | [`perfil`](./perfil.md) | ✅ documentado |
-| `permissoes` | `permissoes` | ⬜ pendente |
+| `permissoes` | [`permissoes`](./permissoes.md) | ✅ documentado |
 | `ponto` | [`ponto`](./ponto.md) | ✅ documentado |
-| `quebra` | `quebra` | ⬜ pendente |
+| `quebra` | [`quebra`](./quebra.md) | ✅ documentado |
 | `relatorios` | [`relatorios`](./relatorios.md) | ✅ documentado |
 | `tarefas` | [`tarefas`](./tarefas.md) | ✅ documentado |
-| `usuarios` | `usuarios` | ⬜ pendente |
+| `usuarios` | [`usuarios`](./usuarios.md) | ✅ documentado |
