@@ -37,8 +37,15 @@ import {
   TipoBatida,
 } from '../ponto/ponto.domain';
 import { FUNCOES_PONTO_NAO_FISCAL } from '../ponto/pessoas-ponto';
+import {
+  estadoSemBatida,
+  minutosAposEntrada,
+} from '../ponto/deteccao-automatica.domain';
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { FeriadosService } from '../feriados/feriados.service';
+import { EscalaService } from './escala.service';
+import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
+import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
 import {
   agoraNaBrasilia,
   diaCivilBrasilia,
@@ -89,6 +96,32 @@ export interface ItemJornada extends Jornada {
   faltando: string[];
   /** Marcações (batidas) do dia, em ordem: entrada, saída, volta, encerramento. */
   marcacoes: MarcacaoDia[];
+}
+
+/** Um colaborador escalado para trabalhar num dia (fonte da "equipe do dia"). */
+export interface EscaladoDia {
+  /** Id usado pela batida: Fiscal.id (fiscais) ou Colaborador.id (demais). */
+  pessoaId: string;
+  tipoPessoa: 'FISCAL' | 'OPERADOR';
+  colaboradorId: string | null;
+  nome: string;
+  funcao: string;
+  /** Hora de entrada prevista no dia ("HH:mm"). */
+  entradaPrevista: string | null;
+}
+
+/**
+ * Item da "Jornada de Equipe" do dia: um escalado com a jornada calculada (se
+ * bateu ponto), a entrada prevista, a marca de falta e o alerta visual de
+ * atraso (1h sem registrar). Estende `ItemJornada` para reusar os tempos e as
+ * marcações já existentes.
+ */
+export interface ItemEquipeDia extends ItemJornada {
+  entradaPrevista: string | null;
+  /** true quando há uma falta (ausência) marcada para a pessoa no dia. */
+  falta: boolean;
+  /** true: escalado, sem batidas e já passou 1h da entrada (só visual). */
+  alertaAtraso: boolean;
 }
 
 /** Resumo do status atual de um fiscal (retornado após definir status). */
@@ -146,6 +179,12 @@ export class FiscaisService {
     // Regras por tipo de contrato (data-driven). Opcional: sem ele, o cálculo
     // usa o contrato padrão (6x1), preservando o comportamento vigente.
     @Optional() private readonly tiposContrato?: TiposContratoService,
+    // Escala consolidada (fiscais) — fonte da entrada prevista de cada fiscal
+    // no dia. Opcional para não quebrar testes unitários de persistência.
+    @Optional() private readonly escala?: EscalaService,
+    // Rodízio de domingo (âncora G1/G2/G3) — para resolver a entrada prevista
+    // dos operadores no domingo. Opcional pelo mesmo motivo.
+    @Optional() private readonly escalaDomingo?: EscalaDomingoService,
   ) {}
 
   /**
@@ -594,6 +633,167 @@ export class FiscaisService {
   }
 
   /**
+   * Todos os colaboradores ESCALADOS para trabalhar num dia (fonte única da
+   * "equipe do dia"): fiscais (pela escala consolidada) e operadores/
+   * supervisores (pelo cadastro + rodízio de domingo). Só entra quem tem uma
+   * hora de ENTRADA prevista para o dia — quem está de folga ou sem horário
+   * definido fica de fora (nunca vira falta automática por engano).
+   *
+   * O `pessoaId` é o id que a batida usa: `Fiscal.id` para fiscais e
+   * `Colaborador.id` para os demais.
+   */
+  async escaladosDoDia(dia: Date): Promise<EscaladoDia[]> {
+    const inicio = inicioDoDia(dia);
+    const diaSemana = inicio.getUTCDay();
+    const dataISO = inicio.toISOString().slice(0, 10);
+
+    // Fiscais: a escala consolidada já resolve folga, horário especial e o
+    // rodízio de domingo, além do nome/ficha canônica.
+    const consolidada = this.escala
+      ? await this.escala.escalaConsolidada(diaSemana, dataISO)
+      : [];
+    const dosFiscais: EscaladoDia[] = consolidada.flatMap((item) => {
+      if (item.efetiva === 'FOLGA') return [];
+      const entrada = item.efetiva.entrada ?? null;
+      if (!entrada) return [];
+      return [
+        {
+          pessoaId: item.funcionarioId,
+          tipoPessoa: 'FISCAL' as const,
+          colaboradorId: item.colaboradorId,
+          nome: item.nome,
+          funcao: 'FISCAL',
+          entradaPrevista: entrada,
+        },
+      ];
+    });
+
+    // Operadores/supervisores: entrada prevista derivada do cadastro (folga
+    // fixa da semana / rodízio de domingo). No domingo precisa da âncora.
+    const ancora =
+      diaSemana === 0 && this.escalaDomingo
+        ? await this.escalaDomingo.obterAncora()
+        : null;
+    const colaboradores = await this.prisma.colaborador.findMany({
+      where: { ativo: true, funcao: { in: FUNCOES_PONTO_NAO_FISCAL } },
+      orderBy: { nome: 'asc' },
+    });
+    const dosOperadores: EscaladoDia[] = colaboradores.flatMap((c) => {
+      const entrada = entradaEsperadaNoDia(
+        {
+          folgaDiaSemana: c.folgaDiaSemana,
+          grupoDomingo: c.grupoDomingo,
+          entradaSemana: c.entradaSemana,
+          entradaFds: c.entradaFds,
+          entradaDom: c.entradaDom,
+        },
+        inicio,
+        ancora ? { data: ancora.data, ordem: ancora.ordem } : null,
+      );
+      if (!entrada) return [];
+      return [
+        {
+          pessoaId: c.id,
+          tipoPessoa: 'OPERADOR' as const,
+          colaboradorId: c.id,
+          nome: c.nome,
+          funcao: c.funcao,
+          entradaPrevista: entrada,
+        },
+      ];
+    });
+
+    // Ordena por hora de entrada (mais cedo primeiro), depois por nome.
+    return [...dosFiscais, ...dosOperadores].sort((a, b) => {
+      const ea = a.entradaPrevista ?? '99:99';
+      const eb = b.entradaPrevista ?? '99:99';
+      return ea.localeCompare(eb) || a.nome.localeCompare(b.nome);
+    });
+  }
+
+  /**
+   * "Jornada de Equipe" do dia: TODOS os escalados para o dia — inclusive os
+   * que ainda não bateram ponto (card em branco) — enriquecidos com a jornada
+   * calculada (para quem tem batidas), a entrada prevista, se está marcado como
+   * falta e o alerta visual de atraso (1h sem registrar). Alimenta o painel de
+   * jornada e a tela "Marcações do dia".
+   */
+  async equipeDoDia(data: Date = agoraNaBrasilia()): Promise<ItemEquipeDia[]> {
+    const dia = inicioDoDia(data);
+    const [itensJornada, escalados] = await Promise.all([
+      this.jornadaDoDia(dia),
+      this.escaladosDoDia(dia),
+    ]);
+    const jornadaPorPessoa = new Map(itensJornada.map((j) => [j.pessoaId, j]));
+    const escaladoPorPessoa = new Map(escalados.map((e) => [e.pessoaId, e]));
+
+    // Faltas do dia (keyed por pessoaId: Fiscal.id p/ fiscais, Colaborador.id
+    // p/ operadores). Cobre também o colaboradorId por segurança.
+    const idsFalta = new Set<string>();
+    for (const e of escalados) {
+      idsFalta.add(e.pessoaId);
+      if (e.colaboradorId) idsFalta.add(e.colaboradorId);
+    }
+    for (const j of itensJornada) {
+      idsFalta.add(j.pessoaId);
+      if (j.colaboradorId) idsFalta.add(j.colaboradorId);
+    }
+    const ausencias =
+      idsFalta.size > 0
+        ? await this.prisma.ausencia.findMany({
+            where: { data: dia, pessoaId: { in: [...idsFalta] } },
+            select: { pessoaId: true },
+          })
+        : [];
+    const faltaSet = new Set(ausencias.map((a) => a.pessoaId));
+    const temFalta = (pessoaId: string, colaboradorId: string | null) =>
+      faltaSet.has(pessoaId) ||
+      (colaboradorId ? faltaSet.has(colaboradorId) : false);
+
+    const agora = agoraNaBrasilia();
+    const itens: ItemEquipeDia[] = [];
+
+    // 1) Quem já tem atividade (batidas/registros) — enriquecido.
+    for (const j of itensJornada) {
+      const e = escaladoPorPessoa.get(j.pessoaId);
+      itens.push({
+        ...j,
+        entradaPrevista: e?.entradaPrevista ?? null,
+        falta: temFalta(j.pessoaId, j.colaboradorId),
+        alertaAtraso: false,
+      });
+    }
+
+    // 2) Escalados sem nenhuma batida — card em branco (com falta/atraso).
+    for (const e of escalados) {
+      if (jornadaPorPessoa.has(e.pessoaId)) continue;
+      const falta = temFalta(e.pessoaId, e.colaboradorId);
+      const minutos = minutosAposEntrada(e.entradaPrevista, agora);
+      const alertaAtraso = !falta && estadoSemBatida(minutos) !== 'AGUARDANDO';
+      itens.push({
+        fiscalId: e.pessoaId,
+        pessoaId: e.pessoaId,
+        tipoPessoa: e.tipoPessoa,
+        funcao: e.funcao,
+        colaboradorId: e.colaboradorId,
+        primeiroNome: primeiroNome(e.nome),
+        status: 'FORA_EXPEDIENTE',
+        jornadaStatus: 'SEM_REGISTRO',
+        faltando: [],
+        marcacoes: [],
+        tempoTrabalhandoMs: 0,
+        tempoIntervaloMs: 0,
+        cargaHorariaMs: 0,
+        entradaPrevista: e.entradaPrevista,
+        falta,
+        alertaAtraso,
+      });
+    }
+
+    return itens;
+  }
+
+  /**
    * Jornada do dia dos colaboradores NÃO-fiscais (operadores/supervisores) que
    * bateram ponto, calculada a partir das batidas (Registro de Ponto). Só
    * inclui quem tem ao menos uma batida no dia (evita dezenas de linhas zeradas
@@ -667,6 +867,7 @@ export class FiscaisService {
   async registrarFalta(
     fiscalId: string,
     dia: Date = new Date(),
+    opcoes: { automatica?: boolean } = {},
   ): Promise<void> {
     // Dia-calendário de Brasília do instante (a falta é sempre "de hoje").
     const data = diaCivilBrasilia(dia);
@@ -687,10 +888,16 @@ export class FiscaisService {
       throw new JaIniciouJornadaError();
     }
 
+    // `automatica` marca a falta lançada pela detecção do Relógio Ponto (será
+    // removida se a pessoa bater ponto depois); a manual permanece.
     await this.prisma.ausencia.upsert({
       where: { pessoaId_data: { pessoaId: fiscalId, data } },
       update: {},
-      create: { pessoaId: fiscalId, data },
+      create: {
+        pessoaId: fiscalId,
+        data,
+        automatica: opcoes.automatica ?? false,
+      },
     });
     const fiscal = await this.prisma.fiscal.findUnique({
       where: { id: fiscalId },

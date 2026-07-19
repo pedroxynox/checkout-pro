@@ -1,7 +1,9 @@
 /**
- * Marcações do dia — lista informativa de quem bateu ponto HOJE, por ordem de
- * batida, com os horários do dia: entrada, saída de intervalo, volta do
- * intervalo e encerramento. Somente leitura, sempre o dia em curso.
+ * Marcações do dia — lista de TODOS os colaboradores escalados para hoje, com
+ * os horários do dia: entrada, saída de intervalo, volta do intervalo e
+ * encerramento. Quem ainda não bateu ponto aparece com as marcações em branco
+ * (—), para dar visibilidade de quem falta registrar. Somente leitura, sempre o
+ * dia em curso.
  *
  * Fica em tela própria (aberta pela card do Relógio Ponto) para não
  * sobrecarregar aquela tela.
@@ -9,7 +11,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { fiscaisService } from '../../api/services';
-import { ItemJornadaFiscal, TipoBatida } from '../../api/types';
+import { ItemEquipeDiaFiscal, TipoBatida } from '../../api/types';
 import { Cartao, Carregando, EstadoVazio, MensagemErro, Tela } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, tipografia } from '../../theme';
@@ -27,61 +29,91 @@ function horaLabel(iso: string): string {
   return iso.slice(11, 16);
 }
 
-/** Menor hora (ISO) entre as marcações — para ordenar pela 1ª batida. */
-function primeiraMarcacaoMs(item: ItemJornadaFiscal): number {
+/** true quando a pessoa ainda não tem nenhuma batida no dia. */
+function semBatidas(item: ItemEquipeDiaFiscal): boolean {
+  return (item.marcacoes ?? []).length === 0;
+}
+
+/** Menor hora (ISO) entre as marcações — para ordenar quem já bateu. */
+function primeiraMarcacaoMs(item: ItemEquipeDiaFiscal): number {
   const horas = (item.marcacoes ?? []).map((m) => Date.parse(m.hora));
   return horas.length ? Math.min(...horas) : Number.MAX_SAFE_INTEGER;
 }
 
 export function MarcacoesDoDiaScreen(): React.ReactElement {
-  const jornada = useRequisicao<ItemJornadaFiscal[]>(
-    () => fiscaisService.jornada(),
+  const equipe = useRequisicao<ItemEquipeDiaFiscal[]>(
+    () => fiscaisService.equipeDia(),
     [],
   );
 
-  const lista = [...(jornada.dados ?? [])]
-    .filter((p) => (p.marcacoes ?? []).length > 0)
-    .sort((a, b) => primeiraMarcacaoMs(a) - primeiraMarcacaoMs(b));
+  // Quem já bateu primeiro (por hora); depois quem ainda não bateu (por entrada
+  // prevista / nome), para dar visibilidade de quem falta registrar.
+  const lista = [...(equipe.dados ?? [])].sort((a, b) => {
+    const sa = semBatidas(a);
+    const sb = semBatidas(b);
+    if (sa !== sb) return sa ? 1 : -1;
+    if (!sa && !sb) return primeiraMarcacaoMs(a) - primeiraMarcacaoMs(b);
+    const ea = a.entradaPrevista ?? '99:99';
+    const eb = b.entradaPrevista ?? '99:99';
+    return ea.localeCompare(eb) || a.primeiroNome.localeCompare(b.primeiroNome);
+  });
 
   return (
-    <Tela aoAtualizar={jornada.recarregar} atualizando={jornada.carregando}>
-      {jornada.carregando && !jornada.dados ? (
+    <Tela aoAtualizar={equipe.recarregar} atualizando={equipe.carregando}>
+      {equipe.carregando && !equipe.dados ? (
         <Carregando />
-      ) : jornada.erro ? (
+      ) : equipe.erro ? (
         <MensagemErro
-          mensagem={jornada.erro}
-          aoTentarNovamente={jornada.recarregar}
+          mensagem={equipe.erro}
+          aoTentarNovamente={equipe.recarregar}
         />
       ) : lista.length === 0 ? (
         <EstadoVazio
           icone="time-outline"
-          titulo="Sem marcações"
-          descricao="Ninguém bateu ponto ainda hoje."
+          titulo="Sem escalados"
+          descricao="Ninguém está escalado para trabalhar hoje."
         />
       ) : (
         <Cartao>
           <Text style={styles.titulo}>Marcações do dia</Text>
-          <Text style={styles.sub}>Por ordem de batida · dia de hoje</Text>
-          {lista.map((p) => (
-            <View key={p.pessoaId} style={styles.pessoa}>
-              <Text style={styles.nome} numberOfLines={1}>
-                {p.primeiroNome}
-              </Text>
-              <View style={styles.horas}>
-                {MARCACOES_ORDEM.map(({ tipo, rotulo }) => {
-                  const m = (p.marcacoes ?? []).find((x) => x.tipo === tipo);
-                  return (
-                    <View key={tipo} style={styles.slot}>
-                      <Text style={styles.rotulo}>{rotulo}</Text>
-                      <Text style={styles.hora}>
-                        {m ? horaLabel(m.hora) : '—'}
-                      </Text>
-                    </View>
-                  );
-                })}
+          <Text style={styles.sub}>
+            Todos os escalados de hoje · quem ainda não bateu aparece em branco
+          </Text>
+          {lista.map((p) => {
+            const pendente = semBatidas(p);
+            return (
+              <View key={p.pessoaId} style={styles.pessoa}>
+                <View style={styles.nomeLinha}>
+                  <Text
+                    style={[styles.nome, pendente && styles.nomePendente]}
+                    numberOfLines={1}
+                  >
+                    {p.primeiroNome}
+                  </Text>
+                  {p.falta ? (
+                    <Text style={styles.tagFalta}>Falta</Text>
+                  ) : p.alertaAtraso ? (
+                    <Text style={styles.tagAtraso}>Sem registrar</Text>
+                  ) : pendente && p.entradaPrevista ? (
+                    <Text style={styles.tagPrevista}>prev. {p.entradaPrevista}</Text>
+                  ) : null}
+                </View>
+                <View style={styles.horas}>
+                  {MARCACOES_ORDEM.map(({ tipo, rotulo }) => {
+                    const m = (p.marcacoes ?? []).find((x) => x.tipo === tipo);
+                    return (
+                      <View key={tipo} style={styles.slot}>
+                        <Text style={styles.rotulo}>{rotulo}</Text>
+                        <Text style={styles.hora}>
+                          {m ? horaLabel(m.hora) : '—'}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </Cartao>
       )}
     </Tela>
@@ -106,11 +138,44 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: cores.divisor,
   },
+  nomeLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    marginBottom: espacamento.xs,
+  },
   nome: {
     ...tipografia.corpo,
     fontWeight: '700',
     color: cores.texto,
-    marginBottom: espacamento.xs,
+    flex: 1,
+  },
+  nomePendente: {
+    color: cores.textoSecundario,
+  },
+  tagFalta: {
+    ...tipografia.legenda,
+    fontWeight: '700',
+    color: cores.texto,
+    backgroundColor: cores.divisor,
+    paddingHorizontal: espacamento.sm,
+    paddingVertical: 2,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  tagAtraso: {
+    ...tipografia.legenda,
+    fontWeight: '700',
+    color: cores.vermelho,
+    backgroundColor: cores.vermelhoFundo,
+    paddingHorizontal: espacamento.sm,
+    paddingVertical: 2,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  tagPrevista: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
   },
   horas: {
     flexDirection: 'row',

@@ -1,10 +1,15 @@
 import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { BatidaPonto, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { diaEncerradoEmBrasilia, inicioDoDia } from '../common/datas';
+import {
+  diaCivilBrasilia,
+  diaEncerradoEmBrasilia,
+  inicioDoDia,
+} from '../common/datas';
 import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
 import {
   type EtapaAlertaTac,
+  INTERVALO_MAXIMO_MS,
   RegrasContrato,
   StatusJornadaPonto,
   TipoBatida,
@@ -36,6 +41,7 @@ import {
   PessoaPontoInativaError,
   PessoaPontoNaoEncontradaError,
   PontoEmFolgaError,
+  RetornoAposLimiteIntervaloError,
 } from './ponto.errors';
 
 /** Transição de status do fiscal derivada de uma batida (em UTC real). */
@@ -434,6 +440,12 @@ export class PontoService {
     // Bloqueia o fichaje em dia de folga (descanso) — folga fixa da semana ou
     // domingo de folga pelo rodízio. Fiscais e operadores usam o mesmo cadastro.
     await this.exigirDiaSemFolga(colaboradorId, dia);
+
+    // Regras do contrato (para o limite de intervalo). Sem serviço, usa o padrão.
+    const regras = this.tiposContrato
+      ? await this.tiposContrato.regrasDoColaborador(colaboradorId)
+      : undefined;
+    const maxIntervaloMs = regras?.intervaloMaximoMs ?? INTERVALO_MAXIMO_MS;
     const dadosBatida: Prisma.BatidaPontoUncheckedCreateInput = {
       clienteId: dto.clienteId ?? null,
       pessoaId: dto.pessoaId,
@@ -475,6 +487,34 @@ export class PontoService {
             throw new BatidaDuplicadaError();
           }
 
+          // Bloqueia o RETORNO do intervalo depois do máximo (3h no 6x1): se
+          // esta batida, uma vez ordenada no dia, vira o retorno do intervalo e
+          // o intervalo já ultrapassou o limite, a pessoa é tratada como
+          // "não retorno" — o retorno é recusado (o dia fica como não retorno).
+          const classificadasComNova = classificarBatidas(
+            [...batidasDoDia, { hora }].map((b, i) => ({
+              id: String(i),
+              hora: b.hora,
+            })),
+            regras?.maxTrabalhoSemIntervaloMs,
+            regras?.intervaloObrigatorio ?? false,
+          );
+          const saidaIntervalo = classificadasComNova.find(
+            (c) => c.tipo === 'SAIDA_INTERVALO',
+          );
+          const retornoIntervalo = classificadasComNova.find(
+            (c) => c.tipo === 'RETORNO_INTERVALO',
+          );
+          if (
+            saidaIntervalo &&
+            retornoIntervalo &&
+            retornoIntervalo.hora.getTime() === hora.getTime() &&
+            retornoIntervalo.hora.getTime() - saidaIntervalo.hora.getTime() >
+              maxIntervaloMs
+          ) {
+            throw new RetornoAposLimiteIntervaloError();
+          }
+
           await tx.batidaPonto.create({ data: dadosBatida });
           await this.reclassificarNoCliente(tx, dto.pessoaId, tipoPessoa, dia);
           const transicoesFiscal = await this.sincronizarFiscalNoCliente(
@@ -510,10 +550,14 @@ export class PontoService {
       await this.aprenderAlias({ ...dto, colaboradorId }, tipoPessoa);
     }
     await this.publicarStatusFiscal(dto.pessoaId, transicoes);
-    // Detecta o cruzamento ponto ↔ ausência: se a pessoa registrou ponto num
-    // dia em que também há falta/atestado/permesso marcado, avisa a supervisão
-    // (uma vez, na primeira batida do dia). Não bloqueia — o gestor resolve.
+    // A pessoa bateu ponto: se havia uma FALTA AUTOMÁTICA (lançada pela
+    // detecção do Relógio Ponto porque ela ainda não tinha registrado), ela é
+    // removida — a pessoa veio trabalhar. Faltas manuais do gestor permanecem
+    // (só notificamos o conflito). Best-effort: nunca trava a batida.
     if (eraPrimeira) {
+      await this.removerFaltaAutomaticaAoFichar(dto.pessoaId, colaboradorId);
+      // Detecta o cruzamento ponto ↔ ausência (falta MANUAL): avisa a
+      // supervisão uma vez, na primeira batida do dia. Não bloqueia.
       await this.avisarConflitoAusenciaSeNecessario(
         dto.pessoaId,
         colaboradorId,
@@ -903,6 +947,32 @@ export class PontoService {
    * fiscal é o Fiscal.id) quanto pela ficha (`colaboradorId`), cobrindo os dois
    * jeitos de a falta ter sido lançada.
    */
+  /**
+   * Remove a FALTA AUTOMÁTICA do dia quando a pessoa bate ponto (ela veio
+   * trabalhar). Apaga somente as ausências marcadas como `automatica` —
+   * lançadas pela detecção do Relógio Ponto — do dia atual (Brasília), tanto
+   * pela identidade da batida (`pessoaId`, que para fiscal é o Fiscal.id)
+   * quanto pela ficha (`colaboradorId`). As faltas MANUAIS do gestor NÃO são
+   * tocadas. Best-effort: uma falha nunca trava o registro da batida.
+   */
+  private async removerFaltaAutomaticaAoFichar(
+    pessoaId: string,
+    colaboradorId: string,
+  ): Promise<void> {
+    try {
+      const dia = diaCivilBrasilia(new Date());
+      await this.prisma.ausencia.deleteMany({
+        where: {
+          data: dia,
+          automatica: true,
+          pessoaId: { in: [pessoaId, colaboradorId] },
+        },
+      });
+    } catch {
+      // Best-effort: se não conseguir remover, o gestor pode fazê-lo à mão.
+    }
+  }
+
   private async avisarConflitoAusenciaSeNecessario(
     pessoaId: string,
     colaboradorId: string,

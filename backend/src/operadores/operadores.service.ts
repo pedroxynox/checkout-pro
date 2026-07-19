@@ -161,6 +161,7 @@ export class OperadoresService {
     pessoaId: string,
     data: Date,
     autor: AutorAcao = {},
+    opcoes: { automatica?: boolean } = {},
   ): Promise<Ausencia> {
     // Rejeita datas anteriores à Data_Inicial_Sistema (Req 6.1–6.3).
     await this.validacaoData?.exigirDataPermitida(data);
@@ -175,11 +176,14 @@ export class OperadoresService {
     }
     const ausencia = await this.prisma.ausencia.create({
       // Registra quem marcou a falta (auditoria); nasce PENDENTE de análise.
+      // `automatica` distingue a falta lançada pela detecção do Relógio Ponto
+      // (removível ao bater ponto) da lançada manualmente pelo gestor.
       data: {
         pessoaId,
         data,
         registradaPorId: autor.id ?? null,
         registradaPorNome: autor.nome ?? null,
+        automatica: opcoes.automatica ?? false,
       },
     });
     // Aviso imediato a TODOS: alguém foi marcado como ausente (Req: alerta de

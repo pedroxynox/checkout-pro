@@ -75,3 +75,20 @@ export class PontoEmFolgaError extends ErroDominio {
     super('A pessoa está de folga neste dia. Não é possível registrar ponto.');
   }
 }
+
+/**
+ * O retorno do intervalo foi tentado depois de o intervalo já ter ultrapassado
+ * o máximo (3h no contrato 6x1). Nesse caso o sistema considera que a pessoa
+ * não retornou (a jornada da tarde foi encerrada), então a batida de retorno é
+ * recusada — o dia fica como "não retorno do intervalo".
+ */
+export class RetornoAposLimiteIntervaloError extends ErroDominio {
+  readonly statusHttp = HttpStatus.CONFLICT;
+
+  constructor() {
+    super(
+      'O intervalo já ultrapassou 3h — o retorno não pode ser registrado. ' +
+        'O dia será tratado como não retorno do intervalo.',
+    );
+  }
+}
