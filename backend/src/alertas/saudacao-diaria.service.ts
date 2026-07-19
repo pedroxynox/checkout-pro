@@ -88,21 +88,47 @@ export class SaudacaoDiariaService {
       // Marca cedo para não reenviar na próxima passada do cron, mesmo em erro.
       this.saudadosFiscais.add(escala.funcionarioId);
       try {
-        const fiscal = await this.prisma.fiscal.findUnique({
-          where: { id: escala.funcionarioId },
-        });
-        if (!fiscal?.usuarioId) continue;
+        // Resolve a conta pela ficha canônica (vínculo gravado na escala —
+        // Fase 4 · Opção A); fallback ao registro legado de Fiscal para escalas
+        // antigas sem vínculo.
+        const { usuarioId, nome } = await this.contaDaEscala(escala);
+        if (!usuarioId) continue;
         const usuario = await this.prisma.usuario.findUnique({
-          where: { id: fiscal.usuarioId },
+          where: { id: usuarioId },
         });
         // Gerentes/supervisores recebem às 06:50 — aqui só fiscais.
         if (!usuario || usuario.perfil !== Perfil.FISCAL) continue;
         await this.enviarSaudacao(usuario, hora, resultado);
-        this.logger.log(`Saudação de entrada enviada para ${fiscal.nome}.`);
+        this.logger.log(`Saudação de entrada enviada para ${nome}.`);
       } catch {
         // best-effort
       }
     }
+  }
+
+  /**
+   * Resolve a conta de acesso (e o nome) de uma linha de escala pela ficha
+   * canônica (`colaboradorId`), com fallback ao registro legado `Fiscal`
+   * enquanto ele existir. Passo A.3 do épico de aposentar o `Fiscal`.
+   */
+  private async contaDaEscala(escala: {
+    funcionarioId: string;
+    colaboradorId: string | null;
+  }): Promise<{ usuarioId: string | null; nome: string }> {
+    if (escala.colaboradorId) {
+      const colaborador = await this.prisma.colaborador.findUnique({
+        where: { id: escala.colaboradorId },
+        select: { usuarioId: true, nome: true },
+      });
+      if (colaborador?.usuarioId) {
+        return { usuarioId: colaborador.usuarioId, nome: colaborador.nome };
+      }
+    }
+    const fiscal = await this.prisma.fiscal.findUnique({
+      where: { id: escala.funcionarioId },
+      select: { usuarioId: true, nome: true },
+    });
+    return { usuarioId: fiscal?.usuarioId ?? null, nome: fiscal?.nome ?? '' };
   }
 
   /** Às 06:50: saúda gerentes, gerentes desenvolvedores e supervisores. */

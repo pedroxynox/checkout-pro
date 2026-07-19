@@ -92,14 +92,14 @@ export class FiscaisHorarioService {
         continue;
       }
 
-      // Buscar o usuário do fiscal para enviar a notificação.
-      const fiscal = await this.prisma.fiscal.findUnique({
-        where: { id: escala.funcionarioId },
-      });
-      if (!fiscal?.usuarioId) continue;
+      // Resolve a conta pela ficha canônica (vínculo gravado na escala —
+      // Fase 4 · Opção A); fallback ao registro legado de Fiscal enquanto ele
+      // existir (escalas antigas sem vínculo).
+      const { usuarioId, nome } = await this.contaDaEscala(escala);
+      if (!usuarioId) continue;
 
       const usuario = await this.prisma.usuario.findUnique({
-        where: { id: fiscal.usuarioId },
+        where: { id: usuarioId },
       });
       if (!usuario) continue;
 
@@ -111,8 +111,33 @@ export class FiscaisHorarioService {
 
       this.lembretesEnviados.add(escala.funcionarioId);
       this.logger.log(
-        `Lembrete enviado para ${fiscal.nome} (entrada ${escala.entrada}).`,
+        `Lembrete enviado para ${nome} (entrada ${escala.entrada}).`,
       );
     }
+  }
+
+  /**
+   * Resolve a conta de acesso (e o nome) de uma linha de escala pela ficha
+   * canônica (`colaboradorId`), com fallback ao registro legado `Fiscal`
+   * enquanto ele existir. Passo A.3 do épico de aposentar o `Fiscal`.
+   */
+  private async contaDaEscala(escala: {
+    funcionarioId: string;
+    colaboradorId: string | null;
+  }): Promise<{ usuarioId: string | null; nome: string }> {
+    if (escala.colaboradorId) {
+      const colaborador = await this.prisma.colaborador.findUnique({
+        where: { id: escala.colaboradorId },
+        select: { usuarioId: true, nome: true },
+      });
+      if (colaborador?.usuarioId) {
+        return { usuarioId: colaborador.usuarioId, nome: colaborador.nome };
+      }
+    }
+    const fiscal = await this.prisma.fiscal.findUnique({
+      where: { id: escala.funcionarioId },
+      select: { usuarioId: true, nome: true },
+    });
+    return { usuarioId: fiscal?.usuarioId ?? null, nome: fiscal?.nome ?? '' };
   }
 }
