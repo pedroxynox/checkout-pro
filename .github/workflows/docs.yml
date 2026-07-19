@@ -1,0 +1,39 @@
+# Guardião da documentação do Check-out PRO.
+#
+# Garante que a documentação nunca fique desatualizada:
+#  1. Regera a documentação de referência e falha se estiver defasada
+#     (alguém mudou o código e não rodou `npm run docs:gen`).
+#  2. Exige que o documento do Atlas do módulo mude junto com o código dele.
+#
+# Escape de emergência: incluir `[skip-docs]` na mensagem do último commit.
+
+name: Guardião da Documentação
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  docs:
+    name: Verificar documentação
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (histórico completo p/ comparar com a base)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - name: Garantir referência da base (origin/main)
+        run: git fetch origin main --depth=1 || true
+
+      - name: Rodar o guardião
+        run: node scripts/verificar-docs.mjs
+        env:
+          # Em Pull Request, compara com o branch de destino; em push, usa main.
+          DOCS_BASE_REF: origin/${{ github.base_ref || 'main' }}
