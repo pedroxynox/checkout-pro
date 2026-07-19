@@ -81,7 +81,9 @@ usuário não for fiscal (ex.: gerente só visualizando).
 
 #### `registrarFalta(fiscalId)`
 Registra a falta do dia do próprio fiscal; bloqueia se já iniciou jornada
-(`JaIniciouJornadaError`) ou está de folga (`FiscalDeFolgaError`).
+(`JaIniciouJornadaError`) ou está de folga (`FiscalDeFolgaError`). A `Ausencia`
+criada já grava o vínculo `colaboradorId` (ficha canônica), preenchendo também
+faltas antigas sem vínculo (Fase 4 · Opção A).
 
 #### `painel()`
 Status atual de todos os fiscais, usando a mesma inteligência da jornada
@@ -142,7 +144,7 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 ## 8. Dados que o módulo toca
 - **Escreve:** `RegistroPontoFiscal` (log de status, agora com `colaboradorId`
   em registros novos), `EscalaEntry` (escala geral/especial), `Ausencia` (falta
-  do fiscal).
+  do fiscal, agora com `colaboradorId`).
 - **Lê:** `Fiscal`, `Usuario`, `Colaborador` (vínculo/nome), `EscalaEntry`,
   `Ausencia`, contratos e feriados (regras de jornada/extras).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
@@ -172,7 +174,7 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `fiscais.service.spec.ts` | Status, painel, jornada, fiscal histórico e vínculo `colaboradorId` no ponto (ponte Fase 4) | 16 |
+| `fiscais.service.spec.ts` | Status, painel, jornada, fiscal histórico e vínculo `colaboradorId` no ponto/falta (Fase 4) | 17 |
 | `fiscais.properties.spec.ts` | Status atual, transição, jornada, escala (property-based) | 5 |
 | `fiscais.controller.spec.ts` | Rotas do próprio fiscal e log de jornada | 4 |
 | `fiscais.gateway.spec.ts` | Broadcast do painel via WebSocket (integração) | 3 |

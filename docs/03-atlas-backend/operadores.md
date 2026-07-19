@@ -62,7 +62,9 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 #### `registrarAusencia(pessoaId, data, autor?, opcoes?)`
 - **Efeitos:** valida data permitida e ciclo de folha aberto; rejeita duplicata
   (pessoa/dia); cria a `Ausencia` (nasce `PENDENTE`, com autor e flag
-  `automatica`); avisa todos e checa o limite de faltas do mês (best-effort).
+  `automatica`, e já com o vínculo `colaboradorId` = `pessoaId`, pois para
+  operador o `pessoaId` é a própria ficha — Fase 4 · Opção A); avisa todos e
+  checa o limite de faltas do mês (best-effort).
 - **Erros:** `AusenciaDuplicadaError` (além dos de data/ciclo).
 
 #### `registrarAusenciaPeriodo(pessoaId, inicio, fim, input, autor?)`
@@ -121,7 +123,7 @@ Delegam às funções puras homônimas do domínio.
 - `RiscoFalta`: `BAIXO` · `MEDIO` · `ALTO` (semáforo da analítica).
 
 ## 8. Dados que o módulo toca
-- **Escreve:** `Ausencia` (cria/atualiza/remove).
+- **Escreve:** `Ausencia` (cria/atualiza/remove; grava `colaboradorId`).
 - **Lê:** `Ausencia`, `Colaborador`, `Fiscal`, `OperadorTurno` (Quadro/roster).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
 

@@ -178,8 +178,11 @@ export class OperadoresService {
       // Registra quem marcou a falta (auditoria); nasce PENDENTE de análise.
       // `automatica` distingue a falta lançada pela detecção do Relógio Ponto
       // (removível ao bater ponto) da lançada manualmente pelo gestor.
+      // `colaboradorId`: para operador o `pessoaId` já é o id da ficha canônica
+      // (Colaborador), então gravamos o vínculo direto (Fase 4 — leitura por ficha).
       data: {
         pessoaId,
+        colaboradorId: pessoaId,
         data,
         registradaPorId: autor.id ?? null,
         registradaPorNome: autor.nome ?? null,

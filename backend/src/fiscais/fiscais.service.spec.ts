@@ -217,6 +217,21 @@ describe('FiscaisService e EscalaService', () => {
     expect(criados[0].fiscalId).toBe('f1');
   });
 
+  it('registrarFalta grava o vínculo colaboradorId na ausência (Fase 4)', async () => {
+    const prisma = criarPrisma();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (prisma as any).colaborador.findFirst = ({ where }: any) =>
+      Promise.resolve(where.usuarioId === 'u1' ? { id: 'colab-1' } : null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fiscais = new FiscaisService(prisma as any);
+    await fiscais.registrarFalta('f1', new Date('2024-03-10T08:00:00Z'));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ausencia = (prisma as any).ausencias.find(
+      (a: { pessoaId: string }) => a.pessoaId === 'f1',
+    );
+    expect(ausencia?.colaboradorId).toBe('colab-1');
+  });
+
   it('painel lista todos os fiscais; sem ponto hoje => FORA_EXPEDIENTE', async () => {
     const prisma = criarPrisma();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

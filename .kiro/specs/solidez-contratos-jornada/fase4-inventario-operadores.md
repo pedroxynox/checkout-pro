@@ -200,6 +200,13 @@ Duas estratégias, cada uma com seu perfil de risco:
 com backup dos dados históricos antes do drop) e tratar a **Opção A** como um
 épico próprio, com sessão dedicada — dado o risco no núcleo da jornada.
 
+> **Decisão do dono:** seguir pela **Opção A** (aposentar o `Fiscal` de vez),
+> **sem quebrar nada**, de forma planejada. O épico foi desenhado em sub-passos
+> pequenos e reversíveis em
+> [`fase4a-plano-aposentar-fiscal.md`](fase4a-plano-aposentar-fiscal.md). O
+> Passo **A.1** (completar o vínculo `colaboradorId` nas faltas — escrita +
+> backfill `9zzg` + verificador) já está concluído.
+
 ## 9. Rastreabilidade
 
 - Requisitos: **R4.1**, **R4.2**, **R4.3** (ver `requirements.md`).

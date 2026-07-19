@@ -940,13 +940,24 @@ export class FiscaisService {
       select: { id: true },
     });
 
+    // Ficha canônica (Fase 4): a falta do fiscal também guarda o vínculo com o
+    // Colaborador, para a Central de Jornada e os relatórios lerem por ficha.
+    // Carregamos o fiscal aqui e o reaproveitamos na notificação abaixo.
+    const fiscal = await this.prisma.fiscal.findUnique({
+      where: { id: fiscalId },
+    });
+    const colaboradorId = await this.colaboradorIdDoFiscal(fiscal);
+
     // `automatica` marca a falta lançada pela detecção do Relógio Ponto (será
-    // removida se a pessoa bater ponto depois); a manual permanece.
+    // removida se a pessoa bater ponto depois); a manual permanece. O `update`
+    // preenche o vínculo em faltas antigas que ainda estavam sem `colaboradorId`
+    // (aditivo: `undefined` não altera quando a ficha não pôde ser resolvida).
     await this.prisma.ausencia.upsert({
       where: { pessoaId_data: { pessoaId: fiscalId, data } },
-      update: {},
+      update: { colaboradorId: colaboradorId ?? undefined },
       create: {
         pessoaId: fiscalId,
+        colaboradorId,
         data,
         automatica: opcoes.automatica ?? false,
       },
@@ -955,9 +966,6 @@ export class FiscaisService {
     // Já existia: nada de novo a avisar.
     if (jaExistia) return;
 
-    const fiscal = await this.prisma.fiscal.findUnique({
-      where: { id: fiscalId },
-    });
     if (fiscal && this.notificacoes) {
       const gestores =
         await this.notificacoes.destinatariosComPermissao('FISCAIS_STATUS');
