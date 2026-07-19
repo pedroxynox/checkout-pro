@@ -695,6 +695,8 @@ export interface ItemPainelFiscal {
   fiscalId: string;
   /** Ficha única correspondente (para abrir o perfil), ou null. */
   colaboradorId: string | null;
+  /** Distingue fiscal de operador no painel ao vivo. */
+  tipoPessoa: 'FISCAL' | 'OPERADOR';
   primeiroNome: string;
   status: StatusFiscal;
   desde: string | null;

@@ -196,8 +196,8 @@ function ColaboradorRow({
   onAbrirPerfil: (c: ColaboradorDia) => void;
   semRetornoAtivo: boolean;
   /**
-   * Status AO VIVO do fiscal (Disponível/Intervalo/Fora), vindo das batidas do
-   * ponto. Só é passado para fiscais e quando o dia exibido é hoje.
+   * Status AO VIVO (Disponível/Intervalo/Fora), vindo das batidas do ponto.
+   * Passado para fiscais E operadores, apenas quando o dia exibido é hoje.
    */
   statusAoVivo?: StatusFiscal | null;
 }): React.ReactElement {
@@ -1215,6 +1215,7 @@ export function OperadoresScreen(): React.ReactElement {
                     c={c}
                     onAbrirPerfil={abrirPerfil}
                     semRetornoAtivo={semRetornoIds.has(c.id)}
+                    statusAoVivo={ehHoje ? (statusFiscais[c.id] ?? null) : null}
                   />
                 ))}
               </View>

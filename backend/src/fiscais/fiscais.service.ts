@@ -58,6 +58,8 @@ export interface ItemPainel {
   fiscalId: string;
   /** Ficha única correspondente (ou null se ainda não houver). */
   colaboradorId: string | null;
+  /** Distingue fiscal de operador no painel ao vivo (Cadastro Unificado). */
+  tipoPessoa: 'FISCAL' | 'OPERADOR';
   primeiroNome: string;
   status: StatusFiscal;
   /** Instante (ISO) do último registro; null se ainda não bateu ponto hoje. */
@@ -461,6 +463,33 @@ export class FiscaisService {
   }
 
   /**
+   * Propaga em tempo real o status ao vivo de um COLABORADOR (operador),
+   * identificado pela ficha canônica. Usado quando um operador bate ponto: o
+   * painel da escala reflete a mudança na hora, pelo mesmo canal WebSocket dos
+   * fiscais (a chave do app é o `colaboradorId`). Best-effort.
+   */
+  async publicarStatusColaborador(
+    colaboradorId: string,
+    status: StatusFiscal,
+    em: Date = new Date(),
+  ): Promise<void> {
+    if (!this.eventos) return;
+    const colaborador = await this.prisma.colaborador.findUnique({
+      where: { id: colaboradorId },
+      select: { nome: true },
+    });
+    this.eventos.publicar({
+      // Operador não tem `fiscalId`; usamos o próprio `colaboradorId` como id de
+      // identidade do evento (o app indexa o status por `colaboradorId`).
+      fiscalId: colaboradorId,
+      colaboradorId,
+      primeiroNome: primeiroNome(colaborador?.nome ?? ''),
+      status,
+      em,
+    });
+  }
+
+  /**
    * Painel de todos os fiscais com o status atual (tempo real via WebSocket).
    *
    * O status usa a MESMA inteligência da jornada do dia (`calcularJornadaDia`):
@@ -505,7 +534,7 @@ export class FiscaisService {
       batidasPorFiscal.set(b.pessoaId, atuais);
     }
 
-    return Promise.all(
+    const dosFiscais = await Promise.all(
       fiscais.map(async (f) => {
         const regs = porFiscal.get(f.id) ?? [];
         const batidas = batidasPorFiscal.get(f.id) ?? [];
@@ -539,12 +568,33 @@ export class FiscaisService {
         return {
           fiscalId: f.id,
           colaboradorId: col?.colaboradorId ?? null,
+          tipoPessoa: 'FISCAL' as const,
           primeiroNome: primeiroNome(col?.nome ?? f.nome),
           status,
           desde,
         };
       }),
     );
+
+    // Operadores (e demais que batem ponto): o status ao vivo vem das batidas
+    // do Relógio Ponto — a MESMA inteligência da jornada. Só aparecem os que
+    // bateram ponto hoje (quem não marcou não tem status ao vivo).
+    const operadores = await this.jornadaOperadoresDoDia(
+      dia,
+      limitePonto,
+      diaEncerrado,
+      ehFeriado,
+    );
+    const dosOperadores: ItemPainel[] = operadores.map((o) => ({
+      fiscalId: o.pessoaId,
+      colaboradorId: o.colaboradorId,
+      tipoPessoa: 'OPERADOR' as const,
+      primeiroNome: o.primeiroNome,
+      status: o.status,
+      desde: o.marcacoes[o.marcacoes.length - 1]?.hora ?? null,
+    }));
+
+    return [...dosFiscais, ...dosOperadores];
   }
 
   /**

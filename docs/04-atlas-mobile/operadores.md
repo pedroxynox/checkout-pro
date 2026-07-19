@@ -72,8 +72,12 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
 - Fiscais entram no topo, tratados como `ColaboradorDia`; sem ficha vinculada
   viram linha só de leitura ("Sem ficha").
 - Domingo: banner do rodízio de grupos (ou aviso se não configurado).
-- O relógio atualiza a cada 1s; o status ao vivo dos fiscais só aparece quando
-  o dia é hoje; `versaoJustificativas` força recarregar a lista.
+- O relógio atualiza a cada 1s; o status ao vivo só aparece quando o dia é hoje;
+  `versaoJustificativas` força recarregar a lista.
+- **Status ao vivo para fiscais E operadores:** o selo (Disponível/Intervalo/
+  Fora) aparece na linha de qualquer pessoa que bateu ponto hoje. O `painel()`
+  agora inclui operadores (com `tipoPessoa`), e o operador emite evento WebSocket
+  ao bater ponto (tempo real); a reconsulta de 60s cobre as transições por tempo.
 - O mapa de **status ao vivo** é indexado pela **ficha canônica**
   (`colaboradorId`), com fallback ao `fiscalId` legado — painel, evento WebSocket
   e a busca na linha da escala usam a mesma chave (Fase 4 · Opção A · A.5).

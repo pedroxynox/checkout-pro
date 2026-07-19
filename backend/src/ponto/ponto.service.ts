@@ -17,6 +17,7 @@ import {
   calcularJornadaDia,
   classificarBatidas,
   etapaAlertaTac,
+  statusFiscalDeJornada,
   statusFiscalDeTipoBatida,
 } from './ponto.domain';
 import { FiscaisService } from '../fiscais/fiscais.service';
@@ -566,6 +567,20 @@ export class PontoService {
       );
     }
     const resposta = await this.jornadaDoDia(dto.pessoaId, tipoPessoa, dia);
+    // Status ao vivo do OPERADOR no painel da escala (tempo real): quando um
+    // operador bate ponto, propagamos o status derivado da jornada pelo mesmo
+    // canal WebSocket dos fiscais. Fiscais já são cobertos por
+    // `publicarStatusFiscal` acima. Best-effort: nunca trava a batida.
+    if (tipoPessoa === 'OPERADOR' && colaboradorId && this.fiscais) {
+      try {
+        await this.fiscais.publicarStatusColaborador(
+          colaboradorId,
+          statusFiscalDeJornada(resposta.jornada.status),
+        );
+      } catch {
+        // best-effort: o painel se atualiza na reconsulta periódica.
+      }
+    }
     // Avisa a supervisão/gerência ao entrar em risco de TAC ou em TAC.
     await this.avisarAlertaTacSeNecessario(
       dto.pessoaId,
