@@ -14,8 +14,9 @@ automaticamente faltas e não-retornos do intervalo.
   (entrada → saída p/ intervalo → retorno → encerramento); interpreta o texto
   do comprovante (nome/data/hora) e sugere o colaborador; avisa a supervisão nos
   riscos de TAC (1h30 → 1h40 → TAC); marca faltas automáticas (2h sem batida) e
-  não-retorno do intervalo (> 3h); sincroniza o status do fiscal e remove a
-  falta automática quando a pessoa bate ponto.
+  não-retorno do intervalo (acima do intervalo máximo do **contrato da pessoa**,
+  3h no 6x1); sincroniza o status do fiscal e remove a falta automática quando a
+  pessoa bate ponto.
 - **Não faz** (fica em outro módulo): agregação por ciclo de folha
   (fica em [`central-jornada`](central-jornada.md)); fechamento do ciclo
   (fica em [`ciclo-folha`](ciclo-folha.md)); as regras data-driven de cada
@@ -109,7 +110,8 @@ Recalcula a jornada de quem bateu ponto no dia e delega o aviso de TAC ao
 ### `PontoDeteccaoAutomaticaService.verificar()` (cron 5 min)
 Cruza a escala do dia com o Relógio Ponto: marca falta automática (2h após a
 entrada sem batida) e registra não-retorno do intervalo (intervalo em curso
-acima do máximo). Best-effort e defensivo por pessoa.
+acima do **máximo do contrato da pessoa**, resolvido por `regrasDoColaborador`;
+3h no 6x1). Best-effort e defensivo por pessoa.
 
 ## 6. Lógica de domínio (funções puras)
 - `classificarBatidas(batidas, maxSemIntervaloMs, intervaloObrigatorio)` →

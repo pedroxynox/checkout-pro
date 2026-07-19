@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { agoraNaBrasilia, inicioDoDia } from '../common/datas';
@@ -7,6 +7,7 @@ import { OperadoresService } from '../operadores/operadores.service';
 import { IncidenciasService } from '../incidencias/incidencias.service';
 import { IncidenciaDuplicadaError } from '../incidencias/incidencias.errors';
 import { AusenciaDuplicadaError } from '../operadores/operadores.errors';
+import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { PontoService } from './ponto.service';
 import { INTERVALO_MAXIMO_MS } from './ponto.domain';
 import {
@@ -48,6 +49,9 @@ export class PontoDeteccaoAutomaticaService {
     private readonly operadores: OperadoresService,
     private readonly incidencias: IncidenciasService,
     private readonly ponto: PontoService,
+    // Regras por tipo de contrato (data-driven). Opcional: sem ele, o
+    // "não retorno" usa o intervalo máximo do contrato padrão (6x1).
+    @Optional() private readonly tiposContrato?: TiposContratoService,
   ) {}
 
   /** Verifica faltas automáticas e não-retornos a cada 5 minutos. */
@@ -152,7 +156,8 @@ export class PontoDeteccaoAutomaticaService {
 
   /**
    * Registra o "não retorno do intervalo" quando a jornada está EM_INTERVALO e
-   * o intervalo em curso já ultrapassou o máximo (3h no 6x1). Idempotente: não
+   * o intervalo em curso já ultrapassou o máximo do CONTRATO da pessoa (3h no
+   * 6x1, data-driven). Idempotente: não
    * duplica se já houver um não-retorno do dia. Só para quem tem ficha
    * (`colaboradorId`), pois a incidência é keyed por colaborador.
    */
@@ -167,9 +172,15 @@ export class PontoDeteccaoAutomaticaService {
       escalado.tipoPessoa,
       dia,
     );
+    // Intervalo máximo do CONTRATO da pessoa (data-driven); sem o serviço,
+    // cai no contrato padrão (6x1 = 3h). Não usa um valor fixo no código.
+    const regras = this.tiposContrato
+      ? await this.tiposContrato.regrasDoColaborador(escalado.colaboradorId)
+      : undefined;
+    const intervaloMaximoMs = regras?.intervaloMaximoMs ?? INTERVALO_MAXIMO_MS;
     if (
       resposta.jornada.status !== 'EM_INTERVALO' ||
-      resposta.jornada.intervaloMs <= INTERVALO_MAXIMO_MS
+      resposta.jornada.intervaloMs <= intervaloMaximoMs
     ) {
       return;
     }
@@ -200,7 +211,7 @@ export class PontoDeteccaoAutomaticaService {
         AUTOR_SISTEMA,
       );
       this.logger.log(
-        `Não retorno automático: ${escalado.nome} (intervalo acima de 3h).`,
+        `Não retorno automático: ${escalado.nome} (intervalo acima do máximo do contrato).`,
       );
     } catch (erro) {
       // Duplicidade é esperada em corrida — silenciosa.
