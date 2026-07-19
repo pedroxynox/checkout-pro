@@ -65,8 +65,9 @@ Executar na ordem das fases. Cada fase termina com `npm run verify` +
 
 ## Fase 4 — Consolidar operadores (retirar o legado)
 
-- [ ] 4.1 Inventário dos consumidores dos modelos legados
-  (`Operador`/`OperadorTurno`/`Fiscal`). _(R4.1)_
+- [x] 4.1 Inventário dos consumidores dos modelos legados
+  (`Operador`/`OperadorTurno`/`Fiscal`). _(R4.1)_ — ver
+  [`fase4-inventario-operadores.md`](fase4-inventario-operadores.md).
 - [ ] 4.2 Garantir equivalente canônico (`Colaborador`/`Fiscal`) para cada
   consumidor. _(R4.1)_
 - [ ] 4.3 Redirecionar escrita (cadastros/edições) para o Cadastro Unificado. _(R4.2)_
