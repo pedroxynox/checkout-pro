@@ -10,7 +10,7 @@
 | Área | Arquivos | Linhas | Arquivos de teste | Linhas de teste |
 |---|---|---|---|---|
 | Backend (`backend/src`) | 223 | 35235 | 90 | 14026 |
-| Mobile (`mobile/src`) | 147 | 35936 | 25 | 2597 |
+| Mobile (`mobile/src`) | 147 | 35950 | 25 | 2597 |
 
 ## Estrutura
 

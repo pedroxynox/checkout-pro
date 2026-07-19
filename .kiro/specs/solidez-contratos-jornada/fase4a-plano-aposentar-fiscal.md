@@ -62,6 +62,10 @@ como fallback.
   jornada, `meuResumo`, `horasExtrasMes` e o evento WebSocket `fiscal:status`
   passam a enviar `colaboradorId` junto do `fiscalId`. Nada é removido: apps
   instalados seguem usando `fiscalId`.
+- **A.5.2 — App prefere `colaboradorId`. ✅ Concluído.** O mapa de status ao vivo
+  do painel de fiscais (`OperadoresScreen`), o evento WebSocket e os tipos
+  (`EventoStatusFiscal`, `MeuResumoFiscal`, `ItemHorasExtrasFiscal`) passam a usar
+  `colaboradorId` como chave, com fallback ao `fiscalId`. Compatível.
 - **A.5 — Trocar a identidade EXPOSTA (o passo mais delicado).** Fazer o painel,
   a jornada, o `meuResumo`, o evento WebSocket `fiscal:status` e a fila offline
   usarem `colaboradorId` como identidade. **Exige mudança coordenada

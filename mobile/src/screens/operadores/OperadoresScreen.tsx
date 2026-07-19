@@ -829,9 +829,10 @@ export function OperadoresScreen(): React.ReactElement {
     [diaSel],
   );
 
-  // Status AO VIVO dos fiscais (fiscalId → status), derivado das batidas do
-  // ponto (ponte de status). Carrega o painel e assina atualizações em tempo
-  // real; o selo só é exibido quando o dia selecionado é hoje.
+  // Status AO VIVO dos fiscais (colaboradorId → status), derivado das batidas
+  // do ponto (ponte de status). A chave é a ficha canônica (Fase 4 · Opção A),
+  // com fallback ao `fiscalId` legado. Carrega o painel e assina atualizações
+  // em tempo real; o selo só é exibido quando o dia selecionado é hoje.
   const [statusFiscais, setStatusFiscais] = useState<
     Record<string, StatusFiscal>
   >({});
@@ -844,7 +845,7 @@ export function OperadoresScreen(): React.ReactElement {
         .then((p) => {
           if (!ativo) return;
           const mapa: Record<string, StatusFiscal> = {};
-          for (const f of p) mapa[f.fiscalId] = f.status;
+          for (const f of p) mapa[f.colaboradorId ?? f.fiscalId] = f.status;
           setStatusFiscais(mapa);
         })
         .catch(() => {
@@ -859,7 +860,10 @@ export function OperadoresScreen(): React.ReactElement {
     const intervalo = setInterval(carregarPainel, 60_000);
     void conectarPainelFiscais({
       aoAtualizarStatus: (ev) =>
-        setStatusFiscais((prev) => ({ ...prev, [ev.fiscalId]: ev.status })),
+        setStatusFiscais((prev) => ({
+          ...prev,
+          [ev.colaboradorId ?? ev.fiscalId]: ev.status,
+        })),
     }).then((c) => {
       if (ativo) conexaoFiscaisRef.current = c;
       else c.desconectar();
@@ -1097,7 +1101,11 @@ export function OperadoresScreen(): React.ReactElement {
                 c={cd}
                 onAbrirPerfil={abrirPerfil}
                 semRetornoAtivo={semRetornoIds.has(cd.id)}
-                statusAoVivo={ehHoje ? (statusFiscais[f.funcionarioId] ?? null) : null}
+                statusAoVivo={
+                  ehHoje
+                    ? (statusFiscais[f.colaboradorId ?? f.funcionarioId] ?? null)
+                    : null
+                }
               />
             );
           })}
