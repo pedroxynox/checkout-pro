@@ -200,6 +200,37 @@ export class ColaboradoresService {
     return contrato && !contrato.trabalhaDomingo ? null : grupoDomingo;
   }
 
+  /**
+   * Cria a conta de acesso ao app (Usuario) com `login = matrícula` e a senha
+   * informada. Centraliza a regra usada tanto no cadastro quanto na promoção
+   * (edição): valida a senha (mínimo 6), garante login livre e grava o hash.
+   * Devolve o id da conta criada para vincular ao colaborador.
+   */
+  private async criarContaDeAcesso(
+    matricula: string,
+    nome: string,
+    senha: string | null | undefined,
+    perfilAcesso: Perfil,
+  ): Promise<string> {
+    const s = senha?.trim() ?? '';
+    if (s.length < 6) {
+      throw new SenhaAcessoObrigatoriaError();
+    }
+    if (!(await this.acessos.loginDisponivel(matricula))) {
+      throw new ContaAcessoExistenteError();
+    }
+    const senhaHash = await this.acessos.gerarHashSenha(s);
+    const conta = await this.prisma.usuario.create({
+      data: {
+        login: matricula,
+        nome: nome.trim(),
+        senhaHash,
+        perfil: perfilAcesso,
+      },
+    });
+    return conta.id;
+  }
+
   async cadastrar(
     input: ColaboradorInput,
     perfilSolicitante?: PerfilSolicitante,
@@ -238,23 +269,12 @@ export class ColaboradoresService {
       await this.garantirUsuarioVinculavel(input.usuarioId, null);
       usuarioId = input.usuarioId;
     } else if (perfilAcesso) {
-      const senha = input.senha?.trim() ?? '';
-      if (senha.length < 6) {
-        throw new SenhaAcessoObrigatoriaError();
-      }
-      if (!(await this.acessos.loginDisponivel(matricula))) {
-        throw new ContaAcessoExistenteError();
-      }
-      const senhaHash = await this.acessos.gerarHashSenha(senha);
-      const conta = await this.prisma.usuario.create({
-        data: {
-          login: matricula,
-          nome: input.nome.trim(),
-          senhaHash,
-          perfil: perfilAcesso,
-        },
-      });
-      usuarioId = conta.id;
+      usuarioId = await this.criarContaDeAcesso(
+        matricula,
+        input.nome,
+        input.senha,
+        perfilAcesso,
+      );
     }
 
     // Se o contrato não trabalha domingo, o colaborador não entra no rodízio.
@@ -440,6 +460,21 @@ export class ColaboradoresService {
       validarTurnoObrigatorio(funcaoEfetiva, turnoEfetivo ?? null);
     }
 
+    // Promoção que passa a dar acesso ao app e ainda não tem conta (ex.:
+    // operador -> fiscal): exige a senha ANTES de alterar o cadastro. Assim
+    // evitamos o estado confuso em que o colaborador vira fiscal mas fica sem
+    // login (a causa do bug em que "criava a senha mas não criava o acesso").
+    const criaContaNaPromocao =
+      perfilDaFuncao(
+        input.funcao ?? atual.funcao,
+        input.gerenteDesenvolvedor,
+      ) !== null &&
+      !atual.usuarioId &&
+      !input.usuarioId;
+    if (criaContaNaPromocao && (input.senha?.trim().length ?? 0) < 6) {
+      throw new SenhaAcessoObrigatoriaError();
+    }
+
     const data: Prisma.ColaboradorUpdateInput = {};
     if (input.nome !== undefined) data.nome = input.nome.trim();
     if (input.genero !== undefined) data.genero = input.genero;
@@ -546,55 +581,111 @@ export class ColaboradoresService {
       return c;
     });
 
-    // Conta de acesso: redefine a senha e/ou atualiza perfil/nome/login da
-    // conta já vinculada. (Criar a conta na edição fica fora do escopo: o
-    // normal é criá-la no cadastro.)
-    await this.atualizarAcessoNaEdicao(atual, input, novaMatricula);
+    // Conta de acesso: cria a conta quando a nova função passa a ter acesso ao
+    // app e ainda não existe (ex.: promoção de operador -> fiscal); quando já
+    // existe, redefine a senha e atualiza perfil/nome/login. Devolve o
+    // colaborador já com o vínculo (usuarioId) atualizado.
+    const colaboradorComAcesso = await this.sincronizarContaDeAcesso(
+      atual,
+      atualizado,
+      input,
+      novaMatricula,
+    );
 
     // Mantém a escala geral do fiscal em sincronia com o cadastro (Opção A).
-    await this.sincronizarEscalaFiscal(atualizado);
+    // Usa o colaborador já vinculado para que uma promoção recém-criada gere a
+    // escala do fiscal na mesma edição.
+    await this.sincronizarEscalaFiscal(colaboradorComAcesso);
 
-    return atualizado;
+    return colaboradorComAcesso;
   }
 
-  /** Atualiza a conta de acesso vinculada na edição (senha/perfil/nome/login). */
-  private async atualizarAcessoNaEdicao(
+  /**
+   * Sincroniza a conta de acesso (login do app) na edição do colaborador e
+   * devolve o colaborador já com o vínculo atualizado (para a sincronização da
+   * escala e para a resposta). Cobre três cenários:
+   *
+   * 1. Promoção: a nova função passa a ter acesso ao app (fiscal/supervisor/
+   *    gerente) e o colaborador ainda NÃO tinha conta (ex.: operador -> fiscal).
+   *    Cria a conta agora (login = matrícula, com a senha informada), vincula-a
+   *    ao colaborador e, se for fiscal, cria o registro de fiscal.
+   * 2. Conta já vinculada: redefine a senha (quando informada) e atualiza
+   *    perfil/nome/login; garante o registro de fiscal se a função passou a ser
+   *    fiscal (ex.: supervisor -> fiscal).
+   * 3. Sem acesso e sem conta (ex.: operador comum): nada a fazer.
+   */
+  private async sincronizarContaDeAcesso(
     atual: Colaborador,
+    atualizado: Colaborador,
     input: Partial<ColaboradorInput>,
     novaMatricula?: string,
-  ): Promise<void> {
-    if (!atual.usuarioId) return;
-
-    const senha = input.senha?.trim();
-    if (
-      input.senha !== undefined &&
-      input.senha !== '' &&
-      (senha?.length ?? 0) < 6
-    ) {
-      throw new SenhaAcessoObrigatoriaError();
-    }
-
+  ): Promise<Colaborador> {
     const funcao = input.funcao ?? atual.funcao;
     const perfilAcesso = perfilDaFuncao(funcao, input.gerenteDesenvolvedor);
 
-    const upd: Prisma.UsuarioUpdateInput = {};
-    if (perfilAcesso) upd.perfil = perfilAcesso;
-    if (input.nome !== undefined) upd.nome = input.nome.trim();
-    if (novaMatricula) {
-      if (!(await this.acessos.loginDisponivel(novaMatricula))) {
-        throw new ContaAcessoExistenteError();
-      }
-      upd.login = novaMatricula; // mantém login = matrícula
-    }
-    if (senha && senha.length >= 4) {
-      upd.senhaHash = await this.acessos.gerarHashSenha(senha);
-    }
-    if (Object.keys(upd).length > 0) {
-      await this.prisma.usuario.update({
-        where: { id: atual.usuarioId },
-        data: upd,
+    // Cenário 1 — promoção: cria a conta que não existia. A validação de
+    // permissão (só o gerente desenvolvedor concede acesso gerencial) já
+    // ocorreu no início de `editar`, então aqui apenas materializamos a conta.
+    if (!atualizado.usuarioId && perfilAcesso) {
+      const matriculaConta = novaMatricula ?? atualizado.matricula;
+      const usuarioId = await this.criarContaDeAcesso(
+        matriculaConta,
+        atualizado.nome,
+        input.senha,
+        perfilAcesso,
+      );
+      const comConta = await this.prisma.colaborador.update({
+        where: { id: atual.id },
+        data: { usuarioId },
       });
+      if (funcao === 'FISCAL') {
+        await this.garantirFiscal(usuarioId, atualizado.nome, atualizado.turno);
+      }
+      return comConta;
     }
+
+    // Cenário 2 — conta já vinculada: redefine senha e/ou atualiza dados.
+    if (atualizado.usuarioId) {
+      const senha = input.senha?.trim();
+      if (
+        input.senha !== undefined &&
+        input.senha !== '' &&
+        (senha?.length ?? 0) < 6
+      ) {
+        throw new SenhaAcessoObrigatoriaError();
+      }
+
+      const upd: Prisma.UsuarioUpdateInput = {};
+      if (perfilAcesso) upd.perfil = perfilAcesso;
+      if (input.nome !== undefined) upd.nome = input.nome.trim();
+      if (novaMatricula) {
+        if (!(await this.acessos.loginDisponivel(novaMatricula))) {
+          throw new ContaAcessoExistenteError();
+        }
+        upd.login = novaMatricula; // mantém login = matrícula
+      }
+      if (senha && senha.length >= 6) {
+        upd.senhaHash = await this.acessos.gerarHashSenha(senha);
+      }
+      if (Object.keys(upd).length > 0) {
+        await this.prisma.usuario.update({
+          where: { id: atualizado.usuarioId },
+          data: upd,
+        });
+      }
+
+      // Garante o registro de fiscal quando a função passou a ser fiscal com
+      // uma conta já existente (ex.: supervisor -> fiscal). Idempotente.
+      if (funcao === 'FISCAL') {
+        await this.garantirFiscal(
+          atualizado.usuarioId,
+          atualizado.nome,
+          atualizado.turno,
+        );
+      }
+    }
+
+    return atualizado;
   }
 
   /** Lista os colaboradores, com busca e filtros opcionais. */
