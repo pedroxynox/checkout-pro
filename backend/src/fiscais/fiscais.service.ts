@@ -751,6 +751,10 @@ export class FiscaisService {
       (colaboradorId ? faltaSet.has(colaboradorId) : false);
 
     const agora = agoraNaBrasilia();
+    // O alerta de atraso ("Sem registrar", 1h após a entrada) é um estado de
+    // TEMPO REAL: só faz sentido para HOJE. Em dias passados, quem não bateu é
+    // apenas "sem registro" ou falta (não um atraso em curso).
+    const ehHoje = dia.getTime() === inicioDoDia(agora).getTime();
     const itens: ItemEquipeDia[] = [];
 
     // 1) Quem já tem atividade (batidas/registros) — enriquecido.
@@ -769,7 +773,8 @@ export class FiscaisService {
       if (jornadaPorPessoa.has(e.pessoaId)) continue;
       const falta = temFalta(e.pessoaId, e.colaboradorId);
       const minutos = minutosAposEntrada(e.entradaPrevista, agora);
-      const alertaAtraso = !falta && estadoSemBatida(minutos) !== 'AGUARDANDO';
+      const alertaAtraso =
+        ehHoje && !falta && estadoSemBatida(minutos) !== 'AGUARDANDO';
       itens.push({
         fiscalId: e.pessoaId,
         pessoaId: e.pessoaId,
@@ -888,6 +893,14 @@ export class FiscaisService {
       throw new JaIniciouJornadaError();
     }
 
+    // Se a falta do dia já existe, não recria nem reavisa (idempotente): evita
+    // notificação repetida se este método for chamado mais de uma vez para o
+    // mesmo dia (ex.: verificador periódico).
+    const jaExistia = await this.prisma.ausencia.findUnique({
+      where: { pessoaId_data: { pessoaId: fiscalId, data } },
+      select: { id: true },
+    });
+
     // `automatica` marca a falta lançada pela detecção do Relógio Ponto (será
     // removida se a pessoa bater ponto depois); a manual permanece.
     await this.prisma.ausencia.upsert({
@@ -899,6 +912,10 @@ export class FiscaisService {
         automatica: opcoes.automatica ?? false,
       },
     });
+
+    // Já existia: nada de novo a avisar.
+    if (jaExistia) return;
+
     const fiscal = await this.prisma.fiscal.findUnique({
       where: { id: fiscalId },
     });
