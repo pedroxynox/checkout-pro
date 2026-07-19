@@ -1314,11 +1314,18 @@ export class PontoService {
       });
     }
 
+    // A ficha canônica já vem nas próprias batidas (mesmo padrão de
+    // `regrasDaPessoa`); passamos adiante para gravar o vínculo `colaboradorId`
+    // no log de ponto do fiscal — a ponte que permitirá aposentar o `fiscalId`.
+    const colaboradorId =
+      batidas.find((b) => b.colaboradorId)?.colaboradorId ?? null;
+
     await this.fiscais.reescreverRegistrosDoDia(
       cliente,
       pessoaId,
       dia,
       transicoes,
+      colaboradorId,
     );
     return transicoes;
   }

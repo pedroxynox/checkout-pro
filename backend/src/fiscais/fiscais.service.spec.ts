@@ -52,9 +52,20 @@ describe('FiscaisService e EscalaService', () => {
             { id: 'u1', login: '223747', nome: 'Karen Mendoza Barro' },
             { id: 'u2', login: '999999', nome: 'Ana Souza' },
           ]),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        findUnique: ({ where: { id } }: any) =>
+          Promise.resolve(
+            [
+              { id: 'u1', login: '223747' },
+              { id: 'u2', login: '999999' },
+            ].find((u) => u.id === id) ?? null,
+          ),
       },
       colaborador: {
         findMany: () => Promise.resolve([]),
+        // Sem fichas canônicas neste cenário: o vínculo colaboradorId resolve
+        // para null (comportamento preservado).
+        findFirst: () => Promise.resolve(null),
       },
       batidaPonto: {
         findMany: () => Promise.resolve([]),
@@ -158,6 +169,52 @@ describe('FiscaisService e EscalaService', () => {
     expect(prisma.registros[0].data.getTime()).toBe(
       inicioDoDia(new Date('2024-03-10T08:00:00Z')).getTime(),
     );
+  });
+
+  it('grava o vínculo colaboradorId no ponto do fiscal (ponte da Fase 4)', async () => {
+    const prisma = criarPrisma();
+    // Ficha canônica vinculada pela conta de acesso (mesmo usuarioId do fiscal).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (prisma as any).colaborador.findFirst = ({ where }: any) =>
+      Promise.resolve(where.usuarioId === 'u1' ? { id: 'colab-1' } : null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fiscais = new FiscaisService(prisma as any);
+    await fiscais.definirStatus(
+      'f1',
+      'DISPONIVEL',
+      new Date('2024-03-10T08:00:00Z'),
+    );
+    // O registro novo já carrega o vínculo com a ficha canônica.
+    expect(prisma.registros[0].colaboradorId).toBe('colab-1');
+  });
+
+  it('reescreverRegistrosDoDia propaga o colaboradorId às transições', async () => {
+    const prisma = criarPrisma();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fiscais = new FiscaisService(prisma as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const criados: any[] = [];
+    const cliente = {
+      registroPontoFiscal: {
+        deleteMany: () => Promise.resolve({ count: 0 }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        createMany: ({ data }: any) => {
+          criados.push(...data);
+          return Promise.resolve({ count: data.length });
+        },
+      },
+    };
+    await fiscais.reescreverRegistrosDoDia(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      cliente as any,
+      'f1',
+      new Date('2024-03-10T00:00:00Z'),
+      [{ status: 'DISPONIVEL', em: new Date('2024-03-10T11:00:00Z') }],
+      'colab-1',
+    );
+    expect(criados).toHaveLength(1);
+    expect(criados[0].colaboradorId).toBe('colab-1');
+    expect(criados[0].fiscalId).toBe('f1');
   });
 
   it('painel lista todos os fiscais; sem ponto hoje => FORA_EXPEDIENTE', async () => {

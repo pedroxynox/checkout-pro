@@ -286,6 +286,38 @@ export class FiscaisService {
   }
 
   /**
+   * Resolve a ficha canônica (Colaborador funcao FISCAL) de um fiscal, seguindo
+   * a MESMA regra de `mapearFiscalColaborador`: primeiro pela conta de acesso
+   * compartilhada (`usuarioId`, único) e, em fallback, pela matrícula (== login
+   * da conta). Devolve `null` quando não há ficha vinculada (comportamento
+   * atual preservado). Usado para gravar o vínculo `colaboradorId` no log de
+   * ponto (ponte da Fase 4 — ver spec `solidez-contratos-jornada`).
+   */
+  private async colaboradorIdDoFiscal(
+    fiscal: { usuarioId: string | null } | null,
+  ): Promise<string | null> {
+    if (!fiscal?.usuarioId) return null;
+    const porConta = await this.prisma.colaborador.findFirst({
+      where: { funcao: 'FISCAL', usuarioId: fiscal.usuarioId },
+      select: { id: true },
+    });
+    if (porConta) return porConta.id;
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: fiscal.usuarioId },
+      select: { login: true },
+    });
+    if (!usuario?.login) return null;
+    const porMatricula = await this.prisma.colaborador.findFirst({
+      where: {
+        funcao: 'FISCAL',
+        matricula: { equals: usuario.login.trim(), mode: 'insensitive' },
+      },
+      select: { id: true },
+    });
+    return porMatricula?.id ?? null;
+  }
+
+  /**
    * Define o status do fiscal: registra o ponto, propaga em tempo real e
    * notifica os gestores na transição relevante.
    */
@@ -317,6 +349,7 @@ export class FiscaisService {
     });
     const nome = fiscal?.nome ?? '';
     const pn = primeiroNome(nome);
+    const colaboradorId = await this.colaboradorIdDoFiscal(fiscal);
 
     const anterior = statusAtual(await this.registrosDoDia(fiscalId, em));
 
@@ -324,7 +357,8 @@ export class FiscaisService {
       // `em` é o instante real; o dia-calendário do registro é o de Brasília
       // (mesmo dia usado pela leitura da jornada e pelas batidas do Relógio
       // Ponto), para não gravar no dia UTC seguinte entre 21h e 23h59.
-      data: { fiscalId, status, data: diaCivilBrasilia(em), em },
+      // `colaboradorId` (aditivo) liga o registro à ficha canônica (Fase 4).
+      data: { fiscalId, colaboradorId, status, data: diaCivilBrasilia(em), em },
     });
 
     // Tempo real (painel atualiza sem recarregar).
@@ -369,6 +403,7 @@ export class FiscaisService {
     fiscalId: string,
     dia: Date,
     transicoes: { status: StatusFiscal; em: Date }[],
+    colaboradorId: string | null = null,
   ): Promise<void> {
     const data = inicioDoDia(dia);
     const ordenadas = [...transicoes].sort(
@@ -377,8 +412,12 @@ export class FiscaisService {
     await cliente.registroPontoFiscal.deleteMany({ where: { fiscalId, data } });
     if (ordenadas.length > 0) {
       await cliente.registroPontoFiscal.createMany({
+        // `colaboradorId` (aditivo, opcional) liga o registro à ficha canônica
+        // do Cadastro Unificado. É a ponte que permitirá, no futuro, aposentar o
+        // vínculo por `fiscalId` (ver spec `solidez-contratos-jornada`, Fase 4).
         data: ordenadas.map((t) => ({
           fiscalId,
+          colaboradorId,
           status: t.status,
           data,
           em: t.em,

@@ -27,11 +27,17 @@ segura, gradual e sem perda de histórico.
    do fiscal (`RegistroPontoFiscal`, `EscalaEntry`) **já possuem uma coluna
    `colaboradorId`** em paralelo ao id legado. A transição já foi preparada;
    falta completá-la e cortar a dependência antiga.
-5. **Achado de qualidade (bug do login):** o registro `Fiscal` só é
-   criado/vinculado quando o colaborador **já tem conta de acesso**
-   (`usuarioId`). Se a promoção de operador → fiscal não dispara essa
-   sincronização depois de criar a senha, o fiscal fica sem vínculo (login/
-   painel não aparecem). Corrigir isso entra no Passo 4.3.
+5. **Achado de qualidade (bug do login) — JÁ RESOLVIDO.** A promoção de operador
+   → fiscal exige a senha **antes** de alterar o cadastro (`colaboradores.service`
+   `editar()`), evitando o estado em que o colaborador virava fiscal sem login. O
+   registro `Fiscal` é criado/vinculado por `garantirFiscal()` a partir da conta.
+   Nada mais a fazer aqui.
+
+> **Progresso (Passo 4.2 — fase *expand*, concluída):** o `RegistroPontoFiscal`
+> agora grava o `colaboradorId` em **registros novos** (dual-write), tanto pela
+> ponte das batidas quanto pelo `definirStatus`. É aditivo (coluna anulável, já
+> existente) e **não** toca dados históricos nem muda nenhuma leitura. Desbloqueia
+> o backfill dos registros antigos (Passo 4.4).
 
 ## 3. Modelos legados e o seu estado
 
@@ -93,8 +99,8 @@ cuidado ao migrar:
 
 | Tabela | Campo legado | Ponte já existente | Situação |
 |---|---|---|---|
-| `RegistroPontoFiscal` | `fiscalId` → `Fiscal.id` | `colaboradorId` (nullable) | Dupla escrita já preparada. |
-| `EscalaEntry` | `funcionarioId` → `Fiscal.id` | `colaboradorId` (nullable) | Dupla escrita já preparada. |
+| `RegistroPontoFiscal` | `fiscalId` → `Fiscal.id` | `colaboradorId` (nullable) | **Dual-write ativo** em registros novos (Passo 4.2); históricos pendentes de backfill (4.4). |
+| `EscalaEntry` | `funcionarioId` → `Fiscal.id` | `colaboradorId` (nullable) | Preenchido pela sincronização de escala do cadastro; criações avulsas em `escala.service` ainda não preenchem. |
 
 **Consequência prática:** a migração **não** precisa "trocar ids no escuro". A
 coluna `colaboradorId` já convive com o id legado; o Passo 4.4 é **completar o

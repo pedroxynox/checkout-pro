@@ -24,7 +24,7 @@ os alertas automáticos e a **escala de trabalho** (geral e horário especial).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `fiscais.controller.ts` | Rotas de status/jornada/painel do fiscal | 134 |
-| `fiscais.service.ts` | Regras de aplicação: status, jornada, extras, painel | 1535 |
+| `fiscais.service.ts` | Regras de aplicação: status, jornada, extras, painel | 1574 |
 | `fiscais.domain.ts` | Regras puras: status atual, jornada, transições | 150 |
 | `fiscais.errors.ts` | Erros de domínio (mapeados para HTTP) | 47 |
 | `fiscais.eventos.ts` | Barramento de eventos de status (produtor↔gateway) | 38 |
@@ -68,8 +68,10 @@ os alertas automáticos e a **escala de trabalho** (geral e horário especial).
 #### `definirStatus(fiscalId, status, em?)`
 - **Efeitos:** valida data permitida; bloqueia se o fiscal está de folga
   (`FiscalDeFolgaError`) ou já marcou falta (`FaltaRegistradaError`); cria o
-  `RegistroPontoFiscal` (dia civil de Brasília); **publica o evento** em tempo
-  real; notifica os gestores na transição relevante; recalcula a jornada.
+  `RegistroPontoFiscal` (dia civil de Brasília) **já com o vínculo
+  `colaboradorId`** (ficha canônica, resolvido por conta/matrícula — ponte da
+  Fase 4); **publica o evento** em tempo real; notifica os gestores na transição
+  relevante; recalcula a jornada.
 
 #### `meuFiscal(usuarioId)` / `meuResumo(usuarioId)`
 `meuFiscal` resolve o `Fiscal` do usuário logado (`FiscalNaoEncontradoError`).
@@ -95,9 +97,11 @@ Consultas de apoio: quem está de folga hoje; histórico de 7 dias do próprio
 fiscal; ranking de pontualidade; previsão de extras; e o texto de contexto para
 integração com o Cluby.
 
-#### `reescreverRegistrosDoDia(cliente, ...)` / `publicarStatusDoDia(...)`
+#### `reescreverRegistrosDoDia(cliente, ..., colaboradorId?)` / `publicarStatusDoDia(...)`
 Ponte batidas → status: reescreve o log do dia dentro da transação das batidas
-(atômico) e propaga o status por WebSocket **após o commit**.
+(atômico) e propaga o status por WebSocket **após o commit**. Grava o
+`colaboradorId` recebido (vindo das próprias batidas) em cada registro do dia —
+a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 
 ### `EscalaService`
 - `cadastrarEscala(entry)` / `definirHorarioEspecial(funcionarioId, entry)` —
@@ -132,8 +136,9 @@ Ponte batidas → status: reescreve o log do dia dentro da transação das batid
 - Jornada esperada: Seg–Qui 7h, Sex–Sáb 8h, Dom 7h20 (o excedente é hora extra).
 
 ## 8. Dados que o módulo toca
-- **Escreve:** `RegistroPontoFiscal` (log de status), `EscalaEntry` (escala
-  geral/especial), `Ausencia` (falta do fiscal).
+- **Escreve:** `RegistroPontoFiscal` (log de status, agora com `colaboradorId`
+  em registros novos), `EscalaEntry` (escala geral/especial), `Ausencia` (falta
+  do fiscal).
 - **Lê:** `Fiscal`, `Usuario`, `Colaborador` (vínculo/nome), `EscalaEntry`,
   `Ausencia`, contratos e feriados (regras de jornada/extras).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
@@ -163,7 +168,7 @@ Ponte batidas → status: reescreve o log do dia dentro da transação das batid
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `fiscais.service.spec.ts` | Status, painel, jornada e fiscal histórico | 14 |
+| `fiscais.service.spec.ts` | Status, painel, jornada, fiscal histórico e vínculo `colaboradorId` no ponto (ponte Fase 4) | 16 |
 | `fiscais.properties.spec.ts` | Status atual, transição, jornada, escala (property-based) | 5 |
 | `fiscais.controller.spec.ts` | Rotas do próprio fiscal e log de jornada | 4 |
 | `fiscais.gateway.spec.ts` | Broadcast do painel via WebSocket (integração) | 3 |
@@ -176,7 +181,7 @@ Ponte batidas → status: reescreve o log do dia dentro da transação das batid
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `fiscais.service.ts` (1535 linhas) concentra status, painel, jornada,
+- 🔧 `fiscais.service.ts` (1574 linhas) concentra status, painel, jornada,
   extras, ranking e contexto — forte candidato a extrair sub-serviços.
 - ⚠️ **Coexistência de logs:** o status vem das batidas do Relógio de Ponto com
   fallback ao log legado (`RegistroPontoFiscal`); manter a ponte consistente é
@@ -184,5 +189,10 @@ Ponte batidas → status: reescreve o log do dia dentro da transação das batid
 - ⚠️ **Fuso de Brasília em toda parte:** cálculos e crons dependem do dia civil
   UTC-3; qualquer novo caminho precisa usar os helpers de `common/datas` para
   não gravar no dia errado.
-- 🔧 **Modelos em transição:** `Fiscal` convive com o Cadastro Unificado de
-  colaboradores — ver [ADR 0004](../02-arquitetura/decisoes/0004-cadastro-unificado-e-escala-opcao-a.md).
+- 🔧 **Modelos em transição (Fase 4):** `Fiscal` convive com o Cadastro
+  Unificado de colaboradores — ver
+  [ADR 0004](../02-arquitetura/decisoes/0004-cadastro-unificado-e-escala-opcao-a.md).
+  O `RegistroPontoFiscal` já grava o `colaboradorId` em registros **novos**
+  (dual-write / fase *expand*); os registros **históricos** ainda dependem do
+  `fiscalId` e serão preenchidos por backfill (Passo 4.4 do spec
+  `solidez-contratos-jornada`).
