@@ -12,6 +12,7 @@ import {
   classificarUrgencia,
   derivarResumoContrato,
   diffEmDias,
+  podeDecidirMarco,
   resumirCarteira,
 } from './contratos.domain';
 
@@ -24,7 +25,9 @@ import {
  *  - a partir do dia 91 → EFETIVADO automaticamente (por decurso);
  *  - reprovação explícita (histórica, via API) → ENCERRADO;
  *  - aprovação explícita no marco de 90 → EFETIVADO (não "por decurso");
- *  - nunca há alerta de decisão (marcos resolvem-se sozinhos).
+ *  - nunca há alerta de decisão (marcos resolvem-se sozinhos);
+ *  - o único alerta é o VENCIMENTO do marco de 90, nos 5 dias que o antecedem;
+ *  - condicionamento das decisões históricas (podeDecidirMarco).
  * Cada propriedade roda no mínimo 100 iterações, sem infraestrutura.
  */
 const NUM_RUNS = 100;
@@ -93,18 +96,14 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
     fc.assert(
       fc.property(decisoesArb, dataArb, (decisoes, hoje) => {
         const r = derivarResumoContrato({ dataAdmissao: null, decisoes }, hoje);
-        return (
-          r.estado === 'SEM_ADMISSAO' &&
-          r.proximoMarco === null &&
-          r.marcoEmAtraso === null
-        );
+        return r.estado === 'SEM_ADMISSAO' && r.proximoMarco === null;
       }),
       { numRuns: NUM_RUNS },
     );
   });
 
-  // Property 4: dentro dos 90 dias → EXPERIÊNCIA, sem atraso, apontando para o
-  // marco de 90 (usado só para o aviso de vencimento e o semáforo).
+  // Property 4: dentro dos 90 dias → EXPERIÊNCIA, apontando para o marco de 90
+  // (usado só para o aviso de vencimento e o semáforo).
   it('Property 4: 0..90 dias → EXPERIÊNCIA apontando para o marco de 90', () => {
     fc.assert(
       fc.property(
@@ -119,7 +118,6 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
           return (
             r.estado === 'EXPERIENCIA' &&
             r.proximoMarco === 'MARCO_90' &&
-            r.marcoEmAtraso === null &&
             r.efetivadoPorDecurso === false &&
             r.diasParaProximoMarco === DIAS_MARCO_90 - offset
           );
@@ -130,8 +128,8 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
   });
 
   // Property 5: a partir do dia 91 (mais de 90 dias) sem reprovação → EFETIVADO
-  // por decurso, sem marco em atraso.
-  it('Property 5: > 90 dias → EFETIVADO por decurso, sem atraso', () => {
+  // por decurso.
+  it('Property 5: > 90 dias → EFETIVADO por decurso', () => {
     fc.assert(
       fc.property(
         dataArb,
@@ -149,8 +147,7 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
           return (
             r.estado === 'EFETIVADO' &&
             r.efetivadoPorDecurso === true &&
-            r.proximoMarco === null &&
-            r.marcoEmAtraso === null
+            r.proximoMarco === null
           );
         },
       ),
@@ -170,7 +167,7 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
             { marco, resultado: 'REPROVADO' },
           ];
           const r = derivarResumoContrato({ dataAdmissao, decisoes }, hoje);
-          return r.estado === 'ENCERRADO' && r.marcoEmAtraso === null;
+          return r.estado === 'ENCERRADO';
         },
       ),
       { numRuns: NUM_RUNS },
@@ -190,18 +187,14 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
           { dataAdmissao: admissao, decisoes },
           hoje,
         );
-        return (
-          r.estado === 'EFETIVADO' &&
-          r.efetivadoPorDecurso === false &&
-          r.marcoEmAtraso === null
-        );
+        return r.estado === 'EFETIVADO' && r.efetivadoPorDecurso === false;
       }),
       { numRuns: NUM_RUNS },
     );
   });
 
-  // Property 8: nunca há "decisão em atraso" (ciclo automático); o único alerta
-  // possível é VENCIMENTO do marco de 90, nos 5 dias antes de completá-lo.
+  // Property 8: o único alerta possível é VENCIMENTO do marco de 90, nos 5 dias
+  // antes de completá-lo (nunca há "decisão em atraso": ciclo automático).
   it('Property 8: só há alerta de VENCIMENTO (marco de 90) nos 5 dias antes', () => {
     fc.assert(
       fc.property(
@@ -212,7 +205,6 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
           const r = derivarResumoContrato({ dataAdmissao, decisoes }, hoje);
           const a = avaliarAlerta(r);
           if (a === null) return true;
-          if (a.tipo === 'DECISAO_ATRASO') return false;
           return (
             a.tipo === 'VENCIMENTO' &&
             a.marco === 'MARCO_90' &&
@@ -226,7 +218,7 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
   });
 
   // Property 9: urgência coerente — INATIVO ⇔ sem admissão/encerrado; OK ⇔
-  // efetivado; ATENÇÃO ⇔ em experiência. Nunca CRÍTICO (não há atraso).
+  // efetivado; ATENÇÃO ⇔ em experiência fora da véspera; CRÍTICO ⇔ véspera.
   it('Property 9: classificarUrgencia é coerente com o estado', () => {
     fc.assert(
       fc.property(
@@ -255,8 +247,8 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
     );
   });
 
-  // Property 10: a carteira soma corretamente e nunca há decisão pendente.
-  it('Property 10: resumirCarteira soma os buckets e não tem pendências', () => {
+  // Property 10: a carteira soma corretamente (buckets == total).
+  it('Property 10: resumirCarteira soma os buckets', () => {
     fc.assert(
       fc.property(
         fc.array(
@@ -279,11 +271,88 @@ describe('Contratos de experiência — testes de propriedade (ciclo automático
             c.total === resumos.length &&
             c.emExperiencia + c.efetivados + c.encerrados + c.semAdmissao ===
               c.total &&
-            // Nunca há decisão pendente no ciclo automático.
-            c.decisaoPendente === 0 &&
             c.vencendoSemana >= 0 &&
             c.vencendoSemana <= c.emExperiencia
           );
+        },
+      ),
+      { numRuns: NUM_RUNS },
+    );
+  });
+
+  // Property 11: fronteira da efetivação automática. Exatamente aos 90 dias
+  // ainda é EXPERIÊNCIA (vence hoje: diasParaProximoMarco === 0); no dia 91
+  // (offset 91) já é EFETIVADO por decurso. A transição é atômica no dia 91.
+  it('Property 11: fronteira 90/91 — vence aos 90, efetiva no 91', () => {
+    fc.assert(
+      fc.property(dataArb, (admissao) => {
+        const no90 = derivarResumoContrato(
+          { dataAdmissao: admissao, decisoes: [] },
+          adicionarDias(admissao, DIAS_MARCO_90),
+        );
+        const no91 = derivarResumoContrato(
+          { dataAdmissao: admissao, decisoes: [] },
+          adicionarDias(admissao, DIAS_MARCO_90 + 1),
+        );
+        return (
+          no90.estado === 'EXPERIENCIA' &&
+          no90.diasParaProximoMarco === 0 &&
+          no91.estado === 'EFETIVADO' &&
+          no91.efetivadoPorDecurso === true
+        );
+      }),
+      { numRuns: NUM_RUNS },
+    );
+  });
+
+  // Property 12: janela do aviso. Dentro da experiência, existe alerta de
+  // VENCIMENTO se e somente se faltam entre 0 e ANTECEDENCIA dias para os 90.
+  // Fora dessa janela (ainda em experiência) não há alerta nenhum.
+  it('Property 12: aviso existe exatamente na janela dos últimos 5 dias', () => {
+    fc.assert(
+      fc.property(
+        dataArb,
+        fc.integer({ min: 0, max: DIAS_MARCO_90 }),
+        (admissao, offset) => {
+          const hoje = adicionarDias(admissao, offset);
+          const r = derivarResumoContrato(
+            { dataAdmissao: admissao, decisoes: [] },
+            hoje,
+          );
+          const a = avaliarAlerta(r);
+          const faltam = DIAS_MARCO_90 - offset;
+          const naJanela = faltam >= 0 && faltam <= ANTECEDENCIA_ALERTA_DIAS;
+          if (naJanela) {
+            return (
+              a !== null &&
+              a.tipo === 'VENCIMENTO' &&
+              a.marco === 'MARCO_90' &&
+              a.dias === faltam
+            );
+          }
+          return a === null;
+        },
+      ),
+      { numRuns: NUM_RUNS },
+    );
+  });
+
+  // Property 13: condicionamento das decisões históricas (podeDecidirMarco).
+  //  - após qualquer REPROVAÇÃO nenhum marco pode ser decidido;
+  //  - o marco de 90 só é decidível quando o de 45 foi APROVADO;
+  //  - o marco de 45 é sempre decidível enquanto não houve reprovação.
+  it('Property 13: podeDecidirMarco respeita a ordem e a reprovação', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom<MarcoContrato>('MARCO_45', 'MARCO_90'),
+        decisoesArb,
+        (marco, decisoes) => {
+          const d45 = decisoes.find((d) => d.marco === 'MARCO_45')?.resultado;
+          const d90 = decisoes.find((d) => d.marco === 'MARCO_90')?.resultado;
+          const pode = podeDecidirMarco(marco, decisoes);
+          if (d45 === 'REPROVADO' || d90 === 'REPROVADO') return pode === false;
+          if (marco === 'MARCO_90') return pode === (d45 === 'APROVADO');
+          return pode === true;
         },
       ),
       { numRuns: NUM_RUNS },

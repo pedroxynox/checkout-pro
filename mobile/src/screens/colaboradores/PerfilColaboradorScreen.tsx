@@ -648,13 +648,8 @@ export function PerfilColaboradorScreen({
                     : '—'}
                 </Text>
               </View>
-              {p.contrato.marcoEmAtraso ? (
-                <Text style={[styles.semDados, { color: cores.vermelho }]}>
-                  Decisão do marco de{' '}
-                  {ROTULO_MARCO_CONTRATO[p.contrato.marcoEmAtraso]} em atraso.
-                </Text>
-              ) : p.contrato.proximoMarco &&
-                p.contrato.diasParaProximoMarco !== null ? (
+              {p.contrato.proximoMarco &&
+              p.contrato.diasParaProximoMarco !== null ? (
                 <Text style={styles.semDados}>
                   Próximo marco (
                   {ROTULO_MARCO_CONTRATO[p.contrato.proximoMarco]}) em{' '}

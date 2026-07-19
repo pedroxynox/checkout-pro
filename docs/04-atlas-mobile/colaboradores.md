@@ -17,7 +17,7 @@ registrar **sanções/advertências** e **feedforward** (acompanhamento).
 |---|---|---|
 | `ColaboradoresScreen.tsx` | Lista/hub de colaboradores | 335 |
 | `GestaoColaboradoresScreen.tsx` | Formulário de cadastro/edição | 738 |
-| `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 912 |
+| `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 907 |
 | `SancoesScreen.tsx` | Lista de sanções/advertências | 588 |
 | `RegistrarSancaoModal.tsx` | Modal para registrar sanção | 460 |
 | `FeedforwardSecao.tsx` | Seção de feedforward (acompanhamento) | 833 |
@@ -57,6 +57,10 @@ Módulo do backend relacionado: [`colaboradores`](../03-atlas-backend/colaborado
   `solidez-contratos-jornada`.
 - Domingo: o grupo só aparece se o contrato trabalha domingo (o backend também
   normaliza por segurança).
+- **Seção "Tempo de casa" (contrato de experiência):** mostra os marcos de 45 e
+  90 dias, o próximo marco e, quando aplicável, "Efetivado por decurso". Na
+  Fase 3 removeu-se o aviso legado de "decisão em atraso" — o ciclo é automático
+  e nunca deixa marcos pendentes.
 
 ## 7. Lógica pura / utilidades
 - Conversões e validações de horário/data usadas pelo formulário.

@@ -12,8 +12,8 @@ avisa os gestores quando um contrato está prestes a vencer.
 - **Faz:** define/atualiza a data de admissão; registra decisões de marco
   (aprovar/reprovar); **deriva** o estado e a urgência (nunca grava estado
   redundante); monta os cards, o resumo da carteira e a seção "Tempo de casa"
-  do perfil; avalia e envia (cron diário) os alertas de vencimento e de decisão
-  em atraso.
+  do perfil; avalia e envia (cron diário) o aviso de vencimento (véspera da
+  efetivação automática).
 - **Não faz** (fica em outro módulo): cadastro do colaborador em si
   (fica em [`colaboradores`](colaboradores.md)); o envio técnico das
   notificações (fica em `notificacoes`); o encerramento operacional do
@@ -24,11 +24,11 @@ avisa os gestores quando um contrato está prestes a vencer.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `contratos.controller.ts` | Rotas HTTP (listar, resumo, detalhe, admissão, decisão) | 99 |
-| `contratos.service.ts` | Regras de aplicação: Prisma + delega a decisão ao domínio | 407 |
-| `contratos.domain.ts` | Regras puras: deriva estado, urgência, alerta e carteira | 342 |
+| `contratos.service.ts` | Regras de aplicação: Prisma + delega a decisão ao domínio | 402 |
+| `contratos.domain.ts` | Regras puras: deriva estado, urgência, alerta e carteira | 326 |
 | `contratos.errors.ts` | Erros de domínio (mapeados para HTTP) | 60 |
 | `contratos.module.ts` | Ligações (DI) do módulo | 22 |
-| `contratos-alertas.service.ts` | Cron diário (08:00 BRT) de alertas aos gestores | 105 |
+| `contratos-alertas.service.ts` | Cron diário (08:00 BRT) de alertas aos gestores | 95 |
 | `dto/contratos.dto.ts` | Validação de entrada das rotas | 55 |
 
 ## 4. Endpoints (rotas HTTP)
@@ -82,8 +82,8 @@ Avalia os alertas do dia e notifica os gestores (`CONTRATOS_VISUALIZAR`), com um
 ## 6. Lógica de domínio (funções puras)
 - `derivarResumoContrato(entrada, hoje)` → função central: a partir de admissão
   + decisões, deriva estado, etiqueta, marcos, próximo marco, dias e flags.
-- `avaliarAlerta(resumo)` → `VENCIMENTO` (≤ 5 dias) ou `DECISAO_ATRASO` (com
-  prioridade), ou `null`.
+- `avaliarAlerta(resumo)` → `VENCIMENTO` do marco de 90 (faltam ≤ 5 dias), ou
+  `null`. No ciclo automático não há mais alerta de decisão.
 - `classificarUrgencia(resumo)` → semáforo `INATIVO`/`OK`/`ATENCAO`/`CRITICO`.
 - `podeDecidirMarco(marco, decisoes)` → o marco de 90 só após aprovar o de 45;
   nada após uma reprovação.
@@ -118,7 +118,8 @@ Avalia os alertas do dia e notifica os gestores (`CONTRATOS_VISUALIZAR`), com um
 2. **Ciclo automático**: o marco de 45 é aprovado por decurso; a efetivação
    acontece sozinha no dia 91 — sem decisão manual obrigatória.
 3. **Aviso de vencimento**: nos 5 dias antes de completar 90 dias, um alerta
-   por dia; "decisão em atraso" tem prioridade sobre o vencimento.
+   por dia, avisando que a efetivação será automática (é o único alerta do
+   ciclo — não há mais "decisão em atraso").
 4. **Reprovação explícita encerra** o contrato (mantida via API para casos
    históricos).
 5. **Decisão condicionada**: o marco de 90 só após aprovar o de 45; nada após
@@ -130,7 +131,7 @@ Avalia os alertas do dia e notifica os gestores (`CONTRATOS_VISUALIZAR`), com um
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `contratos.service.spec.ts` | `definirAdmissao`, `registrarDecisao` e derivação dos cards | 10 |
-| `contratos.properties.spec.ts` | Propriedades do ciclo automático (property-based) | 10 |
+| `contratos.properties.spec.ts` | Propriedades do ciclo automático (property-based): inclui fronteira 90/91, janela do aviso de 5 dias e condicionamento das decisões | 13 |
 | `contratos-alertas.service.spec.ts` | Cron de alertas e montagem das mensagens | 5 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
@@ -141,5 +142,6 @@ Avalia os alertas do dia e notifica os gestores (`CONTRATOS_VISUALIZAR`), com um
   [`tipos-contrato`](tipos-contrato.md). Não confundir.
 - 🔧 `resumo()` recalcula todos os cards para depois reagregar; poderia reusar os
   `ResumoContrato` já derivados em vez de reconstruí-los.
-- 🔧 O campo `marcoEmAtraso` continua no modelo, mas o ciclo hoje é automático
-  (nunca gera atraso em EXPERIÊNCIA); mantido para compatibilidade dos alertas.
+- ✅ O campo legado `marcoEmAtraso` (e o alerta `DECISAO_ATRASO` e a contagem
+  `decisaoPendente`) foram **removidos** na Fase 3: o ciclo é automático e nunca
+  gera atraso, então eram código morto. O único alerta é o de vencimento.

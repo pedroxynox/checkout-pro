@@ -11,8 +11,8 @@ const FUSO = 'America/Sao_Paulo';
  * Alertas inteligentes dos Contratos de experiência.
  *
  * Um cron diário (08:00 BRT) avalia todos os operadores com admissão definida e
- * avisa os gestores quando um marco (45/90 dias) está a <= 5 dias de vencer
- * ("faltam X dias") ou já venceu sem decisão ("decisão em atraso"). Como roda
+ * avisa os gestores quando o marco de 90 dias está a <= 5 dias de vencer
+ * ("faltam X dias"), véspera da efetivação automática. Como roda
  * **uma vez por dia**, o contador 5→0 emerge naturalmente; um `Set` em memória
  * (resetado à meia-noite) é a rede de segurança contra reenvio caso o processo
  * reinicie e o cron rode de novo no mesmo dia — mesmo padrão de
@@ -74,22 +74,12 @@ function rotuloMarco(marco: AlertaContrato['marco']): string {
   return marco === 'MARCO_45' ? '45 dias' : '90 dias';
 }
 
-/** Monta título + mensagem do alerta (VENCIMENTO ou DECISAO_ATRASO). */
+/** Monta título + mensagem do alerta de VENCIMENTO (efetivação automática). */
 function montarMensagem(
   nome: string,
   alerta: AlertaContrato,
 ): { titulo: string; mensagem: string } {
   const marco = rotuloMarco(alerta.marco);
-  if (alerta.tipo === 'DECISAO_ATRASO') {
-    const atraso =
-      alerta.dias <= 0
-        ? 'vence hoje'
-        : `venceu há ${alerta.dias} dia${alerta.dias === 1 ? '' : 's'}`;
-    return {
-      titulo: '⚠️ Decisão de contrato em atraso',
-      mensagem: `O contrato de experiência de ${nome} ${atraso} no marco de ${marco} sem decisão. Aprove ou reprove.`,
-    };
-  }
   const prazo =
     alerta.dias === 0
       ? 'hoje'

@@ -44,7 +44,6 @@ export interface ContratoCard {
   proximoMarco: MarcoContrato | null;
   dataProximoMarco: string | null;
   diasParaProximoMarco: number | null;
-  marcoEmAtraso: MarcoContrato | null;
   efetivadoPorDecurso: boolean;
   decisao45: ResultadoDecisao | null;
   decisao90: ResultadoDecisao | null;
@@ -62,7 +61,6 @@ export interface ResumoContratoColaborador {
   proximoMarco: MarcoContrato | null;
   dataProximoMarco: string | null;
   diasParaProximoMarco: number | null;
-  marcoEmAtraso: MarcoContrato | null;
   efetivadoPorDecurso: boolean;
   decisao45: ResultadoDecisao | null;
   decisao90: ResultadoDecisao | null;
@@ -178,7 +176,6 @@ export class ContratosService {
         ? new Date(c.dataProximoMarco)
         : null,
       diasParaProximoMarco: c.diasParaProximoMarco,
-      marcoEmAtraso: c.marcoEmAtraso,
       efetivadoPorDecurso: c.efetivadoPorDecurso,
       decisao45: c.decisao45,
       decisao90: c.decisao90,
@@ -293,7 +290,6 @@ export class ContratosService {
       proximoMarco: resumo.proximoMarco,
       dataProximoMarco: iso(resumo.dataProximoMarco),
       diasParaProximoMarco: resumo.diasParaProximoMarco,
-      marcoEmAtraso: resumo.marcoEmAtraso,
       efetivadoPorDecurso: resumo.efetivadoPorDecurso,
       decisao45: resumo.decisao45,
       decisao90: resumo.decisao90,
@@ -372,7 +368,6 @@ export class ContratosService {
       proximoMarco: resumo.proximoMarco,
       dataProximoMarco: iso(resumo.dataProximoMarco),
       diasParaProximoMarco: resumo.diasParaProximoMarco,
-      marcoEmAtraso: resumo.marcoEmAtraso,
       efetivadoPorDecurso: resumo.efetivadoPorDecurso,
       decisao45: resumo.decisao45,
       decisao90: resumo.decisao90,

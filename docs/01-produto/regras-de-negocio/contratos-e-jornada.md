@@ -41,8 +41,9 @@ da data de admissão e das decisões registradas. Os estados possíveis:
 ### 1.3 Avisos de vencimento
 
 5. Nos **5 dias** antes de completar 90 dias, o sistema envia **um alerta por
-   dia** aos gestores; um alerta de "decisão em atraso" tem **prioridade** sobre o
-   de vencimento.
+   dia** aos gestores, avisando que a **efetivação será automática** — se
+   pretenderem encerrar, devem fazê-lo antes. Este é o **único** alerta do ciclo
+   (não existe mais "decisão em atraso", pois nada fica pendente).
 6. A carteira tem um **semáforo de urgência** (`INATIVO`/`OK`/`ATENÇÃO`/`CRÍTICO`)
    para priorizar os cards.
 
