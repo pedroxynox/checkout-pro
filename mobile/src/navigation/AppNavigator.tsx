@@ -23,7 +23,7 @@ import { RequisicoesScreen } from '../screens/insumos/RequisicoesScreen';
 import { JornadaFiscaisScreen } from '../screens/fiscais/JornadaFiscaisScreen';
 import { RegistroPontoScreen } from '../screens/ponto/RegistroPontoScreen';
 import { CentralJornadaScreen } from '../screens/ponto/CentralJornadaScreen';
-import { MarcacoesDoDiaScreen } from '../screens/ponto/MarcacoesDoDiaScreen';
+import { DetalheJornadaScreen } from '../screens/ponto/DetalheJornadaScreen';
 import { InconsistenciasScreen } from '../screens/ponto/InconsistenciasScreen';
 import { ExportarCicloScreen } from '../screens/ponto/ExportarCicloScreen';
 import { FeriadosScreen } from '../screens/ponto/FeriadosScreen';
@@ -167,9 +167,9 @@ export function AppNavigator(): React.ReactElement {
       )}
       {podeAcessar('CENTRAL_JORNADA') && (
         <Stack.Screen
-          name="MarcacoesDoDia"
-          component={MarcacoesDoDiaScreen}
-          options={{ title: 'Marcações do dia' }}
+          name="DetalheJornada"
+          component={DetalheJornadaScreen}
+          options={{ title: 'Detalhe da jornada' }}
         />
       )}
       {podeAcessar('CENTRAL_JORNADA') && (

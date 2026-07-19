@@ -5,6 +5,7 @@ import {
   EscalaEfetiva,
   FiltroIncidencias,
   IncidenciaEscala,
+  ItemEquipeDiaFiscal,
   ItemEscalaConsolidada,
   ItemFolgaFiscal,
   ItemHorasExtrasFiscal,
@@ -48,6 +49,15 @@ export const fiscaisService = {
   /** Log de jornada do dia (tempos por fiscal) — apenas gestores. */
   jornada(data?: string): Promise<ItemJornadaFiscal[]> {
     return apiClient.get<ItemJornadaFiscal[]>('/fiscais/jornada', { data });
+  },
+
+  /**
+   * "Jornada de Equipe" do dia: TODOS os escalados (inclusive quem ainda não
+   * bateu ponto, em branco), com jornada, entrada prevista, falta e alerta de
+   * atraso — apenas gestores.
+   */
+  equipeDia(data?: string): Promise<ItemEquipeDiaFiscal[]> {
+    return apiClient.get<ItemEquipeDiaFiscal[]>('/fiscais/equipe-dia', { data });
   },
 
   /** Acumulado de horas extras do mês por fiscal — apenas gestores. */

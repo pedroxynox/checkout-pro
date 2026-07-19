@@ -161,6 +161,7 @@ export class OperadoresService {
     pessoaId: string,
     data: Date,
     autor: AutorAcao = {},
+    opcoes: { automatica?: boolean } = {},
   ): Promise<Ausencia> {
     // Rejeita datas anteriores à Data_Inicial_Sistema (Req 6.1–6.3).
     await this.validacaoData?.exigirDataPermitida(data);
@@ -175,11 +176,14 @@ export class OperadoresService {
     }
     const ausencia = await this.prisma.ausencia.create({
       // Registra quem marcou a falta (auditoria); nasce PENDENTE de análise.
+      // `automatica` distingue a falta lançada pela detecção do Relógio Ponto
+      // (removível ao bater ponto) da lançada manualmente pelo gestor.
       data: {
         pessoaId,
         data,
         registradaPorId: autor.id ?? null,
         registradaPorNome: autor.nome ?? null,
+        automatica: opcoes.automatica ?? false,
       },
     });
     // Aviso imediato a TODOS: alguém foi marcado como ausente (Req: alerta de
@@ -445,11 +449,27 @@ export class OperadoresService {
       orderBy: { data: 'desc' },
     });
     const ids = [...new Set(ausencias.map((a) => a.pessoaId))];
-    const colaboradores = await this.prisma.colaborador.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, nome: true, matricula: true },
-    });
-    const nome = new Map(colaboradores.map((c) => [c.id, c]));
+    // A falta pode ser de um operador (pessoaId = Colaborador.id) OU de um
+    // fiscal (pessoaId = Fiscal.id). Resolvemos o nome nas DUAS tabelas para não
+    // exibir o id cru quando a falta é de um fiscal (ex.: falta automática).
+    const [colaboradores, fiscais] = await Promise.all([
+      this.prisma.colaborador.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, nome: true, matricula: true },
+      }),
+      this.prisma.fiscal.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, nome: true },
+      }),
+    ]);
+    const nome = new Map<string, { nome: string; matricula: string | null }>();
+    for (const c of colaboradores) {
+      nome.set(c.id, { nome: c.nome, matricula: c.matricula });
+    }
+    // Fiscais só entram quando o id ainda não foi resolvido como colaborador.
+    for (const f of fiscais) {
+      if (!nome.has(f.id)) nome.set(f.id, { nome: f.nome, matricula: null });
+    }
     const linhas: AusenciaDetalhada[] = ausencias.map((a) => ({
       id: a.id,
       pessoaId: a.pessoaId,

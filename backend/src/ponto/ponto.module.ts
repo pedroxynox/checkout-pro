@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { FeriadosModule } from '../feriados/feriados.module';
 import { FiscaisModule } from '../fiscais/fiscais.module';
+import { OperadoresModule } from '../operadores/operadores.module';
+import { IncidenciasModule } from '../incidencias/incidencias.module';
 import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
 import { CicloFolhaModule } from '../ciclo-folha/ciclo-folha.module';
@@ -9,6 +11,7 @@ import { TiposContratoModule } from '../tipos-contrato/tipos-contrato.module';
 import { PontoController } from './ponto.controller';
 import { PontoService } from './ponto.service';
 import { PontoAlertasService } from './ponto-alertas.service';
+import { PontoDeteccaoAutomaticaService } from './ponto-deteccao-automatica.service';
 import { PontoOcrService } from './ponto-ocr.service';
 
 /**
@@ -23,13 +26,20 @@ import { PontoOcrService } from './ponto-ocr.service';
     NotificacoesModule,
     FeriadosModule,
     FiscaisModule,
+    OperadoresModule,
+    IncidenciasModule,
     DataInicialModule,
     EscalaDomingoModule,
     CicloFolhaModule,
     TiposContratoModule,
   ],
   controllers: [PontoController],
-  providers: [PontoService, PontoAlertasService, PontoOcrService],
+  providers: [
+    PontoService,
+    PontoAlertasService,
+    PontoDeteccaoAutomaticaService,
+    PontoOcrService,
+  ],
   exports: [PontoService],
 })
 export class PontoModule {}

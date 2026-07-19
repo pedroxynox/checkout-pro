@@ -21,7 +21,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { ApiError } from '../../api/client';
 import { escalaService, fiscaisService, operadoresService } from '../../api/services';
 import {
   AnaliticaFaltas,
@@ -57,7 +56,6 @@ import { RootStackParamList } from '../../navigation/types';
 import { AusenciasAPrazoCard } from './AusenciasAPrazo';
 import { JustificativasLista } from './JustificativasScreen';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
-import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, hojeISO } from '../../utils/formato';
 
 const NOMES_DIA_LONGO = [
@@ -182,23 +180,20 @@ function contarTurnos(cols: ColaboradorDia[]): {
 
 /**
  * Linha de um colaborador no roster do dia. Tocar na linha abre o **perfil**.
- * A falta só é marcada/removida pelo botão **"Falta"**; o botão **"Sem retorno"**
- * (mesmo tamanho, discreto) registra o não retorno do intervalo.
+ *
+ * A marcação de falta e de "não retorno" NÃO é mais feita aqui: o sistema
+ * detecta ambas automaticamente pelo Relógio Ponto (falta = sem ponto até 2h
+ * após a entrada; não retorno = intervalo acima de 3h). Esta linha apenas
+ * EXIBE o estado (Trabalha / Falta / No retorno / Folga) e o status ao vivo.
  */
 function ColaboradorRow({
   c,
   onAbrirPerfil,
-  onFalta,
-  onSemRetorno,
-  podeAcoes,
   semRetornoAtivo,
   statusAoVivo,
 }: {
   c: ColaboradorDia;
   onAbrirPerfil: (c: ColaboradorDia) => void;
-  onFalta: (c: ColaboradorDia) => void;
-  onSemRetorno: (c: ColaboradorDia) => void;
-  podeAcoes: boolean;
   semRetornoAtivo: boolean;
   /**
    * Status AO VIVO do fiscal (Disponível/Intervalo/Fora), vindo das batidas do
@@ -253,70 +248,8 @@ function ColaboradorRow({
           </View>
         ) : null}
       </View>
-      <View style={styles.acoesDireita}>
-        {folga || !podeAcoes ? (
-          <View style={[styles.chip, { backgroundColor: cor.fundo }]}>
-            <Text style={[styles.chipTexto, { color: cor.texto }]}>{rotulo}</Text>
-          </View>
-        ) : (
-          <>
-            {!ehFalta ? (
-              <TouchableOpacity
-                onPress={() => onSemRetorno(c)}
-                style={[
-                  styles.btnAcao,
-                  semRet ? styles.btnSemRetornoAtiva : styles.btnSemRetorno,
-                ]}
-                hitSlop={6}
-                accessibilityLabel={
-                  semRet
-                    ? `Remover não retorno de ${c.nome}`
-                    : `Marcar não retorno do intervalo de ${c.nome}`
-                }
-              >
-                <Ionicons
-                  name={semRet ? 'time' : 'time-outline'}
-                  size={13}
-                  color={semRet ? cores.textoInverso : cores.primaria}
-                />
-                <Text
-                  style={[
-                    styles.btnAcaoTexto,
-                    { color: semRet ? cores.textoInverso : cores.primaria },
-                  ]}
-                >
-                  {semRet ? 'No retorno' : 'Sem retorno'}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-            {/* Ao marcar "no retorno", esconde "Falta" (e vice-versa) — como já
-                acontece com a falta, que esconde o "Sem retorno". */}
-            {!semRet ? (
-              <TouchableOpacity
-                onPress={() => onFalta(c)}
-                style={[styles.btnAcao, ehFalta ? styles.btnFaltaAtiva : styles.btnFalta]}
-                hitSlop={6}
-                accessibilityLabel={
-                  ehFalta ? `Remover falta de ${c.nome}` : `Marcar falta de ${c.nome}`
-                }
-              >
-                <Ionicons
-                  name={ehFalta ? 'close-circle' : 'close-circle-outline'}
-                  size={13}
-                  color={ehFalta ? cores.textoInverso : cores.vermelho}
-                />
-                <Text
-                  style={[
-                    styles.btnAcaoTexto,
-                    { color: ehFalta ? cores.textoInverso : cores.vermelho },
-                  ]}
-                >
-                  Falta
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-          </>
-        )}
+      <View style={[styles.chip, { backgroundColor: cor.fundo }]}>
+        <Text style={[styles.chipTexto, { color: cor.texto }]}>{rotulo}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -862,35 +795,6 @@ function PainelAnaliticaMes({
   );
 }
 
-/**
- * Aplica localmente (atualização otimista) a mudança de status de um
- * colaborador no roster do dia e recalcula os contadores (trabalham/faltas/
- * folgas), para a tela refletir a ação na hora — sem esperar o servidor.
- */
-function aplicarStatusLocal(
-  d: DiaOperadores | null,
-  id: string,
-  novo: ColaboradorDia['status'],
-): DiaOperadores | null {
-  if (!d) return d;
-  const colaboradores = d.colaboradores.map((x) =>
-    x.id === id
-      ? {
-          ...x,
-          status: novo,
-          ausenciaId: novo === 'FALTA' ? (x.ausenciaId ?? '__otimista') : null,
-        }
-      : x,
-  );
-  return {
-    ...d,
-    colaboradores,
-    trabalhando: colaboradores.filter((c) => c.status === 'TRABALHA').length,
-    faltas: colaboradores.filter((c) => c.status === 'FALTA').length,
-    folgas: colaboradores.filter((c) => c.status === 'FOLGA').length,
-  };
-}
-
 export function OperadoresScreen(): React.ReactElement {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -1024,9 +928,7 @@ export function OperadoresScreen(): React.ReactElement {
     if (!ausenciaPorColab.has(a.pessoaId)) ausenciaPorColab.set(a.pessoaId, a.id);
   }
 
-  const [ocupado, setOcupado] = useState(false);
-  // Sinal para recarregar a lista de Justificativas em tempo real (ao marcar
-  // uma falta / não-retorno, o item aparece logo abaixo para justificar).
+  // Sinal para recarregar a lista de Justificativas em tempo real.
   const [versaoJustificativas, setVersaoJustificativas] = useState(0);
 
   const recarregarTudo = () => {
@@ -1040,145 +942,12 @@ export function OperadoresScreen(): React.ReactElement {
     setVersaoJustificativas((v) => v + 1);
   };
 
-  /** Toca na linha → abre o perfil do colaborador (não marca falta). */
+  /** Toca na linha → abre o perfil do colaborador. */
   const abrirPerfil = (c: ColaboradorDia) => {
     navigation.navigate('PerfilColaborador', { colaboradorId: c.id });
   };
 
-  /** Alterna a falta do dia (marcar quando trabalha; remover quando já é falta). */
-  const alternarFalta = async (c: ColaboradorDia) => {
-    if (c.status === 'FOLGA' || ocupado) return;
-
-    if (c.status === 'FALTA' && c.ausenciaId) {
-      // Ausência a prazo (período do gestor): fiscal não pode desmarcar.
-      if (c.aPrazo && !podeProgramarFuturo) {
-        notificar(
-          'Ausência a prazo',
-          'Esta falta faz parte de uma ausência a prazo e só pode ser removida por um gerente ou supervisor.',
-        );
-        return;
-      }
-      const ok = await confirmar(
-        'Remover falta',
-        `Remover a falta de ${c.nome} em ${formatarData(diaSel)}?`,
-        'Remover',
-      );
-      if (!ok) return;
-      setOcupado(true);
-      try {
-        await operadoresService.removerAusencia(c.ausenciaId);
-        dia.definir((d) => aplicarStatusLocal(d, c.id, 'TRABALHA'));
-        recarregarTudo();
-      } catch (e) {
-        notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao remover.');
-      } finally {
-        setOcupado(false);
-      }
-      return;
-    }
-
-    // TRABALHA -> marcar falta (hoje/passado) ou programar ausência (futuro)
-    const futura = diaSel > hojeISO();
-    if (futura && !podeProgramarFuturo) {
-      notificar(
-        'Sem permissão',
-        'Apenas gerente ou supervisor pode programar uma ausência futura.',
-      );
-      return;
-    }
-    const ok = await confirmar(
-      futura ? 'Programar ausência' : 'Marcar falta',
-      futura
-        ? `Programar ausência de ${c.nome} em ${formatarData(diaSel)}? (ausência futura)`
-        : `Marcar falta de ${c.nome} em ${formatarData(diaSel)}?`,
-      futura ? 'Programar' : 'Marcar',
-    );
-    if (!ok) return;
-    setOcupado(true);
-    try {
-      await operadoresService.registrarAusencia(c.id, diaSel);
-      // Fiscais não estão no roster de operadores: a atualização otimista e o
-      // aviso de cobertura só valem para operadores. Para fiscais, o recarregar
-      // reflete a falta e mostramos um aviso simples.
-      const noRoster = !!dados?.colaboradores.some((x) => x.id === c.id);
-      if (noRoster) dia.definir((d) => aplicarStatusLocal(d, c.id, 'FALTA'));
-      recarregarTudo();
-      const restante = noRoster && dados ? dados.trabalhando - 1 : null;
-      if (restante != null) {
-        const abaixo = restante < COBERTURA_MINIMA;
-        notificar(
-          futura ? 'Ausência programada' : 'Falta marcada',
-          `${c.nome}. Ficam ${restante} operadores no caixa nesse dia${
-            abaixo ? ` — abaixo do mínimo (${COBERTURA_MINIMA})!` : '.'
-          }`,
-        );
-      } else {
-        notificar(futura ? 'Ausência programada' : 'Falta marcada', `${c.nome}.`);
-      }
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao marcar falta.');
-    } finally {
-      setOcupado(false);
-    }
-  };
-
-  /**
-   * Alterna o "não retorno do intervalo" do operador no dia: marca (fica azul,
-   * "No retorno") quando não há; remove quando já está marcado.
-   */
-  const alternarSemRetorno = async (c: ColaboradorDia) => {
-    if (ocupado) return;
-    const incidenciaId = semRetornoPorColab.get(c.id);
-
-    // Já marcado → remover.
-    if (incidenciaId) {
-      const ok = await confirmar(
-        'Remover não retorno',
-        `Remover o "não retorno do intervalo" de ${c.nome} em ${formatarData(diaSel)}?`,
-        'Remover',
-      );
-      if (!ok) return;
-      setOcupado(true);
-      try {
-        await escalaService.removerIncidencia(incidenciaId);
-        naoRetornosDia.definir((lista) =>
-          (lista ?? []).filter((i) => i.id !== incidenciaId),
-        );
-        recarregarTudo();
-      } catch (e) {
-        notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao remover.');
-      } finally {
-        setOcupado(false);
-      }
-      return;
-    }
-
-    // Não marcado → registrar.
-    const ok = await confirmar(
-      'Marcar não retorno',
-      `Registrar "não retorno do intervalo" de ${c.nome} em ${formatarData(diaSel)}?`,
-      'Marcar',
-    );
-    if (!ok) return;
-    setOcupado(true);
-    try {
-      const inc = await escalaService.registrarIncidencia({
-        colaboradorId: c.id,
-        tipo: 'NAO_RETORNO_INTERVALO',
-        data: diaSel,
-      });
-      // Atualização otimista (reflete na hora); o resto recarrega.
-      naoRetornosDia.definir((lista) => [...(lista ?? []), inc]);
-      recarregarTudo();
-      notificar('Registrado', `"Não retorno" registrado para ${c.nome}.`);
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar.');
-    } finally {
-      setOcupado(false);
-    }
-  };
-
-  const podeSemRetorno = podeAcessar('OPERADORES_AUSENCIAS');
+  const podeGerirAusencias = podeAcessar('OPERADORES_AUSENCIAS');
   const ehHoje = diaSel === hojeISO();
   const coberturaBaixa = dados ? dados.trabalhando < COBERTURA_MINIMA : false;
 
@@ -1327,9 +1096,6 @@ export function OperadoresScreen(): React.ReactElement {
                 key={f.funcionarioId}
                 c={cd}
                 onAbrirPerfil={abrirPerfil}
-                onFalta={alternarFalta}
-                onSemRetorno={alternarSemRetorno}
-                podeAcoes={podeSemRetorno}
                 semRetornoAtivo={semRetornoIds.has(cd.id)}
                 statusAoVivo={ehHoje ? (statusFiscais[f.funcionarioId] ?? null) : null}
               />
@@ -1417,8 +1183,9 @@ export function OperadoresScreen(): React.ReactElement {
             ) : null}
             <Text style={styles.dica}>
               Ordenados por hora de entrada · folgas ao fim. Toque no operador
-              para ver o perfil; use "Falta" e "Sem retorno" para marcar/remover
-              (quem não retorna fica azul e sai do caixa).
+              para ver o perfil. Faltas e não-retornos são detectados
+              automaticamente pelo ponto (falta sem registro fica vermelha; quem
+              não retorna do intervalo fica azul e sai do caixa).
             </Text>
           </Cartao>
 
@@ -1439,9 +1206,6 @@ export function OperadoresScreen(): React.ReactElement {
                     key={c.id}
                     c={c}
                     onAbrirPerfil={abrirPerfil}
-                    onFalta={alternarFalta}
-                    onSemRetorno={alternarSemRetorno}
-                    podeAcoes={podeSemRetorno}
                     semRetornoAtivo={semRetornoIds.has(c.id)}
                   />
                 ))}
@@ -1536,7 +1300,7 @@ export function OperadoresScreen(): React.ReactElement {
           ) : null}
 
           {/* Justificativas (faltas + não-retornos) — abaixo do painel de faltas */}
-          {podeSemRetorno ? (
+          {podeGerirAusencias ? (
             <View style={styles.justificativasSecao}>
               <View style={styles.secaoHeader}>
                 <Text style={styles.secaoTitulo}>Justificativas</Text>

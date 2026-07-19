@@ -8,21 +8,18 @@
  * dos últimos ciclos. Aplica-se ao contrato 6x1-2x1.
  */
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ApiError } from '../../api/client';
 import { centralJornadaService, feriadosService } from '../../api/services';
 import {
   CentralComparativo,
-  CentralDiaDetalhe,
   CentralInconsistencias,
   CentralPeriodo,
   CentralPessoaResumo,
   CentralResumo,
 } from '../../api/services/centralJornada';
-import { useAuth } from '../../auth/AuthContext';
 import {
   Cartao,
   CartaoAcao,
@@ -36,10 +33,8 @@ import {
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
 import { formatarDuracao, hojeISO } from '../../utils/formato';
-import { notificar } from '../../utils/dialogos';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 
-const NOMES_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MS_DIA = 24 * 60 * 60 * 1000;
 
 /** Saldo com sinal: "+2h 30min" / "−7h". */
@@ -59,28 +54,6 @@ function rotuloFuncao(f: string): string {
 /** Instante (ms) do dia-calendário de um ISO, ancorado em UTC (00:00Z). */
 function diaUTC(iso: string): number {
   return new Date(`${iso.slice(0, 10)}T00:00:00.000Z`).getTime();
-}
-
-function dataCurta(iso: string): string {
-  const d = new Date(iso);
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  return `${NOMES_SEMANA[d.getUTCDay()]} ${dd}/${mm}`;
-}
-
-function rotuloTipoDia(tipo: CentralDiaDetalhe['tipo']): string {
-  switch (tipo) {
-    case 'FALTA':
-      return 'Falta';
-    case 'FALTA_DEBITO':
-      return 'Falta (débito)';
-    case 'ATESTADO':
-      return 'Atestado';
-    case 'INCOMPLETO':
-      return 'Incompleto';
-    default:
-      return 'Trabalho';
-  }
 }
 
 /** Progresso do ciclo em dias: percorridos, total e dias restantes. */
@@ -103,13 +76,9 @@ function progressoCiclo(periodo: CentralPeriodo): {
 }
 
 export function CentralJornadaScreen(): React.ReactElement {
-  const { podeAcessar } = useAuth();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const podeMarcarDebito = podeAcessar('OPERADORES_AUSENCIAS');
-
   const [ciclo, setCiclo] = useState(0);
-  const [expandido, setExpandido] = useState<string | null>(null);
   const [verComparativo, setVerComparativo] = useState(false);
 
   const resumo = useRequisicao<CentralResumo>(
@@ -122,16 +91,6 @@ export function CentralJornadaScreen(): React.ReactElement {
     [ciclo],
   );
   const feriados = useRequisicao(() => feriadosService.listar(), []);
-  const detalhe = useRequisicao<{
-    periodo: unknown;
-    dias: CentralDiaDetalhe[];
-  } | null>(
-    () =>
-      expandido
-        ? centralJornadaService.pessoa(expandido, ciclo)
-        : Promise.resolve(null),
-    [expandido, ciclo],
-  );
   const comparativo = useRequisicao<CentralComparativo[]>(
     () =>
       verComparativo
@@ -140,22 +99,27 @@ export function CentralJornadaScreen(): React.ReactElement {
     [verComparativo],
   );
 
-  async function alternarDebito(dia: CentralDiaDetalhe): Promise<void> {
-    if (!dia.ausenciaId) return;
-    try {
-      await centralJornadaService.marcarDebito(dia.ausenciaId, !dia.debito);
-      detalhe.recarregar();
-      resumo.recarregar();
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
-    }
-  }
-
   function recarregarTudo(): void {
     resumo.recarregar();
     inconsistencias.recarregar();
     feriados.recarregar();
   }
+
+  // Ao voltar do detalhe (onde se pode marcar falta como débito), atualiza o
+  // resumo — assim o saldo/hero reflete a mudança. Pula o primeiro foco: a
+  // carga inicial já é feita pelo useRequisicao ao montar.
+  const recarregarResumoRef = React.useRef(resumo.recarregar);
+  recarregarResumoRef.current = resumo.recarregar;
+  const primeiroFoco = React.useRef(true);
+  useFocusEffect(
+    React.useCallback(() => {
+      if (primeiroFoco.current) {
+        primeiroFoco.current = false;
+        return;
+      }
+      recarregarResumoRef.current();
+    }, []),
+  );
 
   // Todos os colaboradores não-gerentes aparecem (mesmo sem movimento), em
   // ordem alfabética por nome.
@@ -249,20 +213,6 @@ export function CentralJornadaScreen(): React.ReactElement {
                   rotulo="Extras 100%"
                 />
                 <CartaoMetrica
-                  icone="hourglass-outline"
-                  cor={cores.vermelho}
-                  fundo={cores.vermelhoFundo}
-                  valor={formatarDuracao(resumo.dados.totais.horasDevidasMs)}
-                  rotulo="Deve"
-                />
-                <CartaoMetrica
-                  icone="shield-outline"
-                  cor={cores.azul}
-                  fundo={cores.azulFundo}
-                  valor={formatarDuracao(resumo.dados.totais.horasAtestadoMs)}
-                  rotulo="Atestado"
-                />
-                <CartaoMetrica
                   icone="person-outline"
                   cor={cores.laranja}
                   fundo={cores.laranjaFundo}
@@ -294,21 +244,6 @@ export function CentralJornadaScreen(): React.ReactElement {
                     rotulo="Conflitos"
                   />
                 )}
-                <CartaoMetrica
-                  icone="scale-outline"
-                  cor={
-                    resumo.dados.totais.saldoMs >= 0
-                      ? cores.verde
-                      : cores.vermelho
-                  }
-                  fundo={
-                    resumo.dados.totais.saldoMs >= 0
-                      ? cores.verdeFundo
-                      : cores.vermelhoFundo
-                  }
-                  valor={formatarSaldo(resumo.dados.totais.saldoMs)}
-                  rotulo="Saldo"
-                />
               </View>
             </Cartao>
           )}
@@ -325,20 +260,13 @@ export function CentralJornadaScreen(): React.ReactElement {
               <PessoaCartao
                 key={p.colaboradorId}
                 pessoa={p}
-                expandido={expandido === p.colaboradorId}
                 aoTocar={() =>
-                  setExpandido((atual) =>
-                    atual === p.colaboradorId ? null : p.colaboradorId,
-                  )
+                  navigation.navigate('DetalheJornada', {
+                    colaboradorId: p.colaboradorId,
+                    ciclo,
+                    pessoa: p,
+                  })
                 }
-                detalheCarregando={
-                  expandido === p.colaboradorId && detalhe.carregando
-                }
-                dias={
-                  expandido === p.colaboradorId ? (detalhe.dados?.dias ?? []) : []
-                }
-                podeMarcarDebito={podeMarcarDebito}
-                aoAlternarDebito={alternarDebito}
               />
             ))
           )}
@@ -491,22 +419,11 @@ function HeroCiclo({
 
 function PessoaCartao({
   pessoa,
-  expandido,
   aoTocar,
-  detalheCarregando,
-  dias,
-  podeMarcarDebito,
-  aoAlternarDebito,
 }: {
   pessoa: CentralPessoaResumo;
-  expandido: boolean;
   aoTocar: () => void;
-  detalheCarregando: boolean;
-  dias: CentralDiaDetalhe[];
-  podeMarcarDebito: boolean;
-  aoAlternarDebito: (dia: CentralDiaDetalhe) => void;
 }): React.ReactElement {
-  const diasComMovimento = dias.filter((d) => d.tipo !== 'SEM_REGISTRO');
   return (
     <Cartao style={styles.cardPessoa}>
       <Pressable onPress={aoTocar} style={styles.pessoaTopo}>
@@ -526,7 +443,7 @@ function PessoaCartao({
           <Text style={styles.pessoaSaldoLabel}>saldo</Text>
         </View>
         <Ionicons
-          name={expandido ? 'chevron-up' : 'chevron-down'}
+          name="chevron-forward"
           size={20}
           color={cores.textoSecundario}
         />
@@ -596,85 +513,6 @@ function PessoaCartao({
         )}
       </View>
 
-      {expandido && (
-        <View style={styles.detalhe}>
-          {detalheCarregando ? (
-            <Carregando />
-          ) : diasComMovimento.length === 0 ? (
-            <Text style={styles.detalheVazio}>
-              {pessoa.primeiroNome} não tem batidas nem faltas neste ciclo.
-            </Text>
-          ) : (
-            diasComMovimento.map((d) => (
-              <View key={d.data} style={styles.diaLinha}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.diaData}>
-                    {dataCurta(d.data)}
-                    {d.ehFeriado ? ' • Feriado' : ''}
-                  </Text>
-                  <Text style={styles.diaInfo}>
-                    {rotuloTipoDia(d.tipo)}
-                    {d.tipo === 'TRABALHO'
-                      ? ` • ${formatarDuracao(d.trabalhadoMs)} de ${formatarDuracao(d.baseMs)}`
-                      : ''}
-                    {d.extras50Ms > 0
-                      ? ` • +50% ${formatarDuracao(d.extras50Ms)}`
-                      : ''}
-                    {d.extras100Ms > 0
-                      ? ` • +100% ${formatarDuracao(d.extras100Ms)}`
-                      : ''}
-                    {d.devidasMs > 0
-                      ? ` • deve ${formatarDuracao(d.devidasMs)}`
-                      : ''}
-                  </Text>
-                  {d.tipo === 'INCOMPLETO' && d.faltando.length > 0 && (
-                    <Text style={styles.diaIncompleto}>
-                      Falta registrar: {d.faltando.join(', ')}
-                    </Text>
-                  )}
-                  {d.tac && (
-                    <Text style={styles.diaTac}>
-                      TAC: {d.motivosTac.join('; ')}
-                    </Text>
-                  )}
-                  {d.conflitoAusencia && (
-                    <Text style={styles.diaConflito}>
-                      ⚠️ Também há falta/atestado marcado neste dia. Verifique
-                      qual está correto.
-                    </Text>
-                  )}
-                  {d.atrasoMinutos != null && (
-                    <Text style={styles.diaAtraso}>
-                      Atraso de {d.atrasoMinutos} min na entrada
-                      {d.entradaPrevista ? ` (turno ${d.entradaPrevista})` : ''}.
-                    </Text>
-                  )}
-                </View>
-                {podeMarcarDebito &&
-                  (d.tipo === 'FALTA' || d.tipo === 'FALTA_DEBITO') &&
-                  d.ausenciaId && (
-                    <Pressable
-                      onPress={() => aoAlternarDebito(d)}
-                      style={[
-                        styles.debitoBtn,
-                        d.debito && styles.debitoBtnAtivo,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.debitoBtnTexto,
-                          d.debito && styles.debitoBtnTextoAtivo,
-                        ]}
-                      >
-                        {d.debito ? 'Débito ✓' : 'Débito'}
-                      </Text>
-                    </Pressable>
-                  )}
-              </View>
-            ))
-          )}
-        </View>
-      )}
     </Cartao>
   );
 }
@@ -797,67 +635,6 @@ const styles = StyleSheet.create({
     gap: espacamento.xs,
     marginTop: espacamento.sm,
   },
-  detalhe: {
-    marginTop: espacamento.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: cores.divisor,
-    paddingTop: espacamento.sm,
-  },
-  detalheVazio: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    paddingVertical: espacamento.sm,
-  },
-  diaLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: espacamento.sm,
-    paddingVertical: espacamento.xs,
-  },
-  diaData: { ...tipografia.rotulo, color: cores.texto },
-  diaInfo: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    marginTop: 2,
-  },
-  diaIncompleto: {
-    ...tipografia.legenda,
-    color: cores.vermelho,
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  diaTac: {
-    ...tipografia.legenda,
-    color: cores.amarelo,
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  diaConflito: {
-    ...tipografia.legenda,
-    color: cores.vermelho,
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  diaAtraso: {
-    ...tipografia.legenda,
-    color: cores.amarelo,
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  debitoBtn: {
-    paddingHorizontal: espacamento.sm,
-    paddingVertical: 6,
-    borderRadius: raio.pill,
-    borderWidth: 1,
-    borderColor: cores.vermelho,
-  },
-  debitoBtnAtivo: { backgroundColor: cores.vermelho },
-  debitoBtnTexto: {
-    ...tipografia.legenda,
-    color: cores.vermelho,
-    fontWeight: '700',
-  },
-  debitoBtnTextoAtivo: { color: cores.textoInverso },
   // Comparativo
   comparativoBtn: {
     flexDirection: 'row',
