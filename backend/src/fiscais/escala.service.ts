@@ -121,13 +121,60 @@ export class EscalaService {
   }
 
   /**
+   * Resolve a ficha canônica (Colaborador funcao FISCAL) do `funcionarioId` de
+   * uma escala (que é o `Fiscal.id`), seguindo a MESMA regra de
+   * `mapearFiscalColaborador`: pela conta de acesso (`usuarioId`, único) e, em
+   * fallback, pela matrícula (== login da conta). `null` quando não há ficha.
+   * Usado para gravar o vínculo `colaboradorId` na escala manual (Fase 4 ·
+   * Opção A). Reaproveita antes um vínculo já gravado para o mesmo funcionário.
+   */
+  private async colaboradorIdDoFuncionario(
+    funcionarioId: string,
+  ): Promise<string | null> {
+    const jaVinculada = await this.prisma.escalaEntry.findFirst({
+      where: { funcionarioId, colaboradorId: { not: null } },
+      select: { colaboradorId: true },
+    });
+    if (jaVinculada?.colaboradorId) return jaVinculada.colaboradorId;
+
+    const fiscal = await this.prisma.fiscal.findUnique({
+      where: { id: funcionarioId },
+      select: { usuarioId: true },
+    });
+    if (!fiscal?.usuarioId) return null;
+    const porConta = await this.prisma.colaborador.findFirst({
+      where: { funcao: 'FISCAL', usuarioId: fiscal.usuarioId },
+      select: { id: true },
+    });
+    if (porConta) return porConta.id;
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: fiscal.usuarioId },
+      select: { login: true },
+    });
+    if (!usuario?.login) return null;
+    const porMatricula = await this.prisma.colaborador.findFirst({
+      where: {
+        funcao: 'FISCAL',
+        matricula: { equals: usuario.login.trim(), mode: 'insensitive' },
+      },
+      select: { id: true },
+    });
+    return porMatricula?.id ?? null;
+  }
+
+  /**
    * Cadastra a escala geral de um funcionário para um dia da semana
    * (Req 4.3.1–4.3.4): horário de entrada/saída, duração do intervalo e folga.
    */
   async cadastrarEscala(entry: EscalaEntryInput): Promise<EscalaEntryPrisma> {
+    const colaboradorId = await this.colaboradorIdDoFuncionario(
+      entry.funcionarioId,
+    );
     return this.prisma.escalaEntry.create({
       data: {
         funcionarioId: entry.funcionarioId,
+        // Vínculo com a ficha canônica (Fase 4 · Opção A).
+        colaboradorId,
         diaSemana: entry.diaSemana,
         entrada: entry.entrada ?? null,
         saida: entry.saida ?? null,
@@ -146,9 +193,12 @@ export class EscalaService {
     funcionarioId: string,
     entry: EscalaEntryInput,
   ): Promise<EscalaEntryPrisma> {
+    const colaboradorId = await this.colaboradorIdDoFuncionario(funcionarioId);
     return this.prisma.escalaEntry.create({
       data: {
         funcionarioId,
+        // Vínculo com a ficha canônica (Fase 4 · Opção A).
+        colaboradorId,
         diaSemana: entry.diaSemana,
         entrada: entry.entrada ?? null,
         saida: entry.saida ?? null,

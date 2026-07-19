@@ -665,4 +665,33 @@ describe('FiscaisService e EscalaService', () => {
     const efetiva = await escala.resolverEscalaEfetiva('func-2', 3);
     expect((efetiva as { entrada: string }).entrada).toBe('10:00');
   });
+
+  it('escala manual grava o vínculo colaboradorId (Fase 4 · Opção A)', async () => {
+    const prisma = criarPrisma();
+    // Ficha canônica vinculada pela conta de acesso do fiscal (f1 → u1).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (prisma as any).colaborador.findFirst = ({ where }: any) =>
+      Promise.resolve(where.usuarioId === 'u1' ? { id: 'colab-1' } : null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const escala = new EscalaService(prisma as any);
+    const geral = await escala.cadastrarEscala({
+      funcionarioId: 'f1',
+      diaSemana: 1,
+      entrada: '08:00',
+      saida: '16:00',
+      intervaloMin: 60,
+    });
+    expect((geral as { colaboradorId: string | null }).colaboradorId).toBe(
+      'colab-1',
+    );
+    const especial = await escala.definirHorarioEspecial('f1', {
+      funcionarioId: 'f1',
+      diaSemana: 2,
+      entrada: '10:00',
+      saida: '18:00',
+    });
+    expect((especial as { colaboradorId: string | null }).colaboradorId).toBe(
+      'colab-1',
+    );
+  });
 });

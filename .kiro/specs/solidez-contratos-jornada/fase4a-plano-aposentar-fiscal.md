@@ -42,9 +42,11 @@ gradual e reversível.
   na escrita de `Ausencia` (fiscal e operador) e no backfill dos históricos
   (migração `9zzg`). Estender o verificador de integridade para contar ausências
   sem vínculo. **Aditivo — não toca leituras nem a identidade exposta.**
-- **A.2 — *Expand* da escala manual.** Preencher `colaboradorId` em
-  `cadastrarEscala`/`definirHorarioEspecial` (escala.service), resolvendo a ficha
-  do `funcionarioId`. Aditivo.
+- **A.2 — *Expand* da escala manual. ✅ Concluído.** `cadastrarEscala` e
+  `definirHorarioEspecial` (escala.service) preenchem `colaboradorId`, resolvido
+  do `funcionarioId` (reaproveitando um vínculo já gravado ou a conta/matrícula
+  do fiscal). Aditivo. Com isto a **fase *expand* está completa** em todas as
+  tabelas de identidade que têm coluna de vínculo.
 - **A.3 — Migrar leituras internas para `colaboradorId`.** Onde a chave não é
   exposta ao exterior: `registrosDoDia`, `sincronizarFiscalNoCliente`,
   `fiscais-horario`, `escalaConsolidada` (já híbrida). Mantém o resultado
