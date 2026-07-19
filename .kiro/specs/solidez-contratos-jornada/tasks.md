@@ -78,9 +78,19 @@ Executar na ordem das fases. Cada fase termina com `npm run verify` +
 - [x] 4.4 Backfill dos dados restantes + verificação de integridade. _(R4.2, RT.3)_
   — dual-write nos novos (4.2) + backfill dos históricos (migração `9zzf`) +
   verificador `npm run integridade` (`detectarVinculosOrfaos`, com testes).
-- [ ] 4.5 Remover os modelos legados, rotas e telas, um por vez, com testes. _(R4.3)_
-- [ ] 4.6 Atualizar Atlas de [`operadores`](../../../docs/03-atlas-backend/operadores.md)
+- [~] 4.5 Remover os modelos legados, rotas e telas, um por vez, com testes. _(R4.3)_
+  — **diferido conscientemente** (ver decisão abaixo). As LEITURAS e a identidade
+  exposta já migraram para a ficha (Opção A, passos A.1–A.5.2); a remoção física
+  do `Fiscal` e do legado morto transforma/apaga dados no núcleo da jornada e
+  exige validação com banco real + backup.
+- [x] 4.6 Atualizar Atlas de [`operadores`](../../../docs/03-atlas-backend/operadores.md)
   e [`fiscais`](../../../docs/03-atlas-backend/fiscais.md). _(RT.4)_
+
+> **Decisão (2026-07):** a consolidação atingiu o objetivo de negócio (fonte
+> única, sem bugs de sincronização). O `Fiscal` ficou como esqueleto interno,
+> sem impacto para o usuário. A remoção final (A.6/A.7) fica **diferida** — só
+> deve ser feita com banco de testes + backup. Ver
+> [`fase4a-plano-aposentar-fiscal.md`](fase4a-plano-aposentar-fiscal.md) (seção 0).
 
 ## Transversais (fazer ao longo das fases)
 
