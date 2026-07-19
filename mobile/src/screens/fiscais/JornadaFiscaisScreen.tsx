@@ -30,11 +30,13 @@ import {
   Cartao,
   EstadoVazio,
   MensagemErro,
+  SeletorData,
   Tela,
 } from '../../components';
+import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
-import { formatarDuracao } from '../../utils/formato';
+import { formatarData, formatarDuracao, hojeISO } from '../../utils/formato';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 
 const VERDE = cores.sucesso ?? '#1E9E5A';
@@ -135,43 +137,35 @@ function horaLabel(iso: string): string {
   return iso.slice(11, 16);
 }
 
-/** Formata a data de hoje em português. */
-function formatarDataHoje(): string {
-  const dias = [
-    'Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
-    'Quinta-feira', 'Sexta-feira', 'Sábado',
-  ];
-  const meses = [
-    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
-  ];
-  const hoje = new Date();
-  return `${dias[hoje.getDay()]}, ${hoje.getDate()} de ${meses[hoje.getMonth()]} de ${hoje.getFullYear()}`;
-}
-
-/** Nome do mês atual (para o acumulado de extras). */
-function nomeMesAtual(): string {
+/** Nome do mês (para o acumulado de extras) a partir de uma data ISO (yyyy-mm-dd). */
+function nomeMes(dataISO: string): string {
   const meses = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
   ];
-  return meses[new Date().getMonth()];
+  const mes = Number(dataISO.slice(5, 7)) - 1;
+  return meses[mes] ?? '';
 }
 
 export function JornadaFiscaisScreen(): React.ReactElement {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { podeAcessar } = useAuth();
+  const { dataInicial } = useConfigSistema();
   const podeVerPerfil = podeAcessar('OPERADORES_AUSENCIAS');
 
+  // Dia selecionado (padrão: hoje). Permite ver a equipe de dias anteriores.
+  const [data, setData] = React.useState(hojeISO());
+  const ehHoje = data === hojeISO();
+
   const equipe = useRequisicao<ItemEquipeDiaFiscal[]>(
-    () => fiscaisService.equipeDia(),
-    [],
+    () => fiscaisService.equipeDia(data),
+    [data],
   );
 
   const horasExtras = useRequisicao<ItemHorasExtrasFiscal[]>(
-    () => fiscaisService.horasExtrasMes(),
-    [],
+    () => fiscaisService.horasExtrasMes(data),
+    [data],
   );
 
   /** Mapa de horas extras por pessoaId para lookup rápido. */
@@ -209,24 +203,40 @@ export function JornadaFiscaisScreen(): React.ReactElement {
       aoAtualizar={recarregarTudo}
       atualizando={equipe.atualizando || horasExtras.atualizando}
     >
-      {/* Card com a data de hoje + resumo por estado */}
+      {/* Card com a data selecionada + resumo por estado */}
       <Cartao style={styles.cardData}>
         <View style={styles.dataRow}>
           <View style={styles.dataIcone}>
             <Ionicons name="calendar" size={22} color={cores.primaria} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.dataLabel}>Jornada de equipe · hoje</Text>
-            <Text style={styles.dataTexto}>{formatarDataHoje()}</Text>
+            <Text style={styles.dataLabel}>
+              Jornada de equipe{ehHoje ? ' · hoje' : ''}
+            </Text>
+            <Text style={styles.dataTexto}>{formatarData(data)}</Text>
           </View>
         </View>
         <View style={styles.resumoRow}>
           <ResumoChip cor={VERDE} valor={resumo.trabalhando} rotulo="Trabalhando" />
           <ResumoChip cor={AMARELO} valor={resumo.intervalo} rotulo="Intervalo" />
-          <ResumoChip cor={cores.vermelho} valor={resumo.semRegistrar} rotulo="Sem registrar" />
+          {ehHoje ? (
+            <ResumoChip
+              cor={cores.vermelho}
+              valor={resumo.semRegistrar}
+              rotulo="Sem registrar"
+            />
+          ) : null}
           <ResumoChip cor={CINZA} valor={resumo.faltas} rotulo="Faltas" />
         </View>
       </Cartao>
+
+      {/* Selector de dia: permite ver a equipe de dias anteriores. */}
+      <SeletorData
+        valor={data}
+        aoMudar={setData}
+        rotulo="Dia"
+        dataMinima={dataInicial}
+      />
 
       {/* Card acumulado de horas extras do mês */}
       <Cartao style={styles.cardExtras}>
@@ -235,7 +245,7 @@ export function JornadaFiscaisScreen(): React.ReactElement {
             <Ionicons name="trending-up" size={22} color={AZUL} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.extrasLabel}>Horas extras — {nomeMesAtual()}</Text>
+            <Text style={styles.extrasLabel}>Horas extras — {nomeMes(data)}</Text>
             <Text style={styles.extrasTotalValor}>
               {formatarDuracao(totalExtrasEquipe)}
             </Text>
@@ -245,8 +255,9 @@ export function JornadaFiscaisScreen(): React.ReactElement {
 
       <Text style={styles.secaoTitulo}>Equipe do dia</Text>
       <Text style={styles.secaoDica}>
-        Todos os escalados para hoje. Faltas e não-retornos são detectados
-        automaticamente pelo ponto.
+        {ehHoje
+          ? 'Todos os escalados para hoje. Faltas e não-retornos são detectados automaticamente pelo ponto.'
+          : 'Todos os escalados para o dia selecionado, com as batidas registradas.'}
       </Text>
 
       {equipe.carregando ? (
@@ -257,7 +268,11 @@ export function JornadaFiscaisScreen(): React.ReactElement {
         <EstadoVazio
           icone="people-outline"
           titulo="Sem escalados"
-          descricao="Ninguém está escalado para trabalhar hoje."
+          descricao={
+            ehHoje
+              ? 'Ninguém está escalado para trabalhar hoje.'
+              : 'Ninguém estava escalado nesse dia.'
+          }
         />
       ) : (
         equipe.dados.map((item) => {

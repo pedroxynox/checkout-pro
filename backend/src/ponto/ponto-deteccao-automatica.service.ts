@@ -120,7 +120,12 @@ export class PontoDeteccaoAutomaticaService {
 
     try {
       if (escalado.tipoPessoa === 'FISCAL') {
-        await this.fiscais.registrarFalta(escalado.pessoaId, dia, {
+        // `registrarFalta` espera um INSTANTE real: internamente converte para
+        // o dia civil de Brasília (`diaCivilBrasilia`). Passamos `new Date()`
+        // (que resolve exatamente para o `dia` deste ciclo), NÃO o `dia` já
+        // truncado — passar o dia truncado o converteria de novo, caindo no
+        // dia anterior e reavisando a falta a cada verificação (spam).
+        await this.fiscais.registrarFalta(escalado.pessoaId, new Date(), {
           automatica: true,
         });
       } else {
