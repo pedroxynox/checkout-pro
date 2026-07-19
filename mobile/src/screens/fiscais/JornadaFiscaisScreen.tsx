@@ -46,14 +46,6 @@ const CINZA = cores.textoSecundario;
 const AZUL = '#2563EB';
 const AZUL_FUNDO = '#EFF6FF';
 
-/**
- * Intervalo máximo permitido (3h). Acima disso o backend classifica como TAC e
- * encerra o turno como "não retorno" (regra `INTERVALO_MAXIMO_MS` do ponto). O
- * cronômetro ao vivo fica VERMELHO ao ultrapassar este limite, avisando o gestor
- * de um possível não retorno enquanto o card ainda não virou "Encerrado".
- */
-const INTERVALO_MAXIMO_MS = 10_800_000;
-
 /** Rótulo curto do papel (chip ao lado do nome dos não-fiscais). */
 const ROTULO_FUNCAO: Record<string, string> = {
   FISCAL: 'Fiscal',
@@ -310,41 +302,19 @@ export function JornadaFiscaisScreen(): React.ReactElement {
                   </Text>
                 ) : null}
 
-                {/* Intervalo em curso AO VIVO (corre a cada segundo, só hoje).
-                    Fica VERMELHO ao ultrapassar o máximo de 3h (possível não
-                    retorno), antes mesmo do card virar "Encerrado". */}
-                {item.jornadaStatus === 'EM_INTERVALO'
-                  ? (() => {
-                      const msIntervalo =
+                {/* Intervalo em curso AO VIVO (corre a cada segundo, só hoje) */}
+                {item.jornadaStatus === 'EM_INTERVALO' ? (
+                  <View style={styles.intervaloVivo}>
+                    <Ionicons name="cafe" size={14} color={AMARELO} />
+                    <Text style={styles.intervaloVivoTexto}>
+                      Em intervalo há{' '}
+                      {formatarCronometro(
                         item.tempoIntervaloMs +
-                        (ehHoje ? Date.now() - carregadoEm.current : 0);
-                      const excedido = msIntervalo >= INTERVALO_MAXIMO_MS;
-                      return (
-                        <View
-                          style={[
-                            styles.intervaloVivo,
-                            excedido && styles.intervaloVivoExcedido,
-                          ]}
-                        >
-                          <Ionicons
-                            name={excedido ? 'alert-circle' : 'cafe'}
-                            size={14}
-                            color={excedido ? cores.vermelho : AMARELO}
-                          />
-                          <Text
-                            style={[
-                              styles.intervaloVivoTexto,
-                              excedido && styles.intervaloVivoTextoExcedido,
-                            ]}
-                          >
-                            {excedido
-                              ? `Intervalo acima do máximo · ${formatarCronometro(msIntervalo)}`
-                              : `Em intervalo há ${formatarCronometro(msIntervalo)}`}
-                          </Text>
-                        </View>
-                      );
-                    })()
-                  : null}
+                          (ehHoje ? Date.now() - carregadoEm.current : 0),
+                      )}
+                    </Text>
+                  </View>
+                ) : null}
 
                 {/* Marcações do dia + carga (em linha) */}
                 <View style={styles.slots}>
@@ -495,17 +465,11 @@ const styles = StyleSheet.create({
     paddingVertical: espacamento.xs,
     paddingHorizontal: espacamento.sm,
   },
-  intervaloVivoExcedido: {
-    backgroundColor: cores.vermelhoFundo,
-  },
   intervaloVivoTexto: {
     ...tipografia.legenda,
     color: AMARELO,
     fontWeight: '700',
     marginLeft: espacamento.xs,
-  },
-  intervaloVivoTextoExcedido: {
-    color: cores.vermelho,
   },
   slots: {
     flexDirection: 'row',
