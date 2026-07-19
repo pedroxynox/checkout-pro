@@ -52,7 +52,9 @@ gradual e reversível.
   `fiscais-horario` já resolvem a conta pela ficha canônica (`colaboradorId` da
   escala), com fallback ao `Fiscal` legado. Faltam `registrosDoDia`,
   `sincronizarFiscalNoCliente` e `escalaConsolidada` (já híbrida) — mantendo o
-  resultado idêntico e lendo por ambos os ids na transição.
+  resultado idêntico e lendo por ambos os ids na transição. `listarAusencias`
+(relatório de faltas) já resolve o nome pela ficha canônica, com o `Fiscal` só
+como fallback.
 - **A.4 — Alertas de TAC por ficha.** Decidir o destino de `pessoaId` em
   `AlertaTacEnviado`/`EventoAlertaTac` (migrar para `colaboradorId` ou manter,
   dado que são efêmeros/append). Baixo impacto funcional.

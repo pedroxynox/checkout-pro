@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 89 arquivos, 569 casos. **Mobile:** 25 arquivos, 95 casos. **Total: 664 casos.**
+> **Backend:** 90 arquivos, 570 casos. **Mobile:** 25 arquivos, 95 casos. **Total: 665 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -83,6 +83,7 @@
 | `src/notificacoes/notificacoes.properties.spec.ts` | 2 | 1 |
 | `src/notificacoes/notificacoes.service.spec.ts` | 3 | 1 |
 | `src/operadores/ausencia-a-prazo.spec.ts` | 3 | 1 |
+| `src/operadores/listar-ausencias-ficha.spec.ts` | 1 | 1 |
 | `src/operadores/operador-turno.roster-turno.spec.ts` | 2 | 1 |
 | `src/operadores/operadores.controller.spec.ts` | 1 | 1 |
 | `src/operadores/operadores.justificativa.spec.ts` | 6 | 1 |
