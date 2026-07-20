@@ -14,6 +14,7 @@ import {
 } from './atestados.domain';
 import {
   AtestadoNaoEncontradoError,
+  AtestadoSobrepostoError,
   CidObrigatorioError,
   PeriodoAtestadoInvalidoError,
 } from './atestados.errors';
@@ -142,6 +143,21 @@ export class AtestadosService {
 
     await this.validacaoData?.exigirDataPermitida(d0);
     await this.cicloFolha?.exigirCicloAberto(d0);
+
+    // Impede dois atestados SOBREPOSTOS do mesmo colaborador: um dia só pode
+    // pertencer a um atestado (senão o vínculo `atestadoId` da falta do dia e a
+    // contagem por CID do INSS ficam ambíguos, e remover um deixa dias órfãos).
+    // O `where` (inicio <= fim novo E fim >= início novo) é a própria condição
+    // de interseção de períodos, resolvida pelo índice (inicio, fim).
+    const sobreposto = await this.prisma.atestado.findFirst({
+      where: {
+        colaboradorId: input.colaboradorId,
+        inicio: { lte: d1 },
+        fim: { gte: d0 },
+      },
+      select: { id: true },
+    });
+    if (sobreposto) throw new AtestadoSobrepostoError();
 
     const colaborador = await this.prisma.colaborador.findUnique({
       where: { id: input.colaboradorId },

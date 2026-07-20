@@ -39,3 +39,18 @@ export class AtestadoNaoEncontradoError extends AtestadosError {
     super(mensagem);
   }
 }
+
+/**
+ * Lançado quando o período do novo atestado se sobrepõe a um atestado já
+ * existente do mesmo colaborador. Um dia só pode pertencer a UM atestado —
+ * senão o vínculo `atestadoId` da falta do dia e a contagem por CID (INSS)
+ * ficam ambíguos.
+ */
+export class AtestadoSobrepostoError extends AtestadosError {
+  readonly statusHttp = HttpStatus.CONFLICT;
+  constructor(
+    mensagem = 'Já existe um atestado deste colaborador que cobre parte deste período. Remova-o antes de lançar um novo.',
+  ) {
+    super(mensagem);
+  }
+}
