@@ -21,9 +21,10 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1837 |
+| `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1886 |
 | `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 394 |
 | `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 476 |
+| `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) | 398 |
 | `FeriasCard.tsx` | Card + modal para colocar de férias, listar e cancelar férias | 400 |
 
 ## 4. Fluxo do usuário
@@ -63,6 +64,8 @@ Trata **carregando / erro / vazio**.
 | Excluir falta (rejeitar engano) | `operadoresService.removerAusencia(id)` | `DELETE /operadores/ausencias/:id` |
 | Ausência por período | `operadoresService.registrarAusenciaPeriodo(input)` | `POST /operadores/ausencias/periodo` |
 | Cancelar ausência a prazo | `operadoresService.removerAusenciaPeriodo(input)` | `DELETE /operadores/ausencias/periodo` |
+| Lançar atestado | `atestadosService.lancar(input)` | `POST /atestados` |
+| Autocompletar CID | `atestadosService.buscarCid(busca)` | `GET /atestados/cid` |
 | Registrar férias | `feriasService.registrar(input)` | `POST /ferias` |
 | Listar férias | `feriasService.listar(filtro)` | `GET /ferias` |
 | Cancelar férias | `feriasService.remover(id)` | `DELETE /ferias/:id` |

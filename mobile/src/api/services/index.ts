@@ -55,6 +55,14 @@ export type {
 } from './configSistema';
 export { adminService } from './admin';
 export type { ResumoReinicio } from './admin';
+export { atestadosService } from './atestados';
+export type {
+  EntradaCid,
+  AtestadoDetalhado,
+  HistoricoCidItem as HistoricoCidAtestado,
+  ResultadoAtestado,
+  LancarAtestadoInput,
+} from './atestados';
 export { produtosPesadosService } from './produtosPesados';
 export type {
   ProdutoPesado,

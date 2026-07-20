@@ -898,9 +898,18 @@ model Ausencia {
   // bate o ponto; as lançadas manualmente pelo gestor permanecem.
   automatica Boolean @default(false)
 
+  // Atestado médico: quando esta falta faz parte de um ATESTADO (entidade
+  // `Atestado`), guarda o vínculo e o CID informado no atestado (nulo = sem
+  // CID). Permite exibir o dia como "Atestado" (e não "Falta") na escala e nas
+  // faltas do dia, e contar dias por CID (regra do INSS). Vínculo "solto"
+  // (sem FK rígida), no padrão do schema (ADR 0005).
+  atestadoId String?
+  cid        String?
+
   @@unique([pessoaId, data])
   @@index([colaboradorId])
   @@index([statusJustificativa])
+  @@index([atestadoId])
   @@map("ausencias")
 }
 
@@ -1159,6 +1168,7 @@ model Colaborador {
 
   identificadores ColaboradorIdentificador[]
   ferias          FeriasColaborador[]
+  atestados       Atestado[]
 
   @@map("colaboradores")
 }
@@ -1169,6 +1179,44 @@ model Colaborador {
 /// desligamento de verdade é `Colaborador.desligadoEm`). Um colaborador pode ter
 /// vários períodos ao longo do tempo (histórico). Intervalo inclusivo em ambos
 /// os extremos, rotulado em meia-noite UTC como as demais datas de negócio.
+/// ATESTADO médico de um colaborador (Req: gestão de atestados). Representa o
+/// documento inteiro — um período [inicio, fim] com um CID (ou "sem CID"). Ao
+/// ser lançado, GERA uma falta JUSTIFICADA (motivo ATESTADO_MEDICO, `aPrazo`)
+/// em cada dia corrido do período, cada uma vinculada por `atestadoId` e
+/// carimbada com o `cid` — assim a escala/faltas do dia mostram "Atestado" e é
+/// possível somar dias por CID (regra do INSS: mesmo CID acumulando > 15 dias
+/// numa janela de 60 dias → encaminhar ao INSS). A `fotoUrl` fica prevista para
+/// o futuro (anexo do documento; depende de storage de objetos/S3).
+model Atestado {
+  id            String   @id @default(uuid())
+  colaboradorId String
+  // Primeiro e último dia do atestado (inclusive), 00:00 UTC.
+  inicio        DateTime
+  fim           DateTime
+  // Total de dias corridos do período (fim - inicio + 1).
+  dias          Int
+  // CID-10 informado (ex.: "J11", "M54.5"), em maiúsculas. Nulo quando o
+  // atestado é lançado explicitamente SEM CID (`semCid = true`).
+  cid           String?
+  // true = atestado lançado deliberadamente SEM CID (distingue de "não
+  // preenchido"): permite contar/relatar os atestados sem CID à parte.
+  semCid        Boolean  @default(false)
+  observacao    String?
+  // Anexo do documento (foto/scan). Futuro — exige storage de objetos/S3.
+  fotoUrl       String?
+  // Auditoria: quem lançou o atestado.
+  registradaPorId   String?
+  registradaPorNome String?
+  criadoEm          DateTime @default(now())
+
+  colaborador Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+
+  @@index([colaboradorId])
+  @@index([cid])
+  @@index([inicio, fim])
+  @@map("atestados")
+}
+
 model FeriasColaborador {
   id            String   @id @default(uuid())
   colaboradorId String

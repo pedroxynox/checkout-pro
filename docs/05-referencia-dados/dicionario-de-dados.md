@@ -3,7 +3,7 @@
 
 # Dicionário de Dados
 
-> Detalhe campo a campo das **53 tabelas**. Fonte: `backend/prisma/schema.prisma`.
+> Detalhe campo a campo das **54 tabelas**. Fonte: `backend/prisma/schema.prisma`.
 
 ## `Usuario`
 
@@ -554,6 +554,8 @@ As faltas pontuais ficam em `Ausencia` (pessoaId = id do Colaborador).
 | `debitoHoras` | `Boolean` |  | manualmente pelo gestor (falta não justificada / abonada como débito). |
 | `aPrazo` | `Boolean` |  | fiscal na escala — só gerente/supervisor/administrador podem remover. |
 | `automatica` | `Boolean` |  | bate o ponto; as lançadas manualmente pelo gestor permanecem. |
+| `atestadoId` | `String?` |  | (sem FK rígida), no padrão do schema (ADR 0005). |
+| `cid` | `String?` |  |  |
 
 ## `Notificacao`
 
@@ -706,10 +708,29 @@ valores de hoje, sem mudança de comportamento.
 | `atualizadoEm` | `DateTime` |  |  |
 | `identificadores` | `ColaboradorIdentificador[]` |  |  |
 | `ferias` | `FeriasColaborador[]` |  |  |
+| `atestados` | `Atestado[]` |  |  |
+
+## `Atestado`
+
+o futuro (anexo do documento; depende de storage de objetos/S3).
+
+| Campo | Tipo | Chave | Descrição |
+|---|---|---|---|
+| `id` | `String` | PK |  |
+| `colaboradorId` | `String` |  |  |
+| `inicio` | `DateTime` |  | Primeiro e último dia do atestado (inclusive), 00:00 UTC. |
+| `fim` | `DateTime` |  |  |
+| `dias` | `Int` |  | Total de dias corridos do período (fim - inicio + 1). |
+| `cid` | `String?` |  | atestado é lançado explicitamente SEM CID (`semCid = true`). |
+| `semCid` | `Boolean` |  | preenchido"): permite contar/relatar os atestados sem CID à parte. |
+| `observacao` | `String?` |  |  |
+| `fotoUrl` | `String?` |  | Anexo do documento (foto/scan). Futuro — exige storage de objetos/S3. |
+| `registradaPorId` | `String?` |  | Auditoria: quem lançou o atestado. |
+| `registradaPorNome` | `String?` |  |  |
+| `criadoEm` | `DateTime` |  |  |
+| `colaborador` | `Colaborador` | relação |  |
 
 ## `FeriasColaborador`
-
-os extremos, rotulado em meia-noite UTC como as demais datas de negócio.
 
 | Campo | Tipo | Chave | Descrição |
 |---|---|---|---|

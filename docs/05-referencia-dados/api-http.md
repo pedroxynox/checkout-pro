@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **205 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **210 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -59,6 +59,16 @@
 | GET | `/assistente/conversa` | `conversa` | `—` |
 | POST | `/assistente/mensagem` | `enviar` | `—` |
 | DELETE | `/assistente/conversa` | `limpar` | `—` |
+
+## `atestados`
+
+| Método | Rota | Handler | Permissão |
+|---|---|---|---|
+| GET | `/atestados/cid` | `buscarCid` | `OPERADORES_AUSENCIAS` |
+| POST | `/atestados` | `lancar` | `OPERADORES_AUSENCIAS` |
+| GET | `/atestados` | `listar` | `OPERADORES_AUSENCIAS` |
+| GET | `/atestados/colaborador/:id` | `historico` | `OPERADORES_AUSENCIAS` |
+| DELETE | `/atestados/:id` | `remover` | `OPERADORES_AUSENCIAS` |
 
 ## `central-jornada`
 
