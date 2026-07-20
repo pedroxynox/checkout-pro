@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 98 arquivos, 606 casos. **Mobile:** 25 arquivos, 98 casos. **Total: 704 casos.**
+> **Backend:** 98 arquivos, 608 casos. **Mobile:** 25 arquivos, 99 casos. **Total: 707 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -90,7 +90,7 @@
 | `src/operadores/ausencia-a-prazo.spec.ts` | 3 | 1 |
 | `src/operadores/listar-ausencias-ficha.spec.ts` | 1 | 1 |
 | `src/operadores/operador-turno.roster-turno.spec.ts` | 2 | 1 |
-| `src/operadores/operadores.controller.spec.ts` | 1 | 1 |
+| `src/operadores/operadores.controller.spec.ts` | 3 | 2 |
 | `src/operadores/operadores.justificativa.spec.ts` | 6 | 1 |
 | `src/operadores/operadores.properties.spec.ts` | 5 | 1 |
 | `src/operadores/operadores.service.spec.ts` | 10 | 4 |
@@ -133,7 +133,7 @@
 | `src/screens/indicadores/PainelVendasScreen.test.tsx` | 3 | 1 |
 | `src/screens/insumos/InsumosScreen.test.tsx` | 2 | 1 |
 | `src/screens/notificacoes/NotificacoesScreen.test.tsx` | 3 | 1 |
-| `src/screens/operadores/JustificativasScreen.test.tsx` | 2 | 1 |
+| `src/screens/operadores/JustificativasScreen.test.tsx` | 3 | 1 |
 | `src/screens/ponto/ExportarCicloScreen.test.tsx` | 2 | 1 |
 | `src/screens/ponto/InconsistenciasScreen.test.tsx` | 2 | 1 |
 | `src/screens/ponto/RegistroPontoScreen.test.tsx` | 6 | 1 |
