@@ -7,6 +7,31 @@
 
 ---
 
+## Lançamento da v2 (APK) — versão 2.0.0 (2026-07-20)
+
+Elevação da versão do app de **1.2.0 → 2.0.0** em `mobile/app.json`, marcando o
+lançamento da **v2** do APK. A versão exibida vem de `app.json` (`version`), lida
+via `Constants.expoConfig?.version`; portanto a tela de Login passa a mostrar
+"Versão 2.0.0", identificando a v2 sem mudança de código.
+
+O build é gerado pelo Expo/EAS (perfil `preview` = APK). Como `eas.json` usa
+`appVersionSource: "remote"`, o **versionCode** do Android é gerenciado pela EAS;
+aqui só se ajusta o **nome** da versão (`version`).
+
+Principais entregas que compõem a v2 em relação à 1.x:
+
+- **Produtos pesados (balança):** catálogo de códigos carregado por um único
+  arquivo `.txt` (todos os setores), com consulta por nome/código na Home e carga
+  pela gestão no Centro de Controle (ADR 0014).
+- **Infraestrutura paga no Render:** serviço web sem hibernação e Postgres
+  persistente, com teto explícito do pool de conexões do Prisma (ADR 0013).
+
+> Ao publicar, rode o build pela aba **Actions** (workflow `Build APK (Android)`)
+> ou `eas build --platform android --profile preview`. Detalhes em
+> [`deploy.md`](../07-operacao/deploy.md).
+
+---
+
 ## Melhorias do Relógio Ponto — lote de PRs (2026-07-16)
 
 Sequência de entregas que endureceram o Relógio Ponto e a Central de Jornada. Cada item foi um PR verificado e mergeado separadamente:
