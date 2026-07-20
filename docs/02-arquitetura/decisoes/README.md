@@ -21,4 +21,5 @@ numerado (`NNNN-titulo-curto.md`).
 | 0010 | [Novos tipos de incidência de escala](0010-novos-tipos-incidencia-escala.md) |
 | 0011 | [Incidências de escala: botões de suspensão](0011-incidencias-escala-botoes-suspensao.md) |
 | 0012 | [Relatório de perfil em PDF](0012-relatorio-perfil-pdf.md) |
+| 0013 | [Infra paga no Render e teto do pool de conexões](0013-infra-paga-e-pool-de-conexoes.md) |
 | 0014 | [Produtos pesados: catálogo por arquivo único e busca em memória](0014-produtos-pesados-catalogo-e-busca.md) |

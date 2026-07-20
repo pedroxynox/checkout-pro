@@ -1,23 +1,26 @@
-# Blueprint de implantação no Render (https://render.com) — gratuito.
+# Blueprint de implantação no Render (https://render.com).
 #
 # Cria automaticamente:
-#   1. Um banco de dados PostgreSQL (plano free).
-#   2. Um serviço web Node com o backend NestJS (plano free).
+#   1. Um banco de dados PostgreSQL gerenciado (plano pago basic-256mb).
+#   2. Um serviço web Node com o backend NestJS (plano pago starter).
+#   3. Um site estático com a versão web do app (Expo Web) — gratuito.
 #
 # O serviço web, no build, instala dependências, gera o Prisma Client e compila.
 # No start, aplica as migrações e sobe a API. O SEED NÃO roda automaticamente
 # (evita "ressuscitar" pessoas excluídas em "Acesso"). Para um banco novo/vazio,
 # rode o seed UMA vez manualmente: `npx prisma db seed` no diretório backend.
 #
-# Observação sobre o plano gratuito:
-#   - O serviço web "dorme" após ~15 min sem uso; a primeira requisição depois
-#     disso pode demorar ~30-60s para "acordar".
-#   - O banco PostgreSQL gratuito do Render tem validade limitada (expira após
-#     ~30 dias). Para uso contínuo, migre para um plano pago de baixo custo.
+# Planos pagos (desde jul/2026):
+#   - O serviço web usa o plano `starter`, que NÃO hiberna — sem cold start.
+#     Por isso o antigo workflow de keep-alive (ping periódico) foi removido.
+#   - O banco usa o plano `basic-256mb` (persistente; sem a expiração de ~30
+#     dias do plano free). Como o limite de conexões desse plano é modesto, o
+#     backend fixa um teto de pool via DATABASE_CONNECTION_LIMIT para não
+#     esgotá-lo. Suba esse teto junto se migrar para um plano maior.
 
 databases:
   - name: stok-center-db
-    plan: free
+    plan: basic-256mb
     databaseName: stok_center
     user: stok_center
 
@@ -25,7 +28,7 @@ services:
   - type: web
     name: checkout-pro-api
     runtime: node
-    plan: free
+    plan: starter
     rootDir: backend
     # --include=dev força a instalação das devDependencies (NestJS CLI, Prisma,
     # ts-node) mesmo com NODE_ENV=production, necessárias para build e seed.
@@ -45,6 +48,13 @@ services:
         fromDatabase:
           name: stok-center-db
           property: connectionString
+      # Teto do pool de conexões do Prisma, aplicado à DATABASE_URL pelo
+      # PrismaService. O Postgres basic-256mb tem um limite de conexões baixo;
+      # com UMA instância web, 10 deixa folga para migrações/seed/manutenção.
+      # Aumente junto se subir o plano ou o número de instâncias (sempre
+      # respeitando o limite máximo do banco).
+      - key: DATABASE_CONNECTION_LIMIT
+        value: "10"
       # Segredo de assinatura dos tokens JWT: gerado automaticamente pelo Render.
       - key: JWT_SECRET
         generateValue: true
