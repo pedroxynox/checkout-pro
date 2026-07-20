@@ -25,6 +25,10 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 | `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 394 |
 | `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 476 |
 | `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) | 398 |
+
+> **Atestado na escala:** o status **ATESTADO** (azul + CID) aparece tanto no
+> roster de operadores quanto na **linha do fiscal** (via `fiscalComoColaboradorDia`,
+> que lê a marca de atestado/CID da falta do dia), distinguindo-o da falta comum.
 | `FeriasCard.tsx` | Card + modal para colocar de férias, listar e cancelar férias | 400 |
 
 ## 4. Fluxo do usuário

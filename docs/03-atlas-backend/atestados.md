@@ -104,6 +104,7 @@ Não define enums próprios. Reutiliza `MotivoJustificativa.ATESTADO_MEDICO` e
 - 🔧 **Catálogo CID-10 curado:** cobre os motivos comuns; para o catálogo
   completo do DATASUS, ampliar `cid10.catalogo.ts` (ou carregá-lo de um
   arquivo/tabela) sem mudar a interface de busca.
-- ⚠️ **Escala de fiscais:** o status ATESTADO aparece hoje no roster de
-  operadores e nas faltas do dia; a escala consolidada de fiscais ainda exibe o
-  dia como falta (evolução futura).
+- ℹ️ **Escala de fiscais:** o status ATESTADO aparece tanto no roster de
+  operadores quanto na escala consolidada de fiscais (a linha do fiscal mostra
+  "Atestado" + CID). O card-resumo "Atestados do dia" cobre o roster de
+  operadores.
