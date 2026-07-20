@@ -46,7 +46,7 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 | `POST /operadores/ausencias` | `OPERADORES_AUSENCIAS` | Registra uma falta numa data (futura exige gerente/supervisor). |
 | `POST /operadores/ausencias/periodo` | `OPERADORES_AUSENCIAS` | Ausência a prazo: falta justificada dia a dia (futura exige gestão). |
 | `DELETE /operadores/ausencias/periodo` | `OPERADORES_AUSENCIAS` | Anula uma ausência a prazo inteira no período (só gerente/supervisor). |
-| `DELETE /operadores/ausencias/:id` | `OPERADORES_AUSENCIAS` | Remove uma falta (a prazo: fiscal não desmarca). |
+| `DELETE /operadores/ausencias/:id` | `OPERADORES_AUSENCIAS` | **Exclui** (rejeita) uma falta lançada por engano — só gerente/supervisor/administrador. |
 | `PATCH /operadores/ausencias/:id/justificativa` | `OPERADORES_AUSENCIAS` | Justifica/reabre/injustifica (com auditoria). |
 | `GET /operadores/ausencias` | `OPERADORES_AUSENCIAS` | Lista faltas do período (nome + justificativa); `?pendentes=true`. |
 | `GET /operadores/ausencias/relatorio` | `OPERADORES_AUSENCIAS` | Relatório por pessoa, filtrado e ordenado. |
@@ -87,8 +87,16 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 - **Erros:** `PeriodoAusenciaInvalidoError` (data final antes da inicial).
 
 #### `removerAusencia(ausenciaId, perfil?)`
-Remove a falta; bloqueia o **fiscal** de desmarcar um dia `aPrazo`
+**Exclui** a falta de vez — é o caminho para **rejeitar uma falta lançada por
+engano** (ex.: escala desatualizada que marcou falta indevida), para que não
+pese no colaborador. Diferente de justificar/abonar (que mantém a falta com peso
+reduzido — 2%/10%): aqui a ocorrência é apagada. A exclusão é **restrita a
+gerente/supervisor/administrador** (guarda de perfil no controller); o serviço
+ainda bloqueia o **fiscal** de desmarcar um dia `aPrazo`
 (`AusenciaAPrazoProtegidaError`) e impede remoção em ciclo de folha fechado.
+- ⚠️ Se a falta era **automática** e o colaborador continua escalado no dia sem
+  bater ponto, a detecção pode remarcá-la; por isso a escala do dia deve estar
+  corrigida antes (ex.: marcar a folga) para a exclusão ser definitiva.
 
 #### `justificarAusencia(ausenciaId, input, autor?)`
 Abona (`JUSTIFICADA`, exige motivo), reabre (`PENDENTE`, limpa tudo) ou marca
@@ -159,6 +167,9 @@ Delegam às funções puras homônimas do domínio.
 5. **Ciclo de folha fechado bloqueia** registrar/remover/justificar faltas.
 6. **Turno pela hora de entrada** (10:00 e 13:00 como fronteiras).
 7. **Avisos são best-effort:** nunca impedem o registro da falta.
+8. **Excluir ≠ justificar:** justificar/abonar mantém a falta com peso reduzido
+   (2%/10%); **excluir** apaga a falta lançada por engano (peso zero, some do
+   histórico) e é restrito a gerente/supervisor/administrador.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
@@ -170,7 +181,7 @@ Delegam às funções puras homônimas do domínio.
 | `operadores.justificativa.spec.ts` | Taxa ponderada e justificativa com auditoria | 6 |
 | `ausencia-a-prazo.spec.ts` | Proteção da falta a prazo (fiscal x gestão) | 3 |
 | `operador-turno.roster-turno.spec.ts` | Turno do cadastro no roster do dia | 2 |
-| `operadores.controller.spec.ts` | Rota de ausência (fluxo do controller) | 1 |
+| `operadores.controller.spec.ts` | Contagem por turno e exclusão de falta restrita à gestão | 3 |
 | `listar-ausencias-ficha.spec.ts` | Nome da falta resolvido pela ficha canônica (A.3) | 1 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
