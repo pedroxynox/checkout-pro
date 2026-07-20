@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 92 arquivos, 581 casos. **Mobile:** 25 arquivos, 98 casos. **Total: 679 casos.**
+> **Backend:** 98 arquivos, 606 casos. **Mobile:** 25 arquivos, 98 casos. **Total: 704 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -58,8 +58,11 @@
 | `src/fechamento/fechamento.domain.spec.ts` | 5 | 1 |
 | `src/feedforward/feedforward.domain.spec.ts` | 7 | 2 |
 | `src/feriados/feriados.domain.spec.ts` | 4 | 1 |
+| `src/ferias/ferias.domain.spec.ts` | 9 | 6 |
+| `src/ferias/ferias.service.spec.ts` | 7 | 1 |
 | `src/fiscais/escala-colaborador.spec.ts` | 4 | 1 |
 | `src/fiscais/escala-inativo.spec.ts` | 1 | 1 |
+| `src/fiscais/escalados-ferias.spec.ts` | 2 | 1 |
 | `src/fiscais/fiscais-alertas.intervalo.spec.ts` | 2 | 1 |
 | `src/fiscais/fiscais.controller.spec.ts` | 4 | 1 |
 | `src/fiscais/fiscais.gateway.spec.ts` | 3 | 1 |
@@ -83,6 +86,7 @@
 | `src/lote-apae/lote-apae.service.spec.ts` | 6 | 1 |
 | `src/notificacoes/notificacoes.properties.spec.ts` | 2 | 1 |
 | `src/notificacoes/notificacoes.service.spec.ts` | 3 | 1 |
+| `src/operadores/ausencia-a-prazo-vinculo.spec.ts` | 1 | 1 |
 | `src/operadores/ausencia-a-prazo.spec.ts` | 3 | 1 |
 | `src/operadores/listar-ausencias-ficha.spec.ts` | 1 | 1 |
 | `src/operadores/operador-turno.roster-turno.spec.ts` | 2 | 1 |
@@ -90,8 +94,10 @@
 | `src/operadores/operadores.justificativa.spec.ts` | 6 | 1 |
 | `src/operadores/operadores.properties.spec.ts` | 5 | 1 |
 | `src/operadores/operadores.service.spec.ts` | 10 | 4 |
+| `src/operadores/remover-ausencia-periodo.spec.ts` | 3 | 1 |
 | `src/ponto/contrato-6x1-congelado.spec.ts` | 5 | 1 |
 | `src/ponto/deteccao-automatica.domain.spec.ts` | 8 | 4 |
+| `src/ponto/deteccao-falta-a-prazo.spec.ts` | 3 | 1 |
 | `src/ponto/ponto-alertas.service.spec.ts` | 1 | 1 |
 | `src/ponto/ponto-nome-match.spec.ts` | 6 | 1 |
 | `src/ponto/ponto-ocr.parser.spec.ts` | 17 | 1 |

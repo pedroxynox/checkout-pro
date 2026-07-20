@@ -28,6 +28,7 @@ import { LoteApaeModule } from './lote-apae/lote-apae.module';
 import { InsumosModule } from './insumos/insumos.module';
 import { RequisicoesModule } from './requisicoes/requisicoes.module';
 import { FiscaisModule } from './fiscais/fiscais.module';
+import { FeriasModule } from './ferias/ferias.module';
 import { PontoModule } from './ponto/ponto.module';
 import { ChecklistModule } from './checklist/checklist.module';
 import { NotificacoesModule } from './notificacoes/notificacoes.module';
@@ -73,6 +74,7 @@ import { ProdutosPesadosModule } from './produtos-pesados/produtos-pesados.modul
     InsumosModule,
     RequisicoesModule,
     FiscaisModule,
+    FeriasModule,
     PontoModule,
     ChecklistModule,
     NotificacoesModule,

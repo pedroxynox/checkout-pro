@@ -1200,6 +1200,32 @@ export interface Ausencia {
   data: string;
 }
 
+/** Período de férias de um colaborador (inativação NÃO rígida). */
+export interface FeriasColaborador {
+  id: string;
+  colaboradorId: string;
+  inicio: string;
+  fim: string;
+  observacao: string | null;
+  registradaPorNome: string | null;
+  criadaEm: string;
+}
+
+/** Férias enriquecidas (nome + vigência na data de referência) para o app. */
+export interface FeriasDetalhada {
+  id: string;
+  colaboradorId: string;
+  nome: string;
+  matricula: string | null;
+  inicio: string;
+  fim: string;
+  observacao: string | null;
+  registradaPorNome: string | null;
+  criadaEm: string;
+  /** true quando o período engloba a data de referência (hoje por padrão). */
+  vigente: boolean;
+}
+
 export interface ItemRelatorioAusencia {
   pessoaId: string;
   quantidade: number;

@@ -30,6 +30,7 @@ export type {
 export { checklistService } from './checklist';
 export type { ImagemSelecionada } from './checklist';
 export { operadoresService } from './operadores';
+export { feriasService } from './ferias';
 export { colaboradoresService } from './colaboradores';
 export type { FiltroColaboradores } from './colaboradores';
 export { advertenciasService } from './advertencias';

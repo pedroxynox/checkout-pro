@@ -78,6 +78,29 @@ export class RegistrarAusenciaPeriodoDto {
   observacao?: string;
 }
 
+/**
+ * Anula (desmarca) uma ausência a prazo inteira: remove os dias `aPrazo` da
+ * pessoa dentro do intervalo [inicio, fim]. Operação inversa do registro do
+ * período — restrita à gestão.
+ */
+export class RemoverAusenciaPeriodoDto {
+  @IsString()
+  @IsNotEmpty({ message: 'O identificador da pessoa é obrigatório.' })
+  pessoaId!: string;
+
+  @IsDateString(
+    {},
+    { message: 'A data inicial deve estar em formato válido (ISO 8601).' },
+  )
+  inicio!: string;
+
+  @IsDateString(
+    {},
+    { message: 'A data final deve estar em formato válido (ISO 8601).' },
+  )
+  fim!: string;
+}
+
 /** Filtro por período do relatório de ausências (Req 6.3). */
 export class PeriodoAusenciasDto {
   @IsDateString({}, { message: 'A data inicial deve ser uma data válida.' })

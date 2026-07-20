@@ -5,7 +5,7 @@
 
 Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modulo.md`](./_modelo-modulo.md).
 
-**Cobertura:** 35/35 documentados (100%).
+**Cobertura:** 36/36 documentados (100%).
 
 | Item | Documento | Estado |
 |---|---|---|
@@ -27,6 +27,7 @@ Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modul
 | `fechamento` | [`fechamento`](./fechamento.md) | ✅ documentado |
 | `feedforward` | [`feedforward`](./feedforward.md) | ✅ documentado |
 | `feriados` | [`feriados`](./feriados.md) | ✅ documentado |
+| `ferias` | [`ferias`](./ferias.md) | ✅ documentado |
 | `fiscais` | [`fiscais`](./fiscais.md) | ✅ documentado |
 | `incidencias` | [`incidencias`](./incidencias.md) | ✅ documentado |
 | `insumos` | [`insumos`](./insumos.md) | ✅ documentado |

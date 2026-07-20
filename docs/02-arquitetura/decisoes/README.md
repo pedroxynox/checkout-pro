@@ -23,3 +23,4 @@ numerado (`NNNN-titulo-curto.md`).
 | 0012 | [Relatório de perfil em PDF](0012-relatorio-perfil-pdf.md) |
 | 0013 | [Infra paga no Render e teto do pool de conexões](0013-infra-paga-e-pool-de-conexoes.md) |
 | 0014 | [Produtos pesados: catálogo por arquivo único e busca em memória](0014-produtos-pesados-catalogo-e-busca.md) |
+| 0015 | [Férias como inativação não rígida](0015-ferias-inativacao-nao-rigida.md) |

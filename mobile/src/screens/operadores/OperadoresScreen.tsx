@@ -54,6 +54,7 @@ import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
 import { AusenciasAPrazoCard } from './AusenciasAPrazo';
+import { FeriasCard } from './FeriasCard';
 import { JustificativasLista } from './JustificativasScreen';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 import { formatarData, hojeISO } from '../../utils/formato';
@@ -1076,6 +1077,11 @@ export function OperadoresScreen(): React.ReactElement {
       {podeProgramarFuturo ? (
         <AusenciasAPrazoCard aoRegistrado={recarregarTudo} />
       ) : null}
+
+      {/* Férias: inativação NÃO rígida — o colaborador sai da escala pelo
+          período (sem virar falta) e volta ao fim, sem desligamento. Ação de
+          gestão. */}
+      {podeProgramarFuturo ? <FeriasCard aoMudar={recarregarTudo} /> : null}
 
       {/* Fiscais que TRABALHAM hoje (escala) — acima dos operadores.
           Os de folga vão para o card "Folga fiscais" no fim. */}

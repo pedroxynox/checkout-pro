@@ -11,6 +11,7 @@ import {
 import { mapearFiscalColaborador } from './colaborador-vinculo';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { trabalhaNoDomingo } from '../escala-domingo/escala-domingo.domain';
+import { FeriasService } from '../ferias/ferias.service';
 
 /** Dados para cadastrar uma entrada de escala (Req 4.3.1–4.3.4). */
 export interface EscalaEntryInput {
@@ -46,7 +47,22 @@ export class EscalaService {
     // Rodízio de domingo. Opcional para não quebrar testes unitários que
     // constroem o serviço sem a dependência.
     @Optional() private readonly escalaDomingo?: EscalaDomingoService,
+    // Férias (inativação não rígida): num dia concreto, quem está de férias não
+    // aparece na escala. Opcional pelo mesmo motivo.
+    @Optional() private readonly ferias?: FeriasService,
   ) {}
+
+  /**
+   * Conjunto dos `colaboradorId` de férias na data (ISO `YYYY-MM-DD`), ou vazio
+   * quando não há data concreta / o serviço de férias não está disponível. A
+   * escala semanal (sem data) não aplica férias — elas são por dia.
+   */
+  private async feriasNaData(dataISO?: string): Promise<Set<string>> {
+    if (!dataISO || !this.ferias) return new Set<string>();
+    const dia = new Date(`${dataISO.slice(0, 10)}T00:00:00.000Z`);
+    if (Number.isNaN(dia.getTime())) return new Set<string>();
+    return this.ferias.colaboradoresDeFeriasNoDia(dia);
+  }
 
   /**
    * Escala de DOMINGO dos fiscais pelo rodízio de grupos (G1/G2/G3). Diferente
@@ -83,12 +99,17 @@ export class EscalaService {
     ]);
     const mapaCol = mapearFiscalColaborador(fiscais, usuarios, colaboradores);
     const colPorId = new Map(colaboradores.map((c) => [c.id, c]));
+    const deFerias = this.ferias
+      ? await this.ferias.colaboradoresDeFeriasNoDia(dataDomingo)
+      : new Set<string>();
 
     const itens: ItemEscalaConsolidadaComNome[] = [];
     for (const f of fiscais) {
       const col = mapaCol.get(f.id);
       const ficha = col ? colPorId.get(col.colaboradorId) : undefined;
       if (ficha && ficha.ativo === false) continue; // fiscal desligado
+      // De férias no domingo: some da escala (inativação não rígida).
+      if (col?.colaboradorId && deFerias.has(col.colaboradorId)) continue;
       const trabalha =
         !!ancora &&
         trabalhaNoDomingo(
@@ -302,6 +323,10 @@ export class EscalaService {
       colaboradores.filter((c) => c.ativo === false).map((c) => c.id),
     );
 
+    // De férias na data concreta (inativação não rígida): somem da escala. A
+    // escala semanal (sem `dataISO`) não aplica férias — elas são por dia.
+    const deFerias = await this.feriasNaData(dataISO);
+
     return itens
       .map((it) => {
         const col = mapaCol.get(it.funcionarioId);
@@ -321,6 +346,10 @@ export class EscalaService {
           matricula: col?.matricula ?? ficha?.matricula ?? null,
         };
       })
-      .filter((it) => !(it.colaboradorId && inativos.has(it.colaboradorId)));
+      .filter(
+        (it) =>
+          !(it.colaboradorId && inativos.has(it.colaboradorId)) &&
+          !(it.colaboradorId && deFerias.has(it.colaboradorId)),
+      );
   }
 }

@@ -1158,8 +1158,35 @@ model Colaborador {
   atualizadoEm DateTime @default(now()) @updatedAt
 
   identificadores ColaboradorIdentificador[]
+  ferias          FeriasColaborador[]
 
   @@map("colaboradores")
+}
+
+/// Período de FÉRIAS (ou afastamento programado) de um colaborador. É uma
+/// inativação NÃO rígida: enquanto o período está vigente, o colaborador some
+/// da escala do dia e NÃO gera falta automática — mas continua `ativo` (o
+/// desligamento de verdade é `Colaborador.desligadoEm`). Um colaborador pode ter
+/// vários períodos ao longo do tempo (histórico). Intervalo inclusivo em ambos
+/// os extremos, rotulado em meia-noite UTC como as demais datas de negócio.
+model FeriasColaborador {
+  id            String   @id @default(uuid())
+  colaboradorId String
+  // Primeiro e último dia de férias (inclusive), 00:00 UTC.
+  inicio        DateTime
+  fim           DateTime
+  // Nota livre do gestor (ex.: "férias 30 dias", "licença").
+  observacao    String?
+  // Auditoria: quem lançou as férias.
+  registradaPorId   String?
+  registradaPorNome String?
+  criadaEm          DateTime @default(now())
+
+  colaborador Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+
+  @@index([colaboradorId])
+  @@index([inicio, fim])
+  @@map("ferias_colaborador")
 }
 
 model ColaboradorIdentificador {

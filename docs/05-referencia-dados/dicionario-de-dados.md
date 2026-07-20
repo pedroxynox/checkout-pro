@@ -3,7 +3,7 @@
 
 # Dicionário de Dados
 
-> Detalhe campo a campo das **52 tabelas**. Fonte: `backend/prisma/schema.prisma`.
+> Detalhe campo a campo das **53 tabelas**. Fonte: `backend/prisma/schema.prisma`.
 
 ## `Usuario`
 
@@ -705,6 +705,23 @@ valores de hoje, sem mudança de comportamento.
 | `criadoEm` | `DateTime` |  |  |
 | `atualizadoEm` | `DateTime` |  |  |
 | `identificadores` | `ColaboradorIdentificador[]` |  |  |
+| `ferias` | `FeriasColaborador[]` |  |  |
+
+## `FeriasColaborador`
+
+os extremos, rotulado em meia-noite UTC como as demais datas de negócio.
+
+| Campo | Tipo | Chave | Descrição |
+|---|---|---|---|
+| `id` | `String` | PK |  |
+| `colaboradorId` | `String` |  |  |
+| `inicio` | `DateTime` |  | Primeiro e último dia de férias (inclusive), 00:00 UTC. |
+| `fim` | `DateTime` |  |  |
+| `observacao` | `String?` |  | Nota livre do gestor (ex.: "férias 30 dias", "licença"). |
+| `registradaPorId` | `String?` |  | Auditoria: quem lançou as férias. |
+| `registradaPorNome` | `String?` |  |  |
+| `criadaEm` | `DateTime` |  |  |
+| `colaborador` | `Colaborador` | relação |  |
 
 ## `ColaboradorIdentificador`
 

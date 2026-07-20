@@ -109,10 +109,22 @@ export class PontoDeteccaoAutomaticaService {
     const minutos = minutosAposEntrada(escalado.entradaPrevista, agora);
     if (estadoSemBatida(minutos) !== 'FALTA') return;
 
-    // Já existe falta para a pessoa nesse dia? (manual ou automática) → não
-    // duplica nem sobrescreve.
+    // Já existe falta para a pessoa nesse dia? (manual, automática ou a prazo)
+    // → não duplica nem sobrescreve. A busca cobre AS DUAS chaves possíveis:
+    // `pessoaId` (Fiscal.id p/ fiscais, Colaborador.id p/ operadores) E o
+    // vínculo com a ficha `colaboradorId`. Isso é essencial para a ausência a
+    // prazo de um FISCAL: ela é gravada com a ficha (Colaborador.id), enquanto
+    // o escalado é identificado pelo Fiscal.id — checar só `pessoaId` não a
+    // encontrava e o cron remarcava uma falta automática duplicada (mesmo
+    // padrão de `equipeDoDia` e da remoção ao bater ponto).
+    const ids = [escalado.pessoaId, escalado.colaboradorId].filter(
+      (v): v is string => !!v,
+    );
     const jaFalta = await this.prisma.ausencia.findFirst({
-      where: { data: dia, pessoaId: escalado.pessoaId },
+      where: {
+        data: dia,
+        OR: [{ pessoaId: { in: ids } }, { colaboradorId: { in: ids } }],
+      },
       select: { id: true },
     });
     if (jaFalta) return;

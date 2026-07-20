@@ -44,6 +44,7 @@ import {
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { FeriadosService } from '../feriados/feriados.service';
 import { EscalaService } from './escala.service';
+import { FeriasService } from '../ferias/ferias.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
 import {
@@ -191,6 +192,10 @@ export class FiscaisService {
     // Rodízio de domingo (âncora G1/G2/G3) — para resolver a entrada prevista
     // dos operadores no domingo. Opcional pelo mesmo motivo.
     @Optional() private readonly escalaDomingo?: EscalaDomingoService,
+    // Férias (inativação não rígida): quem está de férias no dia some da escala
+    // e, por consequência, não gera falta automática. Opcional para não quebrar
+    // testes unitários que constroem o serviço sem a dependência.
+    @Optional() private readonly ferias?: FeriasService,
   ) {}
 
   /**
@@ -801,12 +806,23 @@ export class FiscaisService {
       ];
     });
 
+    // Férias (inativação não rígida): quem está de férias no dia NÃO é escalado.
+    // Como esta é a fonte única da "equipe do dia" e da detecção automática de
+    // falta, excluir aqui já garante que a pessoa de férias suma da escala e não
+    // vire falta automática. A exclusão é pela FICHA (`colaboradorId`); fiscais
+    // sem ficha (colaboradorId nulo) nunca estão de férias.
+    const deFerias = this.ferias
+      ? await this.ferias.colaboradoresDeFeriasNoDia(inicio)
+      : new Set<string>();
+
     // Ordena por hora de entrada (mais cedo primeiro), depois por nome.
-    return [...dosFiscais, ...dosOperadores].sort((a, b) => {
-      const ea = a.entradaPrevista ?? '99:99';
-      const eb = b.entradaPrevista ?? '99:99';
-      return ea.localeCompare(eb) || a.nome.localeCompare(b.nome);
-    });
+    return [...dosFiscais, ...dosOperadores]
+      .filter((e) => !(e.colaboradorId && deFerias.has(e.colaboradorId)))
+      .sort((a, b) => {
+        const ea = a.entradaPrevista ?? '99:99';
+        const eb = b.entradaPrevista ?? '99:99';
+        return ea.localeCompare(eb) || a.nome.localeCompare(b.nome);
+      });
   }
 
   /**

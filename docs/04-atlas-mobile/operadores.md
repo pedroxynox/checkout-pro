@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `mobile/src/screens/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `mobile/src/screens/operadores/`
 
 # Área: `operadores`
 
@@ -6,7 +6,8 @@
 **Quadro de operadores** com foco no dia: roster do dia (ordenado por entrada,
 folgas ao fim), "Agora no caixa" (ao vivo), fiscais escalados, faltas e
 não-retornos do dia, análise mensal (faltas e não-retornos com risco), o painel
-de **justificativas** e o registro de **ausências a prazo** (férias/licença).
+de **justificativas**, o registro/cancelamento de **ausências a prazo**
+(licença) e as **férias** (inativação não rígida: sai da escala pelo período).
 
 ## 2. Quem usa (perfis)
 - **Escala/ausências** (`OPERADORES_AUSENCIAS`): vê justificativas, faltas do
@@ -20,9 +21,10 @@ de **justificativas** e o registro de **ausências a prazo** (férias/licença).
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1822 |
+| `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1837 |
 | `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 394 |
-| `AusenciasAPrazo.tsx` | Card + modal para ausentar por período (falta justificada) | 386 |
+| `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 476 |
+| `FeriasCard.tsx` | Card + modal para colocar de férias, listar e cancelar férias | 400 |
 
 ## 4. Fluxo do usuário
 1. **Dia:** `OperadoresScreen` mostra o roster do dia selecionado agrupado por
@@ -37,8 +39,13 @@ de **justificativas** e o registro de **ausências a prazo** (férias/licença).
 4. **Justificativas:** `JustificativasLista` reúne faltas e não-retornos dos
    últimos 30 dias; permite justificar (motivo), marcar como não justificada ou
    reabrir, mostrando quem registrou/justificou.
-5. **Ausências a prazo:** o card abre um modal para ausentar um colaborador por
-   um período, criando faltas justificadas em cada dia (inclusive a folga).
+5. **Ausências a prazo:** o card abre um modal com duas abas — **Registrar**
+   (ausenta por período, criando faltas justificadas em cada dia, inclusive a
+   folga) e **Cancelar** (desmarca/anula uma ausência a prazo inteira do período
+   escolhido).
+6. **Férias:** o card abre um modal para colocar um colaborador de férias por um
+   período (some da escala, sem virar falta), listar as férias cadastradas e
+   cancelá-las. Ambos os cards são de gestão (programar período).
 Trata **carregando / erro / vazio**.
 
 ## 5. Dados e integração com o backend
@@ -51,6 +58,10 @@ Trata **carregando / erro / vazio**.
 | Faltas do dia | `operadoresService.listarAusencias(ini, fim)` | `GET /operadores/ausencias` |
 | Justificar falta | `operadoresService.justificarAusencia(id, dados)` | `PATCH /operadores/ausencias/:id/justificativa` |
 | Ausência por período | `operadoresService.registrarAusenciaPeriodo(input)` | `POST /operadores/ausencias/periodo` |
+| Cancelar ausência a prazo | `operadoresService.removerAusenciaPeriodo(input)` | `DELETE /operadores/ausencias/periodo` |
+| Registrar férias | `feriasService.registrar(input)` | `POST /ferias` |
+| Listar férias | `feriasService.listar(filtro)` | `GET /ferias` |
+| Cancelar férias | `feriasService.remover(id)` | `DELETE /ferias/:id` |
 | Incidências | `escalaService.listarIncidencias(filtros)` | `GET /escala/incidencias` |
 | Justificar não-retorno | `escalaService.justificarIncidencia(id, dados)` | `PATCH /escala/incidencias/:id/justificativa` |
 | Escala de fiscais | `escalaService.consolidada(diaSemana, data)` | `GET /escala/consolidada/:diaSemana` |
@@ -58,6 +69,7 @@ Trata **carregando / erro / vazio**.
 | Colaboradores | `colaboradoresService.listar(...)` | `GET /colaboradores` |
 
 Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.md),
+[`ferias`](../03-atlas-backend/ferias.md) (inativação não rígida),
 [`incidencias`](../03-atlas-backend/incidencias.md),
 [`fiscais`](../03-atlas-backend/fiscais.md) (status ao vivo) e
 [`escala-domingo`](../03-atlas-backend/escala-domingo.md) (rodízio de domingo).
@@ -88,8 +100,11 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
   `fiscalComoColaboradorDia`, `seloJustificativa`.
 - Em `JustificativasScreen`: `janela()` (últimos 30 dias em dia-calendário de
   Brasília), `coresStatus` e a ordenação por estado.
-- Em `AusenciasAPrazo`: filtro de busca com `MAX_RESULTADOS`, regra de
-  `podeConfirmar` e empurrar o fim junto do início.
+- Em `AusenciasAPrazo`: filtro de busca com `MAX_RESULTADOS`, alternância de
+  modo (`registrar`/`cancelar`), regra de `podeConfirmar` (no cancelar o motivo
+  não é exigido) e empurrar o fim junto do início.
+- Em `FeriasCard`: mesma busca/seleção de colaborador e período; lista as férias
+  cadastradas com `vigente` e permite cancelar (com confirmação).
 
 ## 8. Componentes e hooks compartilhados usados
 - `useRequisicao` — ver [Hooks e utilidades](hooks-e-utilidades.md).
