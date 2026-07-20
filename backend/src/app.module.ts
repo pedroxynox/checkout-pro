@@ -43,6 +43,7 @@ import { CheckoutsModule } from './checkouts/checkouts.module';
 import { CicloFolhaModule } from './ciclo-folha/ciclo-folha.module';
 import { TiposContratoModule } from './tipos-contrato/tipos-contrato.module';
 import { ProdutosPesadosModule } from './produtos-pesados/produtos-pesados.module';
+import { AtestadosModule } from './atestados/atestados.module';
 
 @Module({
   imports: [
@@ -90,6 +91,7 @@ import { ProdutosPesadosModule } from './produtos-pesados/produtos-pesados.modul
     CicloFolhaModule,
     TiposContratoModule,
     ProdutosPesadosModule,
+    AtestadosModule,
   ],
   controllers: [AppController],
   providers: [

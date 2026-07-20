@@ -54,6 +54,7 @@ import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
 import { AusenciasAPrazoCard } from './AusenciasAPrazo';
+import { AtestadosCard } from './AtestadosCard';
 import { FeriasCard } from './FeriasCard';
 import { JustificativasLista } from './JustificativasScreen';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
@@ -75,12 +76,14 @@ const COBERTURA_MINIMA = 20;
 function corStatus(status: ColaboradorDia['status']): { fundo: string; texto: string } {
   if (status === 'TRABALHA') return { fundo: 'rgba(30,158,90,0.14)', texto: cores.verde };
   if (status === 'FALTA') return { fundo: 'rgba(210,59,59,0.16)', texto: cores.vermelho };
+  if (status === 'ATESTADO') return { fundo: cores.azulFundo, texto: cores.azul };
   return { fundo: cores.divisor, texto: cores.textoSecundario };
 }
 
 function rotuloStatus(status: ColaboradorDia['status']): string {
   if (status === 'TRABALHA') return 'Trabalha';
   if (status === 'FALTA') return 'Falta';
+  if (status === 'ATESTADO') return 'Atestado';
   return 'Folga';
 }
 
@@ -204,16 +207,27 @@ function ColaboradorRow({
 }): React.ReactElement {
   const folga = c.status === 'FOLGA';
   const ehFalta = c.status === 'FALTA';
-  // "Sem retorno" só se aplica a quem trabalha (não folga, não falta).
-  const semRet = semRetornoAtivo && !ehFalta && !folga;
+  const ehAtestado = c.status === 'ATESTADO';
+  // "Sem retorno" só se aplica a quem trabalha (não folga, não falta/atestado).
+  const semRet = semRetornoAtivo && !ehFalta && !ehAtestado && !folga;
 
-  // Cor/rotulo efetivos: falta (vermelho) > sem retorno (azul) > status.
+  // Cor/rotulo efetivos: falta (vermelho) > atestado (azul) > sem retorno > status.
   const cor = ehFalta
     ? { fundo: 'rgba(210,59,59,0.16)', texto: cores.vermelho }
-    : semRet
-      ? { fundo: cores.primariaClara, texto: cores.primaria }
-      : corStatus(c.status);
-  const rotulo = ehFalta ? 'Falta' : semRet ? 'No retorno' : rotuloStatus(c.status);
+    : ehAtestado
+      ? { fundo: cores.azulFundo, texto: cores.azul }
+      : semRet
+        ? { fundo: cores.primariaClara, texto: cores.primaria }
+        : corStatus(c.status);
+  const rotulo = ehFalta
+    ? 'Falta'
+    : ehAtestado
+      ? c.cid
+        ? `Atestado · ${c.cid}`
+        : 'Atestado'
+      : semRet
+        ? 'No retorno'
+        : rotuloStatus(c.status);
 
   return (
     <TouchableOpacity
@@ -1075,7 +1089,10 @@ export function OperadoresScreen(): React.ReactElement {
           licença) — cria faltas justificadas em cada dia da escala. Programar
           um período futuro é ação de gestão. */}
       {podeProgramarFuturo ? (
-        <AusenciasAPrazoCard aoRegistrado={recarregarTudo} />
+        <>
+          <AusenciasAPrazoCard aoRegistrado={recarregarTudo} />
+          <AtestadosCard aoRegistrado={recarregarTudo} />
+        </>
       ) : null}
 
       {/* Férias: inativação NÃO rígida — o colaborador sai da escala pelo
@@ -1249,6 +1266,38 @@ export function OperadoresScreen(): React.ReactElement {
                           {c.nome}
                         </Text>
                       </View>
+                    </View>
+                  ))}
+                </>
+              );
+            })()}
+          </Cartao>
+
+          <Cartao titulo="Atestados do dia">
+            {(() => {
+              const atestados = dados.colaboradores.filter(
+                (c) => c.status === 'ATESTADO',
+              );
+              if (atestados.length === 0) {
+                return <Text style={styles.dica}>Nenhum atestado hoje.</Text>;
+              }
+              return (
+                <>
+                  <Text style={styles.faltasTotal}>
+                    {atestados.length} atestado{atestados.length === 1 ? '' : 's'}
+                  </Text>
+                  {atestados.map((c) => (
+                    <View key={c.id} style={styles.faltaItem}>
+                      <View style={styles.faltaItemInfo}>
+                        <Text style={styles.faltaNomeFull} numberOfLines={1}>
+                          {c.nome}
+                        </Text>
+                      </View>
+                      <Selo
+                        texto={c.cid ? `CID ${c.cid}` : 'sem CID'}
+                        cor={cores.azul}
+                        fundo={cores.azulFundo}
+                      />
                     </View>
                   ))}
                 </>

@@ -16,7 +16,7 @@ import {
   trabalhaNoDomingo,
 } from '../escala-domingo/escala-domingo.domain';
 
-export type StatusCelula = 'TRABALHA' | 'FOLGA' | 'FALTA';
+export type StatusCelula = 'TRABALHA' | 'FOLGA' | 'FALTA' | 'ATESTADO';
 
 export interface GradeCelula {
   diaSemana: number;
@@ -102,7 +102,9 @@ export interface ColaboradorDia {
   entrada: string | null;
   saida: string | null;
   ausenciaId: string | null;
-  /** Estado da justificativa da falta (só quando status = FALTA). */
+  /** CID do atestado (quando status = ATESTADO e há CID); senão null. */
+  cid: string | null;
+  /** Estado da justificativa da falta (só quando status = FALTA/ATESTADO). */
   statusJustificativa: StatusJustificativa | null;
   /** Quem justificou a falta (auditoria), quando aplicável. */
   justificadaPorNome: string | null;
@@ -120,6 +122,8 @@ export interface DiaOperadores {
   trabalhando: number;
   folgas: number;
   faltas: number;
+  /** Colaboradores do dia com ATESTADO (falta justificada por atestado médico). */
+  atestados: number;
   colaboradores: ColaboradorDia[];
   /**
    * Só no domingo: grupo que FOLGA nesse domingo pelo rodízio (G1/G2/G3), ou
@@ -445,6 +449,9 @@ export class OperadorTurnoService {
               statusJustificativa: true,
               justificadaPorNome: true,
               aPrazo: true,
+              atestadoId: true,
+              motivoJustificativa: true,
+              cid: true,
             },
           })
         : [];
@@ -460,15 +467,22 @@ export class OperadorTurnoService {
       saida: string | null;
     }): ColaboradorDia => {
       const aus = mapaAus.get(base.id) ?? null;
+      // Atestado = falta vinculada a um atestado (ou motivo ATESTADO_MEDICO,
+      // cobrindo também a ausência a prazo lançada como atestado).
+      const ehAtestado =
+        !!aus &&
+        (aus.atestadoId != null ||
+          aus.motivoJustificativa === 'ATESTADO_MEDICO');
       return {
         id: base.id,
         nome: base.nome,
         genero: base.genero,
         turno: base.turno,
-        status: aus ? 'FALTA' : 'TRABALHA',
+        status: aus ? (ehAtestado ? 'ATESTADO' : 'FALTA') : 'TRABALHA',
         entrada: base.entrada,
         saida: base.saida,
         ausenciaId: aus?.id ?? null,
+        cid: aus?.cid ?? null,
         statusJustificativa: aus
           ? (aus.statusJustificativa as StatusJustificativa)
           : null,
@@ -491,6 +505,7 @@ export class OperadorTurnoService {
       entrada: null,
       saida: null,
       ausenciaId: null,
+      cid: null,
       statusJustificativa: null,
       justificadaPorNome: null,
       aPrazo: false,
@@ -549,6 +564,7 @@ export class OperadorTurnoService {
       trabalhando: colaboradores.filter((c) => c.status === 'TRABALHA').length,
       folgas: colaboradores.filter((c) => c.status === 'FOLGA').length,
       faltas: colaboradores.filter((c) => c.status === 'FALTA').length,
+      atestados: colaboradores.filter((c) => c.status === 'ATESTADO').length,
       colaboradores,
       grupoFolgaDomingo: domingo?.grupoFolga ?? null,
     };

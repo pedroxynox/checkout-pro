@@ -24,12 +24,12 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `operadores.controller.ts` | Rotas de ausências/justificativa/contagem | 197 |
-| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 532 |
+| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 624 |
 | `operadores.domain.ts` | Regras puras: unicidade, turno, relatório, analítica | 529 |
 | `operadores.errors.ts` | Erros de domínio (mapeados para HTTP) | 104 |
 | `operadores.module.ts` | Ligações (DI) do módulo | 32 |
 | `operador-turno.controller.ts` | Rotas do Quadro de Operadores | 70 |
-| `operador-turno.service.ts` | Grade semanal, roster do dia, ao vivo, analítica | 892 |
+| `operador-turno.service.ts` | Grade semanal, roster do dia, ao vivo, analítica | 908 |
 | `dto/operadores.dto.ts` | Validação de entrada das rotas | 121 |
 
 ## 4. Endpoints (rotas HTTP)
@@ -38,7 +38,7 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 | Método + Rota | Permissão | O que faz |
 |---|---|---|
 | `GET /quadro-operadores/grade` | `OPERADORES_AUSENCIAS` | Grade semanal (Seg–Sáb) com status por dia e cobertura. |
-| `GET /quadro-operadores/dia` | `OPERADORES_AUSENCIAS` | Roster de um dia (ordenado por entrada, folga ao fim). |
+| `GET /quadro-operadores/dia` | `OPERADORES_AUSENCIAS` | Roster de um dia (status TRABALHA/FOLGA/FALTA/**ATESTADO** + contagem de atestados). |
 | `GET /quadro-operadores/ao-vivo` | `OPERADORES_AUSENCIAS` | Quem deveria estar no caixa agora. |
 | `GET /quadro-operadores/faltas/analitica` | `OPERADORES_AUSENCIAS` | Analítica de faltas do período (ranking, dia recorrente, risco). |
 | `GET /quadro-operadores/nao-retornos/analitica` | `OPERADORES_AUSENCIAS` | Analítica de não-retornos do intervalo (mesma inteligência). |
@@ -48,9 +48,15 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 | `DELETE /operadores/ausencias/periodo` | `OPERADORES_AUSENCIAS` | Anula uma ausência a prazo inteira no período (só gerente/supervisor). |
 | `DELETE /operadores/ausencias/:id` | `OPERADORES_AUSENCIAS` | **Exclui** (rejeita) uma falta lançada por engano — só gerente/supervisor/administrador. |
 | `PATCH /operadores/ausencias/:id/justificativa` | `OPERADORES_AUSENCIAS` | Justifica/reabre/injustifica (com auditoria). |
-| `GET /operadores/ausencias` | `OPERADORES_AUSENCIAS` | Lista faltas do período (nome + justificativa); `?pendentes=true`. |
+| `GET /operadores/ausencias` | `OPERADORES_AUSENCIAS` | Lista faltas do período (nome + justificativa + marca de **atestado**/CID); `?pendentes=true`. |
 | `GET /operadores/ausencias/relatorio` | `OPERADORES_AUSENCIAS` | Relatório por pessoa, filtrado e ordenado. |
 | `POST /operadores/contagem-turno` | `OPERADORES_AUSENCIAS` | Conta os operadores por turno na escala informada. |
+
+> **Atestados:** os atestados médicos são um módulo próprio
+> ([`atestados`](atestados.md)). Ao lançar um atestado, ele grava faltas
+> JUSTIFICADAS (motivo `ATESTADO_MEDICO`, `aPrazo`) carimbadas com `atestadoId`
+> e `cid`. Por isso o roster do dia (`GET /quadro-operadores/dia`) distingue o
+> status **ATESTADO** de **FALTA**, e a lista de faltas expõe `atestado`/`cid`.
 
 > O controller de ausências declara `@Funcionalidade('OPERADORES_CRUD')` na
 > classe, mas **cada rota** relaxa para `OPERADORES_AUSENCIAS` (que o fiscal

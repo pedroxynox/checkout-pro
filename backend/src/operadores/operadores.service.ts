@@ -56,6 +56,10 @@ export interface AusenciaDetalhada {
   observacaoJustificativa: string | null;
   justificadaPorNome: string | null;
   justificadaEm: string | null;
+  /** true quando a falta faz parte de um ATESTADO (entidade `Atestado`). */
+  atestado: boolean;
+  /** CID informado no atestado (quando houver); senão null. */
+  cid: string | null;
 }
 
 /**
@@ -568,6 +572,8 @@ export class OperadoresService {
       observacaoJustificativa: a.observacaoJustificativa,
       justificadaPorNome: a.justificadaPorNome,
       justificadaEm: a.justificadaEm ? a.justificadaEm.toISOString() : null,
+      atestado: a.atestadoId != null,
+      cid: a.cid,
     }));
     // Pendentes no topo; dentro de cada grupo, mais recentes primeiro (já ordenado).
     const ordem: Record<StatusJustificativa, number> = {

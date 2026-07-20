@@ -967,6 +967,10 @@ export interface AusenciaDetalhada extends DadosJustificativa {
   matricula: string | null;
   data: string;
   registradaPorNome: string | null;
+  /** true quando a falta faz parte de um ATESTADO médico. */
+  atestado?: boolean;
+  /** CID informado no atestado (quando houver). */
+  cid?: string | null;
 }
 
 /**
@@ -1261,7 +1265,7 @@ export interface OperadorTurno {
   ativo: boolean;
 }
 
-export type StatusCelula = 'TRABALHA' | 'FOLGA' | 'FALTA';
+export type StatusCelula = 'TRABALHA' | 'FOLGA' | 'FALTA' | 'ATESTADO';
 
 export interface GradeCelula {
   diaSemana: number;
@@ -1368,7 +1372,9 @@ export interface ColaboradorDia {
   entrada: string | null;
   saida: string | null;
   ausenciaId: string | null;
-  /** Estado da justificativa da falta (só quando status = FALTA). */
+  /** CID do atestado (quando status = ATESTADO e há CID); senão null. */
+  cid?: string | null;
+  /** Estado da justificativa da falta (só quando status = FALTA/ATESTADO). */
   statusJustificativa?: StatusJustificativa | null;
   justificadaPorNome?: string | null;
   /**
@@ -1385,6 +1391,8 @@ export interface DiaOperadores {
   trabalhando: number;
   folgas: number;
   faltas: number;
+  /** Colaboradores do dia com ATESTADO (falta justificada por atestado). */
+  atestados: number;
   colaboradores: ColaboradorDia[];
   /** Só no domingo: grupo que folga (G1/G2/G3) pelo rodízio, ou null. */
   grupoFolgaDomingo?: string | null;
