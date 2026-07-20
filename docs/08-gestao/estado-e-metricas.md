@@ -9,14 +9,14 @@
 
 | Área | Arquivos | Linhas | Arquivos de teste | Linhas de teste |
 |---|---|---|---|---|
-| Backend (`backend/src`) | 223 | 35312 | 91 | 14139 |
-| Mobile (`mobile/src`) | 147 | 36034 | 25 | 2615 |
+| Backend (`backend/src`) | 223 | 35359 | 91 | 14139 |
+| Mobile (`mobile/src`) | 149 | 36478 | 25 | 2616 |
 
 ## Estrutura
 
 - **Módulos backend:** 34
 - **Áreas de tela (mobile):** 25
-- **Rotas HTTP:** 197
+- **Rotas HTTP:** 198
 - **Tabelas (Prisma):** 51
 - **Tipos/estados (enums):** 28
 - **Migrações:** 69

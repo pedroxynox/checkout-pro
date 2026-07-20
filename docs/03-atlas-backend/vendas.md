@@ -23,8 +23,8 @@ tendência, curva típica, heatmap e estimativas de venda por dia.
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `vendas.controller.ts` | Rotas HTTP (upload, resumo, por-hora, painel, config, estimativas) | 159 |
-| `vendas.service.ts` | Regras de aplicação: importação, painel, estimativas, avisos | 625 |
+| `vendas.controller.ts` | Rotas HTTP (upload, resumo, por-hora, painel, painel-resumo, config, estimativas) | 172 |
+| `vendas.service.ts` | Regras de aplicação: importação, painel, estimativas, avisos | 659 |
 | `vendas.parser.ts` | Lê o `.txt` por cabeçalho (hora + valor líquido) | 109 |
 | `vendas.domain.ts` | Utilitários puros de período/hora e dias da semana | 53 |
 | `vendas.module.ts` | Ligações (DI) do módulo | 31 |
@@ -42,7 +42,8 @@ outra permissão.
 | `GET /vendas/resumo` | `PAINEL_VENDAS_VISUALIZAR` | Totais do dia/semana/mês. |
 | `GET /vendas/por-hora` | `PAINEL_VENDAS_VISUALIZAR` | Distribuição por hora + total no intervalo. |
 | `GET /vendas/status` | `FECHAMENTO`, `IMPORTACOES` ou `CARGA_STATUS_VISUALIZAR` | Se as vendas do dia já foram enviadas. |
-| `GET /vendas/painel` | `PAINEL_VENDAS_VISUALIZAR` | Painel inteligente consolidado. |
+| `GET /vendas/painel` | `PAINEL_VENDAS_VISUALIZAR` | Painel inteligente consolidado (com perfis de 90 dias). |
+| `GET /vendas/painel-resumo` | `PAINEL_VENDAS_VISUALIZAR` | Resumo leve do painel (meta, projeção e comparativos), sem os perfis de 90 dias — caminho rápido da Home. |
 | `GET /vendas/config` | `PAINEL_VENDAS_VISUALIZAR` | Configuração do painel (meta mensal). |
 | `GET /vendas/estimativas` | `PAINEL_VENDAS_VISUALIZAR` | Estimativas por dia de um mês (+ total). |
 | `PUT /vendas/estimativas` | `PAINEL_VENDAS_EDITAR` | Define as estimativas do mês (upsert em lote). |
@@ -76,11 +77,16 @@ mensal.
 Estimativas de venda por dia de um mês. `definirEstimativas` faz upsert em lote
 (valor 0 **remove** a estimativa do dia).
 
+#### `painelResumo(dataRef?)`
+Parte **leve** do painel: meta mensal (via `MetasService`), acumulado do mês,
+projeção run-rate e comparativos (dia/semana/mês vs período anterior). **Não**
+varre os ~90 dias dos perfis típicos, então é bem mais rápido — é o que a Home
+(Resumo do Dia e contagens de pendências) consome via `/vendas/painel-resumo`.
+
 #### `painel(dataRef?)`
-Monta o painel consolidado: meta mensal (via `MetasService`), acumulado do mês,
-projeção run-rate, comparativos (dia/semana/mês vs período anterior), tendência
-de 30 dias, curva horária típica, hora de pico, heatmap 7×24 e padrão por dia da
-semana. Usa uma janela de 90 dias para os perfis típicos.
+Painel consolidado completo: reaproveita `painelResumo` e acrescenta tendência de
+30 dias, curva horária típica, hora de pico, heatmap 7×24 e padrão por dia da
+semana. Usa uma janela de 90 dias para esses perfis típicos.
 
 #### `limparSemDetalheHora()`
 Manutenção: remove os `VendaDiaria` sem detalhe por hora correspondente.

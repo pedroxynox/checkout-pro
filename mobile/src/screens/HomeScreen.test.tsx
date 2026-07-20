@@ -31,6 +31,7 @@ jest.mock('../api/services', () => ({
   vendasService: {
     status: jest.fn(() => Promise.resolve({ enviado: true })),
     painel: jest.fn(() => Promise.resolve(null)),
+    painelResumo: jest.fn(() => Promise.resolve(null)),
   },
   insumosService: { listarProativo: jest.fn(() => Promise.resolve([])) },
   checklistService: {

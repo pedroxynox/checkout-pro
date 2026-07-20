@@ -28,31 +28,14 @@ import {
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import {
-  arrecadacaoService,
-  checklistService,
-  insumosService,
-  operadoresService,
-  vendasService,
-} from '../../api/services';
-import {
-  DiaOperadores,
-  InsumoProativo,
-  PainelAtencao,
-  PainelVendas,
-  Perfil,
-  StatusArrecadacao,
-  StatusChecklist,
-  StatusVendas,
-  TipoArrecadacao,
-} from '../../api/types';
+import { TipoArrecadacao } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 
-import { Cartao } from '../../components';
-import { useRequisicao } from '../../hooks/useRequisicao';
+import { Cartao, Skeleton } from '../../components';
 import { cores, raio, sombra, tipografia } from '../../theme';
-import { formatarMoeda, hojeISO } from '../../utils/formato';
+import { formatarMoeda } from '../../utils/formato';
 import { ROTULO_TIPO_ARRECADACAO } from '../../utils/rotulos';
+import { CamposHome, QUEDA_VENDAS_RELEVANTE, temasDoPerfil } from './dadosDoDia';
 
 /** Rotas para onde o atalho "Resolver" pode levar. */
 type RotaAtalho =
@@ -63,17 +46,6 @@ type RotaAtalho =
   | 'Indicadores'
   | 'Operadores'
   | 'Mensagens';
-
-/** Temas que compõem a saúde; quais aparecem depende do perfil. */
-type Tema =
-  | 'checklist'
-  | 'insumos'
-  | 'indicadores'
-  | 'faltas'
-  | 'cobertura'
-  | 'carga'
-  | 'ventas'
-  | 'metaVendas';
 
 interface AcaoPrioritaria {
   prioridade: 'alta' | 'media';
@@ -92,44 +64,13 @@ interface ResumoSaude {
 
 interface Props {
   aoNavegar: (rota: RotaAtalho) => void;
+  /**
+   * Dados do dia, buscados UMA vez na Home (compartilhados e deduplicados).
+   * Cada campo carrega de forma independente, então os cartões aparecem
+   * progressivamente conforme os dados chegam.
+   */
+  dados: CamposHome;
 }
-
-/**
- * Conjunto de temas relevantes para cada perfil.
- *
- * Por decisão de negócio, o Briefing e a NOTA DE SAÚDE são IGUAIS para todos os
- * perfis que usam pessoas (gerente, gerente desenvolvedor, supervisor e fiscal):
- * todos enxergam os mesmos temas, então a nota é a mesma para todos. O fiscal
- * lê o tema "carga" via permissão somente-leitura (`CARGA_STATUS_VISUALIZAR`),
- * sem que a seção de Importações/Fechamento apareça no menu dele.
- *
- * O IMPORTADOR (conta dedicada apenas à carga de arquivos) segue vendo somente
- * a carga do dia.
- */
-function temasDoPerfil(perfil: Perfil | null): Set<Tema> {
-  if (perfil === 'IMPORTADOR') {
-    return new Set<Tema>(['carga']);
-  }
-  return new Set<Tema>([
-    'checklist',
-    'insumos',
-    'indicadores',
-    'faltas',
-    'cobertura',
-    'carga',
-    'ventas',
-    'metaVendas',
-  ]);
-}
-
-/** Data de ontem (ISO), a partir de "hoje". */
-function ontemISO(): string {
-  const d = new Date(`${hojeISO()}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
-}
-
-const QUEDA_VENDAS_RELEVANTE = 10;
 
 function classificar(nota: number): ResumoSaude {
   if (nota >= 80) {
@@ -192,97 +133,45 @@ function MedidorCircular({
   );
 }
 
-export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
+export function ResumoDoDia({ aoNavegar, dados }: Props): React.ReactElement {
   const { podeAcessar, perfil } = useAuth();
 
   const temas = temasDoPerfil(perfil);
 
-  const req = useRequisicao(async () => {
-    const t = temasDoPerfil(perfil);
-    const hoje = hojeISO();
-    const ontem = ontemISO();
-    const semVendas = !t.has('ventas') && !t.has('metaVendas');
-    const temVendas = !semVendas;
-    const [
-      arrec,
-      vendaStatus,
-      painelOntem,
-      painelHoje,
-      statusVendasHoje,
-      insumos,
-      atencao,
-      ckAb,
-      ckFe,
-      opDia,
-    ] = await Promise.all([
-        // Carga de arquivos: verificamos o DIA ANTERIOR, não o de hoje. Os
-        // arquivos do dia são importados só à noite (~23h), então durante o dia
-        // os de "hoje" ainda não chegaram — cobrá-los seria falso alarme. O que
-        // é uma pendência real é o dia anterior não ter sido carregado.
-        t.has('carga')
-          ? arrecadacaoService.status(ontem).catch(() => null as StatusArrecadacao | null)
-          : Promise.resolve(null as StatusArrecadacao | null),
-        t.has('carga')
-          ? vendasService.status(ontem).catch(() => null as StatusVendas | null)
-          : Promise.resolve(null as StatusVendas | null),
-        semVendas
-          ? Promise.resolve(null as PainelVendas | null)
-          : vendasService.painel(ontem).catch(() => null as PainelVendas | null),
-        // Vendas de HOJE: painel + status do arquivo. Se o arquivo do dia já foi
-        // carregado, o card passa a mostrar "hoje"; senão, mostra "ontem".
-        temVendas
-          ? vendasService.painel(hoje).catch(() => null as PainelVendas | null)
-          : Promise.resolve(null as PainelVendas | null),
-        temVendas
-          ? vendasService.status(hoje).catch(() => null as StatusVendas | null)
-          : Promise.resolve(null as StatusVendas | null),
-        t.has('insumos')
-          ? insumosService.listarProativo().catch(() => [] as InsumoProativo[])
-          : Promise.resolve([] as InsumoProativo[]),
-        t.has('indicadores')
-          ? arrecadacaoService.painelAtencao(hoje).catch(() => null as PainelAtencao | null)
-          : Promise.resolve(null as PainelAtencao | null),
-        t.has('checklist')
-          ? checklistService.status('ABERTURA', hoje).catch(() => null as { status: StatusChecklist } | null)
-          : Promise.resolve(null as { status: StatusChecklist } | null),
-        t.has('checklist')
-          ? checklistService.status('FECHAMENTO', hoje).catch(() => null as { status: StatusChecklist } | null)
-          : Promise.resolve(null as { status: StatusChecklist } | null),
-        t.has('faltas') || t.has('cobertura')
-          ? operadoresService.dia(hoje).catch(() => null as DiaOperadores | null)
-          : Promise.resolve(null as DiaOperadores | null),
-      ]);
-    return {
-      arrec,
-      vendaStatus,
-      painelOntem,
-      painelHoje,
-      statusVendasHoje,
-      insumos,
-      atencao,
-      ckAb,
-      ckFe,
-      opDia,
-    };
-  }, [perfil]);
+  // Dados brutos do dia. A carga é ONTEM para os arquivos (os de hoje chegam só
+  // à noite; cobrá-los durante o dia seria falso alarme) e HOJE/ONTEM para as
+  // vendas (hoje se o arquivo do dia já foi carregado).
+  const arrec = dados.arrecOntem.dado;
+  const vendaStatus = dados.vendaStatusOntem.dado;
+  const painelOntem = dados.painelOntem.dado;
+  const painelHoje = dados.painelHoje.dado;
+  const statusVendasHoje = dados.statusVendasHoje.dado;
+  const insumos = dados.insumos.dado;
+  const atencao = dados.atencao.dado;
+  const ckAb = dados.ckAb.dado;
+  const ckFe = dados.ckFe.dado;
+  const opDia = dados.opDia.dado;
 
-  const dados = req.dados;
-  if (!dados) {
-    return null;
-  }
+  // Carga progressiva: cada bloco vira esqueleto enquanto os SEUS dados não
+  // chegam, e aparece assim que chegam (sem esperar os demais).
+  const vendasCarregando =
+    dados.painelHoje.carregando ||
+    dados.painelOntem.carregando ||
+    dados.statusVendasHoje.carregando;
+  const coberturaCarregando = dados.opDia.carregando;
+  // A nota de saúde, o resumo e os pontos de atenção agregam vários sinais;
+  // ficam em esqueleto até todos os que os alimentam chegarem.
+  const nucleoCarregando =
+    dados.ckAb.carregando ||
+    dados.ckFe.carregando ||
+    dados.arrecOntem.carregando ||
+    dados.vendaStatusOntem.carregando ||
+    dados.insumos.carregando ||
+    dados.atencao.carregando ||
+    dados.opDia.carregando ||
+    dados.painelHoje.carregando ||
+    dados.painelOntem.carregando;
 
-  const {
-    arrec,
-    vendaStatus,
-    painelOntem,
-    painelHoje,
-    statusVendasHoje,
-    insumos,
-    atencao,
-    ckAb,
-    ckFe,
-    opDia,
-  } = dados;
   const horaAgora = new Date().getHours();
 
   // ----- Sinais (somente os relevantes ao perfil têm dados) -----
@@ -494,31 +383,59 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
       <Text style={styles.secao}>Hoje</Text>
 
       {/* Saúde do negócio com medidor circular */}
-      <Cartao estilo={styles.cartaoCompacto}>
-        <View style={styles.saudeLinha}>
-          <MedidorCircular nota={saude.nota} cor={saude.cor} />
-          <View style={styles.saudeTexto}>
-            <Text style={styles.saudeMini}>SAÚDE DO NEGÓCIO</Text>
-            <Text style={[styles.saudeRotulo, { color: saude.cor }]}>{saude.rotulo}</Text>
-            <Text style={styles.saudeDica}>{porque}</Text>
+      {nucleoCarregando ? (
+        <Cartao estilo={styles.cartaoCompacto}>
+          <View style={styles.saudeLinha}>
+            <Skeleton largura={74} altura={74} estilo={styles.skelMedidor} />
+            <View style={styles.saudeTexto}>
+              <Skeleton largura={120} altura={10} />
+              <Skeleton largura={150} altura={14} estilo={styles.skelLinha} />
+              <Skeleton largura={190} altura={10} estilo={styles.skelLinha} />
+            </View>
           </View>
-        </View>
-      </Cartao>
+        </Cartao>
+      ) : (
+        <Cartao estilo={styles.cartaoCompacto}>
+          <View style={styles.saudeLinha}>
+            <MedidorCircular nota={saude.nota} cor={saude.cor} />
+            <View style={styles.saudeTexto}>
+              <Text style={styles.saudeMini}>SAÚDE DO NEGÓCIO</Text>
+              <Text style={[styles.saudeRotulo, { color: saude.cor }]}>{saude.rotulo}</Text>
+              <Text style={styles.saudeDica}>{porque}</Text>
+            </View>
+          </View>
+        </Cartao>
+      )}
 
       {/* Briefing automático da Cluby (resumo por regras, sem custo de IA) */}
-      <View style={styles.briefingCard}>
-        <View style={styles.briefingHeader}>
-          <View style={styles.briefingIcone}>
-            <Sparkles size={14} color={cores.primaria} />
-          </View>
-          <Text style={styles.briefingTitulo}>Resumo de hoje</Text>
+      {nucleoCarregando ? (
+        <View style={styles.briefingCard}>
+          <Skeleton largura={120} altura={12} />
+          <Skeleton largura="100%" altura={10} estilo={styles.skelLinha} />
+          <Skeleton largura="80%" altura={10} estilo={styles.skelLinha} />
         </View>
-        <Text style={styles.briefingNarrativa}>{resumoNarrativo}</Text>
-      </View>
+      ) : (
+        <View style={styles.briefingCard}>
+          <View style={styles.briefingHeader}>
+            <View style={styles.briefingIcone}>
+              <Sparkles size={14} color={cores.primaria} />
+            </View>
+            <Text style={styles.briefingTitulo}>Resumo de hoje</Text>
+          </View>
+          <Text style={styles.briefingNarrativa}>{resumoNarrativo}</Text>
+        </View>
+      )}
 
       {/* Vendas do dia de referência (hoje se já carregado; senão, ontem) —
-          destaque para perfis de gestão */}
-      {temas.has('ventas') && vendasDia ? (
+          destaque para perfis de gestão. Aparece assim que os dados chegam. */}
+      {temas.has('ventas') ? (
+        vendasCarregando ? (
+          <Cartao estilo={styles.cartaoCompacto}>
+            <Skeleton largura={110} altura={10} />
+            <Skeleton largura={150} altura={22} estilo={styles.skelLinha} />
+            <Skeleton largura="90%" altura={10} estilo={styles.skelLinha} />
+          </Cartao>
+        ) : vendasDia ? (
         <Cartao estilo={styles.cartaoCompacto}>
           <View style={styles.vendasTopo}>
             <View>
@@ -575,10 +492,18 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
             </Pressable>
           ) : null}
         </Cartao>
+        ) : null
       ) : null}
 
-      {/* Cobertura do turno de hoje (operadores trabalhando vs faltas/folgas) */}
-      {temCobertura ? (
+      {/* Cobertura do turno de hoje (operadores trabalhando vs faltas/folgas).
+          Aparece assim que os dados chegam. */}
+      {temas.has('cobertura') ? (
+        coberturaCarregando ? (
+          <Cartao estilo={styles.cartaoCompacto}>
+            <Skeleton largura={120} altura={10} />
+            <Skeleton largura="100%" altura={46} estilo={styles.skelLinha} />
+          </Cartao>
+        ) : temCobertura ? (
         <Cartao estilo={styles.cartaoCompacto}>
           <Text style={styles.saudeMini}>COBERTURA DE HOJE</Text>
           <View style={styles.coberturaLinha}>
@@ -618,9 +543,16 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
             </Pressable>
           ) : null}
         </Cartao>
+        ) : null
       ) : null}
 
-      {/* Pontos de atenção */}
+      {/* Pontos de atenção — em esqueleto até os sinais chegarem. */}
+      {nucleoCarregando ? (
+        <Cartao estilo={styles.cartaoCompacto} titulo="Pontos de atenção">
+          <Skeleton largura="100%" altura={14} estilo={styles.skelLinha} />
+          <Skeleton largura="90%" altura={14} estilo={styles.skelLinha} />
+        </Cartao>
+      ) : (
       <Cartao estilo={styles.cartaoCompacto} titulo="Pontos de atenção">
         {top3.length === 0 ? (
           <View style={styles.tudoOk}>
@@ -654,6 +586,7 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
           ))
         )}
       </Cartao>
+      )}
     </View>
   );
 }
@@ -661,6 +594,12 @@ export function ResumoDoDia({ aoNavegar }: Props): React.ReactElement | null {
 const styles = StyleSheet.create({
   bloco: {
     marginBottom: 7,
+  },
+  skelMedidor: {
+    borderRadius: 37,
+  },
+  skelLinha: {
+    marginTop: 7,
   },
   cartaoCompacto: {
     padding: 15,

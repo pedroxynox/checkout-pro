@@ -456,8 +456,13 @@ export interface PadraoDiaSemana {
   media: number;
 }
 
-/** Painel inteligente consolidado de vendas. */
-export interface PainelVendas {
+/**
+ * Parte "leve" do painel de vendas: meta, projeção e comparativos por data,
+ * SEM os perfis típicos (tendência, curva, heatmap, padrão) que exigem varrer
+ * ~90 dias. É o que a Home (Resumo do Dia e contagens) consome — caminho
+ * rápido servido por `/vendas/painel-resumo`.
+ */
+export interface PainelVendasResumo {
   metaMensal: number;
   /** Faturamento do mês até a data de referência. */
   arrecadadoMes: number;
@@ -479,6 +484,10 @@ export interface PainelVendas {
     semana: ComparativoVendas;
     mes: ComparativoVendas;
   };
+}
+
+/** Painel inteligente consolidado de vendas (resumo + perfis típicos). */
+export interface PainelVendas extends PainelVendasResumo {
   tendencia: PontoTendenciaVendas[];
   curvaHoraria: PontoCurvaHora[];
   horaPico: number | null;

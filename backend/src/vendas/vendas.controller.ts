@@ -32,6 +32,7 @@ import {
   ConfigVendasResultado,
   EstimativasMes,
   PainelVendas,
+  PainelVendasResumo,
   ResultadoUploadVendas,
   ResumoVendas,
   VendasPorHora,
@@ -110,6 +111,18 @@ export class VendasController {
   @Get('painel')
   painel(@Query() dto: PainelVendasDto): Promise<PainelVendas> {
     return this.vendasService.painel(
+      dto.data ? new Date(dto.data) : new Date(),
+    );
+  }
+
+  /**
+   * Resumo do painel (caminho rápido): meta, projeção e comparativos, SEM os
+   * perfis típicos de ~90 dias (curva/heatmap). Usado pela Home (Resumo do Dia
+   * e contagens) para carregar bem mais rápido.
+   */
+  @Get('painel-resumo')
+  painelResumo(@Query() dto: PainelVendasDto): Promise<PainelVendasResumo> {
+    return this.vendasService.painelResumo(
       dto.data ? new Date(dto.data) : new Date(),
     );
   }

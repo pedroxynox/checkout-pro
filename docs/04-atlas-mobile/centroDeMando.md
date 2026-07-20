@@ -18,24 +18,32 @@ os **selos de pendência** por módulo no menu.
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `ResumoDoDia.tsx` | Bloco "Hoje" no topo da Home (saúde, vendas, atenção) | 892 |
-| `usePulsoDoDia.ts` | Hook que conta pendências por módulo (selos do menu) | 155 |
+| `ResumoDoDia.tsx` | Bloco "Hoje" no topo da Home (saúde, vendas, atenção) | 831 |
+| `dadosDoDia.ts` | Fonte ÚNICA e compartilhada dos sinais do dia: busca deduplicada (cache com TTL), carga progressiva por campo (`useDadosDaHome`) e contagem de pendências (`calcularPendencias`) | 475 |
+| `usePulsoDoDia.ts` | Hook que conta pendências por módulo (selos do menu), lendo de `dadosDoDia` | 111 |
 
 > Observação: esta área não registra uma rota própria. `ResumoDoDia` é embutido
-> na Home e `usePulsoDoDia` é consumido pela navegação (`MainTabs`).
+> na Home e `usePulsoDoDia` é consumido pela navegação (`MainTabs`) e pela aba
+> Tarefas. Todos leem da mesma fonte compartilhada (`dadosDoDia`), então os
+> pedidos são deduplicados entre eles.
 
 ## 4. Fluxo do usuário
-1. Ao abrir a Home, `ResumoDoDia` busca, **de forma defensiva** e só o que o
-   perfil precisa, os sinais do dia (arrecadação, vendas, insumos, indicadores,
-   checklist, operadores) em paralelo — cada chamada tem `catch`.
-2. Calcula por **regras (sem IA)** a nota de saúde (0–100) com penalidades por
+1. Ao abrir a Home, o hook `useDadosDaHome` (em `dadosDoDia`) busca, **de forma
+   defensiva** e só o que o perfil precisa, os sinais do dia (arrecadação,
+   vendas, insumos, indicadores, checklist, operadores). As buscas são
+   **compartilhadas e deduplicadas** (cache com TTL): a Home, a barra de abas e
+   a aba Tarefas reaproveitam os mesmos pedidos, sem chamadas repetidas.
+2. A carga é **progressiva**: cada campo tem seu próprio estado de carregando,
+   então cada cartão do `ResumoDoDia` aparece assim que os SEUS dados chegam, em
+   vez de esperar todos. Enquanto isso, mostra **esqueletos** (`Skeleton`) no
+   lugar — a tela nunca fica em branco.
+3. Calcula por **regras (sem IA)** a nota de saúde (0–100) com penalidades por
    categoria e teto por categoria, o "porquê" da nota e um briefing narrativo.
-3. Mostra vendas do dia de referência (hoje se o arquivo já foi carregado;
+4. Mostra vendas do dia de referência (hoje se o arquivo já foi carregado;
    senão, ontem), a cobertura do turno e os 3 pontos de atenção prioritários,
    cada um com um botão **"Resolver"** que navega para o módulo.
-4. Em paralelo, `usePulsoDoDia` conta as pendências por módulo para exibir os
-   **selos** e ordenar os módulos no menu.
-Enquanto não há dados, `ResumoDoDia` não renderiza (retorna `null`).
+5. As contagens de pendências por módulo (via `calcularPendencias`) alimentam os
+   **selos** do menu, a aba Tarefas e o selo da barra de abas.
 
 ## 5. Dados e integração com o backend
 | Ação na tela | Chamada | Endpoint |
@@ -43,7 +51,7 @@ Enquanto não há dados, `ResumoDoDia` não renderiza (retorna `null`).
 | Status de arrecadação | `arrecadacaoService.status(data)` | `GET /arrecadacao/status` |
 | Painel de atenção | `arrecadacaoService.painelAtencao(data)` | `GET /arrecadacao/painel-atencao` |
 | Status de vendas | `vendasService.status(data)` | `GET /vendas/status` |
-| Painel de vendas | `vendasService.painel(data)` | `GET /vendas/painel` |
+| Resumo do painel de vendas | `vendasService.painelResumo(data)` | `GET /vendas/painel-resumo` |
 | Insumos proativos | `insumosService.listarProativo()` | `GET /insumos/proativo` |
 | Status de checklist | `checklistService.status(tipo, data)` | `GET /checklist/status` |
 | Operadores do dia | `operadoresService.dia(data)` | `GET /operadores/dia` |
@@ -64,27 +72,38 @@ Módulos do backend relacionados:
 - Vendas: usa "hoje" se o arquivo do dia já foi carregado; senão, "ontem".
 - Nota de saúde por regras, com penalidades limitadas por categoria (teto), para
   não "despencar" a 0 por acúmulo de pequenas pendências.
-- `usePulsoDoDia` só chama os serviços que o usuário pode acessar (evita 403).
+- `useDadosDaHome`/`usePulsoDoDia` só chamam os serviços que o perfil precisa ou
+  que o usuário pode acessar (evita 403); as pendências só contam módulos com
+  acesso.
+- **Fonte única compartilhada** (`dadosDoDia`): `buscaCompartilhada` reaproveita
+  a mesma Promise por chave (TTL curto), eliminando pedidos duplicados entre a
+  Home, a barra de abas e a aba Tarefas.
+- **Vendas via caminho rápido**: a Home usa `painelResumo` (leve), sem varrer os
+  ~90 dias dos perfis típicos do painel completo.
 
 ## 7. Lógica pura / utilidades
-- `ontemISO`, `classificar` (faixa da nota → cor/rótulo), `MedidorCircular`
-  (anel SVG), `temasDoPerfil` e o cálculo do "ritmo da meta".
+- Em `dadosDoDia`: `temasDoPerfil`, `ontemISO`, `calcularPendencias` (contagem
+  por módulo), `buscaCompartilhada` (dedup com TTL) e os buscadores por chave.
+- Em `ResumoDoDia`: `classificar` (faixa da nota → cor/rótulo), `MedidorCircular`
+  (anel SVG) e o cálculo do "ritmo da meta".
 - `QUEDA_VENDAS_RELEVANTE` (10%): limite para considerar queda de vendas.
 
 ## 8. Componentes e hooks compartilhados usados
 - `useRequisicao` — ver [Hooks e utilidades](hooks-e-utilidades.md).
-- `useAuth` (`podeAcessar`, `perfil`), `Cartao`, ícones `lucide-react-native`,
-  `react-native-svg`, `formatarMoeda`, `hojeISO`, `ROTULO_TIPO_ARRECADACAO` —
-  ver [Componentes compartilhados](componentes-compartilhados.md).
+- `useAuth` (`podeAcessar`, `perfil`), `Cartao`, `Skeleton` (placeholder de
+  carregamento), ícones `lucide-react-native`, `react-native-svg`,
+  `formatarMoeda`, `hojeISO`, `ROTULO_TIPO_ARRECADACAO` — ver
+  [Componentes compartilhados](componentes-compartilhados.md).
 
 ## 9. Testes
 Não se aplica (nenhum arquivo de teste nesta área).
 
 ## 10. Riscos, dívidas e pendências
-- 🔧 `ResumoDoDia.tsx` é muito grande (892 linhas), concentrando busca, regras de
+- 🔧 `ResumoDoDia.tsx` ainda é grande (831 linhas), concentrando regras de
   negócio, cálculo da nota e UI; forte candidato a extrair regras puras
-  (testáveis) e subcomponentes.
-- ⚠️ `ResumoDoDia` e `usePulsoDoDia` fazem buscas semelhantes de forma
-  independente; o próprio código sugere uma futura unificação da busca.
+  (testáveis) e subcomponentes. A busca de dados já saiu para `dadosDoDia`.
+- ✅ A busca de dados de `ResumoDoDia` e `usePulsoDoDia` foi **unificada** em
+  `dadosDoDia` (fonte única, deduplicada), eliminando os pedidos repetidos.
 - 📝 Sem testes automatizados apesar do peso das regras da nota de saúde e da
-  priorização — bom alvo para testes de lógica pura.
+  priorização — bom alvo para testes de lógica pura (`calcularPendencias` e a
+  nota já estão em funções isoláveis).
