@@ -5,7 +5,7 @@
 
 Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modulo.md`](./_modelo-modulo.md).
 
-**Cobertura:** 34/34 documentados (100%).
+**Cobertura:** 35/35 documentados (100%).
 
 | Item | Documento | Estado |
 |---|---|---|
@@ -37,6 +37,7 @@ Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modul
 | `permissoes` | [`permissoes`](./permissoes.md) | ✅ documentado |
 | `ponto` | [`ponto`](./ponto.md) | ✅ documentado |
 | `prisma` | [`prisma`](./prisma.md) | ✅ documentado |
+| `produtos-pesados` | [`produtos-pesados`](./produtos-pesados.md) | ✅ documentado |
 | `requisicoes` | [`requisicoes`](./requisicoes.md) | ✅ documentado |
 | `reset-operacional` | [`reset-operacional`](./reset-operacional.md) | ✅ documentado |
 | `storage` | [`storage`](./storage.md) | ✅ documentado |

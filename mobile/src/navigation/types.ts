@@ -52,6 +52,10 @@ export type RootStackParamList = {
   Contratos: undefined;
   Sancoes: undefined;
   CentroControle: undefined;
+  /** Consulta dos códigos de balança (área da Home, todos os perfis). */
+  ProdutosPesados: undefined;
+  /** Carga do arquivo .txt de produtos pesados (Centro de Controle, gestão). */
+  ProdutosPesadosCarga: undefined;
   Relatorios: undefined;
   GestaoColaboradores: { matriculaInicial?: string; nomeInicial?: string } | undefined;
   Metas: undefined;

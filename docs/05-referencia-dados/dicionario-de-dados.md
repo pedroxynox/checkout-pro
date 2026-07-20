@@ -3,7 +3,7 @@
 
 # Dicionário de Dados
 
-> Detalhe campo a campo das **51 tabelas**. Fonte: `backend/prisma/schema.prisma`.
+> Detalhe campo a campo das **52 tabelas**. Fonte: `backend/prisma/schema.prisma`.
 
 ## `Usuario`
 
@@ -803,5 +803,21 @@ pode ser detectado do ponto (RegistroPontoFiscal).
 | `justificadaPorNome` | `String?` |  |  |
 | `justificadaEm` | `DateTime?` |  |  |
 | `criadoEm` | `DateTime` |  |  |
+| `atualizadoEm` | `DateTime` |  |  |
+
+## `ProdutoPesado`
+
+futura (a foto exige um storage de objetos/S3, ainda não disponível).
+
+| Campo | Tipo | Chave | Descrição |
+|---|---|---|---|
+| `id` | `String` | PK |  |
+| `codigo` | `String` |  |  |
+| `nome` | `String` |  |  |
+| `nomeNormalizado` | `String` |  |  |
+| `categoria` | `String` |  |  |
+| `tipo` | `String?` |  |  |
+| `descricao` | `String?` |  |  |
+| `fotoUrl` | `String?` |  |  |
 | `atualizadoEm` | `DateTime` |  |  |
 

@@ -101,6 +101,8 @@ observações.
 | `INSUMOS_GERENCIAR` — entradas/pedidos/requisições | ✅ | ✅ | ✅ | — | — |
 | `CHECKOUTS` — reportar avarias por caixa | ✅ | ✅ | ✅ | ✅ | — |
 | `CHECKOUTS_GERENCIAR` — resolver avarias | ✅ | ✅ | ✅ | — | — |
+| `PRODUTOS_PESADOS` — consultar código de balança | ✅ | ✅ | ✅ | ✅ | — |
+| `PRODUTOS_PESADOS_GERENCIAR` — carregar o arquivo de códigos | ✅ | ✅ | — | — | — |
 | `LOTE_APAE` — sacolas APAE (ver/atualizar saldo) | ✅ | ✅ | — | ✅ | — |
 | `LOTE_APAE_GERENCIAR` — abrir/reiniciar/config APAE | ✅ | ✅ | — | — | — |
 

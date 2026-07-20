@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/acessos/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `backend/src/acessos/`
 
 # Módulo: `acessos`
 
@@ -25,7 +25,7 @@ conforme o perfil, aplicando os ajustes por perfil e por login.
 |---|---|---|
 | `acessos.controller.ts` | Rotas HTTP: login (público) e identidade | 53 |
 | `acessos.service.ts` | Efeitos colaterais: Prisma, bcrypt e JWT | 197 |
-| `acessos.domain.ts` | Regras puras: catálogo, perfis e decisão de acesso | 527 |
+| `acessos.domain.ts` | Regras puras: catálogo, perfis e decisão de acesso | 536 |
 | `acessos.errors.ts` | Erros de domínio (mapeados para HTTP) | 43 |
 | `acessos.module.ts` | Ligações (DI) e configuração do JWT | 38 |
 | `dto/login.dto.ts` | Validação de entrada do login | 12 |
@@ -101,6 +101,10 @@ Recompõe a identidade do usuário autenticado, buscando o `nome` atual no banco
 - Conjuntos por perfil: `FUNCIONALIDADES_FISCAL`, `FUNCIONALIDADES_SUPERVISOR`
   (fiscal + fechamento/edição/central de jornada), `FUNCIONALIDADES_GERENTE`,
   `FUNCIONALIDADES_IMPORTADOR` (só `IMPORTACOES`).
+- `PRODUTOS_PESADOS` (consulta do código de balança) é liberada a **todos** os
+  perfis operacionais (fiscal → supervisor → gerente; admin sempre); a carga do
+  arquivo usa `PRODUTOS_PESADOS_GERENCIAR` (gerente/admin) — ver
+  [`produtos-pesados`](produtos-pesados.md).
 - `FUNCIONALIDADES_PROTEGIDAS`: exclusivas do administrador e não ajustáveis
   (`USUARIOS_CRUD`, `ADMIN_DADOS`, `ESCALA_DOMINGO_CONFIG`, `IMPORTACOES`,
   `PERMISSOES_GERENCIAR`, `CARGA_STATUS_VISUALIZAR`).
@@ -147,7 +151,7 @@ Recompõe a identidade do usuário autenticado, buscando o `nome` atual no banco
 - ⚠️ **Espelho manual no app:** `mobile/src/auth/funcionalidades.ts` precisa
   refletir qualquer mudança no catálogo/perfis; os pacotes não compartilham
   código. A autorização que vale é sempre a do backend.
-- 🔧 `acessos.domain.ts` (527 linhas) concentra catálogo e regras dos perfis;
+- 🔧 `acessos.domain.ts` (536 linhas) concentra catálogo e regras dos perfis;
   cresce a cada nova funcionalidade — manter a ordem do catálogo e os testes-
   guarda evita "permissão fantasma".
 - ⛔ **Segredo do JWT em produção:** se `resolverSegredoJwt` não encontrar o

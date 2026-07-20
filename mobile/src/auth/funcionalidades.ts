@@ -64,6 +64,10 @@ export const TODAS_FUNCIONALIDADES = [
   // Check-Outs (reportar avarias de equipamentos por caixa)
   'CHECKOUTS',
   'CHECKOUTS_GERENCIAR',
+  // Produtos pesados (balança): consulta do código por qualquer perfil;
+  // a carga do arquivo (.txt) é restrita à gestão.
+  'PRODUTOS_PESADOS',
+  'PRODUTOS_PESADOS_GERENCIAR',
   // Pessoas e avisos
   'USUARIOS_CRUD',
   'NOTIFICACOES',
@@ -106,6 +110,8 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
   'PONTO_VISUALIZAR',
   // Check-Outs: qualquer fiscal reporta avarias de equipamentos por caixa.
   'CHECKOUTS',
+  // Produtos pesados: qualquer perfil consulta o código de balança.
+  'PRODUTOS_PESADOS',
   // Somente leitura do status de carga do dia, para o Briefing ter a MESMA
   // nota de saúde de gerentes/supervisores. Não abre nenhuma seção no menu do
   // fiscal (não há área associada a esta funcionalidade).
@@ -179,6 +185,9 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
   'CENTRAL_JORNADA',
   'CHECKOUTS',
   'CHECKOUTS_GERENCIAR',
+  // Produtos pesados: consulta e CARGA do arquivo de códigos de balança.
+  'PRODUTOS_PESADOS',
+  'PRODUTOS_PESADOS_GERENCIAR',
   'PONTO_REGISTRAR',
   'PONTO_EDITAR',
   'PONTO_VISUALIZAR',
