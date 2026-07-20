@@ -42,6 +42,16 @@ export class EnvironmentVariables {
   @IsOptional()
   DATABASE_URL?: string;
 
+  // Teto do pool de conexões do Prisma, aplicado à DATABASE_URL pelo
+  // PrismaService. O Postgres pago básico do Render tem limite de conexões
+  // baixo; com uma única instância, um teto explícito evita esgotá-lo. Padrão
+  // conservador (10) quando ausente.
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  DATABASE_CONNECTION_LIMIT = 10;
+
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
     message: 'HORARIO_FIM_DO_DIA deve estar no formato HH:mm',
   })
