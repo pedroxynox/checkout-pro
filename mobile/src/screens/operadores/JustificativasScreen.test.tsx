@@ -7,9 +7,24 @@ import React from 'react';
 import { JustificativasScreen } from './JustificativasScreen';
 
 jest.mock('../../api/services', () => ({
-  operadoresService: { listarAusencias: jest.fn(), justificarAusencia: jest.fn() },
+  operadoresService: {
+    listarAusencias: jest.fn(),
+    justificarAusencia: jest.fn(),
+    removerAusencia: jest.fn(),
+  },
   escalaService: { listarIncidencias: jest.fn(), justificarIncidencia: jest.fn() },
   colaboradoresService: { listar: jest.fn() },
+}));
+
+// useAuth: por padrão, um perfil de gestão (pode excluir faltas).
+jest.mock('../../auth/AuthContext', () => ({
+  useAuth: () => ({ perfil: 'GERENTE' }),
+}));
+
+// Diálogos: confirmar resolve true (usuário confirmou) para exercitar a exclusão.
+jest.mock('../../utils/dialogos', () => ({
+  confirmar: jest.fn().mockResolvedValue(true),
+  notificar: jest.fn(),
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -34,6 +49,7 @@ describe('JustificativasScreen', () => {
     escalaService.listarIncidencias.mockResolvedValue([]);
     colaboradoresService.listar.mockResolvedValue([{ id: 'c1', nome: 'Ana Souza' }]);
     operadoresService.justificarAusencia.mockResolvedValue({});
+    operadoresService.removerAusencia.mockResolvedValue(undefined);
   });
 
   it('mostra a falta pendente com quem a registrou', async () => {
@@ -56,6 +72,15 @@ describe('JustificativasScreen', () => {
         motivo: 'ATESTADO_MEDICO',
         observacao: undefined,
       }),
+    );
+  });
+
+  it('exclui uma falta lançada por engano (gestão)', async () => {
+    render(<JustificativasScreen />);
+    await screen.findByText('Ana Souza');
+    fireEvent.press(screen.getByText('Excluir'));
+    await waitFor(() =>
+      expect(operadoresService.removerAusencia).toHaveBeenCalledWith('a1'),
     );
   });
 });

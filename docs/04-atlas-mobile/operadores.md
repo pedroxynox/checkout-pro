@@ -38,7 +38,10 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
    e drill-down por colaborador (com advertência por falta não justificada).
 4. **Justificativas:** `JustificativasLista` reúne faltas e não-retornos dos
    últimos 30 dias; permite justificar (motivo), marcar como não justificada ou
-   reabrir, mostrando quem registrou/justificou.
+   reabrir, mostrando quem registrou/justificou. Para **faltas**, gerente/
+   supervisor/administrador têm ainda **Excluir** — apaga uma falta lançada por
+   engano (ex.: escala desatualizada) para que não pese no colaborador; é
+   diferente de abonar (que mantém a falta com peso reduzido).
 5. **Ausências a prazo:** o card abre um modal com duas abas — **Registrar**
    (ausenta por período, criando faltas justificadas em cada dia, inclusive a
    folga) e **Cancelar** (desmarca/anula uma ausência a prazo inteira do período
@@ -57,6 +60,7 @@ Trata **carregando / erro / vazio**.
 | Não-retornos (mês) | `operadoresService.analiticaNaoRetornos(ini, fim)` | `GET /quadro-operadores/nao-retornos/analitica` |
 | Faltas do dia | `operadoresService.listarAusencias(ini, fim)` | `GET /operadores/ausencias` |
 | Justificar falta | `operadoresService.justificarAusencia(id, dados)` | `PATCH /operadores/ausencias/:id/justificativa` |
+| Excluir falta (rejeitar engano) | `operadoresService.removerAusencia(id)` | `DELETE /operadores/ausencias/:id` |
 | Ausência por período | `operadoresService.registrarAusenciaPeriodo(input)` | `POST /operadores/ausencias/periodo` |
 | Cancelar ausência a prazo | `operadoresService.removerAusenciaPeriodo(input)` | `DELETE /operadores/ausencias/periodo` |
 | Registrar férias | `feriasService.registrar(input)` | `POST /ferias` |
@@ -116,7 +120,7 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
 ## 9. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `JustificativasScreen.test.tsx` | Falta pendente com quem registrou e justificar com motivo | 2 |
+| `JustificativasScreen.test.tsx` | Falta pendente, justificar com motivo e excluir (gestão) | 3 |
 
 ## 10. Riscos, dívidas e pendências
 - 🔧 `OperadoresScreen.tsx` (>1800 linhas) reúne roster, ao vivo, análise
