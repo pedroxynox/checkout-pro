@@ -11,6 +11,7 @@ import {
   ConfigVendas,
   EstimativasMes,
   PainelVendas,
+  PainelVendasResumo,
   ResultadoUploadVendas,
   ResumoVendas,
   StatusVendas,
@@ -70,6 +71,18 @@ export const vendasService = {
   /** Painel inteligente (projeção, comparativos, tendência, curva, lotação). */
   painel(data?: string): Promise<PainelVendas> {
     return apiClient.get<PainelVendas>('/vendas/painel', data ? { data } : undefined);
+  },
+
+  /**
+   * Resumo do painel (caminho rápido): meta, projeção e comparativos, sem os
+   * perfis típicos de ~90 dias. Usado pela Home (Resumo do Dia e contagens)
+   * para carregar bem mais rápido.
+   */
+  painelResumo(data?: string): Promise<PainelVendasResumo> {
+    return apiClient.get<PainelVendasResumo>(
+      '/vendas/painel-resumo',
+      data ? { data } : undefined,
+    );
   },
 
   /** Configuração do painel (meta mensal). */

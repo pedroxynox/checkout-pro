@@ -89,7 +89,14 @@ export interface PadraoDiaSemana {
   media: number;
 }
 
-export interface PainelVendas {
+/**
+ * Parte "leve" do painel de vendas: meta, projeção de fechamento e
+ * comparativos por data. É o suficiente para o Resumo do Dia (Home) e para as
+ * contagens de pendências, SEM os perfis típicos (curva horária, heatmap e
+ * padrão por dia da semana), que exigem varrer ~90 dias de registros por hora.
+ * Separar isso deixa a Home muito mais rápida (ver `painelResumo`).
+ */
+export interface PainelVendasResumo {
   metaMensal: number;
   /** Faturamento do mês até a data de referência. */
   arrecadadoMes: number;
@@ -112,6 +119,14 @@ export interface PainelVendas {
     semana: ComparativoVendas;
     mes: ComparativoVendas;
   };
+}
+
+/**
+ * Painel completo: o resumo (`PainelVendasResumo`) mais os perfis típicos
+ * (tendência, curva horária, heatmap e padrão por dia da semana), usados pela
+ * tela do Painel de Vendas.
+ */
+export interface PainelVendas extends PainelVendasResumo {
   tendencia: PontoTendenciaVendas[];
   curvaHoraria: PontoCurvaHora[];
   horaPico: number | null;
@@ -333,11 +348,13 @@ export class VendasService {
   // ----------------------------- Painel -----------------------------------
 
   /**
-   * Painel inteligente consolidado de vendas para a data de referência
-   * (padrão: hoje): meta e projeção de fechamento, comparativos por data,
-   * tendência, curva horária típica, heatmap e padrão por dia da semana.
+   * Resumo do painel (parte "leve"): meta e projeção de fechamento e
+   * comparativos por data (dia/semana/mês). NÃO calcula os perfis típicos
+   * (tendência, curva, heatmap, padrão), que exigem varrer ~90 dias de
+   * registros por hora. É o que a Home (Resumo do Dia e contagens) consome —
+   * por isso é o caminho rápido. O painel completo reaproveita este resumo.
    */
-  async painel(dataRef: Date = new Date()): Promise<PainelVendas> {
+  async painelResumo(dataRef: Date = new Date()): Promise<PainelVendasResumo> {
     const ref = inicioDoDia(dataRef);
     // Meta do mês de referência (Centro de Controle ▸ Metas), por período
     // mensal. Substitui a antiga meta única do Painel de Vendas.
@@ -401,6 +418,30 @@ export class VendasService {
       },
     };
 
+    return {
+      metaMensal,
+      arrecadadoMes,
+      diasComVenda,
+      diasNoMes: totalDiasMes,
+      mediaDiaria,
+      projecaoFechamento,
+      metaProgresso,
+      projecaoVsMeta,
+      estimativaDia,
+      comparativos,
+    };
+  }
+
+  /**
+   * Painel inteligente consolidado de vendas para a data de referência
+   * (padrão: hoje): o resumo (meta, projeção e comparativos) mais os perfis
+   * típicos — tendência, curva horária, heatmap e padrão por dia da semana.
+   */
+  async painel(dataRef: Date = new Date()): Promise<PainelVendas> {
+    const resumo = await this.painelResumo(dataRef);
+    const ref = inicioDoDia(dataRef);
+    const fimMtd = addDias(ref, 1); // exclusivo: inclui o dia de referência
+
     // --- Tendência (30 dias) ---
     const inicioTend = addDias(ref, -29);
     const diariosTend = await this.prisma.vendaDiaria.findMany({
@@ -439,16 +480,7 @@ export class VendasService {
     const padraoDiaSemana = this.calcularPadraoDiaSemana(diariosPerfil);
 
     return {
-      metaMensal,
-      arrecadadoMes,
-      diasComVenda,
-      diasNoMes: totalDiasMes,
-      mediaDiaria,
-      projecaoFechamento,
-      metaProgresso,
-      projecaoVsMeta,
-      estimativaDia,
-      comparativos,
+      ...resumo,
       tendencia,
       curvaHoraria,
       horaPico,
@@ -544,7 +576,9 @@ export class VendasService {
   private async avisarVendas(dia: Date, total: number): Promise<void> {
     if (!this.notificacoes || total <= 0) return;
     try {
-      const gestores = await this.notificacoes.destinatariosComPermissao('PAINEL_VENDAS_VISUALIZAR');
+      const gestores = await this.notificacoes.destinatariosComPermissao(
+        'PAINEL_VENDAS_VISUALIZAR',
+      );
       if (gestores.length === 0) return;
 
       // (a) Dia recorde: maior que todos os dias anteriores.

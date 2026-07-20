@@ -48,7 +48,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../auth/AuthContext';
 import { AREAS } from '../navigation/areas';
 import { ResumoDoDia } from './centroDeMando/ResumoDoDia';
-import { usePulsoDoDia } from './centroDeMando/usePulsoDoDia';
+import { useDadosDaHome } from './centroDeMando/dadosDoDia';
 import { PropsTabInicio } from '../navigation/types';
 import { cores, coresModulos, gradientes, raio, sombra, tipografia } from '../theme';
 
@@ -88,9 +88,10 @@ export function HomeScreen({
   navigation,
 }: PropsTabInicio): React.ReactElement {
   const { usuario, perfil, podeAcessar, sair } = useAuth();
-  // Pulso do dia: pendências por módulo (para ordenar por relevância e marcar
-  // um selo). Defensivo e por regras; não muda nenhuma lógica de negócio.
-  const { pendenciasPorModulo } = usePulsoDoDia(perfil, podeAcessar);
+  // Dados do dia buscados UMA vez (compartilhados/deduplicados) e usados tanto
+  // pelo Resumo do Dia (briefing) quanto pelos selos de pendência dos acessos.
+  // Defensivo e por regras; não muda nenhuma lógica de negócio.
+  const { campos, pendenciasPorModulo } = useDadosDaHome(perfil, podeAcessar);
   // Áreas visíveis no menu: precisa ter acesso pela funcionalidade E não estar
   // marcada como "em breve" (em construção). Áreas `emBreve` ficam ocultas até
   // serem concluídas, inclusive para o gerente desenvolvedor.
@@ -235,6 +236,7 @@ export function HomeScreen({
             <View style={styles.desktopMainInner}>
               <ResumoDoDia
                 aoNavegar={(rota) => navigation.navigate(rota as never)}
+                dados={campos}
               />
             </View>
           </ScrollView>
@@ -243,7 +245,10 @@ export function HomeScreen({
         /* ===== Layout de CELULAR (inalterado): painel + grade de acessos ===== */
         <ScrollView style={styles.scroll} contentContainerStyle={styles.conteudo}>
           {/* Resumo inteligente do dia (mantido no topo) */}
-          <ResumoDoDia aoNavegar={(rota) => navigation.navigate(rota as never)} />
+          <ResumoDoDia
+            aoNavegar={(rota) => navigation.navigate(rota as never)}
+            dados={campos}
+          />
 
           {/* Acessos rápidos (áreas) em grade */}
           <Text style={styles.secao}>Acessos rápidos</Text>
