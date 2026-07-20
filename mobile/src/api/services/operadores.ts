@@ -49,6 +49,22 @@ export const operadoresService = {
   },
 
   /**
+   * Anula (desmarca) uma ausência a prazo inteira: remove os dias `aPrazo` da
+   * pessoa no intervalo. Operação inversa do registro do período — restrita a
+   * gerente/supervisor. Retorna quantos dias foram desmarcados.
+   */
+  removerAusenciaPeriodo(input: {
+    pessoaId: string;
+    inicio: string;
+    fim: string;
+  }): Promise<{ removidas: number }> {
+    return apiClient.delete<{ removidas: number }>(
+      '/operadores/ausencias/periodo',
+      input,
+    );
+  },
+
+  /**
    * Lista as faltas de um período com nome + justificativa (estado, motivo,
    * quem justificou). `pendentes=true` traz só as pendentes de análise.
    */

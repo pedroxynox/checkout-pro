@@ -3,7 +3,7 @@
 
 # Migrações do Banco de Dados
 
-> Histórico ordenado das **70 migrações** (`backend/prisma/migrations/`). Cada migração é uma alteração versionada do banco.
+> Histórico ordenado das **71 migrações** (`backend/prisma/migrations/`). Cada migração é uma alteração versionada do banco.
 
 | # | Migração |
 |---|---|
@@ -37,43 +37,44 @@
 | 28 | `9r_metas_mensais` |
 | 29 | `9s_colaboradores_de_fiscais` |
 | 30 | `9t_usuario_token_version` |
-| 31 | `9u_fechamento_concluido` |
-| 32 | `9v_requisicao_automatica` |
-| 33 | `9w_incidencia_escala` |
-| 34 | `9x_config_sistema` |
-| 35 | `9y_contratos_experiencia` |
-| 36 | `9z_justificativas` |
-| 37 | `9za_incidencia_tipos` |
-| 38 | `9zb_incidencia_suspensao` |
-| 39 | `9zc_sancoes_periodo` |
-| 40 | `9zd_solicitacao_advertencia` |
-| 41 | `9ze_push_tokens` |
-| 42 | `9zf_colaborador_desligado_em` |
-| 43 | `9zg_movimento_autor_requisitante` |
-| 44 | `9zh_registro_ponto` |
-| 45 | `9zi_escala_domingo` |
-| 46 | `9zj_escala_domingo_ancora` |
-| 47 | `9zk_escala_domingo_ordem` |
-| 48 | `9zl_estimativa_venda_dia` |
-| 49 | `9zm_alias_leitura_ponto` |
-| 50 | `9zn_feedforward` |
-| 51 | `9zo_feriados_debito_horas` |
-| 52 | `9zp_tipo_contrato_colaborador` |
-| 53 | `9zq_alerta_tac_enviado` |
-| 54 | `9zr_renomear_administrador` |
-| 55 | `9zs_permissoes_por_usuario` |
-| 56 | `9zt_padroes_por_perfil` |
-| 57 | `9zu_checkouts` |
-| 58 | `9zu_eventos_alerta_tac` |
-| 59 | `9zv_alias_ponto_desafiante` |
-| 60 | `9zw_batida_cliente_id` |
-| 61 | `9zx_ciclo_folha` |
-| 62 | `9zy_tipos_contrato_jornada` |
-| 63 | `9zz_contrato_intervalo_e_vinculo` |
-| 64 | `9zzb_contrato_trabalha_domingo` |
-| 65 | `9zzc_ausencia_a_prazo` |
-| 66 | `9zzd_ausencia_automatica` |
-| 67 | `9zze_tipo_contrato_fonte_unica` |
-| 68 | `9zzf_backfill_vinculo_ponto_fiscal` |
-| 69 | `9zzg_backfill_ausencia_colaborador` |
-| 70 | `9zzh_produtos_pesados` |
+| 31 | `9u_add_ferias_colaborador` |
+| 32 | `9u_fechamento_concluido` |
+| 33 | `9v_requisicao_automatica` |
+| 34 | `9w_incidencia_escala` |
+| 35 | `9x_config_sistema` |
+| 36 | `9y_contratos_experiencia` |
+| 37 | `9z_justificativas` |
+| 38 | `9za_incidencia_tipos` |
+| 39 | `9zb_incidencia_suspensao` |
+| 40 | `9zc_sancoes_periodo` |
+| 41 | `9zd_solicitacao_advertencia` |
+| 42 | `9ze_push_tokens` |
+| 43 | `9zf_colaborador_desligado_em` |
+| 44 | `9zg_movimento_autor_requisitante` |
+| 45 | `9zh_registro_ponto` |
+| 46 | `9zi_escala_domingo` |
+| 47 | `9zj_escala_domingo_ancora` |
+| 48 | `9zk_escala_domingo_ordem` |
+| 49 | `9zl_estimativa_venda_dia` |
+| 50 | `9zm_alias_leitura_ponto` |
+| 51 | `9zn_feedforward` |
+| 52 | `9zo_feriados_debito_horas` |
+| 53 | `9zp_tipo_contrato_colaborador` |
+| 54 | `9zq_alerta_tac_enviado` |
+| 55 | `9zr_renomear_administrador` |
+| 56 | `9zs_permissoes_por_usuario` |
+| 57 | `9zt_padroes_por_perfil` |
+| 58 | `9zu_checkouts` |
+| 59 | `9zu_eventos_alerta_tac` |
+| 60 | `9zv_alias_ponto_desafiante` |
+| 61 | `9zw_batida_cliente_id` |
+| 62 | `9zx_ciclo_folha` |
+| 63 | `9zy_tipos_contrato_jornada` |
+| 64 | `9zz_contrato_intervalo_e_vinculo` |
+| 65 | `9zzb_contrato_trabalha_domingo` |
+| 66 | `9zzc_ausencia_a_prazo` |
+| 67 | `9zzd_ausencia_automatica` |
+| 68 | `9zze_tipo_contrato_fonte_unica` |
+| 69 | `9zzf_backfill_vinculo_ponto_fiscal` |
+| 70 | `9zzg_backfill_ausencia_colaborador` |
+| 71 | `9zzh_produtos_pesados` |

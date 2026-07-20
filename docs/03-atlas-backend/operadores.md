@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `backend/src/operadores/`
 
 # Módulo: `operadores`
 
@@ -45,6 +45,7 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 | `GET /quadro-operadores/turnos` | `OPERADORES_AUSENCIAS` | Lista os operadores (turno fixo) do Cadastro Unificado. |
 | `POST /operadores/ausencias` | `OPERADORES_AUSENCIAS` | Registra uma falta numa data (futura exige gerente/supervisor). |
 | `POST /operadores/ausencias/periodo` | `OPERADORES_AUSENCIAS` | Ausência a prazo: falta justificada dia a dia (futura exige gestão). |
+| `DELETE /operadores/ausencias/periodo` | `OPERADORES_AUSENCIAS` | Anula uma ausência a prazo inteira no período (só gerente/supervisor). |
 | `DELETE /operadores/ausencias/:id` | `OPERADORES_AUSENCIAS` | Remove uma falta (a prazo: fiscal não desmarca). |
 | `PATCH /operadores/ausencias/:id/justificativa` | `OPERADORES_AUSENCIAS` | Justifica/reabre/injustifica (com auditoria). |
 | `GET /operadores/ausencias` | `OPERADORES_AUSENCIAS` | Lista faltas do período (nome + justificativa); `?pendentes=true`. |
@@ -70,9 +71,20 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 #### `registrarAusenciaPeriodo(pessoaId, inicio, fim, input, autor?)`
 - **Efeitos:** marca **falta justificada** em cada dia corrido do intervalo
   (inclusive folga), numa transação atômica; dias que já tinham falta são
-  convertidos (não duplica); marca `aPrazo: true`; envia um único aviso.
+  convertidos (não duplica); marca `aPrazo: true` **e grava `colaboradorId`**
+  (= `pessoaId`, pois a a prazo é sempre lançada escolhendo um Colaborador),
+  para a busca por ficha encontrar esses dias; envia um único aviso.
 - **Erros:** `JustificativaInvalidaError` (motivo obrigatório),
   `PeriodoAusenciaInvalidoError` (data final antes da inicial ou > 186 dias).
+
+#### `removerAusenciaPeriodo(pessoaId, inicio, fim)`
+- **Efeitos:** anula uma **ausência a prazo inteira** — `deleteMany` dos dias
+  `aPrazo` da pessoa no intervalo, casando as duas chaves (`pessoaId` **e**
+  `colaboradorId`, cobrindo registros novos e legados); preserva as faltas
+  comuns/automáticas; exige ciclo de folha aberto; envia um único aviso. Retorna
+  `{ removidas }`. A autorização (gerente/supervisor/administrador) é feita no
+  controller, como no registro do período.
+- **Erros:** `PeriodoAusenciaInvalidoError` (data final antes da inicial).
 
 #### `removerAusencia(ausenciaId, perfil?)`
 Remove a falta; bloqueia o **fiscal** de desmarcar um dia `aPrazo`
@@ -152,6 +164,8 @@ Delegam às funções puras homônimas do domínio.
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `operadores.service.spec.ts` | Ausências, ciclo fechado e ausência a prazo | 10 |
+| `ausencia-a-prazo-vinculo.spec.ts` | A prazo grava `colaboradorId` + `aPrazo` em cada dia | 1 |
+| `remover-ausencia-periodo.spec.ts` | Anular a prazo por período (só `aPrazo`, ambas as chaves) | 3 |
 | `operadores.properties.spec.ts` | Unicidade, relatório e turno (property-based) | 5 |
 | `operadores.justificativa.spec.ts` | Taxa ponderada e justificativa com auditoria | 6 |
 | `ausencia-a-prazo.spec.ts` | Proteção da falta a prazo (fiscal x gestão) | 3 |

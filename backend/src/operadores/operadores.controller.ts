@@ -23,6 +23,7 @@ import {
   PeriodoAusenciasDto,
   RegistrarAusenciaDto,
   RegistrarAusenciaPeriodoDto,
+  RemoverAusenciaPeriodoDto,
 } from './dto/operadores.dto';
 import { ContagemTurno, ItemRelatorioAusencia } from './operadores.domain';
 import {
@@ -117,6 +118,33 @@ export class OperadoresController {
       new Date(dto.fim),
       { motivo: dto.motivo, observacao: dto.observacao },
       { id: usuario?.sub, nome: usuario?.nome ?? usuario?.login },
+    );
+  }
+
+  /**
+   * Anula (desmarca) uma ausência a prazo inteira: remove os dias `aPrazo` da
+   * pessoa no intervalo. Operação inversa do registro do período — restrita a
+   * gerente/supervisor/administrador (mesmos perfis que programam o período).
+   *
+   * Declarada ANTES de `ausencias/:id` para a rota estática ter precedência
+   * sobre o parâmetro.
+   */
+  @Delete('ausencias/periodo')
+  @Funcionalidade('OPERADORES_AUSENCIAS')
+  @HttpCode(HttpStatus.OK)
+  async removerAusenciaPeriodo(
+    @Query() dto: RemoverAusenciaPeriodoDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<{ removidas: number }> {
+    if (!PERFIS_AUTORIZA_FUTURO.includes(usuario?.perfil as string)) {
+      throw new ForbiddenException(
+        'Apenas gerente ou supervisor pode cancelar uma ausência a prazo.',
+      );
+    }
+    return this.operadoresService.removerAusenciaPeriodo(
+      dto.pessoaId,
+      new Date(dto.inicio),
+      new Date(dto.fim),
     );
   }
 

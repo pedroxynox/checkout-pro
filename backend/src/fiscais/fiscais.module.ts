@@ -5,6 +5,7 @@ import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
 import { FeriadosModule } from '../feriados/feriados.module';
 import { CicloFolhaModule } from '../ciclo-folha/ciclo-folha.module';
 import { TiposContratoModule } from '../tipos-contrato/tipos-contrato.module';
+import { FeriasModule } from '../ferias/ferias.module';
 import { FiscaisController } from './fiscais.controller';
 import { FiscaisService } from './fiscais.service';
 import { FiscaisHorarioService } from './fiscais-horario.service';
@@ -30,6 +31,7 @@ import { FiscalStatusEventos } from './fiscais.eventos';
     FeriadosModule,
     CicloFolhaModule,
     TiposContratoModule,
+    FeriasModule,
   ],
   providers: [
     FiscaisService,

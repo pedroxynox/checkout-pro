@@ -327,6 +327,13 @@ export class OperadoresService {
       // Marca o dia como parte da ausência a prazo: um fiscal não pode
       // desmarcá-lo na escala (só gerente/supervisor/administrador).
       aPrazo: true,
+      // Vínculo com a ficha canônica (Fase 4 · Opção A): a ausência a prazo é
+      // sempre lançada escolhendo um Colaborador, então o `pessoaId` já é a
+      // ficha. Gravar `colaboradorId` mantém a paridade com `registrarAusencia`
+      // e é o que permite que a busca por ficha encontre estes dias — ex.: a
+      // detecção automática de falta de um FISCAL conhece o Colaborador.id e
+      // NÃO deve remarcar uma falta automática duplicada por cima da a prazo.
+      colaboradorId: pessoaId,
     };
 
     // Grava os dias do período de forma ATÔMICA (tudo-ou-nada): se algo falhar
@@ -407,6 +414,76 @@ export class OperadoresService {
       if (this.cicloFolha) await this.cicloFolha.exigirCicloAberto(a.data);
     }
     await this.prisma.ausencia.delete({ where: { id: ausenciaId } });
+  }
+
+  /**
+   * Anula uma AUSÊNCIA A PRAZO inteira (o período do gestor), removendo de uma
+   * só vez todos os dias marcados como `aPrazo` da pessoa dentro do intervalo
+   * [inicio, fim]. É a operação inversa de `registrarAusenciaPeriodo` — o botão
+   * "desmarcar" da ausência a prazo — e por isso é restrita à gestão (a
+   * autorização de perfil é feita no controller, como no registro do período).
+   *
+   * Só remove os dias `aPrazo` (as faltas comuns/automáticas do intervalo NÃO
+   * são tocadas) e casa AS DUAS chaves possíveis (`pessoaId` e `colaboradorId`),
+   * cobrindo tanto os registros novos (já com vínculo à ficha) quanto os legados
+   * (keyed só por `Colaborador.id`). Envia um único aviso a todos. Retorna
+   * quantos dias foram desmarcados.
+   */
+  async removerAusenciaPeriodo(
+    pessoaId: string,
+    inicio: Date,
+    fim: Date,
+  ): Promise<{ removidas: number }> {
+    const d0 = inicioDoDia(inicio);
+    const d1 = inicioDoDia(fim);
+    if (d1.getTime() < d0.getTime()) {
+      throw new PeriodoAusenciaInvalidoError(
+        'A data final deve ser igual ou posterior à inicial.',
+      );
+    }
+    // Bloqueia mexer em faltas de um ciclo de folha já fechado (âncora no início).
+    await this.cicloFolha?.exigirCicloAberto(d0);
+
+    const colaborador = await this.prisma.colaborador.findUnique({
+      where: { id: pessoaId },
+      select: { nome: true },
+    });
+
+    const { count } = await this.prisma.ausencia.deleteMany({
+      where: {
+        aPrazo: true,
+        data: { gte: d0, lte: d1 },
+        OR: [{ pessoaId }, { colaboradorId: pessoaId }],
+      },
+    });
+
+    if (count > 0) {
+      await this.avisarAusenciaPeriodoAnulada(
+        colaborador?.nome ?? null,
+        d0,
+        d1,
+        count,
+      );
+    }
+    return { removidas: count };
+  }
+
+  /** Aviso único (a todos) da anulação de uma ausência a prazo. Best-effort. */
+  private async avisarAusenciaPeriodoAnulada(
+    nome: string | null,
+    inicio: Date,
+    fim: Date,
+    dias: number,
+  ): Promise<void> {
+    if (!this.notificacoes || dias <= 0 || !nome) return;
+    try {
+      await this.notificacoes.notificarTodos({
+        titulo: '🟢 Ausência a prazo cancelada',
+        mensagem: `A ausência de ${nome} (${formatarDiaMes(inicio)} a ${formatarDiaMes(fim)}) foi cancelada — ${dias} dia(s) desmarcado(s).`,
+      });
+    } catch {
+      // best-effort: o aviso nunca deve impedir a anulação.
+    }
   }
 
   /**

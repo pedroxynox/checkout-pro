@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/fiscais/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `backend/src/fiscais/`
 
 # Módulo: `fiscais`
 
@@ -24,7 +24,7 @@ os alertas automáticos e a **escala de trabalho** (geral e horário especial).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `fiscais.controller.ts` | Rotas de status/jornada/painel do fiscal | 134 |
-| `fiscais.service.ts` | Regras de aplicação: status, jornada, extras, painel | 1574 |
+| `fiscais.service.ts` | Regras de aplicação: status, jornada, extras, painel | 1659 |
 | `fiscais.domain.ts` | Regras puras: status atual, jornada, transições | 150 |
 | `fiscais.errors.ts` | Erros de domínio (mapeados para HTTP) | 47 |
 | `fiscais.eventos.ts` | Barramento de eventos de status (produtor↔gateway) | 38 |
@@ -32,7 +32,7 @@ os alertas automáticos e a **escala de trabalho** (geral e horário especial).
 | `fiscais-horario.service.ts` | Cron: lembretes de horário aos fiscais (conta resolvida pela ficha) | 143 |
 | `fiscais-alertas.service.ts` | Cron: alertas de intervalo longo e cobertura | 416 |
 | `escala.controller.ts` | Rotas da escala de trabalho | 64 |
-| `escala.service.ts` | Regras da escala (geral, especial, consolidada) | 276 |
+| `escala.service.ts` | Regras da escala (geral, especial, consolidada) | 355 |
 | `escala.domain.ts` | Regras puras: escala efetiva, consolidada, semanal | 166 |
 | `colaborador-vinculo.ts` | Regra pura: mapeia fiscal → colaborador (ficha) | 84 |
 | `integridade-vinculo.ts` | Regra pura: detecta vínculos órfãos fiscal ↔ ficha | 96 |
@@ -97,10 +97,14 @@ Propaga em tempo real (mesmo canal WebSocket dos fiscais) o status ao vivo de um
 **operador**, identificado pela ficha canônica (`colaboradorId`). Chamado pelo
 `PontoService` quando um operador bate ponto.
 
-#### `jornadaDoDia(dia)` / `equipeDoDia(dia)` / `horasExtrasMes(mes?)`
-Log de tempos por fiscal; jornada de equipe (todos os escalados, com atraso e
-falta); e o acumulado de horas extras do mês (extra 50% em dias comuns e 100%
-aos domingos).
+#### `escaladosDoDia(dia)` / `jornadaDoDia(dia)` / `equipeDoDia(dia)` / `horasExtrasMes(mes?)`
+`escaladosDoDia` é a **fonte única** de quem deve trabalhar no dia (fiscais pela
+escala consolidada + operadores pelo cadastro/rodízio) e alimenta tanto a
+"equipe do dia" quanto a detecção automática de falta. **Quem está de férias no
+dia é excluído aqui** (pela ficha, via `FeriasService.colaboradoresDeFeriasNoDia`),
+então some da escala e não vira falta automática. Os demais: log de tempos por
+fiscal; jornada de equipe (todos os escalados, com atraso e falta); e o
+acumulado de horas extras do mês (extra 50% em dias comuns e 100% aos domingos).
 
 #### `folgaHoje()` · `historicoSemanal(usuarioId)` · `rankingMes()` · `previsaoExtras()` · `contextoEscala()`
 Consultas de apoio: quem está de folga hoje; histórico de 7 dias do próprio
@@ -119,7 +123,9 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
   `colaboradorId` (ficha canônica), resolvido do `funcionarioId` (Fase 4 · Opção A).
 - `resolverEscalaEfetiva(funcionarioId, diaSemana)` — a escala aplicável no dia.
 - `escalaConsolidada(diaSemana, dataISO?)` — consolidação por dia; no domingo,
-  os fiscais vêm do rodízio de grupos.
+  os fiscais vêm do rodízio de grupos. Quando há **data concreta** (`dataISO`),
+  quem está de férias nesse dia é excluído (via `FeriasService`); a grade
+  semanal sem data não aplica férias (elas são por dia).
 
 ### Serviços de infraestrutura
 - `FiscalStatusEventos` — barramento (RxJS) que desacopla o serviço do gateway.
@@ -160,7 +166,8 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 ## 9. Dependências
 - **Depende de:** `PrismaService`, `NotificacoesService`, `JwtService` (gateway),
   `DataInicialModule`, `EscalaDomingoModule`, `FeriadosModule`,
-  `CicloFolhaModule`, `TiposContratoModule`.
+  `CicloFolhaModule`, `TiposContratoModule`, [`FeriasModule`](ferias.md)
+  (exclui da escala quem está de férias).
 - **É usado por:** o app (painel de fiscais, jornada, escala), e é fonte para
   [`central-jornada`](central-jornada.md) e o Perfil Inteligente.
 
@@ -178,6 +185,9 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
    fiscais vem do rodízio de grupos.
 8. **Ponte batidas → status é atômica**; o tempo real só é anunciado após o
    commit.
+9. **Férias somem da escala** (inativação não rígida): `escaladosDoDia` e a
+   escala consolidada (com data) excluem quem está de férias — sem falta e sem
+   mexer em `ativo` (ver [`ferias`](ferias.md)).
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
@@ -192,6 +202,7 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 | `jornada-marcacoes.spec.ts` | Jornada a partir das marcações do dia | 2 |
 | `escala-colaborador.spec.ts` | Geração da escala semanal a partir do cadastro | 4 |
 | `escala-inativo.spec.ts` | Escala de colaborador inativo | 1 |
+| `escalados-ferias.spec.ts` | `escaladosDoDia` exclui quem está de férias | 2 |
 | `integridade-vinculo.spec.ts` | Detecção de vínculos órfãos fiscal ↔ ficha (Fase 4) | 6 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).

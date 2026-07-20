@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **201 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **205 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -168,6 +168,14 @@
 | POST | `/feriados` | `criar` | `CENTRAL_JORNADA` |
 | DELETE | `/feriados/:id` | `remover` | `CENTRAL_JORNADA` |
 
+## `ferias`
+
+| Método | Rota | Handler | Permissão |
+|---|---|---|---|
+| POST | `/ferias` | `registrar` | `OPERADORES_CRUD` |
+| GET | `/ferias` | `listar` | `OPERADORES_AUSENCIAS` |
+| DELETE | `/ferias/:id` | `remover` | `OPERADORES_CRUD` |
+
 ## `fiscais`
 
 | Método | Rota | Handler | Permissão |
@@ -269,6 +277,7 @@
 | GET | `/quadro-operadores/turnos` | `listar` | `OPERADORES_AUSENCIAS` |
 | POST | `/operadores/ausencias` | `registrarAusencia` | `OPERADORES_AUSENCIAS` |
 | POST | `/operadores/ausencias/periodo` | `registrarAusenciaPeriodo` | `OPERADORES_AUSENCIAS` |
+| DELETE | `/operadores/ausencias/periodo` | `removerAusenciaPeriodo` | `OPERADORES_AUSENCIAS` |
 | DELETE | `/operadores/ausencias/:id` | `removerAusencia` | `OPERADORES_AUSENCIAS` |
 | PATCH | `/operadores/ausencias/:id/justificativa` | `justificarAusencia` | `OPERADORES_AUSENCIAS` |
 | GET | `/operadores/ausencias` | `listarAusencias` | `OPERADORES_AUSENCIAS` |

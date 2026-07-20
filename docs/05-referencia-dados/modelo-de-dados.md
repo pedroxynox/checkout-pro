@@ -3,7 +3,7 @@
 
 # Modelo de Dados (Prisma)
 
-> Fonte: `backend/prisma/schema.prisma`. Total: **52 tabelas** e **28 tipos (enums)**.
+> Fonte: `backend/prisma/schema.prisma`. Total: **53 tabelas** e **28 tipos (enums)**.
 
 Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dicionario-de-dados.md).
 
@@ -56,7 +56,8 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `MetaIndicador` | 6 | editar via app sem redeploy. Quando não existe registro, usa-se o default. |
 | `MetaMensal` | 6 | usa-se o valor padrão de CONFIG_METAS (e, para VENDAS, a config legada). |
 | `TipoContratoJornada` | 19 | valores de hoje, sem mudança de comportamento. |
-| `Colaborador` | 23 | — |
+| `Colaborador` | 24 | — |
+| `FeriasColaborador` | 9 | os extremos, rotulado em meia-noite UTC como as demais datas de negócio. |
 | `ColaboradorIdentificador` | 5 | — |
 | `DecisaoContrato` | 9 | decisões + `dataAdmissao`; nada de estado redundante persistido. |
 | `Feedforward` | 14 | Uma rodada de feedforward (uma conversa/formulário) de um colaborador. |
@@ -99,6 +100,8 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `TipoContratoJornada` | `colaboradores` | `Colaborador[]` |
 | `Colaborador` | `tipoContratoJornada` | `TipoContratoJornada` |
 | `Colaborador` | `identificadores` | `ColaboradorIdentificador[]` |
+| `Colaborador` | `ferias` | `FeriasColaborador[]` |
+| `FeriasColaborador` | `colaborador` | `Colaborador` |
 | `ColaboradorIdentificador` | `colaborador` | `Colaborador` |
 | `Feedforward` | `pontos` | `FeedforwardPonto[]` |
 | `FeedforwardPonto` | `feedforward` | `Feedforward` |

@@ -1,10 +1,11 @@
 /**
- * "Ausências a prazo" — card + modal na seção de Escalas.
+ * "Férias" — card + modal na seção de Escalas.
  *
- * Permite ausentar um colaborador por um PERÍODO (ex.: férias, licença),
- * escolhendo início, fim e o mesmo motivo de justificativa das faltas. O
- * backend cria uma **falta justificada** em cada dia corrido do período,
- * inclusive a folga (a folga também conta). Uso típico: gerente/supervisor.
+ * Permite colocar um colaborador de FÉRIAS por um período (início/fim). É uma
+ * inativação NÃO rígida: enquanto vigente, o colaborador some da escala do dia
+ * e não gera falta automática, mas continua ativo (não é desligamento). O modal
+ * também lista as férias já cadastradas e permite cancelá-las. Uso típico:
+ * gerente/supervisor.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
@@ -18,38 +19,28 @@ import {
   View,
 } from 'react-native';
 import { ApiError } from '../../api/client';
-import { colaboradoresService, operadoresService } from '../../api/services';
-import { Colaborador, MotivoJustificativa } from '../../api/types';
+import { colaboradoresService, feriasService } from '../../api/services';
+import { Colaborador, FeriasDetalhada } from '../../api/types';
 import { Botao, CampoTexto, Carregando, SeletorData } from '../../components';
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
-import { notificar } from '../../utils/dialogos';
+import { confirmar, notificar } from '../../utils/dialogos';
 import { hojeISO } from '../../utils/formato';
-
-/** Rótulos dos motivos (mesma lista das justificativas de falta). */
-const ROTULO_MOTIVO: Record<MotivoJustificativa, string> = {
-  ATESTADO_MEDICO: 'Atestado médico',
-  ABONADA: 'Abonada',
-  LICENCA: 'Licença',
-  ATRASO_JUSTIFICADO: 'Atraso justificado',
-  OUTRO: 'Outro',
-};
-const MOTIVOS: MotivoJustificativa[] = [
-  'ATESTADO_MEDICO',
-  'ABONADA',
-  'LICENCA',
-  'ATRASO_JUSTIFICADO',
-  'OUTRO',
-];
 
 /** Máximo de colaboradores mostrados na busca (evita listas enormes). */
 const MAX_RESULTADOS = 8;
 
-export function AusenciasAPrazoCard({
-  aoRegistrado,
+/** Formata "yyyy-mm-dd" como "dd/mm". */
+function ddmm(iso: string): string {
+  const [, mm, dd] = iso.slice(0, 10).split('-');
+  return `${dd}/${mm}`;
+}
+
+export function FeriasCard({
+  aoMudar,
 }: {
-  aoRegistrado: () => void;
+  aoMudar: () => void;
 }): React.ReactElement {
   const { dataInicial } = useConfigSistema();
   const [aberto, setAberto] = useState(false);
@@ -58,18 +49,18 @@ export function AusenciasAPrazoCard({
     () => colaboradoresService.listar({ ativo: true }),
     [],
   );
+  const ferias = useRequisicao<FeriasDetalhada[]>(
+    () => feriasService.listar(),
+    [],
+  );
 
   const [busca, setBusca] = useState('');
   const [selId, setSelId] = useState<string | null>(null);
   const [selNome, setSelNome] = useState('');
   const [inicio, setInicio] = useState(hojeISO());
   const [fim, setFim] = useState(hojeISO());
-  const [motivo, setMotivo] = useState<MotivoJustificativa | null>(null);
   const [obs, setObs] = useState('');
   const [ocupado, setOcupado] = useState(false);
-  // "registrar" cria a ausência a prazo; "cancelar" desmarca (anula) um período
-  // de ausência a prazo já lançado.
-  const [modo, setModo] = useState<'registrar' | 'cancelar'>('registrar');
 
   const listaFiltrada = useMemo(() => {
     const b = busca.trim().toLowerCase();
@@ -90,43 +81,39 @@ export function AusenciasAPrazoCard({
     setSelNome('');
     setInicio(hojeISO());
     setFim(hojeISO());
-    setMotivo(null);
     setObs('');
-    setModo('registrar');
   };
 
   const fechar = (): void => setAberto(false);
 
-  // Ao mudar o início, empurra o fim junto se ele ficaria antes do início.
   const mudarInicio = (iso: string): void => {
     setInicio(iso);
     if (iso > fim) setFim(iso);
   };
 
-  const podeConfirmar =
-    !!selId &&
-    fim >= inicio &&
-    !ocupado &&
-    (modo === 'cancelar' || !!motivo);
+  const recarregar = (): void => {
+    ferias.recarregar();
+    aoMudar();
+  };
+
+  const podeConfirmar = !!selId && fim >= inicio && !ocupado;
 
   const registrar = async (): Promise<void> => {
-    if (!selId || !motivo) return;
+    if (!selId) return;
     setOcupado(true);
     try {
-      const r = await operadoresService.registrarAusenciaPeriodo({
-        pessoaId: selId,
+      await feriasService.registrar({
+        colaboradorId: selId,
         inicio,
         fim,
-        motivo,
         observacao: obs.trim() || undefined,
       });
       notificar(
-        'Ausência registrada',
-        `${selNome}: ${r.dias} falta(s) justificada(s) no período.`,
+        'Férias registradas',
+        `${selNome}: ${ddmm(inicio)} a ${ddmm(fim)}.`,
       );
-      fechar();
       resetar();
-      aoRegistrado();
+      recarregar();
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao registrar.');
     } finally {
@@ -134,30 +121,22 @@ export function AusenciasAPrazoCard({
     }
   };
 
-  const cancelarPeriodo = async (): Promise<void> => {
-    if (!selId) return;
-    setOcupado(true);
+  const cancelar = async (f: FeriasDetalhada): Promise<void> => {
+    const ok = await confirmar(
+      'Cancelar férias',
+      `Cancelar as férias de ${f.nome} (${ddmm(f.inicio)} a ${ddmm(f.fim)})?`,
+    );
+    if (!ok) return;
     try {
-      const r = await operadoresService.removerAusenciaPeriodo({
-        pessoaId: selId,
-        inicio,
-        fim,
-      });
-      notificar(
-        'Ausência cancelada',
-        r.removidas > 0
-          ? `${selNome}: ${r.removidas} dia(s) de ausência a prazo desmarcado(s).`
-          : `Nenhum dia de ausência a prazo encontrado no período de ${selNome}.`,
-      );
-      fechar();
-      resetar();
-      aoRegistrado();
+      await feriasService.remover(f.id);
+      notificar('Férias canceladas', `${f.nome} volta à escala normalmente.`);
+      recarregar();
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao cancelar.');
-    } finally {
-      setOcupado(false);
     }
   };
+
+  const lista = ferias.dados ?? [];
 
   return (
     <>
@@ -166,15 +145,15 @@ export function AusenciasAPrazoCard({
         onPress={() => setAberto(true)}
         style={styles.cardAtalho}
         accessibilityRole="button"
-        accessibilityLabel="Abrir ausências a prazo"
+        accessibilityLabel="Abrir férias"
       >
         <View style={styles.icone}>
-          <Ionicons name="calendar-outline" size={20} color={cores.primaria} />
+          <Ionicons name="airplane-outline" size={20} color={cores.primaria} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.titulo}>Ausências a prazo</Text>
+          <Text style={styles.titulo}>Férias</Text>
           <Text style={styles.meta} numberOfLines={1}>
-            Ausentar um colaborador por um período (falta justificada)
+            Colocar um colaborador de férias (sai da escala, sem falta)
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />
@@ -187,24 +166,15 @@ export function AusenciasAPrazoCard({
         onRequestClose={fechar}
       >
         <Pressable style={styles.fundo} onPress={fechar}>
-          {/* onPress vazio impede que tocar dentro do cartão o feche. */}
           <Pressable style={styles.cartao} onPress={() => {}}>
             <View style={styles.cabecalho}>
-              <TouchableOpacity
-                onPress={fechar}
-                hitSlop={10}
-                accessibilityLabel="Voltar"
-              >
+              <TouchableOpacity onPress={fechar} hitSlop={10} accessibilityLabel="Voltar">
                 <Ionicons name="arrow-back" size={22} color={cores.texto} />
               </TouchableOpacity>
               <Text style={styles.cabecalhoTitulo} numberOfLines={1}>
-                Ausências a prazo
+                Férias
               </Text>
-              <TouchableOpacity
-                onPress={fechar}
-                hitSlop={10}
-                accessibilityLabel="Fechar"
-              >
+              <TouchableOpacity onPress={fechar} hitSlop={10} accessibilityLabel="Fechar">
                 <Ionicons name="close" size={24} color={cores.texto} />
               </TouchableOpacity>
             </View>
@@ -213,23 +183,6 @@ export function AusenciasAPrazoCard({
               contentContainerStyle={{ paddingBottom: espacamento.sm }}
               keyboardShouldPersistTaps="handled"
             >
-              {/* Alterna entre registrar uma ausência a prazo e cancelar
-                  (desmarcar) um período já lançado. */}
-              <View style={styles.modoTabs}>
-                <Text
-                  onPress={() => setModo('registrar')}
-                  style={[styles.modoTab, modo === 'registrar' && styles.modoTabAtiva]}
-                >
-                  Registrar
-                </Text>
-                <Text
-                  onPress={() => setModo('cancelar')}
-                  style={[styles.modoTab, modo === 'cancelar' && styles.modoTabAtiva]}
-                >
-                  Cancelar
-                </Text>
-              </View>
-
               {/* 1) Colaborador */}
               {selId ? (
                 <View style={styles.selecionado}>
@@ -300,51 +253,49 @@ export function AusenciasAPrazoCard({
                 />
               </View>
 
-              {/* 3) Motivo + observação (só ao registrar) */}
-              {modo === 'registrar' ? (
-                <>
-                  <Text style={styles.rotulo}>Motivo</Text>
-                  <View style={styles.chips}>
-                    {MOTIVOS.map((m) => (
-                      <Text
-                        key={m}
-                        onPress={() => setMotivo(m)}
-                        style={[styles.chip, motivo === m && styles.chipAtivo]}
-                      >
-                        {ROTULO_MOTIVO[m]}
+              {/* 3) Observação */}
+              <CampoTexto
+                rotulo="Observação (opcional)"
+                value={obs}
+                onChangeText={setObs}
+                placeholder="Ex.: férias 30 dias"
+              />
+
+              <Botao
+                titulo="Registrar férias"
+                aoPressionar={() => void registrar()}
+                carregando={ocupado}
+                desabilitado={!podeConfirmar}
+              />
+
+              {/* Lista de férias cadastradas */}
+              <Text style={styles.secao}>Férias cadastradas</Text>
+              {ferias.carregando ? (
+                <Carregando />
+              ) : lista.length === 0 ? (
+                <Text style={styles.vazio}>Nenhuma férias cadastrada.</Text>
+              ) : (
+                lista.map((f) => (
+                  <View key={f.id} style={styles.itemFerias}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.itemNome} numberOfLines={1}>
+                        {f.nome}
+                        {f.vigente ? '  •  em férias' : ''}
                       </Text>
-                    ))}
+                      <Text style={styles.itemMeta}>
+                        {ddmm(f.inicio)} a {ddmm(f.fim)}
+                        {f.observacao ? ` — ${f.observacao}` : ''}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => void cancelar(f)}
+                      hitSlop={8}
+                      accessibilityLabel={`Cancelar férias de ${f.nome}`}
+                    >
+                      <Text style={styles.cancelar}>Cancelar</Text>
+                    </TouchableOpacity>
                   </View>
-
-                  <CampoTexto
-                    rotulo="Observação (opcional)"
-                    value={obs}
-                    onChangeText={setObs}
-                    placeholder="Ex.: férias / licença de 15 dias"
-                  />
-                </>
-              ) : (
-                <Text style={styles.aviso}>
-                  Desmarca todos os dias de ausência a prazo do colaborador dentro
-                  do período escolhido. As faltas comuns/automáticas não são
-                  afetadas.
-                </Text>
-              )}
-
-              {modo === 'registrar' ? (
-                <Botao
-                  titulo="Registrar ausência"
-                  aoPressionar={() => void registrar()}
-                  carregando={ocupado}
-                  desabilitado={!podeConfirmar}
-                />
-              ) : (
-                <Botao
-                  titulo="Cancelar ausência a prazo"
-                  aoPressionar={() => void cancelarPeriodo()}
-                  carregando={ocupado}
-                  desabilitado={!podeConfirmar}
-                />
+                ))
               )}
             </ScrollView>
           </Pressable>
@@ -427,50 +378,23 @@ const styles = StyleSheet.create({
     color: cores.textoSecundario,
     paddingVertical: espacamento.sm,
   },
-  rotulo: {
+  secao: {
     ...tipografia.rotulo,
     color: cores.textoSecundario,
+    marginTop: espacamento.md,
     marginBottom: espacamento.xs,
-    marginTop: espacamento.xs,
   },
-  chips: {
+  itemFerias: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: espacamento.xs,
-    marginBottom: espacamento.sm,
+    alignItems: 'center',
+    gap: espacamento.sm,
+    paddingVertical: espacamento.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: cores.divisor,
   },
-  chip: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    paddingVertical: espacamento.xs,
-    paddingHorizontal: espacamento.sm,
-    borderRadius: raio.pill,
-    backgroundColor: cores.divisor,
-    overflow: 'hidden',
-  },
-  chipAtivo: { backgroundColor: cores.primaria, color: cores.textoInverso },
-  modoTabs: {
-    flexDirection: 'row',
-    gap: espacamento.xs,
-    marginBottom: espacamento.sm,
-  },
-  modoTab: {
-    ...tipografia.rotulo,
-    flex: 1,
-    textAlign: 'center',
-    color: cores.textoSecundario,
-    paddingVertical: espacamento.xs,
-    borderRadius: raio.pill,
-    backgroundColor: cores.divisor,
-    overflow: 'hidden',
-  },
-  modoTabAtiva: { backgroundColor: cores.primaria, color: cores.textoInverso },
-  aviso: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    marginTop: espacamento.xs,
-    marginBottom: espacamento.sm,
-  },
+  itemNome: { ...tipografia.corpo, fontWeight: '600', color: cores.texto },
+  itemMeta: { ...tipografia.legenda, color: cores.textoSecundario, marginTop: 1 },
+  cancelar: { ...tipografia.rotulo, color: cores.erro },
 });
 
-export default AusenciasAPrazoCard;
+export default FeriasCard;

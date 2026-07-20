@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/ponto/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `backend/src/ponto/`
 
 # Módulo: `ponto`
 
@@ -119,6 +119,17 @@ obrigatório excedido. Antes, a checagem exigia o status `EM_INTERVALO` e nunca
 disparava nesses contratos (o turno virava `ENCERRADO` antes). Best-effort e
 defensivo por pessoa.
 
+> **Falta automática × ausência a prazo (chave dupla).** Antes de marcar, o cron
+> verifica se já existe ausência no dia. Essa checagem casa **as duas chaves**
+> — `pessoaId` (Fiscal.id p/ fiscais, Colaborador.id p/ operadores) **e**
+> `colaboradorId` (a ficha) — porque a ausência a prazo de um FISCAL é gravada
+> pela ficha (`Colaborador.id`), enquanto o escalado é identificado pelo
+> `Fiscal.id`. Checar só `pessoaId` (comportamento antigo) não encontrava a a
+> prazo e o cron remarcava uma **falta automática duplicada** por cima dela —
+> mesmo padrão de chave dupla já usado em `equipeDoDia` e na remoção da falta ao
+> bater ponto. Quem está de **férias** nem chega aqui: já foi excluído de
+> `escaladosDoDia`.
+
 ## 6. Lógica de domínio (funções puras)
 - `classificarBatidas(batidas, maxSemIntervaloMs, intervaloObrigatorio)` →
   ordena por hora e atribui o tipo pela ordem; duas batidas próximas encerram
@@ -190,6 +201,7 @@ defensivo por pessoa.
 | `ponto-ocr.service.spec.ts` | Só pessoas ativas nas sugestões e memória de aliases | 7 |
 | `ponto-nome-match.spec.ts` | Similaridade de nomes tolerante ao OCR | 6 |
 | `deteccao-automatica.domain.spec.ts` | Estado do escalado sem batida (alerta/falta) | 8 |
+| `deteccao-falta-a-prazo.spec.ts` | Ausência a prazo (chave dupla) não vira falta automática duplicada | 3 |
 | `ponto-alertas.service.spec.ts` | Cron periódico de riscos de TAC | 1 |
 | `contrato-6x1-congelado.spec.ts` | Congela as cargas e os limites de TAC do 6x1 (regra não muda sem intenção) | 6 |
 
