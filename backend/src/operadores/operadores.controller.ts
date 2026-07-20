@@ -148,7 +148,19 @@ export class OperadoresController {
     );
   }
 
-  /** Remove uma ausência registrada (Req 6.2.4). */
+  /**
+   * Remove (exclui) uma falta registrada — usado para **rejeitar uma falta
+   * lançada por engano** (ex.: escala desatualizada que marcou falta indevida),
+   * para que não pese no colaborador. Diferente de "justificar/abonar" (que
+   * mantém a falta com peso reduzido): aqui a ocorrência é apagada de vez.
+   *
+   * Restrito a gerente/supervisor/administrador (mesmos perfis que programam
+   * ausências futuras) — o fiscal não exclui faltas.
+   *
+   * Obs.: se a falta era **automática** e o colaborador continua escalado no dia
+   * sem bater ponto, a detecção pode remarcá-la; por isso a escala do dia deve
+   * estar corrigida antes (ex.: marcar a folga) para a exclusão ser definitiva.
+   */
   @Delete('ausencias/:id')
   @Funcionalidade('OPERADORES_AUSENCIAS')
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -156,6 +168,11 @@ export class OperadoresController {
     @Param('id') id: string,
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<void> {
+    if (!PERFIS_AUTORIZA_FUTURO.includes(usuario?.perfil as string)) {
+      throw new ForbiddenException(
+        'Apenas gerente, supervisor ou administrador pode excluir uma falta.',
+      );
+    }
     await this.operadoresService.removerAusencia(id, usuario?.perfil as string);
   }
 

@@ -31,9 +31,13 @@ import {
   Tela,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
+import { useAuth } from '../../auth/AuthContext';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, hojeISO } from '../../utils/formato';
+
+/** Perfis que podem excluir uma falta (rejeitar lançamento errado). */
+const PERFIS_EXCLUEM_FALTA = ['GERENTE', 'ADMINISTRADOR', 'SUPERVISOR'];
 
 /** Tipo de ocorrência justificável. */
 type TipoOcorrencia = 'FALTA' | 'NAO_RETORNO';
@@ -134,6 +138,9 @@ export function JustificativasLista({
     );
   }, [versao]);
 
+  const { perfil } = useAuth();
+  const podeExcluir = !!perfil && PERFIS_EXCLUEM_FALTA.includes(perfil);
+
   const [filtro, setFiltro] = useState<'PENDENTES' | 'TODAS'>('PENDENTES');
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [motivo, setMotivo] = useState<MotivoJustificativa | null>(null);
@@ -195,6 +202,30 @@ export function JustificativasLista({
   };
 
   const reabrir = (o: Ocorrencia) => aplicar(o, 'PENDENTE');
+
+  /**
+   * Exclui uma FALTA lançada por engano (ex.: escala desatualizada). Diferente
+   * de justificar: apaga a ocorrência de vez, para não pesar no colaborador.
+   * Só gerente/supervisor/administrador.
+   */
+  const excluir = async (o: Ocorrencia): Promise<void> => {
+    const ok = await confirmar(
+      'Excluir falta',
+      `Excluir a falta de ${o.nome} em ${formatarData(o.data)}? Use quando a falta foi registrada por engano. Esta ação não pode ser desfeita.`,
+      'Excluir',
+    );
+    if (!ok) return;
+    setOcupado(true);
+    try {
+      await operadoresService.removerAusencia(o.id);
+      notificar('Falta excluída', `A falta de ${o.nome} foi removida.`);
+      req.recarregar();
+    } catch (e) {
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao excluir.');
+    } finally {
+      setOcupado(false);
+    }
+  };
 
   return (
     <>
@@ -316,6 +347,16 @@ export function JustificativasLista({
                       <Text style={[styles.btnTxt, { color: cores.textoSecundario }]}>Reabrir</Text>
                     </Pressable>
                   )}
+                  {o.tipo === 'FALTA' && podeExcluir && (
+                    <Pressable
+                      onPress={() => void excluir(o)}
+                      disabled={ocupado}
+                      style={[styles.btn, styles.btnExcluir]}
+                    >
+                      <Ionicons name="trash-outline" size={16} color={cores.vermelho} />
+                      <Text style={[styles.btnTxt, { color: cores.vermelho }]}>Excluir</Text>
+                    </Pressable>
+                  )}
                 </View>
               )}
             </Cartao>
@@ -377,6 +418,7 @@ const styles = StyleSheet.create({
   btnJustificar: { borderColor: cores.verde, backgroundColor: cores.verdeFundo },
   btnInjust: { borderColor: cores.vermelho, backgroundColor: cores.vermelhoFundo },
   btnReabrir: { borderColor: cores.borda },
+  btnExcluir: { borderColor: cores.vermelho },
   btnTxt: { ...tipografia.legenda, fontWeight: '700' },
   editor: {
     marginTop: espacamento.sm,
