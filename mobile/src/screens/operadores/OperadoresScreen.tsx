@@ -278,15 +278,17 @@ function ColaboradorRow({
  */
 function fiscalComoColaboradorDia(
   f: ItemEscalaConsolidada,
-  ausenciaId: string | null,
+  ausencia: { id: string; atestado: boolean; cid: string | null } | null,
 ): ColaboradorDia | null {
   if (!f.colaboradorId) return null;
   const ef = f.efetiva;
   const folga = ef === 'FOLGA';
   const status: StatusCelula = folga
     ? 'FOLGA'
-    : ausenciaId
-      ? 'FALTA'
+    : ausencia
+      ? ausencia.atestado
+        ? 'ATESTADO'
+        : 'FALTA'
       : 'TRABALHA';
   return {
     id: f.colaboradorId,
@@ -298,7 +300,8 @@ function fiscalComoColaboradorDia(
     status,
     entrada: folga ? null : (ef.entrada ?? null),
     saida: folga ? null : (ef.saida ?? null),
-    ausenciaId,
+    ausenciaId: ausencia?.id ?? null,
+    cid: ausencia?.cid ?? null,
   };
 }
 
@@ -942,9 +945,18 @@ export function OperadoresScreen(): React.ReactElement {
 
   // Mapa colaboradorId → id da ausência do dia (para alternar a falta dos
   // fiscais, que não estão no roster de operadores).
-  const ausenciaPorColab = new Map<string, string>();
+  const ausenciaPorColab = new Map<
+    string,
+    { id: string; atestado: boolean; cid: string | null }
+  >();
   for (const a of faltasDia.dados ?? []) {
-    if (!ausenciaPorColab.has(a.pessoaId)) ausenciaPorColab.set(a.pessoaId, a.id);
+    if (!ausenciaPorColab.has(a.pessoaId)) {
+      ausenciaPorColab.set(a.pessoaId, {
+        id: a.id,
+        atestado: !!a.atestado || a.motivoJustificativa === 'ATESTADO_MEDICO',
+        cid: a.cid ?? null,
+      });
+    }
   }
 
   // Sinal para recarregar a lista de Justificativas em tempo real.

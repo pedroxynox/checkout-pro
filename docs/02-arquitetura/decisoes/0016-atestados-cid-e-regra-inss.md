@@ -34,9 +34,8 @@
   - ✅ Reaproveita o fluxo de faltas (sem duplicar cálculo de score/escala).
   - ⚠️ **Operacionalmente o atestado descobre o posto** (a pessoa sai do
      expediente); a cobertura da escala segue sendo decisão do gestor.
-  - ⚠️ A escala consolidada de **fiscais** ainda mostra o dia como falta; o
-     status ATESTADO já aparece no roster de operadores e nas faltas do dia
-     (evolução futura para fiscais).
+  - ✅ O status ATESTADO aparece no roster de operadores **e** na escala
+     consolidada de fiscais (a linha do fiscal mostra "Atestado" + CID).
   - 🔜 **Foto/anexo do atestado** fica para quando houver storage de objetos
      (S3): o disco do servidor é efêmero.
   - 🔧 O catálogo CID-10 é uma seleção curada dos motivos comuns; o catálogo
