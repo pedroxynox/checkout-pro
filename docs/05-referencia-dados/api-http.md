@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **198 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **201 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -300,6 +300,14 @@
 | POST | `/ponto/batidas` | `registrarBatida` | `PONTO_REGISTRAR` |
 | PATCH | `/ponto/batidas/:id` | `editarBatida` | `PONTO_EDITAR` |
 | DELETE | `/ponto/batidas/:id` | `removerBatida` | `PONTO_EDITAR` |
+
+## `produtos-pesados`
+
+| Método | Rota | Handler | Permissão |
+|---|---|---|---|
+| GET | `/produtos-pesados` | `listar` | `PRODUTOS_PESADOS` |
+| GET | `/produtos-pesados/status` | `status` | `PRODUTOS_PESADOS` |
+| POST | `/produtos-pesados/upload` | `upload` | `PRODUTOS_PESADOS` |
 
 ## `requisicoes`
 

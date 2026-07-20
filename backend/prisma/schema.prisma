@@ -1329,3 +1329,32 @@ model IncidenciaEscala {
   @@index([statusJustificativa])
   @@map("incidencias_escala")
 }
+
+
+// Catálogo de PRODUTOS PESADOS (balança). Carregado a partir de um ÚNICO
+// arquivo .txt (colunas separadas por tabulação) exportado do ERP, que já traz
+// TODOS os setores juntos. Cada linha vira um produto com:
+//   - `codigo`     = CODACESSO (o código que o operador digita na balança);
+//   - `nome`       = DESCCOMPLETA;
+//   - `categoria`  = CATEGORIA_NV2 (setor: ACOUGUE, PADARIA, P.A.S., FVL, ...);
+//   - `tipo`       = CATEGORIA_NV3 (tipo do produto), opcional.
+// A busca no app é feita EM MEMÓRIA sobre o catálogo inteiro (~500 itens), por
+// isso `nomeNormalizado` (minúsculas, sem acentos) é guardado para uma futura
+// busca no servidor. `descricao`/`fotoUrl` ficam previstos para uma evolução
+// futura (a foto exige um storage de objetos/S3, ainda não disponível).
+model ProdutoPesado {
+  id              String   @id @default(uuid())
+  codigo          String
+  nome            String
+  nomeNormalizado String
+  categoria       String
+  tipo            String?
+  descricao       String?
+  fotoUrl         String?
+  atualizadoEm    DateTime @default(now()) @updatedAt
+
+  @@unique([categoria, codigo])
+  @@index([categoria])
+  @@index([nomeNormalizado])
+  @@map("produtos_pesados")
+}

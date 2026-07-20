@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `mobile/src/screens/centroControle/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `mobile/src/screens/centroControle/`
 
 # Área: `centroControle`
 
@@ -6,7 +6,8 @@
 **Centro de Controle** — o hub de gestão do app: uma tela-índice com atalhos
 para as ferramentas de administração (colaboradores, metas, rodízio de domingo,
 central de vendas, check-outs, relatórios, acesso, permissões, importações,
-tipos de contrato, insumos e o reinício de dados operacionais).
+produtos pesados, tipos de contrato, insumos e o reinício de dados
+operacionais).
 
 ## 2. Quem usa (perfis)
 - **Gestão** (`OPERADORES_CRUD`): vê o hub e a maioria dos cards.
@@ -18,7 +19,7 @@ tipos de contrato, insumos e o reinício de dados operacionais).
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `CentroControleScreen.tsx` | Hub/índice de atalhos de gestão | 169 |
+| `CentroControleScreen.tsx` | Hub/índice de atalhos de gestão | 176 |
 | `CentralVendasScreen.tsx` | Estimativas de venda por dia do mês | 237 |
 | `ConfigEscalaDomingoScreen.tsx` | Configuração do rodízio de domingo (G1/G2/G3) | 268 |
 | `TiposContratoScreen.tsx` | CRUD dos tipos de contrato de jornada | 569 |
@@ -31,7 +32,9 @@ tipos de contrato, insumos e o reinício de dados operacionais).
 1. **Hub:** `CentroControleScreen` monta os cards a partir de uma lista fixa
    (`ITENS`) e filtra por `podeAcessar(funcionalidade)`. Tocar em um card navega
    para a rota correspondente (algumas telas vivem em outras áreas, ex.: Metas,
-   Relatórios, Importações, Check-Outs).
+   Relatórios, Importações, Check-Outs, **Produtos pesados** — cuja carga do
+   arquivo `.txt` é feita pela tela `ProdutosPesadosCarga`, ver
+   [`produtosPesados`](produtosPesados.md)).
 2. **Central de Vendas:** escolhe o mês, digita a estimativa por dia e salva; o
    topo mostra a estimativa do mês (soma ao vivo das diárias).
 3. **Rodízio de domingo:** define o 1º domingo do ciclo e quem folga em cada um

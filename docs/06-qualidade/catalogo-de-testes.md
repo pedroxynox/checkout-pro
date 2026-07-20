@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 91 arquivos, 574 casos. **Mobile:** 25 arquivos, 98 casos. **Total: 672 casos.**
+> **Backend:** 92 arquivos, 581 casos. **Mobile:** 25 arquivos, 98 casos. **Total: 679 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -98,6 +98,7 @@
 | `src/ponto/ponto-ocr.service.spec.ts` | 7 | 2 |
 | `src/ponto/ponto.domain.spec.ts` | 38 | 7 |
 | `src/ponto/ponto.service.spec.ts` | 42 | 4 |
+| `src/produtos-pesados/produtos-pesados.parser.spec.ts` | 7 | 2 |
 | `src/requisicoes/requisicoes.controller.spec.ts` | 4 | 1 |
 | `src/requisicoes/requisicoes.service.spec.ts` | 3 | 1 |
 | `src/reset-operacional/reset-operacional.domain.spec.ts` | 8 | 3 |

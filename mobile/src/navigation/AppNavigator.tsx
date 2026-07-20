@@ -36,6 +36,8 @@ import { SancoesScreen } from '../screens/colaboradores/SancoesScreen';
 import { GestaoColaboradoresScreen } from '../screens/colaboradores/GestaoColaboradoresScreen';
 import { PerfilColaboradorScreen } from '../screens/colaboradores/PerfilColaboradorScreen';
 import { CentroControleScreen } from '../screens/centroControle/CentroControleScreen';
+import { ProdutosPesadosScreen } from '../screens/produtosPesados/ProdutosPesadosScreen';
+import { ProdutosPesadosCargaScreen } from '../screens/produtosPesados/ProdutosPesadosCargaScreen';
 import { ConfigEscalaDomingoScreen } from '../screens/centroControle/ConfigEscalaDomingoScreen';
 import { CentralVendasScreen } from '../screens/centroControle/CentralVendasScreen';
 import { RelatoriosScreen } from '../screens/relatorios/RelatoriosScreen';
@@ -254,6 +256,20 @@ export function AppNavigator(): React.ReactElement {
           name="Sancoes"
           component={SancoesScreen}
           options={{ title: 'Sanções' }}
+        />
+      )}
+      {podeAcessar('PRODUTOS_PESADOS') && (
+        <Stack.Screen
+          name="ProdutosPesados"
+          component={ProdutosPesadosScreen}
+          options={{ title: 'Produtos pesados' }}
+        />
+      )}
+      {podeAcessar('PRODUTOS_PESADOS_GERENCIAR') && (
+        <Stack.Screen
+          name="ProdutosPesadosCarga"
+          component={ProdutosPesadosCargaScreen}
+          options={{ title: 'Produtos pesados (carga)' }}
         />
       )}
       {podeAcessar('OPERADORES_CRUD') && (

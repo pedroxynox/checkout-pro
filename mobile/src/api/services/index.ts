@@ -54,3 +54,10 @@ export type {
 } from './configSistema';
 export { adminService } from './admin';
 export type { ResumoReinicio } from './admin';
+export { produtosPesadosService } from './produtosPesados';
+export type {
+  ProdutoPesado,
+  StatusCatalogoProdutos as StatusCatalogoProdutosPesados,
+  ResultadoImportacaoProdutos as ResultadoImportacaoProdutosPesados,
+  ArquivoProdutosPesados,
+} from './produtosPesados';

@@ -41,6 +41,7 @@ import { PermissoesModule } from './permissoes/permissoes.module';
 import { CheckoutsModule } from './checkouts/checkouts.module';
 import { CicloFolhaModule } from './ciclo-folha/ciclo-folha.module';
 import { TiposContratoModule } from './tipos-contrato/tipos-contrato.module';
+import { ProdutosPesadosModule } from './produtos-pesados/produtos-pesados.module';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { TiposContratoModule } from './tipos-contrato/tipos-contrato.module';
     CheckoutsModule,
     CicloFolhaModule,
     TiposContratoModule,
+    ProdutosPesadosModule,
   ],
   controllers: [AppController],
   providers: [

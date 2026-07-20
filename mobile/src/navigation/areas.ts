@@ -31,6 +31,7 @@ export interface Area {
     | 'Colaboradores'
     | 'Contratos'
     | 'CentroControle'
+    | 'ProdutosPesados'
     | 'CheckOuts'
     | 'Usuarios'
     | 'AlertasFila'
@@ -106,6 +107,13 @@ export const AREAS: Area[] = [
     descricao: 'Reportar equipamentos com defeito nas caixas',
     icone: 'desktop-outline',
     funcionalidade: 'CHECKOUTS',
+  },
+  {
+    rota: 'ProdutosPesados',
+    titulo: 'Produtos pesados',
+    descricao: 'Buscar o código de balança dos produtos',
+    icone: 'barcode-outline',
+    funcionalidade: 'PRODUTOS_PESADOS',
   },
   {
     rota: 'RegistroPonto',

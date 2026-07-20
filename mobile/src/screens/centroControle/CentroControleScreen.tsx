@@ -82,6 +82,13 @@ const ITENS: ItemControle[] = [
     funcionalidade: 'IMPORTACOES',
   },
   {
+    rota: 'ProdutosPesadosCarga',
+    titulo: 'Produtos pesados',
+    descricao: 'Carregar o arquivo .txt com os códigos de balança',
+    icone: 'barcode-outline',
+    funcionalidade: 'PRODUTOS_PESADOS_GERENCIAR',
+  },
+  {
     rota: 'TiposContrato',
     titulo: 'Tipos de contrato',
     descricao: 'Criar e ativar contratos de jornada (5x2, 6h/dia…) e suas regras',

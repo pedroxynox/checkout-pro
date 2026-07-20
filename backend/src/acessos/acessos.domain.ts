@@ -10,11 +10,7 @@
  */
 
 export type Perfil =
-  | 'GERENTE'
-  | 'ADMINISTRADOR'
-  | 'SUPERVISOR'
-  | 'FISCAL'
-  | 'IMPORTADOR';
+  'GERENTE' | 'ADMINISTRADOR' | 'SUPERVISOR' | 'FISCAL' | 'IMPORTADOR';
 
 /**
  * ============================================================================
@@ -83,6 +79,10 @@ export const TODAS_FUNCIONALIDADES = [
   // Check-Outs (reportar avarias de equipamentos por caixa)
   'CHECKOUTS',
   'CHECKOUTS_GERENCIAR',
+  // Produtos pesados (balança): consulta do código por qualquer perfil;
+  // a carga do arquivo (.txt) é restrita à gestão.
+  'PRODUTOS_PESADOS',
+  'PRODUTOS_PESADOS_GERENCIAR',
   // Pessoas e avisos
   'USUARIOS_CRUD',
   'NOTIFICACOES',
@@ -129,6 +129,8 @@ export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
   'PONTO_VISUALIZAR',
   // Check-Outs: qualquer fiscal reporta avarias de equipamentos por caixa.
   'CHECKOUTS',
+  // Produtos pesados: qualquer perfil consulta o código de balança.
+  'PRODUTOS_PESADOS',
   // Somente leitura do status de carga do dia, para o Briefing ter a MESMA
   // nota de saúde de gerentes/supervisores. Não abre nenhuma seção no menu do
   // fiscal (não há área associada a esta funcionalidade).
@@ -222,6 +224,9 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
     // Check-Outs: ver/reportar e resolver avarias de equipamentos por caixa.
     'CHECKOUTS',
     'CHECKOUTS_GERENCIAR',
+    // Produtos pesados: consulta e CARGA do arquivo de códigos de balança.
+    'PRODUTOS_PESADOS',
+    'PRODUTOS_PESADOS_GERENCIAR',
     // Edição da escala.
     'ESCALA_EDITAR',
     // Registro de ponto (leitor de comprovante) + correção/remoção de batidas.
@@ -395,7 +400,10 @@ export function conjuntoEfetivoDoPerfil(
   if (perfil === 'ADMINISTRADOR') {
     return [...TODAS_FUNCIONALIDADES];
   }
-  const efetivas = aplicarOverrides(conjuntoBaseDoPerfil(perfil), perfilOverrides);
+  const efetivas = aplicarOverrides(
+    conjuntoBaseDoPerfil(perfil),
+    perfilOverrides,
+  );
   return TODAS_FUNCIONALIDADES.filter((f) => efetivas.has(f));
 }
 
@@ -463,8 +471,7 @@ export interface CredencialUsuario {
 
 /** Resultado puro da decisão de autenticação. */
 export type ResultadoAutenticacao =
-  | { concedido: true; perfil: Perfil }
-  | { concedido: false };
+  { concedido: true; perfil: Perfil } | { concedido: false };
 
 /**
  * Função verificadora de senha. Recebe a senha informada e o segredo
