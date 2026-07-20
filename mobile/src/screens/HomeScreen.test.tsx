@@ -18,9 +18,9 @@ jest.mock('../auth/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
-// As contagens de pendências (selos dos acessos) consultam vários serviços
-// conforme o perfil; mockamos todos com respostas neutras para a Home
-// renderizar de forma determinística (sem pendências) nos testes.
+// O Resumo do Dia (topo da Home) consulta vários serviços conforme o perfil;
+// mockamos todos com respostas neutras para a Home renderizar de forma
+// determinística (sem pendências) nos testes.
 jest.mock('../api/services', () => ({
   arrecadacaoService: {
     status: jest.fn(() => Promise.resolve({})),
@@ -74,9 +74,9 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
   it('o gerente desenvolvedor vê todas as áreas disponíveis (menos as "em breve")', async () => {
     montarAuth('ADMINISTRADOR');
     render(<HomeScreen navigation={navegacaoFake()} route={{} as never} />);
-    // Descarrega as atualizações de estado assíncronas do hook de pendências
-    // dentro de act(...) para evitar o warning; os tiles renderizam de forma
-    // síncrona, então as asserções abaixo permanecem válidas.
+    // Descarrega as atualizações de estado assíncronas dos hooks (Resumo do
+    // Dia) dentro de act(...) para evitar o warning; os tiles renderizam de
+    // forma síncrona, então as asserções abaixo permanecem válidas.
     await act(async () => {});
 
     // Vê todas as áreas prontas — exceto "Importações", que saiu da Home para

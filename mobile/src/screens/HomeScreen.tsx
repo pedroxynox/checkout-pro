@@ -40,13 +40,15 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../auth/AuthContext';
 import { AREAS } from '../navigation/areas';
-import { usePulsoDoDia } from './centroDeMando/usePulsoDoDia';
+import { ResumoDoDia } from './centroDeMando/ResumoDoDia';
+import { useDadosDaHome } from './centroDeMando/dadosDoDia';
 import { PropsTabInicio } from '../navigation/types';
 import { cores, coresModulos, gradientes, raio, sombra, tipografia } from '../theme';
 
@@ -86,10 +88,10 @@ export function HomeScreen({
   navigation,
 }: PropsTabInicio): React.ReactElement {
   const { usuario, perfil, podeAcessar, sair } = useAuth();
-  // Contagem de pendências por módulo (os "selos" com o número nos acessos).
-  // Mesma fonte compartilhada/deduplicada usada pela barra de abas e pela aba
-  // Tarefas — busca só o que o usuário pode acessar. Defensivo e por regras.
-  const { pendenciasPorModulo } = usePulsoDoDia(perfil, podeAcessar);
+  // Dados do dia buscados UMA vez (compartilhados/deduplicados) e usados tanto
+  // pelo Resumo do Dia (briefing) quanto pelos selos de pendência dos acessos.
+  // Defensivo e por regras; não muda nenhuma lógica de negócio.
+  const { campos, pendenciasPorModulo } = useDadosDaHome(perfil, podeAcessar);
   // Áreas visíveis no menu: precisa ter acesso pela funcionalidade E não estar
   // marcada como "em breve" (em construção). Áreas `emBreve` ficam ocultas até
   // serem concluídas, inclusive para o gerente desenvolvedor.
@@ -137,6 +139,12 @@ export function HomeScreen({
             : 'Fiscal';
   const nome = primeiroNome;
 
+  // Layout adaptativo: em telas largas (PC/notebook) usamos um layout de
+  // "app de escritório" — menu lateral fixo à esquerda + painel do dia à
+  // direita. No celular, tudo segue exatamente como antes.
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1000;
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -181,10 +189,68 @@ export function HomeScreen({
         </SafeAreaView>
       </LinearGradient>
 
-      {/* Acessos rápidos (áreas) em grade. Um único layout para celular e web;
-          em telas largas a grade fica centrada com largura máxima. */}
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.conteudo}>
-        <View style={styles.conteudoInner}>
+      {isDesktop ? (
+        /* ===== Layout de ESCRITÓRIO (PC/notebook): menu lateral + painel ===== */
+        <View style={styles.desktopBody}>
+          {/* Menu lateral com os acessos (vertical, estilo app de desktop) */}
+          <View style={styles.sidebar}>
+            <Text style={styles.sidebarTitulo}>Acessos</Text>
+            <ScrollView contentContainerStyle={styles.sidebarLista}>
+              {areasOrdenadas.map((area) => {
+                const corModulo = coresModulos[area.rota] ?? cores.primaria;
+                const Icone = ICONES_MODULO[area.rota] ?? LayoutGrid;
+                const pendencias = pendenciasPorModulo[area.rota] ?? 0;
+                return (
+                  <Pressable
+                    key={area.rota}
+                    style={({ pressed }) => [
+                      styles.sidebarItem,
+                      pressed && styles.sidebarItemPressionado,
+                    ]}
+                    onPress={() => navigation.navigate(area.rota)}
+                  >
+                    <View
+                      style={[styles.sidebarIcone, { backgroundColor: `${corModulo}1A` }]}
+                    >
+                      <Icone size={20} color={corModulo} />
+                    </View>
+                    <Text style={styles.sidebarLabel} numberOfLines={1}>
+                      {area.titulo}
+                    </Text>
+                    {pendencias > 0 && (
+                      <View style={styles.sidebarBadge}>
+                        <Text style={styles.tileBadgeTexto}>{pendencias}</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {/* Área principal: painel inteligente do dia */}
+          <ScrollView
+            style={styles.desktopMain}
+            contentContainerStyle={styles.desktopMainConteudo}
+          >
+            <View style={styles.desktopMainInner}>
+              <ResumoDoDia
+                aoNavegar={(rota) => navigation.navigate(rota as never)}
+                dados={campos}
+              />
+            </View>
+          </ScrollView>
+        </View>
+      ) : (
+        /* ===== Layout de CELULAR (inalterado): painel + grade de acessos ===== */
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.conteudo}>
+          {/* Resumo inteligente do dia (mantido no topo) */}
+          <ResumoDoDia
+            aoNavegar={(rota) => navigation.navigate(rota as never)}
+            dados={campos}
+          />
+
+          {/* Acessos rápidos (áreas) em grade */}
           <Text style={styles.secao}>Acessos rápidos</Text>
           <View style={styles.grade}>
             {areasOrdenadas.map((area) => {
@@ -217,8 +283,8 @@ export function HomeScreen({
               );
             })}
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -308,6 +374,83 @@ const styles = StyleSheet.create({
     // header junto).
     minHeight: 0,
   },
+  // ----- Layout de escritório (PC/notebook) -----
+  desktopBody: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: cores.fundo,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+    minHeight: 0,
+  },
+  sidebar: {
+    width: 288,
+    backgroundColor: cores.superficie,
+    borderRightWidth: 1,
+    borderRightColor: cores.divisor,
+    paddingVertical: 18,
+    minHeight: 0,
+  },
+  sidebarTitulo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    paddingHorizontal: 18,
+    marginBottom: 10,
+  },
+  sidebarLista: {
+    paddingHorizontal: 12,
+    gap: 4,
+    paddingBottom: 20,
+  },
+  sidebarItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: raio.md,
+  },
+  sidebarItemPressionado: {
+    backgroundColor: cores.fundo,
+  },
+  sidebarIcone: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sidebarLabel: {
+    ...tipografia.rotulo,
+    fontSize: 14,
+    color: cores.texto,
+    flex: 1,
+  },
+  sidebarBadge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    borderRadius: 10,
+    backgroundColor: cores.vermelho,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  desktopMain: {
+    flex: 1,
+    minHeight: 0,
+  },
+  desktopMainConteudo: {
+    padding: 28,
+    minHeight: '100%',
+  },
+  desktopMainInner: {
+    width: '100%',
+    maxWidth: 900,
+    alignSelf: 'center',
+  },
   conteudo: {
     backgroundColor: cores.fundo,
     borderTopLeftRadius: 24,
@@ -316,13 +459,6 @@ const styles = StyleSheet.create({
     paddingTop: 19,
     paddingBottom: 26,
     minHeight: '100%',
-  },
-  // Em telas largas (web/PC) a grade fica centrada com largura máxima; no
-  // celular ocupa 100% (o maxWidth não tem efeito).
-  conteudoInner: {
-    width: '100%',
-    maxWidth: 900,
-    alignSelf: 'center',
   },
   secao: {
     ...tipografia.subtitulo,
