@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** operação — variáveis de ambiente
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** operação — variáveis de ambiente
 
 # Variáveis de ambiente — Check-out PRO
 
@@ -29,6 +29,7 @@ indica as que impedem o start quando `NODE_ENV=production`.
 | `NODE_ENV` | Ambiente de execução. | `development` | `development` \| `test` \| `production` | Não |
 | `PORT` | Porta HTTP da API. | `3000` | Inteiro de 1 a 65535 (convertido de string) | Não |
 | `DATABASE_URL` | String de conexão do PostgreSQL usada pelo Prisma. | — | Texto | ✅ **Sim** |
+| `DATABASE_CONNECTION_LIMIT` | Teto do pool de conexões do Prisma, aplicado à `DATABASE_URL` pelo `PrismaService` (`connection_limit`/`pool_timeout`). Dimensionado para **uma** instância web sobre o Postgres `basic-256mb` do Render. | `10` | Inteiro ≥ 1 (convertido de string) | Não |
 | `HORARIO_FIM_DO_DIA` | Horário de "fim do dia" para alertas de importações pendentes. | `22:50` | `HH:mm` (regex `([01]\d\|2[0-3]):[0-5]\d`) | Não |
 | `JWT_SECRET` | Segredo de assinatura dos tokens JWT (autenticação). | — (em dev, gera-se um segredo aleatório efêmero por processo) | Texto — use valor longo e aleatório (`openssl rand -hex 32`) | ✅ **Sim** |
 | `JWT_EXPIRES_IN` | Expiração do token de acesso. | — (no `.env.example` e no `render.yaml`: `30d`) | Texto (ex.: `8h`, `30m`, `30d`) | Não |
@@ -82,8 +83,9 @@ Valores por perfil de build (`mobile/eas.json`):
 | `preview` (APK) | `https://checkout-pro-api.onrender.com` |
 | `production` (App Bundle) | `https://checkout-pro-api.onrender.com` |
 
-> O app usa timeout de requisição de 60s para tolerar o *cold start* de
-> servidores gratuitos (Render free), que hibernam após inatividade. Veja o
+> O app usa timeout de requisição de 60s como margem de segurança. Desde a
+> migração para o plano pago `starter` (que **não** hiberna), não há mais o
+> *cold start* do plano free; o timeout permanece apenas como folga. Veja o
 > [runbook de incidentes](runbook-incidentes.md).
 
 ---

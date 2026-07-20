@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/config/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `backend/src/config/`
 
 # Módulo: `config`
 
@@ -19,7 +19,7 @@ falha rápido (no boot) se algo essencial estiver ausente ou fora do formato.
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `env.validation.ts` | Esquema das variáveis + `validateEnv` (falha rápida) | 124 |
+| `env.validation.ts` | Esquema das variáveis + `validateEnv` (falha rápida) | 134 |
 
 ## 4. Endpoints (rotas HTTP)
 **Não expõe rotas HTTP.** Fornece a função `validateEnv`, usada na opção
@@ -46,6 +46,8 @@ configurado impede o start em vez de falhar silenciosamente depois.
 - Variáveis e padrões:
   - `PORT` (1–65535, padrão `3000`; convertida de string);
   - `DATABASE_URL` (obrigatória em produção);
+  - `DATABASE_CONNECTION_LIMIT` (≥ 1, padrão `10`; teto do pool do Prisma
+    aplicado em [`prisma`](prisma.md));
   - `HORARIO_FIM_DO_DIA` (`HH:mm`, padrão `22:50`);
   - `JWT_SECRET` (obrigatória em produção) · `JWT_EXPIRES_IN`;
   - `GEMINI_API_KEY` (opcional) · `GEMINI_MODEL` (padrão `gemini-2.5-flash`);
@@ -62,7 +64,7 @@ configurado impede o start em vez de falhar silenciosamente depois.
   valores validados alimentam [`common`](common.md) (segredo JWT, CORS),
   [`assistente`](assistente.md) (Gemini), [`alertas`](alertas.md)
   (`HORARIO_FIM_DO_DIA`), [`storage`](storage.md) e [`prisma`](prisma.md)
-  (`DATABASE_URL`).
+  (`DATABASE_URL` e `DATABASE_CONNECTION_LIMIT`).
 
 ## 10. Regras de negócio-chave
 1. **Falha rápida no boot:** ambiente inválido impede o start.

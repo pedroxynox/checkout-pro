@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** operação — runbook de incidentes em produção
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** operação — runbook de incidentes em produção
 
 # Runbook de incidentes — Check-out PRO
 
@@ -23,19 +23,20 @@ O que fazer quando algo falha em produção. Cada cenário segue o formato
 
 ---
 
-## 1. API fora do ar — Render dormiu / cold start
+## 1. API lenta na primeira requisição
 
-- **Sintoma:** a primeira requisição após um período ocioso demora ~30–60s ou
-  o app mostra timeout; depois normaliza.
-- **Diagnóstico:** plano **free** do Render hiberna o serviço web após ~15 min
-  sem uso. Nos logs, aparece o boot do serviço ("acordando") logo antes da
-  resposta. Não é erro de código.
+- **Sintoma:** a primeira requisição após um período ocioso demora ou o app
+  mostra timeout; depois normaliza.
+- **Diagnóstico:** desde jul/2026 o serviço web usa o plano pago `starter`, que
+  **não hiberna** — o antigo *cold start* do plano free (e o workflow
+  `keep-alive` que o mascarava) **não se aplicam mais**. Uma lentidão inicial
+  agora aponta para outra causa: um **deploy em andamento** (reinício do
+  serviço, ver aba **Events**) ou o **banco indisponível** (cenário 2).
 - **Ação:**
-  1. Aguarde a primeira requisição concluir; o app já usa timeout de 60s para
-     tolerar o cold start (login funciona na primeira tentativa).
-  2. Para eliminar o problema, migre o serviço para um plano pago (não dorme).
-  3. Alternativa paliativa: manter um *keep-alive* pingando `/health` (ver
-     workflow `keep-alive.yml`).
+  1. Verifique em **Events** se há um deploy/reinício em curso; aguarde concluir.
+  2. Cheque `GET /health/ready` — se responder **503**, trate como o cenário 2
+     (banco indisponível).
+  3. Se persistir sem deploy em curso, inspecione os **Logs** do serviço.
 
 ---
 
@@ -45,17 +46,20 @@ O que fazer quando algo falha em produção. Cada cenário segue o formato
   falham; o app mostra erros ao carregar dados.
 - **Diagnóstico:**
   - Verifique o status do banco `stok-center-db` no Render.
-  - **Atenção ao plano free:** o PostgreSQL gratuito **expira em ~30 dias** e
-    pode causar perda de dados.
+  - **Esgotamento de conexões:** o plano `basic-256mb` tem um limite de conexões
+    modesto. O backend fixa o pool via `DATABASE_CONNECTION_LIMIT` (padrão `10`);
+    se o banco recusar conexões, confira esse teto e as sessões abertas (psql,
+    migrações, seed) no painel do banco.
   - Confirme se `DATABASE_URL` no serviço aponta para o banco correto (é
     injetada automaticamente pelo `render.yaml`).
 - **Ação:**
-  1. Se o banco expirou/está fora, restaure ou provisione um novo e atualize
-     a conexão.
-  2. Reaplique as migrações se necessário: `npx prisma migrate deploy` (roda no
+  1. Se o banco está fora, verifique o painel do Render e restaure/reative a
+     instância `stok-center-db`; atualize a conexão se necessário.
+  2. Se o erro for recusa por excesso de conexões, reduza `DATABASE_CONNECTION_LIMIT`
+     ou encerre sessões ociosas; reavalie o teto ao subir de plano/instâncias.
+  3. Reaplique as migrações se necessário: `npx prisma migrate deploy` (roda no
      *pre-deploy* de cada deploy).
-  3. Em banco novo/vazio, rode o seed **uma vez**: `npx prisma db seed`.
-  4. Planeje a migração para um plano pago para evitar recorrência.
+  4. Em banco novo/vazio, rode o seed **uma vez**: `npx prisma db seed`.
 
 ---
 
@@ -90,7 +94,7 @@ O que fazer quando algo falha em produção. Cada cenário segue o formato
   1. Confirme que a expectativa é de notificação in-app (dentro do app), que
      depende da conexão WebSocket de notificações estar ativa.
   2. Se as notificações in-app também não aparecem, verifique a conectividade
-     com a API (cold start / banco — cenários 1 e 2) e o namespace de
+     com a API (reinício/deploy ou banco — cenários 1 e 2) e o namespace de
      notificações.
   3. Push externo (FCM/Expo) é trabalho futuro; abra tarefa se for requisito.
 
@@ -149,8 +153,8 @@ O que fazer quando algo falha em produção. Cada cenário segue o formato
 
 ## Escalonamento
 
-Se um incidente persistir após as ações acima (ex.: perda de dados por expiração
-do banco free, indisponibilidade prolongada do provedor), acione a
+Se um incidente persistir após as ações acima (ex.: indisponibilidade
+prolongada do provedor, perda de arquivos por storage efêmero), acione a
 **Engenharia** responsável e registre o incidente com o trecho de log relevante
 e o horário. Priorize os itens bloqueantes do
 [Checklist de produção](checklist-producao.md).

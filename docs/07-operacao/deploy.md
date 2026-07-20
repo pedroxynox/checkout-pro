@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** operação — publicação (deploy) do backend e do app
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** operação — publicação (deploy) do backend e do app
 
 # Deploy — Check-out PRO
 
@@ -17,8 +17,10 @@ Como publicar o backend (API NestJS + PostgreSQL) no **Render** e gerar o app
 A infraestrutura é declarada no `render.yaml` (Blueprint do Render). Ele cria
 automaticamente três recursos:
 
-1. **`stok-center-db`** — banco PostgreSQL gerenciado (plano free).
-2. **`checkout-pro-api`** — serviço web Node com o backend NestJS (plano free).
+1. **`stok-center-db`** — banco PostgreSQL gerenciado (plano pago
+   `basic-256mb`; persistente, sem a expiração de ~30 dias do plano free).
+2. **`checkout-pro-api`** — serviço web Node com o backend NestJS (plano pago
+   `starter`, que **não** hiberna — sem cold start).
 3. **`checkout-pro-web`** — site estático com a versão web do app (Expo Web),
    útil para revisar layout no navegador. Sites estáticos são gratuitos e
    **não dormem**.
@@ -47,6 +49,7 @@ Já declaradas no `render.yaml`:
 |---|---|
 | `NODE_ENV` | `production` (fixo) |
 | `DATABASE_URL` | injetada do banco `stok-center-db` (`connectionString`) |
+| `DATABASE_CONNECTION_LIMIT` | `10` (teto do pool do Prisma; ver [`variaveis-de-ambiente.md`](variaveis-de-ambiente.md)) |
 | `JWT_SECRET` | `generateValue: true` (gerado automaticamente pelo Render) |
 | `JWT_EXPIRES_IN` | `30d` |
 | `HORARIO_FIM_DO_DIA` | `22:50` |
@@ -80,10 +83,17 @@ automaticamente. Não é preciso rodar o seed novamente.
 
 ### 1.5 Cuidados de produção (ver checklist)
 
-- **Plano free dorme:** o serviço web hiberna após ~15 min sem uso; a primeira
-  requisição pode levar ~30–60s. O app tolera isso com timeout de 60s.
-- **PostgreSQL free expira em ~30 dias:** risco de perda de dados; migre para um
-  plano pago para uso contínuo.
+- **Planos pagos (desde jul/2026):** o serviço web usa `starter` (não hiberna,
+  sem cold start) e o banco usa `basic-256mb` (persistente). O antigo workflow
+  de keep-alive foi **removido** por não ser mais necessário. Ver o ADR
+  [0013](../02-arquitetura/decisoes/0013-infra-paga-e-pool-de-conexoes.md).
+- **Limite de conexões do banco:** o `basic-256mb` tem um teto de conexões
+  modesto. O backend fixa o pool via `DATABASE_CONNECTION_LIMIT` (padrão `10`).
+  Ao subir de plano ou escalar horizontalmente, reavalie esse valor.
+- **Armazenamento de arquivos ainda é efêmero:** o disco do contêiner do Render
+  é apagado a cada deploy mesmo no plano pago (não há *Render Disk* montado).
+  As fotos de checklist gravadas por `LocalDiskStorage` se perdem entre deploys
+  — migrar para um storage de objetos (S3-compatível) é a próxima prioridade.
 - **Cota do Gemini:** a camada gratuita é insuficiente para ~15 fiscais
   simultâneos; avalie faturamento.
 - **Serviço web duplicado:** manter apenas um serviço web (ver checklist).

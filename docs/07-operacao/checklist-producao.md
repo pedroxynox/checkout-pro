@@ -35,12 +35,18 @@ Sem estes itens a aplicação **não sobe** ou fica insegura/instável:
 - [ ] **Plano pago do Gemini:** a cota gratuita (~20 req/min) é insuficiente para
       ~15 fiscais simultâneos (gera `RESOURCE_EXHAUSTED`). Ativar faturamento no
       Google AI Studio.
-- [ ] **PostgreSQL persistente:** o plano free do Render expira em ~30 dias e pode
-      **causar perda de dados**. Migrar para um plano pago/estável.
+- [x] **PostgreSQL persistente:** migrado para o plano pago `basic-256mb` (jul/2026),
+      sem a expiração de ~30 dias do plano free. O backend fixa o pool de conexões
+      via `DATABASE_CONNECTION_LIMIT` (padrão `10`) para respeitar o limite modesto
+      desse plano.
 - [x] **Endurecer o deploy:** migrações rodam no **Pre-Deploy Command** e o Start
       Command ficou apenas com `node dist/main.js` (configurado no `render.yaml`).
       Isso evita que o *advisory lock* do Prisma (em deploys encavalados) trave a
       porta em silêncio.
+- [ ] **Storage de arquivos persistente:** o disco do Render é efêmero **mesmo no
+      plano pago** (apagado a cada deploy; não há *Render Disk* montado). As fotos
+      de checklist (`LocalDiskStorage`) se perdem entre deploys — migrar para um
+      storage de objetos S3-compatível é a próxima prioridade.
 - [ ] **Remover o serviço web duplicado** no Render (existem 2 serviços web —
       manter apenas um).
 - [ ] **Health check de readiness:** opcionalmente apontar o health check do Render
