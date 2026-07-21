@@ -89,3 +89,68 @@ export function somaPonderada(
 export function motivoObrigatorio(status: StatusJustificativa): boolean {
   return status === 'JUSTIFICADA';
 }
+
+/** Entrada para (re)justificar uma ocorrência — comum a faltas e não-retornos. */
+export interface EntradaJustificativa {
+  status: StatusJustificativa;
+  motivo?: MotivoJustificativa | null;
+  observacao?: string | null;
+}
+
+/** Autor de uma justificativa (usuário autenticado) — só id/nome para auditoria. */
+export interface AutorJustificativa {
+  id?: string | null;
+  nome?: string | null;
+}
+
+/** Campos de justificativa a persistir (idênticos em `Ausencia` e `IncidenciaEscala`). */
+export interface DadosJustificativaPersistir {
+  statusJustificativa: StatusJustificativa;
+  motivoJustificativa: MotivoJustificativa | null;
+  observacaoJustificativa: string | null;
+  justificadaPorId: string | null;
+  justificadaPorNome: string | null;
+  justificadaEm: Date | null;
+}
+
+/**
+ * Monta, de forma **pura**, os campos de justificativa a gravar a partir do
+ * input + autor. Fonte única partilhada por faltas (`Ausencia`) e não-retornos
+ * (`IncidenciaEscala`), que antes duplicavam esta lógica.
+ *
+ * Regras:
+ * - `PENDENTE` (reabrir): limpa tudo — motivo, observação e auditoria a `null`;
+ * - `JUSTIFICADA`: grava o motivo (se houver), a observação e a auditoria;
+ * - `INJUSTIFICADA`: sem motivo, mas mantém observação e auditoria.
+ *
+ * **Não valida** a obrigatoriedade do motivo: cada serviço faz essa checagem
+ * (com o seu próprio tipo de erro) via `motivoObrigatorio` antes de chamar.
+ * `agora` é injetável para tornar o resultado determinístico em testes.
+ */
+export function montarDadosJustificativa(
+  input: EntradaJustificativa,
+  autor: AutorJustificativa,
+  agora: Date = new Date(),
+): DadosJustificativaPersistir {
+  // PENDENTE = reabrir: limpa toda a justificativa e a auditoria.
+  if (input.status === 'PENDENTE') {
+    return {
+      statusJustificativa: 'PENDENTE',
+      motivoJustificativa: null,
+      observacaoJustificativa: null,
+      justificadaPorId: null,
+      justificadaPorNome: null,
+      justificadaEm: null,
+    };
+  }
+  return {
+    statusJustificativa: input.status,
+    // Motivo só se aplica a JUSTIFICADA; INJUSTIFICADA não tem motivo.
+    motivoJustificativa:
+      input.status === 'JUSTIFICADA' ? (input.motivo ?? null) : null,
+    observacaoJustificativa: input.observacao ?? null,
+    justificadaPorId: autor.id ?? null,
+    justificadaPorNome: autor.nome ?? null,
+    justificadaEm: agora,
+  };
+}

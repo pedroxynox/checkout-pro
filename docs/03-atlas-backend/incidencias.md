@@ -24,7 +24,7 @@ do ponto dos fiscais e gerar analítica, ranking e o panorama de sanções.
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
 | `incidencias.controller.ts` | Rotas HTTP (registrar/editar/justificar/remover/listar/sugestões/ranking/sanções) | 122 |
-| `incidencias.service.ts` | Regras de aplicação, persistência (Prisma) e avisos | 806 |
+| `incidencias.service.ts` | Regras de aplicação, persistência (Prisma) e avisos | 803 |
 | `incidencias.domain.ts` | Regras puras: metadados de tipo, detecção, analítica, sanções | 648 |
 | `incidencias.errors.ts` | Erros de domínio (mapeados para HTTP) | 56 |
 | `incidencias.module.ts` | Ligações (DI); exporta o serviço | 23 |
@@ -66,7 +66,9 @@ Atualizam ou removem uma incidência; ambos lançam `IncidenciaNaoEncontradaErro
 
 #### `justificar(id, input, autor?)`
 - **Efeitos:** grava `statusJustificativa`, motivo/observação e a auditoria
-  (quem/quando); reabrir (`PENDENTE`) limpa motivo/auditoria.
+  (quem/quando); reabrir (`PENDENTE`) limpa motivo/auditoria. Os campos são
+  montados pela primitiva partilhada `montarDadosJustificativa` (common) —
+  **fonte única** com as faltas (`operadores`).
 - **Regras aplicadas:** `JUSTIFICADA` exige motivo (`motivoObrigatorio`); reduz o
   peso no score conforme o motivo (ADR 0009).
 - **Erros possíveis:** `IncidenciaNaoEncontradaError`, `DadosIncidenciaInvalidosError`.
@@ -159,7 +161,7 @@ disciplinares; a segunda foca no não-retorno e devolve também os não justific
 > Contagem sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `incidencias.service.ts` (806 linhas) concentra persistência, auto-detecção,
+- 🔧 `incidencias.service.ts` (803 linhas) concentra persistência, auto-detecção,
   analítica e avisos; candidato a extrair sub-serviços conforme crescer.
 - ⚠️ `colaboradorId` é um `String` sem FK; o serviço valida a existência antes de
   persistir para não criar incidências órfãs (que contaminariam ranking/perfil).
