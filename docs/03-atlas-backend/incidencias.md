@@ -24,7 +24,7 @@ do ponto dos fiscais e gerar analítica, ranking e o panorama de sanções.
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
 | `incidencias.controller.ts` | Rotas HTTP (registrar/editar/justificar/remover/listar/sugestões/ranking/sanções) | 122 |
-| `incidencias.service.ts` | Regras de aplicação, persistência (Prisma) e avisos | 803 |
+| `incidencias.service.ts` | Regras de aplicação, persistência (Prisma) e avisos | 826 |
 | `incidencias.domain.ts` | Regras puras: metadados de tipo, detecção, analítica, sanções | 638 |
 | `incidencias.errors.ts` | Erros de domínio (mapeados para HTTP) | 56 |
 | `incidencias.module.ts` | Ligações (DI); exporta o serviço | 23 |
@@ -63,6 +63,14 @@ do ponto dos fiscais e gerar analítica, ranking e o panorama de sanções.
 #### `editar(id, dto)` / `remover(id)`
 Atualizam ou removem uma incidência; ambos lançam `IncidenciaNaoEncontradaError`
 (404) quando o id não existe. Editar preserva os valores atuais dos campos não enviados.
+
+#### `removerNaoRetornoAutomatico(colaboradorId, data)`
+Apaga os não-retornos **auto-detectados** (`origem = 'DETECTADO_PONTO'`) do
+colaborador no dia e devolve quantos removeu (0 se nenhum). Os não-retornos
+**manuais** do gestor não são afetados. É a **auto-cura** usada pela detecção
+automática (`PontoDeteccaoAutomaticaService`): quando a pessoa fecha o intervalo
+(voltou), um não-retorno marcado por engano — porque o retorno entrou depois do
+ciclo que o marcou — some sozinho.
 
 #### `justificar(id, input, autor?)`
 - **Efeitos:** grava `statusJustificativa`, motivo/observação e a auditoria

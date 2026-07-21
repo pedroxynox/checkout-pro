@@ -187,9 +187,17 @@ export class PontoDeteccaoAutomaticaService {
   /**
    * Registra o "não retorno do intervalo" quando a jornada está EM_INTERVALO e
    * o intervalo em curso já ultrapassou o máximo do CONTRATO da pessoa (3h no
-   * 6x1, data-driven). Idempotente: não
-   * duplica se já houver um não-retorno do dia. Só para quem tem ficha
-   * (`colaboradorId`), pois a incidência é keyed por colaborador.
+   * 6x1, data-driven). Idempotente: não duplica se já houver um não-retorno do
+   * dia. Só para quem tem ficha (`colaboradorId`), pois a incidência é keyed
+   * por colaborador.
+   *
+   * **Auto-cura:** quando já EXISTE um não-retorno do dia e a pessoa fechou o
+   * intervalo (voltou, jornada normal), o não-retorno AUTO-detectado é removido
+   * — é um falso positivo que ficou porque o retorno entrou depois do ciclo que
+   * o marcou (anotado em atraso, corrigido à mão, reenvio). Assim qualquer via
+   * de registro do retorno acaba limpando a marca, não só a batida normal (que
+   * o `PontoService` já trata no ato). Recalcula a jornada de quem já tem o
+   * não-retorno (custo pequeno: são poucas pessoas por dia).
    */
   private async verificarNaoRetorno(
     escalado: EscaladoDia,
@@ -198,16 +206,41 @@ export class PontoDeteccaoAutomaticaService {
   ): Promise<void> {
     if (!escalado.colaboradorId) return;
 
-    // Já registrado hoje? Checa ANTES de recalcular a jornada — em memória (o
-    // conjunto foi carregado uma vez no ciclo) — para NÃO pagar o custo do
-    // cálculo da jornada de quem já tem o não-retorno do dia.
-    if (naoRetornoRegistrado.has(escalado.colaboradorId)) return;
+    const jaTemNaoRetorno = naoRetornoRegistrado.has(escalado.colaboradorId);
 
     const resposta = await this.ponto.jornadaDoDia(
       escalado.pessoaId,
       escalado.tipoPessoa,
       dia,
     );
+
+    // Auto-cura: já há um não-retorno do dia, mas o intervalo foi fechado
+    // (retorno registrado e jornada fora do estado de não-retorno). Remove o
+    // AUTO-detectado (os manuais do gestor não são tocados) e encerra.
+    if (jaTemNaoRetorno) {
+      const fechouIntervalo =
+        !resposta.jornada.naoRetornoIntervalo &&
+        resposta.batidas.some((b) => b.tipo === 'RETORNO_INTERVALO');
+      if (fechouIntervalo) {
+        try {
+          const removidos = await this.incidencias.removerNaoRetornoAutomatico(
+            escalado.colaboradorId,
+            dia,
+          );
+          if (removidos > 0) {
+            this.logger.log(
+              `Não retorno automático removido: ${escalado.nome} (fechou o intervalo; falso positivo).`,
+            );
+          }
+        } catch (erro) {
+          this.logger.warn(
+            `Não foi possível remover não-retorno de ${escalado.nome}: ${String(erro)}`,
+          );
+        }
+      }
+      return;
+    }
+
     // Não-retorno data-driven, calculado na jornada com o intervalo máximo do
     // CONTRATO da pessoa: saiu para o intervalo, não voltou e passou do máximo.
     // Vale INCLUSIVE quando o turno já foi dado por encerrado (intervalo
