@@ -90,6 +90,22 @@ export class HorarioInvalidoError extends OperadoresError {
 }
 
 /**
+ * Lançado quando se tenta lançar uma AUSÊNCIA A PRAZO com motivo
+ * `ATESTADO_MEDICO`. Atestado médico tem fluxo próprio (entidade `Atestado`, com
+ * CID e regra do INSS): a ausência a prazo é para os demais motivos (licença,
+ * abonada, etc.). Assim o "médico" nunca vira uma falta justificada solta, sem
+ * CID nem acompanhamento do INSS.
+ */
+export class AtestadoMedicoViaFluxoProprioError extends OperadoresError {
+  readonly statusHttp = HttpStatus.BAD_REQUEST;
+  constructor(
+    mensagem = 'Atestado médico deve ser lançado pelo fluxo de Atestados (com CID). Use a tela de Atestados.',
+  ) {
+    super(mensagem);
+  }
+}
+
+/**
  * Lançado quando um FISCAL tenta remover (desmarcar) uma falta que faz parte de
  * uma AUSÊNCIA A PRAZO (período lançado pelo gestor). Só gerente, supervisor ou
  * administrador podem remover esses dias.

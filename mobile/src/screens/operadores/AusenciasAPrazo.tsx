@@ -35,8 +35,9 @@ const ROTULO_MOTIVO: Record<MotivoJustificativa, string> = {
   ATRASO_JUSTIFICADO: 'Atraso justificado',
   OUTRO: 'Outro',
 };
+// Atestado médico NÃO entra aqui: tem fluxo próprio (card "Atestados", com CID
+// e regra do INSS). A ausência a prazo cobre os demais motivos.
 const MOTIVOS: MotivoJustificativa[] = [
-  'ATESTADO_MEDICO',
   'ABONADA',
   'LICENCA',
   'ATRASO_JUSTIFICADO',
@@ -315,6 +316,10 @@ export function AusenciasAPrazoCard({
                       </Text>
                     ))}
                   </View>
+                  <Text style={styles.aviso}>
+                    Atestado médico? Use a card &quot;Atestados&quot; (com CID e
+                    regra do INSS).
+                  </Text>
 
                   <CampoTexto
                     rotulo="Observação (opcional)"
