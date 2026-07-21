@@ -161,7 +161,7 @@ export class IncidenciasService {
     // perfil). Rejeita com 400 quando o colaborador não existe (Req 2.3).
     const colaborador = await this.prisma.colaborador.findUnique({
       where: { id: dto.colaboradorId },
-      select: { id: true },
+      select: { id: true, funcao: true },
     });
     if (!colaborador) {
       throw new ColaboradorIncidenciaInvalidoError(
@@ -169,7 +169,14 @@ export class IncidenciasService {
       );
     }
 
-    const funcionarioId = await this.resolverFuncionarioId(dto.colaboradorId);
+    // O `funcionarioId` (Fiscal.id) só existe para colaboradores FISCAIS.
+    // Resolver isso varre fiscais/usuários/colaboradores; para operadores o
+    // resultado é sempre null, então pulamos a varredura (a maioria dos
+    // não-retornos é de operadores).
+    const funcionarioId =
+      colaborador.funcao === 'FISCAL'
+        ? await this.resolverFuncionarioId(dto.colaboradorId)
+        : null;
 
     // Deriva o horário esperado de retorno quando não informado (mas há saída).
     let horaEsperadaRetorno = dto.horaEsperadaRetorno ?? null;

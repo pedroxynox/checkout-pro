@@ -52,9 +52,11 @@ do ponto dos fiscais e gerar analítica, ranking e o panorama de sanções.
 - **Recebe:** dados da incidência (colaborador, tipo, data, horários/motivo) e o autor autenticado.
 - **Devolve:** a `IncidenciaEscala` criada.
 - **Efeitos:** valida data permitida (via `ValidacaoDataService`); verifica que o
-  colaborador existe; resolve o `funcionarioId` do fiscal; deriva o horário
-  esperado de retorno quando há saída; grava suspensão com período (`dataFim`);
-  checa o limite mensal e, para não-retorno, avisa toda a operação.
+  colaborador existe; resolve o `funcionarioId` **apenas quando o colaborador é
+  FISCAL** (para operador é sempre `null`, então pula a varredura de
+  fiscais/usuários/colaboradores); deriva o horário esperado de retorno quando
+  há saída; grava suspensão com período (`dataFim`); checa o limite mensal e,
+  para não-retorno, avisa toda a operação.
 - **Erros possíveis:** `DadosIncidenciaInvalidosError` (data/motivo de sanção),
   `ColaboradorIncidenciaInvalidoError`, `IncidenciaDuplicadaError` (P2002 → 409).
 
@@ -148,7 +150,7 @@ disciplinares; a segunda foca no não-retorno e devolve também os não justific
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `incidencias.service.spec.ts` | Registro/duplicata/derivação/sugestão e somas ponderadas | 11 |
+| `incidencias.service.spec.ts` | Registro/duplicata/derivação/sugestão, `funcionarioId` só p/ fiscal e somas ponderadas | 12 |
 | `incidencias.properties.spec.ts` | Propriedades: horário, detecção, analítica e timeline (property-based) | 6 |
 | `incidencias.sancoes.spec.ts` | Disciplina progressiva e panorama de sanções | 7 |
 | `incidencias.tipos.spec.ts` | Metadados de tipo (partições, disciplinares, legado) | 7 |

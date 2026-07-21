@@ -64,29 +64,57 @@ export class PontoDeteccaoAutomaticaService {
     }
     if (escalados.length === 0) return;
 
-    // Quem tem atividade hoje: batidas do Relógio Ponto OU registros de status
-    // de fiscal (um fiscal pode estar trabalhando sem ter usado o comprovante).
-    const [batidas, registrosFiscais] = await Promise.all([
-      this.prisma.batidaPonto.findMany({
-        where: { data: dia },
-        select: { pessoaId: true },
-      }),
-      this.prisma.registroPontoFiscal.findMany({
-        where: { data: dia },
-        select: { fiscalId: true },
-      }),
-    ]);
+    // Carrega de UMA vez os sinais do dia (antes fazíamos um findFirst por
+    // escalado — N consultas no caminho quente que roda a cada 5 min):
+    //  - batidas/registros de fiscal (quem tem atividade hoje);
+    //  - todas as faltas do dia (para o "já tem falta?"), cobrindo AS DUAS
+    //    chaves (pessoaId E colaboradorId);
+    //  - não-retornos já registrados hoje (para o "já registrado?").
+    const [batidas, registrosFiscais, ausenciasDoDia, naoRetornosDoDia] =
+      await Promise.all([
+        this.prisma.batidaPonto.findMany({
+          where: { data: dia },
+          select: { pessoaId: true },
+        }),
+        this.prisma.registroPontoFiscal.findMany({
+          where: { data: dia },
+          select: { fiscalId: true },
+        }),
+        this.prisma.ausencia.findMany({
+          where: { data: dia },
+          select: { pessoaId: true, colaboradorId: true },
+        }),
+        this.prisma.incidenciaEscala.findMany({
+          where: { tipo: 'NAO_RETORNO_INTERVALO', data: dia },
+          select: { colaboradorId: true },
+        }),
+      ]);
     const comAtividade = new Set<string>([
       ...batidas.map((b) => b.pessoaId),
       ...registrosFiscais.map((r) => r.fiscalId),
     ]);
+    // Ids (pessoaId OU colaboradorId) que já têm falta hoje — a união das duas
+    // colunas reproduz em memória o `OR pessoaId/colaboradorId` da consulta.
+    const idsComFalta = new Set<string>();
+    for (const a of ausenciasDoDia) {
+      idsComFalta.add(a.pessoaId);
+      if (a.colaboradorId) idsComFalta.add(a.colaboradorId);
+    }
+    const naoRetornoRegistrado = new Set(
+      naoRetornosDoDia.map((i) => i.colaboradorId),
+    );
 
     for (const escalado of escalados) {
       try {
         if (comAtividade.has(escalado.pessoaId)) {
-          await this.verificarNaoRetorno(escalado, dia);
+          await this.verificarNaoRetorno(escalado, dia, naoRetornoRegistrado);
         } else {
-          await this.verificarFaltaAutomatica(escalado, dia, agora);
+          await this.verificarFaltaAutomatica(
+            escalado,
+            dia,
+            agora,
+            idsComFalta,
+          );
         }
       } catch (erro) {
         this.logger.warn(
@@ -105,29 +133,24 @@ export class PontoDeteccaoAutomaticaService {
     escalado: EscaladoDia,
     dia: Date,
     agora: Date,
+    idsComFalta: ReadonlySet<string>,
   ): Promise<void> {
     const minutos = minutosAposEntrada(escalado.entradaPrevista, agora);
     if (estadoSemBatida(minutos) !== 'FALTA') return;
 
     // Já existe falta para a pessoa nesse dia? (manual, automática ou a prazo)
-    // → não duplica nem sobrescreve. A busca cobre AS DUAS chaves possíveis:
+    // → não duplica nem sobrescreve. Consulta em memória (o conjunto de faltas
+    // do dia foi carregado UMA vez neste ciclo) cobrindo AS DUAS chaves:
     // `pessoaId` (Fiscal.id p/ fiscais, Colaborador.id p/ operadores) E o
     // vínculo com a ficha `colaboradorId`. Isso é essencial para a ausência a
     // prazo de um FISCAL: ela é gravada com a ficha (Colaborador.id), enquanto
     // o escalado é identificado pelo Fiscal.id — checar só `pessoaId` não a
-    // encontrava e o cron remarcava uma falta automática duplicada (mesmo
-    // padrão de `equipeDoDia` e da remoção ao bater ponto).
+    // encontrava e o cron remarcava uma falta duplicada. Como fallback, o
+    // próprio `registrarFalta`/`registrarAusencia` é idempotente.
     const ids = [escalado.pessoaId, escalado.colaboradorId].filter(
       (v): v is string => !!v,
     );
-    const jaFalta = await this.prisma.ausencia.findFirst({
-      where: {
-        data: dia,
-        OR: [{ pessoaId: { in: ids } }, { colaboradorId: { in: ids } }],
-      },
-      select: { id: true },
-    });
-    if (jaFalta) return;
+    if (ids.some((id) => idsComFalta.has(id))) return;
 
     try {
       if (escalado.tipoPessoa === 'FISCAL') {
@@ -171,8 +194,14 @@ export class PontoDeteccaoAutomaticaService {
   private async verificarNaoRetorno(
     escalado: EscaladoDia,
     dia: Date,
+    naoRetornoRegistrado: ReadonlySet<string>,
   ): Promise<void> {
     if (!escalado.colaboradorId) return;
+
+    // Já registrado hoje? Checa ANTES de recalcular a jornada — em memória (o
+    // conjunto foi carregado uma vez no ciclo) — para NÃO pagar o custo do
+    // cálculo da jornada de quem já tem o não-retorno do dia.
+    if (naoRetornoRegistrado.has(escalado.colaboradorId)) return;
 
     const resposta = await this.ponto.jornadaDoDia(
       escalado.pessoaId,
@@ -185,17 +214,6 @@ export class PontoDeteccaoAutomaticaService {
     // obrigatório) — caso que antes escapava, pois a checagem exigia o status
     // EM_INTERVALO, que nunca ocorria nesses contratos ao cruzar o máximo.
     if (!resposta.jornada.naoRetornoIntervalo) return;
-
-    // Já registrado hoje? (evita duplicar a cada 5 min)
-    const jaRegistrado = await this.prisma.incidenciaEscala.findFirst({
-      where: {
-        colaboradorId: escalado.colaboradorId,
-        tipo: 'NAO_RETORNO_INTERVALO',
-        data: dia,
-      },
-      select: { id: true },
-    });
-    if (jaRegistrado) return;
 
     const saida = resposta.batidas.find((b) => b.tipo === 'SAIDA_INTERVALO');
     const horaSaida = saida ? saida.hora.slice(11, 16) : undefined;
