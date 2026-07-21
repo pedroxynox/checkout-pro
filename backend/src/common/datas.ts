@@ -157,3 +157,36 @@ export function diaEncerradoEmBrasilia(
 export function fimDoDiaBrasiliaEmUtc(dia: Date): Date {
   return new Date(inicioDoProximoDia(dia).getTime() - OFFSET_BRASILIA_MS);
 }
+
+/**
+ * Chave de dia civil (UTC) em milissegundos (meia-noite). Fonte única para
+ * agrupar/deduplicar ocorrências por dia, independente da hora gravada.
+ */
+export function chaveDiaUTC(d: Date): number {
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
+/**
+ * Maior sequência de datas em **dias civis consecutivos** (UTC). Deduplica por
+ * dia antes de medir, então múltiplas ocorrências no mesmo dia contam como um.
+ * Retorna 0 para lista vazia e 1 quando não há dias colados. Função pura —
+ * fonte única partilhada por faltas e não-retornos (antes duplicada nos domínios).
+ */
+export function maiorSequenciaDias(datas: readonly Date[]): number {
+  if (datas.length === 0) return 0;
+  const dias = Array.from(new Set(datas.map(chaveDiaUTC))).sort(
+    (a, b) => a - b,
+  );
+  const UM_DIA = 24 * 60 * 60 * 1000;
+  let melhor = 1;
+  let atual = 1;
+  for (let i = 1; i < dias.length; i++) {
+    if (dias[i] - dias[i - 1] === UM_DIA) {
+      atual += 1;
+      melhor = Math.max(melhor, atual);
+    } else {
+      atual = 1;
+    }
+  }
+  return melhor;
+}

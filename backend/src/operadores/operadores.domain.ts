@@ -19,6 +19,14 @@ import {
   StatusJustificativa,
   pesoOcorrencia,
 } from '../common/justificativas';
+import { maiorSequenciaDias } from '../common/datas';
+import {
+  NivelRisco,
+  nivelPorPontos,
+  pontosPorQuantidade,
+  pontosPorSequencia,
+  pontosPorTaxa,
+} from '../common/risco-ocorrencias';
 
 export type Turno = 'ABERTURA' | 'INTERMEDIARIO' | 'FECHAMENTO';
 
@@ -255,7 +263,7 @@ export interface OperadorParaFaltas {
   folgaDiaSemana: number;
 }
 
-export type RiscoFalta = 'BAIXO' | 'MEDIO' | 'ALTO';
+export type RiscoFalta = NivelRisco;
 
 /** Detalhe inteligente das faltas de um operador no período. */
 export interface FaltasOperadorDetalhe {
@@ -323,28 +331,12 @@ function contarDiasEscalados(folga: number, inicio: Date, fim: Date): number {
   return count;
 }
 
-/** Maior sequência de faltas em dias civis consecutivos. */
-function maiorSequencia(datas: readonly Date[]): number {
-  if (datas.length === 0) return 0;
-  const dias = datas
-    .map((d) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
-    .sort((a, b) => a - b);
-  const UM_DIA = 24 * 60 * 60 * 1000;
-  let melhor = 1;
-  let atual = 1;
-  for (let i = 1; i < dias.length; i++) {
-    if (dias[i] === dias[i - 1]) continue;
-    if (dias[i] - dias[i - 1] === UM_DIA) {
-      atual += 1;
-      melhor = Math.max(melhor, atual);
-    } else {
-      atual = 1;
-    }
-  }
-  return melhor;
-}
-
-/** Classifica o nível de risco do operador a partir dos sinais de falta. */
+/**
+ * Classifica o nível de risco do operador a partir dos sinais de falta. Os
+ * limiares de taxa/quantidade/sequência e o mapa pontos→nível são partilhados
+ * com os não-retornos (`common/risco-ocorrencias`); aqui somam-se os sinais
+ * específicos de falta (emenda com folga, dia recorrente e tendência de alta).
+ */
 function classificarRisco(d: {
   taxa: number;
   quantidade: number;
@@ -353,18 +345,14 @@ function classificarRisco(d: {
   sequenciaMax: number;
   tendencia: number;
 }): RiscoFalta {
-  let pontos = 0;
-  if (d.taxa >= 20) pontos += 2;
-  else if (d.taxa >= 10) pontos += 1;
-  if (d.quantidade >= 4) pontos += 2;
-  else if (d.quantidade >= 2) pontos += 1;
-  if (d.faltasEmenda >= 2) pontos += 1;
-  if (d.diaRecorrente && d.diaRecorrente.quantidade >= 3) pontos += 1;
-  if (d.sequenciaMax >= 2) pontos += 1;
-  if (d.tendencia > 0) pontos += 1;
-  if (pontos >= 4) return 'ALTO';
-  if (pontos >= 2) return 'MEDIO';
-  return 'BAIXO';
+  const pontos =
+    pontosPorTaxa(d.taxa) +
+    pontosPorQuantidade(d.quantidade) +
+    pontosPorSequencia(d.sequenciaMax) +
+    (d.faltasEmenda >= 2 ? 1 : 0) +
+    (d.diaRecorrente && d.diaRecorrente.quantidade >= 3 ? 1 : 0) +
+    (d.tendencia > 0 ? 1 : 0);
+  return nivelPorPontos(pontos);
 }
 
 const ORDEM_RISCO: Record<RiscoFalta, number> = { ALTO: 0, MEDIO: 1, BAIXO: 2 };
@@ -467,7 +455,7 @@ export function analisarFaltas(params: {
           }
         : null;
 
-    const sequenciaMax = maiorSequencia(datas);
+    const sequenciaMax = maiorSequenciaDias(datas);
     const tendencia = quantidade - (antPorOp.get(op.id) ?? 0);
     // O risco usa os valores EFETIVOS (justificadas pesam menos), de modo que
     // um operador com faltas abonadas não fique marcado como alto risco.

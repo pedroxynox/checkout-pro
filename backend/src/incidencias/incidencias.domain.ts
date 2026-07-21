@@ -16,6 +16,15 @@
  * propriedade (fast-check) sem qualquer infraestrutura.
  */
 
+import { chaveDiaUTC, maiorSequenciaDias } from '../common/datas';
+import {
+  NivelRisco,
+  nivelPorPontos,
+  pontosPorQuantidade,
+  pontosPorSequencia,
+  pontosPorTaxa,
+} from '../common/risco-ocorrencias';
+
 /**
  * Tipos de incidência de escala (espelho do enum Prisma). O desenho é genérico
  * por `tipo` (ver ADR 0007), então novos eventos entram apenas somando um valor
@@ -234,7 +243,7 @@ export interface IncidenciaRegistro {
   data: Date;
 }
 
-export type RiscoIncidencia = 'BAIXO' | 'MEDIO' | 'ALTO';
+export type RiscoIncidencia = NivelRisco;
 export type TendenciaIncidencia = 'MELHORANDO' | 'ESTAVEL' | 'PIORANDO';
 
 /** Resultado da analítica de incidências de um colaborador no período. */
@@ -252,29 +261,6 @@ export interface AnaliseIncidencias {
   risco: RiscoIncidencia;
 }
 
-/** Chave de dia (UTC) em milissegundos (meia-noite). */
-function diaUTC(d: Date): number {
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-}
-
-/** Maior sequência de incidências em dias civis consecutivos (UTC). */
-function maiorSequencia(datas: readonly Date[]): number {
-  if (datas.length === 0) return 0;
-  const dias = Array.from(new Set(datas.map(diaUTC))).sort((a, b) => a - b);
-  const UM_DIA = 24 * 60 * 60 * 1000;
-  let melhor = 1;
-  let atual = 1;
-  for (let i = 1; i < dias.length; i++) {
-    if (dias[i] - dias[i - 1] === UM_DIA) {
-      atual += 1;
-      melhor = Math.max(melhor, atual);
-    } else {
-      atual = 1;
-    }
-  }
-  return melhor;
-}
-
 /** Mapa zerado por tipo (partição total dos tipos conhecidos). */
 function zeroPorTipo(): Record<TipoIncidencia, number> {
   const out = {} as Record<TipoIncidencia, number>;
@@ -282,7 +268,12 @@ function zeroPorTipo(): Record<TipoIncidencia, number> {
   return out;
 }
 
-/** Classifica o risco a partir dos sinais das incidências (espelha faltas). */
+/**
+ * Classifica o risco a partir dos sinais das incidências. Os limiares de
+ * percentual/quantidade/sequência e o mapa pontos→nível são partilhados com as
+ * faltas (`common/risco-ocorrencias`); aqui somam-se os sinais específicos das
+ * incidências (reincidência e tendência de piora).
+ */
 function classificarRisco(sinais: {
   frequenciaMensal: number;
   total: number;
@@ -291,17 +282,13 @@ function classificarRisco(sinais: {
   reincidencia: boolean;
   tendencia: TendenciaIncidencia;
 }): RiscoIncidencia {
-  let pontos = 0;
-  if (sinais.percentualSobreEscalados >= 20) pontos += 2;
-  else if (sinais.percentualSobreEscalados >= 10) pontos += 1;
-  if (sinais.total >= 4) pontos += 2;
-  else if (sinais.total >= 2) pontos += 1;
-  if (sinais.sequenciaMax >= 2) pontos += 1;
-  if (sinais.reincidencia) pontos += 1;
-  if (sinais.tendencia === 'PIORANDO') pontos += 1;
-  if (pontos >= 4) return 'ALTO';
-  if (pontos >= 2) return 'MEDIO';
-  return 'BAIXO';
+  const pontos =
+    pontosPorTaxa(sinais.percentualSobreEscalados) +
+    pontosPorQuantidade(sinais.total) +
+    pontosPorSequencia(sinais.sequenciaMax) +
+    (sinais.reincidencia ? 1 : 0) +
+    (sinais.tendencia === 'PIORANDO' ? 1 : 0);
+  return nivelPorPontos(pontos);
 }
 
 /**
@@ -331,7 +318,7 @@ export function analisarIncidencias(
   for (const inc of incidencias) {
     porTipo[inc.tipo] += 1;
     porDiaSemana[inc.data.getUTCDay()] += 1;
-    const iso = new Date(diaUTC(inc.data)).toISOString().slice(0, 10);
+    const iso = new Date(chaveDiaUTC(inc.data)).toISOString().slice(0, 10);
     const atual = ultimaPorTipo[inc.tipo];
     if (atual === null || iso > atual) ultimaPorTipo[inc.tipo] = iso;
   }
@@ -346,16 +333,16 @@ export function analisarIncidencias(
     diasEscalados > 0 ? Math.round((total / diasEscalados) * 30 * 10) / 10 : 0;
 
   const diasDistintos = Array.from(
-    new Set(incidencias.map((i) => diaUTC(i.data))),
+    new Set(incidencias.map((i) => chaveDiaUTC(i.data))),
   );
   const reincidencia = diasDistintos.length >= 2;
-  const sequenciaMax = maiorSequencia(incidencias.map((i) => i.data));
+  const sequenciaMax = maiorSequenciaDias(incidencias.map((i) => i.data));
 
   // Dias consecutivos sem incidência até hoje (a partir da última incidência).
   let diasConsecutivosSemIncidencia = 0;
   if (diasDistintos.length > 0) {
     const ultima = Math.max(...diasDistintos);
-    const hojeUTC = diaUTC(hoje);
+    const hojeUTC = chaveDiaUTC(hoje);
     const diff = Math.floor((hojeUTC - ultima) / (24 * 60 * 60 * 1000));
     diasConsecutivosSemIncidencia = Math.max(0, diff);
   }
@@ -364,7 +351,7 @@ export function analisarIncidencias(
   let tendencia: TendenciaIncidencia = 'ESTAVEL';
   if (total >= 2) {
     const ordenadas = incidencias
-      .map((i) => diaUTC(i.data))
+      .map((i) => chaveDiaUTC(i.data))
       .sort((a, b) => a - b);
     const min = ordenadas[0];
     const max = ordenadas[ordenadas.length - 1];
@@ -464,7 +451,7 @@ export function rankingIncidencias(
 
 /** Data (UTC) em ISO "yyyy-mm-dd" (dia civil, sem hora). */
 function isoDia(d: Date): string {
-  return new Date(diaUTC(d)).toISOString().slice(0, 10);
+  return new Date(chaveDiaUTC(d)).toISOString().slice(0, 10);
 }
 
 /** Tipos considerados "sanções" (lançados no perfil). */
@@ -622,9 +609,12 @@ export function resumirSancoes(
         a.nome.localeCompare(b.nome),
     );
 
-  const hojeUTC = diaUTC(hoje);
+  const hojeUTC = chaveDiaUTC(hoje);
   const suspensosAgora: ItemSuspensoAgora[] = suspensoesAtivas
-    .filter((s) => diaUTC(s.data) <= hojeUTC && diaUTC(s.dataFim) >= hojeUTC)
+    .filter(
+      (s) =>
+        chaveDiaUTC(s.data) <= hojeUTC && chaveDiaUTC(s.dataFim) >= hojeUTC,
+    )
     .map((s) => ({
       colaboradorId: s.colaboradorId,
       nome: s.nome,
@@ -632,7 +622,7 @@ export function resumirSancoes(
       fim: isoDia(s.dataFim),
       diasRestantes: Math.max(
         0,
-        Math.round((diaUTC(s.dataFim) - hojeUTC) / UM_DIA_MS) + 1,
+        Math.round((chaveDiaUTC(s.dataFim) - hojeUTC) / UM_DIA_MS) + 1,
       ),
     }))
     .sort((a, b) => a.fim.localeCompare(b.fim) || a.nome.localeCompare(b.nome));

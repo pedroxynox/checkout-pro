@@ -26,7 +26,7 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 | `operadores.controller.ts` | Rotas de ausências/justificativa/contagem | 197 |
 | `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 615 |
 | `marcar-periodo-justificado.ts` | Primitiva compartilhada: falta justificada dia a dia (a prazo + atestado) | 72 |
-| `operadores.domain.ts` | Regras puras: unicidade, turno, relatório, analítica | 529 |
+| `operadores.domain.ts` | Regras puras: unicidade, turno, relatório, analítica | 517 |
 | `operadores.errors.ts` | Erros de domínio (mapeados para HTTP) | 104 |
 | `operadores.module.ts` | Ligações (DI) do módulo | 32 |
 | `operador-turno.controller.ts` | Rotas do Quadro de Operadores | 70 |
@@ -160,6 +160,10 @@ Delegam às funções puras homônimas do domínio.
   soma por turno é sempre igual ao total.
 - `analisarFaltas(...)` → analítica: taxa bruta e ponderada (justificadas pesam
   menos), dia recorrente, faltas em "emenda", maior sequência, tendência e risco.
+  A maior sequência (`maiorSequenciaDias`) e a pontuação de risco (limiares de
+  taxa/quantidade/sequência + mapa pontos→nível) vêm de `common` — **fonte única**
+  partilhada com os não-retornos; aqui somam-se apenas os sinais próprios da falta
+  (emenda com folga, dia recorrente e tendência de alta).
 
 ## 7. Estados e enums
 - `Turno`: `ABERTURA` (< 10:00) · `INTERMEDIARIO` (10:00–12:59) · `FECHAMENTO`
