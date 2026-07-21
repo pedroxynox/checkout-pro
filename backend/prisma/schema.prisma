@@ -706,6 +706,22 @@ model AlertaTacEnviado {
   @@map("alertas_tac_enviados")
 }
 
+/// Dedup do ALERTA DE ATRASO (1h). Garante que o aviso "escalado 1h atrasado
+/// sem bater ponto" seja enviado UMA vez por pessoa/dia, mesmo com o
+/// verificador a cada 5 min, reinícios do servidor ou múltiplas instâncias — o
+/// índice único é a trava atômica (reserva → envia). O atraso é diário, então a
+/// unicidade inclui o dia. Diferente da FALTA (2h), este aviso é só preventivo:
+/// não lança nada, apenas notifica a supervisão/gerência.
+model AlertaAtrasoEnviado {
+  id        String   @id @default(uuid())
+  pessoaId  String
+  dia       DateTime
+  enviadoEm DateTime @default(now())
+
+  @@unique([pessoaId, dia])
+  @@map("alertas_atraso_enviados")
+}
+
 // Tipo de evento no histórico de alertas de TAC de um dia:
 // - AVISADO: um aviso de risco/TAC foi enviado (a `etapa` diz qual);
 // - CORRIGIDO: após uma correção de batida, a jornada saiu da etapa antes
