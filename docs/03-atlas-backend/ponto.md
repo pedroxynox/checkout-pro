@@ -35,7 +35,7 @@ automaticamente faltas e não-retornos do intervalo.
 | `ponto-ocr.service.ts` | Leitura do comprovante + memória de aliases (nome→pessoa) | 285 |
 | `ponto-ocr.parser.ts` | Regras puras: extrai nome/data/hora do texto lido | 354 |
 | `ponto-nome-match.ts` | Regras puras: similaridade de nomes (Levenshtein) | 93 |
-| `ponto-alertas.service.ts` | Cron (1 min): verifica riscos de TAC | 54 |
+| `ponto-alertas.service.ts` | Cron (1 min): verifica riscos de TAC (dia civil de Brasília) | 58 |
 | `ponto-deteccao-automatica.service.ts` | Cron (5 min): falta automática, não-retorno e auto-cura | 277 |
 | `deteccao-automatica.domain.ts` | Regras puras: estado do escalado sem batida | 71 |
 | `pessoas-ponto.ts` | Funções (não-fiscais) que batem ponto | 15 |
@@ -91,7 +91,11 @@ não-fiscais ativos, com busca por nome sem acento; devolve até 20 pessoas.
 
 #### `avisarAlertaTacSeNecessario(...)` / `historicoTac(...)`
 Avisa a supervisão/gerência nas etapas 1h30/1h40/TAC (no máximo uma vez por
-pessoa/dia, com reserva atômica em `AlertaTacEnviado`) e expõe a trilha de
+pessoa/dia, com reserva atômica em `AlertaTacEnviado`). O verificador (a cada
+minuto) agrupa as batidas pelo **dia civil de Brasília** (`diaCivilBrasilia`) —
+antes usava o dia UTC (`inicioDoDia(new Date())`), que entre 21h e 23h59 locais
+já aponta o dia seguinte e fazia o TAC deixar de ser avisado na sobra de jornada
+noturna (turno de fechamento). Expõe também a trilha de
 eventos do dia.
 
 ### `PontoOcrService`
