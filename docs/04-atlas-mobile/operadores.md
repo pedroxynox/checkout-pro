@@ -23,7 +23,7 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 |---|---|---|
 | `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1886 |
 | `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 394 |
-| `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 476 |
+| `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 481 |
 | `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) | 398 |
 
 > **Atestado na escala:** o status **ATESTADO** (azul + CID) aparece tanto no
@@ -50,7 +50,8 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 5. **Ausências a prazo:** o card abre um modal com duas abas — **Registrar**
    (ausenta por período, criando faltas justificadas em cada dia, inclusive a
    folga) e **Cancelar** (desmarca/anula uma ausência a prazo inteira do período
-   escolhido).
+   escolhido). Os motivos **não** incluem "atestado médico" — atestado tem card
+   próprio (com CID); o modal traz uma dica apontando para ele.
 6. **Férias:** o card abre um modal para colocar um colaborador de férias por um
    período (some da escala, sem virar falta), listar as férias cadastradas e
    cancelá-las. Ambos os cards são de gestão (programar período).

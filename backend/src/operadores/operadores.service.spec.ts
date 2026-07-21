@@ -1,6 +1,7 @@
 import { OperadoresService } from './operadores.service';
 import { Prisma } from '@prisma/client';
 import {
+  AtestadoMedicoViaFluxoProprioError,
   AusenciaDuplicadaError,
   PeriodoAusenciaInvalidoError,
 } from './operadores.errors';
@@ -155,7 +156,7 @@ describe('OperadoresService', () => {
         'p1',
         new Date(Date.UTC(2026, 2, 9)),
         new Date(Date.UTC(2026, 2, 11)),
-        { motivo: 'ATESTADO_MEDICO', observacao: 'Atestado de 3 dias' },
+        { motivo: 'LICENCA', observacao: 'Licença de 3 dias' },
         { id: 'u1', nome: 'Gestor' },
       );
 
@@ -172,7 +173,7 @@ describe('OperadoresService', () => {
         'p1',
         new Date(Date.UTC(2026, 2, 14)),
         new Date(Date.UTC(2026, 2, 19)),
-        { motivo: 'ATESTADO_MEDICO', observacao: 'Atestado de 6 dias' },
+        { motivo: 'LICENCA', observacao: 'Licença de 6 dias' },
         { id: 'u1', nome: 'Gestor' },
       );
 
@@ -191,6 +192,18 @@ describe('OperadoresService', () => {
           { motivo: 'LICENCA' },
         ),
       ).rejects.toBeInstanceOf(PeriodoAusenciaInvalidoError);
+    });
+
+    it('rejeita ATESTADO_MEDICO (deve usar o fluxo de Atestados)', async () => {
+      const service = criarServico();
+      await expect(
+        service.registrarAusenciaPeriodo(
+          'p1',
+          new Date(Date.UTC(2026, 2, 9)),
+          new Date(Date.UTC(2026, 2, 11)),
+          { motivo: 'ATESTADO_MEDICO' },
+        ),
+      ).rejects.toBeInstanceOf(AtestadoMedicoViaFluxoProprioError);
     });
   });
 

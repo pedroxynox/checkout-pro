@@ -88,7 +88,12 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
   duplicado); dias que já tinham falta são convertidos (não duplica); marca
   `aPrazo: true` **e grava `colaboradorId`** (= `pessoaId`), para a busca por
   ficha encontrar esses dias; envia um único aviso.
+- **Rejeita `ATESTADO_MEDICO`:** atestado médico tem fluxo próprio (entidade
+  `Atestado`, com CID e INSS — ver [`atestados`](atestados.md)); a ausência a
+  prazo cobre os demais motivos, para o médico nunca virar uma falta justificada
+  solta sem CID (`AtestadoMedicoViaFluxoProprioError`).
 - **Erros:** `JustificativaInvalidaError` (motivo obrigatório),
+  `AtestadoMedicoViaFluxoProprioError` (motivo ATESTADO_MEDICO),
   `PeriodoAusenciaInvalidoError` (data final antes da inicial ou > 186 dias).
 
 #### `removerAusenciaPeriodo(pessoaId, inicio, fim)`
@@ -187,11 +192,15 @@ Delegam às funções puras homônimas do domínio.
 8. **Excluir ≠ justificar:** justificar/abonar mantém a falta com peso reduzido
    (2%/10%); **excluir** apaga a falta lançada por engano (peso zero, some do
    histórico) e é restrito a gerente/supervisor/administrador.
+9. **Médico só por atestado:** a ausência a prazo NÃO aceita motivo
+   `ATESTADO_MEDICO` — atestado tem fluxo próprio (com CID e INSS). Abonar uma
+   falta avulsa como atestado médico (na tela de Justificativas) continua
+   permitido (é abono de uma ocorrência já existente, não um período novo).
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `operadores.service.spec.ts` | Ausências, ciclo fechado, ausência a prazo e corrida (P2002) | 11 |
+| `operadores.service.spec.ts` | Ausências, ciclo fechado, a prazo (rejeita atestado médico), corrida (P2002) | 12 |
 | `ausencia-a-prazo-vinculo.spec.ts` | A prazo grava `colaboradorId` + `aPrazo` em cada dia | 1 |
 | `remover-ausencia-periodo.spec.ts` | Anular a prazo (só `aPrazo`, ambas as chaves, preserva atestado) | 4 |
 | `marcar-periodo-justificado.spec.ts` | Primitiva compartilhada: cria por dia e converte sem duplicar | 1 |

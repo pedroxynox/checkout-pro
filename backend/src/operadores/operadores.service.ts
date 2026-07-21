@@ -23,6 +23,7 @@ import {
   motivoObrigatorio,
 } from '../common/justificativas';
 import {
+  AtestadoMedicoViaFluxoProprioError,
   AusenciaAPrazoProtegidaError,
   AusenciaDuplicadaError,
   AusenciaNaoEncontradaError,
@@ -308,6 +309,12 @@ export class OperadoresService {
     autor: AutorAcao = {},
   ): Promise<ResultadoAusenciaPeriodo> {
     if (!input.motivo) throw new JustificativaInvalidaError();
+    // Atestado médico tem fluxo próprio (entidade `Atestado`, com CID e INSS):
+    // a ausência a prazo cobre os demais motivos. Assim o "médico" nunca vira
+    // uma falta justificada solta, sem CID nem acompanhamento do INSS.
+    if (input.motivo === 'ATESTADO_MEDICO') {
+      throw new AtestadoMedicoViaFluxoProprioError();
+    }
     const d0 = inicioDoDia(inicio);
     const d1 = inicioDoDia(fim);
     if (d1.getTime() < d0.getTime()) {
