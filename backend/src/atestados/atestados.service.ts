@@ -18,6 +18,7 @@ import {
   CidObrigatorioError,
   PeriodoAtestadoInvalidoError,
 } from './atestados.errors';
+import { marcarPeriodoJustificado } from '../operadores/marcar-periodo-justificado';
 
 /** Máximo de dias que um atestado pode cobrir (defensivo). */
 const MAX_DIAS_ATESTADO = 186; // ~6 meses
@@ -197,7 +198,6 @@ export class AtestadosService {
       idPorDia.set(inicioDoDia(a.data).getTime(), a.id);
     }
 
-    const UM_DIA_MS = 24 * 60 * 60 * 1000;
     const atestadoId = await this.prisma.$transaction(async (tx) => {
       const atestado = await tx.atestado.create({
         data: {
@@ -212,38 +212,30 @@ export class AtestadosService {
           registradaPorNome: autor.nome ?? null,
         },
       });
-      const faltaDados = {
-        statusJustificativa: 'JUSTIFICADA' as const,
-        motivoJustificativa: 'ATESTADO_MEDICO' as const,
-        observacaoJustificativa: input.observacao ?? null,
-        justificadaPorId: autor.id ?? null,
-        justificadaPorNome: autor.nome ?? null,
-        justificadaEm: new Date(),
-        aPrazo: true,
-        atestadoId: atestado.id,
-        cid,
-      };
-      for (let t = d0.getTime(); t <= d1.getTime(); t += UM_DIA_MS) {
-        const dia = new Date(t);
-        const existId = idPorDia.get(t);
-        if (existId) {
-          await tx.ausencia.update({
-            where: { id: existId },
-            data: faltaDados,
-          });
-        } else {
-          await tx.ausencia.create({
-            data: {
-              pessoaId: input.colaboradorId,
-              colaboradorId: input.colaboradorId,
-              data: dia,
-              registradaPorId: autor.id ?? null,
-              registradaPorNome: autor.nome ?? null,
-              ...faltaDados,
-            },
-          });
-        }
-      }
+      // Cada dia do período vira uma falta JUSTIFICADA identificada como
+      // ATESTADO (motivo `ATESTADO_MEDICO`, `aPrazo`), carimbada com o vínculo
+      // do atestado e o CID. Usa a MESMA primitiva da ausência a prazo
+      // (`marcarPeriodoJustificado`) — inclusive gravando `colaboradorId` também
+      // ao converter uma falta já existente.
+      await marcarPeriodoJustificado(tx, {
+        pessoaId: input.colaboradorId,
+        inicio: d0,
+        fim: d1,
+        autor,
+        idPorDia,
+        dados: {
+          colaboradorId: input.colaboradorId,
+          statusJustificativa: 'JUSTIFICADA',
+          motivoJustificativa: 'ATESTADO_MEDICO',
+          observacaoJustificativa: input.observacao ?? null,
+          justificadaPorId: autor.id ?? null,
+          justificadaPorNome: autor.nome ?? null,
+          justificadaEm: new Date(),
+          aPrazo: true,
+          atestadoId: atestado.id,
+          cid,
+        },
+      });
       return atestado.id;
     });
 

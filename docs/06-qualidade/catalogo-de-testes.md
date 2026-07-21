@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 100 arquivos, 627 casos. **Mobile:** 25 arquivos, 99 casos. **Total: 726 casos.**
+> **Backend:** 101 arquivos, 629 casos. **Mobile:** 25 arquivos, 99 casos. **Total: 728 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -91,12 +91,13 @@
 | `src/operadores/ausencia-a-prazo-vinculo.spec.ts` | 1 | 1 |
 | `src/operadores/ausencia-a-prazo.spec.ts` | 3 | 1 |
 | `src/operadores/listar-ausencias-ficha.spec.ts` | 1 | 1 |
+| `src/operadores/marcar-periodo-justificado.spec.ts` | 1 | 1 |
 | `src/operadores/operador-turno.roster-turno.spec.ts` | 3 | 2 |
 | `src/operadores/operadores.controller.spec.ts` | 3 | 2 |
 | `src/operadores/operadores.justificativa.spec.ts` | 6 | 1 |
 | `src/operadores/operadores.properties.spec.ts` | 5 | 1 |
 | `src/operadores/operadores.service.spec.ts` | 11 | 4 |
-| `src/operadores/remover-ausencia-periodo.spec.ts` | 3 | 1 |
+| `src/operadores/remover-ausencia-periodo.spec.ts` | 4 | 1 |
 | `src/ponto/contrato-6x1-congelado.spec.ts` | 5 | 1 |
 | `src/ponto/deteccao-automatica.domain.spec.ts` | 8 | 4 |
 | `src/ponto/deteccao-falta-a-prazo.spec.ts` | 3 | 1 |

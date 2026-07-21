@@ -24,7 +24,8 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `operadores.controller.ts` | Rotas de ausências/justificativa/contagem | 197 |
-| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 643 |
+| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 632 |
+| `marcar-periodo-justificado.ts` | Primitiva compartilhada: falta justificada dia a dia (a prazo + atestado) | 72 |
 | `operadores.domain.ts` | Regras puras: unicidade, turno, relatório, analítica | 529 |
 | `operadores.errors.ts` | Erros de domínio (mapeados para HTTP) | 104 |
 | `operadores.module.ts` | Ligações (DI) do módulo | 32 |
@@ -82,10 +83,11 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 
 #### `registrarAusenciaPeriodo(pessoaId, inicio, fim, input, autor?)`
 - **Efeitos:** marca **falta justificada** em cada dia corrido do intervalo
-  (inclusive folga), numa transação atômica; dias que já tinham falta são
-  convertidos (não duplica); marca `aPrazo: true` **e grava `colaboradorId`**
-  (= `pessoaId`, pois a a prazo é sempre lançada escolhendo um Colaborador),
-  para a busca por ficha encontrar esses dias; envia um único aviso.
+  (inclusive folga), numa transação atômica, pela **primitiva compartilhada**
+  `marcarPeriodoJustificado` (a mesma do atestado — antes o laço dia a dia era
+  duplicado); dias que já tinham falta são convertidos (não duplica); marca
+  `aPrazo: true` **e grava `colaboradorId`** (= `pessoaId`), para a busca por
+  ficha encontrar esses dias; envia um único aviso.
 - **Erros:** `JustificativaInvalidaError` (motivo obrigatório),
   `PeriodoAusenciaInvalidoError` (data final antes da inicial ou > 186 dias).
 
@@ -93,7 +95,9 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 - **Efeitos:** anula uma **ausência a prazo inteira** — `deleteMany` dos dias
   `aPrazo` da pessoa no intervalo, casando as duas chaves (`pessoaId` **e**
   `colaboradorId`, cobrindo registros novos e legados); preserva as faltas
-  comuns/automáticas; exige ciclo de folha aberto; envia um único aviso. Retorna
+  comuns/automáticas **e os dias de ATESTADO** (`atestadoId != null` — não são
+  removidos aqui, para não deixar o documento `Atestado` órfão; cancela-se pelo
+  próprio atestado); exige ciclo de folha aberto; envia um único aviso. Retorna
   `{ removidas }`. A autorização (gerente/supervisor/administrador) é feita no
   controller, como no registro do período.
 - **Erros:** `PeriodoAusenciaInvalidoError` (data final antes da inicial).
@@ -189,7 +193,8 @@ Delegam às funções puras homônimas do domínio.
 |---|---|---|
 | `operadores.service.spec.ts` | Ausências, ciclo fechado, ausência a prazo e corrida (P2002) | 11 |
 | `ausencia-a-prazo-vinculo.spec.ts` | A prazo grava `colaboradorId` + `aPrazo` em cada dia | 1 |
-| `remover-ausencia-periodo.spec.ts` | Anular a prazo por período (só `aPrazo`, ambas as chaves) | 3 |
+| `remover-ausencia-periodo.spec.ts` | Anular a prazo (só `aPrazo`, ambas as chaves, preserva atestado) | 4 |
+| `marcar-periodo-justificado.spec.ts` | Primitiva compartilhada: cria por dia e converte sem duplicar | 1 |
 | `operadores.properties.spec.ts` | Unicidade, relatório e turno (property-based) | 5 |
 | `operadores.justificativa.spec.ts` | Taxa ponderada e justificativa com auditoria | 6 |
 | `ausencia-a-prazo.spec.ts` | Proteção da falta a prazo (fiscal x gestão) | 3 |
