@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { inicioDoDia } from '../common/datas';
+import { diaCivilBrasilia } from '../common/datas';
 import { PontoService } from './ponto.service';
 
 /**
@@ -25,7 +25,11 @@ export class PontoAlertasService {
   /** Verifica a cada minuto quem atingiu uma nova etapa de risco/TAC. */
   @Cron('* * * * *', { timeZone: 'America/Sao_Paulo' })
   async verificar(): Promise<void> {
-    const dia = inicioDoDia(new Date());
+    // Dia CIVIL de Brasília (não o dia UTC): as batidas são rotuladas pela
+    // meia-noite UTC do dia local, então `inicioDoDia(new Date())` erra entre
+    // 21h e 23h59 locais (já é o dia UTC seguinte) — justo o horário de sobra
+    // de jornada do turno de fechamento, em que o TAC deixava de ser avisado.
+    const dia = diaCivilBrasilia(new Date());
     const grupos = await this.prisma.batidaPonto.groupBy({
       by: ['pessoaId', 'tipoPessoa'],
       where: { data: dia },
