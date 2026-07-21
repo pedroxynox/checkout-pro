@@ -22,7 +22,7 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1886 |
-| `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 394 |
+| `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 446 |
 | `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 481 |
 | `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) | 398 |
 
@@ -45,10 +45,12 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
    e drill-down por colaborador (com advertência por falta não justificada).
 4. **Justificativas:** `JustificativasLista` reúne faltas e não-retornos dos
    últimos 30 dias; permite justificar (motivo), marcar como não justificada ou
-   reabrir, mostrando quem registrou/justificou. Para **faltas**, gerente/
-   supervisor/administrador têm ainda **Excluir** — apaga uma falta lançada por
-   engano (ex.: escala desatualizada) para que não pese no colaborador; é
-   diferente de abonar (que mantém a falta com peso reduzido).
+   reabrir, mostrando quem registrou/justificou. Gerente/supervisor/administrador
+   têm ainda **Excluir** — tanto para **faltas** quanto para **não-retornos** —
+   que apaga a ocorrência lançada por engano (ex.: escala desatualizada, ou
+   retorno do intervalo anotado em atraso, que fez o verificador marcar o
+   não-retorno antes da batida entrar) para que não pese no colaborador; é
+   diferente de abonar (que mantém a ocorrência com peso reduzido).
 5. **Ausências a prazo:** o card abre um modal com duas abas — **Registrar**
    (ausenta por período, criando faltas justificadas em cada dia, inclusive a
    folga) e **Cancelar** (desmarca/anula uma ausência a prazo inteira do período
