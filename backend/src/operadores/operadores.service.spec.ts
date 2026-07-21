@@ -1,9 +1,15 @@
 import { OperadoresService } from './operadores.service';
+import { Prisma } from '@prisma/client';
 import {
   AusenciaDuplicadaError,
   PeriodoAusenciaInvalidoError,
 } from './operadores.errors';
 import { CicloFechadoError } from '../ciclo-folha/ciclo-folha.errors';
+
+/** Início do dia (00:00 UTC) como timestamp — para casar por dia civil. */
+function diaUtc(data: Date): number {
+  return Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate());
+}
 
 /**
  * Testes de exemplo (unitários) do `OperadoresService`. Usam um
@@ -83,8 +89,30 @@ describe('OperadoresService', () => {
           }
           return Promise.resolve({});
         },
-        findUnique: ({ where: { id } }: { where: { id: string } }) =>
-          Promise.resolve(ausencias.find((a) => a.id === id) ?? null),
+        findUnique: ({
+          where,
+        }: {
+          where: {
+            id?: string;
+            pessoaId_data?: { pessoaId: string; data: Date };
+          };
+        }) => {
+          if (where.id !== undefined) {
+            return Promise.resolve(
+              ausencias.find((a) => a.id === where.id) ?? null,
+            );
+          }
+          if (where.pessoaId_data) {
+            const { pessoaId, data } = where.pessoaId_data;
+            const dia = diaUtc(data);
+            return Promise.resolve(
+              ausencias.find(
+                (a) => a.pessoaId === pessoaId && diaUtc(a.data) === dia,
+              ) ?? null,
+            );
+          }
+          return Promise.resolve(null);
+        },
       },
       // Colaborador (para a ausência a prazo): folga aos domingos (dia 0).
       // A folga NÃO deve mais ser ignorada — todos os dias corridos contam.
@@ -199,6 +227,32 @@ describe('OperadoresService', () => {
       await expect(
         service.registrarAusencia('p1', new Date(Date.UTC(2024, 2, 11))),
       ).resolves.toBeDefined();
+    });
+
+    it('trata a corrida de escrita (P2002) como duplicidade', async () => {
+      // findUnique não acha (corrida entre a checagem e o create), mas o banco
+      // recusa pela unicidade @@unique([pessoaId, data]) → AusenciaDuplicadaError.
+      const prismaFake = {
+        ausencia: {
+          findUnique: () => Promise.resolve(null),
+          create: () =>
+            Promise.reject(
+              new Prisma.PrismaClientKnownRequestError('dup', {
+                code: 'P2002',
+                clientVersion: 'test',
+              }),
+            ),
+        },
+      };
+      const service = new OperadoresService(
+        prismaFake as never,
+        undefined,
+        undefined,
+        undefined,
+      );
+      await expect(
+        service.registrarAusencia('p1', new Date(Date.UTC(2024, 2, 10))),
+      ).rejects.toBeInstanceOf(AusenciaDuplicadaError);
     });
 
     it('gera relatório filtrado por período e ordenado de forma decrescente', async () => {

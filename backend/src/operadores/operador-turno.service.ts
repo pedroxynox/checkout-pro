@@ -334,12 +334,24 @@ export class OperadorTurnoService {
               pessoaId: { in: ids },
               data: { gte: segunda, lt: fimExclusivo },
             },
-            select: { id: true, pessoaId: true, data: true },
+            select: {
+              id: true,
+              pessoaId: true,
+              data: true,
+              atestadoId: true,
+              motivoJustificativa: true,
+            },
           })
         : [];
-    const mapaAusencia = new Map<string, string>();
+    // Guarda o id da ausência e se ela é um ATESTADO (mesma regra do roster
+    // diário), para a célula mostrar "Atestado" e não "Falta".
+    const mapaAusencia = new Map<string, { id: string; atestado: boolean }>();
     for (const a of ausencias) {
-      mapaAusencia.set(`${a.pessoaId}|${iso(a.data)}`, a.id);
+      mapaAusencia.set(`${a.pessoaId}|${iso(a.data)}`, {
+        id: a.id,
+        atestado:
+          a.atestadoId != null || a.motivoJustificativa === 'ATESTADO_MEDICO',
+      });
     }
 
     const ehFimDeSemana = (diaSemana: number): boolean =>
@@ -357,15 +369,15 @@ export class OperadorTurnoService {
             ausenciaId: null,
           };
         }
-        const ausenciaId = mapaAusencia.get(`${op.id}|${dia.data}`) ?? null;
-        if (ausenciaId) {
+        const ausencia = mapaAusencia.get(`${op.id}|${dia.data}`) ?? null;
+        if (ausencia) {
           return {
             diaSemana: dia.diaSemana,
             data: dia.data,
-            status: 'FALTA',
+            status: ausencia.atestado ? 'ATESTADO' : 'FALTA',
             entrada: null,
             saida: null,
-            ausenciaId,
+            ausenciaId: ausencia.id,
           };
         }
         const fds = ehFimDeSemana(dia.diaSemana);
