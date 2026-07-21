@@ -1,5 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { Ausencia } from '@prisma/client';
+import { Ausencia, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
@@ -12,7 +12,6 @@ import {
   ItemRelatorioAusencia,
   OperadorEscalaDia,
   Turno,
-  ausenciaDuplicada,
   classificarTurnoOperador,
   contagemPorTurno,
   relatorioAusencias,
@@ -167,39 +166,59 @@ export class OperadoresService {
     autor: AutorAcao = {},
     opcoes: { automatica?: boolean } = {},
   ): Promise<Ausencia> {
+    // A falta é por DIA: normaliza para 00:00 UTC. Assim a unicidade
+    // `@@unique([pessoaId, data])` vale no nível de dia e a checagem/backstop
+    // de duplicidade é exata.
+    const dia = inicioDoDia(data);
     // Rejeita datas anteriores à Data_Inicial_Sistema (Req 6.1–6.3).
-    await this.validacaoData?.exigirDataPermitida(data);
+    await this.validacaoData?.exigirDataPermitida(dia);
     // Bloqueia lançar falta num ciclo de folha já fechado.
-    await this.cicloFolha?.exigirCicloAberto(data);
-    const existentes = await this.prisma.ausencia.findMany({
-      where: { pessoaId },
-      select: { pessoaId: true, data: true },
+    await this.cicloFolha?.exigirCicloAberto(dia);
+    // Duplicidade por (pessoa, dia): consulta PONTUAL pela chave única (antes
+    // varria TODAS as ausências da pessoa e filtrava em memória — O(histórico)
+    // e sujeito a corrida). Roda a cada 5 min no cron de falta automática.
+    const jaExiste = await this.prisma.ausencia.findUnique({
+      where: { pessoaId_data: { pessoaId, data: dia } },
+      select: { id: true },
     });
-    if (ausenciaDuplicada(existentes, pessoaId, data)) {
-      throw new AusenciaDuplicadaError();
+    if (jaExiste) throw new AusenciaDuplicadaError();
+    let ausencia: Ausencia;
+    try {
+      ausencia = await this.prisma.ausencia.create({
+        // Registra quem marcou a falta (auditoria); nasce PENDENTE de análise.
+        // `automatica` distingue a falta lançada pela detecção do Relógio Ponto
+        // (removível ao bater ponto) da lançada manualmente pelo gestor.
+        // `colaboradorId`: para operador o `pessoaId` já é o id da ficha canônica
+        // (Colaborador), então gravamos o vínculo direto (Fase 4 — leitura por ficha).
+        data: {
+          pessoaId,
+          colaboradorId: pessoaId,
+          data: dia,
+          registradaPorId: autor.id ?? null,
+          registradaPorNome: autor.nome ?? null,
+          automatica: opcoes.automatica ?? false,
+        },
+      });
+    } catch (erro) {
+      // Corrida: outra escrita criou a falta do mesmo dia entre o findUnique e
+      // o create. A restrição @@unique([pessoaId, data]) garante a idempotência
+      // — tratamos a violação (P2002) como duplicidade (mesmo idiom de `ponto`
+      // e `incidencias`).
+      if (
+        erro instanceof Prisma.PrismaClientKnownRequestError &&
+        erro.code === 'P2002'
+      ) {
+        throw new AusenciaDuplicadaError();
+      }
+      throw erro;
     }
-    const ausencia = await this.prisma.ausencia.create({
-      // Registra quem marcou a falta (auditoria); nasce PENDENTE de análise.
-      // `automatica` distingue a falta lançada pela detecção do Relógio Ponto
-      // (removível ao bater ponto) da lançada manualmente pelo gestor.
-      // `colaboradorId`: para operador o `pessoaId` já é o id da ficha canônica
-      // (Colaborador), então gravamos o vínculo direto (Fase 4 — leitura por ficha).
-      data: {
-        pessoaId,
-        colaboradorId: pessoaId,
-        data,
-        registradaPorId: autor.id ?? null,
-        registradaPorNome: autor.nome ?? null,
-        automatica: opcoes.automatica ?? false,
-      },
-    });
     // Aviso imediato a TODOS: alguém foi marcado como ausente (Req: alerta de
     // falta para todos). Defensivo: nunca bloqueia o registro da falta.
-    await this.avisarAusenciaRegistrada(pessoaId, data);
+    await this.avisarAusenciaRegistrada(pessoaId, dia);
     // Aviso inteligente: se o operador cruzou o limite de faltas no mês, avisa
     // os gestores (uma única vez, ao atingir o limite). Defensivo: nunca
     // bloqueia o registro da falta.
-    await this.verificarLimiteFaltasMes(pessoaId, data);
+    await this.verificarLimiteFaltasMes(pessoaId, dia);
     return ausencia;
   }
 

@@ -59,3 +59,56 @@ describe('OperadorTurnoService.diaOperadores — turno do cadastro', () => {
     expect(dia.colaboradores[0].turno).toBeNull();
   });
 });
+
+/**
+ * A grade semanal distingue ATESTADO de FALTA (antes toda ausência virava
+ * "Falta"): um dia vinculado a um atestado aparece como ATESTADO.
+ */
+describe('OperadorTurnoService.grade — status ATESTADO vs FALTA', () => {
+  function servicoComAusencias(
+    ausencias: Record<string, unknown>[],
+  ): OperadorTurnoService {
+    const colaborador = {
+      id: 'c1',
+      nome: 'Ana',
+      genero: 'F',
+      turno: 'ABERTURA',
+      entradaSemana: '08:00',
+      saidaSemana: '16:00',
+      entradaFds: '08:00',
+      saidaFds: '16:00',
+      folgaDiaSemana: 0, // domingo (fora da grade Seg–Sáb) → nunca folga aqui
+      ativo: true,
+      criadoEm: new Date(),
+    };
+    const prismaFake = {
+      colaborador: { findMany: () => Promise.resolve([colaborador]) },
+      ausencia: { findMany: () => Promise.resolve(ausencias) },
+    };
+    return new OperadorTurnoService(prismaFake as never);
+  }
+
+  it('marca ATESTADO no dia vinculado a um atestado e FALTA no dia comum', async () => {
+    const service = servicoComAusencias([
+      {
+        id: 'a1',
+        pessoaId: 'c1',
+        data: new Date('2026-07-15T00:00:00.000Z'), // quarta
+        atestadoId: 'at1',
+        motivoJustificativa: 'ATESTADO_MEDICO',
+      },
+      {
+        id: 'a2',
+        pessoaId: 'c1',
+        data: new Date('2026-07-16T00:00:00.000Z'), // quinta
+        atestadoId: null,
+        motivoJustificativa: null,
+      },
+    ]);
+    const grade = await service.grade(new Date('2026-07-15T12:00:00.000Z'));
+    const celulas = grade.operadores[0].celulas;
+    const porData = new Map(celulas.map((c) => [c.data, c.status]));
+    expect(porData.get('2026-07-15')).toBe('ATESTADO');
+    expect(porData.get('2026-07-16')).toBe('FALTA');
+  });
+});

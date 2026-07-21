@@ -24,12 +24,12 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `operadores.controller.ts` | Rotas de ausências/justificativa/contagem | 197 |
-| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 624 |
+| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 643 |
 | `operadores.domain.ts` | Regras puras: unicidade, turno, relatório, analítica | 529 |
 | `operadores.errors.ts` | Erros de domínio (mapeados para HTTP) | 104 |
 | `operadores.module.ts` | Ligações (DI) do módulo | 32 |
 | `operador-turno.controller.ts` | Rotas do Quadro de Operadores | 70 |
-| `operador-turno.service.ts` | Grade semanal, roster do dia, ao vivo, analítica | 908 |
+| `operador-turno.service.ts` | Grade semanal, roster do dia, ao vivo, analítica | 920 |
 | `dto/operadores.dto.ts` | Validação de entrada das rotas | 121 |
 
 ## 4. Endpoints (rotas HTTP)
@@ -67,11 +67,17 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 ### `OperadoresService`
 
 #### `registrarAusencia(pessoaId, data, autor?, opcoes?)`
-- **Efeitos:** valida data permitida e ciclo de folha aberto; rejeita duplicata
-  (pessoa/dia); cria a `Ausencia` (nasce `PENDENTE`, com autor e flag
+- **Efeitos:** normaliza para o **dia** (00:00 UTC); valida data permitida e
+  ciclo de folha aberto; rejeita duplicata pela **chave única** `(pessoaId,
+  data)` com uma consulta pontual (`findUnique`) — antes varria TODAS as
+  ausências da pessoa e filtrava em memória (`O(histórico)`, no caminho quente
+  do cron de 5 min); cria a `Ausencia` (nasce `PENDENTE`, com autor e flag
   `automatica`, e já com o vínculo `colaboradorId` = `pessoaId`, pois para
   operador o `pessoaId` é a própria ficha — Fase 4 · Opção A); avisa todos e
   checa o limite de faltas do mês (best-effort).
+- **Corrida:** se duas escritas disputarem o mesmo dia, o banco recusa pela
+  unicidade e a violação (**P2002**) é tratada como `AusenciaDuplicadaError`
+  (mesmo idiom de `ponto`/`incidencias`) — idempotente.
 - **Erros:** `AusenciaDuplicadaError` (além dos de data/ciclo).
 
 #### `registrarAusenciaPeriodo(pessoaId, inicio, fim, input, autor?)`
@@ -122,8 +128,9 @@ Delegam às funções puras homônimas do domínio.
 ### `OperadorTurnoService`
 - `listar()` — operadores (turno fixo) a partir do Cadastro Unificado (função
   `OPERADOR` ativa).
-- `grade(dataRef?)` — grade semanal (Seg–Sáb) com trabalha/folga/falta e
-  cobertura por dia.
+- `grade(dataRef?)` — grade semanal (Seg–Sáb) com trabalha/folga/**falta ou
+  atestado**/cobertura por dia. O dia vinculado a um atestado aparece como
+  `ATESTADO` (mesma regra do roster diário), não como `FALTA`.
 - `diaOperadores(dataRef?)` — roster de um dia, ordenado por entrada (folga ao
   fim); propaga o turno do cadastro.
 - `aoVivo()` — quem deveria estar no caixa agora (fuso de Brasília).
@@ -180,13 +187,13 @@ Delegam às funções puras homônimas do domínio.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `operadores.service.spec.ts` | Ausências, ciclo fechado e ausência a prazo | 10 |
+| `operadores.service.spec.ts` | Ausências, ciclo fechado, ausência a prazo e corrida (P2002) | 11 |
 | `ausencia-a-prazo-vinculo.spec.ts` | A prazo grava `colaboradorId` + `aPrazo` em cada dia | 1 |
 | `remover-ausencia-periodo.spec.ts` | Anular a prazo por período (só `aPrazo`, ambas as chaves) | 3 |
 | `operadores.properties.spec.ts` | Unicidade, relatório e turno (property-based) | 5 |
 | `operadores.justificativa.spec.ts` | Taxa ponderada e justificativa com auditoria | 6 |
 | `ausencia-a-prazo.spec.ts` | Proteção da falta a prazo (fiscal x gestão) | 3 |
-| `operador-turno.roster-turno.spec.ts` | Turno do cadastro no roster do dia | 2 |
+| `operador-turno.roster-turno.spec.ts` | Turno do cadastro no roster do dia + grade distingue ATESTADO de FALTA | 3 |
 | `operadores.controller.spec.ts` | Contagem por turno e exclusão de falta restrita à gestão | 3 |
 | `listar-ausencias-ficha.spec.ts` | Nome da falta resolvido pela ficha canônica (A.3) | 1 |
 
