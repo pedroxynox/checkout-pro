@@ -25,7 +25,7 @@ do ponto dos fiscais e gerar analítica, ranking e o panorama de sanções.
 |---|---|---|
 | `incidencias.controller.ts` | Rotas HTTP (registrar/editar/justificar/remover/listar/sugestões/ranking/sanções) | 122 |
 | `incidencias.service.ts` | Regras de aplicação, persistência (Prisma) e avisos | 803 |
-| `incidencias.domain.ts` | Regras puras: metadados de tipo, detecção, analítica, sanções | 648 |
+| `incidencias.domain.ts` | Regras puras: metadados de tipo, detecção, analítica, sanções | 638 |
 | `incidencias.errors.ts` | Erros de domínio (mapeados para HTTP) | 56 |
 | `incidencias.module.ts` | Ligações (DI); exporta o serviço | 23 |
 | `dto/incidencias.dto.ts` | Validação de entrada das rotas | 171 |
@@ -106,6 +106,10 @@ disciplinares; a segunda foca no não-retorno e devolve também os não justific
   `DISPONIVEL` antes do próximo `FORA_EXPEDIENTE`; `null` se `intervaloMin <= 0`.
 - `analisarIncidencias(incidencias, diasEscalados, hoje)` → total, partição por
   tipo/dia da semana, taxa (0–100%), reincidência, maior sequência, tendência e risco.
+  A maior sequência (`maiorSequenciaDias`), a chave de dia (`chaveDiaUTC`) e a
+  pontuação de risco (limiares + mapa pontos→nível) vêm de `common` — **fonte
+  única** partilhada com as faltas; aqui somam-se os sinais próprios (reincidência
+  e tendência de piora).
 - `timelineUnificada(ausencias, incidencias)` → linha do tempo decrescente,
   preservando a contagem total.
 - `rankingIncidencias(...)` → ordena por total desc, desempate por nome.

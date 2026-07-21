@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 101 arquivos, 635 casos. **Mobile:** 25 arquivos, 99 casos. **Total: 734 casos.**
+> **Backend:** 102 arquivos, 646 casos. **Mobile:** 25 arquivos, 99 casos. **Total: 745 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -44,11 +44,12 @@
 | `src/common/config/jwt-secret.spec.ts` | 4 | 1 |
 | `src/common/correlation-id.middleware.spec.ts` | 3 | 1 |
 | `src/common/cors.spec.ts` | 5 | 1 |
-| `src/common/datas.spec.ts` | 8 | 2 |
+| `src/common/datas.spec.ts` | 14 | 4 |
 | `src/common/filters/dominio-exception.filter.spec.ts` | 3 | 1 |
 | `src/common/guards/jwt-auth.guard.spec.ts` | 7 | 1 |
 | `src/common/guards/perfil.guard.spec.ts` | 5 | 1 |
 | `src/common/justificativas.spec.ts` | 9 | 2 |
+| `src/common/risco-ocorrencias.spec.ts` | 5 | 4 |
 | `src/config/env.validation.spec.ts` | 4 | 1 |
 | `src/contratos/contratos-alertas.service.spec.ts` | 5 | 1 |
 | `src/contratos/contratos.properties.spec.ts` | 13 | 1 |

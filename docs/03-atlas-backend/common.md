@@ -30,9 +30,10 @@ justificativas), CORS e opções de upload.
 | `decorators/usuario-atual.decorator.ts` | `@UsuarioAtual()` e tipo `UsuarioAutenticado` | 36 |
 | `filters/dominio-exception.filter.ts` | Filtro global de exceções → HTTP em PT | 76 |
 | `errors/erro-dominio.ts` | Base `ErroDominio` com `statusHttp` próprio | 15 |
-| `datas.ts` | Utilidades puras de período (UTC, folha 26→25, Brasília) | 159 |
+| `datas.ts` | Utilidades puras de período (UTC, folha 26→25, Brasília) + sequência de dias | 192 |
 | `numeros.ts` | `arredondar` e `parseValor` (monetário) | 37 |
 | `justificativas.ts` | Peso e montagem dos campos de justificativa (ADR 0009) | 156 |
+| `risco-ocorrencias.ts` | Pontuação de risco partilhada por faltas e não-retornos | 42 |
 | `relogio.ts` | Relógio injetável (`RELOGIO`, `RelogioSistema`) | 21 |
 | `cors.ts` | Origens de CORS a partir do ambiente | 15 |
 | `config/jwt-secret.ts` | Resolve o segredo JWT (exige em produção) | 40 |
@@ -92,9 +93,18 @@ fornece:
   `inicioDoProximoMes` / `fimDoMes`; **ciclo de folha 26→25** (`periodoFolha`,
   `periodoFolhaDeslocado`, `rotuloPeriodoFolha`); **Brasília** (`diaCivilBrasilia`,
   `agoraNaBrasilia`, `diaEncerradoEmBrasilia`, `fimDoDiaBrasiliaEmUtc`,
-  `OFFSET_BRASILIA_MS`). Fonte única — antes duplicadas em vários domínios.
+  `OFFSET_BRASILIA_MS`); **sequência de dias** (`chaveDiaUTC(d)` = chave de dia
+  civil em ms UTC, `maiorSequenciaDias(datas)` = maior sequência de dias civis
+  consecutivos, deduplicando por dia). Fonte única — antes duplicadas em vários
+  domínios (inclusive `maiorSequencia`/`diaUTC` espelhados em faltas e não-retornos).
 - **Números (`numeros.ts`):** `arredondar(n)` (2 casas) e `parseValor(bruto)`
   (aceita "1.234,56" e "1234.56"; `NaN` quando não interpretável).
+- **Risco de ocorrências (`risco-ocorrencias.ts`):** pontuação partilhada por
+  faltas e não-retornos — `nivelPorPontos(pontos)` (4+ ALTO / 2+ MEDIO / BAIXO),
+  `pontosPorTaxa(pct)` (20%+→2 / 10%+→1), `pontosPorQuantidade(n)` (4+→2 / 2+→1)
+  e `pontosPorSequencia(seqMax)` (2+→1). Cada domínio soma os seus sinais
+  específicos (emenda/dia recorrente/tendência vs. reincidência/piora) sobre
+  esta base comum, mantendo o comportamento anterior.
 - **Justificativas (`justificativas.ts`):** `pesoOcorrencia(status, motivo)`
   (∈ {1, 0.02, 0.10}), `somaPonderada(...)`, `motivoObrigatorio(status)` e
   `montarDadosJustificativa(input, autor, agora?)` — **fonte única** dos campos
@@ -140,7 +150,8 @@ fornece:
 | `guards/jwt-auth.guard.spec.ts` | Rotas públicas, tokenVersion, revogação e token ausente/inválido | 7 |
 | `guards/perfil.guard.spec.ts` | Autorização por funcionalidade (gerente/fiscal) | 5 |
 | `filters/dominio-exception.filter.spec.ts` | Tradução de erros de domínio/HTTP/desconhecido | 3 |
-| `datas.spec.ts` | Ciclo de folha 26→25 e fim do dia em Brasília | 8 |
+| `datas.spec.ts` | Ciclo de folha 26→25, fim do dia em Brasília e sequência de dias | 13 |
+| `risco-ocorrencias.spec.ts` | Pontuação de risco partilhada (limiares + monotonia, fast-check) | 6 |
 | `justificativas.spec.ts` | Peso/soma ponderada e montagem dos campos de justificativa (fast-check) | 9 |
 | `cors.spec.ts` | Resolução de `CORS_ORIGINS` | 5 |
 | `config/jwt-secret.spec.ts` | Segredo configurado/obrigatório/efêmero | 4 |

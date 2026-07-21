@@ -1,6 +1,8 @@
 import {
+  chaveDiaUTC,
   diaEncerradoEmBrasilia,
   fimDoDiaBrasiliaEmUtc,
+  maiorSequenciaDias,
   periodoFolha,
   periodoFolhaDeslocado,
   rotuloPeriodoFolha,
@@ -61,5 +63,55 @@ describe('fechamento do dia em Brasília', () => {
     expect(fimDoDiaBrasiliaEmUtc(dia).toISOString()).toBe(
       '2026-07-17T03:00:00.000Z',
     );
+  });
+});
+
+/**
+ * Helpers partilhados pela analítica de faltas e não-retornos (antes duplicados
+ * nos domínios de operadores e incidências).
+ */
+describe('chaveDiaUTC', () => {
+  it('ignora a hora e devolve a meia-noite UTC do dia', () => {
+    const manha = new Date('2026-07-20T09:30:00.000Z');
+    const noite = new Date('2026-07-20T23:59:59.000Z');
+    expect(chaveDiaUTC(manha)).toBe(Date.UTC(2026, 6, 20));
+    expect(chaveDiaUTC(manha)).toBe(chaveDiaUTC(noite));
+  });
+});
+
+describe('maiorSequenciaDias', () => {
+  const dia = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+
+  it('devolve 0 para lista vazia', () => {
+    expect(maiorSequenciaDias([])).toBe(0);
+  });
+
+  it('devolve 1 quando não há dias colados', () => {
+    expect(maiorSequenciaDias([dia('2026-07-01'), dia('2026-07-05')])).toBe(1);
+  });
+
+  it('mede a maior sequência de dias civis consecutivos', () => {
+    const datas = [
+      dia('2026-07-01'),
+      dia('2026-07-02'),
+      dia('2026-07-03'),
+      dia('2026-07-10'),
+      dia('2026-07-11'),
+    ];
+    expect(maiorSequenciaDias(datas)).toBe(3);
+  });
+
+  it('deduplica múltiplas ocorrências no mesmo dia (contam como um)', () => {
+    const datas = [
+      new Date('2026-07-01T08:00:00.000Z'),
+      new Date('2026-07-01T20:00:00.000Z'),
+      dia('2026-07-02'),
+    ];
+    expect(maiorSequenciaDias(datas)).toBe(2);
+  });
+
+  it('independe da ordem de entrada', () => {
+    const datas = [dia('2026-07-03'), dia('2026-07-01'), dia('2026-07-02')];
+    expect(maiorSequenciaDias(datas)).toBe(3);
   });
 });
