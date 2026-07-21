@@ -32,7 +32,7 @@ justificativas), CORS e opções de upload.
 | `errors/erro-dominio.ts` | Base `ErroDominio` com `statusHttp` próprio | 15 |
 | `datas.ts` | Utilidades puras de período (UTC, folha 26→25, Brasília) | 159 |
 | `numeros.ts` | `arredondar` e `parseValor` (monetário) | 37 |
-| `justificativas.ts` | Peso das ocorrências por justificativa (ADR 0009) | 91 |
+| `justificativas.ts` | Peso e montagem dos campos de justificativa (ADR 0009) | 156 |
 | `relogio.ts` | Relógio injetável (`RELOGIO`, `RelogioSistema`) | 21 |
 | `cors.ts` | Origens de CORS a partir do ambiente | 15 |
 | `config/jwt-secret.ts` | Resolve o segredo JWT (exige em produção) | 40 |
@@ -96,9 +96,12 @@ fornece:
 - **Números (`numeros.ts`):** `arredondar(n)` (2 casas) e `parseValor(bruto)`
   (aceita "1.234,56" e "1234.56"; `NaN` quando não interpretável).
 - **Justificativas (`justificativas.ts`):** `pesoOcorrencia(status, motivo)`
-  (∈ {1, 0.02, 0.10}), `somaPonderada(...)`, `motivoObrigatorio(status)`,
-  além dos enums `StatusJustificativa`/`MotivoJustificativa` e das constantes de
-  peso (ver ADR 0009).
+  (∈ {1, 0.02, 0.10}), `somaPonderada(...)`, `motivoObrigatorio(status)` e
+  `montarDadosJustificativa(input, autor, agora?)` — **fonte única** dos campos
+  de justificativa a persistir (status/motivo/observação + auditoria), partilhada
+  por faltas (`operadores`) e não-retornos (`incidencias`); PENDENTE limpa tudo,
+  INJUSTIFICADA descarta o motivo, `agora` é injetável. Além dos enums
+  `StatusJustificativa`/`MotivoJustificativa` e das constantes de peso (ver ADR 0009).
 
 ## 7. Estados e enums
 - `StatusJustificativa`: `PENDENTE` · `JUSTIFICADA` · `INJUSTIFICADA`.
@@ -138,7 +141,7 @@ fornece:
 | `guards/perfil.guard.spec.ts` | Autorização por funcionalidade (gerente/fiscal) | 5 |
 | `filters/dominio-exception.filter.spec.ts` | Tradução de erros de domínio/HTTP/desconhecido | 3 |
 | `datas.spec.ts` | Ciclo de folha 26→25 e fim do dia em Brasília | 8 |
-| `justificativas.spec.ts` | Propriedades (fast-check) do peso e soma ponderada | 4 |
+| `justificativas.spec.ts` | Peso/soma ponderada e montagem dos campos de justificativa (fast-check) | 9 |
 | `cors.spec.ts` | Resolução de `CORS_ORIGINS` | 5 |
 | `config/jwt-secret.spec.ts` | Segredo configurado/obrigatório/efêmero | 4 |
 | `correlation-id.middleware.spec.ts` | Geração/reaproveitamento do `x-request-id` | 3 |

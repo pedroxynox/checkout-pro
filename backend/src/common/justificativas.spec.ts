@@ -6,6 +6,7 @@ import {
   PESO_OUTROS_JUSTIFICADOS,
   STATUS_JUSTIFICATIVA,
   StatusJustificativa,
+  montarDadosJustificativa,
   motivoObrigatorio,
   pesoOcorrencia,
   somaPonderada,
@@ -90,5 +91,96 @@ describe('Justificativas — peso', () => {
     expect(motivoObrigatorio('JUSTIFICADA')).toBe(true);
     expect(motivoObrigatorio('PENDENTE')).toBe(false);
     expect(motivoObrigatorio('INJUSTIFICADA')).toBe(false);
+  });
+});
+
+/**
+ * Primitiva partilhada de montagem dos campos de justificativa (fonte única de
+ * faltas e não-retornos). `agora` é injetado para tornar os testes determinísticos.
+ */
+describe('montarDadosJustificativa', () => {
+  const autor = { id: 'u1', nome: 'Ana' };
+  const agora = new Date('2026-07-20T12:00:00.000Z');
+
+  it('PENDENTE (reabrir) limpa motivo, observação e toda a auditoria', () => {
+    const dados = montarDadosJustificativa(
+      { status: 'PENDENTE', motivo: 'ATESTADO_MEDICO', observacao: 'x' },
+      autor,
+      agora,
+    );
+    expect(dados).toEqual({
+      statusJustificativa: 'PENDENTE',
+      motivoJustificativa: null,
+      observacaoJustificativa: null,
+      justificadaPorId: null,
+      justificadaPorNome: null,
+      justificadaEm: null,
+    });
+  });
+
+  it('JUSTIFICADA grava motivo, observação e auditoria (com agora injetado)', () => {
+    const dados = montarDadosJustificativa(
+      { status: 'JUSTIFICADA', motivo: 'ABONADA', observacao: 'ok' },
+      autor,
+      agora,
+    );
+    expect(dados).toEqual({
+      statusJustificativa: 'JUSTIFICADA',
+      motivoJustificativa: 'ABONADA',
+      observacaoJustificativa: 'ok',
+      justificadaPorId: 'u1',
+      justificadaPorNome: 'Ana',
+      justificadaEm: agora,
+    });
+  });
+
+  it('INJUSTIFICADA descarta o motivo mas mantém observação e auditoria', () => {
+    const dados = montarDadosJustificativa(
+      { status: 'INJUSTIFICADA', motivo: 'ATESTADO_MEDICO', observacao: 'nao' },
+      autor,
+      agora,
+    );
+    expect(dados.statusJustificativa).toBe('INJUSTIFICADA');
+    expect(dados.motivoJustificativa).toBeNull();
+    expect(dados.observacaoJustificativa).toBe('nao');
+    expect(dados.justificadaPorId).toBe('u1');
+    expect(dados.justificadaEm).toEqual(agora);
+  });
+
+  it('autor sem id/nome vira null (auditoria opcional)', () => {
+    const dados = montarDadosJustificativa(
+      { status: 'JUSTIFICADA', motivo: 'OUTRO' },
+      {},
+      agora,
+    );
+    expect(dados.justificadaPorId).toBeNull();
+    expect(dados.justificadaPorNome).toBeNull();
+    expect(dados.observacaoJustificativa).toBeNull();
+  });
+
+  it('Property: para status ≠ PENDENTE preserva statusJustificativa e usa `agora`', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom<StatusJustificativa>('JUSTIFICADA', 'INJUSTIFICADA'),
+        fc.option(motivoArb, { nil: null }),
+        (status, motivo) => {
+          const dados = montarDadosJustificativa(
+            { status, motivo },
+            autor,
+            agora,
+          );
+          const motivoOk =
+            status === 'JUSTIFICADA'
+              ? dados.motivoJustificativa === (motivo ?? null)
+              : dados.motivoJustificativa === null;
+          return (
+            dados.statusJustificativa === status &&
+            dados.justificadaEm === agora &&
+            motivoOk
+          );
+        },
+      ),
+      { numRuns: NUM_RUNS },
+    );
   });
 });

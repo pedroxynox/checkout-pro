@@ -7,6 +7,7 @@ import { inicioDoDia, inicioDoMes, inicioDoProximoMes } from '../common/datas';
 import {
   MotivoJustificativa,
   StatusJustificativa,
+  montarDadosJustificativa,
   motivoObrigatorio,
   somaPonderada,
 } from '../common/justificativas';
@@ -298,21 +299,10 @@ export class IncidenciasService {
         'Para justificar, informe o motivo.',
       );
     }
-    const reabrir = input.status === 'PENDENTE';
+    // Campos de justificativa: primitiva partilhada com as faltas (fonte única).
     return this.prisma.incidenciaEscala.update({
       where: { id },
-      data: {
-        statusJustificativa: input.status,
-        motivoJustificativa: reabrir
-          ? null
-          : input.status === 'JUSTIFICADA'
-            ? (input.motivo ?? null)
-            : null,
-        observacaoJustificativa: reabrir ? null : (input.observacao ?? null),
-        justificadaPorId: reabrir ? null : (autor.id ?? null),
-        justificadaPorNome: reabrir ? null : (autor.nome ?? null),
-        justificadaEm: reabrir ? null : new Date(),
-      },
+      data: montarDadosJustificativa(input, autor),
     });
   }
 

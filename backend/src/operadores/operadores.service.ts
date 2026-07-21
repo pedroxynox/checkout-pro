@@ -18,8 +18,10 @@ import {
 } from './operadores.domain';
 import { marcarPeriodoJustificado } from './marcar-periodo-justificado';
 import {
+  DadosJustificativaPersistir,
   MotivoJustificativa,
   StatusJustificativa,
+  montarDadosJustificativa,
   motivoObrigatorio,
 } from '../common/justificativas';
 import {
@@ -65,44 +67,18 @@ export interface AusenciaDetalhada {
 
 /**
  * Monta os campos de justificativa a gravar a partir do input + autor. Valida
- * que JUSTIFICADA tem motivo (senão `JustificativaInvalidaError`). Ao reabrir
- * (PENDENTE) ou injustificar, o motivo é limpo. Determinística salvo `justificadaEm`.
+ * que JUSTIFICADA tem motivo (senão `JustificativaInvalidaError`) e delega a
+ * construção dos campos à primitiva partilhada `montarDadosJustificativa`
+ * (fonte única com os não-retornos).
  */
 function dadosJustificativa(
   input: JustificarInput,
   autor: AutorAcao,
-): {
-  statusJustificativa: StatusJustificativa;
-  motivoJustificativa: MotivoJustificativa | null;
-  observacaoJustificativa: string | null;
-  justificadaPorId: string | null;
-  justificadaPorNome: string | null;
-  justificadaEm: Date | null;
-} {
+): DadosJustificativaPersistir {
   if (motivoObrigatorio(input.status) && !input.motivo) {
     throw new JustificativaInvalidaError();
   }
-  // PENDENTE = reabrir: limpa toda a justificativa e a auditoria.
-  if (input.status === 'PENDENTE') {
-    return {
-      statusJustificativa: 'PENDENTE',
-      motivoJustificativa: null,
-      observacaoJustificativa: null,
-      justificadaPorId: null,
-      justificadaPorNome: null,
-      justificadaEm: null,
-    };
-  }
-  return {
-    statusJustificativa: input.status,
-    // Motivo só se aplica a JUSTIFICADA; INJUSTIFICADA não tem motivo.
-    motivoJustificativa:
-      input.status === 'JUSTIFICADA' ? (input.motivo ?? null) : null,
-    observacaoJustificativa: input.observacao ?? null,
-    justificadaPorId: autor.id ?? null,
-    justificadaPorNome: autor.nome ?? null,
-    justificadaEm: new Date(),
-  };
+  return montarDadosJustificativa(input, autor);
 }
 
 /** A partir de quantas faltas no mês os gestores são avisados (RH). */

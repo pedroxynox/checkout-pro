@@ -24,7 +24,7 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `operadores.controller.ts` | Rotas de ausências/justificativa/contagem | 197 |
-| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 632 |
+| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 615 |
 | `marcar-periodo-justificado.ts` | Primitiva compartilhada: falta justificada dia a dia (a prazo + atestado) | 72 |
 | `operadores.domain.ts` | Regras puras: unicidade, turno, relatório, analítica | 529 |
 | `operadores.errors.ts` | Erros de domínio (mapeados para HTTP) | 104 |
@@ -122,7 +122,10 @@ ainda bloqueia o **fiscal** de desmarcar um dia `aPrazo`
 #### `justificarAusencia(ausenciaId, input, autor?)`
 Abona (`JUSTIFICADA`, exige motivo), reabre (`PENDENTE`, limpa tudo) ou marca
 `INJUSTIFICADA`, gravando quem justificou e quando. `AusenciaNaoEncontradaError`
-se não existir; bloqueia ciclo fechado.
+se não existir; bloqueia ciclo fechado. Os campos de justificativa são montados
+pela primitiva partilhada `montarDadosJustificativa` (common) — **fonte única**
+com os não-retornos (`incidencias`); a validação do motivo obrigatório e o erro
+(`JustificativaInvalidaError`) permanecem locais.
 
 #### `listarAusencias(periodo, apenasPendentes?)`
 Lista as faltas do período com nome e os dados da justificativa; pendentes no
