@@ -91,6 +91,11 @@ completos), atestados, faltas, TAC, conflitos e atrasos.
   a pessoa deve (o débito/déficit consome só as 50%), com piso 0. É o número
   exibido na tela (total do time e chip da pessoa); o `extras50Ms` bruto
   continua disponível para a exportação/folha.
+- `horasDevidasAtualMs = max(0, horasDevidasMs − extras50Ms)` (por pessoa) → o
+  que a pessoa deve **DE VERDADE** agora, depois de as 50% abaterem o débito. É
+  **complementar** a `extras50AtualMs` (no máximo um dos dois é > 0): quem tem
+  saldo 50% positivo (mesmo que 9 min) **não deve horas**. É o valor do chip
+  "Deve" — antes mostrava o bruto mesmo com 50% positivas.
 - Demais cálculos do dia são reusados de [`ponto`](ponto.md) (`calcularJornadaDia`)
   e de `escala-domingo` (`entradaEsperadaNoDia`, `minutosDeAtraso`).
 
@@ -126,7 +131,9 @@ completos), atestados, faltas, TAC, conflitos e atrasos.
 5. **Saldo do time ≠ saldo individual**: o débito consome só as 50%; as 100%
    nunca são debitadas. Pela mesma regra, as **"Extras 50%" exibidas** (total do
    time e chip da pessoa) são as 50% REAIS (`extras50AtualMs` = bruto − o que
-   deve, piso 0), não o bruto acumulado no mês.
+   deve, piso 0), não o bruto acumulado no mês; e o chip **"Deve"** mostra o que
+   se deve DE VERDADE (`horasDevidasAtualMs` = o que deve − 50%, piso 0), então
+   quem tem 50% positivas não aparece devendo horas.
 6. **Lista todas as fichas não-gerentes** (operador/supervisor/fiscal), mesmo
    zeradas, em ordem alfabética.
 7. **Marcar débito respeita o ciclo fechado**.
