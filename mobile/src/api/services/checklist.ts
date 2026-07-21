@@ -1,4 +1,5 @@
 /** Serviço de Checklist (Req 5.x): disponibiliza, envia imagem e status. */
+import { Platform } from 'react-native';
 import { apiClient } from '../client';
 import {
   Checklist,
@@ -23,17 +24,29 @@ export const checklistService = {
   },
 
   /** Envia a imagem do checklist e marca como "Feito" (Req 5.1.2–5.1.4). */
-  enviarImagem(
+  async enviarImagem(
     tipo: TipoChecklist,
     imagem: ImagemSelecionada,
     data?: string,
   ): Promise<Checklist> {
     const form = new FormData();
-    form.append('file', {
-      uri: imagem.uri,
-      name: imagem.name,
-      type: imagem.mimeType ?? 'image/jpeg',
-    } as unknown as Blob);
+    const tipoMime = imagem.mimeType ?? 'image/jpeg';
+    // Compatível com web e nativo. No nativo (APK) o React Native aceita o
+    // objeto { uri, name, type }; na WEB o navegador precisa de um Blob real —
+    // por isso lemos o conteúdo da URI (data:/blob:) e o anexamos com o nome do
+    // arquivo. Antes, o objeto { uri, ... } era enviado sempre, e a foto do
+    // checklist não subia pelo site (só pelo aparelho).
+    if (Platform.OS === 'web') {
+      const resposta = await fetch(imagem.uri);
+      const blob = await resposta.blob();
+      form.append('file', blob, imagem.name);
+    } else {
+      form.append('file', {
+        uri: imagem.uri,
+        name: imagem.name,
+        type: tipoMime,
+      } as unknown as Blob);
+    }
     return apiClient.upload<Checklist>(`/checklist/${tipo}/imagem`, form, {
       data,
     });
