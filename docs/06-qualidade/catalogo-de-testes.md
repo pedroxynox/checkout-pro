@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 102 arquivos, 646 casos. **Mobile:** 25 arquivos, 99 casos. **Total: 745 casos.**
+> **Backend:** 103 arquivos, 651 casos. **Mobile:** 25 arquivos, 99 casos. **Total: 750 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -93,7 +93,7 @@
 | `src/operadores/ausencia-a-prazo.spec.ts` | 3 | 1 |
 | `src/operadores/listar-ausencias-ficha.spec.ts` | 1 | 1 |
 | `src/operadores/marcar-periodo-justificado.spec.ts` | 1 | 1 |
-| `src/operadores/operador-turno.roster-turno.spec.ts` | 3 | 2 |
+| `src/operadores/operador-turno.roster-turno.spec.ts` | 5 | 3 |
 | `src/operadores/operadores.controller.spec.ts` | 3 | 2 |
 | `src/operadores/operadores.justificativa.spec.ts` | 6 | 1 |
 | `src/operadores/operadores.properties.spec.ts` | 5 | 1 |
@@ -106,6 +106,7 @@
 | `src/ponto/ponto-nome-match.spec.ts` | 6 | 1 |
 | `src/ponto/ponto-ocr.parser.spec.ts` | 17 | 1 |
 | `src/ponto/ponto-ocr.service.spec.ts` | 7 | 2 |
+| `src/ponto/ponto-remover-nao-retorno.spec.ts` | 3 | 1 |
 | `src/ponto/ponto.domain.spec.ts` | 38 | 7 |
 | `src/ponto/ponto.service.spec.ts` | 42 | 4 |
 | `src/produtos-pesados/produtos-pesados.parser.spec.ts` | 7 | 2 |

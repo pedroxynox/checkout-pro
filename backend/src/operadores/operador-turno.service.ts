@@ -104,6 +104,13 @@ export interface ColaboradorDia {
   ausenciaId: string | null;
   /** CID do atestado (quando status = ATESTADO e há CID); senão null. */
   cid: string | null;
+  /**
+   * Período do atestado (primeiro e último dia, ISO yyyy-mm-dd) quando a falta
+   * está vinculada a um atestado; senão null. Deriva do `Atestado` ligado por
+   * `atestadoId` — para a escala mostrar "de … até …" ao lado do nome/CID.
+   */
+  atestadoInicio: string | null;
+  atestadoFim: string | null;
   /** Estado da justificativa da falta (só quando status = FALTA/ATESTADO). */
   statusJustificativa: StatusJustificativa | null;
   /** Quem justificou a falta (auditoria), quando aplicável. */
@@ -468,6 +475,30 @@ export class OperadorTurnoService {
           })
         : [];
     const mapaAus = new Map(ausencias.map((a) => [a.pessoaId, a]));
+    // Período dos atestados ligados às faltas do dia — para a escala mostrar
+    // "de … até …" ao lado do nome/CID. Uma única consulta pelos ids ligados.
+    const atestadoIds = [
+      ...new Set(
+        ausencias
+          .map((a) => a.atestadoId)
+          .filter((id): id is string => id != null),
+      ),
+    ];
+    const atestados = atestadoIds.length
+      ? await this.prisma.atestado.findMany({
+          where: { id: { in: atestadoIds } },
+          select: { id: true, inicio: true, fim: true },
+        })
+      : [];
+    const mapaAtestado = new Map(
+      atestados.map((a) => [
+        a.id,
+        {
+          inicio: a.inicio.toISOString().slice(0, 10),
+          fim: a.fim.toISOString().slice(0, 10),
+        },
+      ]),
+    );
     const fds = diaSemana === 5 || diaSemana === 6;
 
     const linhaComFalta = (base: {
@@ -485,6 +516,9 @@ export class OperadorTurnoService {
         !!aus &&
         (aus.atestadoId != null ||
           aus.motivoJustificativa === 'ATESTADO_MEDICO');
+      const atestado = aus?.atestadoId
+        ? (mapaAtestado.get(aus.atestadoId) ?? null)
+        : null;
       return {
         id: base.id,
         nome: base.nome,
@@ -495,6 +529,8 @@ export class OperadorTurnoService {
         saida: base.saida,
         ausenciaId: aus?.id ?? null,
         cid: aus?.cid ?? null,
+        atestadoInicio: atestado?.inicio ?? null,
+        atestadoFim: atestado?.fim ?? null,
         statusJustificativa: aus
           ? (aus.statusJustificativa as StatusJustificativa)
           : null,
@@ -518,6 +554,8 @@ export class OperadorTurnoService {
       saida: null,
       ausenciaId: null,
       cid: null,
+      atestadoInicio: null,
+      atestadoFim: null,
       statusJustificativa: null,
       justificadaPorNome: null,
       aPrazo: false,

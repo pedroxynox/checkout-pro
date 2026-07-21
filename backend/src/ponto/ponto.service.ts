@@ -569,6 +569,22 @@ export class PontoService {
       );
     }
     const resposta = await this.jornadaDoDia(dto.pessoaId, tipoPessoa, dia);
+    // A pessoa fechou o intervalo dentro do limite (registrou um retorno
+    // válido): remove um eventual NÃO-RETORNO AUTOMÁTICO do dia — falso positivo
+    // do verificador que rodou enquanto o retorno ainda não tinha sido
+    // registrado (ex.: ficha lançada em atraso). Os não-retornos MANUAIS do
+    // gestor permanecem. Best-effort: nunca trava a batida.
+    if (
+      colaboradorId &&
+      !resposta.jornada.naoRetornoIntervalo &&
+      resposta.batidas.some((b) => b.tipo === 'RETORNO_INTERVALO')
+    ) {
+      await this.removerNaoRetornoAutomaticoAoRetornar(
+        dto.pessoaId,
+        colaboradorId,
+        dia,
+      );
+    }
     // Status ao vivo do OPERADOR no painel da escala (tempo real): quando um
     // operador bate ponto, propagamos o status derivado da jornada pelo mesmo
     // canal WebSocket dos fiscais. Fiscais já são cobertos por
@@ -983,6 +999,34 @@ export class PontoService {
           data: dia,
           automatica: true,
           pessoaId: { in: [pessoaId, colaboradorId] },
+        },
+      });
+    } catch {
+      // Best-effort: se não conseguir remover, o gestor pode fazê-lo à mão.
+    }
+  }
+
+  /**
+   * Remove o NÃO-RETORNO AUTOMÁTICO do dia quando a pessoa fecha o intervalo
+   * dentro do limite (registra um retorno válido). Apaga somente os
+   * auto-detectados (`origem = 'DETECTADO_PONTO'`, tipo NAO_RETORNO_INTERVALO)
+   * do dia informado, tanto pela identidade da batida (`pessoaId`) quanto pela
+   * ficha (`colaboradorId`). Os não-retornos MANUAIS do gestor NÃO são tocados.
+   * Espelha `removerFaltaAutomaticaAoFichar`. Best-effort: uma falha nunca trava
+   * o registro da batida.
+   */
+  private async removerNaoRetornoAutomaticoAoRetornar(
+    pessoaId: string,
+    colaboradorId: string,
+    dia: Date,
+  ): Promise<void> {
+    try {
+      await this.prisma.incidenciaEscala.deleteMany({
+        where: {
+          data: dia,
+          tipo: 'NAO_RETORNO_INTERVALO',
+          origem: 'DETECTADO_PONTO',
+          colaboradorId: { in: [pessoaId, colaboradorId] },
         },
       });
     } catch {

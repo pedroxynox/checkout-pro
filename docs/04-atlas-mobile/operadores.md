@@ -29,6 +29,8 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 > **Atestado na escala:** o status **ATESTADO** (azul + CID) aparece tanto no
 > roster de operadores quanto na **linha do fiscal** (via `fiscalComoColaboradorDia`,
 > que lê a marca de atestado/CID da falta do dia), distinguindo-o da falta comum.
+> No card **"Atestados do dia"**, além do nome e do CID, mostra-se o **período do
+> atestado** ("início até fim", de `atestadoInicio`/`atestadoFim`).
 | `FeriasCard.tsx` | Card + modal para colocar de férias, listar e cancelar férias | 400 |
 
 ## 4. Fluxo do usuário

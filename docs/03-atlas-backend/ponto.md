@@ -28,7 +28,7 @@ automaticamente faltas e não-retornos do intervalo.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `ponto.controller.ts` | Rotas HTTP (OCR, pessoas, dia, batidas, histórico TAC) | 122 |
-| `ponto.service.ts` | Regras de aplicação: persistência, classificação, avisos de TAC | 1359 |
+| `ponto.service.ts` | Regras de aplicação: persistência, classificação, avisos de TAC | 1421 |
 | `ponto.domain.ts` | Regras puras: classificação e cálculo da jornada/TAC | 410 |
 | `ponto.errors.ts` | Erros de domínio (mapeados para HTTP) | 94 |
 | `ponto.module.ts` | Ligações (DI) do módulo | 45 |
@@ -173,7 +173,8 @@ defensivo por pessoa.
   `AliasLeituraPonto`, `RegistroPontoFiscal` (via `FiscaisService`; a ponte
   batidas → status agora repassa o `colaboradorId` da batida para gravar o
   vínculo com a ficha canônica — Fase 4), `Ausencia` (falta automática,
-  remoção), `IncidenciaEscala` (não-retorno).
+  remoção), `IncidenciaEscala` (não-retorno: registro pela detecção e **remoção
+  do auto-detectado** ao registrar um retorno de intervalo válido).
 - **Lê:** `Fiscal`, `Usuario`, `Colaborador`, `Ausencia`, `CicloFolha`,
   `TipoContratoJornada` (via serviços).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
@@ -197,7 +198,12 @@ defensivo por pessoa.
 6. **Não bate ponto em dia de folga** (folga fixa ou domingo de folga do rodízio).
 7. **Ciclo de folha fechado bloqueia** registrar/corrigir/excluir batida.
 8. **Bater ponto remove a falta automática** do dia (faltas manuais permanecem).
-9. **Cada etapa de TAC é avisada uma vez** (dedup persistente que sobrevive a
+9. **Registrar o retorno do intervalo remove o não-retorno AUTOMÁTICO** do dia:
+   quando a pessoa fecha o intervalo dentro do limite (retorno válido), um
+   não-retorno auto-detectado (`origem = DETECTADO_PONTO`) — falso positivo do
+   verificador que rodou antes do retorno ser registrado (ex.: ficha lançada em
+   atraso) — é apagado. Os não-retornos **manuais** do gestor permanecem.
+10. **Cada etapa de TAC é avisada uma vez** (dedup persistente que sobrevive a
    reinícios e coordena instâncias).
 
 ## 11. Testes

@@ -30,7 +30,7 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 | `operadores.errors.ts` | Erros de domínio (mapeados para HTTP) | 104 |
 | `operadores.module.ts` | Ligações (DI) do módulo | 32 |
 | `operador-turno.controller.ts` | Rotas do Quadro de Operadores | 70 |
-| `operador-turno.service.ts` | Grade semanal, roster do dia, ao vivo, analítica | 920 |
+| `operador-turno.service.ts` | Grade semanal, roster do dia, ao vivo, analítica | 958 |
 | `dto/operadores.dto.ts` | Validação de entrada das rotas | 121 |
 
 ## 4. Endpoints (rotas HTTP)
@@ -58,6 +58,9 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 > JUSTIFICADAS (motivo `ATESTADO_MEDICO`, `aPrazo`) carimbadas com `atestadoId`
 > e `cid`. Por isso o roster do dia (`GET /quadro-operadores/dia`) distingue o
 > status **ATESTADO** de **FALTA**, e a lista de faltas expõe `atestado`/`cid`.
+> O roster também expõe o **período do atestado** (`atestadoInicio`/`atestadoFim`,
+> ISO yyyy-mm-dd), derivado do `Atestado` ligado por `atestadoId` numa única
+> consulta — para a escala mostrar "de … até …" ao lado do nome/CID.
 
 > O controller de ausências declara `@Funcionalidade('OPERADORES_CRUD')` na
 > classe, mas **cada rota** relaxa para `OPERADORES_AUSENCIAS` (que o fiscal

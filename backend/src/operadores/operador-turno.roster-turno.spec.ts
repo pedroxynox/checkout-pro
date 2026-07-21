@@ -112,3 +112,87 @@ describe('OperadorTurnoService.grade — status ATESTADO vs FALTA', () => {
     expect(porData.get('2026-07-16')).toBe('FALTA');
   });
 });
+
+/**
+ * O roster do dia expõe o PERÍODO do atestado (início/fim) ao lado do nome/CID,
+ * derivando do `Atestado` ligado à falta por `atestadoId`. Faltas sem atestado
+ * ficam com as datas nulas.
+ */
+describe('OperadorTurnoService.diaOperadores — período do atestado', () => {
+  function servico(
+    ausencias: Record<string, unknown>[],
+    atestados: Record<string, unknown>[],
+  ): OperadorTurnoService {
+    const colaborador = {
+      id: 'c1',
+      nome: 'Ana',
+      genero: 'F',
+      turno: 'ABERTURA',
+      entradaSemana: '08:00',
+      saidaSemana: '16:00',
+      entradaFds: '08:00',
+      saidaFds: '16:00',
+      folgaDiaSemana: -1, // nunca folga
+      ativo: true,
+      criadoEm: new Date(),
+    };
+    const prismaFake = {
+      colaborador: { findMany: () => Promise.resolve([colaborador]) },
+      ausencia: { findMany: () => Promise.resolve(ausencias) },
+      atestado: {
+        findMany: () => Promise.resolve(atestados),
+      },
+    };
+    return new OperadorTurnoService(prismaFake as never);
+  }
+
+  it('expõe atestadoInicio/atestadoFim (ISO) quando a falta é de atestado', async () => {
+    const service = servico(
+      [
+        {
+          id: 'a1',
+          pessoaId: 'c1',
+          data: new Date('2026-07-15T00:00:00.000Z'),
+          atestadoId: 'at1',
+          motivoJustificativa: 'ATESTADO_MEDICO',
+          cid: 'J11',
+          statusJustificativa: 'JUSTIFICADA',
+          justificadaPorNome: 'Gestor',
+          aPrazo: true,
+        },
+      ],
+      [
+        {
+          id: 'at1',
+          inicio: new Date('2026-07-13T00:00:00.000Z'),
+          fim: new Date('2026-07-17T00:00:00.000Z'),
+        },
+      ],
+    );
+    const dia = await service.diaOperadores(new Date('2026-07-15T12:00:00Z'));
+    const linha = dia.colaboradores.find((c) => c.id === 'c1');
+    expect(linha?.status).toBe('ATESTADO');
+    expect(linha?.atestadoInicio).toBe('2026-07-13');
+    expect(linha?.atestadoFim).toBe('2026-07-17');
+  });
+
+  it('deixa as datas nulas numa falta comum (sem atestado)', async () => {
+    const service = servico(
+      [
+        {
+          id: 'a2',
+          pessoaId: 'c1',
+          data: new Date('2026-07-15T00:00:00.000Z'),
+          atestadoId: null,
+          motivoJustificativa: null,
+        },
+      ],
+      [],
+    );
+    const dia = await service.diaOperadores(new Date('2026-07-15T12:00:00Z'));
+    const linha = dia.colaboradores.find((c) => c.id === 'c1');
+    expect(linha?.status).toBe('FALTA');
+    expect(linha?.atestadoInicio).toBeNull();
+    expect(linha?.atestadoFim).toBeNull();
+  });
+});
