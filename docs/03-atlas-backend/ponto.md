@@ -36,7 +36,7 @@ automaticamente faltas e não-retornos do intervalo.
 | `ponto-ocr.parser.ts` | Regras puras: extrai nome/data/hora do texto lido | 354 |
 | `ponto-nome-match.ts` | Regras puras: similaridade de nomes (Levenshtein) | 93 |
 | `ponto-alertas.service.ts` | Cron (1 min): verifica riscos de TAC (dia civil de Brasília) | 58 |
-| `ponto-deteccao-automatica.service.ts` | Cron (5 min): falta automática, não-retorno e auto-cura | 277 |
+| `ponto-deteccao-automatica.service.ts` | Cron (5 min): alerta de atraso (1h), falta automática (2h), não-retorno e auto-cura | 338 |
 | `deteccao-automatica.domain.ts` | Regras puras: estado do escalado sem batida | 71 |
 | `pessoas-ponto.ts` | Funções (não-fiscais) que batem ponto | 15 |
 | `dto/ponto.dto.ts` | Validação de entrada das rotas | 88 |
@@ -114,8 +114,16 @@ Recalcula a jornada de quem bateu ponto no dia e delega o aviso de TAC ao
 `PontoService` (dedup persistente e compartilhada com a batida).
 
 ### `PontoDeteccaoAutomaticaService.verificar()` (cron 5 min)
-Cruza a escala do dia com o Relógio Ponto: marca falta automática (2h após a
-entrada sem batida) e registra não-retorno do intervalo. O não-retorno usa o
+Cruza a escala do dia com o Relógio Ponto: **avisa o atraso (1h)**, marca falta
+automática (2h após a entrada sem batida) e registra não-retorno do intervalo.
+
+**Alerta de atraso (1h).** Quando um escalado já faz 1h da entrada prevista sem
+nenhuma batida (`estadoSemBatida === 'ALERTA'`), o cron **notifica** a
+supervisão/gerência (`notificarComPermissao('CENTRAL_JORNADA')`) — só um aviso
+preventivo, não lança nada. Enviado **uma vez por pessoa/dia**: uma linha em
+`AlertaAtrasoEnviado` (índice único `pessoaId+dia`) é a trava atômica
+(reserva → envia; `P2002` = já avisado). Antes, o atraso de 1h era **apenas
+visual** na "equipe do dia" e nenhum aviso era disparado. O não-retorno usa o
 sinalizador `jornada.naoRetornoIntervalo` (calculado no domínio com o **máximo
 do contrato da pessoa**; 3h no 6x1): saiu para o intervalo, não voltou e passou
 do máximo — **inclusive quando o turno já foi dado por encerrado** por intervalo
@@ -182,7 +190,8 @@ da remoção imediata que o `PontoService` já faz na batida normal.
 - `RegrasContrato`: parâmetros de jornada por contrato (o padrão é o 6x1–2x1).
 
 ## 8. Dados que o módulo toca
-- **Escreve:** `BatidaPonto`, `AlertaTacEnviado`, `EventoAlertaTac`,
+- **Escreve:** `BatidaPonto`, `AlertaTacEnviado`, `AlertaAtrasoEnviado` (dedup
+  do aviso de atraso de 1h), `EventoAlertaTac`,
   `AliasLeituraPonto`, `RegistroPontoFiscal` (via `FiscaisService`; a ponte
   batidas → status agora repassa o `colaboradorId` da batida para gravar o
   vínculo com a ficha canônica — Fase 4), `Ausencia` (falta automática,

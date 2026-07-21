@@ -1,14 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { agoraNaBrasilia, inicioDoDia } from '../common/datas';
 import { FiscaisService, EscaladoDia } from '../fiscais/fiscais.service';
 import { OperadoresService } from '../operadores/operadores.service';
 import { IncidenciasService } from '../incidencias/incidencias.service';
+import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { IncidenciaDuplicadaError } from '../incidencias/incidencias.errors';
 import { AusenciaDuplicadaError } from '../operadores/operadores.errors';
 import { PontoService } from './ponto.service';
 import {
+  ALERTA_ATRASO_MIN,
   FALTA_AUTOMATICA_MIN,
   estadoSemBatida,
   minutosAposEntrada,
@@ -47,6 +50,9 @@ export class PontoDeteccaoAutomaticaService {
     private readonly operadores: OperadoresService,
     private readonly incidencias: IncidenciasService,
     private readonly ponto: PontoService,
+    // Opcional: alguns testes instanciam o serviço sem o barramento de avisos.
+    // Em produção o DI injeta (NotificacoesModule já é importado no módulo).
+    @Optional() private readonly notificacoes?: NotificacoesService,
   ) {}
 
   /** Verifica faltas automáticas e não-retornos a cada 5 minutos. */
@@ -109,6 +115,10 @@ export class PontoDeteccaoAutomaticaService {
         if (comAtividade.has(escalado.pessoaId)) {
           await this.verificarNaoRetorno(escalado, dia, naoRetornoRegistrado);
         } else {
+          // Sem batida: 1h de atraso → avisa (uma vez); 2h → falta automática.
+          // Os estados são mutuamente exclusivos (ver `estadoSemBatida`), então
+          // no máximo um dos dois age.
+          await this.verificarAtraso(escalado, dia, agora);
           await this.verificarFaltaAutomatica(
             escalado,
             dia,
@@ -121,6 +131,57 @@ export class PontoDeteccaoAutomaticaService {
           `Falha ao verificar ${escalado.nome} (${escalado.pessoaId}): ${String(erro)}`,
         );
       }
+    }
+  }
+
+  /**
+   * Aviso PREVENTIVO de atraso: quando já passou 1h (mas ainda não 2h) da
+   * entrada prevista sem nenhuma batida, notifica a supervisão/gerência. Não
+   * lança falta (isso é aos 2h) — é só um alerta para agir a tempo.
+   *
+   * Enviado UMA vez por pessoa/dia: a linha em `alertaAtrasoEnviado` (índice
+   * único `pessoaId+dia`) é a trava atômica — reserva com um INSERT e só então
+   * envia; em `P2002` (já reservado) não repete. Assim o cron de 5 min,
+   * reinícios e múltiplas instâncias nunca geram avisos duplicados.
+   */
+  private async verificarAtraso(
+    escalado: EscaladoDia,
+    dia: Date,
+    agora: Date,
+  ): Promise<void> {
+    if (!this.notificacoes) return;
+    const minutos = minutosAposEntrada(escalado.entradaPrevista, agora);
+    if (estadoSemBatida(minutos) !== 'ALERTA') return;
+
+    // Reserva a trava (uma por pessoa/dia). Se já existe, alguém já avisou hoje.
+    try {
+      await this.prisma.alertaAtrasoEnviado.create({
+        data: { pessoaId: escalado.pessoaId, dia },
+      });
+    } catch (erro) {
+      if (
+        erro instanceof Prisma.PrismaClientKnownRequestError &&
+        erro.code === 'P2002'
+      ) {
+        return; // já avisado hoje — não repete
+      }
+      throw erro;
+    }
+
+    try {
+      await this.notificacoes.notificarComPermissao('CENTRAL_JORNADA', {
+        titulo: '⏰ Atraso: 1h sem registrar o ponto',
+        mensagem: `${escalado.nome} estava escalado(a) para ${escalado.entradaPrevista} e já faz ${ALERTA_ATRASO_MIN} min sem bater ponto. Verifique antes que vire falta.`,
+      });
+      this.logger.log(
+        `Alerta de atraso (1h): ${escalado.nome} (sem ponto ${ALERTA_ATRASO_MIN}min após a entrada).`,
+      );
+    } catch (erro) {
+      // A reserva já impede repetição; um envio falho é best-effort (não trava
+      // a verificação das demais pessoas).
+      this.logger.warn(
+        `Não foi possível avisar o atraso de ${escalado.nome}: ${String(erro)}`,
+      );
     }
   }
 
