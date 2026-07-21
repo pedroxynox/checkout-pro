@@ -3,7 +3,7 @@
 
 # Modelo de Dados (Prisma)
 
-> Fonte: `backend/prisma/schema.prisma`. Total: **54 tabelas** e **28 tipos (enums)**.
+> Fonte: `backend/prisma/schema.prisma`. Total: **55 tabelas** e **28 tipos (enums)**.
 
 Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dicionario-de-dados.md).
 
@@ -41,6 +41,7 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `AliasLeituraPonto` | 14 | Um alias por texto lido; `usos` conta quantas vezes foi confirmado. |
 | `RegistroPontoFiscal` | 7 | tempo de intervalo e carga horária do dia). |
 | `AlertaTacEnviado` | 5 | `pessoaId` é id "solto" (fiscal ou colaborador), sem FK rígida (ADR 0005). |
+| `AlertaAtrasoEnviado` | 4 | não lança nada, apenas notifica a supervisão/gerência. |
 | `EventoAlertaTac` | 7 | `AlertaTacEnviado` (que é só a trava de deduplicação): aqui fica a trilha. |
 | `CicloFolha` | 12 | — |
 | `CicloFolhaEvento` | 6 | quem fez, quando). `inicio` é a âncora do ciclo. |

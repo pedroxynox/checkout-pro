@@ -3,7 +3,7 @@
 
 # Dicionário de Dados
 
-> Detalhe campo a campo das **54 tabelas**. Fonte: `backend/prisma/schema.prisma`.
+> Detalhe campo a campo das **55 tabelas**. Fonte: `backend/prisma/schema.prisma`.
 
 ## `Usuario`
 
@@ -444,6 +444,17 @@ tempo de intervalo e carga horária do dia).
 | `pessoaId` | `String` |  |  |
 | `dia` | `DateTime` |  |  |
 | `etapa` | `EtapaAlertaTac` |  |  |
+| `enviadoEm` | `DateTime` |  |  |
+
+## `AlertaAtrasoEnviado`
+
+não lança nada, apenas notifica a supervisão/gerência.
+
+| Campo | Tipo | Chave | Descrição |
+|---|---|---|---|
+| `id` | `String` | PK |  |
+| `pessoaId` | `String` |  |  |
+| `dia` | `DateTime` |  |  |
 | `enviadoEm` | `DateTime` |  |  |
 
 ## `EventoAlertaTac`
