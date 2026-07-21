@@ -58,6 +58,14 @@ export interface CentralPessoaResumo {
   extras50AtualMs: number;
   extras100Ms: number;
   horasDevidasMs: number;
+  /**
+   * O que a pessoa deve DE VERDADE agora = horas devidas − extras 50%
+   * acumuladas (piso 0). As 50% abatem o que ela deve; se sobrarem 50%
+   * positivas (ver `extras50AtualMs`), ela NÃO deve horas. É complementar a
+   * `extras50AtualMs` (no máximo um dos dois é > 0) e é o valor exibido no
+   * chip "Deve" — antes mostrava o bruto, mesmo com saldo 50% positivo.
+   */
+  horasDevidasAtualMs: number;
   horasAtestadoMs: number;
   faltas: number;
   diasTac: number;
@@ -692,6 +700,9 @@ export class CentralJornadaService {
     // 50% REAIS disponíveis agora: o que deve consome só as 50% (piso 0),
     // igual ao saldo do time. É o número que a tela mostra (não o bruto do mês).
     const extras50AtualMs = Math.max(0, extras50Ms - horasDevidasMs);
+    // O que deve DE VERDADE agora: as 50% abatem o débito. Se sobram 50%
+    // positivas, não deve nada (complementar a extras50AtualMs).
+    const horasDevidasAtualMs = Math.max(0, horasDevidasMs - extras50Ms);
     return {
       resumo: {
         cargaTrabalhadaMs,
@@ -699,6 +710,7 @@ export class CentralJornadaService {
         extras50AtualMs,
         extras100Ms,
         horasDevidasMs,
+        horasDevidasAtualMs,
         horasAtestadoMs,
         faltas,
         diasTac,

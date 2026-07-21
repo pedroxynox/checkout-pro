@@ -469,9 +469,9 @@ function PessoaCartao({
             fundo={cores.azulFundo}
           />
         )}
-        {pessoa.horasDevidasMs > 0 && (
+        {pessoa.horasDevidasAtualMs > 0 && (
           <Selo
-            texto={`Deve ${formatarDuracao(pessoa.horasDevidasMs)}`}
+            texto={`Deve ${formatarDuracao(pessoa.horasDevidasAtualMs)}`}
             cor={cores.vermelho}
             fundo={cores.vermelhoFundo}
           />

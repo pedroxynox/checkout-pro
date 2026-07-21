@@ -184,7 +184,9 @@ describe('CentralJornadaService.resumoCiclo', () => {
     // 50% REAIS agora: 1h de extra − 9h que deve = 0 (o débito consome as 50%).
     expect(p.extras50AtualMs).toBe(0);
     expect(p.extras100Ms).toBe(UMA_HORA); // domingo C
-    expect(p.horasDevidasMs).toBe(2 * UMA_HORA + H7); // déficit 2h + débito 7h
+    expect(p.horasDevidasMs).toBe(2 * UMA_HORA + H7); // déficit 2h + débito 7h (bruto)
+    // Deve REAL = 9h − 1h de extra 50% = 8h.
+    expect(p.horasDevidasAtualMs).toBe(2 * UMA_HORA + H7 - UMA_HORA);
     expect(p.horasAtestadoMs).toBe(H8); // atestado 8h (sexta)
     expect(p.faltas).toBe(2);
     expect(p.diasTac).toBe(0);
@@ -250,6 +252,9 @@ describe('CentralJornadaService.resumoCiclo', () => {
       expect(p.extras50Ms).toBe(2 * UMA_HORA); // bruto acumulado
       expect(p.horasDevidasMs).toBe(UMA_HORA); // déficit de 1h
       expect(p.extras50AtualMs).toBe(UMA_HORA); // 2h − 1h = 1h real
+      // Tem 50% positivas (1h), então NÃO deve horas de verdade.
+      expect(p.horasDevidasMs).toBe(UMA_HORA); // bruto (déficit de 1h)
+      expect(p.horasDevidasAtualMs).toBe(0); // abatido pelas 2h de extra 50%
       // Total do time reflete o 50% REAL (1h), não o bruto (2h).
       expect(r.totais.extras50Ms).toBe(2 * UMA_HORA);
       expect(r.totais.extras50AtualMs).toBe(UMA_HORA);

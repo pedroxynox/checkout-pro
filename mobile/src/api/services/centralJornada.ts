@@ -32,6 +32,8 @@ export interface CentralPessoaResumo extends CentralTotais {
   primeiroNome: string;
   funcao: FuncaoPessoa;
   cargaTrabalhadaMs: number;
+  /** O que deve DE VERDADE agora (devidas − extras 50%, piso 0). É o valor do chip "Deve". */
+  horasDevidasAtualMs: number;
 }
 
 export interface CentralResumo {
