@@ -12,7 +12,11 @@ jest.mock('../../api/services', () => ({
     justificarAusencia: jest.fn(),
     removerAusencia: jest.fn(),
   },
-  escalaService: { listarIncidencias: jest.fn(), justificarIncidencia: jest.fn() },
+  escalaService: {
+    listarIncidencias: jest.fn(),
+    justificarIncidencia: jest.fn(),
+    removerIncidencia: jest.fn(),
+  },
   colaboradoresService: { listar: jest.fn() },
 }));
 
@@ -50,6 +54,7 @@ describe('JustificativasScreen', () => {
     colaboradoresService.listar.mockResolvedValue([{ id: 'c1', nome: 'Ana Souza' }]);
     operadoresService.justificarAusencia.mockResolvedValue({});
     operadoresService.removerAusencia.mockResolvedValue(undefined);
+    escalaService.removerIncidencia.mockResolvedValue(undefined);
   });
 
   it('mostra a falta pendente com quem a registrou', async () => {
@@ -82,5 +87,29 @@ describe('JustificativasScreen', () => {
     await waitFor(() =>
       expect(operadoresService.removerAusencia).toHaveBeenCalledWith('a1'),
     );
+  });
+
+  it('exclui um não-retorno marcado por engano (retorno anotado em atraso)', async () => {
+    // Só o não-retorno na lista, para que "Excluir" seja o da incidência.
+    operadoresService.listarAusencias.mockResolvedValue([]);
+    escalaService.listarIncidencias.mockResolvedValue([
+      {
+        id: 'i1',
+        colaboradorId: 'c1',
+        data: '2026-07-03T00:00:00.000Z',
+        statusJustificativa: 'PENDENTE',
+        motivoJustificativa: null,
+        registradoPorNome: 'Detecção automática',
+        justificadaPorNome: null,
+      },
+    ]);
+    render(<JustificativasScreen />);
+    await screen.findByText('Ana Souza');
+    expect(screen.getByText(/Não retorno ·/)).toBeTruthy();
+    fireEvent.press(screen.getByText('Excluir'));
+    await waitFor(() =>
+      expect(escalaService.removerIncidencia).toHaveBeenCalledWith('i1'),
+    );
+    expect(operadoresService.removerAusencia).not.toHaveBeenCalled();
   });
 });

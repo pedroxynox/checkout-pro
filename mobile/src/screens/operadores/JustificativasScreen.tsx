@@ -204,21 +204,31 @@ export function JustificativasLista({
   const reabrir = (o: Ocorrencia) => aplicar(o, 'PENDENTE');
 
   /**
-   * Exclui uma FALTA lançada por engano (ex.: escala desatualizada). Diferente
-   * de justificar: apaga a ocorrência de vez, para não pesar no colaborador.
-   * Só gerente/supervisor/administrador.
+   * Exclui uma FALTA ou um NÃO-RETORNO lançado por engano (ex.: escala
+   * desatualizada, ou retorno do intervalo anotado em atraso — o verificador
+   * marcou o não-retorno antes de a batida entrar). Diferente de justificar:
+   * apaga a ocorrência de vez, para não pesar no colaborador. Só
+   * gerente/supervisor/administrador.
    */
   const excluir = async (o: Ocorrencia): Promise<void> => {
+    const rotulo = o.tipo === 'FALTA' ? 'falta' : 'ocorrência de não retorno';
     const ok = await confirmar(
-      'Excluir falta',
-      `Excluir a falta de ${o.nome} em ${formatarData(o.data)}? Use quando a falta foi registrada por engano. Esta ação não pode ser desfeita.`,
+      o.tipo === 'FALTA' ? 'Excluir falta' : 'Excluir não retorno',
+      `Excluir a ${rotulo} de ${o.nome} em ${formatarData(o.data)}? Use quando foi registrada por engano (ex.: retorno anotado em atraso). Esta ação não pode ser desfeita.`,
       'Excluir',
     );
     if (!ok) return;
     setOcupado(true);
     try {
-      await operadoresService.removerAusencia(o.id);
-      notificar('Falta excluída', `A falta de ${o.nome} foi removida.`);
+      if (o.tipo === 'FALTA') {
+        await operadoresService.removerAusencia(o.id);
+      } else {
+        await escalaService.removerIncidencia(o.id);
+      }
+      notificar(
+        o.tipo === 'FALTA' ? 'Falta excluída' : 'Não retorno excluído',
+        `A ${rotulo} de ${o.nome} foi removida.`,
+      );
       req.recarregar();
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao excluir.');
@@ -347,7 +357,7 @@ export function JustificativasLista({
                       <Text style={[styles.btnTxt, { color: cores.textoSecundario }]}>Reabrir</Text>
                     </Pressable>
                   )}
-                  {o.tipo === 'FALTA' && podeExcluir && (
+                  {podeExcluir && (
                     <Pressable
                       onPress={() => void excluir(o)}
                       disabled={ocupado}
