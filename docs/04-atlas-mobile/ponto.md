@@ -91,7 +91,9 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   e o dia é hoje.
 - Central de Jornada: navegação por ciclo (0 = atual, sem avançar do atual);
   feriados "registrados" contam só os manuais; carregar checklist do ciclo
-  respeita as permissões acima.
+  respeita as permissões acima. As **"Extras 50%"** (métrica do resumo do time e
+  chip "+50%" de cada colaborador) mostram as 50% **reais do momento**
+  (`extras50AtualMs` = acumulado − o que deve, piso 0), não o bruto do mês.
 
 ## 7. Lógica pura / utilidades
 - `leituraComprovanteUtil.ts`: `leituraCompleta(texto)` (gatilho do leitor ao
