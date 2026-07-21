@@ -36,7 +36,7 @@ automaticamente faltas e não-retornos do intervalo.
 | `ponto-ocr.parser.ts` | Regras puras: extrai nome/data/hora do texto lido | 354 |
 | `ponto-nome-match.ts` | Regras puras: similaridade de nomes (Levenshtein) | 93 |
 | `ponto-alertas.service.ts` | Cron (1 min): verifica riscos de TAC | 54 |
-| `ponto-deteccao-automatica.service.ts` | Cron (5 min): falta automática e não-retorno | 244 |
+| `ponto-deteccao-automatica.service.ts` | Cron (5 min): falta automática, não-retorno e auto-cura | 277 |
 | `deteccao-automatica.domain.ts` | Regras puras: estado do escalado sem batida | 71 |
 | `pessoas-ponto.ts` | Funções (não-fiscais) que batem ponto | 15 |
 | `dto/ponto.dto.ts` | Validação de entrada das rotas | 88 |
@@ -118,6 +118,15 @@ do máximo — **inclusive quando o turno já foi dado por encerrado** por inter
 obrigatório excedido. Antes, a checagem exigia o status `EM_INTERVALO` e nunca
 disparava nesses contratos (o turno virava `ENCERRADO` antes). Best-effort e
 defensivo por pessoa.
+
+**Auto-cura do não-retorno.** Quando já existe um não-retorno do dia mas a
+pessoa fechou o intervalo (voltou — jornada fora do estado de não-retorno e com
+uma batida `RETORNO_INTERVALO`), o cron **remove** o não-retorno AUTO-detectado
+(`IncidenciasService.removerNaoRetornoAutomatico`, só `origem = DETECTADO_PONTO`;
+os manuais do gestor não são tocados). Isso apaga o falso positivo que ficou
+quando o retorno entrou **depois** do ciclo que o marcou (retorno anotado em
+atraso, corrigido à mão ou reenviado) — cobrindo qualquer via de registro, além
+da remoção imediata que o `PontoService` já faz na batida normal.
 
 > **Eficiência (uma carga por ciclo).** As faltas do dia e os não-retornos já
 > registrados são carregados **uma única vez** no início do ciclo (antes era um

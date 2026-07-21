@@ -317,6 +317,29 @@ export class IncidenciasService {
     await this.prisma.incidenciaEscala.delete({ where: { id } });
   }
 
+  /**
+   * Remove os não-retornos AUTO-DETECTADOS (`origem = 'DETECTADO_PONTO'`) de um
+   * colaborador num dia. É a auto-cura da detecção automática: quando a pessoa
+   * fecha o intervalo (voltou), um não-retorno que ficou marcado por engano —
+   * porque o retorno entrou DEPOIS do ciclo que o marcou (anotado em atraso,
+   * corrigido à mão, reenvio) — some sozinho. Os não-retornos **manuais** do
+   * gestor não são afetados. Devolve quantos foram removidos (0 se nenhum).
+   */
+  async removerNaoRetornoAutomatico(
+    colaboradorId: string,
+    data: Date,
+  ): Promise<number> {
+    const { count } = await this.prisma.incidenciaEscala.deleteMany({
+      where: {
+        colaboradorId,
+        tipo: 'NAO_RETORNO_INTERVALO',
+        origem: 'DETECTADO_PONTO',
+        data: inicioDoDia(data),
+      },
+    });
+    return count;
+  }
+
   /** Lista incidências pelos filtros informados, mais recentes primeiro. */
   async listar(filtros: ListarIncidenciasFiltros): Promise<IncidenciaEscala[]> {
     const where: Prisma.IncidenciaEscalaWhereInput = {};

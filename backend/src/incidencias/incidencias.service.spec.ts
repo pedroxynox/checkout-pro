@@ -113,6 +113,28 @@ describe('IncidenciasService', () => {
           if (idx >= 0) store.splice(idx, 1);
           return Promise.resolve({});
         },
+        deleteMany: (args?: {
+          where?: {
+            colaboradorId?: string;
+            tipo?: string;
+            origem?: string;
+            data?: Date;
+          };
+        }) => {
+          const w = args?.where ?? {};
+          let count = 0;
+          for (let i = store.length - 1; i >= 0; i--) {
+            const inc = store[i];
+            if (w.colaboradorId && inc.colaboradorId !== w.colaboradorId)
+              continue;
+            if (w.tipo && inc.tipo !== w.tipo) continue;
+            if (w.origem && inc.origem !== w.origem) continue;
+            if (w.data && inc.data.getTime() !== w.data.getTime()) continue;
+            store.splice(i, 1);
+            count++;
+          }
+          return Promise.resolve({ count });
+        },
         findMany: (args?: {
           where?: {
             colaboradorId?: string;
@@ -327,6 +349,58 @@ describe('IncidenciasService', () => {
     await expect(service.remover('inexistente')).rejects.toBeInstanceOf(
       IncidenciaNaoEncontradaError,
     );
+  });
+
+  it('removerNaoRetornoAutomatico apaga só os auto-detectados do dia (preserva manuais/outros dias)', async () => {
+    const { service, store } = criarServico({
+      colaboradores: [COLABORADOR_BASE],
+    });
+    const dia = new Date(Date.UTC(2026, 6, 3));
+    const semear = (
+      id: string,
+      colaboradorId: string,
+      origem: string,
+      data: Date,
+      tipo = 'NAO_RETORNO_INTERVALO',
+    ): void => {
+      store.push({
+        id,
+        colaboradorId,
+        funcionarioId: null,
+        tipo,
+        data,
+        horaSaida: null,
+        horaEsperadaRetorno: null,
+        horaReal: null,
+        origem,
+        motivo: null,
+        observacao: null,
+        registradoPorId: null,
+        registradoPorNome: null,
+      });
+    };
+    semear('auto', 'c1', 'DETECTADO_PONTO', dia); // deve sair
+    semear('manual', 'c1', 'MANUAL', dia); // manual permanece
+    semear('outroDia', 'c1', 'DETECTADO_PONTO', new Date(Date.UTC(2026, 6, 4))); // outro dia permanece
+    semear('outroColab', 'c2', 'DETECTADO_PONTO', dia); // outro colaborador permanece
+
+    const removidos = await service.removerNaoRetornoAutomatico('c1', dia);
+
+    expect(removidos).toBe(1);
+    expect(store.map((i) => i.id).sort()).toEqual([
+      'manual',
+      'outroColab',
+      'outroDia',
+    ]);
+  });
+
+  it('removerNaoRetornoAutomatico devolve 0 quando não há nada a remover', async () => {
+    const { service } = criarServico();
+    const removidos = await service.removerNaoRetornoAutomatico(
+      'c1',
+      new Date(Date.UTC(2026, 6, 3)),
+    );
+    expect(removidos).toBe(0);
   });
 
   it('sugere não retorno do intervalo detectado no ponto do fiscal', async () => {

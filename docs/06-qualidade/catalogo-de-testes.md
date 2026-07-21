@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 103 arquivos, 651 casos. **Mobile:** 25 arquivos, 100 casos. **Total: 751 casos.**
+> **Backend:** 104 arquivos, 656 casos. **Mobile:** 25 arquivos, 100 casos. **Total: 756 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -78,7 +78,7 @@
 | `src/incidencias/incidencias.justificativa.spec.ts` | 4 | 3 |
 | `src/incidencias/incidencias.properties.spec.ts` | 6 | 1 |
 | `src/incidencias/incidencias.sancoes.spec.ts` | 7 | 2 |
-| `src/incidencias/incidencias.service.spec.ts` | 12 | 2 |
+| `src/incidencias/incidencias.service.spec.ts` | 14 | 2 |
 | `src/incidencias/incidencias.tipos.spec.ts` | 7 | 1 |
 | `src/insumos/insumos.controller.spec.ts` | 5 | 1 |
 | `src/insumos/insumos.properties.spec.ts` | 5 | 2 |
@@ -100,6 +100,7 @@
 | `src/operadores/operadores.service.spec.ts` | 12 | 4 |
 | `src/operadores/remover-ausencia-periodo.spec.ts` | 4 | 1 |
 | `src/ponto/contrato-6x1-congelado.spec.ts` | 5 | 1 |
+| `src/ponto/deteccao-autocura-nao-retorno.spec.ts` | 3 | 1 |
 | `src/ponto/deteccao-automatica.domain.spec.ts` | 8 | 4 |
 | `src/ponto/deteccao-falta-a-prazo.spec.ts` | 3 | 1 |
 | `src/ponto/ponto-alertas.service.spec.ts` | 1 | 1 |
