@@ -23,7 +23,7 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `atestados.domain.ts` | Regras puras: CID, dias e regra do INSS (15 dias / 60 dias) | 166 |
-| `atestados.service.ts` | Lançar, listar, histórico por CID e avisos | 403 |
+| `atestados.service.ts` | Lançar, listar, histórico por CID e avisos | 411 |
 | `atestados.controller.ts` | Rotas HTTP (lançar, autocompletar CID, listar, histórico, remover) | 85 |
 | `atestados.errors.ts` | Erros de domínio (mapeados para HTTP) | 41 |
 | `atestados.module.ts` | Ligações (DI) do módulo | 19 |
@@ -48,9 +48,12 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**.
 - **`lancar(input, autor)`** — valida período/data/ciclo; normaliza o CID
   (exige CID **ou** a marca explícita `semCid`); **rejeita** se houver um
   atestado **sobreposto** do mesmo colaborador (`AtestadoSobrepostoError` — um
-  dia só pode pertencer a um atestado); cria o `Atestado` e as faltas do período
-  numa **transação**; avalia a regra do INSS e avisa a gestão **uma única vez**,
-  no momento em que o mesmo CID cruza o limite.
+  dia só pode pertencer a um atestado); cria o `Atestado` e, na mesma
+  **transação**, as faltas do período pela **primitiva compartilhada**
+  `marcarPeriodoJustificado` (a mesma da ausência a prazo — ver
+  [`operadores`](operadores.md)), carimbando `atestadoId`/`cid`/`colaboradorId`;
+  avalia a regra do INSS e avisa a gestão **uma única vez**, no momento em que o
+  mesmo CID cruza o limite.
 - **`listar(periodo)`** — atestados que intersectam o período (nome + descrição
   do CID).
 - **`historicoColaborador(id)`** — agrupado por CID: episódios, total de dias,

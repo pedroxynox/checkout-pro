@@ -13,6 +13,7 @@ describe('OperadoresService.removerAusenciaPeriodo', () => {
     colaboradorId: string | null;
     data: Date;
     aPrazo: boolean;
+    atestadoId?: string | null;
   }
 
   function criarServico(ausencias: AusenciaFake[]) {
@@ -26,6 +27,7 @@ describe('OperadoresService.removerAusenciaPeriodo', () => {
         }: {
           where: {
             aPrazo?: boolean;
+            atestadoId?: string | null;
             data?: { gte?: Date; lte?: Date };
             OR?: Array<{ pessoaId?: string; colaboradorId?: string }>;
           };
@@ -35,6 +37,8 @@ describe('OperadoresService.removerAusenciaPeriodo', () => {
             const a = ausencias[i];
             if (where.aPrazo !== undefined && a.aPrazo !== where.aPrazo)
               continue;
+            // `atestadoId: null` = só dias que NÃO pertencem a um atestado.
+            if (where.atestadoId === null && a.atestadoId != null) continue;
             const gte = where.data?.gte;
             const lte = where.data?.lte;
             if (gte && a.data.getTime() < gte.getTime()) continue;
@@ -126,6 +130,35 @@ describe('OperadoresService.removerAusenciaPeriodo', () => {
     const r = await service.removerAusenciaPeriodo('col-1', dia(20), dia(21));
     expect(r.removidas).toBe(1);
     expect(ausencias).toHaveLength(0);
+  });
+
+  it('NÃO remove dias que pertencem a um atestado (não deixa o atestado órfão)', async () => {
+    const dia = (d: number) => new Date(Date.UTC(2026, 6, d));
+    const { service, ausencias } = criarServico([
+      // Dia de ATESTADO (aPrazo + atestadoId): preservado.
+      {
+        id: 'at',
+        pessoaId: 'col-1',
+        colaboradorId: 'col-1',
+        data: dia(20),
+        aPrazo: true,
+        atestadoId: 'atestado-1',
+      },
+      // Dia de ausência a prazo comum (sem atestado): removido.
+      {
+        id: 'ap',
+        pessoaId: 'col-1',
+        colaboradorId: 'col-1',
+        data: dia(21),
+        aPrazo: true,
+        atestadoId: null,
+      },
+    ]);
+
+    const r = await service.removerAusenciaPeriodo('col-1', dia(20), dia(25));
+
+    expect(r.removidas).toBe(1);
+    expect(ausencias.map((a) => a.id)).toEqual(['at']); // o dia do atestado ficou
   });
 
   it('rejeita período com a data final antes da inicial', async () => {

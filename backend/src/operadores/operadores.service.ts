@@ -16,6 +16,7 @@ import {
   contagemPorTurno,
   relatorioAusencias,
 } from './operadores.domain';
+import { marcarPeriodoJustificado } from './marcar-periodo-justificado';
 import {
   MotivoJustificativa,
   StatusJustificativa,
@@ -362,35 +363,17 @@ export class OperadoresService {
     // Grava os dias do período de forma ATÔMICA (tudo-ou-nada): se algo falhar
     // no meio (ex.: erro de banco), nenhum dia fica gravado pela metade — a
     // ausência a prazo é um único ato do supervisor. Conta TODOS os dias
-    // corridos do intervalo (inclusive folga): a folga também faz parte.
-    const { criadas, atualizadas } = await this.prisma.$transaction(
-      async (tx) => {
-        let criadas = 0;
-        let atualizadas = 0;
-        for (let t = d0.getTime(); t <= d1.getTime(); t += UM_DIA_MS) {
-          const dia = new Date(t);
-          const existId = idPorDia.get(t);
-          if (existId) {
-            await tx.ausencia.update({
-              where: { id: existId },
-              data: justificativa,
-            });
-            atualizadas += 1;
-          } else {
-            await tx.ausencia.create({
-              data: {
-                pessoaId,
-                data: dia,
-                registradaPorId: autor.id ?? null,
-                registradaPorNome: autor.nome ?? null,
-                ...justificativa,
-              },
-            });
-            criadas += 1;
-          }
-        }
-        return { criadas, atualizadas };
-      },
+    // corridos do intervalo (inclusive folga): a folga também faz parte. O laço
+    // dia-a-dia é a primitiva compartilhada com o atestado (`marcarPeriodoJustificado`).
+    const { criadas, atualizadas } = await this.prisma.$transaction((tx) =>
+      marcarPeriodoJustificado(tx, {
+        pessoaId,
+        inicio: d0,
+        fim: d1,
+        autor,
+        dados: justificativa,
+        idPorDia,
+      }),
     );
 
     const dias = criadas + atualizadas;
@@ -475,6 +458,12 @@ export class OperadoresService {
     const { count } = await this.prisma.ausencia.deleteMany({
       where: {
         aPrazo: true,
+        // NÃO remove dias que pertencem a um ATESTADO (`atestadoId != null`):
+        // senão o documento `Atestado` ficaria órfão (seus dias sumiriam da
+        // escala/faltas, mas o registro e a contagem por CID do INSS
+        // permaneceriam). Para desfazer um atestado, cancele o próprio atestado
+        // (que remove os dias vinculados de forma consistente).
+        atestadoId: null,
         data: { gte: d0, lte: d1 },
         OR: [{ pessoaId }, { colaboradorId: pessoaId }],
       },
