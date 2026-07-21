@@ -93,7 +93,9 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   feriados "registrados" contam só os manuais; carregar checklist do ciclo
   respeita as permissões acima. As **"Extras 50%"** (métrica do resumo do time e
   chip "+50%" de cada colaborador) mostram as 50% **reais do momento**
-  (`extras50AtualMs` = acumulado − o que deve, piso 0), não o bruto do mês.
+  (`extras50AtualMs` = acumulado − o que deve, piso 0), não o bruto do mês. Do
+  mesmo modo, o chip **"Deve"** usa `horasDevidasAtualMs` (o que deve − as 50%,
+  piso 0): quem tem saldo 50% positivo não aparece devendo horas.
 
 ## 7. Lógica pura / utilidades
 - `leituraComprovanteUtil.ts`: `leituraCompleta(texto)` (gatilho do leitor ao
