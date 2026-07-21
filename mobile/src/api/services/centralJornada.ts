@@ -12,6 +12,8 @@ export interface CentralPeriodo {
 
 export interface CentralTotais {
   extras50Ms: number;
+  /** Horas 50% REAIS disponíveis agora (acumulado − o que deve, piso 0). */
+  extras50AtualMs: number;
   extras100Ms: number;
   horasDevidasMs: number;
   horasAtestadoMs: number;

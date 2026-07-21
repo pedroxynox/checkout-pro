@@ -49,6 +49,13 @@ export interface CentralPessoaResumo {
   funcao: FuncaoColaborador;
   cargaTrabalhadaMs: number;
   extras50Ms: number;
+  /**
+   * Horas 50% REAIS disponíveis AGORA = extras 50% acumuladas − o que a pessoa
+   * deve (piso 0). O débito/déficit consome apenas as 50% (mesma regra do saldo
+   * do time), então este é o "50% que a pessoa tem neste momento" — e não o
+   * bruto acumulado no mês ignorando o que deve. É o valor exibido na tela.
+   */
+  extras50AtualMs: number;
   extras100Ms: number;
   horasDevidasMs: number;
   horasAtestadoMs: number;
@@ -119,6 +126,8 @@ export interface CentralResumo {
   periodo: CentralPeriodo;
   totais: {
     extras50Ms: number;
+    /** Horas 50% reais do time AGORA (soma do 50% líquido de cada pessoa). */
+    extras50AtualMs: number;
     extras100Ms: number;
     horasDevidasMs: number;
     horasAtestadoMs: number;
@@ -192,6 +201,8 @@ export interface CentralExportacao {
   geradoEm: string;
   totais: {
     extras50Ms: number;
+    /** Horas 50% reais do time AGORA (soma do 50% líquido de cada pessoa). */
+    extras50AtualMs: number;
     extras100Ms: number;
     horasDevidasMs: number;
     horasAtestadoMs: number;
@@ -678,10 +689,14 @@ export class CentralJornadaService {
     }
 
     const saldoMs = extras50Ms + extras100Ms - horasDevidasMs;
+    // 50% REAIS disponíveis agora: o que deve consome só as 50% (piso 0),
+    // igual ao saldo do time. É o número que a tela mostra (não o bruto do mês).
+    const extras50AtualMs = Math.max(0, extras50Ms - horasDevidasMs);
     return {
       resumo: {
         cargaTrabalhadaMs,
         extras50Ms,
+        extras50AtualMs,
         extras100Ms,
         horasDevidasMs,
         horasAtestadoMs,
@@ -733,6 +748,7 @@ export class CentralJornadaService {
     const totais = pessoas.reduce(
       (acc, p) => ({
         extras50Ms: acc.extras50Ms + p.extras50Ms,
+        extras50AtualMs: acc.extras50AtualMs + p.extras50AtualMs,
         extras100Ms: acc.extras100Ms + p.extras100Ms,
         horasDevidasMs: acc.horasDevidasMs + p.horasDevidasMs,
         horasAtestadoMs: acc.horasAtestadoMs + p.horasAtestadoMs,
@@ -745,6 +761,7 @@ export class CentralJornadaService {
       }),
       {
         extras50Ms: 0,
+        extras50AtualMs: 0,
         extras100Ms: 0,
         horasDevidasMs: 0,
         horasAtestadoMs: 0,
@@ -1006,6 +1023,7 @@ export class CentralJornadaService {
     const totais = pessoas.reduce(
       (acc, p) => ({
         extras50Ms: acc.extras50Ms + p.extras50Ms,
+        extras50AtualMs: acc.extras50AtualMs + p.extras50AtualMs,
         extras100Ms: acc.extras100Ms + p.extras100Ms,
         horasDevidasMs: acc.horasDevidasMs + p.horasDevidasMs,
         horasAtestadoMs: acc.horasAtestadoMs + p.horasAtestadoMs,
@@ -1018,6 +1036,7 @@ export class CentralJornadaService {
       }),
       {
         extras50Ms: 0,
+        extras50AtualMs: 0,
         extras100Ms: 0,
         horasDevidasMs: 0,
         horasAtestadoMs: 0,

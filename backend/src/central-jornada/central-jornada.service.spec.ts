@@ -180,7 +180,9 @@ describe('CentralJornadaService.resumoCiclo', () => {
     const p = r.pessoas[0];
 
     expect(p.cargaTrabalhadaMs).toBe(H7 + H8 + 30_000_000 + 18_000_000); // 7+8+8h20+5
-    expect(p.extras50Ms).toBe(UMA_HORA); // dia B
+    expect(p.extras50Ms).toBe(UMA_HORA); // dia B (bruto acumulado)
+    // 50% REAIS agora: 1h de extra − 9h que deve = 0 (o débito consome as 50%).
+    expect(p.extras50AtualMs).toBe(0);
     expect(p.extras100Ms).toBe(UMA_HORA); // domingo C
     expect(p.horasDevidasMs).toBe(2 * UMA_HORA + H7); // déficit 2h + débito 7h
     expect(p.horasAtestadoMs).toBe(H8); // atestado 8h (sexta)
@@ -198,8 +200,60 @@ describe('CentralJornadaService.resumoCiclo', () => {
     expect(p.nome).toBe('Josiane Lima');
     expect(p.funcao).toBe('FISCAL');
     expect(p.cargaTrabalhadaMs).toBe(H7 + 45 * 60_000); // 7h45
-    expect(p.extras50Ms).toBe(45 * 60_000); // 45 min de extra 50%
+    expect(p.extras50Ms).toBe(45 * 60_000); // 45 min de extra 50% (bruto)
+    // Sem nada que deva, os 50% reais = os 50% brutos.
+    expect(p.extras50AtualMs).toBe(45 * 60_000);
     expect(p.extras100Ms).toBe(0);
+  });
+
+  it('50% reais = extras 50% − o que deve (parcial), no time e na pessoa', () => {
+    // Ter 30/06 (base 7h): 07-12 + 14-18 = 9h → +2h extra 50%.
+    // Qua 01/07 (base 7h) completa: 08-12 + 13-15 = 6h → déficit de 1h.
+    // 50% brutas = 2h; deve 1h → 50% REAIS = 1h (o débito consome só as 50%).
+    const batidas = [
+      batida('t1', '2026-06-30', '07:00'),
+      batida('t2', '2026-06-30', '12:00'),
+      batida('t3', '2026-06-30', '14:00'),
+      batida('t4', '2026-06-30', '18:00'),
+      batida('w1', '2026-07-01', '08:00'),
+      batida('w2', '2026-07-01', '12:00'),
+      batida('w3', '2026-07-01', '13:00'),
+      batida('w4', '2026-07-01', '15:00'),
+    ];
+    const prismaFake = {
+      colaborador: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            nome: 'Ana',
+            funcao: 'OPERADOR',
+            matricula: 'A',
+            usuarioId: null,
+          },
+        ]),
+      },
+      batidaPonto: { findMany: jest.fn().mockResolvedValue(batidas) },
+      ausencia: { findMany: jest.fn().mockResolvedValue([]) },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const feriadosFake = {
+      mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
+    };
+    const service = new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+    );
+
+    return service.resumoCiclo(0).then((r) => {
+      const p = r.pessoas[0];
+      expect(p.extras50Ms).toBe(2 * UMA_HORA); // bruto acumulado
+      expect(p.horasDevidasMs).toBe(UMA_HORA); // déficit de 1h
+      expect(p.extras50AtualMs).toBe(UMA_HORA); // 2h − 1h = 1h real
+      // Total do time reflete o 50% REAL (1h), não o bruto (2h).
+      expect(r.totais.extras50Ms).toBe(2 * UMA_HORA);
+      expect(r.totais.extras50AtualMs).toBe(UMA_HORA);
+    });
   });
 
   it('lista todos os colaboradores não-gerentes, mesmo sem movimento (card zerada)', async () => {

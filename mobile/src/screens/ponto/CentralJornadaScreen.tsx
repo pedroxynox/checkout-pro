@@ -202,7 +202,7 @@ export function CentralJornadaScreen(): React.ReactElement {
                   icone="time-outline"
                   cor={cores.verde}
                   fundo={cores.verdeFundo}
-                  valor={formatarDuracao(resumo.dados.totais.extras50Ms)}
+                  valor={formatarDuracao(resumo.dados.totais.extras50AtualMs)}
                   rotulo="Extras 50%"
                 />
                 <CartaoMetrica
@@ -455,9 +455,9 @@ function PessoaCartao({
           cor={cores.texto}
           fundo={cores.fundo}
         />
-        {pessoa.extras50Ms > 0 && (
+        {pessoa.extras50AtualMs > 0 && (
           <Selo
-            texto={`+50% ${formatarDuracao(pessoa.extras50Ms)}`}
+            texto={`+50% ${formatarDuracao(pessoa.extras50AtualMs)}`}
             cor={cores.azul}
             fundo={cores.azulFundo}
           />

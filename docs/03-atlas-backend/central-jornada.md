@@ -86,6 +86,11 @@ completos), atestados, faltas, TAC, conflitos e atrasos.
   positivas após o débito (o débito consome apenas as 50%); as 100% entram
   sempre. O saldo **individual** do card segue 50% + 100% − devidas (pode ficar
   negativo).
+- `extras50AtualMs = max(0, extras50Ms − horasDevidasMs)` (por pessoa) → as
+  **horas 50% REAIS disponíveis agora**: o bruto acumulado no ciclo menos o que
+  a pessoa deve (o débito/déficit consome só as 50%), com piso 0. É o número
+  exibido na tela (total do time e chip da pessoa); o `extras50Ms` bruto
+  continua disponível para a exportação/folha.
 - Demais cálculos do dia são reusados de [`ponto`](ponto.md) (`calcularJornadaDia`)
   e de `escala-domingo` (`entradaEsperadaNoDia`, `minutosDeAtraso`).
 
@@ -119,7 +124,9 @@ completos), atestados, faltas, TAC, conflitos e atrasos.
 4. **Conflito ponto↔ausência**: as horas vêm das batidas (a ausência é
    ignorada no cálculo) e o conflito fica sinalizado para o gestor resolver.
 5. **Saldo do time ≠ saldo individual**: o débito consome só as 50%; as 100%
-   nunca são debitadas.
+   nunca são debitadas. Pela mesma regra, as **"Extras 50%" exibidas** (total do
+   time e chip da pessoa) são as 50% REAIS (`extras50AtualMs` = bruto − o que
+   deve, piso 0), não o bruto acumulado no mês.
 6. **Lista todas as fichas não-gerentes** (operador/supervisor/fiscal), mesmo
    zeradas, em ordem alfabética.
 7. **Marcar débito respeita o ciclo fechado**.
@@ -127,7 +134,7 @@ completos), atestados, faltas, TAC, conflitos e atrasos.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `central-jornada.service.spec.ts` | Resumo, inconsistências e exportação do ciclo | 12 |
+| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação e 50% reais (líquido do débito) | 13 |
 | `saldo-time.spec.ts` | Regra do saldo do time (`contribuicaoSaldoTime`) | 4 |
 | `central-jornada.controller.spec.ts` | Permissão do débito de horas | 1 |
 
