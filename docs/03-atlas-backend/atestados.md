@@ -46,9 +46,11 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**.
 
 ### `AtestadosService`
 - **`lancar(input, autor)`** — valida período/data/ciclo; normaliza o CID
-  (exige CID **ou** a marca explícita `semCid`); cria o `Atestado` e as faltas
-  do período numa **transação**; avalia a regra do INSS e avisa a gestão **uma
-  única vez**, no momento em que o mesmo CID cruza o limite.
+  (exige CID **ou** a marca explícita `semCid`); **rejeita** se houver um
+  atestado **sobreposto** do mesmo colaborador (`AtestadoSobrepostoError` — um
+  dia só pode pertencer a um atestado); cria o `Atestado` e as faltas do período
+  numa **transação**; avalia a regra do INSS e avisa a gestão **uma única vez**,
+  no momento em que o mesmo CID cruza o limite.
 - **`listar(periodo)`** — atestados que intersectam o período (nome + descrição
   do CID).
 - **`historicoColaborador(id)`** — agrupado por CID: episódios, total de dias,
@@ -59,9 +61,11 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**.
 - `normalizarCid(cid)` — maiúsculas, sem espaços, só letras/dígitos e ponto.
 - `buscarCid(catalogo, termo, limite)` — por código ou descrição (sem acentos).
 - `contarDiasCorridos(inicio, fim)` — dias inclusive.
-- `avaliarRegraInss({ episodios, cid, referenciaFim })` — soma os dias do
-  **mesmo CID** na janela de **60 dias** e sinaliza quando passa de **15 dias**
-  (encaminhar ao INSS). Atestados **sem CID** não são agrupados.
+- `avaliarRegraInss({ episodios, cid, referenciaFim })` — conta os **dias
+  distintos** do **mesmo CID** na janela de **60 dias** e sinaliza quando passa
+  de **15 dias** (encaminhar ao INSS). Conta dias distintos (não a soma de
+  `dias` por episódio), então períodos que se sobrepõem **não contam o mesmo dia
+  em dobro**. Atestados **sem CID** não são agrupados.
 - `cruzouLimiteInss(antes, depois)` — para avisar só na virada do limite.
 
 ## 7. Estados e enums
@@ -89,11 +93,15 @@ Não define enums próprios. Reutiliza `MotivoJustificativa.ATESTADO_MEDICO` e
 4. **Conversão sem duplicar:** dias que já tinham falta viram atestado.
 5. **Operacionalmente descobre o posto** (a cobertura da escala continua sendo
    responsabilidade do gestor).
+6. **Sem sobreposição:** um colaborador não pode ter dois atestados que se
+   cruzam (um dia pertence a um único atestado); a contagem do INSS soma **dias
+   distintos** na janela.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `atestados.domain.spec.ts` | Normalização de CID, busca, contagem de dias, regra do INSS (janela/limite/virada) | 12 |
+| `atestados.domain.spec.ts` | CID, busca, dias, regra do INSS (janela/limite/virada) + dias distintos em sobreposição | 13 |
+| `atestados.service.spec.ts` | Guard de sobreposição e validação de período do `lancar` | 3 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

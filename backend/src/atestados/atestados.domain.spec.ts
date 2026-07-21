@@ -63,6 +63,20 @@ describe('avaliarRegraInss', () => {
     expect(r.ultrapassaInss).toBe(true);
   });
 
+  it('conta dias DISTINTOS quando períodos do mesmo CID se sobrepõem', () => {
+    const r = avaliarRegraInss({
+      episodios: [
+        { cid: 'M54.5', inicio: dia('2026-07-10'), dias: 6 }, // 10..15
+        { cid: 'M54.5', inicio: dia('2026-07-13'), dias: 6 }, // 13..18
+      ],
+      cid: 'M54.5',
+      referenciaFim: dia('2026-07-27'),
+    });
+    // União 10..18 = 9 dias (NÃO 12: os dias 13,14,15 não contam em dobro).
+    expect(r.totalDias).toBe(9);
+    expect(r.ultrapassaInss).toBe(false);
+  });
+
   it('não mistura CIDs diferentes', () => {
     const r = avaliarRegraInss({
       episodios,

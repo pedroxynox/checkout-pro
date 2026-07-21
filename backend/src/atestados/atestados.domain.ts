@@ -17,6 +17,11 @@ export const LIMITE_INSS_DIAS = 15;
 
 const UM_DIA_MS = 24 * 60 * 60 * 1000;
 
+/** Início do dia (00:00 UTC) como timestamp — comparações por dia civil. */
+function diaUtc(data: Date): number {
+  return Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate());
+}
+
 /** Minúsculas e sem acentos — para uma busca tolerante no catálogo. */
 function semAcento(texto: string): string {
   return texto
@@ -125,24 +130,22 @@ export function avaliarRegraInss(params: {
       ultrapassaInss: false,
     };
   }
-  const fimJanela = Date.UTC(
-    params.referenciaFim.getUTCFullYear(),
-    params.referenciaFim.getUTCMonth(),
-    params.referenciaFim.getUTCDate(),
-  );
+  const fimJanela = diaUtc(params.referenciaFim);
   const inicioJanela = fimJanela - (janelaDias - 1) * UM_DIA_MS;
-  let totalDias = 0;
+  // Conta DIAS DISTINTOS do mesmo CID dentro da janela: períodos que se
+  // sobrepõem NÃO contam o mesmo dia duas vezes (antes somava `dias` de cada
+  // episódio, inflando o total do INSS quando dois atestados se cruzavam).
+  const diasNaJanela = new Set<number>();
   for (const ep of params.episodios) {
     if (normalizarCid(ep.cid) !== cid) continue;
-    const ini = Date.UTC(
-      ep.inicio.getUTCFullYear(),
-      ep.inicio.getUTCMonth(),
-      ep.inicio.getUTCDate(),
-    );
-    if (ini >= inicioJanela && ini <= fimJanela) {
-      totalDias += ep.dias;
+    if (ep.dias <= 0) continue;
+    const ini = diaUtc(ep.inicio);
+    for (let i = 0; i < ep.dias; i += 1) {
+      const d = ini + i * UM_DIA_MS;
+      if (d >= inicioJanela && d <= fimJanela) diasNaJanela.add(d);
     }
   }
+  const totalDias = diasNaJanela.size;
   return {
     cid,
     totalDias,
