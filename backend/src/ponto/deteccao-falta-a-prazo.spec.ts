@@ -33,45 +33,26 @@ describe('PontoDeteccaoAutomaticaService — ausência a prazo não vira falta a
     data: Date;
   }
 
-  /** Avalia o `where` do `findFirst` de ausência usado pelo cron. */
-  function casaWhere(
-    a: AusenciaFake,
-    where: {
-      data: Date;
-      OR?: Array<{
-        pessoaId?: { in: string[] };
-        colaboradorId?: { in: string[] };
-      }>;
-      pessoaId?: string;
-    },
-  ): boolean {
-    if (a.data.getTime() !== where.data.getTime()) return false;
-    if (where.OR) {
-      return where.OR.some((clausula) => {
-        if (clausula.pessoaId) return clausula.pessoaId.in.includes(a.pessoaId);
-        if (clausula.colaboradorId)
-          return (
-            a.colaboradorId != null &&
-            clausula.colaboradorId.in.includes(a.colaboradorId)
-          );
-        return false;
-      });
-    }
-    if (where.pessoaId !== undefined) return a.pessoaId === where.pessoaId;
-    return false;
-  }
-
   function criarServico(ausencias: AusenciaFake[]) {
     const registrarFalta = jest.fn().mockResolvedValue(undefined);
     const registrarAusencia = jest.fn().mockResolvedValue({});
 
+    // O cron carrega, UMA vez por ciclo, as faltas do dia (pessoaId +
+    // colaboradorId) e os não-retornos já registrados; a checagem de "já tem
+    // falta?" é feita em memória.
     const prismaFake = {
       batidaPonto: { findMany: () => Promise.resolve([]) },
       registroPontoFiscal: { findMany: () => Promise.resolve([]) },
       ausencia: {
-        findFirst: ({ where }: { where: never }) =>
-          Promise.resolve(ausencias.find((a) => casaWhere(a, where)) ?? null),
+        findMany: () =>
+          Promise.resolve(
+            ausencias.map((a) => ({
+              pessoaId: a.pessoaId,
+              colaboradorId: a.colaboradorId,
+            })),
+          ),
       },
+      incidenciaEscala: { findMany: () => Promise.resolve([]) },
     };
 
     const fiscais = {

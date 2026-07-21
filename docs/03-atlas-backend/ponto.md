@@ -36,7 +36,7 @@ automaticamente faltas e não-retornos do intervalo.
 | `ponto-ocr.parser.ts` | Regras puras: extrai nome/data/hora do texto lido | 354 |
 | `ponto-nome-match.ts` | Regras puras: similaridade de nomes (Levenshtein) | 93 |
 | `ponto-alertas.service.ts` | Cron (1 min): verifica riscos de TAC | 54 |
-| `ponto-deteccao-automatica.service.ts` | Cron (5 min): falta automática e não-retorno | 214 |
+| `ponto-deteccao-automatica.service.ts` | Cron (5 min): falta automática e não-retorno | 244 |
 | `deteccao-automatica.domain.ts` | Regras puras: estado do escalado sem batida | 71 |
 | `pessoas-ponto.ts` | Funções (não-fiscais) que batem ponto | 15 |
 | `dto/ponto.dto.ts` | Validação de entrada das rotas | 88 |
@@ -118,6 +118,14 @@ do máximo — **inclusive quando o turno já foi dado por encerrado** por inter
 obrigatório excedido. Antes, a checagem exigia o status `EM_INTERVALO` e nunca
 disparava nesses contratos (o turno virava `ENCERRADO` antes). Best-effort e
 defensivo por pessoa.
+
+> **Eficiência (uma carga por ciclo).** As faltas do dia e os não-retornos já
+> registrados são carregados **uma única vez** no início do ciclo (antes era um
+> `findFirst` por escalado — N consultas a cada 5 min); as checagens "já tem
+> falta?" e "já registrado?" são feitas em memória. No não-retorno, o "já
+> registrado?" é conferido **antes** de recalcular a jornada, evitando o cômputo
+> caro de quem já tem a incidência do dia. Os registros continuam idempotentes
+> (a duplicidade é silenciosa), então a checagem em memória é só um atalho.
 
 > **Falta automática × ausência a prazo (chave dupla).** Antes de marcar, o cron
 > verifica se já existe ausência no dia. Essa checagem casa **as duas chaves**

@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 100 arquivos, 626 casos. **Mobile:** 25 arquivos, 99 casos. **Total: 725 casos.**
+> **Backend:** 100 arquivos, 627 casos. **Mobile:** 25 arquivos, 99 casos. **Total: 726 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -77,7 +77,7 @@
 | `src/incidencias/incidencias.justificativa.spec.ts` | 4 | 3 |
 | `src/incidencias/incidencias.properties.spec.ts` | 6 | 1 |
 | `src/incidencias/incidencias.sancoes.spec.ts` | 7 | 2 |
-| `src/incidencias/incidencias.service.spec.ts` | 11 | 2 |
+| `src/incidencias/incidencias.service.spec.ts` | 12 | 2 |
 | `src/incidencias/incidencias.tipos.spec.ts` | 7 | 1 |
 | `src/insumos/insumos.controller.spec.ts` | 5 | 1 |
 | `src/insumos/insumos.properties.spec.ts` | 5 | 2 |

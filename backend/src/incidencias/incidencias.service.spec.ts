@@ -298,6 +298,30 @@ describe('IncidenciasService', () => {
     expect(inc.horaEsperadaRetorno).toBe('13:00');
   });
 
+  it('não resolve funcionarioId para colaborador OPERADOR (pula a varredura de fiscais)', async () => {
+    const { service } = criarServico({
+      colaboradores: [
+        {
+          id: 'op1',
+          nome: 'Operador Um',
+          matricula: 'op1',
+          usuarioId: null,
+          funcao: 'OPERADOR',
+        },
+      ],
+    });
+    const inc = await service.registrar(
+      {
+        colaboradorId: 'op1',
+        tipo: 'NAO_RETORNO_INTERVALO',
+        data: '2026-07-03',
+        horaSaida: '12:00',
+      },
+      AUTOR,
+    );
+    expect(inc.funcionarioId).toBeNull();
+  });
+
   it('remover lança 404 quando a incidência não existe', async () => {
     const { service } = criarServico();
     await expect(service.remover('inexistente')).rejects.toBeInstanceOf(
