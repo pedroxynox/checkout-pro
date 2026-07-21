@@ -1374,6 +1374,9 @@ export interface ColaboradorDia {
   ausenciaId: string | null;
   /** CID do atestado (quando status = ATESTADO e há CID); senão null. */
   cid?: string | null;
+  /** Período do atestado (ISO yyyy-mm-dd) quando a falta é de atestado; senão null. */
+  atestadoInicio?: string | null;
+  atestadoFim?: string | null;
   /** Estado da justificativa da falta (só quando status = FALTA/ATESTADO). */
   statusJustificativa?: StatusJustificativa | null;
   justificadaPorNome?: string | null;

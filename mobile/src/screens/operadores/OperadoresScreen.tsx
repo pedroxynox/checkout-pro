@@ -1304,6 +1304,12 @@ export function OperadoresScreen(): React.ReactElement {
                         <Text style={styles.faltaNomeFull} numberOfLines={1}>
                           {c.nome}
                         </Text>
+                        {c.atestadoInicio && c.atestadoFim ? (
+                          <Text style={styles.faltaTags} numberOfLines={1}>
+                            {formatarData(c.atestadoInicio)} até{' '}
+                            {formatarData(c.atestadoFim)}
+                          </Text>
+                        ) : null}
                       </View>
                       <Selo
                         texto={c.cid ? `CID ${c.cid}` : 'sem CID'}
