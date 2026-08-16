@@ -431,16 +431,18 @@ function PessoaCartao({
           <Text style={styles.pessoaNome}>{pessoa.primeiroNome}</Text>
           <Text style={styles.pessoaFuncao}>{rotuloFuncao(pessoa.funcao)}</Text>
         </View>
+        {/* Saldo da card = SÓ as horas 50% (`saldo50Ms`, com sinal). As 100%
+            não entram: nunca são debitadas e aparecem no chip `+100%`. */}
         <View style={styles.pessoaSaldoBox}>
           <Text
             style={[
               styles.pessoaSaldo,
-              { color: pessoa.saldoMs >= 0 ? cores.verde : cores.vermelho },
+              { color: pessoa.saldo50Ms >= 0 ? cores.verde : cores.vermelho },
             ]}
           >
-            {formatarSaldo(pessoa.saldoMs)}
+            {formatarSaldo(pessoa.saldo50Ms)}
           </Text>
-          <Text style={styles.pessoaSaldoLabel}>saldo</Text>
+          <Text style={styles.pessoaSaldoLabel}>saldo 50%</Text>
         </View>
         <Ionicons
           name="chevron-forward"

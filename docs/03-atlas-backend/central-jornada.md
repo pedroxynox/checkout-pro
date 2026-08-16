@@ -87,8 +87,16 @@ faltas, TAC, conflitos e atrasos.
 - `contribuicaoSaldoTime({extras50Ms, extras100Ms, horasDevidasMs})` →
   contribuição de uma pessoa ao **saldo do time**: as 50% entram só se
   positivas após o débito (o débito consome apenas as 50%); as 100% entram
-  sempre. O saldo **individual** do card segue 50% + 100% − devidas (pode ficar
-  negativo).
+  sempre.
+- `saldo50Ms = extras50Ms − horasDevidasMs` (por pessoa) → **saldo das horas
+  50%, com sinal** (pode ser negativo). É o número exibido como "saldo 50%" na
+  card da pessoa e no detalhe. As 100% ficam de fora de propósito: nunca são
+  debitadas e já têm o chip `+100%`. Equivale a
+  `extras50AtualMs − horasDevidasAtualMs`, mas **sem o piso 0** dos dois — aqui o
+  sinal importa, porque é ele que pinta o valor de verde ou vermelho.
+- `saldoMs = extras50Ms + extras100Ms − horasDevidasMs` (por pessoa) → saldo
+  geral do banco de horas (as duas moedas somadas). Continua no contrato e na
+  exportação, mas **não é mais o número da card**.
 - `extras50AtualMs = max(0, extras50Ms − horasDevidasMs)` (por pessoa) → as
   **horas 50% REAIS disponíveis agora**: o bruto acumulado no ciclo menos o que
   a pessoa deve (o débito/déficit consome só as 50%), com piso 0. É o número
@@ -149,12 +157,21 @@ faltas, TAC, conflitos e atrasos.
    50% (regra 6), ainda apagava as extras de 50% ganhas nos outros dias.
 5. **Conflito ponto↔ausência**: as horas vêm das batidas (a ausência é
    ignorada no cálculo) e o conflito fica sinalizado para o gestor resolver.
-6. **Saldo do time ≠ saldo individual**: o débito consome só as 50%; as 100%
-   nunca são debitadas. Pela mesma regra, as **"Extras 50%" exibidas** (total do
-   time e chip da pessoa) são as 50% REAIS (`extras50AtualMs` = bruto − o que
-   deve, piso 0), não o bruto acumulado no mês; e o chip **"Deve"** mostra o que
-   se deve DE VERDADE (`horasDevidasAtualMs` = o que deve − 50%, piso 0), então
-   quem tem 50% positivas não aparece devendo horas.
+6. **O débito consome só as 50%; as 100% nunca são debitadas.** Daí saem os três
+   números da tela, todos derivados da mesma regra:
+   - **"Extras 50%"** (total do time e chip da pessoa) = `extras50AtualMs`
+     (bruto − o que deve, piso 0), não o bruto acumulado no mês;
+   - chip **"Deve"** = `horasDevidasAtualMs` (o que deve − 50%, piso 0), então
+     quem tem 50% positivas não aparece devendo horas;
+   - **"saldo 50%"** da card = `saldo50Ms` (extras 50% − o que deve, **com
+     sinal**): só a moeda que o débito consome. As 100% não entram — somá-las
+     mascarava o débito (1h de 100% num domingo "pagava" 1h devida na semana,
+     que ninguém pode debitar). O `saldoMs` geral (50 + 100 − devidas) segue
+     existindo no contrato e na exportação.
+
+   **Saldo do time ≠ saldo da card**: o total do time usa
+   `contribuicaoSaldoTime` (50% positivas + 100% sempre), então ele **não** é a
+   soma dos saldos das cards — nem antes desta mudança era.
 7. **Lista todas as fichas não-gerentes** (operador/supervisor/fiscal), mesmo
    zeradas, em ordem alfabética.
 8. **Marcar débito respeita o ciclo fechado** e a regra 4 (domingo/feriado não
@@ -164,7 +181,7 @@ faltas, TAC, conflitos e atrasos.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais (líquido do débito) e domingo/feriado sem hora devida (déficit e falta-débito) | 19 |
+| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito) | 21 |
 | `saldo-time.spec.ts` | Regra do saldo do time (`contribuicaoSaldoTime`) | 4 |
 | `central-jornada.controller.spec.ts` | Permissão do débito de horas | 1 |
 

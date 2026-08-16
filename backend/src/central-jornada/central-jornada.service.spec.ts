@@ -250,6 +250,58 @@ describe('CentralJornadaService.resumoCiclo', () => {
     expect(p.faltas).toBe(2);
     expect(p.diasTac).toBe(0);
     expect(p.saldoMs).toBe(2 * UMA_HORA - (2 * UMA_HORA + H7)); // extras − devidas
+    // Saldo da card = SÓ as 50%: 1h de extra − 9h que deve = −8h (as 100% do
+    // domingo ficam de fora, no chip próprio).
+    expect(p.saldo50Ms).toBe(UMA_HORA - (2 * UMA_HORA + H7));
+  });
+
+  /**
+   * O "saldo" da card mostra apenas as horas 50% (com sinal). As 100% nunca são
+   * debitadas e têm chip próprio, então somá-las ao saldo misturava uma moeda
+   * que o débito consome com outra que não — e escondia quem estava devendo.
+   */
+  it('saldo 50% da card ignora as horas 100%', async () => {
+    // Dom 05/07 (base 7h20): 06-12 + 14-16:20 = 8h20 → +1h a 100%.
+    // Qua 01/07 (base 7h) completa: 08-12 + 13-15 = 6h → déficit de 1h.
+    const batidas = [
+      batida('x1', '2026-07-05', '06:00'),
+      batida('x2', '2026-07-05', '12:00'),
+      batida('x3', '2026-07-05', '14:00'),
+      batida('x4', '2026-07-05', '16:20'),
+      batida('w1', '2026-07-01', '08:00'),
+      batida('w2', '2026-07-01', '12:00'),
+      batida('w3', '2026-07-01', '13:00'),
+      batida('w4', '2026-07-01', '15:00'),
+    ];
+    const p = (await montarComBatidas(batidas).resumoCiclo(0)).pessoas[0];
+
+    expect(p.extras100Ms).toBe(UMA_HORA); // 100% do domingo: seguem existindo
+    expect(p.extras50Ms).toBe(0);
+    expect(p.horasDevidasMs).toBe(UMA_HORA); // déficit da quarta
+    // Saldo geral (banco de horas) ainda soma as duas: 0 + 1h − 1h = 0.
+    expect(p.saldoMs).toBe(0);
+    // Saldo da card, só 50%: 0 − 1h = −1h. Não é mascarado pela 1h de 100%.
+    expect(p.saldo50Ms).toBe(-UMA_HORA);
+  });
+
+  it('saldo 50% é o líquido com sinal (complementar aos chips)', async () => {
+    // Ter 30/06 (base 7h): 07-12 + 14-18 = 9h → +2h de 50%.
+    // Qua 01/07 (base 7h) completa: 08-12 + 13-15 = 6h → déficit de 1h.
+    const batidas = [
+      batida('t1', '2026-06-30', '07:00'),
+      batida('t2', '2026-06-30', '12:00'),
+      batida('t3', '2026-06-30', '14:00'),
+      batida('t4', '2026-06-30', '18:00'),
+      batida('w1', '2026-07-01', '08:00'),
+      batida('w2', '2026-07-01', '12:00'),
+      batida('w3', '2026-07-01', '13:00'),
+      batida('w4', '2026-07-01', '15:00'),
+    ];
+    const p = (await montarComBatidas(batidas).resumoCiclo(0)).pessoas[0];
+
+    expect(p.saldo50Ms).toBe(UMA_HORA); // 2h − 1h, positivo
+    // Invariante: o saldo 50% é a versão COM SINAL dos dois chips (que têm piso 0).
+    expect(p.saldo50Ms).toBe(p.extras50AtualMs - p.horasDevidasAtualMs);
   });
 
   it('inclui o fiscal (vínculo por conta/matrícula) com suas horas extras', async () => {

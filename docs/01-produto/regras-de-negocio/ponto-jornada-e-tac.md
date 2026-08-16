@@ -97,7 +97,10 @@ de TAC, conflitos, atrasos e o **saldo** (banco de horas).
     para o gestor resolver.
 19. **Saldo do time ≠ saldo individual:** no saldo do time, o débito de uma falta
     consome **apenas as horas a 50%**; as horas a **100% nunca são debitadas**. O
-    saldo individual do card segue 50% + 100% − devidas (pode ficar negativo).
+    **saldo do card de cada pessoa mostra só as horas a 50%** (extras 50% − o que
+    deve, podendo ficar negativo): as 100% ficam fora porque nunca são debitadas
+    e já aparecem no seu próprio chip `+100%`. Somar as duas escondia quem estava
+    devendo — as 100% de um domingo mascaravam o débito da semana.
 20. **Fechar o ciclo** (permissão `CENTRAL_JORNADA`) **bloqueia modificações**
     ordinárias na jornada daquele período; **reabrir** exige administrador
     (`ADMIN_DADOS`). A apuração é sempre sob demanda, então reabrir já reflete nas

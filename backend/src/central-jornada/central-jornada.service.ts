@@ -81,6 +81,20 @@ export interface CentralPessoaResumo {
   atrasos: number;
   /** Saldo (banco de horas) = extras (50+100) − horas que deve. 1h = 1h. */
   saldoMs: number;
+  /**
+   * Saldo das horas 50% = extras 50% acumuladas − o que a pessoa deve. **Pode
+   * ficar negativo** (deve mais do que tem de 50%).
+   *
+   * É o número exibido como "saldo" na card da pessoa. As 100% ficam FORA de
+   * propósito: elas nunca são debitadas (regra 6) e já têm o seu próprio chip
+   * `+100%`, então somá-las ao saldo misturava duas moedas diferentes — uma
+   * que o débito consome e outra que não — e escondia quem estava devendo.
+   *
+   * É o mesmo valor que `extras50AtualMs − horasDevidasAtualMs`, só que sem o
+   * piso 0 dos dois: aqui o sinal importa, porque é ele que pinta o saldo de
+   * verde ou vermelho na tela.
+   */
+  saldo50Ms: number;
 }
 
 /** Detalhe de um dia do ciclo (drill-down por pessoa). */
@@ -724,6 +738,9 @@ export class CentralJornadaService {
     // O que deve DE VERDADE agora: as 50% abatem o débito. Se sobram 50%
     // positivas, não deve nada (complementar a extras50AtualMs).
     const horasDevidasAtualMs = Math.max(0, horasDevidasMs - extras50Ms);
+    // Saldo só das 50% (com sinal): é o "saldo" da card. As 100% não entram —
+    // nunca são debitadas e têm chip próprio.
+    const saldo50Ms = extras50Ms - horasDevidasMs;
     return {
       resumo: {
         cargaTrabalhadaMs,
@@ -738,6 +755,7 @@ export class CentralJornadaService {
         conflitos,
         atrasos,
         saldoMs,
+        saldo50Ms,
       },
       dias,
     };
