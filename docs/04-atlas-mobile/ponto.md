@@ -101,6 +101,10 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   erro de exibição: são dias pagos pela carga cumprida, com extra de 100% acima
   da base e sem débito abaixo dela (regra 4 da
   [`central-jornada`](../03-atlas-backend/central-jornada.md)).
+- Pela mesma regra, o botão **"Débito"** do detalhe da jornada (`aceitaDebito`)
+  **não aparece em domingo nem em feriado**: faltar nesses dias fica apenas como
+  ausência e o servidor recusaria a marcação. O botão segue disponível nos
+  demais dias para quem tem `OPERADORES_AUSENCIAS`.
 
 ## 7. Lógica pura / utilidades
 - `leituraComprovanteUtil.ts`: `leituraCompleta(texto)` (gatilho do leitor ao

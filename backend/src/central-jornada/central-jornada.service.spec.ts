@@ -130,6 +130,34 @@ describe('CentralJornadaService.resumoCiclo', () => {
     );
   }
 
+  /** Serviço com uma única colaboradora ('c1'), sem batidas e com uma ausência. */
+  function montarComAusencia(ausencia: Record<string, unknown>) {
+    const prismaFake = {
+      colaborador: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            nome: 'Ana',
+            funcao: 'OPERADOR',
+            matricula: 'A',
+            usuarioId: null,
+          },
+        ]),
+      },
+      batidaPonto: { findMany: jest.fn().mockResolvedValue([]) },
+      ausencia: { findMany: jest.fn().mockResolvedValue([ausencia]) },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const feriadosFake = {
+      mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
+    };
+    return new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+    );
+  }
+
   /**
    * Um fiscal bate ponto pela identidade de Fiscal (batida.pessoaId = Fiscal.id,
    * colaboradorId nulo), diferente do id da sua ficha. A Central deve resolver o
@@ -346,6 +374,102 @@ describe('CentralJornadaService.resumoCiclo', () => {
     expect(p.horasDevidasMs).toBe(0);
     expect(p.extras50Ms).toBe(0);
     expect(p.extras100Ms).toBe(0);
+  });
+
+  /**
+   * Faltar num domingo escalado (fora da folga do rodízio) fica apenas como
+   * AUSENTE: domingo não gera hora devida, então não há o que debitar. Cobre os
+   * dois lados: a marcação é recusada e um registro marcado antes desta regra
+   * não vira débito no cálculo.
+   */
+  it('falta no domingo marcada como débito NÃO gera hora devida', async () => {
+    const service = montarComAusencia({
+      id: 'z1',
+      pessoaId: 'c1',
+      colaboradorId: 'c1',
+      data: dia('2026-07-05'), // domingo
+      debitoHoras: true,
+      motivoJustificativa: null,
+    });
+
+    const r = await service.resumoCiclo(0);
+    const p = r.pessoas[0];
+
+    expect(p.faltas).toBe(1); // segue contando como falta
+    expect(p.horasDevidasMs).toBe(0); // mas sem débito de horas
+    expect(p.saldoMs).toBe(0);
+
+    const det = await service.detalhePessoa('c1', 0);
+    const domingo = det.dias.find((d) => d.data.startsWith('2026-07-05'));
+    expect(domingo?.tipo).toBe('FALTA'); // e não FALTA_DEBITO
+    expect(domingo?.devidasMs).toBe(0);
+    expect(domingo?.debito).toBe(false); // não aparece debitado na tela
+  });
+
+  it('recusa marcar débito em falta de domingo e de feriado', async () => {
+    const ausencia = {
+      id: 'z1',
+      pessoaId: 'c1',
+      colaboradorId: 'c1',
+      data: dia('2026-07-05'), // domingo
+      debitoHoras: false,
+      motivoJustificativa: null,
+    };
+    const prismaFake = {
+      ausencia: {
+        findUnique: jest.fn().mockResolvedValue(ausencia),
+        update: jest.fn(),
+      },
+      colaborador: {
+        findUnique: jest.fn().mockResolvedValue({
+          tipoContratoJornadaId: null,
+        }),
+      },
+    };
+    const feriadosFake = { ehFeriado: jest.fn().mockResolvedValue(false) };
+    const service = new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+    );
+
+    await expect(service.marcarDebito('z1', true)).rejects.toThrow(/Domingo/);
+    expect(prismaFake.ausencia.update).not.toHaveBeenCalled();
+
+    // Mesma recusa num feriado que cai em dia de semana.
+    prismaFake.ausencia.findUnique.mockResolvedValue({
+      ...ausencia,
+      data: dia('2026-07-01'), // quarta
+    });
+    feriadosFake.ehFeriado.mockResolvedValue(true);
+    await expect(service.marcarDebito('z1', true)).rejects.toThrow(/Feriado/);
+    expect(prismaFake.ausencia.update).not.toHaveBeenCalled();
+
+    // Desmarcar é sempre permitido (limpa registros antigos).
+    prismaFake.ausencia.update.mockResolvedValue({ ...ausencia });
+    await service.marcarDebito('z1', false);
+    expect(prismaFake.ausencia.update).toHaveBeenCalledWith({
+      where: { id: 'z1' },
+      data: { debitoHoras: false },
+    });
+  });
+
+  it('falta em dia de semana marcada como débito continua gerando o débito', async () => {
+    const service = montarComAusencia({
+      id: 'z2',
+      pessoaId: 'c1',
+      colaboradorId: 'c1',
+      data: dia('2026-07-01'), // quarta, base 7h
+      debitoHoras: true,
+      motivoJustificativa: null,
+    });
+
+    const p = (await service.resumoCiclo(0)).pessoas[0];
+    expect(p.horasDevidasMs).toBe(H7);
+
+    const det = await service.detalhePessoa('c1', 0);
+    const quarta = det.dias.find((d) => d.data.startsWith('2026-07-01'));
+    expect(quarta?.tipo).toBe('FALTA_DEBITO');
+    expect(quarta?.debito).toBe(true);
   });
 
   it('domingo acima da carga continua gerando extra de 100%', async () => {
