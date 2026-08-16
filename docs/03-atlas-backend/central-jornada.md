@@ -78,7 +78,8 @@ ordem cronológica.
 Agrupa batidas/ausências por dia e, para cada dia do ciclo, decide o tipo
 (`TRABALHO`/`INCOMPLETO`/`FALTA`/`FALTA_DEBITO`/`ATESTADO`/`SEM_REGISTRO`),
 delega o cálculo a `calcularJornadaDia`, acumula extras, devidas (só em dias
-completos), atestados, faltas, TAC, conflitos e atrasos.
+completos **e que geram débito** — domingo e feriado nunca geram), atestados,
+faltas, TAC, conflitos e atrasos.
 
 ## 6. Lógica de domínio (funções puras)
 - `contribuicaoSaldoTime({extras50Ms, extras100Ms, horasDevidasMs})` →
@@ -96,6 +97,10 @@ completos), atestados, faltas, TAC, conflitos e atrasos.
   **complementar** a `extras50AtualMs` (no máximo um dos dois é > 0): quem tem
   saldo 50% positivo (mesmo que 9 min) **não deve horas**. É o valor do chip
   "Deve" — antes mostrava o bruto mesmo com 50% positivas.
+- `diaPagaAdicional100(diaSemana, ehFeriado, regras)` (de [`ponto`](ponto.md)) →
+  decide se o dia é pago com adicional de 100% (domingo e todo feriado) e, pela
+  **mesma regra vista do outro lado**, se o dia **gera hora devida**: o déficit
+  só é lançado quando o dia NÃO paga 100%.
 - Demais cálculos do dia são reusados de [`ponto`](ponto.md) (`calcularJornadaDia`)
   e de `escala-domingo` (`entradaEsperadaNoDia`, `minutosDeAtraso`).
 
@@ -126,22 +131,32 @@ completos), atestados, faltas, TAC, conflitos e atrasos.
    por conta/matrícula atribui a jornada à ficha, senão o fiscal sumiria.
 3. **Horas devidas só contam em dias completos** (o dia em andamento não gera
    déficit).
-4. **Conflito ponto↔ausência**: as horas vêm das batidas (a ausência é
+4. **Domingo e feriado NUNCA geram hora devida.** Esses dias pagam a carga
+   efetivamente cumprida: o que passa da carga-base rende extra de **100%**, o
+   que fica abaixo dela **não vira débito**. O déficit é exclusivo dos demais
+   dias da semana, que seguem a lógica normal (extra de 50% acima da base,
+   débito abaixo). Antes desta regra um domingo de 6h contra a base de 7h20
+   lançava 1h20 de débito — que, por consumir apenas as 50% (regra 6), ainda
+   apagava as extras de 50% ganhas nos outros dias.
+5. **Conflito ponto↔ausência**: as horas vêm das batidas (a ausência é
    ignorada no cálculo) e o conflito fica sinalizado para o gestor resolver.
-5. **Saldo do time ≠ saldo individual**: o débito consome só as 50%; as 100%
+6. **Saldo do time ≠ saldo individual**: o débito consome só as 50%; as 100%
    nunca são debitadas. Pela mesma regra, as **"Extras 50%" exibidas** (total do
    time e chip da pessoa) são as 50% REAIS (`extras50AtualMs` = bruto − o que
    deve, piso 0), não o bruto acumulado no mês; e o chip **"Deve"** mostra o que
    se deve DE VERDADE (`horasDevidasAtualMs` = o que deve − 50%, piso 0), então
    quem tem 50% positivas não aparece devendo horas.
-6. **Lista todas as fichas não-gerentes** (operador/supervisor/fiscal), mesmo
+7. **Lista todas as fichas não-gerentes** (operador/supervisor/fiscal), mesmo
    zeradas, em ordem alfabética.
-7. **Marcar débito respeita o ciclo fechado**.
+8. **Marcar débito respeita o ciclo fechado**. A marcação manual de uma falta
+   como débito (`Ausencia.debitoHoras`) é decisão do gestor e continua valendo
+   em qualquer dia — a exceção da regra 4 vale para o **déficit automático** de
+   um dia trabalhado, não para o débito lançado à mão.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação e 50% reais (líquido do débito) | 13 |
+| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais (líquido do débito) e domingo/feriado sem hora devida | 16 |
 | `saldo-time.spec.ts` | Regra do saldo do time (`contribuicaoSaldoTime`) | 4 |
 | `central-jornada.controller.spec.ts` | Permissão do débito de horas | 1 |
 
