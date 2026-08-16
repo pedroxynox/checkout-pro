@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { Ausencia, FuncaoColaborador } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { FeriadosService } from '../feriados/feriados.service';
@@ -579,6 +584,10 @@ export class CentralJornadaService {
       const regs = batidasPorDia.get(k);
       const ausencia = ausenciaPorDia.get(k);
       const diaCompleto = inicioDoProximoDia(dia).getTime() <= limite.getTime();
+      // Domingo e feriado pagam a carga cumprida e NUNCA geram hora devida —
+      // nem por déficit (trabalhou abaixo da base), nem por falta lançada como
+      // débito. Vale para os dois casos tratados abaixo.
+      const diaGeraDebito = !diaPagaAdicional100(diaSemana, ehFeriado, regras);
 
       if (regs && regs.length > 0) {
         const fimDia = inicioDoProximoDia(dia);
@@ -596,17 +605,11 @@ export class CentralJornadaService {
         extras100Ms += j.horasExtras100Ms;
         if (j.tac) diasTac += 1;
         // Déficit: só em dias já COMPLETOS (não conta o dia em andamento) e
-        // apenas em dias que geram débito. Domingo e feriado pagam a carga
-        // efetivamente cumprida: acima da base rende extras de 100%, abaixo da
-        // base NÃO vira hora devida. Sem esta guarda, um domingo de 6h contra
-        // a base de 7h20 lançava 1h20 de débito que depois consumia as extras
-        // de 50% dos outros dias (via `extras50AtualMs` e `saldoMs`).
+        // apenas em dias que geram débito (ver `diaGeraDebito` acima). Sem essa
+        // guarda, um domingo de 6h contra a base de 7h20 lançava 1h20 de débito
+        // que depois consumia as extras de 50% dos outros dias (via
+        // `extras50AtualMs` e `saldoMs`).
         let devidasDia = 0;
-        const diaGeraDebito = !diaPagaAdicional100(
-          diaSemana,
-          ehFeriado,
-          regras,
-        );
         if (diaGeraDebito && diaCompleto && j.trabalhadoMs < baseMs) {
           devidasDia = baseMs - j.trabalhadoMs;
           horasDevidasMs += devidasDia;
@@ -660,10 +663,15 @@ export class CentralJornadaService {
         faltas += 1;
         let tipo: CentralDiaDetalhe['tipo'] = 'FALTA';
         let devidasDia = 0;
+        // Faltar num domingo/feriado (mesmo escalado, fora da folga do rodízio)
+        // fica apenas como AUSENTE: são dias que não geram hora devida, então o
+        // débito não se aplica. `marcarDebito` já recusa a marcação; esta guarda
+        // também neutraliza registros marcados antes desta regra.
+        const debitoValido = ausencia.debitoHoras && diaGeraDebito;
         if (ausencia.motivoJustificativa === 'ATESTADO_MEDICO') {
           horasAtestadoMs += baseMs;
           tipo = 'ATESTADO';
-        } else if (ausencia.debitoHoras) {
+        } else if (debitoValido) {
           horasDevidasMs += baseMs;
           devidasDia = baseMs;
           tipo = 'FALTA_DEBITO';
@@ -685,7 +693,9 @@ export class CentralJornadaService {
             tac: false,
             motivosTac: [],
             ausenciaId: ausencia.id,
-            debito: ausencia.debitoHoras,
+            // Débito EFETIVO (não o cru do banco): num domingo/feriado o dia
+            // não deve aparecer como debitado na tela.
+            debito: debitoValido,
           });
       } else if (coletarDias) {
         dias.push({
@@ -1095,6 +1105,13 @@ export class CentralJornadaService {
    * Marca (ou desmarca) uma falta como DÉBITO de horas: quando marcada, a carga
    * daquele dia entra em "horas que deve" da pessoa. Feito manualmente pelo
    * gestor sobre uma ausência já registrada.
+   *
+   * Domingo e feriado NÃO aceitam débito: são dias pagos pela carga cumprida,
+   * que não geram hora devida (regra 4 do módulo). Faltar num domingo escalado
+   * (fora da folga do rodízio) fica apenas como AUSENTE. A marcação é recusada
+   * com erro — e não aceita-e-ignorada — para o gestor saber que não se aplica.
+   * Desmarcar (`debito = false`) é sempre permitido, inclusive para limpar
+   * registros marcados antes desta regra.
    */
   async marcarDebito(ausenciaId: string, debito: boolean): Promise<Ausencia> {
     const ausencia = await this.prisma.ausencia.findUnique({
@@ -1106,6 +1123,23 @@ export class CentralJornadaService {
     // Bloqueia a edição quando o ciclo de folha daquele dia está fechado.
     if (this.cicloFolha) {
       await this.cicloFolha.exigirCicloAberto(ausencia.data);
+    }
+    if (debito) {
+      const ehFeriado = await this.feriados.ehFeriado(ausencia.data);
+      const colaborador = ausencia.colaboradorId
+        ? await this.prisma.colaborador.findUnique({
+            where: { id: ausencia.colaboradorId },
+            select: { tipoContratoJornadaId: true },
+          })
+        : null;
+      const regras = await this.regrasDe(colaborador?.tipoContratoJornadaId);
+      if (diaPagaAdicional100(ausencia.data.getUTCDay(), ehFeriado, regras)) {
+        throw new BadRequestException(
+          ehFeriado
+            ? 'Feriado não gera hora devida: a falta fica apenas como ausência.'
+            : 'Domingo não gera hora devida: a falta fica apenas como ausência.',
+        );
+      }
     }
     return this.prisma.ausencia.update({
       where: { id: ausenciaId },

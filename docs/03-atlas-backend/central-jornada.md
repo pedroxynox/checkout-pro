@@ -40,7 +40,7 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 | `GET /central-jornada/exportacao` | `CENTRAL_JORNADA` | Dados do ciclo para revisão antes do fechamento (uma linha por dia relevante). |
 | `GET /central-jornada/comparativos` | `CENTRAL_JORNADA` | Totais do time dos últimos `qtd` ciclos (1..12). |
 | `GET /central-jornada/pessoa/:id` | `CENTRAL_JORNADA` | Detalhe diário de um colaborador no ciclo (drill-down). |
-| `POST /central-jornada/ausencia/:id/debito` | `CENTRAL_JORNADA` | Marca/desmarca uma falta como débito de horas. |
+| `POST /central-jornada/ausencia/:id/debito` | `CENTRAL_JORNADA` | Marca/desmarca uma falta como débito de horas (marcar é recusado em domingo/feriado). |
 
 ## 5. Serviços e funções
 
@@ -71,8 +71,10 @@ ordem cronológica.
 
 #### `marcarDebito(ausenciaId, debito)`
 - **Efeitos:** alterna `debitoHoras` de uma ausência; bloqueia se o ciclo do dia
-  estiver fechado.
-- **Erros:** `NotFoundException` (falta não encontrada), `CicloFechadoError`.
+  estiver fechado. **Marcar** (`debito = true`) é recusado em domingo e feriado
+  (regra 4 — dias que não geram hora devida); **desmarcar** é sempre permitido.
+- **Erros:** `NotFoundException` (falta não encontrada), `CicloFechadoError`,
+  `BadRequestException` (domingo/feriado não aceita débito).
 
 #### `calcularPessoa(...)` (privado, coração do módulo)
 Agrupa batidas/ausências por dia e, para cada dia do ciclo, decide o tipo
@@ -131,13 +133,20 @@ faltas, TAC, conflitos e atrasos.
    por conta/matrícula atribui a jornada à ficha, senão o fiscal sumiria.
 3. **Horas devidas só contam em dias completos** (o dia em andamento não gera
    déficit).
-4. **Domingo e feriado NUNCA geram hora devida.** Esses dias pagam a carga
-   efetivamente cumprida: o que passa da carga-base rende extra de **100%**, o
-   que fica abaixo dela **não vira débito**. O déficit é exclusivo dos demais
-   dias da semana, que seguem a lógica normal (extra de 50% acima da base,
-   débito abaixo). Antes desta regra um domingo de 6h contra a base de 7h20
-   lançava 1h20 de débito — que, por consumir apenas as 50% (regra 6), ainda
-   apagava as extras de 50% ganhas nos outros dias.
+4. **Domingo e feriado NUNCA geram hora devida** — por nenhum caminho. Esses
+   dias pagam a carga efetivamente cumprida: o que passa da carga-base rende
+   extra de **100%**, o que fica abaixo dela **não vira débito**. Vale para as
+   duas origens de hora devida:
+   - **déficit** de um dia trabalhado abaixo da base → não é lançado;
+   - **falta marcada como débito** (`Ausencia.debitoHoras`) → não se aplica.
+     Faltar num domingo escalado (fora da folga do rodízio) fica apenas como
+     **ausente**; `marcarDebito` recusa a marcação com `400` e o cálculo ainda
+     neutraliza registros marcados antes desta regra.
+
+   O débito é exclusivo dos demais dias da semana, que seguem a lógica normal
+   (extra de 50% acima da base, débito abaixo). Antes desta regra um domingo de
+   6h contra a base de 7h20 lançava 1h20 de débito — que, por consumir apenas as
+   50% (regra 6), ainda apagava as extras de 50% ganhas nos outros dias.
 5. **Conflito ponto↔ausência**: as horas vêm das batidas (a ausência é
    ignorada no cálculo) e o conflito fica sinalizado para o gestor resolver.
 6. **Saldo do time ≠ saldo individual**: o débito consome só as 50%; as 100%
@@ -148,15 +157,14 @@ faltas, TAC, conflitos e atrasos.
    quem tem 50% positivas não aparece devendo horas.
 7. **Lista todas as fichas não-gerentes** (operador/supervisor/fiscal), mesmo
    zeradas, em ordem alfabética.
-8. **Marcar débito respeita o ciclo fechado**. A marcação manual de uma falta
-   como débito (`Ausencia.debitoHoras`) é decisão do gestor e continua valendo
-   em qualquer dia — a exceção da regra 4 vale para o **déficit automático** de
-   um dia trabalhado, não para o débito lançado à mão.
+8. **Marcar débito respeita o ciclo fechado** e a regra 4 (domingo/feriado não
+   aceitam débito). **Desmarcar é sempre permitido**, inclusive em domingo e
+   feriado, para limpar registros marcados antes da regra 4.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais (líquido do débito) e domingo/feriado sem hora devida | 16 |
+| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais (líquido do débito) e domingo/feriado sem hora devida (déficit e falta-débito) | 19 |
 | `saldo-time.spec.ts` | Regra do saldo do time (`contribuicaoSaldoTime`) | 4 |
 | `central-jornada.controller.spec.ts` | Permissão do débito de horas | 1 |
 

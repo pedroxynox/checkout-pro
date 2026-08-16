@@ -65,6 +65,15 @@ function rotuloTipoDia(tipo: CentralDiaDetalhe['tipo']): string {
   }
 }
 
+/**
+ * Domingo e feriado não geram hora devida, então a falta nesses dias não pode
+ * ser lançada como débito (o servidor recusa). Escondemos o botão para não
+ * oferecer uma ação impossível — faltar num domingo fica apenas como ausência.
+ */
+function aceitaDebito(dia: CentralDiaDetalhe): boolean {
+  return dia.diaSemana !== 0 && !dia.ehFeriado;
+}
+
 export function DetalheJornadaScreen(): React.ReactElement {
   const route = useRoute<RouteProp<RootStackParamList, 'DetalheJornada'>>();
   const { podeAcessar } = useAuth();
@@ -241,6 +250,7 @@ export function DetalheJornadaScreen(): React.ReactElement {
               </View>
               {podeMarcarDebito &&
                 (d.tipo === 'FALTA' || d.tipo === 'FALTA_DEBITO') &&
+                aceitaDebito(d) &&
                 d.ausenciaId && (
                   <Pressable
                     onPress={() => alternarDebito(d)}
