@@ -96,6 +96,11 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   (`extras50AtualMs` = acumulado − o que deve, piso 0), não o bruto do mês. Do
   mesmo modo, o chip **"Deve"** usa `horasDevidasAtualMs` (o que deve − as 50%,
   piso 0): quem tem saldo 50% positivo não aparece devendo horas.
+- **Domingo e feriado não entram no "Deve".** No detalhe do ciclo esses dias
+  aparecem com `trabalhado` abaixo da `base` e ainda assim `devidas = 0` — não é
+  erro de exibição: são dias pagos pela carga cumprida, com extra de 100% acima
+  da base e sem débito abaixo dela (regra 4 da
+  [`central-jornada`](../03-atlas-backend/central-jornada.md)).
 
 ## 7. Lógica pura / utilidades
 - `leituraComprovanteUtil.ts`: `leituraCompleta(texto)` (gatilho do leitor ao

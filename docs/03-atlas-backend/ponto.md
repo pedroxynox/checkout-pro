@@ -167,6 +167,12 @@ da remoção imediata que o `PontoService` já faz na batida normal.
   → tempo trabalhado (intervalo não conta), intervalo, extras 50/100, status,
   alerta iminente, TAC e motivos, o que falta para o dia e o sinalizador
   `naoRetornoIntervalo` (saiu para o intervalo e não voltou dentro do máximo).
+- `diaPagaAdicional100(diaSemana, ehFeriado, regras)` → true no domingo (pelo
+  contrato) e em **todo feriado**. Responde a duas perguntas com a mesma regra:
+  o que passa da carga-base é extra de **100%** (não de 50%) e o que falta para
+  a carga-base **não vira hora devida** — domingo e feriado pagam a carga
+  cumprida. Usado por `calcularJornadaDia` (adicional) e pela
+  [`central-jornada`](central-jornada.md) (isenção de débito).
 - `batidaDuplicada(horaMs, existentes, minimo)` → detecta batidas próximas demais.
 - `etapaAlertaTac(extrasMs, tac)` → devolve só a etapa mais grave (`RISCO_1H30`,
   `RISCO_1H40`, `TAC`).
@@ -227,6 +233,13 @@ da remoção imediata que o `PontoService` já faz na batida normal.
    atraso) — é apagado. Os não-retornos **manuais** do gestor permanecem.
 10. **Cada etapa de TAC é avisada uma vez** (dedup persistente que sobrevive a
    reinícios e coordena instâncias).
+11. **O adicional é decidido pelo dia, tudo ou nada:** domingo e feriado pagam
+   100% sobre o que passa da carga-base; todos os demais dias (inclusive
+   **sábado**) pagam 50%. A carga-base varia por dia da semana
+   (dom 7h20 · seg-qui 7h · sex-sáb 8h no 6x1) e o feriado usa a base de
+   domingo, mesmo caindo numa segunda. Nos dias de 100% não há hora devida —
+   ver `diaPagaAdicional100` e a regra 4 da
+   [`central-jornada`](central-jornada.md).
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |

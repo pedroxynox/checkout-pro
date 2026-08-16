@@ -105,6 +105,26 @@ export const REGRAS_SEIS_X_UM_DOIS_X_UM: RegrasContrato = {
 export const REGRAS_PADRAO: RegrasContrato = REGRAS_SEIS_X_UM_DOIS_X_UM;
 
 /**
+ * true quando o dia é pago com adicional de 100%: domingo (no 6x1) e TODO
+ * feriado, que segue a mesma regra do domingo.
+ *
+ * Este predicado responde a duas perguntas de uma vez, porque são a mesma
+ * regra vista de dois lados:
+ * - o que passa da carga-base é extra de 100% (e não de 50%);
+ * - o que falta para a carga-base NÃO vira hora devida. Domingo e feriado
+ *   pagam a carga efetivamente cumprida: quem trabalha menos que a base não
+ *   fica devendo, quem trabalha mais recebe 100%. Só os demais dias geram
+ *   débito por déficit.
+ */
+export function diaPagaAdicional100(
+  diaSemana: number,
+  ehFeriado: boolean,
+  regras: RegrasContrato = REGRAS_PADRAO,
+): boolean {
+  return regras.temAdicional100(diaSemana) || ehFeriado;
+}
+
+/**
  * true se `horaMs` está a menos de `intervaloMinimoMs` de alguma das horas já
  * registradas (horas iguais ou próximas demais). Puro e sem efeitos colaterais.
  */
@@ -291,7 +311,7 @@ export function calcularJornadaDia(
   );
   // Feriado segue a MESMA regra do domingo: carga-base de domingo e extras a
   // 100% (o rodízio por grupos, esse sim, é exclusivo do domingo).
-  const contaComo100 = regras.temAdicional100(diaSemana) || ehFeriado;
+  const contaComo100 = diaPagaAdicional100(diaSemana, ehFeriado, regras);
   const baseMs = regras.cargaBaseMs(ehFeriado ? 0 : diaSemana);
 
   if (classificadas.length === 0) {

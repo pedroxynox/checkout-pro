@@ -99,6 +99,37 @@ describe('CentralJornadaService.resumoCiclo', () => {
     );
   }
 
+  /** Serviço com uma única colaboradora ('c1') e as batidas/feriados informados. */
+  function montarComBatidas(
+    batidas: ReturnType<typeof batida>[],
+    feriadoMap = new Map<number, string>(),
+  ) {
+    const prismaFake = {
+      colaborador: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            nome: 'Ana',
+            funcao: 'OPERADOR',
+            matricula: 'A',
+            usuarioId: null,
+          },
+        ]),
+      },
+      batidaPonto: { findMany: jest.fn().mockResolvedValue(batidas) },
+      ausencia: { findMany: jest.fn().mockResolvedValue([]) },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const feriadosFake = {
+      mapaNoPeriodo: jest.fn().mockResolvedValue(feriadoMap),
+    };
+    return new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+    );
+  }
+
   /**
    * Um fiscal bate ponto pela identidade de Fiscal (batida.pessoaId = Fiscal.id,
    * colaboradorId nulo), diferente do id da sua ficha. A Central deve resolver o
@@ -259,6 +290,81 @@ describe('CentralJornadaService.resumoCiclo', () => {
       expect(r.totais.extras50Ms).toBe(2 * UMA_HORA);
       expect(r.totais.extras50AtualMs).toBe(UMA_HORA);
     });
+  });
+
+  /**
+   * Domingo e feriado pagam a carga cumprida: acima da base rendem extras de
+   * 100%, abaixo da base NÃO viram hora devida. Antes desta regra um domingo
+   * de 6h contra a base de 7h20 lançava 1h20 de débito, que ainda por cima
+   * consumia as extras de 50% ganhas nos outros dias.
+   */
+  it('domingo trabalhado abaixo da carga NÃO gera hora devida', async () => {
+    // Dom 05/07 (base 7h20): 07-12 + 13-14 = 6h → 1h20 abaixo da base.
+    const batidas = [
+      batida('s1', '2026-07-05', '07:00'),
+      batida('s2', '2026-07-05', '12:00'),
+      batida('s3', '2026-07-05', '13:00'),
+      batida('s4', '2026-07-05', '14:00'),
+    ];
+    const service = montarComBatidas(batidas);
+
+    const r = await service.resumoCiclo(0);
+    const p = r.pessoas[0];
+
+    expect(p.cargaTrabalhadaMs).toBe(6 * UMA_HORA); // as 6h são pagas
+    expect(p.horasDevidasMs).toBe(0); // e nada é debitado
+    expect(p.horasDevidasAtualMs).toBe(0);
+    expect(p.extras100Ms).toBe(0); // não passou da base: sem extra
+    expect(p.extras50Ms).toBe(0); // domingo nunca gera 50%
+    expect(p.saldoMs).toBe(0);
+    // O dia aparece no detalhe sem débito, mesmo com base > trabalhado.
+    const det = await service.detalhePessoa('c1', 0);
+    const domingo = det.dias.find((d) => d.data.startsWith('2026-07-05'));
+    expect(domingo?.trabalhadoMs).toBe(6 * UMA_HORA);
+    expect(domingo?.baseMs).toBe(26_400_000); // 7h20
+    expect(domingo?.devidasMs).toBe(0);
+  });
+
+  it('feriado em dia de semana também não gera hora devida', async () => {
+    // Qua 01/07 marcada como feriado (base de domingo, 7h20):
+    // 08-12 + 13-15 = 6h → abaixo da base, mas sem débito.
+    const batidas = [
+      batida('h1', '2026-07-01', '08:00'),
+      batida('h2', '2026-07-01', '12:00'),
+      batida('h3', '2026-07-01', '13:00'),
+      batida('h4', '2026-07-01', '15:00'),
+    ];
+    const service = montarComBatidas(
+      batidas,
+      new Map<number, string>([[dia('2026-07-01').getTime(), 'Feriado teste']]),
+    );
+
+    const r = await service.resumoCiclo(0);
+    const p = r.pessoas[0];
+
+    expect(p.cargaTrabalhadaMs).toBe(6 * UMA_HORA);
+    expect(p.horasDevidasMs).toBe(0);
+    expect(p.extras50Ms).toBe(0);
+    expect(p.extras100Ms).toBe(0);
+  });
+
+  it('domingo acima da carga continua gerando extra de 100%', async () => {
+    // Dom 05/07 (base 7h20): 06-12 + 14-16:20 = 8h20 → +1h a 100%.
+    const batidas = [
+      batida('x1', '2026-07-05', '06:00'),
+      batida('x2', '2026-07-05', '12:00'),
+      batida('x3', '2026-07-05', '14:00'),
+      batida('x4', '2026-07-05', '16:20'),
+    ];
+    const service = montarComBatidas(batidas);
+
+    const r = await service.resumoCiclo(0);
+    const p = r.pessoas[0];
+
+    expect(p.extras100Ms).toBe(UMA_HORA);
+    expect(p.extras50Ms).toBe(0);
+    expect(p.horasDevidasMs).toBe(0);
+    expect(p.saldoMs).toBe(UMA_HORA);
   });
 
   it('lista todos os colaboradores não-gerentes, mesmo sem movimento (card zerada)', async () => {

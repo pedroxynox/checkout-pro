@@ -16,6 +16,7 @@ import {
   REGRAS_PADRAO,
   RegrasContrato,
   calcularJornadaDia,
+  diaPagaAdicional100,
   StatusJornadaPonto,
 } from '../ponto/ponto.domain';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
@@ -594,9 +595,19 @@ export class CentralJornadaService {
         extras50Ms += j.horasExtras50Ms;
         extras100Ms += j.horasExtras100Ms;
         if (j.tac) diasTac += 1;
-        // Déficit: só em dias já COMPLETOS (não conta o dia em andamento).
+        // Déficit: só em dias já COMPLETOS (não conta o dia em andamento) e
+        // apenas em dias que geram débito. Domingo e feriado pagam a carga
+        // efetivamente cumprida: acima da base rende extras de 100%, abaixo da
+        // base NÃO vira hora devida. Sem esta guarda, um domingo de 6h contra
+        // a base de 7h20 lançava 1h20 de débito que depois consumia as extras
+        // de 50% dos outros dias (via `extras50AtualMs` e `saldoMs`).
         let devidasDia = 0;
-        if (diaCompleto && j.trabalhadoMs < baseMs) {
+        const diaGeraDebito = !diaPagaAdicional100(
+          diaSemana,
+          ehFeriado,
+          regras,
+        );
+        if (diaGeraDebito && diaCompleto && j.trabalhadoMs < baseMs) {
           devidasDia = baseMs - j.trabalhadoMs;
           horasDevidasMs += devidasDia;
         }
