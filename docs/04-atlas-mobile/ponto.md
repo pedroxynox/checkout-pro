@@ -96,6 +96,13 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   (`extras50AtualMs` = acumulado − o que deve, piso 0), não o bruto do mês. Do
   mesmo modo, o chip **"Deve"** usa `horasDevidasAtualMs` (o que deve − as 50%,
   piso 0): quem tem saldo 50% positivo não aparece devendo horas.
+- O número grande ao lado do nome na card (rótulo **"saldo 50%"**) é o
+  `saldo50Ms`: **só as horas 50%**, com sinal (verde positivo / vermelho
+  negativo, via `formatarSaldo`). As **100% não entram** nesse saldo — seguem no
+  chip `+100%` abaixo do nome —, porque nunca são debitadas e mascaravam quem
+  estava devendo. `DetalheJornadaScreen` mostra o mesmo indicador, para as duas
+  telas não discordarem. O **"Saldo atual" do topo (time)** continua sendo o
+  `totais.saldoMs` (50% positivas + 100%), que nunca foi a soma das cards.
 - **Domingo e feriado não entram no "Deve".** No detalhe do ciclo esses dias
   aparecem com `trabalhado` abaixo da `base` e ainda assim `devidas = 0` — não é
   erro de exibição: são dias pagos pela carga cumprida, com extra de 100% acima

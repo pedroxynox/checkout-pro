@@ -34,6 +34,12 @@ export interface CentralPessoaResumo extends CentralTotais {
   cargaTrabalhadaMs: number;
   /** O que deve DE VERDADE agora (devidas − extras 50%, piso 0). É o valor do chip "Deve". */
   horasDevidasAtualMs: number;
+  /**
+   * Saldo das horas 50% (extras 50% − o que deve), **com sinal**: é o "saldo"
+   * exibido na card da pessoa e no detalhe. As 100% não entram — nunca são
+   * debitadas e aparecem no chip `+100%`.
+   */
+  saldo50Ms: number;
 }
 
 export interface CentralResumo {

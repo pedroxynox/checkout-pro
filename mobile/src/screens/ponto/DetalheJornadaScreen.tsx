@@ -108,16 +108,18 @@ export function DetalheJornadaScreen(): React.ReactElement {
             <Text style={styles.nome}>{pessoa.nome}</Text>
             <Text style={styles.funcao}>{rotuloFuncao(pessoa.funcao)}</Text>
           </View>
+          {/* Mesmo indicador da card da Central: só as horas 50% (com sinal).
+              As 100% seguem no chip `+100%` abaixo do nome. */}
           <View style={styles.saldoBox}>
             <Text
               style={[
                 styles.saldo,
-                { color: pessoa.saldoMs >= 0 ? cores.verde : cores.vermelho },
+                { color: pessoa.saldo50Ms >= 0 ? cores.verde : cores.vermelho },
               ]}
             >
-              {formatarSaldo(pessoa.saldoMs)}
+              {formatarSaldo(pessoa.saldo50Ms)}
             </Text>
-            <Text style={styles.saldoLabel}>saldo</Text>
+            <Text style={styles.saldoLabel}>saldo 50%</Text>
           </View>
         </View>
 
