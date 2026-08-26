@@ -556,6 +556,17 @@ export class OperadoresService {
       where: { id: ausenciaId },
     });
     if (!existente) throw new AusenciaNaoEncontradaError();
+    // Atestado médico tem fluxo próprio (entidade `Atestado`, com CID e regra do
+    // INSS) — a mesma regra que a ausência a prazo já aplicava. Este era o último
+    // caminho por onde um atestado podia nascer SEM documento: o gestor abonava a
+    // falta com o motivo "atestado médico" e o dia passava a valer como atestado
+    // sem CID, sem período e sem acompanhamento do INSS. Além do risco
+    // trabalhista, eram esses dias soltos que tornavam a CONTAGEM de atestados
+    // aproximada (sem documento não há como saber onde um atestado termina e
+    // outro começa — ver `agruparAtestados`).
+    if (input.motivo === 'ATESTADO_MEDICO') {
+      throw new AtestadoMedicoViaFluxoProprioError();
+    }
     // Bloqueia justificar/reabrir uma falta de um ciclo de folha já fechado.
     await this.cicloFolha?.exigirCicloAberto(existente.data);
     return this.prisma.ausencia.update({

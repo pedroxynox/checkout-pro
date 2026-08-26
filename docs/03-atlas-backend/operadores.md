@@ -24,7 +24,7 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `operadores.controller.ts` | Rotas de ausências/justificativa/contagem | 197 |
-| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 674 |
+| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 685 |
 | `marcar-periodo-justificado.ts` | Primitiva compartilhada: falta justificada dia a dia (a prazo + atestado) | 72 |
 | `operadores.domain.ts` | Regras puras: unicidade, turno, relatório, analítica | 517 |
 | `operadores.errors.ts` | Erros de domínio (mapeados para HTTP) | 104 |
@@ -94,7 +94,9 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 - **Rejeita `ATESTADO_MEDICO`:** atestado médico tem fluxo próprio (entidade
   `Atestado`, com CID e INSS — ver [`atestados`](atestados.md)); a ausência a
   prazo cobre os demais motivos, para o médico nunca virar uma falta justificada
-  solta sem CID (`AtestadoMedicoViaFluxoProprioError`).
+  solta sem CID (`AtestadoMedicoViaFluxoProprioError`) — a mesma recusa vale para
+  a justificativa individual (`justificarAusencia`), fechando o último caminho por
+  onde um atestado podia nascer sem documento.
 - **Erros:** `JustificativaInvalidaError` (motivo obrigatório),
   `AtestadoMedicoViaFluxoProprioError` (motivo ATESTADO_MEDICO),
   `PeriodoAusenciaInvalidoError` (data final antes da inicial ou > 186 dias).
@@ -129,7 +131,19 @@ ainda bloqueia o **fiscal** de desmarcar um dia `aPrazo`
 #### `justificarAusencia(ausenciaId, input, autor?)`
 Abona (`JUSTIFICADA`, exige motivo), reabre (`PENDENTE`, limpa tudo) ou marca
 `INJUSTIFICADA`, gravando quem justificou e quando. `AusenciaNaoEncontradaError`
-se não existir; bloqueia ciclo fechado. Os campos de justificativa são montados
+se não existir; bloqueia ciclo fechado.
+
+**Recusa o motivo `ATESTADO_MEDICO`** (`AtestadoMedicoViaFluxoProprioError`, 400),
+a mesma regra que `registrarAusenciaPeriodo` já aplicava. Este era o **último**
+caminho por onde um atestado nascia **sem documento**: o gestor abonava a falta
+como "atestado médico" e o dia passava a valer como atestado sem CID, sem período
+e sem acompanhamento do INSS. Além do risco trabalhista, eram esses dias soltos
+que tornavam a **contagem** de atestados aproximada (ver regra 12 da
+[`central-jornada`](central-jornada.md)). Atestado entra **só** pelo fluxo de
+[`atestados`](atestados.md). Reabrir/injustificar não manda motivo, então a guarda
+não atrapalha a correção de registros antigos.
+
+Os campos de justificativa são montados
 pela primitiva partilhada `montarDadosJustificativa` (common) — **fonte única**
 com os não-retornos (`incidencias`); a validação do motivo obrigatório e o erro
 (`JustificativaInvalidaError`) permanecem locais.

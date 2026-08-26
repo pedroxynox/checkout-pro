@@ -25,7 +25,7 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `central-jornada.controller.ts` | Rotas HTTP do portal | 100 |
-| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 1789 |
+| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 1794 |
 | `central-jornada.module.ts` | Ligações (DI) do módulo | 25 |
 | `dto/central-jornada.dto.ts` | Validação de entrada (marcar débito) | 7 |
 
@@ -322,12 +322,15 @@ faltas, TAC, conflitos e atrasos.
    origens de forma diferente porque a informação disponível é diferente:
    - **com documento** (`Ausencia.atestadoId`): agrupa por id — exato, inclusive
      quando os dias não são contíguos;
-   - **sem documento** (`atestadoId` nulo, dias abonados um a um com o motivo
-     "atestado médico" pelo caminho rápido): **dias consecutivos contam como um
-     só**. É a leitura mais próxima da realidade — um bloco corrido de dias
-     abonados veio de um mesmo comprovante. **Limite conhecido:** dois
-     comprovantes de 1 dia em dias seguidos aparecem como um; os dados não
-     permitem distinguir, e cadastrar o documento resolve.
+   - **sem documento** (`atestadoId` nulo): **LEGADO**. Dias abonados um a um com
+     o motivo "atestado médico" antes de esse caminho ser fechado — hoje tanto a
+     ausência a prazo quanto a justificativa individual **recusam** esse motivo
+     (`AtestadoMedicoViaFluxoProprioError`), então **não nascem mais registros
+     assim**. Para os antigos, **dias consecutivos contam como um só**: um bloco
+     corrido de dias abonados veio de um mesmo comprovante. **Limite conhecido:**
+     dois comprovantes de 1 dia em dias seguidos aparecem como um. O ramo existe
+     para não distorcer o histórico — sem ele esses dias voltariam a contar como
+     **falta**; para os registros novos a contagem é exata.
 
    Um atestado que **atravessa o corte 26→25** conta em cada um dos dois ciclos,
    com os dias que lhe cabem em cada um — cada ciclo apura o que aconteceu nele.
@@ -353,7 +356,7 @@ faltas, TAC, conflitos e atrasos.
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `central-jornada.service.ts` (1789 linhas) concentra carga, cálculo e
+- 🔧 `central-jornada.service.ts` (1794 linhas) concentra carga, cálculo e
   agregação; os tipos de resposta (`Central*`) e o cálculo diário podem ser
   extraídos conforme crescer.
 - 🔧 **Duas respostas para "o que falta no dia".** O painel de inconsistências
