@@ -7,7 +7,8 @@ Registro de ponto por **comprovante**: escolher o colaborador, ver a **jornada
 do dia** calculada a partir das batidas e registrar/corrigir/remover batidas —
 com **leitura automática por câmera/OCR** (só no APK) — além do controle do
 **ciclo de folha (26→25)** pela Central de Jornada (saldo, extras, faltas,
-inconsistências, **marcações inválidas**, fechamento e feriados).
+inconsistências, **marcações inválidas**, **rankings do time**, fechamento e
+feriados).
 
 ## 2. Quem usa (perfis)
 - **Fiscal**: registra batidas novas (a hora do comprovante) e pode informar a
@@ -25,7 +26,9 @@ inconsistências, **marcações inválidas**, fechamento e feriados).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `RegistroPontoScreen.tsx` | Tela principal: busca, jornada do dia, batidas e leitor | 1213 |
-| `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, lista por pessoa, comparativo) | 697 |
+| `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, lista por pessoa, comparativo) | 679 |
+| `RankingTimeScreen.tsx` | Ranking do time numa métrica do resumo (uma tela para as seis) | 535 |
+| `metricasResumo.ts` | Identidade das seis métricas do resumo (fonte única de card + ranking) | 139 |
 | `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 344 |
 | `InconsistenciasScreen.tsx` | Problemas do ciclo agrupados por dia | 325 |
 | `MarcacoesInvalidasScreen.tsx` | Marcações que faltam registrar: quantas e quais, por dia | 500 |
@@ -57,6 +60,10 @@ inconsistências, **marcações inválidas**, fechamento e feriados).
    quem tem marcação faltando, **quais** faltam e as horas que existem; com isso
    volta ao `RegistroPontoScreen` (ou ao detalhe da jornada) para lançar a batida
    que falta. O relatório não edita nada — só aponta.
+7. **Ranking do time:** cada card do "Resumo do time" abre o
+   `RankingTimeScreen` daquela métrica (extras 50%, extras 100%, faltas, TAC,
+   atrasos ou conflitos), da pessoa que mais tem à que menos tem; dali toca-se
+   numa pessoa para cair no detalhe diário dela.
 Cada tela trata os estados **carregando / erro / vazio**.
 
 ## 5. Dados e integração com o backend
@@ -73,6 +80,7 @@ Cada tela trata os estados **carregando / erro / vazio**.
 | Resumo do ciclo | `centralJornadaService.resumo(ciclo)` | `GET /central-jornada` |
 | Inconsistências | `centralJornadaService.inconsistencias(ciclo)` | `GET /central-jornada/inconsistencias` |
 | Marcações inválidas | `centralJornadaService.marcacoesInvalidas(ciclo)` | `GET /central-jornada/marcacoes-invalidas` |
+| Ranking do time | `centralJornadaService.rankings(ciclo)` | `GET /central-jornada/rankings` |
 | Comparativo | `centralJornadaService.comparativos(qtd)` | `GET /central-jornada/comparativos` |
 | Detalhe por pessoa | `centralJornadaService.pessoa(id, ciclo)` | `GET /central-jornada/pessoa/:id` |
 | Marcar débito | `centralJornadaService.marcarDebito(id, debito)` | `POST /central-jornada/ausencia/:id/debito` |
@@ -122,6 +130,29 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   **não aparece em domingo nem em feriado**: faltar nesses dias fica apenas como
   ausência e o servidor recusaria a marcação. O botão segue disponível nos
   demais dias para quem tem `OPERADORES_AUSENCIAS`.
+- **Resumo do time: as seis cards são tocáveis e de posição fixa.** Antes, as
+  cards de atraso e de conflito só apareciam quando havia ocorrência, então a
+  grade mudava de tamanho e a posição de cada botão dançava; agora as seis estão
+  sempre no mesmo lugar e a zerada fica apenas **esmaecida** (`apagado` do
+  `CartaoMetrica`), que também exibe a seta de afordância — sem ela, um cartão
+  clicável parece estático.
+- **Uma só tela para os seis rankings** (`RankingTimeScreen`, parâmetros
+  `metrica` + `ciclo`). A identidade de cada métrica (rótulo, título, ícone, cor,
+  como formatar e de onde sai o número) vive em **`metricasResumo.ts`**, a mesma
+  fonte que a card usa: é o que impede a card e o ranking de discordarem em cor
+  ou em valor. A tela acrescenta apenas o que é seu — o detalhe dia a dia e a
+  frase do estado vazio.
+- **Leitura do ranking:** a **cor é a mesma da card** que foi tocada (para não se
+  perder), e o que "estar no topo" significa vai **escrito** no cabeçalho — cor
+  não basta para dizer se muito é bom (extras) ou ruim (faltas, atrasos, TAC,
+  conflitos). A **barra é proporcional ao 1º colocado**, que é a comparação que
+  interessa; as três primeiras posições recebem cor de pódio. Quem está em
+  **zero não compete**: vai para um rodapé recolhido ("N pessoas sem novidade"),
+  também tocável para abrir o detalhe diário.
+- **Detalhe por métrica:** faltas mostram cada dia como atestado, falta com
+  débito (com as horas) ou falta simples; atrasos, os minutos além do turno e o
+  horário previsto; TAC, os motivos do dia; conflitos, o motivo e o estado da
+  ausência. **Horas extras não têm detalhe** — ali o número é a informação.
 - **Marcações inválidas:** os dias vêm **abertos por padrão** (o estado guarda os
   dias *fechados*), porque a tela é uma lista de trabalho — o gestor quer ver o
   que ajustar sem ter que tocar em cada dia. É a diferença proposital em relação
@@ -143,6 +174,13 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
 - Locais da tela: `seloStatus`/`descricaoStatus` (estados da jornada),
   `mascaraHora`, `corConfianca`/`rotuloConfianca` (confiança da leitura) e
   `progressoCiclo` (dias percorridos do ciclo, na Central).
+- `metricasResumo.ts`: `IDENTIDADE_METRICA` (rótulo, título, ícone, cor,
+  semântica, `formatar`, `valorTotal` e `valorPessoa` de cada métrica),
+  `ORDEM_METRICAS` (ordem fixa das cards) e `contar` (singular/plural).
+- `RankingTimeScreen.tsx`: `EXTRA_METRICA` (detalhe dia a dia e frase de vazio
+  por métrica), `rotuloMotivo`/`rotuloStatus` (enums de ausência em português) e
+  `dataCurta`. A ordenação e a proporção da barra são calculadas na tela — são
+  apresentação, não regra de negócio.
 - `MarcacoesInvalidasScreen.tsx`: `rotuloMarcacao` (nome da marcação na tela) e
   `seloQuantidade` (amarelo quando falta 1, vermelho quando faltam 2+). A
   **decisão** de quais marcações faltam é do servidor — a tela não recalcula
@@ -162,6 +200,7 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
 | `ExportarCicloScreen.test.tsx` | Revisão (totais) e fechamento do ciclo com confirmação | 2 |
 | `InconsistenciasScreen.test.tsx` | Agrupamento por dia e filtro por pessoa | 2 |
 | `MarcacoesInvalidasScreen.test.tsx` | O que falta em cada dia (já expandido), horas registradas + turno, motivo da conferência, resumo, filtros por pessoa e por marcação, recolher dia e estado vazio | 8 |
+| `RankingTimeScreen.test.tsx` | Ordem do maior ao menor, total do time, zerados no rodapé recolhido, detalhe dia a dia, navegação ao detalhe diário, título/formato por métrica, estado vazio e ciclo recebido | 8 |
 | `leituraComprovanteUtil.test.ts` | Gatilho `leituraCompleta` e extração `horaLida` (tolerante ao OCR) | 4 |
 | `montarTextoOcr.test.ts` | Reconstrução do texto pela geometria do OCR | 3 |
 

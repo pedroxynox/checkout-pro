@@ -3,7 +3,10 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { TipoArrecadacao } from '../api/types';
-import type { CentralPessoaResumo } from '../api/services/centralJornada';
+import type {
+  CentralPessoaResumo,
+  MetricaRanking,
+} from '../api/services/centralJornada';
 
 /** Abas da barra inferior (área autenticada). */
 export type MainTabParamList = {
@@ -45,6 +48,12 @@ export type RootStackParamList = {
   Inconsistencias: undefined;
   /** Relatório de marcações faltantes do ciclo (aberto pela Central). */
   MarcacoesInvalidas: undefined;
+  /**
+   * Ranking do time numa métrica do "Resumo do time" (aberto ao tocar na card).
+   * `metrica` define o que ordenar e qual detalhe mostrar; `ciclo` mantém o
+   * período que estava selecionado na Central.
+   */
+  RankingTime: { metrica: MetricaRanking; ciclo: number };
   ExportarCiclo: undefined;
   Feriados: undefined;
   Checklist: undefined;
