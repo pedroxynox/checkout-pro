@@ -6,6 +6,10 @@
  * contador/estado, o resumo do time em métricas com ícone, a lista por pessoa
  * (drill-down diário com a ação de marcar falta como débito) e o comparativo
  * dos últimos ciclos. Aplica-se ao contrato 6x1-2x1.
+ *
+ * Cada card de pessoa mostra o **nome completo** (em até duas linhas), como na
+ * Jornada de Equipe: com só o primeiro nome, dois homônimos ficavam
+ * indistinguíveis.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -430,7 +434,12 @@ function PessoaCartao({
     <Cartao style={styles.cardPessoa}>
       <Pressable onPress={aoTocar} style={styles.pessoaTopo}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.pessoaNome}>{pessoa.primeiroNome}</Text>
+          {/* Nome COMPLETO, em até duas linhas: com só o primeiro nome, duas
+              pessoas homônimas ficavam indistinguíveis na lista do ciclo — o
+              mesmo motivo pelo qual a Jornada de Equipe mostra o nome inteiro. */}
+          <Text style={styles.pessoaNome} numberOfLines={2}>
+            {pessoa.nome}
+          </Text>
           <Text style={styles.pessoaFuncao}>{rotuloFuncao(pessoa.funcao)}</Text>
         </View>
         {/* Saldo da card = SÓ as horas 50% (`saldo50Ms`, com sinal). As 100%

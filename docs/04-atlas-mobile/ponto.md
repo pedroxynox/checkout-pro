@@ -26,7 +26,7 @@ feriados).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `RegistroPontoScreen.tsx` | Tela principal: busca, jornada do dia, batidas e leitor | 1213 |
-| `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, lista por pessoa, comparativo) | 679 |
+| `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, lista por pessoa, comparativo) | 688 |
 | `RankingTimeScreen.tsx` | Ranking do time numa métrica do resumo (uma tela para as sete) | 549 |
 | `metricasResumo.ts` | Identidade das sete métricas do resumo (fonte única de card + ranking) | 153 |
 | `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 344 |
@@ -54,8 +54,10 @@ feriados).
    base, alerta de TAC iminente e "Como é calculado?".
 5. **Ciclo:** pela Central de Jornada abre inconsistências, **marcações
    inválidas**, revisão/fechamento e feriados; toca numa pessoa para o detalhe
-   diário. O atalho "Marcações inválidas" mostra no rótulo **quantas marcações**
-   faltam no ciclo (não quantos dias).
+   diário. Cada card de pessoa traz o **nome completo** (em até duas linhas),
+   como na Jornada de Equipe — com só o primeiro nome, dois homônimos ficavam
+   indistinguíveis na lista do ciclo. O atalho "Marcações inválidas" mostra no
+   rótulo **quantas marcações** faltam no ciclo (não quantos dias).
 6. **Ajuste do ponto:** em `MarcacoesInvalidasScreen` o gestor vê, dia por dia,
    quem tem marcação faltando, **quais** faltam e as horas que existem; com isso
    volta ao `RegistroPontoScreen` (ou ao detalhe da jornada) para lançar a batida
@@ -162,6 +164,11 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   fonte que a card usa: é o que impede a card e o ranking de discordarem em cor
   ou em valor. A tela acrescenta apenas o que é seu — o detalhe dia a dia e a
   frase do estado vazio.
+- **Nome completo nos cards do ciclo.** `CentralPessoaResumo` já trazia `nome`
+  do backend; a card usava `primeiroNome`. Passou a usar `nome` com
+  `numberOfLines={2}` — o resto da Central de Jornada (rankings, detalhe diário,
+  inconsistências, marcações inválidas) já mostrava o nome inteiro, então a card
+  era a única fora do padrão.
 - **Leitura do ranking:** a **cor é a mesma da card** que foi tocada (para não se
   perder), e o que "estar no topo" significa vai **escrito** no cabeçalho — cor
   não basta para dizer se muito é bom (extras) ou ruim (faltas, atrasos, TAC,
