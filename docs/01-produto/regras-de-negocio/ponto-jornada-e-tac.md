@@ -105,7 +105,15 @@ de TAC, conflitos, atrasos e o **saldo** (banco de horas).
     ordinárias na jornada daquele período; **reabrir** exige administrador
     (`ADMIN_DADOS`). A apuração é sempre sob demanda, então reabrir já reflete nas
     próximas leituras.
-21. **Atestado não é falta.** O atestado médico é ausência **abonada**: tem o seu
+21. **Feriado = domingo no horário e no pagamento; a folga não muda.** Num
+    feriado (nacional, estadual ou municipal — os três valem igual) a pessoa é
+    esperada no **horário de domingo**, a carga do dia é a de domingo e o que
+    passa dela rende extra de **100%**, sem gerar hora devida abaixo dela. O que
+    o feriado **não** faz: não dá folga a ninguém e não desloca o rodízio de
+    domingos. Quem trabalha num feriado é exatamente quem trabalharia naquele dia
+    da semana. Quem não tem horário de domingo cadastrado segue no seu horário
+    habitual.
+22. **Atestado não é falta.** O atestado médico é ausência **abonada**: tem o seu
     próprio contador (`atestados`) e as suas horas (`horasAtestadoMs`), e **não**
     entra no número de **faltas**. Antes o mesmo dia somava nos dois, então o
     contador de faltas acusava justamente quem havia apresentado atestado. A

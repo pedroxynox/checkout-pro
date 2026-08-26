@@ -224,6 +224,28 @@ export class FiscaisService {
     return new Set(mapa.keys());
   }
 
+  /**
+   * Horário de entrada de DOMINGO (`entradaDom`) das fichas informadas, por id.
+   * Usado no feriado, que segue o horário de domingo: para os fiscais esse
+   * horário está na ficha de colaborador, e não na escala semanal. Fichas sem
+   * `entradaDom` ficam fora do mapa (o chamador mantém o horário da escala).
+   */
+  private async entradaDomDasFichas(
+    ids: readonly (string | null)[],
+  ): Promise<Map<string, string>> {
+    const validos = [...new Set(ids.filter((id): id is string => !!id))];
+    if (validos.length === 0) return new Map();
+    const fichas = await this.prisma.colaborador.findMany({
+      where: { id: { in: validos } },
+      select: { id: true, entradaDom: true },
+    });
+    return new Map(
+      fichas
+        .filter((f): f is { id: string; entradaDom: string } => !!f.entradaDom)
+        .map((f) => [f.id, f.entradaDom]),
+    );
+  }
+
   /** Fiscal vinculado ao usuário autenticado (erro se não houver). */
   async meuFiscal(usuarioId: string): Promise<Fiscal> {
     const fiscal = await this.prisma.fiscal.findFirst({ where: { usuarioId } });
@@ -749,15 +771,34 @@ export class FiscaisService {
     const inicio = inicioDoDia(dia);
     const diaSemana = inicio.getUTCDay();
     const dataISO = inicio.toISOString().slice(0, 10);
+    // Feriado usa o horário de DOMINGO (a folga segue a do dia real). Sem o
+    // serviço de feriados o dia é tratado como normal (comportamento antigo).
+    const ehFeriado = this.feriados
+      ? await this.feriados.ehFeriado(inicio)
+      : false;
 
     // Fiscais: a escala consolidada já resolve folga, horário especial e o
     // rodízio de domingo, além do nome/ficha canônica.
     const consolidada = this.escala
       ? await this.escala.escalaConsolidada(diaSemana, dataISO)
       : [];
+    // Em feriado, o horário de domingo dos fiscais vive na FICHA (`entradaDom`),
+    // não na escala semanal — então buscamos só as fichas dos consolidados. A
+    // folga continua vindo da escala consolidada do dia real.
+    const entradaDomPorFicha = ehFeriado
+      ? await this.entradaDomDasFichas(
+          consolidada.map((i) => i.colaboradorId ?? null),
+        )
+      : new Map<string, string>();
     const dosFiscais: EscaladoDia[] = consolidada.flatMap((item) => {
       if (item.efetiva === 'FOLGA') return [];
-      const entrada = item.efetiva.entrada ?? null;
+      const entradaDaEscala = item.efetiva.entrada ?? null;
+      // Feriado: horário de domingo da ficha; sem ele, mantém o da escala (não
+      // deixamos ninguém sem turno, senão sumiria da equipe do dia).
+      const entrada =
+        ehFeriado && item.colaboradorId
+          ? (entradaDomPorFicha.get(item.colaboradorId) ?? entradaDaEscala)
+          : entradaDaEscala;
       if (!entrada) return [];
       return [
         {
@@ -792,6 +833,7 @@ export class FiscaisService {
         },
         inicio,
         ancora ? { data: ancora.data, ordem: ancora.ordem } : null,
+        ehFeriado,
       );
       if (!entrada) return [];
       return [

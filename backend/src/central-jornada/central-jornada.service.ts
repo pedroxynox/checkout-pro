@@ -837,15 +837,18 @@ export class CentralJornadaService {
           : undefined;
         if (conflito) conflitos += 1;
         // Atraso: compara a 1ª batida (entrada) com o turno esperado da escala.
-        // Em feriado o turno é ambíguo (não há horário de feriado no cadastro),
-        // então não apontamos atraso.
+        // Em feriado o turno é o de DOMINGO (regra 13) — antes era tratado como
+        // ambíguo e o atraso simplesmente não era apontado no dia.
         const entradaReal = regs.reduce(
           (min, b) => (b.hora < min ? b.hora : min),
           regs[0].hora,
         );
-        const entradaPrevista = ehFeriado
-          ? null
-          : entradaEsperadaNoDia(ficha, dia, ancora);
+        const entradaPrevista = entradaEsperadaNoDia(
+          ficha,
+          dia,
+          ancora,
+          ehFeriado,
+        );
         const atrasoMinutos =
           minutosDeAtraso(entradaPrevista, entradaReal) ?? undefined;
         if (atrasoMinutos != null) atrasos += 1;
