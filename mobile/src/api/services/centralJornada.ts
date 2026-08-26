@@ -271,6 +271,12 @@ export interface CentralMarcacoesInvalidas {
     aConferir: number;
     porTipo: Record<MarcacaoCanonica, number>;
     devidasMs: number;
+    /**
+     * Dias deixados fora da lista por já terem **não retorno do intervalo**
+     * registrado: a pessoa saiu e não voltou, o que é incidência de conduta e
+     * não marcação esquecida. Vem como contagem para não sumirem em silêncio.
+     */
+    naoRetornosExcluidos: number;
   };
   itens: MarcacaoInvalidaItem[];
 }

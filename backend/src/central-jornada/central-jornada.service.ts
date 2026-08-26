@@ -384,6 +384,13 @@ export interface CentralMarcacoesInvalidas {
     porTipo: Record<MarcacaoCanonica, number>;
     /** Horas devidas acumuladas nos dias com marcação faltante. */
     devidasMs: number;
+    /**
+     * Dias deixados FORA da lista por já terem um **não retorno do intervalo**
+     * registrado. Não é marcação esquecida: a pessoa saiu e não voltou (ver
+     * regra 12). Aparece como contagem para o gestor saber que existem e onde
+     * tratá-los, em vez de sumirem em silêncio.
+     */
+    naoRetornosExcluidos: number;
   };
   itens: MarcacaoInvalidaItem[];
 }
@@ -1315,6 +1322,11 @@ export class CentralJornadaService {
    * intervalo obrigatório) é um dia **completo** — incluí-la encheria o
    * relatório de falso positivo.
    *
+   * **Dias com não retorno do intervalo também ficam fora** (regra 12): ali a
+   * pessoa saiu e não voltou, o que é uma **incidência de conduta**, não uma
+   * marcação esquecida — não há batida a "ajustar". Eles são contados em
+   * `totais.naoRetornosExcluidos` para não desaparecerem em silêncio.
+   *
    * Os filtros por pessoa/tipo ficam na tela (a lista do ciclo é leve).
    */
   async marcacoesInvalidasCiclo(
@@ -1322,7 +1334,12 @@ export class CentralJornadaService {
   ): Promise<CentralMarcacoesInvalidas> {
     const dados = await this.carregarCiclo(deslocamento);
     const batidas = dados.batidas as BatidaMin[];
+    const naoRetornos = await this.carregarNaoRetornos(
+      dados.inicio,
+      dados.fimExclusivo,
+    );
     const itens: MarcacaoInvalidaItem[] = [];
+    let naoRetornosExcluidos = 0;
 
     for (const c of dados.pessoas) {
       const ids = this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador);
@@ -1351,8 +1368,25 @@ export class CentralJornadaService {
         horasPorDia.set(k, arr);
       }
 
+      // Dias em que ESTA pessoa tem não retorno do intervalo registrado.
+      const diasComNaoRetorno = new Set(
+        naoRetornos
+          .filter(
+            (i) =>
+              ids.has(i.colaboradorId) ||
+              (i.funcionarioId !== null && ids.has(i.funcionarioId)),
+          )
+          .map((i) => inicioDoDia(i.data).toISOString()),
+      );
+
       for (const d of dias) {
         if (d.tipo !== 'INCOMPLETO') continue;
+        // A pessoa saiu para o intervalo e não voltou: é incidência de conduta,
+        // não marcação esquecida — não há batida a ajustar (regra 12).
+        if (diasComNaoRetorno.has(d.data)) {
+          naoRetornosExcluidos += 1;
+          continue;
+        }
         const horas = [...(horasPorDia.get(d.data) ?? [])].sort(
           (a, b) => a.getTime() - b.getTime(),
         );
@@ -1414,9 +1448,31 @@ export class CentralJornadaService {
         aConferir: itens.filter((i) => i.confianca === 'BAIXA').length,
         porTipo,
         devidasMs: itens.reduce((s, i) => s + i.devidasMs, 0),
+        naoRetornosExcluidos,
       },
       itens,
     };
+  }
+
+  /**
+   * Não-retornos do intervalo registrados no período (automáticos ou lançados à
+   * mão pelo gestor). Consulta própria — e não um campo de `carregarCiclo` —
+   * para não cobrar esta leitura das outras quatro varreduras do ciclo, que não
+   * precisam dela. Coberta pelo índice `[tipo, data]` de `incidencias_escala`.
+   */
+  private async carregarNaoRetornos(
+    inicio: Date,
+    fimExclusivo: Date,
+  ): Promise<
+    { colaboradorId: string; funcionarioId: string | null; data: Date }[]
+  > {
+    return this.prisma.incidenciaEscala.findMany({
+      where: {
+        tipo: 'NAO_RETORNO_INTERVALO',
+        data: { gte: inicio, lt: fimExclusivo },
+      },
+      select: { colaboradorId: true, funcionarioId: true, data: true },
+    });
   }
 
   /**

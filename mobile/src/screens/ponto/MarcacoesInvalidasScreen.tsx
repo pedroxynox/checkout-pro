@@ -247,6 +247,7 @@ function ResumoCiclo({
         <Text style={styles.resumoTexto}>
           Nenhuma marcação faltante neste ciclo. 🎉
         </Text>
+        <AvisoNaoRetorno quantidade={totais.naoRetornosExcluidos} />
       </Cartao>
     );
   }
@@ -310,7 +311,33 @@ function ResumoCiclo({
           horas devidas — ajustar as marcações corrige o saldo.
         </Text>
       )}
+      <AvisoNaoRetorno quantidade={totais.naoRetornosExcluidos} />
     </Cartao>
+  );
+}
+
+/**
+ * Nota sobre os dias de não retorno do intervalo, que ficam FORA desta lista.
+ *
+ * Ali a pessoa saiu e não voltou: não há batida esquecida para ajustar, é uma
+ * incidência de conduta e o seu lugar é o painel de incidências. Ainda assim a
+ * contagem aparece aqui — se o dia simplesmente desaparecesse, o gestor poderia
+ * concluir que o ciclo está limpo quando não está.
+ */
+function AvisoNaoRetorno({
+  quantidade,
+}: {
+  quantidade: number;
+}): React.ReactElement | null {
+  if (quantidade <= 0) return null;
+  return (
+    <Text style={styles.resumoNaoRetorno}>
+      {quantidade === 1
+        ? '1 dia de não retorno do intervalo não entra nesta lista'
+        : `${quantidade} dias de não retorno do intervalo não entram nesta lista`}
+      : a pessoa saiu e não voltou, então não há marcação esquecida a ajustar —
+      são incidências, tratadas no painel de incidências.
+    </Text>
   );
 }
 
@@ -405,6 +432,12 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginTop: espacamento.sm,
+  },
+  resumoNaoRetorno: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: espacamento.sm,
+    fontStyle: 'italic',
   },
   filtroRotulo: {
     ...tipografia.legenda,

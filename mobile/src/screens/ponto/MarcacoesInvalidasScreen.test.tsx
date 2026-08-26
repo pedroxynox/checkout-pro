@@ -31,6 +31,7 @@ const RESPOSTA = {
       ENCERRAMENTO: 0,
     },
     devidasMs: 5 * 60 * 60 * 1000,
+    naoRetornosExcluidos: 0,
   },
   itens: [
     {
@@ -178,6 +179,7 @@ describe('MarcacoesInvalidasScreen', () => {
           ENCERRAMENTO: 0,
         },
         devidasMs: 0,
+        naoRetornosExcluidos: 0,
       },
       itens: [],
     });
@@ -187,6 +189,23 @@ describe('MarcacoesInvalidasScreen', () => {
     expect(await screen.findByText('Nada a ajustar')).toBeTruthy();
     expect(
       screen.getByText('Nenhuma marcação faltante neste ciclo. 🎉'),
+    ).toBeTruthy();
+  });
+
+  it('avisa quantos dias de não retorno ficaram fora da lista', async () => {
+    // Não pode sumir em silêncio: sem o aviso, um ciclo só com não-retornos
+    // pareceria limpo.
+    centralJornadaService.marcacoesInvalidas.mockResolvedValue({
+      ...RESPOSTA,
+      totais: { ...RESPOSTA.totais, naoRetornosExcluidos: 2 },
+    });
+
+    render(<MarcacoesInvalidasScreen />);
+
+    expect(
+      await screen.findByText(
+        /2 dias de não retorno do intervalo não entram nesta lista/,
+      ),
     ).toBeTruthy();
   });
 });

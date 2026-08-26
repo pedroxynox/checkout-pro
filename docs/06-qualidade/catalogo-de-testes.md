@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 108 arquivos, 713 casos. **Mobile:** 27 arquivos, 117 casos. **Total: 830 casos.**
+> **Backend:** 108 arquivos, 716 casos. **Mobile:** 27 arquivos, 118 casos. **Total: 834 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -29,7 +29,7 @@
 | `src/atestados/atestados.service.spec.ts` | 3 | 1 |
 | `src/central-jornada/central-jornada.controller.spec.ts` | 2 | 2 |
 | `src/central-jornada/central-jornada.service.spec.ts` | 21 | 3 |
-| `src/central-jornada/marcacoes-invalidas.service.spec.ts` | 9 | 1 |
+| `src/central-jornada/marcacoes-invalidas.service.spec.ts` | 12 | 1 |
 | `src/central-jornada/rankings.service.spec.ts` | 9 | 1 |
 | `src/central-jornada/saldo-time.spec.ts` | 4 | 1 |
 | `src/checklist/checklist.controller.spec.ts` | 5 | 1 |
@@ -146,7 +146,7 @@
 | `src/screens/operadores/JustificativasScreen.test.tsx` | 4 | 1 |
 | `src/screens/ponto/ExportarCicloScreen.test.tsx` | 2 | 1 |
 | `src/screens/ponto/InconsistenciasScreen.test.tsx` | 2 | 1 |
-| `src/screens/ponto/MarcacoesInvalidasScreen.test.tsx` | 8 | 1 |
+| `src/screens/ponto/MarcacoesInvalidasScreen.test.tsx` | 9 | 1 |
 | `src/screens/ponto/RankingTimeScreen.test.tsx` | 9 | 1 |
 | `src/screens/ponto/RegistroPontoScreen.test.tsx` | 6 | 1 |
 | `src/screens/ponto/leituraComprovanteUtil.test.ts` | 4 | 2 |

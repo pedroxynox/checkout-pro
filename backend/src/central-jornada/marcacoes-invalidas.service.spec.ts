@@ -53,11 +53,18 @@ const FICHA: FichaTeste = {
   tipoContratoJornadaId: null,
 };
 
+/** Um não retorno do intervalo registrado (automático ou manual). */
+function naoRetorno(iso: string, colaboradorId = 'c1') {
+  return { colaboradorId, funcionarioId: null, data: dia(iso) };
+}
+
 function montar(
   batidas: ReturnType<typeof batida>[],
   ficha: FichaTeste = FICHA,
+  naoRetornos: ReturnType<typeof naoRetorno>[] = [],
 ) {
   const prismaFake = {
+    incidenciaEscala: { findMany: jest.fn().mockResolvedValue(naoRetornos) },
     colaborador: { findMany: jest.fn().mockResolvedValue([ficha]) },
     batidaPonto: { findMany: jest.fn().mockResolvedValue(batidas) },
     ausencia: { findMany: jest.fn().mockResolvedValue([]) },
@@ -149,6 +156,67 @@ describe('CentralJornadaService.marcacoesInvalidasCiclo', () => {
     expect(item.observacao).toContain('jornada inteira');
     expect(rel.totais.faltamDuas).toBe(1);
     expect(rel.totais.aConferir).toBe(1);
+  });
+
+  it('NÃO acusa o dia com não retorno do intervalo, e o conta à parte', async () => {
+    // Saiu 13:30 (5h30 depois da entrada) e não voltou. Sem a guarda, o dia
+    // entraria como "faltam as duas do intervalo" — leitura errada: a pessoa
+    // não esqueceu de bater, ela foi embora. É incidência de conduta.
+    const service = montar(
+      [
+        batida('a1', '2026-06-29', '08:00'),
+        batida('a2', '2026-06-29', '13:30'),
+      ],
+      FICHA,
+      [naoRetorno('2026-06-29')],
+    );
+
+    const rel = await service.marcacoesInvalidasCiclo(0);
+
+    expect(rel.itens).toEqual([]);
+    expect(rel.totais.dias).toBe(0);
+    // Não desaparece em silêncio: fica contado.
+    expect(rel.totais.naoRetornosExcluidos).toBe(1);
+  });
+
+  it('o não retorno de um dia não esconde a marcação faltante de outro', async () => {
+    const service = montar(
+      [
+        // Seg 29/06: não retorno (sai da lista).
+        batida('a1', '2026-06-29', '08:00'),
+        batida('a2', '2026-06-29', '13:30'),
+        // Ter 30/06: falta o encerramento (continua na lista).
+        batida('b1', '2026-06-30', '08:00'),
+        batida('b2', '2026-06-30', '12:00'),
+        batida('b3', '2026-06-30', '13:30'),
+      ],
+      FICHA,
+      [naoRetorno('2026-06-29')],
+    );
+
+    const rel = await service.marcacoesInvalidasCiclo(0);
+
+    expect(rel.itens).toHaveLength(1);
+    expect(rel.itens[0].data.slice(0, 10)).toBe('2026-06-30');
+    expect(rel.itens[0].tiposFaltantes).toEqual(['ENCERRAMENTO']);
+    expect(rel.totais.naoRetornosExcluidos).toBe(1);
+  });
+
+  it('o não retorno de OUTRA pessoa não afeta a lista desta', async () => {
+    const service = montar(
+      [
+        batida('a1', '2026-06-29', '08:00'),
+        batida('a2', '2026-06-29', '13:30'),
+      ],
+      FICHA,
+      // Incidência de outro colaborador, no mesmo dia.
+      [naoRetorno('2026-06-29', 'outro-colaborador')],
+    );
+
+    const rel = await service.marcacoesInvalidasCiclo(0);
+
+    expect(rel.itens).toHaveLength(1);
+    expect(rel.totais.naoRetornosExcluidos).toBe(0);
   });
 
   it('NÃO acusa a jornada curta válida de duas batidas (até 4h50, sem intervalo)', async () => {
