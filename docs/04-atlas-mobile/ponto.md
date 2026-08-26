@@ -27,7 +27,7 @@ feriados).
 |---|---|---|
 | `RegistroPontoScreen.tsx` | Tela principal: busca, jornada do dia, batidas e leitor | 1213 |
 | `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, lista por pessoa, comparativo) | 679 |
-| `RankingTimeScreen.tsx` | Ranking do time numa métrica do resumo (uma tela para as sete) | 544 |
+| `RankingTimeScreen.tsx` | Ranking do time numa métrica do resumo (uma tela para as sete) | 549 |
 | `metricasResumo.ts` | Identidade das sete métricas do resumo (fonte única de card + ranking) | 153 |
 | `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 344 |
 | `InconsistenciasScreen.tsx` | Problemas do ciclo agrupados por dia | 325 |
@@ -146,9 +146,16 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   ausência **abonada**: não é falta e não pode aparecer como tal (ver regra 11 da
   [`central-jornada`](../03-atlas-backend/central-jornada.md)). Por isso a card
   usa **azul** (informativo, não de alerta) e o ranking a lê com semântica
-  **positiva** — quem tem mais atestados não está "pior". O número da card são os
-  **dias**; as horas abonadas continuam no chip "Atestado" de cada pessoa e na
-  revisão do ciclo.
+  **positiva** — quem tem mais atestados não está "pior".
+- **O número da card são ATESTADOS, não dias** (regra 12 da
+  [`central-jornada`](../03-atlas-backend/central-jornada.md)): um atestado de 3
+  dias conta 1, e um de 3 dias mais um de 2 contam 2 — não 5. No ranking, cada
+  linha do detalhe é **um atestado** e mostra o **período** que ele cobre
+  ("Seg 06/07 a Qua 08/07"), quantos dias são e as horas abonadas; os dias
+  justificados sem documento cadastrado saem marcados como "sem documento
+  cadastrado", o que também é a dica de que cadastrar o documento deixa a
+  contagem exata. As horas seguem no chip "Atestado" de cada pessoa e na revisão
+  do ciclo.
 - **Uma só tela para os sete rankings** (`RankingTimeScreen`, parâmetros
   `metrica` + `ciclo`). A identidade de cada métrica (rótulo, título, ícone, cor,
   como formatar e de onde sai o número) vive em **`metricasResumo.ts`**, a mesma

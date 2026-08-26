@@ -166,12 +166,19 @@ export interface DiaFaltaRanking {
   devidasMs: number;
 }
 
-/** Um dia de atestado médico, abonado (detalhe do ranking de atestados). */
-export interface DiaAtestadoRanking {
-  data: string;
-  diaSemana: number;
-  ehFeriado: boolean;
-  /** Carga-base do dia, abonada pelo atestado (não vira hora devida). */
+/**
+ * Um ATESTADO do colaborador no ciclo — o documento, não o dia. Um atestado de 3
+ * dias é **um** atestado; os dias vão em `dias` e as horas em `horasAbonadasMs`.
+ */
+export interface AtestadoRanking {
+  /** Id do documento, ou `null` nos dias justificados sem documento cadastrado. */
+  atestadoId: string | null;
+  /** Primeiro e último dia do atestado DENTRO do ciclo (ISO). */
+  inicio: string;
+  fim: string;
+  /** Quantos dias do atestado caem neste ciclo. */
+  dias: number;
+  /** Soma das cargas-base dos dias, abonadas pelo atestado. */
   horasAbonadasMs: number;
 }
 
@@ -207,7 +214,8 @@ export interface DiaConflitoRanking {
  */
 export interface RankingPessoa extends CentralPessoaResumo {
   faltasDetalhe: DiaFaltaRanking[];
-  atestadosDetalhe: DiaAtestadoRanking[];
+  /** Um item por ATESTADO (documento), não por dia. */
+  atestadosDetalhe: AtestadoRanking[];
   atrasosDetalhe: DiaAtrasoRanking[];
   tacDetalhe: DiaTacRanking[];
   conflitosDetalhe: DiaConflitoRanking[];

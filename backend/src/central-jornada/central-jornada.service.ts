@@ -43,6 +43,8 @@ import {
   rotuloPeriodoFolha,
 } from '../common/datas';
 
+const UM_DIA_MS = 24 * 60 * 60 * 1000;
+
 /** Funções que batem ponto e entram na Central (contrato 6x1-2x1). */
 const FUNCOES_PONTO: FuncaoColaborador[] = ['OPERADOR', 'SUPERVISOR', 'FISCAL'];
 
@@ -290,16 +292,112 @@ export interface DiaFaltaRanking {
 }
 
 /**
- * Um dia de atestado médico (detalhe do ranking de atestados). É ausência
- * **abonada**: não gera hora devida e as horas do dia são pagas — por isso
- * `horasAbonadasMs` (a carga-base daquele dia) em vez de horas devidas.
+ * Um ATESTADO do colaborador no ciclo — o documento, não o dia.
+ *
+ * Um atestado de 3 dias é **um** atestado, não três: é assim que o RH conta e é
+ * assim que a card do "Resumo do time" e o ranking o apresentam. Os dias
+ * continuam disponíveis em `dias` e as horas em `horasAbonadasMs`.
+ *
+ * É ausência **abonada**: não gera hora devida e a carga do dia é paga — por isso
+ * `horasAbonadasMs` (a soma das cargas-base dos dias) em vez de horas devidas.
  */
-export interface DiaAtestadoRanking {
-  data: string;
-  diaSemana: number;
-  ehFeriado: boolean;
-  /** Carga-base do dia, abonada pelo atestado. */
+export interface AtestadoRanking {
+  /** Id do documento (`Atestado`), ou `null` nos dias justificados sem documento. */
+  atestadoId: string | null;
+  /** Primeiro dia do atestado DENTRO do ciclo (ISO). */
+  inicio: string;
+  /** Último dia do atestado DENTRO do ciclo (ISO). */
+  fim: string;
+  /** Quantos dias do atestado caem neste ciclo. */
+  dias: number;
+  /** Soma das cargas-base dos dias, abonadas pelo atestado. */
   horasAbonadasMs: number;
+}
+
+/** Um dia de atestado, como entra no agrupamento. */
+interface DiaAtestado {
+  data: string;
+  atestadoId: string | null;
+  baseMs: number;
+}
+
+/**
+ * Agrupa os dias de atestado em ATESTADOS (documentos). É o que faz "1 atestado
+ * de 3 dias + 1 de 2 dias" contar **2**, e não 5.
+ *
+ * Duas origens, tratadas de formas diferentes porque a informação disponível é
+ * diferente:
+ *
+ * - **Com documento** (`atestadoId`): agrupa por id. É exato — o documento diz
+ *   quais dias lhe pertencem, mesmo que não sejam contíguos.
+ * - **Sem documento** (`atestadoId` nulo): são dias abonados um a um com o motivo
+ *   "atestado médico" (o caminho rápido, sem cadastrar o documento). Aqui não há
+ *   id para agrupar, então **dias consecutivos contam como um só atestado** — é a
+ *   leitura mais próxima da realidade: um bloco corrido de dias abonados veio de
+ *   um mesmo comprovante. O limite conhecido: dois comprovantes de 1 dia em dias
+ *   seguidos aparecem como um; os dados não permitem distinguir, e cadastrar o
+ *   documento resolve.
+ *
+ * Só enxerga os dias DENTRO do ciclo: um atestado que atravessa o corte 26→25
+ * conta em cada um dos dois ciclos, com os dias que lhe cabem — é o esperado,
+ * porque cada ciclo apura o que aconteceu nele.
+ */
+export function agruparAtestados(
+  diasAtestado: readonly DiaAtestado[],
+): AtestadoRanking[] {
+  const ordenados = [...diasAtestado].sort((a, b) =>
+    a.data.localeCompare(b.data),
+  );
+  const grupos: AtestadoRanking[] = [];
+  // Último grupo por id (documento) e o último grupo sem id (bloco corrido).
+  const porId = new Map<string, AtestadoRanking>();
+  let ultimoSemId: { grupo: AtestadoRanking; fimMs: number } | null = null;
+
+  for (const dia of ordenados) {
+    if (dia.atestadoId) {
+      const existente = porId.get(dia.atestadoId);
+      if (existente) {
+        existente.fim = dia.data;
+        existente.dias += 1;
+        existente.horasAbonadasMs += dia.baseMs;
+        continue;
+      }
+      const grupo: AtestadoRanking = {
+        atestadoId: dia.atestadoId,
+        inicio: dia.data,
+        fim: dia.data,
+        dias: 1,
+        horasAbonadasMs: dia.baseMs,
+      };
+      porId.set(dia.atestadoId, grupo);
+      grupos.push(grupo);
+      continue;
+    }
+
+    // Sem documento: continua o bloco se o dia é o seguinte ao último.
+    const diaMs = new Date(dia.data).getTime();
+    const ehSeguinte =
+      ultimoSemId !== null && diaMs - ultimoSemId.fimMs === UM_DIA_MS;
+    if (ultimoSemId && ehSeguinte) {
+      ultimoSemId.grupo.fim = dia.data;
+      ultimoSemId.grupo.dias += 1;
+      ultimoSemId.grupo.horasAbonadasMs += dia.baseMs;
+      ultimoSemId.fimMs = diaMs;
+      continue;
+    }
+    const grupo: AtestadoRanking = {
+      atestadoId: null,
+      inicio: dia.data,
+      fim: dia.data,
+      dias: 1,
+      horasAbonadasMs: dia.baseMs,
+    };
+    grupos.push(grupo);
+    ultimoSemId = { grupo, fimMs: diaMs };
+  }
+
+  // Do mais recente para o mais antigo (como o resto da Central).
+  return grupos.sort((a, b) => b.inicio.localeCompare(a.inicio));
 }
 
 /** Um dia com atraso na entrada (detalhe do ranking de atrasos). */
@@ -345,7 +443,8 @@ export interface DiaConflitoRanking {
  */
 export interface RankingPessoa extends CentralPessoaResumo {
   faltasDetalhe: DiaFaltaRanking[];
-  atestadosDetalhe: DiaAtestadoRanking[];
+  /** Um item por ATESTADO (documento), não por dia — ver `agruparAtestados`. */
+  atestadosDetalhe: AtestadoRanking[];
   atrasosDetalhe: DiaAtrasoRanking[];
   tacDetalhe: DiaTacRanking[];
   conflitosDetalhe: DiaConflitoRanking[];
@@ -753,6 +852,13 @@ export class CentralJornadaService {
       'colaboradorId' | 'nome' | 'primeiroNome' | 'funcao'
     >;
     dias: CentralDiaDetalhe[];
+    /**
+     * Atestados (documentos) do ciclo, já agrupados. Sai daqui — e não de uma
+     * segunda passada sobre `dias` — para que o número da card e o detalhe do
+     * ranking venham do MESMO agrupamento e não possam divergir. Calculado
+     * sempre, inclusive quando `coletarDias` é false (é barato).
+     */
+    atestados: AtestadoRanking[];
   } {
     // Batidas e ausências da pessoa, agrupadas por dia (ISO do dia).
     const batidasPorDia = new Map<string, BatidaMin[]>();
@@ -774,7 +880,8 @@ export class CentralJornadaService {
     let horasDevidasMs = 0;
     let horasAtestadoMs = 0;
     let faltas = 0;
-    let atestados = 0;
+    // Dias de atestado do ciclo; viram ATESTADOS (documentos) no fim.
+    const diasAtestado: DiaAtestado[] = [];
     let diasTac = 0;
     let conflitos = 0;
     let atrasos = 0;
@@ -884,7 +991,15 @@ export class CentralJornadaService {
           // Atestado é ausência ABONADA e tem contador próprio: NÃO entra em
           // `faltas` (regra 11). Antes somava nos dois, e o número de faltas da
           // Central acusava quem havia apresentado atestado.
-          atestados += 1;
+          //
+          // Guardamos o DIA aqui e contamos os ATESTADOS no fim: o contador é de
+          // documentos, não de dias (um atestado de 3 dias conta 1) — ver
+          // `agruparAtestados` e a regra 12.
+          diasAtestado.push({
+            data: k,
+            atestadoId: ausencia.atestadoId ?? null,
+            baseMs,
+          });
           horasAtestadoMs += baseMs;
           tipo = 'ATESTADO';
         } else {
@@ -946,7 +1061,9 @@ export class CentralJornadaService {
     // Saldo só das 50% (com sinal): é o "saldo" da card. As 100% não entram —
     // nunca são debitadas e têm chip próprio.
     const saldo50Ms = extras50Ms - horasDevidasMs;
+    const atestadosAgrupados = agruparAtestados(diasAtestado);
     return {
+      atestados: atestadosAgrupados,
       resumo: {
         cargaTrabalhadaMs,
         extras50Ms,
@@ -956,7 +1073,8 @@ export class CentralJornadaService {
         horasDevidasAtualMs,
         horasAtestadoMs,
         faltas,
-        atestados,
+        // O contador é de ATESTADOS, não de dias.
+        atestados: atestadosAgrupados.length,
         diasTac,
         conflitos,
         atrasos,
@@ -1219,7 +1337,7 @@ export class CentralJornadaService {
     const pessoas: RankingPessoa[] = await Promise.all(
       dados.pessoas.map(async (c) => {
         const regras = await this.regrasDe(c.tipoContratoJornadaId);
-        const { resumo, dias } = this.calcularPessoa(
+        const { resumo, dias, atestados } = this.calcularPessoa(
           this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador),
           batidas,
           dados.ausencias,
@@ -1246,15 +1364,8 @@ export class CentralJornadaService {
             devidasMs: d.devidasMs,
           }));
 
-        const atestadosDetalhe: DiaAtestadoRanking[] = dias
-          .filter((d) => d.tipo === 'ATESTADO')
-          .map((d) => ({
-            data: d.data,
-            diaSemana: d.diaSemana,
-            ehFeriado: d.ehFeriado,
-            // O atestado abona a carga-base do dia (não gera hora devida).
-            horasAbonadasMs: d.baseMs,
-          }));
+        // Já vem agrupado por ATESTADO (documento) de `calcularPessoa`.
+        const atestadosDetalhe = atestados;
 
         const atrasosDetalhe: DiaAtrasoRanking[] = dias
           .filter((d) => d.atrasoMinutos != null)

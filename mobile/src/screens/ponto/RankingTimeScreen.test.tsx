@@ -75,19 +75,22 @@ const ANA = pessoa({
       devidasMs: 0,
     },
   ],
-  // Atestado é contador PRÓPRIO: não soma em faltas.
+  // Atestado é contador PRÓPRIO (e conta DOCUMENTOS, não dias).
   atestados: 2,
   atestadosDetalhe: [
     {
-      data: '2026-07-08T00:00:00.000Z',
-      diaSemana: 3,
-      ehFeriado: false,
-      horasAbonadasMs: 7 * 3_600_000,
+      // Um atestado de 3 dias: uma linha, não três.
+      atestadoId: 'at-1',
+      inicio: '2026-07-06T00:00:00.000Z',
+      fim: '2026-07-08T00:00:00.000Z',
+      dias: 3,
+      horasAbonadasMs: 21 * 3_600_000,
     },
     {
-      data: '2026-07-09T00:00:00.000Z',
-      diaSemana: 4,
-      ehFeriado: false,
+      atestadoId: null,
+      inicio: '2026-07-09T00:00:00.000Z',
+      fim: '2026-07-09T00:00:00.000Z',
+      dias: 1,
       horasAbonadasMs: 7 * 3_600_000,
     },
   ],
@@ -242,10 +245,15 @@ describe('RankingTimeScreen', () => {
       screen.getByText('Do que mais acumulou ao que menos acumulou.'),
     ).toBeTruthy();
 
+    // "Ver 2 dias" é o rótulo genérico do detalhe (2 itens = 2 atestados).
     fireEvent.press(screen.getByText('Ver 2 dias'));
+    // O atestado de 3 dias aparece como UMA linha, com o período.
+    expect(screen.getByText('Seg 06/07 a Qua 08/07')).toBeTruthy();
+    expect(screen.getByText('3 dias · 21h 00min abonadas')).toBeTruthy();
+    // O dia abonado sem documento é identificado como tal.
     expect(
-      screen.getAllByText('Atestado médico — 7h 00min abonadas'),
-    ).toHaveLength(2);
+      screen.getByText('1 dia · 7h 00min abonadas · sem documento cadastrado'),
+    ).toBeTruthy();
   });
 
   it('mostra estado vazio quando ninguém pontuou na métrica', async () => {

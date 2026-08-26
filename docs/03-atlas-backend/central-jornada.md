@@ -25,7 +25,7 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `central-jornada.controller.ts` | Rotas HTTP do portal | 100 |
-| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 1675 |
+| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 1789 |
 | `central-jornada.module.ts` | Ligações (DI) do módulo | 25 |
 | `dto/central-jornada.dto.ts` | Validação de entrada (marcar débito) | 7 |
 
@@ -72,7 +72,8 @@ Varre o dia a dia de cada pessoa e devolve a lista achatada dos problemas:
 - **Devolve:** `CentralRankings` — por pessoa, o **mesmo `CentralPessoaResumo`**
   das cards da Central (`RankingPessoa` o estende) mais o detalhe dia a dia do
   seu ciclo: `faltasDetalhe`, `atestadosDetalhe`, `atrasosDetalhe`, `tacDetalhe`
-  e `conflitosDetalhe`.
+  e `conflitosDetalhe`. O de atestados vem agrupado **por documento** (regra 12);
+  os demais são por dia.
 - **Para que serve:** é o que abre ao tocar numa card do "Resumo do time"
   (extras 50%, extras 100%, faltas, atestados, TAC, atrasos ou conflitos).
 - **Uma resposta para as sete métricas**, e não um endpoint por métrica, por dois
@@ -88,8 +89,9 @@ Varre o dia a dia de cada pessoa e devolve a lista achatada dos problemas:
   `atestadosDetalhe.length === atestados` etc.). Se divergissem, o ranking
   mentiria.
 - **Faltas e atestados são métricas separadas** (regra 11): `faltasDetalhe` traz
-  ausência simples e falta com débito; `atestadosDetalhe` traz os dias abonados,
-  com as horas que o atestado cobriu.
+  ausência simples e falta com débito; `atestadosDetalhe` traz **um item por
+  atestado** (documento, não dia — regra 12), com o período, os dias e as horas
+  abonadas.
 - **Extras não têm detalhe por dia** — ali o número é a informação.
 - **Não escreve nada:** é leitura.
 
@@ -143,6 +145,10 @@ completos **e que geram débito** — domingo e feriado nunca geram), atestados,
 faltas, TAC, conflitos e atrasos.
 
 ## 6. Lógica de domínio (funções puras)
+- `agruparAtestados(diasAtestado)` → transforma os DIAS de atestado do ciclo nos
+  **atestados** (documentos) que os originaram: por `atestadoId` quando existe, e
+  por bloco de dias consecutivos quando o dia foi abonado sem documento. É o que
+  faz a card contar 2 atestados onde há 5 dias — ver regra 12.
 - `contribuicaoSaldoTime({extras50Ms, extras100Ms, horasDevidasMs})` →
   contribuição de uma pessoa ao **saldo do time**: as 50% entram só se
   positivas após o débito (o débito consome apenas as 50%); as 100% entram
@@ -186,7 +192,7 @@ faltas, TAC, conflitos e atrasos.
   reusado de [`ponto`](ponto.md).
 - `DiaFaltaRanking.tipo`: `FALTA` · `FALTA_DEBITO` (subconjunto de
   `CentralDiaDetalhe.tipo`). O dia de `ATESTADO` **não** entra aqui: vai em
-  `DiaAtestadoRanking` (ver regra 11).
+  `AtestadoRanking` (ver regras 11 e 12).
 - `StatusJornadaPonto` (reusado de [`ponto`](ponto.md)).
 - Não há máquina de estados própria (o módulo é de leitura/agregação, exceto o
   débito da falta).
@@ -307,6 +313,28 @@ faltas, TAC, conflitos e atrasos.
    - `atestados` é novo e conta os dias abonados;
    - `horasAtestadoMs`, `horasDevidasMs` e o saldo **não mudaram** — o atestado
      nunca gerou hora devida.
+12. **O contador de atestados é de DOCUMENTOS, não de dias.** Um atestado de 3
+   dias conta **1**; um de 3 dias mais um de 2 contam **2**, não 5. É como o RH
+   conta, e o número de dias segue disponível (em cada `AtestadoRanking.dias` e,
+   em horas, em `horasAtestadoMs`).
+
+   O agrupamento (`agruparAtestados`, função pura exportada) trata as duas
+   origens de forma diferente porque a informação disponível é diferente:
+   - **com documento** (`Ausencia.atestadoId`): agrupa por id — exato, inclusive
+     quando os dias não são contíguos;
+   - **sem documento** (`atestadoId` nulo, dias abonados um a um com o motivo
+     "atestado médico" pelo caminho rápido): **dias consecutivos contam como um
+     só**. É a leitura mais próxima da realidade — um bloco corrido de dias
+     abonados veio de um mesmo comprovante. **Limite conhecido:** dois
+     comprovantes de 1 dia em dias seguidos aparecem como um; os dados não
+     permitem distinguir, e cadastrar o documento resolve.
+
+   Um atestado que **atravessa o corte 26→25** conta em cada um dos dois ciclos,
+   com os dias que lhe cabem em cada um — cada ciclo apura o que aconteceu nele.
+
+   O agrupamento sai de `calcularPessoa` (e não de uma segunda passada sobre os
+   dias), então o número da card e o detalhe do ranking vêm do **mesmo**
+   agrupamento e não podem divergir.
 
    Como `comparativos` reusa `resumoCiclo`, os ciclos anteriores também passam a
    ser exibidos pela regra nova (a base não é reprocessada: o número é sempre
@@ -317,14 +345,15 @@ faltas, TAC, conflitos e atrasos.
 |---|---|---|
 | `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito) e **atraso em feriado pelo turno de domingo** | 23 |
 | `marcacoes-invalidas.service.spec.ts` | Relatório de marcações faltantes: entrada esquecida, encerramento, as duas do intervalo, totais, ordenação, sem turno — e os dias que **não** entram (não retorno do intervalo, jornada curta válida, dia completo, dia sem registro) | 12 |
-| `rankings.service.spec.ts` | Base dos rankings: **detalhe do mesmo tamanho que o contador** de cada card, faltas sem atestado, atestados à parte (com horas abonadas), atrasos com minutos e turno, TAC com motivos, conflitos, pessoas zeradas e igualdade com `resumoCiclo` | 9 |
+| `rankings.service.spec.ts` | Base dos rankings: **detalhe do mesmo tamanho que o contador** de cada card, faltas sem atestado, atestados à parte (contados por documento), atrasos com minutos e turno, TAC com motivos, conflitos, pessoas zeradas e igualdade com `resumoCiclo` | 10 |
+| `agrupar-atestados.spec.ts` | Agrupamento por documento e por bloco de dias consecutivos: 3+2 dias = 2 atestados, dias não contíguos, virada de mês e o total de dias preservado | 12 |
 | `saldo-time.spec.ts` | Regra do saldo do time (`contribuicaoSaldoTime`) | 4 |
 | `central-jornada.controller.spec.ts` | Permissão do débito de horas e do relatório de marcações inválidas | 2 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `central-jornada.service.ts` (1675 linhas) concentra carga, cálculo e
+- 🔧 `central-jornada.service.ts` (1789 linhas) concentra carga, cálculo e
   agregação; os tipos de resposta (`Central*`) e o cálculo diário podem ser
   extraídos conforme crescer.
 - 🔧 **Duas respostas para "o que falta no dia".** O painel de inconsistências
