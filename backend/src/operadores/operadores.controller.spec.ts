@@ -51,7 +51,12 @@ describe('OperadoresController', () => {
       for (const perfil of ['GERENTE', 'SUPERVISOR', 'ADMINISTRADOR']) {
         const { controller, removerAusencia } = criar();
         await controller.removerAusencia('a1', { perfil } as never);
-        expect(removerAusencia).toHaveBeenCalledWith('a1', perfil);
+        // O autor vai junto: a exclusão de uma falta AUTOMÁTICA registra quem
+        // decidiu, para a detecção não a recriar (lápide).
+        expect(removerAusencia).toHaveBeenCalledWith('a1', perfil, {
+          id: null,
+          nome: null,
+        });
       }
     });
   });

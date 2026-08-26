@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { BatidaPonto, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
-  diaCivilBrasilia,
+
   diaEncerradoEmBrasilia,
   inicioDoDia,
 } from '../common/datas';
@@ -558,7 +558,14 @@ export class PontoService {
     // removida — a pessoa veio trabalhar. Faltas manuais do gestor permanecem
     // (só notificamos o conflito). Best-effort: nunca trava a batida.
     if (eraPrimeira) {
-      await this.removerFaltaAutomaticaAoFichar(dto.pessoaId, colaboradorId);
+      // Usa o dia DA BATIDA, não o de hoje: uma marcação lançada em atraso
+      // (ontem, corrigida hoje) tem de limpar a falta daquele dia. Antes olhava
+      // sempre "hoje", então a falta de ontem ficava pendurada na tela.
+      await this.removerFaltaAutomaticaAoFichar(
+        dto.pessoaId,
+        colaboradorId,
+        dia,
+      );
       // Detecta o cruzamento ponto ↔ ausência (falta MANUAL): avisa a
       // supervisão uma vez, na primeira batida do dia. Não bloqueia.
       await this.avisarConflitoAusenciaSeNecessario(
@@ -991,18 +998,27 @@ export class PontoService {
   private async removerFaltaAutomaticaAoFichar(
     pessoaId: string,
     colaboradorId: string,
+    dia: Date,
   ): Promise<void> {
     try {
-      const dia = diaCivilBrasilia(new Date());
       await this.prisma.ausencia.deleteMany({
         where: {
-          data: dia,
+          data: inicioDoDia(dia),
           automatica: true,
-          pessoaId: { in: [pessoaId, colaboradorId] },
+          // Não toca no que já foi CONVERTIDO em atestado ou ausência a prazo:
+          // essas linhas continuam marcadas como `automatica` (é o histórico de
+          // como nasceram), e apagá-las abriria um buraco no atestado — em
+          // silêncio. Mesma definição de `ehFaltaAutomaticaPendente`.
+          atestadoId: null,
+          aPrazo: false,
+          OR: [
+            { pessoaId: { in: [pessoaId, colaboradorId] } },
+            { colaboradorId: { in: [pessoaId, colaboradorId] } },
+          ],
         },
       });
     } catch {
-      // Best-effort: se não conseguir remover, o gestor pode fazê-lo à mão.
+      // Best-effort: se não conseguir remover, a revalidação do cron o fará.
     }
   }
 

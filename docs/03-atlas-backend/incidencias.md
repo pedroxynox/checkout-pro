@@ -24,7 +24,7 @@ do ponto dos fiscais e gerar analítica, ranking e o panorama de sanções.
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
 | `incidencias.controller.ts` | Rotas HTTP (registrar/editar/justificar/remover/listar/sugestões/ranking/sanções) | 122 |
-| `incidencias.service.ts` | Regras de aplicação, persistência (Prisma) e avisos | 826 |
+| `incidencias.service.ts` | Regras de aplicação, persistência (Prisma) e avisos | 865 |
 | `incidencias.domain.ts` | Regras puras: metadados de tipo, detecção, analítica, sanções | 638 |
 | `incidencias.errors.ts` | Erros de domínio (mapeados para HTTP) | 56 |
 | `incidencias.module.ts` | Ligações (DI); exporta o serviço | 23 |
@@ -63,6 +63,15 @@ do ponto dos fiscais e gerar analítica, ranking e o panorama de sanções.
 #### `editar(id, dto)` / `remover(id)`
 Atualizam ou removem uma incidência; ambos lançam `IncidenciaNaoEncontradaError`
 (404) quando o id não existe. Editar preserva os valores atuais dos campos não enviados.
+
+#### `remover(id, autor?)`
+Exclui a incidência (404 se não existir). Quando o que se remove é um **não
+retorno AUTO-DETECTADO**, grava a decisão do gestor em
+`ExclusaoOcorrenciaAutomatica` para a detecção **não recriá-la** naquele dia — a
+condição na jornada continua verdadeira e, sem a lápide, a card voltava sozinha no
+ciclo seguinte (ver regra 14 de [`ponto`](ponto.md)). Incidências **manuais** não
+geram lápide: não há detecção que as recrie. A gravação é best-effort — se falhar,
+o pior é a detecção insistir, como antes.
 
 #### `removerNaoRetornoAutomatico(colaboradorId, data)`
 Apaga os não-retornos **auto-detectados** (`origem = 'DETECTADO_PONTO'`) do
@@ -139,7 +148,8 @@ disciplinares; a segunda foca no não-retorno e devolve também os não justific
   `ADVERTENCIA`/`SUSPENSAO`/`AVALIAR_DESLIGAMENTO`.
 
 ## 8. Dados que o módulo toca
-- **Escreve:** `IncidenciaEscala`.
+- **Escreve:** `IncidenciaEscala` e `ExclusaoOcorrenciaAutomatica` (a lápide da
+  exclusão de um não-retorno auto-detectado).
 - **Lê:** `Colaborador`, `Fiscal`, `Usuario`, `RegistroPontoFiscal`,
   `EscalaEntry`, `Ausencia`, `ConfigSistema` (via `ValidacaoDataService`).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
@@ -173,7 +183,7 @@ disciplinares; a segunda foca no não-retorno e devolve também os não justific
 > Contagem sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `incidencias.service.ts` (803 linhas) concentra persistência, auto-detecção,
+- 🔧 `incidencias.service.ts` (865 linhas) concentra persistência, auto-detecção,
   analítica e avisos; candidato a extrair sub-serviços conforme crescer.
 - ⚠️ `colaboradorId` é um `String` sem FK; o serviço valida a existência antes de
   persistir para não criar incidências órfãs (que contaminariam ranking/perfil).

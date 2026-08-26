@@ -306,8 +306,19 @@ export class IncidenciasService {
     });
   }
 
-  /** Remove uma incidência (404 se não existir). */
-  async remover(id: string): Promise<void> {
+  /**
+   * Remove uma incidência (404 se não existir).
+   *
+   * Quando o que se remove é um **não retorno AUTO-DETECTADO**, a decisão do
+   * gestor é registrada (lápide) para a detecção não o recriar no ciclo seguinte
+   * — a condição na jornada continua verdadeira, e sem isso excluir à mão não
+   * tinha efeito prático. Incidências manuais não geram lápide: não há detecção
+   * que as recrie.
+   */
+  async remover(
+    id: string,
+    autor?: { id?: string | null; nome?: string | null },
+  ): Promise<void> {
     const existente = await this.prisma.incidenciaEscala.findUnique({
       where: { id },
     });
@@ -315,6 +326,34 @@ export class IncidenciasService {
       throw new IncidenciaNaoEncontradaError();
     }
     await this.prisma.incidenciaEscala.delete({ where: { id } });
+
+    const ehAutoDetectado =
+      existente.tipo === 'NAO_RETORNO_INTERVALO' &&
+      existente.origem === 'DETECTADO_PONTO';
+    if (!ehAutoDetectado) return;
+    try {
+      await this.prisma.exclusaoOcorrenciaAutomatica.upsert({
+        where: {
+          tipo_pessoaId_data: {
+            tipo: 'NAO_RETORNO_INTERVALO',
+            pessoaId: existente.colaboradorId,
+            data: inicioDoDia(existente.data),
+          },
+        },
+        update: {},
+        create: {
+          tipo: 'NAO_RETORNO_INTERVALO',
+          pessoaId: existente.colaboradorId,
+          colaboradorId: existente.colaboradorId,
+          data: inicioDoDia(existente.data),
+          excluidaPorId: autor?.id ?? null,
+          excluidaPorNome: autor?.nome ?? null,
+        },
+      });
+    } catch {
+      // Best-effort: se a lápide falhar, o pior é a detecção insistir (o
+      // comportamento antigo). Nunca impede a exclusão em si.
+    }
   }
 
   /**

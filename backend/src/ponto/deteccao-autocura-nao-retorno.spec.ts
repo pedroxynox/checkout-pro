@@ -39,11 +39,18 @@ describe('PontoDeteccaoAutomaticaService — auto-cura do não-retorno', () => {
       registroPontoFiscal: { findMany: () => Promise.resolve([]) },
       ausencia: { findMany: () => Promise.resolve([]) },
       incidenciaEscala: {
-        findMany: () =>
-          Promise.resolve(
-            opcoes.naoRetornosDoDia.map((colaboradorId) => ({ colaboradorId })),
-          ),
+        // A revalidação do ciclo consulta por `origem`; a detecção do dia não.
+        // Distinguimos para este teste cobrir só a auto-cura do dia.
+        findMany: (args?: { where?: { origem?: string } }) =>
+          args?.where?.origem
+            ? Promise.resolve([])
+            : Promise.resolve(
+                opcoes.naoRetornosDoDia.map((colaboradorId) => ({
+                  colaboradorId,
+                })),
+              ),
       },
+      exclusaoOcorrenciaAutomatica: { findMany: () => Promise.resolve([]) },
     };
     const fiscais = {
       escaladosDoDia: jest.fn().mockResolvedValue([

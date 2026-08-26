@@ -3,7 +3,7 @@
 
 # Modelo de Dados (Prisma)
 
-> Fonte: `backend/prisma/schema.prisma`. Total: **55 tabelas** e **28 tipos (enums)**.
+> Fonte: `backend/prisma/schema.prisma`. Total: **56 tabelas** e **29 tipos (enums)**.
 
 Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dicionario-de-dados.md).
 
@@ -48,7 +48,8 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `EscalaEntry` | 9 | — |
 | `OperadorTurno` | 10 | As faltas pontuais ficam em `Ausencia` (pessoaId = id do Colaborador). |
 | `Checklist` | 9 | — |
-| `Ausencia` | 17 | — |
+| `Ausencia` | 18 | — |
+| `ExclusaoOcorrenciaAutomatica` | 8 | (uma decisão por pessoa/tipo/dia), então cada novo dia recomeça do zero. |
 | `Notificacao` | 9 | — |
 | `PushToken` | 6 | seguindo o padrão do schema (ADR 0005). |
 | `MensagemAssistente` | 5 | convenção da API Gemini: 'user' (pergunta) ou 'model' (resposta). |
@@ -271,6 +272,13 @@ demais motivos justificados pesam pouco; PENDENTE/INJUSTIFICADA pesam integral.
 - `LICENCA`
 - `ATRASO_JUSTIFICADO`
 - `OUTRO`
+
+### `TipoOcorrenciaAutomatica`
+
+Tipo de ocorrência lançada pela detecção automática do Relógio Ponto.
+
+- `FALTA`
+- `NAO_RETORNO_INTERVALO`
 
 ### `StatusSugestao`
 

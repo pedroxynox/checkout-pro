@@ -20,7 +20,7 @@ intervalo" e sanções) reutilizado para criar/editar/excluir.
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `JornadaFiscaisScreen.tsx` | Jornada de equipe do dia (roster + marcações + estado) | 497 |
+| `JornadaFiscaisScreen.tsx` | Jornada de equipe do dia (roster + marcações + estado) | 525 |
 | `RegistrarIncidenciaModal.tsx` | Modal de criar/editar/excluir incidência de escala | 445 |
 
 ## 4. Fluxo do usuário
@@ -54,9 +54,17 @@ Módulos do backend relacionados: [`fiscais`](../03-atlas-backend/fiscais.md)
 ## 6. Estado local e regras de UI
 - **Faltas e não-retornos são automáticos** (não há marcação manual na escala):
   quem não bate ponto até ~2h da entrada vira falta; intervalo acima de 3h vira
-  "não retorno".
-- `aparenciaDe` decide o estado exibido por prioridade: falta > sem registrar/
-  incompleto > intervalo > encerrado > trabalhando > aguardando.
+  "não retorno". E **desaparecem sozinhos** quando deixam de ser verdade (batida
+  lançada depois, atestado, férias) — ver regra 13 de
+  [`ponto`](../03-atlas-backend/ponto.md).
+- `aparenciaDe` decide o estado exibido por prioridade: **atestado** > falta >
+  sem registrar/incompleto > intervalo > encerrado > trabalhando > aguardando.
+- **Atestado vem antes de falta, de propósito.** Os dois são ausências, mas um
+  atestado é justificado: mostrá-lo como "Falta" fazia o painel parecer errado,
+  porque a pessoa tinha o documento entregue e aparecia como faltosa. Ela segue
+  visível no painel (sumir seria pior — não se saberia por que não está), com o
+  selo azul **"Atestado"**, e é contada num chip próprio no resumo em vez de
+  inflar "Faltas".
 - O chip "sem registrar" (atraso) só aparece quando o dia é hoje; ao ver dias
   anteriores, mostram-se apenas as batidas registradas.
 - **Cronômetro de intervalo ao vivo:** para quem está `EM_INTERVALO` no dia de

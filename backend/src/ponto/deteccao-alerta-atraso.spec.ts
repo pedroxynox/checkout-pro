@@ -39,6 +39,7 @@ describe('PontoDeteccaoAutomaticaService — alerta de atraso (1h)', () => {
       registroPontoFiscal: { findMany: () => Promise.resolve([]) },
       ausencia: { findMany: () => Promise.resolve([]) },
       incidenciaEscala: { findMany: () => Promise.resolve([]) },
+      exclusaoOcorrenciaAutomatica: { findMany: () => Promise.resolve([]) },
       alertaAtrasoEnviado: { create: criarReserva },
     };
     const fiscais = {

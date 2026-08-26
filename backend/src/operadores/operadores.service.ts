@@ -1,6 +1,11 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { Ausencia, Prisma } from '@prisma/client';
+import {
+  Ausencia,
+  Prisma,
+  TipoOcorrenciaAutomatica,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ehFaltaAutomaticaPendente } from '../ponto/revalidacao-automatica.domain';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
@@ -389,10 +394,21 @@ export class OperadoresService {
    * falta que faz parte de uma ausência a prazo (período do gestor) — só
    * gerente/supervisor/administrador.
    */
-  async removerAusencia(ausenciaId: string, perfil?: string): Promise<void> {
+  async removerAusencia(
+    ausenciaId: string,
+    perfil?: string,
+    autor?: { id?: string | null; nome?: string | null },
+  ): Promise<void> {
     const a = await this.prisma.ausencia.findUnique({
       where: { id: ausenciaId },
-      select: { data: true, aPrazo: true },
+      select: {
+        data: true,
+        aPrazo: true,
+        automatica: true,
+        atestadoId: true,
+        pessoaId: true,
+        colaboradorId: true,
+      },
     });
     if (a) {
       // Ausência a prazo: fiscal não desmarca (é decisão do gestor).
@@ -403,6 +419,49 @@ export class OperadoresService {
       if (this.cicloFolha) await this.cicloFolha.exigirCicloAberto(a.data);
     }
     await this.prisma.ausencia.delete({ where: { id: ausenciaId } });
+
+    // Era uma falta que o SISTEMA lançou? Então registra a decisão do gestor,
+    // para a detecção não recriá-la no ciclo seguinte (a condição — escalado,
+    // sem batida — continua verdadeira, e sem isto a card voltava sozinha).
+    if (a && ehFaltaAutomaticaPendente(a)) {
+      await this.registrarExclusaoAutomatica(
+        'FALTA',
+        a.pessoaId,
+        a.colaboradorId,
+        a.data,
+        autor,
+      );
+    }
+  }
+
+  /**
+   * Guarda a decisão do gestor de excluir uma ocorrência automática (lápide).
+   * Idempotente: excluir duas vezes o mesmo dia não é erro. Best-effort — se
+   * falhar, o pior que acontece é a detecção insistir, como antes.
+   */
+  private async registrarExclusaoAutomatica(
+    tipo: TipoOcorrenciaAutomatica,
+    pessoaId: string,
+    colaboradorId: string | null,
+    data: Date,
+    autor?: { id?: string | null; nome?: string | null },
+  ): Promise<void> {
+    try {
+      await this.prisma.exclusaoOcorrenciaAutomatica.upsert({
+        where: { tipo_pessoaId_data: { tipo, pessoaId, data } },
+        update: { colaboradorId: colaboradorId ?? undefined },
+        create: {
+          tipo,
+          pessoaId,
+          colaboradorId,
+          data,
+          excluidaPorId: autor?.id ?? null,
+          excluidaPorNome: autor?.nome ?? null,
+        },
+      });
+    } catch {
+      // Best-effort (ver docblock).
+    }
   }
 
   /**

@@ -8,6 +8,7 @@ import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
 import { CicloFolhaModule } from '../ciclo-folha/ciclo-folha.module';
 import { TiposContratoModule } from '../tipos-contrato/tipos-contrato.module';
+import { FeriasModule } from '../ferias/ferias.module';
 import { PontoController } from './ponto.controller';
 import { PontoService } from './ponto.service';
 import { PontoAlertasService } from './ponto-alertas.service';
@@ -32,6 +33,9 @@ import { PontoOcrService } from './ponto-ocr.service';
     EscalaDomingoModule,
     CicloFolhaModule,
     TiposContratoModule,
+    // Férias: a revalidação das ocorrências automáticas usa "de férias no dia"
+    // como motivo para apagar uma falta lançada antes de as férias existirem.
+    FeriasModule,
   ],
   controllers: [PontoController],
   providers: [

@@ -82,8 +82,14 @@ export class IncidenciasController {
   @Delete(':id')
   @Funcionalidade('OPERADORES_AUSENCIAS')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remover(@Param('id') id: string): Promise<void> {
-    await this.incidencias.remover(id);
+  async remover(
+    @Param('id') id: string,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<void> {
+    await this.incidencias.remover(id, {
+      id: usuario?.sub ?? null,
+      nome: usuario?.nome ?? usuario?.login ?? null,
+    });
   }
 
   /** Lista incidências pelos filtros informados, mais recentes primeiro. */

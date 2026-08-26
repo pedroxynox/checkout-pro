@@ -185,10 +185,19 @@ export class AtestadosService {
       referenciaFim: d1,
     });
 
-    // Faltas já existentes no período (converter em vez de duplicar).
+    // Faltas já existentes no período (converter em vez de duplicar). Casa AS
+    // DUAS chaves: um FISCAL bate ponto pela identidade de Fiscal, então a sua
+    // falta automática é gravada com `pessoaId = Fiscal.id` e a ficha em
+    // `colaboradorId`. Buscar só por `pessoaId = colaboradorId` (o que se fazia
+    // antes) não encontrava essa linha, e o atestado CRIAVA uma segunda — o
+    // fiscal ficava com a falta e o atestado no mesmo dia, e a card de falta
+    // sobrevivia na tela.
     const existentes = await this.prisma.ausencia.findMany({
       where: {
-        pessoaId: input.colaboradorId,
+        OR: [
+          { pessoaId: input.colaboradorId },
+          { colaboradorId: input.colaboradorId },
+        ],
         data: { gte: d0, lte: d1 },
       },
       select: { id: true, data: true },
@@ -404,6 +413,26 @@ export class AtestadosService {
     if (!atestado) throw new AtestadoNaoEncontradoError();
     await this.cicloFolha?.exigirCicloAberto(atestado.inicio);
     await this.prisma.$transaction([
+      // Dias que JÁ ERAM FALTA antes do atestado voltam a ser falta pendente,
+      // em vez de desaparecer. Antes, remover um atestado apagava também a falta
+      // que existia antes dele — o dia ficava limpo como se nada tivesse
+      // acontecido, e a ocorrência que o gestor ainda precisava tratar sumia.
+      this.prisma.ausencia.updateMany({
+        where: { atestadoId, faltaAnterior: true },
+        data: {
+          atestadoId: null,
+          cid: null,
+          aPrazo: false,
+          faltaAnterior: false,
+          statusJustificativa: 'PENDENTE',
+          motivoJustificativa: null,
+          observacaoJustificativa: null,
+          justificadaPorId: null,
+          justificadaPorNome: null,
+          justificadaEm: null,
+        },
+      }),
+      // Os demais dias foram CRIADOS pelo atestado: saem com ele.
       this.prisma.ausencia.deleteMany({ where: { atestadoId } }),
       this.prisma.atestado.delete({ where: { id: atestadoId } }),
     ]);

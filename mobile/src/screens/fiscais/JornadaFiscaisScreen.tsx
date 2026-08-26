@@ -64,10 +64,22 @@ interface Aparencia {
 
 /**
  * Estado visual de um colaborador na equipe do dia, na ordem de prioridade:
- * falta (⚫) > sem registrar/incompleto (🔴) > intervalo (🟡) > encerrado (🔵) >
- * trabalhando (🟢) > aguardando (⚪).
+ * atestado (🔵) > falta (⚫) > sem registrar/incompleto (🔴) > intervalo (🟡) >
+ * encerrado (🔵) > trabalhando (🟢) > aguardando (⚪).
+ *
+ * O **atestado vem antes da falta** de propósito: os dois são ausências, mas um
+ * atestado é justificado e mostrá-lo como "Falta" fazia o painel parecer errado —
+ * a pessoa tinha o documento entregue e aparecia como faltosa.
  */
 function aparenciaDe(item: ItemEquipeDiaFiscal): Aparencia {
+  if (item.atestado) {
+    return {
+      cor: AZUL,
+      fundo: AZUL_FUNDO,
+      rotulo: 'Atestado',
+      icone: 'medkit',
+    };
+  }
   if (item.falta) {
     return {
       cor: cores.texto,
@@ -185,9 +197,18 @@ export function JornadaFiscaisScreen(): React.ReactElement {
 
   /** Contagem por estado (resumo no topo da lista). */
   const resumo = React.useMemo(() => {
-    const r = { trabalhando: 0, intervalo: 0, faltas: 0, semRegistrar: 0 };
+    const r = {
+      trabalhando: 0,
+      intervalo: 0,
+      faltas: 0,
+      atestados: 0,
+      semRegistrar: 0,
+    };
     for (const i of equipe.dados ?? []) {
-      if (i.falta) r.faltas += 1;
+      // Atestado é contado à parte: somá-lo em "Faltas" inflava o número com
+      // ausências justificadas (mesma regra da Central de Jornada).
+      if (i.atestado) r.atestados += 1;
+      else if (i.falta) r.faltas += 1;
       else if (i.alertaAtraso) r.semRegistrar += 1;
       else if (i.jornadaStatus === 'TRABALHANDO') r.trabalhando += 1;
       else if (i.jornadaStatus === 'EM_INTERVALO') r.intervalo += 1;
@@ -221,6 +242,13 @@ export function JornadaFiscaisScreen(): React.ReactElement {
             />
           ) : null}
           <ResumoChip cor={CINZA} valor={resumo.faltas} rotulo="Faltas" />
+          {resumo.atestados > 0 ? (
+            <ResumoChip
+              cor={AZUL}
+              valor={resumo.atestados}
+              rotulo="Atestados"
+            />
+          ) : null}
         </View>
       </Cartao>
 

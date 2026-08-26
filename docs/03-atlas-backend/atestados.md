@@ -23,7 +23,7 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `atestados.domain.ts` | Regras puras: CID, dias e regra do INSS (15 dias / 60 dias) | 166 |
-| `atestados.service.ts` | Lançar, listar, histórico por CID e avisos | 411 |
+| `atestados.service.ts` | Lançar, listar, histórico por CID e avisos | 440 |
 | `atestados.controller.ts` | Rotas HTTP (lançar, autocompletar CID, listar, histórico, remover) | 85 |
 | `atestados.errors.ts` | Erros de domínio (mapeados para HTTP) | 41 |
 | `atestados.module.ts` | Ligações (DI) do módulo | 19 |
@@ -40,7 +40,7 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**.
 | `POST /atestados` | `OPERADORES_AUSENCIAS` | Lança o atestado e cria as faltas justificadas do período. |
 | `GET /atestados?inicio&fim` | `OPERADORES_AUSENCIAS` | Lista os atestados que intersectam o período. |
 | `GET /atestados/colaborador/:id` | `OPERADORES_AUSENCIAS` | Histórico do colaborador agrupado por CID (com regra do INSS). |
-| `DELETE /atestados/:id` | `OPERADORES_AUSENCIAS` | Remove o atestado e as faltas diárias vinculadas. |
+| `DELETE /atestados/:id` | `OPERADORES_AUSENCIAS` | Remove o atestado; os dias que **já eram falta** voltam a ser falta e os criados por ele são apagados. |
 
 ## 5. Serviços e funções
 
@@ -77,7 +77,7 @@ Não define enums próprios. Reutiliza `MotivoJustificativa.ATESTADO_MEDICO` e
 
 ## 8. Dados que o módulo toca
 - **Escreve/lê:** `Atestado` (tabela `atestados`) e `Ausencia` (colunas
-  `atestadoId`/`cid` + a justificativa dos dias do período).
+  `atestadoId`/`cid`/`faltaAnterior` + a justificativa dos dias do período).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
 
 ## 9. Dependências
@@ -93,7 +93,23 @@ Não define enums próprios. Reutiliza `MotivoJustificativa.ATESTADO_MEDICO` e
 2. **CID obrigatório ou "sem CID" explícito** (distingue de "não preenchido").
 3. **Regra do INSS:** mesmo CID somando **> 15 dias** em **60 dias** → aviso à
    gestão para encaminhar ao INSS (auxílio-doença).
-4. **Conversão sem duplicar:** dias que já tinham falta viram atestado.
+4. **Conversão sem duplicar:** dias que já tinham falta viram atestado. A busca
+   das faltas do período casa **as duas chaves** (`pessoaId` e `colaboradorId`):
+   a falta de um FISCAL é gravada com a identidade de Fiscal e a ficha no vínculo,
+   então buscar só por `pessoaId` não a encontrava e o atestado **criava uma
+   segunda linha** — o fiscal ficava com falta E atestado no mesmo dia, e a card
+   de falta sobrevivia na tela.
+5. **Remover o atestado DEVOLVE a falta que existia antes.** A conversão marca o
+   dia com `faltaAnterior`; na remoção, esses dias voltam a ser **falta pendente**
+   (sem vínculo ao atestado, justificativa limpa) e só os dias **criados** pelo
+   atestado são apagados. Antes o dia ficava limpo, como se nada tivesse
+   acontecido, e a ocorrência que o gestor ainda precisava tratar desaparecia.
+6. **O dia convertido não é apagado pela auto-cura do ponto.** A linha
+   reaproveitada continua marcada como `automatica` (é o histórico de como
+   nasceu), então quem limpa faltas automáticas exige também `atestadoId` vazio e
+   `aPrazo` falso — ver `ehFaltaAutomaticaPendente` em [`ponto`](ponto.md). Sem
+   isso, a pessoa bater ponto num dia de atestado abria um buraco no atestado, em
+   silêncio.
 5. **Operacionalmente descobre o posto** (a cobertura da escala continua sendo
    responsabilidade do gestor).
 6. **Sem sobreposição:** um colaborador não pode ter dois atestados que se
@@ -105,6 +121,7 @@ Não define enums próprios. Reutiliza `MotivoJustificativa.ATESTADO_MEDICO` e
 |---|---|---|
 | `atestados.domain.spec.ts` | CID, busca, dias, regra do INSS (janela/limite/virada) + dias distintos em sobreposição | 13 |
 | `atestados.service.spec.ts` | Guard de sobreposição e validação de período do `lancar` | 3 |
+| `atestado-converte-e-desfaz.spec.ts` | Busca pelas duas chaves (fiscal sem duplicar), marca `faltaAnterior` ao converter e devolve a falta ao remover o atestado | 7 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

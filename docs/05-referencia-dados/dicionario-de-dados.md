@@ -3,7 +3,7 @@
 
 # Dicionário de Dados
 
-> Detalhe campo a campo das **55 tabelas**. Fonte: `backend/prisma/schema.prisma`.
+> Detalhe campo a campo das **56 tabelas**. Fonte: `backend/prisma/schema.prisma`.
 
 ## `Usuario`
 
@@ -567,6 +567,22 @@ As faltas pontuais ficam em `Ausencia` (pessoaId = id do Colaborador).
 | `automatica` | `Boolean` |  | bate o ponto; as lançadas manualmente pelo gestor permanecem. |
 | `atestadoId` | `String?` |  | (sem FK rígida), no padrão do schema (ADR 0005). |
 | `cid` | `String?` |  |  |
+| `faltaAnterior` | `Boolean` |  | apagava a falta que existia antes dele. |
+
+## `ExclusaoOcorrenciaAutomatica`
+
+(uma decisão por pessoa/tipo/dia), então cada novo dia recomeça do zero.
+
+| Campo | Tipo | Chave | Descrição |
+|---|---|---|---|
+| `id` | `String` | PK |  |
+| `tipo` | `TipoOcorrenciaAutomatica` |  |  |
+| `pessoaId` | `String` |  | duas chaves são consultadas, como no resto do fluxo de ponto. |
+| `colaboradorId` | `String?` |  |  |
+| `data` | `DateTime` |  |  |
+| `excluidaPorId` | `String?` |  |  |
+| `excluidaPorNome` | `String?` |  |  |
+| `criadoEm` | `DateTime` |  |  |
 
 ## `Notificacao`
 
