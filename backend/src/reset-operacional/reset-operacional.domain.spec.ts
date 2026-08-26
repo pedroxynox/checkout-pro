@@ -19,8 +19,7 @@ import { ResetOperacionalDto } from './dto/reset-operacional.dto';
  */
 describe('reset-operacional.domain', () => {
   it('a ordem do plano respeita as dependências de FK (filho antes do pai)', () => {
-    // Req 2.4, 2.7 — movimentos_lote_apae → lotes_apae e
-    // registros_operacionais → registros_importacao.
+    // Req 2.7 — registros_operacionais → registros_importacao.
     expect(ordemRespeitaDependencias(PLANO_REINICIO, DEPENDENCIAS_FK)).toBe(
       true,
     );
@@ -32,9 +31,9 @@ describe('reset-operacional.domain', () => {
     );
   });
 
-  it('apaga exatamente as 18 entidades de movimento esperadas', () => {
+  it('apaga exatamente as 16 entidades de movimento esperadas', () => {
     const apagadas = entidadesApagadas(PLANO_REINICIO);
-    expect(apagadas.size).toBe(18);
+    expect(apagadas.size).toBe(16);
     expect(apagadas.size).toBe(ENTIDADES_MOVIMENTO_ESPERADAS.length);
     for (const e of ENTIDADES_MOVIMENTO_ESPERADAS) {
       expect(apagadas.has(e)).toBe(true);

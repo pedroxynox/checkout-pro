@@ -8,8 +8,8 @@ O **Check-out PRO** é um sistema de **gestão inteligente da frente de caixa de
 supermercado**. Ele reúne, num único lugar, o dia a dia de quem cuida dos caixas:
 o controle de pessoas, o registro de ponto e jornada, a escala de trabalho, os
 indicadores de arrecadação, as vendas, o estoque de insumos, os checklists de
-abertura/fechamento, a disciplina da equipe e as doações da APAE — tudo com
-avisos automáticos e um assistente de IA para tirar dúvidas.
+abertura/fechamento e a disciplina da equipe — tudo com avisos automáticos e um
+assistente de IA para tirar dúvidas.
 
 O produto é entregue em duas frentes que conversam entre si:
 
@@ -30,8 +30,8 @@ supermercado e atende, com telas e permissões diferentes, os seguintes público
 - **Operadores de caixa** — são o centro da operação. Não acessam o app, mas toda
   a inteligência gira em torno do desempenho, da assiduidade e da arrecadação
   deles.
-- **Fiscais de caixa** — a linha de frente: batem ponto, cuidam de insumos,
-  checklists, sacolas APAE e acompanham a própria jornada.
+- **Fiscais de caixa** — a linha de frente: batem ponto, cuidam de insumos e
+  checklists e acompanham a própria jornada.
 - **Supervisores** — coordenam a operação do dia, editam escala e jornada,
   cuidam do fechamento e das requisições.
 - **Gerentes** — assumem a gestão do dia a dia e o Centro de Controle (cadastro
@@ -108,20 +108,15 @@ as **solicitações automáticas de advertência** por falta não justificada e 
 **feedforward** (acompanhamento prospectivo de desenvolvimento). Regras em
 [Disciplina e feedforward](regras-de-negocio/disciplina-e-feedforward.md).
 
-### 3.11 APAE
-O ciclo das **Sacolas APAE**: lote recebido, venda que reverte em arrecadação,
-encerramento automático ao zerar o saldo e painel de análises. Regras em
-[APAE](regras-de-negocio/apae.md).
-
-### 3.12 Notificações
+### 3.11 Notificações
 O serviço **transversal** de avisos, em duplo canal (push + in-app) e em tempo
 real, que respeita a Central de Permissões para decidir quem recebe cada aviso.
 Detalhe em [`notificacoes`](../03-atlas-backend/notificacoes.md).
 
-### 3.13 Assistente Cluby
+### 3.12 Assistente Cluby
 A **"Cluby"**, um assistente de IA em chat flutuante que ajuda a equipe em gestão
 de supermercado, respondendo com base em conhecimento geral e no **contexto real
-da loja** (escala, indicadores, APAE e vendas). A conversa é isolada por usuário
+da loja** (escala, indicadores e vendas). A conversa é isolada por usuário
 e efêmera (24h). Detalhe em [`assistente`](../03-atlas-backend/assistente.md).
 
 ## 4. Princípios de produto

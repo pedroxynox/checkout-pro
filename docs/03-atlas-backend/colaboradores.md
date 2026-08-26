@@ -101,7 +101,7 @@ faltas, resumo em linguagem natural e insígnias — tudo por regras puras (sem 
 
 ### `PurgaInativosService.purgarInativos()`
 Remove definitivamente os inativos fora da janela de retenção, preservando os
-totais de arrecadação/APAE. Roda no cron mensal (dia 1º) e sob demanda.
+totais de arrecadação. Roda no cron mensal (dia 1º) e sob demanda.
 
 ## 6. Lógica de domínio (funções puras)
 - `normalizarMatricula(v)` = `trim`; `normalizarLogin(v)` = `trim` + minúsculas.

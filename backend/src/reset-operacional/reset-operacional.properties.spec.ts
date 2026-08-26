@@ -32,9 +32,9 @@ const estadoArb: fc.Arbitrary<ContagensPorEntidade> = fc.dictionary(
 
 describe('reset-operacional — testes de propriedade', () => {
   // Feature: reset-operacional-data-inicial, Property 2: A partição
-  // apagar/conservar é disjunta e cobre exatamente as 18 entidades de movimento.
+  // apagar/conservar é disjunta e cobre exatamente as 16 entidades de movimento.
   // Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 3.1, 3.2, 3.3, 3.4, 3.5, 8.4
-  it('Property 2: partição disjunta e cobertura exata das 18 entidades de movimento', () => {
+  it('Property 2: partição disjunta e cobertura exata das 16 entidades de movimento', () => {
     fc.assert(
       fc.property(
         fc.constantFrom(...ENTIDADES_CONSERVADAS),

@@ -21,7 +21,6 @@ com links, para o detalhe técnico no [Atlas do backend](../../03-atlas-backend/
 | [Estoque, insumos e requisições](estoque-insumos-e-requisicoes.md) | Saldo por movimentos, fardos, pedidos recorrentes e requisições. |
 | [Checklist e fechamento](checklist-e-fechamento.md) | Checklists por foto, janelas de execução e fechamento do dia. |
 | [Disciplina e feedforward](disciplina-e-feedforward.md) | Incidências, advertências (disciplina progressiva) e feedforward. |
-| [APAE](apae.md) | Ciclo das sacolas APAE. |
 
 ## Como ler estes documentos
 

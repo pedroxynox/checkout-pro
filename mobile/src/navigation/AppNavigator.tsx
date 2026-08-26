@@ -16,7 +16,6 @@ import { FechamentoScreen } from '../screens/fechamento/FechamentoScreen';
 import { IndicadoresScreen } from '../screens/indicadores/IndicadoresScreen';
 import { IndicadorDetalheScreen } from '../screens/indicadores/IndicadorDetalheScreen';
 import { PainelVendasScreen } from '../screens/indicadores/PainelVendasScreen';
-import { LoteApaeScreen } from '../screens/loteApae/LoteApaeScreen';
 import { InsumosScreen } from '../screens/insumos/InsumosScreen';
 import { InsumoDetalheScreen } from '../screens/insumos/InsumoDetalheScreen';
 import { RequisicoesScreen } from '../screens/insumos/RequisicoesScreen';
@@ -120,13 +119,6 @@ export function AppNavigator(): React.ReactElement {
           name="PainelVendas"
           component={PainelVendasScreen}
           options={{ title: 'Painel de Vendas' }}
-        />
-      )}
-      {podeAcessar('LOTE_APAE') && (
-        <Stack.Screen
-          name="LoteApae"
-          component={LoteApaeScreen}
-          options={{ title: 'Sacolas APAE' }}
         />
       )}
       {podeAcessar('INSUMOS') && (

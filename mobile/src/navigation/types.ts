@@ -31,7 +31,6 @@ export type RootStackParamList = {
     alertaMensagem?: string;
   };
   PainelVendas: undefined;
-  LoteApae: undefined;
   Insumos: undefined;
   InsumoDetalhe: { insumoId: string; nome: string };
   Requisicoes: undefined;

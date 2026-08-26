@@ -22,7 +22,6 @@ export interface Area {
     | 'Fechamento'
     | 'Indicadores'
     | 'PainelVendas'
-    | 'LoteApae'
     | 'Insumos'
     | 'RegistroPonto'
     | 'Checklist'
@@ -79,13 +78,6 @@ export const AREAS: Area[] = [
     descricao: 'Informar e acompanhar acumulados',
     icone: 'cash-outline',
     funcionalidade: 'PAINEL_VENDAS_VISUALIZAR',
-  },
-  {
-    rota: 'LoteApae',
-    titulo: 'Sacolas APAE',
-    descricao: 'Venda por lote e valor arrecadado',
-    icone: 'bag-handle-outline',
-    funcionalidade: 'LOTE_APAE',
   },
   {
     rota: 'Insumos',

@@ -120,11 +120,10 @@ Padrões que aparecem em vários módulos e merecem atenção contínua:
 - **Armazenamento de arquivos não durável.** O `LocalDiskStorage` grava em disco
   local, que se perde em hospedagem efêmera; a migração para S3 é o próximo passo
   natural — ver [`storage`](../03-atlas-backend/storage.md).
-- **Regras e listas fixas no código.** Feriados nacionais, janelas de checklist e
-  preços (ex.: sacola APAE) estão embutidos no código; mudá-los exige deploy — ver
-  [`feriados`](../03-atlas-backend/feriados.md),
-  [`checklist`](../03-atlas-backend/checklist.md) e
-  [`lote-apae`](../03-atlas-backend/lote-apae.md).
+- **Regras e listas fixas no código.** Feriados nacionais e janelas de checklist
+  estão embutidos no código; mudá-los exige deploy — ver
+  [`feriados`](../03-atlas-backend/feriados.md) e
+  [`checklist`](../03-atlas-backend/checklist.md).
 - **Modelos legados em transição.** `Operador`/`OperadorTurno`/`Fiscal` convivem
   com o Cadastro Unificado durante a migração — ver
   [ADR 0004](../02-arquitetura/decisoes/0004-cadastro-unificado-e-escala-opcao-a.md),

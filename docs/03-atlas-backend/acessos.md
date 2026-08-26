@@ -25,7 +25,7 @@ conforme o perfil, aplicando os ajustes por perfil e por login.
 |---|---|---|
 | `acessos.controller.ts` | Rotas HTTP: login (público) e identidade | 53 |
 | `acessos.service.ts` | Efeitos colaterais: Prisma, bcrypt e JWT | 197 |
-| `acessos.domain.ts` | Regras puras: catálogo, perfis e decisão de acesso | 536 |
+| `acessos.domain.ts` | Regras puras: catálogo, perfis e decisão de acesso | 527 |
 | `acessos.errors.ts` | Erros de domínio (mapeados para HTTP) | 43 |
 | `acessos.module.ts` | Ligações (DI) e configuração do JWT | 38 |
 | `dto/login.dto.ts` | Validação de entrada do login | 12 |

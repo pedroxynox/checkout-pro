@@ -3,7 +3,7 @@
  *
  * Reúne as ações de "zerar/limpar" globais expostas ao perfil com a
  * funcionalidade `ADMIN_DADOS`. Hoje: o reinício operacional, que apaga os
- * dados de movimento (vendas, arrecadação, estoque em movimento, sacolas APAE,
+ * dados de movimento (vendas, arrecadação, estoque em movimento,
  * jornada/escala por data, notificações, checklists, fluxos legados) e zera o
  * saldo dos insumos numa única transação no backend, conservando os cadastros.
  */

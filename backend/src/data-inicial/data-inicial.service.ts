@@ -8,7 +8,7 @@ export interface DataInicialResultado {
 
 /**
  * Serviço da Data_Inicial_Sistema (configuração global *singleton*, id fixo
- * `'sistema'`), no mesmo padrão de `ConfigVendas`/`ConfigApae`: leitura/escrita
+ * `'sistema'`), no mesmo padrão de `ConfigVendas`: leitura/escrita
  * via `upsert`, com o valor padrão **2026-07-01** quando nada foi definido.
  *
  * Requisitos 5.1, 5.2, 5.3, 5.5.

@@ -598,15 +598,6 @@ async function seedMetasIndicador(): Promise<void> {
   }
 }
 
-async function seedConfigApae(): Promise<void> {
-  const existente = await prisma.configApae.findUnique({ where: { id: 'apae' } });
-  if (!existente) {
-    await prisma.configApae.create({
-      data: { id: 'apae', precoSacola: 0.49, metaMensal: 500 },
-    });
-  }
-}
-
 async function seedConfigVendas(): Promise<void> {
   const existente = await prisma.configVendas.findUnique({
     where: { id: 'vendas' },
@@ -630,7 +621,6 @@ async function main(): Promise<void> {
   await seedEscalas();
   await seedPedidosRecorrentes();
   await seedMetasIndicador();
-  await seedConfigApae();
   await seedConfigVendas();
 
   const totalUsuarios = await prisma.usuario.count();

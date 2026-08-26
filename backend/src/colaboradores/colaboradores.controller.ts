@@ -59,7 +59,7 @@ export class ColaboradoresController {
    * Purga AGORA todos os colaboradores inativos (mesma ação do cron do dia 1º).
    * Destrutivo e irreversível: exige `confirmacao: "PURGAR"`. Só desenvolvedor
    * (`ADMIN_DADOS`). O cron mensal roda sozinho; este endpoint é para rodar sob
-   * demanda. Preserva os totais de arrecadação/APAE.
+   * demanda. Preserva os totais de arrecadação.
    */
   @Post('purga-inativos')
   @HttpCode(HttpStatus.OK)

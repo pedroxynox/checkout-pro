@@ -30,13 +30,12 @@ Abra `preview/index.html` diretamente no navegador. Nenhuma instalação é nece
    Gerente vê tudo (incl. Painel de Vendas e Operadores).
 3. **Indicadores** — cards com semáforo (🟢/🟡/🔴) e ranking de exemplo
 4. **Painel de Vendas** — acumulados dia/semana/mês + informar venda
-5. **Lote APAE** — quantidade inicial, saldo, % vendido e reiniciar (visual)
-6. **Insumos** — saldo, alerta de estoque baixo e **Bipar fardo** (com fila offline)
-7. **Fiscais (tempo real)** — chips de status e alterar meu status (com fila offline)
-8. **Escala** — seletor de dia da semana + tabela e folgas
-9. **Checklist** — Abertura/Fechamento com janelas e **Enviar imagem** → "Feito"
-10. **Operadores** — lista + contagem por turno
-11. **Notificações** — lista de avisos in-app
+5. **Insumos** — saldo, alerta de estoque baixo e **Bipar fardo** (com fila offline)
+6. **Fiscais (tempo real)** — chips de status e alterar meu status (com fila offline)
+7. **Escala** — seletor de dia da semana + tabela e folgas
+8. **Checklist** — Abertura/Fechamento com janelas e **Enviar imagem** → "Feito"
+9. **Operadores** — lista + contagem por turno
+10. **Notificações** — lista de avisos in-app
 
 O **modo offline** afeta visivelmente Home, Fiscais e Insumos (banner e mensagens enfileiradas).
 

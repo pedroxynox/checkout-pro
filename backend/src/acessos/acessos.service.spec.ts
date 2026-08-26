@@ -90,7 +90,6 @@ describe('AcessosService', () => {
       expect(service.autorizar('GERENTE', 'INSUMOS')).toBe(true);
       expect(service.autorizar('GERENTE', 'INSUMOS_GERENCIAR')).toBe(true);
       expect(service.autorizar('GERENTE', 'OPERADORES_CRUD')).toBe(true);
-      expect(service.autorizar('GERENTE', 'LOTE_APAE_GERENCIAR')).toBe(true);
       expect(service.autorizar('GERENTE', 'ESCALA_EDITAR')).toBe(true);
       expect(service.autorizar('GERENTE', 'PONTO_EDITAR')).toBe(true);
       expect(service.autorizar('GERENTE', 'CENTRAL_JORNADA')).toBe(true);

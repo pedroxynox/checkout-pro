@@ -17,8 +17,6 @@ type Apagador = (tx: Prisma.TransactionClient) => Promise<{ count: number }>;
  * entidades com ação `APAGAR` no `PLANO_REINICIO`.
  */
 const APAGADORES: Readonly<Record<string, Apagador>> = {
-  movimentos_lote_apae: (tx) => tx.movimentoLoteApae.deleteMany({}),
-  lotes_apae: (tx) => tx.loteApae.deleteMany({}),
   movimentos_estoque: (tx) => tx.movimentoEstoque.deleteMany({}),
   requisicoes: (tx) => tx.requisicao.deleteMany({}),
   sugestoes_pedido: (tx) => tx.sugestaoPedido.deleteMany({}),

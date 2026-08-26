@@ -45,9 +45,6 @@ export const TODAS_FUNCIONALIDADES = [
   'INDICADORES_VISUALIZAR',
   'PAINEL_VENDAS_VISUALIZAR',
   'PAINEL_VENDAS_EDITAR',
-  // Sacolas APAE
-  'LOTE_APAE',
-  'LOTE_APAE_GERENCIAR',
   // Insumos / almoxarifado
   'INSUMOS',
   'INSUMOS_GERENCIAR',
@@ -108,7 +105,6 @@ export type Funcionalidade = (typeof TODAS_FUNCIONALIDADES)[number];
  * nem cadastros administrativos (gerente).
  */
 export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
-  'LOTE_APAE',
   'INSUMOS',
   'FISCAIS_STATUS',
   // Jornada da equipe (horas trabalhadas e intervalos). O fiscal acompanha,
@@ -188,8 +184,8 @@ const FUNCIONALIDADES_IMPORTADOR_SET = new Set<string>(
 /**
  * Funcionalidades liberadas ao perfil GERENTE. Executa a operação e a gestão do
  * dia a dia, incluindo o Centro de Controle nas ferramentas de gestão (cadastro
- * de colaboradores, metas, central de vendas e relatórios), edição de escala,
- * correção de batidas e a gestão do lote APAE.
+ * de colaboradores, metas, central de vendas e relatórios), edição de escala e
+ * correção de batidas.
  * - NÃO inclui as ferramentas exclusivas do ADMINISTRADOR dentro do Centro de
  *   Controle: `USUARIOS_CRUD` (definir acessos ao app), `ESCALA_DOMINGO_CONFIG`
  *   (rodízio de domingo), `IMPORTACOES` (carregar arquivos do dia) e
@@ -212,7 +208,6 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
     // Operação permitida ao gerente comum
     'INSUMOS',
     'INSUMOS_GERENCIAR',
-    'LOTE_APAE',
     'CHECKLIST',
     'OPERADORES_AUSENCIAS',
     'OPERADORES_CRUD',
@@ -233,10 +228,8 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
     'PONTO_REGISTRAR',
     'PONTO_EDITAR',
     'PONTO_VISUALIZAR',
-    // Cadastro de colaboradores (Centro de Controle ▸ Colaboradores) e gestão do
-    // lote APAE. A gestão de ACESSOS (USUARIOS_CRUD) NÃO pertence ao gerente:
+    // Obs.: a gestão de ACESSOS (USUARIOS_CRUD) NÃO pertence ao gerente:
     // definir quem acessa o app é exclusivo do administrador.
-    'LOTE_APAE_GERENCIAR',
     // Contratos de experiência: o gerente visualiza e decide os marcos.
     'CONTRATOS_VISUALIZAR',
     'CONTRATOS_GERIR',

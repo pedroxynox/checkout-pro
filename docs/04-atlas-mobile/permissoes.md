@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `mobile/src/screens/permissoes/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/permissoes/`
 
 # Área: `permissoes`
 
@@ -20,7 +20,7 @@ acessar (desvios sobre o padrão do perfil), edita os **padrões por perfil**
 | `PermissoesPerfisScreen.tsx` | Lista dos perfis ajustáveis | 108 |
 | `PermissoesPerfilScreen.tsx` | Editor do padrão de um perfil | 272 |
 | `PermissoesHistoricoScreen.tsx` | Histórico/auditoria de mudanças | 123 |
-| `rotulos.ts` | Rótulos amigáveis e agrupamento por área | 173 |
+| `rotulos.ts` | Rótulos amigáveis e agrupamento por área | 162 |
 
 ## 4. Fluxo do usuário
 1. **Lista de logins** (`PermissoesScreen`): busca por nome/matrícula/perfil e
@@ -59,6 +59,8 @@ Módulos do backend relacionados:
   alteração (habilita/desabilita "Salvar").
 - Itens são agrupados por área (`ORDEM_AREAS`) e marcados com selo
   "personalizada"/"alterada" quando divergem do padrão (perfil) ou do código.
+- Funcionalidades sem rótulo (ex.: chaves antigas guardadas no banco, como as do
+  extinto `LOTE_APAE`) caem no *fallback* e não aparecem no catálogo do painel.
 - O Administrador não é editável na lista (mostra selo "Acesso total").
 - Avisos deixam claro que salvar **desconecta** os afetados (precisam entrar de
   novo) e que ajustes por login prevalecem sobre o padrão do perfil.

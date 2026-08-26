@@ -103,19 +103,6 @@
 | POST | `/requisicoes/:id/aprovar` | `INSUMOS_GERENCIAR` | Aprova (gera entrada) |
 | POST | `/requisicoes/:id/negar` | `INSUMOS_GERENCIAR` | Nega com motivo |
 
-## Sacolas APAE  *(classe: `LOTE_APAE`)*
-| Método | Rota | Permissão | Descrição |
-|---|---|---|---|
-| POST | `/lote-apae` | `LOTE_APAE_GERENCIAR` | Registra lote inicial |
-| PUT | `/lote-apae/:id/saldo` | `LOTE_APAE` | Atualiza saldo (encerra ao zerar) |
-| POST | `/lote-apae/:id/reiniciar` | `LOTE_APAE_GERENCIAR` | Encerra e abre novo lote |
-| GET | `/lote-apae/historico` | `LOTE_APAE` | Lotes encerrados |
-| DELETE | `/lote-apae/historico` | `LOTE_APAE_GERENCIAR` | Limpa histórico |
-| GET | `/lote-apae/ativo` | `LOTE_APAE` | Lote em andamento |
-| GET | `/lote-apae/config` | `LOTE_APAE` | Preço + meta mensal |
-| PUT | `/lote-apae/config` | `LOTE_APAE_GERENCIAR` | Atualiza preço/meta |
-| GET | `/lote-apae/painel` | `LOTE_APAE` | Painel inteligente |
-
 ## Fiscais (jornada)  *(base `/fiscais`)*
 | Método | Rota | Permissão | Descrição |
 |---|---|---|---|

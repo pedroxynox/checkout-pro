@@ -31,9 +31,6 @@ export const TODAS_FUNCIONALIDADES = [
   'INDICADORES_VISUALIZAR',
   'PAINEL_VENDAS_VISUALIZAR',
   'PAINEL_VENDAS_EDITAR',
-  // Sacolas APAE
-  'LOTE_APAE',
-  'LOTE_APAE_GERENCIAR',
   // Insumos / almoxarifado
   'INSUMOS',
   'INSUMOS_GERENCIAR',
@@ -91,7 +88,6 @@ export type Funcionalidade = (typeof TODAS_FUNCIONALIDADES)[number];
  * comunicação + seções gerais). Idêntico ao backend (acessos.domain.ts).
  */
 export const FUNCIONALIDADES_FISCAL: readonly Funcionalidade[] = Object.freeze([
-  'LOTE_APAE',
   'INSUMOS',
   'FISCAIS_STATUS',
   // Jornada da equipe (horas trabalhadas e intervalos); NÃO a Central de Jornada.
@@ -157,7 +153,7 @@ const FUNCIONALIDADES_IMPORTADOR_SET = new Set<string>(
  * Funcionalidades do GERENTE (espelho do backend): operação e gestão do dia a
  * dia + Centro de Controle nas ferramentas de gestão (cadastro de colaboradores,
  * metas, central de vendas e relatórios), edição de escala, correção de batidas
- * e gestão do lote APAE. NÃO inclui as ferramentas exclusivas do ADMINISTRADOR
+ *. NÃO inclui as ferramentas exclusivas do ADMINISTRADOR
  * dentro do Centro de Controle: definir acessos (USUARIOS_CRUD), rodízio de
  * domingo (ESCALA_DOMINGO_CONFIG), importar arquivos (IMPORTACOES) e zerar/limpar
  * dados (ADMIN_DADOS).
@@ -175,8 +171,6 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
   'FECHAMENTO',
   'INSUMOS',
   'INSUMOS_GERENCIAR',
-  'LOTE_APAE',
-  'LOTE_APAE_GERENCIAR',
   'CHECKLIST',
   'OPERADORES_AUSENCIAS',
   'OPERADORES_CRUD',

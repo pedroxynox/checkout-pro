@@ -56,7 +56,6 @@ const linking: LinkingOptions<RootStackParamList> = {
       Indicadores: 'indicadores',
       IndicadorDetalhe: 'indicadores/detalhe/:tipo',
       PainelVendas: 'painel-vendas',
-      LoteApae: 'lote-apae',
       Insumos: 'insumos',
       InsumoDetalhe: 'insumos/detalhe/:insumoId',
       Requisicoes: 'requisicoes',

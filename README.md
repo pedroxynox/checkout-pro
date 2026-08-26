@@ -2,7 +2,7 @@
 
 Aplicação **web e Android** para gestão da frente de caixa de supermercado.
 Reúne operação diária, pessoas, ponto e jornada, escala, indicadores, vendas,
-estoque, checklists, contratos, disciplina, APAE, notificações e a assistente de
+estoque, checklists, contratos, disciplina, notificações e a assistente de
 IA **Cluby** — num **monorepo** com backend **NestJS** e app **Expo/React
 Native**.
 

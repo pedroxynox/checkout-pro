@@ -38,8 +38,6 @@ Dicionário rápido dos termos do **negócio** (o supermercado) e do **sistema**
 | **Arrecadação** | Valores recolhidos além da venda comum — como **troco solidário** e recargas —, importados por arquivo `.txt` e usados nos indicadores. |
 | **Troco solidário** | Doação do troco pelo cliente. É um dos indicadores de arrecadação da loja. |
 | **Fechamento (do dia)** | O resumo consolidado do dia (arrecadações + vendas + checklists), concluído de forma idempotente (sem duplicar). |
-| **APAE** | Associação de Pais e Amigos dos Excepcionais. A loja vende **Sacolas APAE**; o sistema controla o lote, o saldo e o valor arrecadado. |
-| **Lote APAE** | O conjunto de sacolas APAE em operação, com controle de entrada, saldo e arrecadação. |
 | **Insumo** | Material de consumo da operação (ex.: bobina de papel, sacola, álcool). O saldo nunca pode ficar negativo. |
 | **Fardo / bobina** | Unidades de estoque de insumos: o **fardo** é a embalagem com várias unidades; a **bobina** é o rolo (ex.: papel do caixa) consumido aos poucos. |
 | **Requisição** | Pedido de reposição de insumo, criado e aprovado por um gestor (nada é reposto automaticamente). |

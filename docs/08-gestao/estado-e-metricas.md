@@ -9,27 +9,27 @@
 
 | Área | Arquivos | Linhas | Arquivos de teste | Linhas de teste |
 |---|---|---|---|---|
-| Backend (`backend/src`) | 244 | 39636 | 114 | 18935 |
-| Mobile (`mobile/src`) | 159 | 39739 | 27 | 3176 |
+| Backend (`backend/src`) | 238 | 38674 | 111 | 18452 |
+| Mobile (`mobile/src`) | 157 | 38842 | 27 | 3176 |
 
 ## Estrutura
 
-- **Módulos backend:** 37
-- **Áreas de tela (mobile):** 26
-- **Rotas HTTP:** 212
-- **Tabelas (Prisma):** 56
-- **Tipos/estados (enums):** 29
-- **Migrações:** 74
+- **Módulos backend:** 36
+- **Áreas de tela (mobile):** 25
+- **Rotas HTTP:** 203
+- **Tabelas (Prisma):** 53
+- **Tipos/estados (enums):** 28
+- **Migrações:** 75
 
 ## Testes automatizados
 
-- **Backend:** 791 casos em 114 arquivos
+- **Backend:** 777 casos em 111 arquivos
 - **Mobile:** 119 casos em 27 arquivos
-- **Total:** 910 casos
+- **Total:** 896 casos
 
 > Contagem por chamadas literais de `it()`/`test()` (determinística). Testes parametrizados (`it.each`) expandem em mais casos na execução do Jest.
 
 ## Cobertura do Atlas de Documentação
 
-- Módulos backend documentados: ver `docs/03-atlas-backend/` (meta: 37).
-- Áreas mobile documentadas: ver `docs/04-atlas-mobile/` (meta: 26).
+- Módulos backend documentados: ver `docs/03-atlas-backend/` (meta: 36).
+- Áreas mobile documentadas: ver `docs/04-atlas-mobile/` (meta: 25).

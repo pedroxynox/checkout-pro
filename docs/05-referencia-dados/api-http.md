@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **212 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **203 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -247,20 +247,6 @@
 | POST | `/insumos/pedidos-recorrentes/confirmar` | `confirmar` | `INSUMOS_GERENCIAR` |
 | POST | `/insumos/pedidos-recorrentes/ignorar` | `ignorar` | `INSUMOS_GERENCIAR` |
 | POST | `/insumos/pedidos-recorrentes/configurar` | `configurar` | `INSUMOS_GERENCIAR` |
-
-## `lote-apae`
-
-| Método | Rota | Handler | Permissão |
-|---|---|---|---|
-| POST | `/lote-apae` | `registrarLoteInicial` | `LOTE_APAE_GERENCIAR` |
-| PUT | `/lote-apae/:id/saldo` | `atualizarSaldo` | `LOTE_APAE` |
-| POST | `/lote-apae/:id/reiniciar` | `reiniciar` | `LOTE_APAE_GERENCIAR` |
-| GET | `/lote-apae/historico` | `historico` | `LOTE_APAE` |
-| DELETE | `/lote-apae/historico` | `limparHistorico` | `LOTE_APAE_GERENCIAR` |
-| GET | `/lote-apae/ativo` | `ativo` | `LOTE_APAE` |
-| GET | `/lote-apae/config` | `config` | `LOTE_APAE` |
-| PUT | `/lote-apae/config` | `definirConfig` | `LOTE_APAE_GERENCIAR` |
-| GET | `/lote-apae/painel` | `painel` | `LOTE_APAE` |
 
 ## `metas`
 
