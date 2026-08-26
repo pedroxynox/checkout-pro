@@ -13,6 +13,12 @@
  * `apagado` serve às grades de posição fixa: um cartão zerado continua no lugar
  * (a grade não salta, o usuário não perde o botão de vista) mas fica em cinza,
  * comunicando "não há nada aqui" sem desaparecer.
+ *
+ * **Tipografia enxuta de propósito.** Numa grade de duas colunas o texto divide
+ * a largura com o ícone e a seta, e valores como "2 atestados" ou "12h 30min"
+ * não cabiam: eram cortados com "…". O valor mede 12 e o rótulo 10 — pequeno,
+ * mas legível — para que o número apareça **inteiro**, que é o que interessa
+ * numa métrica. Um valor cortado não informa nada.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -48,15 +54,13 @@ export function CartaoMetrica({
   const conteudo = (
     <>
       <View style={[styles.caixaIcone, { backgroundColor: fundoIcone }]}>
-        <Ionicons name={icone} size={20} color={corIcone} />
+        <Ionicons name={icone} size={16} color={corIcone} />
       </View>
       <View style={styles.texto}>
-        <Text
-          style={[styles.valor, apagado && styles.valorApagado]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.7}
-        >
+        {/* Sem `adjustsFontSizeToFit`: ele só funciona no iOS, então no Android
+            dava a falsa sensação de que o valor caberia — e ele era cortado. O
+            tamanho base já é pequeno o bastante para caber de verdade. */}
+        <Text style={[styles.valor, apagado && styles.valorApagado]} numberOfLines={1}>
           {valor}
         </Text>
         <Text style={styles.rotulo} numberOfLines={1}>
@@ -66,7 +70,7 @@ export function CartaoMetrica({
       {aoPressionar && (
         <Ionicons
           name="chevron-forward"
-          size={14}
+          size={12}
           color={cores.textoSecundario}
         />
       )}
@@ -96,7 +100,7 @@ const styles = StyleSheet.create({
   cartao: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacamento.sm,
+    gap: espacamento.xs,
     minWidth: '46%',
     flexGrow: 1,
     flexBasis: '46%',
@@ -104,15 +108,17 @@ const styles = StyleSheet.create({
     borderRadius: raio.md,
     borderWidth: 1,
     borderColor: cores.divisor,
-    paddingVertical: espacamento.md,
-    paddingHorizontal: espacamento.md,
+    paddingVertical: espacamento.sm,
+    paddingHorizontal: espacamento.sm,
   },
   cartaoPressionado: {
     backgroundColor: cores.superficieAlternativa,
   },
+  // Caixa do ícone enxuta: cada ponto que ela devolve é espaço que sobra para o
+  // texto do valor, que é o que precisa caber inteiro.
   caixaIcone: {
-    width: 36,
-    height: 36,
+    width: 28,
+    height: 28,
     borderRadius: raio.sm,
     alignItems: 'center',
     justifyContent: 'center',
@@ -121,8 +127,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   valor: {
-    ...tipografia.subtitulo,
-    fontSize: 16,
+    ...tipografia.rotulo,
+    fontSize: 12,
+    fontWeight: '700',
     color: cores.texto,
   },
   valorApagado: {
@@ -130,6 +137,7 @@ const styles = StyleSheet.create({
   },
   rotulo: {
     ...tipografia.legenda,
+    fontSize: 10,
     color: cores.textoSecundario,
     marginTop: 1,
   },
