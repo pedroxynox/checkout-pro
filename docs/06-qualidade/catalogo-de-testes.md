@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 113 arquivos, 827 casos. **Mobile:** 28 arquivos, 128 casos. **Total: 955 casos.**
+> **Backend:** 113 arquivos, 828 casos. **Mobile:** 28 arquivos, 128 casos. **Total: 956 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -78,7 +78,7 @@
 | `src/fiscais/fiscais.gateway.spec.ts` | 3 | 1 |
 | `src/fiscais/fiscais.painel-status.spec.ts` | 2 | 1 |
 | `src/fiscais/fiscais.properties.spec.ts` | 5 | 1 |
-| `src/fiscais/fiscais.service.spec.ts` | 19 | 1 |
+| `src/fiscais/fiscais.service.spec.ts` | 20 | 1 |
 | `src/fiscais/integridade-vinculo.spec.ts` | 6 | 1 |
 | `src/fiscais/jornada-marcacoes.spec.ts` | 2 | 1 |
 | `src/fiscais/status-operador.spec.ts` | 2 | 1 |

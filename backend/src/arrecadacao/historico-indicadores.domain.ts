@@ -94,7 +94,10 @@ export function janelaDeMeses(
  * Mês mais antigo que PERMANECE na janela de retenção. Tudo anterior a ele pode
  * ser apagado: a janela anda um mês a cada mês novo que entra.
  */
-export function anoMesLimiteDaJanela(anoMesAtual: string, meses: number): string {
+export function anoMesLimiteDaJanela(
+  anoMesAtual: string,
+  meses: number,
+): string {
   return anoMesDeslocado(anoMesAtual, -(Math.max(1, Math.floor(meses)) - 1));
 }
 
@@ -168,10 +171,7 @@ export function cumpriuMeta(
  * de comparação (mês anterior em zero ou inexistente): dividir por zero daria
  * um "+∞%" sem significado.
  */
-export function variacaoMensal(
-  atual: number,
-  anterior: number,
-): number | null {
+export function variacaoMensal(atual: number, anterior: number): number | null {
   if (!Number.isFinite(anterior) || anterior <= 0) return null;
   return ((atual - anterior) / anterior) * 100;
 }

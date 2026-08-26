@@ -199,7 +199,8 @@ export class HistoricoIndicadoresService {
     const valor = arredondar(
       valorComparavel(config.base, dados.total, dados.vendas),
     );
-    const semDados = dados.total === 0 && dados.itens === 0 && dados.vendas === 0;
+    const semDados =
+      dados.total === 0 && dados.itens === 0 && dados.vendas === 0;
     return {
       anoMes,
       rotulo: rotuloAnoMes(anoMes),

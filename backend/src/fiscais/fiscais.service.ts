@@ -92,6 +92,12 @@ export interface ItemJornada extends Jornada {
   /** Função (FISCAL/OPERADOR/SUPERVISOR) para exibir o papel. */
   funcao: string;
   colaboradorId: string | null;
+  /**
+   * Nome COMPLETO da pessoa. O painel da Jornada de Equipe mostra o nome
+   * inteiro: com o primeiro nome apenas, duas pessoas homônimas ficavam
+   * indistinguíveis na lista.
+   */
+  nome: string;
   primeiroNome: string;
   status: StatusFiscal;
   /** Estado canônico da jornada, inclusive INCOMPLETO em dias históricos. */
@@ -405,7 +411,13 @@ export class FiscaisService {
     });
 
     // Tempo real (painel atualiza sem recarregar).
-    this.eventos?.publicar({ fiscalId, colaboradorId, primeiroNome: pn, status, em });
+    this.eventos?.publicar({
+      fiscalId,
+      colaboradorId,
+      primeiroNome: pn,
+      status,
+      em,
+    });
 
     // Notifica gestores (gerente, supervisor, gerente desenvolvedor).
     const mensagem = mensagemTransicao(nome, anterior, status);
@@ -712,6 +724,7 @@ export class FiscaisService {
               tipoPessoa: 'FISCAL' as const,
               funcao: 'FISCAL',
               colaboradorId: col?.colaboradorId ?? null,
+              nome: col?.nome ?? f.nome,
               primeiroNome: primeiroNome(col?.nome ?? f.nome),
               status: statusFiscalDeJornada(j.status),
               jornadaStatus: j.status,
@@ -745,6 +758,7 @@ export class FiscaisService {
             tipoPessoa: 'FISCAL' as const,
             funcao: 'FISCAL',
             colaboradorId: col?.colaboradorId ?? null,
+            nome: col?.nome ?? f.nome,
             primeiroNome: primeiroNome(col?.nome ?? f.nome),
             status:
               jornadaStatus === 'INCOMPLETO' ? 'FORA_EXPEDIENTE' : ultimoStatus,
@@ -966,6 +980,7 @@ export class FiscaisService {
         tipoPessoa: e.tipoPessoa,
         funcao: e.funcao,
         colaboradorId: e.colaboradorId,
+        nome: e.nome,
         primeiroNome: primeiroNome(e.nome),
         status: 'FORA_EXPEDIENTE',
         jornadaStatus: 'SEM_REGISTRO',
@@ -1041,6 +1056,7 @@ export class FiscaisService {
             tipoPessoa: 'OPERADOR',
             funcao: c.funcao,
             colaboradorId: c.id,
+            nome: c.nome,
             primeiroNome: primeiroNome(c.nome),
             status: statusFiscalDeJornada(j.status),
             jornadaStatus: j.status,

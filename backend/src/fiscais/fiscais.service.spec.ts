@@ -295,6 +295,28 @@ describe('FiscaisService e EscalaService', () => {
     expect(f1?.status).toBe('FORA_EXPEDIENTE');
   });
 
+  it('a jornada do dia leva o nome COMPLETO, além do primeiro nome', async () => {
+    const prisma = criarPrisma();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fiscais = new FiscaisService(prisma as any);
+    await fiscais.definirStatus(
+      'f1',
+      'DISPONIVEL',
+      new Date('2024-03-10T08:00:00Z'),
+    );
+
+    const jornada = await fiscais.jornadaDoDia(
+      new Date('2024-03-10T00:00:00Z'),
+    );
+    const f1 = jornada.find((j) => j.fiscalId === 'f1');
+
+    // O painel da Jornada de Equipe mostra o nome inteiro: com só o primeiro
+    // nome, duas pessoas homônimas ficavam indistinguíveis na lista.
+    expect(f1?.nome).toBe('Karen Mendoza Barro');
+    // O primeiro nome continua disponível (usado em avisos e no tempo real).
+    expect(f1?.primeiroNome).toBe('Karen');
+  });
+
   it('expõe fiscal histórico incompleto sem mantê-lo disponível', async () => {
     const prisma = criarPrisma();
     prisma.registros.push({
