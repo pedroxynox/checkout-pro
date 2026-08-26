@@ -81,7 +81,15 @@ export interface CentralPessoaResumo {
    */
   horasDevidasAtualMs: number;
   horasAtestadoMs: number;
+  /**
+   * Dias de ausência que **não** são atestado (falta simples ou com débito).
+   * Atestado médico é ausência abonada e tem o seu próprio contador
+   * (`atestados`): antes os dois somavam aqui, e o número de faltas da Central
+   * acabava acusando quem havia apresentado atestado.
+   */
   faltas: number;
+  /** Dias de atestado médico (abonados). As horas correspondentes vão em `horasAtestadoMs`. */
+  atestados: number;
   diasTac: number;
   /** Dias com conflito: bateu ponto E tem uma ausência marcada no mesmo dia. */
   conflitos: number;
@@ -167,7 +175,10 @@ export interface CentralResumo {
     extras100Ms: number;
     horasDevidasMs: number;
     horasAtestadoMs: number;
+    /** Dias de ausência que não são atestado. */
     faltas: number;
+    /** Dias de atestado médico (abonados). */
+    atestados: number;
     diasTac: number;
     conflitos: number;
     atrasos: number;
@@ -263,20 +274,32 @@ export interface MarcacaoInvalidaItem {
 /**
  * Um dia de ausência de uma pessoa no ciclo (detalhe do ranking de faltas).
  *
- * `tipo` distingue as três naturezas que o contador único de `faltas` reúne:
- * `FALTA` (ausência simples), `FALTA_DEBITO` (marcada como débito de horas) e
- * `ATESTADO` (abonada). O número total **não muda** por isso — o detalhe apenas
- * mostra do que ele é feito.
+ * `tipo` distingue a falta simples da marcada como **débito de horas**. Atestado
+ * não entra aqui: é ausência abonada, tem contador próprio e detalhe próprio
+ * (`DiaAtestadoRanking`).
  */
 export interface DiaFaltaRanking {
   data: string;
   diaSemana: number;
   ehFeriado: boolean;
-  tipo: 'FALTA' | 'FALTA_DEBITO' | 'ATESTADO';
+  tipo: 'FALTA' | 'FALTA_DEBITO';
   /** true quando a falta está marcada como débito de horas (efetivo). */
   debito: boolean;
   /** Horas lançadas como devidas por esta falta. */
   devidasMs: number;
+}
+
+/**
+ * Um dia de atestado médico (detalhe do ranking de atestados). É ausência
+ * **abonada**: não gera hora devida e as horas do dia são pagas — por isso
+ * `horasAbonadasMs` (a carga-base daquele dia) em vez de horas devidas.
+ */
+export interface DiaAtestadoRanking {
+  data: string;
+  diaSemana: number;
+  ehFeriado: boolean;
+  /** Carga-base do dia, abonada pelo atestado. */
+  horasAbonadasMs: number;
 }
 
 /** Um dia com atraso na entrada (detalhe do ranking de atrasos). */
@@ -322,6 +345,7 @@ export interface DiaConflitoRanking {
  */
 export interface RankingPessoa extends CentralPessoaResumo {
   faltasDetalhe: DiaFaltaRanking[];
+  atestadosDetalhe: DiaAtestadoRanking[];
   atrasosDetalhe: DiaAtrasoRanking[];
   tacDetalhe: DiaTacRanking[];
   conflitosDetalhe: DiaConflitoRanking[];
@@ -395,7 +419,10 @@ export interface CentralExportacao {
     extras100Ms: number;
     horasDevidasMs: number;
     horasAtestadoMs: number;
+    /** Dias de ausência que não são atestado. */
     faltas: number;
+    /** Dias de atestado médico (abonados). */
+    atestados: number;
     diasTac: number;
     conflitos: number;
     atrasos: number;
@@ -740,6 +767,7 @@ export class CentralJornadaService {
     let horasDevidasMs = 0;
     let horasAtestadoMs = 0;
     let faltas = 0;
+    let atestados = 0;
     let diasTac = 0;
     let conflitos = 0;
     let atrasos = 0;
@@ -835,7 +863,6 @@ export class CentralJornadaService {
             atrasoMinutos,
           });
       } else if (ausencia) {
-        faltas += 1;
         let tipo: CentralDiaDetalhe['tipo'] = 'FALTA';
         let devidasDia = 0;
         // Faltar num domingo/feriado (mesmo escalado, fora da folga do rodízio)
@@ -844,12 +871,19 @@ export class CentralJornadaService {
         // também neutraliza registros marcados antes desta regra.
         const debitoValido = ausencia.debitoHoras && diaGeraDebito;
         if (ausencia.motivoJustificativa === 'ATESTADO_MEDICO') {
+          // Atestado é ausência ABONADA e tem contador próprio: NÃO entra em
+          // `faltas` (regra 11). Antes somava nos dois, e o número de faltas da
+          // Central acusava quem havia apresentado atestado.
+          atestados += 1;
           horasAtestadoMs += baseMs;
           tipo = 'ATESTADO';
-        } else if (debitoValido) {
-          horasDevidasMs += baseMs;
-          devidasDia = baseMs;
-          tipo = 'FALTA_DEBITO';
+        } else {
+          faltas += 1;
+          if (debitoValido) {
+            horasDevidasMs += baseMs;
+            devidasDia = baseMs;
+            tipo = 'FALTA_DEBITO';
+          }
         }
         if (coletarDias)
           dias.push({
@@ -912,6 +946,7 @@ export class CentralJornadaService {
         horasDevidasAtualMs,
         horasAtestadoMs,
         faltas,
+        atestados,
         diasTac,
         conflitos,
         atrasos,
@@ -965,6 +1000,7 @@ export class CentralJornadaService {
         horasDevidasMs: acc.horasDevidasMs + p.horasDevidasMs,
         horasAtestadoMs: acc.horasAtestadoMs + p.horasAtestadoMs,
         faltas: acc.faltas + p.faltas,
+        atestados: acc.atestados + p.atestados,
         diasTac: acc.diasTac + p.diasTac,
         conflitos: acc.conflitos + p.conflitos,
         atrasos: acc.atrasos + p.atrasos,
@@ -978,6 +1014,7 @@ export class CentralJornadaService {
         horasDevidasMs: 0,
         horasAtestadoMs: 0,
         faltas: 0,
+        atestados: 0,
         diasTac: 0,
         conflitos: 0,
         atrasos: 0,
@@ -1189,12 +1226,7 @@ export class CentralJornadaService {
         // correspondente do resumo — por isso o tamanho de cada array é igual ao
         // número exibido na card (garantido por teste).
         const faltasDetalhe: DiaFaltaRanking[] = dias
-          .filter(
-            (d) =>
-              d.tipo === 'FALTA' ||
-              d.tipo === 'FALTA_DEBITO' ||
-              d.tipo === 'ATESTADO',
-          )
+          .filter((d) => d.tipo === 'FALTA' || d.tipo === 'FALTA_DEBITO')
           .map((d) => ({
             data: d.data,
             diaSemana: d.diaSemana,
@@ -1202,6 +1234,16 @@ export class CentralJornadaService {
             tipo: d.tipo as DiaFaltaRanking['tipo'],
             debito: d.debito ?? false,
             devidasMs: d.devidasMs,
+          }));
+
+        const atestadosDetalhe: DiaAtestadoRanking[] = dias
+          .filter((d) => d.tipo === 'ATESTADO')
+          .map((d) => ({
+            data: d.data,
+            diaSemana: d.diaSemana,
+            ehFeriado: d.ehFeriado,
+            // O atestado abona a carga-base do dia (não gera hora devida).
+            horasAbonadasMs: d.baseMs,
           }));
 
         const atrasosDetalhe: DiaAtrasoRanking[] = dias
@@ -1239,6 +1281,7 @@ export class CentralJornadaService {
           funcao: c.funcao,
           ...resumo,
           faltasDetalhe,
+          atestadosDetalhe,
           atrasosDetalhe,
           tacDetalhe,
           conflitosDetalhe,
@@ -1472,6 +1515,7 @@ export class CentralJornadaService {
         horasDevidasMs: acc.horasDevidasMs + p.horasDevidasMs,
         horasAtestadoMs: acc.horasAtestadoMs + p.horasAtestadoMs,
         faltas: acc.faltas + p.faltas,
+        atestados: acc.atestados + p.atestados,
         diasTac: acc.diasTac + p.diasTac,
         conflitos: acc.conflitos + p.conflitos,
         atrasos: acc.atrasos + p.atrasos,
@@ -1485,6 +1529,7 @@ export class CentralJornadaService {
         horasDevidasMs: 0,
         horasAtestadoMs: 0,
         faltas: 0,
+        atestados: 0,
         diasTac: 0,
         conflitos: 0,
         atrasos: 0,

@@ -169,32 +169,40 @@ describe('CentralJornadaService.rankingsCiclo', () => {
 
     for (const p of rel.pessoas) {
       expect(p.faltasDetalhe).toHaveLength(p.faltas);
+      expect(p.atestadosDetalhe).toHaveLength(p.atestados);
       expect(p.atrasosDetalhe).toHaveLength(p.atrasos);
       expect(p.tacDetalhe).toHaveLength(p.diasTac);
       expect(p.conflitosDetalhe).toHaveLength(p.conflitos);
     }
   });
 
-  it('detalha as faltas distinguindo atestado, débito e o que cada uma deve', async () => {
+  it('detalha as faltas sem misturar atestado, e mostra o débito de cada uma', async () => {
     const ana = (await montar().rankingsCiclo(0)).pessoas[0];
 
-    // O contador único de "faltas" reúne atestado + falta com débito.
-    expect(ana.faltas).toBe(2);
+    // Atestado NÃO entra em faltas: só a falta com débito (sáb 04/07).
+    expect(ana.faltas).toBe(1);
     expect(ana.faltasDetalhe.map((f) => f.data.slice(0, 10))).toEqual([
-      '2026-07-03',
       '2026-07-04',
     ]);
 
-    const atestado = ana.faltasDetalhe[0];
-    expect(atestado.tipo).toBe('ATESTADO');
-    expect(atestado.debito).toBe(false);
-    expect(atestado.devidasMs).toBe(0);
-
-    const comDebito = ana.faltasDetalhe[1];
+    const comDebito = ana.faltasDetalhe[0];
     expect(comDebito.tipo).toBe('FALTA_DEBITO');
     expect(comDebito.debito).toBe(true);
     // Sábado: base de 8h lançadas como devidas.
     expect(comDebito.devidasMs).toBe(8 * UMA_HORA);
+  });
+
+  it('detalha os atestados à parte, com as horas abonadas', async () => {
+    const ana = (await montar().rankingsCiclo(0)).pessoas[0];
+
+    expect(ana.atestados).toBe(1);
+    expect(ana.atestadosDetalhe).toHaveLength(1);
+    const atestado = ana.atestadosDetalhe[0];
+    expect(atestado.data.slice(0, 10)).toBe('2026-07-03');
+    // Sexta: base de 8h, abonadas (não viram hora devida).
+    expect(atestado.horasAbonadasMs).toBe(8 * UMA_HORA);
+    expect(ana.horasAtestadoMs).toBe(8 * UMA_HORA);
+    expect(ana.horasDevidasMs).toBeGreaterThan(0); // o débito é da falta, não do atestado
   });
 
   it('detalha os atrasos com os minutos e o turno esperado', async () => {

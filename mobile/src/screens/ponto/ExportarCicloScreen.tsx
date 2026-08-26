@@ -137,7 +137,9 @@ export function ExportarCicloScreen(): React.ReactElement {
               <Selo texto={`Extras 50% ${formatarDuracao(dados.totais.extras50Ms)}`} cor={AZUL} fundo="#EFF6FF" />
               <Selo texto={`Extras 100% ${formatarDuracao(dados.totais.extras100Ms)}`} cor={AZUL} fundo="#EFF6FF" />
               <Selo texto={`Deve ${formatarDuracao(dados.totais.horasDevidasMs)}`} cor={VERMELHO} fundo="#FEECEC" />
-              <Selo texto={`Atestado ${formatarDuracao(dados.totais.horasAtestadoMs)}`} cor={cores.texto} fundo={cores.fundo} />
+              {/* Atestado é ausência ABONADA e não entra em "Faltas": os dois
+                  números são independentes (dias de atestado + horas abonadas). */}
+              <Selo texto={`Atestados ${dados.totais.atestados} · ${formatarDuracao(dados.totais.horasAtestadoMs)}`} cor={cores.texto} fundo={cores.fundo} />
               <Selo texto={`Faltas ${dados.totais.faltas}`} cor={VERMELHO} fundo="#FEECEC" />
               <Selo texto={`TAC ${dados.totais.diasTac}`} cor={AMARELO} fundo="#FBF3DA" />
               <Selo texto={`Inconsistências ${dados.totais.inconsistencias}`} cor={AMARELO} fundo="#FBF3DA" />
