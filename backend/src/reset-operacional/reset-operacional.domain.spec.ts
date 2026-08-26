@@ -31,9 +31,9 @@ describe('reset-operacional.domain', () => {
     );
   });
 
-  it('apaga exatamente as 16 entidades de movimento esperadas', () => {
+  it('apaga exatamente as 17 entidades de movimento esperadas', () => {
     const apagadas = entidadesApagadas(PLANO_REINICIO);
-    expect(apagadas.size).toBe(16);
+    expect(apagadas.size).toBe(17);
     expect(apagadas.size).toBe(ENTIDADES_MOVIMENTO_ESPERADAS.length);
     for (const e of ENTIDADES_MOVIMENTO_ESPERADAS) {
       expect(apagadas.has(e)).toBe(true);

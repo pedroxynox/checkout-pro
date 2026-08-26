@@ -37,6 +37,7 @@ indica as que impedem o start quando `NODE_ENV=production`.
 | `GEMINI_MODEL` | Modelo Gemini usado pelo assistente. | `gemini-2.5-flash` | Texto | Não |
 | `CORS_ORIGINS` | Lista de origens permitidas para CORS, separadas por vírgula. Se vazio, em dev a origem da requisição é refletida. | — | Texto (ex.: `https://checkout-pro-web.onrender.com`) | Recomendada** |
 | `RETENCAO_INATIVOS_MESES` | Janela de retenção (meses) dos colaboradores desligados antes da purga mensal apagar ficha e histórico de RRHH. | `3` | Inteiro ≥ 1 (convertido de string) | Não |
+| `RETENCAO_INDICADORES_MESES` | Janela móvel (meses) do Histórico de Indicadores. Todo dia 1º a foto do mês que fechou é congelada e o que ficou fora da janela é **apagado** (lançamentos, vendas e fotos). | `24` | Inteiro ≥ 1 (convertido de string) | Não |
 
 \* `GEMINI_API_KEY` é opcional para a API subir, mas **necessária** para o
 assistente funcionar. Veja também a nota de cota no

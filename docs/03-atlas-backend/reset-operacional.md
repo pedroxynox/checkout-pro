@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/reset-operacional/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/reset-operacional/`
 
 # Módulo: `reset-operacional`
 
@@ -11,7 +11,7 @@ para recomeçar a operação a partir da Data Inicial sem perder os dados de bas
 ## 2. Responsabilidades e limites
 - **Faz:** valida o marcador de confirmação explícita; executa o "plano de
   reinício" ordenado (respeitando as FKs) dentro de `prisma.$transaction`;
-  apaga as 16 entidades de movimento e zera `insumos.saldo`; devolve um
+  apaga as 17 entidades de movimento e zera `insumos.saldo`; devolve um
   `Resumo_de_Reinicio` (contagem apagada por entidade); é idempotente.
 - **Não faz** (fica em outro módulo): a limpeza pontual de cada domínio (ex.:
   `zerarEstoque` em [`insumos`](insumos.md)); a definição da Data Inicial (fica em
@@ -46,7 +46,7 @@ para recomeçar a operação a partir da Data Inicial sem perder os dados de bas
   correspondente (`deleteMany`) e acumula a contagem; no passo
   `ZERAR_SALDO_INSUMOS`, faz `updateMany({ saldo: 0 })`. Se qualquer passo
   falhar, a transação reverte por completo (tudo ou nada).
-- **Regras aplicadas:** ordem do plano respeita FKs; cobertura das 16 entidades
+- **Regras aplicadas:** ordem do plano respeita FKs; cobertura das 17 entidades
   de movimento; salvaguarda que exige um apagador para cada entidade `APAGAR`.
 - **Erros:** `ConfirmacaoAusenteError` (400); `Error` interno se faltar apagador
   mapeado (plano e mapa fora de sincronia).
@@ -58,7 +58,7 @@ para recomeçar a operação a partir da Data Inicial sem perder os dados de bas
 - `PLANO_REINICIO` (congelado) → passos ordenados (`entidade`, `acao`, `ordem`);
   a ordem garante filho antes do pai e estoque em movimento antes de zerar o
   saldo dos insumos.
-- `ENTIDADES_MOVIMENTO_ESPERADAS` → as 16 entidades que devem ser apagadas.
+- `ENTIDADES_MOVIMENTO_ESPERADAS` → as 17 entidades que devem ser apagadas.
 - `ENTIDADES_CONSERVADAS` → cadastro + config + Data Inicial (`insumos` está aqui
   porque a **linha** é conservada; só o `saldo` é zerado).
 - `DEPENDENCIAS_FK` → pares `[filho, pai]`.
@@ -75,7 +75,8 @@ para recomeçar a operação a partir da Data Inicial sem perder os dados de bas
   ordenados por `ordem` (menor primeiro).
 
 ## 8. Dados que o módulo toca
-- **Apaga (deleteMany):** `movimentos_estoque`, `requisicoes`, `sugestoes_pedido`,
+- **Apaga (deleteMany):** `fotos_mes_indicador`, `movimentos_estoque`,
+  `requisicoes`, `sugestoes_pedido`,
   `registros_operacionais`, `registros_importacao`, `registros_ponto_fiscal`,
   `ausencias`, `incidencias_escala`, `vendas_diarias`, `vendas_hora`,
   `registros_arrecadacao`, `arrecadacao_sem_movimento`, `notificacoes`,
@@ -104,7 +105,7 @@ para recomeçar a operação a partir da Data Inicial sem perder os dados de bas
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `reset-operacional.domain.spec.ts` | Ordem/FK, partição, 16 entidades, insumos conservado, execução pura, erro/DTO | 8 |
+| `reset-operacional.domain.spec.ts` | Ordem/FK, partição, 17 entidades, insumos conservado, execução pura, erro/DTO | 8 |
 | `reset-operacional.properties.spec.ts` | Propriedades: partição+cobertura, idempotência, resumo | 3 |
 
 > Contagem sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).

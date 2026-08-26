@@ -44,9 +44,11 @@ export const PLANO_REINICIO: readonly PassoReset[] = Object.freeze([
   // 4) Vendas.
   { entidade: 'vendas_diarias', acao: 'APAGAR', ordem: 50 },
   { entidade: 'vendas_hora', acao: 'APAGAR', ordem: 51 },
-  // 5) Arrecadação.
+  // 5) Arrecadação (inclui as fotos mensais do histórico de indicadores, que
+  //    são resultado dos lançamentos e não configuração).
   { entidade: 'registros_arrecadacao', acao: 'APAGAR', ordem: 60 },
   { entidade: 'arrecadacao_sem_movimento', acao: 'APAGAR', ordem: 61 },
+  { entidade: 'fotos_mes_indicador', acao: 'APAGAR', ordem: 62 },
   // 6) Avisos / assistente / fechamento / checklists.
   { entidade: 'notificacoes', acao: 'APAGAR', ordem: 70 },
   { entidade: 'mensagens_assistente', acao: 'APAGAR', ordem: 71 },
@@ -55,7 +57,7 @@ export const PLANO_REINICIO: readonly PassoReset[] = Object.freeze([
 ]);
 
 /**
- * As 16 entidades de `Dados_de_Movimento` que o reinício DEVE apagar
+ * As 17 entidades de `Dados_de_Movimento` que o reinício DEVE apagar
  * (Requisitos 2.1–2.7). Usada como referência de cobertura exata nos testes.
  */
 export const ENTIDADES_MOVIMENTO_ESPERADAS: readonly string[] = Object.freeze([
@@ -63,6 +65,7 @@ export const ENTIDADES_MOVIMENTO_ESPERADAS: readonly string[] = Object.freeze([
   'vendas_hora',
   'registros_arrecadacao',
   'arrecadacao_sem_movimento',
+  'fotos_mes_indicador',
   'movimentos_estoque',
   'requisicoes',
   'sugestoes_pedido',

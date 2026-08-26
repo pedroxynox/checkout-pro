@@ -12,6 +12,7 @@ import {
   AnomaliaIndicador,
   ComparativoIndicador,
   DetalheArrecadacao,
+  HistoricoIndicador,
   ItemRankingArrecadacao,
   MetaIndicador,
   DestaquesMes,
@@ -171,6 +172,17 @@ export const arrecadacaoService = {
       tipo,
       data,
       dias: String(dias),
+    });
+  },
+
+  /**
+   * Histórico mensal do indicador (janela móvel, padrão 24 meses) com a
+   * evolução de um mês para o outro.
+   */
+  historico(tipo: TipoArrecadacao, meses?: number): Promise<HistoricoIndicador> {
+    return apiClient.get<HistoricoIndicador>('/arrecadacao/historico', {
+      tipo,
+      meses: meses === undefined ? undefined : String(meses),
     });
   },
 

@@ -38,6 +38,8 @@ Dicionário rápido dos termos do **negócio** (o supermercado) e do **sistema**
 | **Arrecadação** | Valores recolhidos além da venda comum — como **troco solidário** e recargas —, importados por arquivo `.txt` e usados nos indicadores. |
 | **Troco solidário** | Doação do troco pelo cliente. É um dos indicadores de arrecadação da loja. |
 | **Fechamento (do dia)** | O resumo consolidado do dia (arrecadações + vendas + checklists), concluído de forma idempotente (sem duplicar). |
+| **Foto do mês (indicadores)** | O resultado congelado de um mês fechado por indicador (total, meta do mês e semáforo). É o que o histórico lê: um mês fechado não muda mais de valor. |
+| **Janela de retenção (indicadores)** | Os últimos 24 meses de histórico dos indicadores. Ao entrar um mês novo, o mais antigo é apagado — inclusive os lançamentos daquele mês. |
 | **Insumo** | Material de consumo da operação (ex.: bobina de papel, sacola, álcool). O saldo nunca pode ficar negativo. |
 | **Fardo / bobina** | Unidades de estoque de insumos: o **fardo** é a embalagem com várias unidades; a **bobina** é o rolo (ex.: papel do caixa) consumido aos poucos. |
 | **Requisição** | Pedido de reposição de insumo, criado e aprovado por um gestor (nada é reposto automaticamente). |

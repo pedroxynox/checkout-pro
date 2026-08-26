@@ -5,6 +5,10 @@
  * vermelho) frente à meta, o progresso da meta, um gráfico comparativo por
  * período (dia/semana/mês), o ranking por operador (ou fiscal) em barras e,
  * quando aplicável (cupom), a lista de cancelamentos com autorização e motivo.
+ *
+ * Traz também a **evolução mês a mês** dentro da janela do histórico (padrão 24
+ * meses), com a meta que valia em cada mês e a variação já interpretada pelo
+ * sentido do indicador.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
@@ -13,8 +17,10 @@ import { arrecadacaoService } from '../../api/services';
 import {
   ComparativoIndicador,
   DetalheArrecadacao,
+  HistoricoIndicador,
   ItemRankingArrecadacao,
   Periodo,
+  PontoMesIndicador,
   PontoTendencia,
   ProjecaoMes,
   ResumoArrecadacao,
@@ -379,6 +385,146 @@ function CardTendencia({
   );
 }
 
+/** Cor do semáforo de um mês. */
+function corNivelMes(nivel: PontoMesIndicador['nivel']): string {
+  if (nivel === 'OK') return cores.verde;
+  if (nivel === 'ATENCAO') return cores.amarelo;
+  return cores.vermelho;
+}
+
+/** Valor do mês formatado conforme a base do indicador (R$ ou %). */
+function valorMesFormatado(
+  def: DefinicaoArrecadacao,
+  ponto: PontoMesIndicador,
+): string {
+  return def.base === 'FIXA'
+    ? formatarMoeda(ponto.total)
+    : formatarPercentual(ponto.valor);
+}
+
+/**
+ * Evolução mês a mês dentro da janela do histórico.
+ *
+ * As barras usam a cor do semáforo de cada mês (contra a meta que valia NAQUELE
+ * mês), então dá para ver de relance quando o indicador saiu da linha. A lista
+ * abaixo traz a variação em relação ao mês anterior: a seta indica para onde o
+ * número foi e a COR diz se isso foi bom ou ruim — em cancelamentos e
+ * devoluções, cair é melhorar.
+ */
+function CardEvolucaoMensal({
+  def,
+  historico,
+}: {
+  def: DefinicaoArrecadacao;
+  historico: HistoricoIndicador;
+}): React.ReactElement {
+  const MESES_NO_GRAFICO = 12;
+  const barras = historico.meses.slice(-MESES_NO_GRAFICO);
+  const max = Math.max(...barras.map((m) => m.valor), 0.0001);
+  // A lista só mostra meses com movimento: um mês vazio (antes de a loja começar
+  // a enviar arquivos) não é uma queda, é ausência de dado.
+  const comDados = historico.meses.filter((m) => !m.semDados).slice().reverse();
+
+  return (
+    <Cartao titulo="Evolução mês a mês">
+      {comDados.length === 0 ? (
+        <Text style={styles.semDetalhe}>
+          Ainda não há meses com movimento neste indicador.
+        </Text>
+      ) : (
+        <>
+          <View style={styles.sparkRow}>
+            {barras.map((m) => (
+              <View key={m.anoMes} style={styles.sparkCol}>
+                <View
+                  style={[
+                    styles.sparkBar,
+                    {
+                      height: m.semDados
+                        ? 2
+                        : Math.max(3, (m.valor / max) * 60),
+                      backgroundColor: m.semDados
+                        ? cores.divisor
+                        : corNivelMes(m.nivel),
+                      opacity: m.parcial ? 0.55 : 1,
+                    },
+                  ]}
+                />
+                <Text style={styles.sparkDia} numberOfLines={1}>
+                  {m.rotulo}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {historico.sequenciaCumprindo > 1 ? (
+            <Text style={styles.evolucaoSequencia}>
+              🔥 {historico.sequenciaCumprindo} meses seguidos dentro da meta.
+            </Text>
+          ) : null}
+
+          {comDados.map((m) => {
+            const cor =
+              m.evolucao === 'MELHOROU'
+                ? cores.verde
+                : m.evolucao === 'PIOROU'
+                  ? cores.vermelho
+                  : cores.textoSecundario;
+            const seta =
+              m.variacao === null
+                ? ''
+                : m.variacao > 0
+                  ? '↑'
+                  : m.variacao < 0
+                    ? '↓'
+                    : '→';
+            return (
+              <View key={m.anoMes} style={styles.evolucaoLinha}>
+                <View
+                  style={[
+                    styles.evolucaoPonto,
+                    { backgroundColor: corNivelMes(m.nivel) },
+                  ]}
+                />
+                <View style={styles.evolucaoInfo}>
+                  <Text style={styles.evolucaoMes}>
+                    {m.rotulo}
+                    {m.parcial ? ' (em andamento)' : ''}
+                  </Text>
+                  <Text style={styles.evolucaoMeta}>
+                    {def.base === 'FIXA'
+                      ? `meta ${formatarMoeda(m.meta)}`
+                      : `meta ≤ ${formatarPercentual(m.meta)}`}
+                  </Text>
+                </View>
+                <View style={styles.evolucaoValores}>
+                  <Text style={styles.evolucaoValor}>
+                    {valorMesFormatado(def, m)}
+                  </Text>
+                  {m.variacao !== null ? (
+                    <Text style={[styles.evolucaoVariacao, { color: cor }]}>
+                      {seta} {formatarPercentual(Math.abs(m.variacao), 1)} vs mês
+                      anterior
+                    </Text>
+                  ) : (
+                    <Text style={styles.evolucaoVariacao}>sem comparação</Text>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+
+          <Text style={styles.evolucaoNota}>
+            Cada mês é comparado com a meta que valia nele. O histórico guarda os
+            últimos {historico.mesesRetencao} meses (a partir de{' '}
+            {historico.anoMesLimite}); ao entrar um mês novo, o mais antigo sai.
+          </Text>
+        </>
+      )}
+    </Cartao>
+  );
+}
+
 export function IndicadorDetalheScreen({
   route,
   navigation,
@@ -411,6 +557,14 @@ export function IndicadorDetalheScreen({
       ]);
     return { resumo, ranking, detalhes, tendencia, comparativo, projecao, naoReconhecidos };
   }, [def.tipo, data, periodo]);
+
+  // O histórico é a janela inteira: não depende da data nem do período, então
+  // vive numa requisição própria para não recarregar a cada troca de filtro.
+  const reqHistorico = useRequisicao(
+    () => arrecadacaoService.historico(def.tipo),
+    [def.tipo],
+  );
+  const historico: HistoricoIndicador | null = reqHistorico.dados ?? null;
 
   const resumo = req.dados?.resumo;
   const ranking: ItemRankingArrecadacao[] = req.dados?.ranking ?? [];
@@ -524,6 +678,9 @@ export function IndicadorDetalheScreen({
           <GraficoMeta def={def} resumo={resumo} periodo={periodo} />
           {projecao ? <CardProjecao def={def} projecao={projecao} /> : null}
           {comparativo ? <CardComparativo comparativo={comparativo} /> : null}
+          {historico ? (
+            <CardEvolucaoMensal def={def} historico={historico} />
+          ) : null}
           <CardTendencia def={def} pontos={tendencia} />
           <GraficoPeriodos resumo={resumo} base={def.base} />
 
@@ -837,6 +994,50 @@ const styles = StyleSheet.create({
   sparkDia: {
     fontSize: 9,
     color: cores.textoSecundario,
+  },
+  evolucaoSequencia: {
+    ...tipografia.legenda,
+    color: cores.verde,
+    fontWeight: '700',
+    marginTop: espacamento.sm,
+  },
+  evolucaoLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    paddingVertical: espacamento.xs,
+    borderTopWidth: 1,
+    borderTopColor: cores.divisor,
+  },
+  evolucaoPonto: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  evolucaoInfo: { flex: 1 },
+  evolucaoMes: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    fontWeight: '600',
+  },
+  evolucaoMeta: {
+    fontSize: 10,
+    color: cores.textoSecundario,
+  },
+  evolucaoValores: { alignItems: 'flex-end' },
+  evolucaoValor: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    fontWeight: '700',
+  },
+  evolucaoVariacao: {
+    fontSize: 10,
+    color: cores.textoSecundario,
+  },
+  evolucaoNota: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: espacamento.sm,
   },
 });
 

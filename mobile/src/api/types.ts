@@ -227,6 +227,53 @@ export interface PontoTendencia {
   percentual?: number;
 }
 
+/** Semáforo de um mês no histórico de indicadores. */
+export type NivelIndicador = 'OK' | 'ATENCAO' | 'FORA';
+
+/** Variação de um mês já interpretada pelo sentido do indicador. */
+export type EvolucaoMes = 'MELHOROU' | 'PIOROU' | 'ESTAVEL';
+
+/** Um mês da série histórica de um indicador. */
+export interface PontoMesIndicador {
+  /** Período mensal ("AAAA-MM"). */
+  anoMes: string;
+  /** Rótulo curto para eixos/listas (ex.: "ago/26"). */
+  rotulo: string;
+  total: number;
+  itens: number;
+  vendas: number;
+  /** % sobre as vendas (apenas base VENDAS). */
+  percentual: number | null;
+  /** Valor comparável: R$ (base FIXA) ou % (base VENDAS). */
+  valor: number;
+  /** Meta que valia naquele mês. */
+  meta: number;
+  nivel: NivelIndicador;
+  cumpriuMeta: boolean;
+  /** Variação crua vs o mês anterior (%); null sem base de comparação. */
+  variacao: number | null;
+  evolucao: EvolucaoMes | null;
+  /** true no mês corrente (ainda em andamento). */
+  parcial: boolean;
+  /** true quando o mês não tem nenhum movimento nem venda registrada. */
+  semDados: boolean;
+}
+
+/** Série histórica de um indicador (janela móvel de meses). */
+export interface HistoricoIndicador {
+  tipo: TipoArrecadacao;
+  titulo: string;
+  base: 'FIXA' | 'VENDAS';
+  sentido: 'MAIOR_MELHOR' | 'MENOR_MELHOR';
+  /** Janela de retenção configurada no servidor (meses). */
+  mesesRetencao: number;
+  /** Mês mais antigo que ainda é conservado. */
+  anoMesLimite: string;
+  /** Meses seguidos cumprindo a meta, do mês mais recente para trás. */
+  sequenciaCumprindo: number;
+  meses: PontoMesIndicador[];
+}
+
 /** Comparação de um período atual vs o anterior. */
 export interface Comparativo {
   atual: number;

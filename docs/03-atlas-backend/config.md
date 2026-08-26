@@ -53,6 +53,8 @@ configurado impede o start em vez de falhar silenciosamente depois.
   - `GEMINI_API_KEY` (opcional) · `GEMINI_MODEL` (padrão `gemini-2.5-flash`);
   - `CORS_ORIGINS` (lista separada por vírgula);
   - `RETENCAO_INATIVOS_MESES` (≥ 1, padrão `3`).
+  - `RETENCAO_INDICADORES_MESES` (≥ 1, padrão `24`) — janela móvel do Histórico
+    de Indicadores; o que sai da janela é apagado no dia 1º.
 
 ## 8. Dados que o módulo toca
 - **Não toca banco.** Opera apenas sobre variáveis de ambiente.

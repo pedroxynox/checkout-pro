@@ -47,6 +47,9 @@ Para cada falha, anote: ambiente (web/APK), perfil, data/hora, colaborador de te
 
 ### Gestores
 - [ ] Indicadores exibem total, meta, semáforo, gráficos e ranking.
+- [ ] O seletor de mês volta a meses fechados e mostra o resultado daquele mês com a meta que valia nele; a seta de avançar fica travada no mês corrente.
+- [ ] No detalhe, a evolução mês a mês lista os meses com movimento; em cancelamentos/devoluções, uma queda aparece em **verde** (melhora) e uma alta em vermelho.
+- [ ] Um mês sem nenhum lançamento aparece como “sem dados” e não gera variação.
 - [ ] Valores sem colaborador correspondente continuam no total e aparecem em “Não reconhecidos”.
 - [ ] Associar um código não reconhecido corrige a atribuição histórica.
 - [ ] Painel de Vendas exibe venda do dia, períodos e barras por hora.

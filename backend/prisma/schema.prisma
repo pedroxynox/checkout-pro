@@ -322,6 +322,46 @@ model ArrecadacaoSemMovimento {
   @@map("arrecadacao_sem_movimento")
 }
 
+// Foto (snapshot) MENSAL de um indicador de arrecadação — base do Histórico de
+// Indicadores. Congela o resultado de um mês FECHADO: total, itens, vendas da
+// loja, percentual, a meta que valia naquele mês e o nível do semáforo.
+//
+// Por que congelar em vez de recalcular sempre:
+//  1. ler 24 meses fica instantâneo (uma linha por mês/tipo, em vez de agregar
+//     milhares de lançamentos);
+//  2. um mês fechado não muda mais de valor (o cru pode ser reimportado ou o
+//     cadastro pode mudar, mas o número que a loja viu no fechamento é este);
+//  3. o número SOBREVIVE à limpeza dos lançamentos crus, que saem da janela de
+//     retenção (`RETENCAO_INDICADORES_MESES`, padrão 24) mês a mês.
+//
+// O mês CORRENTE nunca é congelado: é sempre calculado ao vivo (parcial).
+model FotoMesIndicador {
+  id          String   @id @default(uuid())
+  /// Tipo do indicador (ex.: TROCO_SOLIDARIO, CANCELAMENTO_ITENS).
+  tipo        String
+  /// Período mensal no formato "AAAA-MM" (ex.: "2026-07").
+  anoMes      String
+  /// Soma dos lançamentos do mês (R$).
+  total       Decimal  @default(0) @db.Decimal(14, 2)
+  /// Soma das quantidades (itens/cupons) informadas no mês.
+  itens       Int      @default(0)
+  /// Vendas da loja no mês (denominador dos indicadores base VENDAS).
+  vendas      Decimal  @default(0) @db.Decimal(14, 2)
+  /// % sobre as vendas do mês (apenas base VENDAS; null nas metas em R$).
+  percentual  Float?
+  /// Meta que valia naquele mês (R$ ou %), resolvida no momento de congelar.
+  meta        Float
+  /// Semáforo do mês: OK | ATENCAO | FORA.
+  nivel       String
+  /// true se o mês cumpriu a meta.
+  cumpriu     Boolean
+  congeladoEm DateTime @default(now())
+
+  @@unique([tipo, anoMes])
+  @@index([anoMes])
+  @@map("fotos_mes_indicador")
+}
+
 // Configuração (singleton) do Painel de Vendas: meta mensal de faturamento.
 // Editável pelo gestor sem redeploy. Quando metaMensal = 0, considera-se
 // "sem meta definida" (a projeção é exibida sem comparação).

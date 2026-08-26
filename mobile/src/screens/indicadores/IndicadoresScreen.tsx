@@ -1,14 +1,19 @@
 /**
  * Tela de Indicadores — Painel de Saúde.
  *
- * Topo: vendas do mês, destaques do mês (Top 3: troco, recargas e maior
- * cancelamento de itens) e os semáforos de saúde de cada indicador. Abaixo,
- * o painel "Precisa de atenção" com o que precisa de revisão. Tocar num
- * indicador abre o detalhe (totais, meta, gráficos, tendência e ranking).
+ * Topo: **seletor de mês** (navega até a janela do histórico, padrão 24 meses),
+ * vendas do mês, destaques do mês (Top 3: troco, recargas e maior cancelamento
+ * de itens) e os semáforos de saúde de cada indicador. Abaixo, o painel
+ * "Precisa de atenção" com o que precisa de revisão. Tocar num indicador abre o
+ * detalhe (totais, meta, gráficos, evolução mês a mês e ranking).
+ *
+ * Os dados NÃO são reiniciados a cada mês: o dia 1º apenas troca o mês de
+ * referência. Basta voltar com a seta para rever qualquer mês da janela, sempre
+ * com a meta que valia naquele mês.
  */
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { arrecadacaoService, vendasService } from '../../api/services';
 import {
   DestaquesMes,
@@ -26,6 +31,14 @@ import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { formatarMoeda, formatarPercentual, hojeISO } from '../../utils/formato';
+import {
+  deslocarMes,
+  MESES_HISTORICO_INDICADORES,
+  mesAtual,
+  mesesAtras,
+  rotuloMes,
+  ultimoDiaDoMesISO,
+} from '../../utils/periodoMensal';
 import { ARRECADACAO, DefinicaoArrecadacao } from '../../utils/rotulos';
 
 type Nivel = 'OK' | 'ATENCAO' | 'FORA';
@@ -78,7 +91,23 @@ function valorMesTexto(def: DefinicaoArrecadacao, resumo: ResumoArrecadacao): st
 export function IndicadoresScreen({
   navigation,
 }: PropsTela<'Indicadores'>): React.ReactElement {
-  const data = hojeISO();
+  // Mês de referência. O mês corrente usa "hoje" (parcial, com projeção); um
+  // mês fechado usa o seu último dia, o que devolve o mês inteiro.
+  const [anoMes, setAnoMes] = useState(mesAtual());
+  const ehMesCorrente = anoMes === mesAtual();
+  const data = ehMesCorrente ? hojeISO() : ultimoDiaDoMesISO(anoMes);
+
+  // Navegação limitada à janela do histórico: para trás não há mais dados
+  // (foram apagados) e para frente não existe futuro.
+  const podeVoltar = mesesAtras(anoMes, mesAtual()) < MESES_HISTORICO_INDICADORES - 1;
+  const trocarMes = (delta: number): void => {
+    setAnoMes((atual) => {
+      const alvo = deslocarMes(atual, delta);
+      if (mesesAtras(alvo, mesAtual()) < 0) return atual;
+      if (mesesAtras(alvo, mesAtual()) > MESES_HISTORICO_INDICADORES - 1) return atual;
+      return alvo;
+    });
+  };
 
   const req = useRequisicao(async () => {
     const resumos = await Promise.all(
@@ -111,6 +140,42 @@ export function IndicadoresScreen({
 
   return (
     <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
+      {/* Seletor de mês — o histórico fica disponível dentro da janela. */}
+      <View style={styles.seletor}>
+        <TouchableOpacity
+          onPress={() => trocarMes(-1)}
+          disabled={!podeVoltar}
+          hitSlop={10}
+          style={styles.seletorBotao}
+          accessibilityLabel="Mês anterior"
+        >
+          <Ionicons
+            name="chevron-back"
+            size={22}
+            color={podeVoltar ? cores.primaria : cores.divisor}
+          />
+        </TouchableOpacity>
+        <View style={styles.seletorCentro}>
+          <Text style={styles.seletorTexto}>{rotuloMes(anoMes)}</Text>
+          <Text style={styles.seletorSub}>
+            {ehMesCorrente ? 'Mês em andamento' : 'Mês fechado'}
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => trocarMes(1)}
+          disabled={ehMesCorrente}
+          hitSlop={10}
+          style={styles.seletorBotao}
+          accessibilityLabel="Próximo mês"
+        >
+          <Ionicons
+            name="chevron-forward"
+            size={22}
+            color={ehMesCorrente ? cores.divisor : cores.primaria}
+          />
+        </TouchableOpacity>
+      </View>
+
       {req.carregando ? (
         <Carregando />
       ) : req.erro ? (
@@ -126,7 +191,9 @@ export function IndicadoresScreen({
                     <Ionicons name="cart" size={22} color={cores.primaria} />
                   </View>
                   <View style={styles.flex1}>
-                    <Text style={styles.vendasRotulo}>Vendas do mês</Text>
+                    <Text style={styles.vendasRotulo}>
+                      {ehMesCorrente ? 'Vendas do mês' : `Vendas de ${rotuloMes(anoMes)}`}
+                    </Text>
                     <Text style={styles.vendasValor}>
                       {formatarMoeda(vendas.totalMes)}
                     </Text>
@@ -209,7 +276,11 @@ export function IndicadoresScreen({
             )}
 
           {/* Painel de saúde: semáforos */}
-          <Text style={styles.secaoTitulo}>Saúde dos indicadores (mês)</Text>
+          <Text style={styles.secaoTitulo}>
+            {ehMesCorrente
+              ? 'Saúde dos indicadores (mês)'
+              : `Resultado de ${rotuloMes(anoMes)}`}
+          </Text>
           {saude.map((s) => (
             <Pressable key={s.def.tipo} onPress={() => irParaDetalhe(s.def.tipo)}>
               <View style={[styles.saudeCard, { borderLeftColor: corNivel(s.nivel) }]}>
@@ -332,8 +403,9 @@ export function IndicadoresScreen({
           )}
 
           <Text style={styles.dica}>
-            Toque em um indicador para ver tendência, comparativo, projeção e
-            ranking.
+            Toque em um indicador para ver a evolução mês a mês, tendência,
+            comparativo, projeção e ranking. Use as setas do topo para rever
+            qualquer mês dos últimos {MESES_HISTORICO_INDICADORES}.
           </Text>
         </>
       )}
@@ -343,6 +415,34 @@ export function IndicadoresScreen({
 
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
+  seletor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: cores.superficie,
+    borderRadius: raio.md,
+    borderWidth: 1,
+    borderColor: cores.divisor,
+    paddingVertical: espacamento.xs,
+    paddingHorizontal: espacamento.sm,
+    marginBottom: espacamento.sm,
+  },
+  seletorBotao: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  seletorCentro: { alignItems: 'center' },
+  seletorTexto: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    fontWeight: '700',
+  },
+  seletorSub: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
   vendasLinha: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `mobile/src/screens/metas/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/metas/`
 
 # Área: `metas`
 
@@ -14,7 +14,7 @@ Devoluções) para o mês escolhido.
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `MetasScreen.tsx` | Seletor de mês + cards de meta por indicador | 276 |
+| `MetasScreen.tsx` | Seletor de mês + cards de meta por indicador | 252 |
 
 ## 4. Fluxo do usuário
 1. **Escolher o mês:** seletor no topo (◀/▶) que desloca o período mensal
@@ -44,9 +44,9 @@ Módulo(s) do backend relacionado(s): [`metas`](../03-atlas-backend/metas.md).
 - A card mostra "valor padrão (ainda não definida)" quando `definida` é falso.
 
 ## 7. Lógica pura / utilidades
-- `mesAtual()`: mês corrente `AAAA-MM` no fuso de Brasília (UTC−3).
-- `deslocarMes(anoMes, delta)`: desloca o período em N meses.
-- `rotuloMes(anoMes)`: rótulo por extenso (ex.: "Junho de 2026").
+- `mesAtual()`, `deslocarMes(anoMes, delta)` e `rotuloMes(anoMes)` vêm de
+  `../utils/periodoMensal` — fonte única do período mensal, partilhada com o
+  histórico de Indicadores. Ver [Hooks e utilidades](hooks-e-utilidades.md).
 - `formatarValor(item)` e `ajudaUnidade(item)`: formatação/ajuda conforme a
   unidade (R$ ou %); `ICONES` por tipo de meta.
 
@@ -61,8 +61,9 @@ Módulo(s) do backend relacionado(s): [`metas`](../03-atlas-backend/metas.md).
 Não se aplica (não há arquivo de teste nesta área).
 
 ## 10. Riscos, dívidas e pendências
-- 🔧 Sem testes automatizados; a lógica de datas (`mesAtual`/`deslocarMes`/
-  `rotuloMes`) e a validação de valores são boas candidatas a teste unitário.
+- 🔧 Sem testes automatizados na tela; a lógica de datas saiu para
+  `utils/periodoMensal.ts`, que **tem** testes. A validação de valores segue
+  candidata a teste unitário.
 - ⚠️ A meta de Vendas passou a ser definida aqui (antes era no Painel de
   Vendas); atenção a documentação/telas antigas que ainda mencionem o local
   anterior.

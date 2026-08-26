@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `mobile/src/hooks/`, `mobile/src/utils/`, `mobile/src/api/`, `mobile/src/auth/`, `mobile/src/theme/`, `mobile/src/offline/`, `mobile/src/push/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/hooks/`, `mobile/src/utils/`, `mobile/src/api/`, `mobile/src/auth/`, `mobile/src/theme/`, `mobile/src/offline/`, `mobile/src/push/`
 
 # Hooks e utilidades
 
@@ -26,6 +26,7 @@ o acesso a dados, permissões, persistência e formatação em pt-BR.
 | `push/push.ts` | `registrarPush`, `removerPushRegistrado` | Registro de token de push (Expo). |
 | `theme/index.ts` | `cores`, `espacamento`, `tipografia`, `raio`, `sombra`, `coresParaStatus`, ... | Tema visual centralizado. |
 | `utils/formato.ts` | `formatarMoeda`, `formatarData`, `hojeISO`, `mascaraDataBR`, ... | Formatação e datas em pt-BR. |
+| `utils/periodoMensal.ts` | `mesAtual`, `deslocarMes`, `rotuloMes`, `ultimoDiaDoMesISO`, `mesesAtras`, `MESES_HISTORICO_INDICADORES` | Período mensal ("AAAA-MM") no fuso de Brasília — fonte única usada por Metas e pelo histórico de Indicadores. |
 | `utils/rotulos.ts` | `ROTULO_TIPO_ARRECADACAO`, `ARRECADACAO`, `ROTULO_STATUS_FISCAL` | Rótulos legíveis de enums do domínio. |
 | `utils/dialogos.ts` | `confirmar`, `notificar`, `registrarOuvinteDialogo` | API de diálogos consumida pelo `DialogHost`. |
 | `utils/impressao.ts` | `imprimirRelatorio` | Impressão/PDF (web via iframe, nativo via `expo-print`). |
@@ -164,6 +165,7 @@ credencial, o app segue normal (o aviso ainda chega in-app/WebSocket).
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `utils/formato.test.ts` | Formatação/máscaras/conversões pt-BR | 7 |
+| `utils/periodoMensal.test.ts` | Mês de Brasília, deslocamento, rótulo, último dia e distância em meses | 9 |
 | `utils/relatorioPerfil.test.ts` | HTML/SVG do relatório de perfil | 12 |
 | `offline/fila.test.ts` | Ordenação e last-write-wins | 6 |
 | `offline/sincronizacao.test.tsx` | Drenagem da fila, conflitos e rejeições | 7 |

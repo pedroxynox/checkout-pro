@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/arrecadacao/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/arrecadacao/`
 
 # Módulo: `arrecadacao`
 
@@ -6,7 +6,9 @@
 Importa os arquivos de **arrecadação por operador** (troco solidário, recargas de
 celular, cancelamentos e devoluções), calcula os totais e o ranking dos
 indicadores e oferece a camada de **inteligência** (tendência, comparativo,
-projeção, destaques do mês, anomalias e painel de atenção).
+projeção, destaques do mês, anomalias e painel de atenção) e o **Histórico de
+Indicadores**: uma janela móvel de 24 meses com a evolução de um mês para o
+outro.
 
 ## 2. Responsabilidades e limites
 - **Faz:** lê o arquivo `.txt` de cada tipo e substitui os lançamentos do dia;
@@ -14,7 +16,9 @@ projeção, destaques do mês, anomalias e painel de atenção).
   sobre vendas; monta ranking e detalhe por operador; resolve/lista as metas dos
   indicadores; gera a inteligência (série temporal, comparativo, projeção de
   fechamento, destaques do mês, anomalias e painel "Precisa de atenção"); e envia
-  o resumo diário automático aos gestores.
+  o resumo diário automático aos gestores; mantém o **Histórico de Indicadores**
+  (foto mensal de cada indicador, evolução mês a mês e limpeza automática do que
+  sai da janela de retenção).
 - **Não faz:** gerência das metas mensais em si (delega ao módulo
   [`metas`](metas.md)); conclusão/aviso do fechamento do dia (delega ao módulo
   [`fechamento`](fechamento.md)); cadastro/vínculo de colaboradores (usa o
@@ -24,14 +28,16 @@ projeção, destaques do mês, anomalias e painel de atenção).
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `arrecadacao.controller.ts` | Rotas HTTP (upload, resumo, ranking, inteligência) | 236 |
+| `arrecadacao.controller.ts` | Rotas HTTP (upload, resumo, ranking, inteligência, histórico) | 253 |
 | `arrecadacao.service.ts` | Regras de aplicação: importação, totais, ranking, metas | 563 |
 | `indicadores-inteligente.service.ts` | Inteligência: tendência, projeção, destaques, anomalias | 766 |
 | `indicadores-resumo.service.ts` | Resumo diário automático (cron 08:00) | 122 |
+| `historico-indicadores.service.ts` | Histórico mensal: foto do mês, série de 24 meses e limpeza da janela (cron dia 1º) | 477 |
+| `historico-indicadores.domain.ts` | Regras puras: aritmética de "AAAA-MM", semáforo do mês, variação e evolução por sentido | 211 |
 | `arrecadacao.parser.ts` | Lê o `.txt` por cabeçalho (nome/valor/qtd/motivo) | 152 |
 | `arrecadacao.domain.ts` | Regras puras: tipos, config de indicadores, utilitários de período | 87 |
-| `arrecadacao.module.ts` | Ligações (DI) do módulo | 37 |
-| `dto/arrecadacao.dto.ts` | Validação de entrada das rotas | 118 |
+| `arrecadacao.module.ts` | Ligações (DI) do módulo | 44 |
+| `dto/arrecadacao.dto.ts` | Validação de entrada das rotas | 140 |
 
 ## 4. Endpoints (rotas HTTP)
 > Lista canônica em [API HTTP → `arrecadacao`](../05-referencia-dados/api-http.md#arrecadacao).
@@ -52,6 +58,7 @@ uma permissão específica.
 | `GET /arrecadacao/nao-reconhecidos` | `OPERADORES_CRUD` | Fila de códigos soltos para associar/criar cadastro. |
 | `GET /arrecadacao/metas` | `INDICADORES_VISUALIZAR` | Lista as metas configuradas (com fallback aos padrões). |
 | `POST /arrecadacao/metas` | `ADMIN_DADOS` | Define (cria/atualiza) a meta de um indicador. |
+| `GET /arrecadacao/historico` | `INDICADORES_VISUALIZAR` | Série **mensal** da janela de retenção (padrão 24 meses) com meta do mês, semáforo e evolução vs o mês anterior. |
 | `GET /arrecadacao/tendencia` | `INDICADORES_VISUALIZAR` | Série temporal dos últimos N dias (padrão 30). |
 | `GET /arrecadacao/comparativo` | `INDICADORES_VISUALIZAR` | Mês/semana atual vs período anterior. |
 | `GET /arrecadacao/projecao` | `INDICADORES_VISUALIZAR` | Projeção de fechamento de mês + meta diária. |
@@ -113,6 +120,23 @@ reconhecidos"). `listarNaoReconhecidos` agrupa os códigos soltos por matrícula
 - `painelAtencao(data)` — metas em risco (com gap, tendência e projeção) e
   operadores acima da média, ordenados por severidade.
 
+### `HistoricoIndicadoresService`
+- `historico(tipo, meses?, hoje?)` — série mensal da janela: um ponto por mês, do
+  mais antigo ao mais recente, com `total`/`percentual`, a meta que valia naquele
+  mês, o semáforo, a variação vs o mês anterior e a `evolucao` já interpretada
+  pelo sentido. O **mês corrente** vem ao vivo (`parcial: true`); os **fechados**
+  vêm da foto. `meses` é limitado pela retenção (não há dado além dela).
+- `congelarMes(anoMes)` — apura o mês e grava/reescreve a foto de cada
+  indicador. Idempotente; meses inteiramente vazios não geram foto.
+- `congelarMesesFechados(hoje?)` — congela os meses fechados da janela que ainda
+  não têm foto. É o que preenche o histórico dos meses já existentes.
+- `purgarForaDaJanela(hoje?)` — apaga, numa transação, os lançamentos, as marcas
+  de "sem movimento", as vendas (dia e hora) e as fotos **anteriores** ao mês
+  limite. Devolve a contagem por entidade.
+- `rotinaMensal()` — cron do dia 1º às 01:00 (Brasília): congela primeiro, move a
+  janela depois. Se o congelamento falhar, **nada é apagado**.
+- `mesesRetencao()` — janela configurada (`RETENCAO_INDICADORES_MESES`, piso 1).
+
 ### `IndicadoresResumoService.resumoDiario()`
 Cron diário às 08:00 (Brasília): monta o panorama do dia anterior (semáforo por
 indicador, destaques e anomalias) e notifica quem tem `INDICADORES_VISUALIZAR`.
@@ -125,6 +149,13 @@ indicador, destaques e anomalias) e notifica quem tem `INDICADORES_VISUALIZAR`.
   fiscal/supervisor/gestor dos destaques).
 - Utilitários de período em UTC reexportados de `common/datas`
   (`inicioDoDia`, `inicioDaSemana`, `inicioDoMes`, etc.).
+- Histórico (`historico-indicadores.domain.ts`): aritmética de período mensal
+  (`inicioDoAnoMes`, `fimDoAnoMes`, `anoMesDeslocado`, `janelaDeMeses`,
+  `anoMesLimiteDaJanela`, `rotuloAnoMes`), `valorComparavel` (R$ ou % sobre
+  vendas), `nivelDoMes` e `cumpriuMeta` (**fonte única** do semáforo mensal),
+  `variacaoMensal` e `evolucaoDoMes` — esta última traduz a variação em
+  melhora/piora **respeitando o sentido** (cair é MELHORAR em cancelamentos e
+  devoluções) — e `sequenciaCumprindo` (meses seguidos dentro da meta).
 - Parser (`arrecadacao.parser.ts`): localiza colunas pelo cabeçalho (nome, valor,
   quantidade, autorizador, motivo), extrai "matrícula - nome" das devoluções e
   interpreta valor com vírgula decimal.
@@ -136,9 +167,15 @@ indicador, destaques e anomalias) e notifica quem tem `INDICADORES_VISUALIZAR`.
 - `Severidade`: `CRITICO` · `ATENCAO`; `TendenciaAlerta`: `PIORANDO` ·
   `MELHORANDO` · `ESTAVEL` (painel de atenção).
 - Base do indicador: `FIXA` (alvo em R$) · `VENDAS` (% sobre vendas).
+- Histórico: `NivelIndicador`: `OK` · `ATENCAO` · `FORA`; `EvolucaoMes`:
+  `MELHOROU` · `PIOROU` · `ESTAVEL` (variação abaixo de 1 p.p. é ruído).
 
 ## 8. Dados que o módulo toca
-- **Escreve:** `RegistroArrecadacao`, `ArrecadacaoSemMovimento`, `MetaIndicador`.
+- **Escreve:** `RegistroArrecadacao`, `ArrecadacaoSemMovimento`, `MetaIndicador`,
+  `FotoMesIndicador` (foto mensal do histórico).
+- **Apaga (janela móvel):** `RegistroArrecadacao`, `ArrecadacaoSemMovimento`,
+  `VendaDiaria`, `VendaHora` e `FotoMesIndicador` anteriores à janela de
+  retenção.
 - **Lê:** `RegistroArrecadacao`, `VendaDiaria`, `Colaborador`,
   `ColaboradorIdentificador`, `Ausencia`, e as metas via `MetasService`.
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
@@ -164,6 +201,15 @@ indicador, destaques e anomalias) e notifica quem tem `INDICADORES_VISUALIZAR`.
    por valor/ritmo (maior é melhor).
 7. Datas anteriores à Data Inicial do Sistema são rejeitadas na importação e na
    marca de "sem movimento".
+8. **Os indicadores não são reiniciados no dia 1º.** O que muda é o mês de
+   referência; o histórico dos meses anteriores continua consultável.
+9. **Cada mês é julgado pela meta que valia nele** (`MetaMensal` do próprio
+   `anoMes`), nunca pela meta de hoje.
+10. **Janela móvel de retenção** (`RETENCAO_INDICADORES_MESES`, padrão 24): todo
+    dia 1º o mês que fechou é congelado e o que ficou fora da janela é apagado —
+    entra um mês novo, sai o mais antigo. É **irreversível**.
+11. **Um mês sem movimento não é um mês em zero:** vem marcado como `semDados` e
+    não serve de base de comparação (evitaria variações de "+∞%").
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
@@ -171,6 +217,8 @@ indicador, destaques e anomalias) e notifica quem tem `INDICADORES_VISUALIZAR`.
 | `arrecadacao.nao-reconhecidos.spec.ts` | Agregado e fila de códigos não reconhecidos | 2 |
 | `destaque-menos-cancelou.spec.ts` | "Menos cancelou": exclui falta/inativo, premia por % sobre vendas | 1 |
 | `indicadores-inteligente.destaques.spec.ts` | Destaques do mês só para operadores | 3 |
+| `historico-indicadores.domain.spec.ts` | Aritmética de "AAAA-MM", semáforo do mês, variação e evolução por sentido, sequência | 24 |
+| `historico-indicadores.service.spec.ts` | Série (foto vs ao vivo), congelamento idempotente e limites da limpeza | 14 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
@@ -182,3 +230,12 @@ indicador, destaques e anomalias) e notifica quem tem `INDICADORES_VISUALIZAR`.
   arquivo muito diferentes podem cair no layout padrão e mapear colunas erradas.
 - 🔧 `metaDe` faz fallback silencioso ao padrão quando a tabela `MetaIndicador`
   ainda não migrou (try/catch), o que pode mascarar erros de banco.
+- ⛔ A limpeza da janela é **destrutiva e irreversível**: passados os meses de
+  retenção, os lançamentos crus daquele mês deixam de existir e só resta a foto
+  (totais). Ranking e detalhe por operador **não** sobrevivem à saída da janela.
+- ⚠️ `TROCO_SOLIDARIO` não tem meta mensal (usa a meta global de
+  `MetaIndicador`), então no histórico todos os meses dele são comparados com a
+  meta atual. Migrá-lo para `MetaMensal` deixaria o histórico coerente com os
+  outros quatro indicadores.
+- 🔧 A foto guarda os totais do mês, não o ranking. Um histórico de ranking por
+  pessoa exigiria congelar também o agregado por colaborador.

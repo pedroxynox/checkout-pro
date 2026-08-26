@@ -33,6 +33,7 @@ import {
   mascaraMilhar,
   parseNumeroBR,
 } from '../../utils/formato';
+import { deslocarMes, mesAtual, rotuloMes } from '../../utils/periodoMensal';
 
 /** Ícone de cada indicador. */
 const ICONES: Record<TipoMeta, keyof typeof Ionicons.glyphMap> = {
@@ -42,31 +43,6 @@ const ICONES: Record<TipoMeta, keyof typeof Ionicons.glyphMap> = {
   CANCELAMENTO_CUPOM: 'receipt-outline',
   DEVOLUCOES: 'return-down-back-outline',
 };
-
-/** Mês atual (dia-calendário de Brasília, UTC−3) no formato "AAAA-MM". */
-function mesAtual(): string {
-  const agora = new Date(Date.now() - 3 * 60 * 60 * 1000);
-  return `${agora.getUTCFullYear()}-${String(agora.getUTCMonth() + 1).padStart(2, '0')}`;
-}
-
-/** Desloca o período mensal em `delta` meses. */
-function deslocarMes(anoMes: string, delta: number): string {
-  const [a, m] = anoMes.split('-').map(Number);
-  const d = new Date(Date.UTC(a, m - 1 + delta, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-}
-
-/** Rótulo do período (ex.: "Junho de 2026"). */
-function rotuloMes(anoMes: string): string {
-  const [a, m] = anoMes.split('-').map(Number);
-  const d = new Date(Date.UTC(a, m - 1, 1));
-  const s = new Intl.DateTimeFormat('pt-BR', {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(d);
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 /** Valor formatado conforme a unidade (R$ ou %). */
 function formatarValor(item: MetaMensal): string {

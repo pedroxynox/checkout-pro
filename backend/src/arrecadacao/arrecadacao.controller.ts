@@ -18,6 +18,7 @@ import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
   DataIndicadorDto,
   DefinirMetaDto,
+  HistoricoArrecadacaoDto,
   IndicadorTipoDataDto,
   PeriodoArrecadacaoDto,
   RankingArrecadacaoDto,
@@ -48,6 +49,10 @@ import {
   PontoTendencia,
   ProjecaoMes,
 } from './indicadores-inteligente.service';
+import {
+  HistoricoIndicador,
+  HistoricoIndicadoresService,
+} from './historico-indicadores.service';
 import { TipoArrecadacao } from './arrecadacao.domain';
 
 /**
@@ -61,6 +66,7 @@ export class ArrecadacaoController {
   constructor(
     private readonly arrecadacaoService: ArrecadacaoService,
     private readonly inteligente: IndicadoresInteligenteService,
+    private readonly historicoService: HistoricoIndicadoresService,
   ) {}
 
   /** Recebe o arquivo .txt de um tipo e importa as linhas do dia. */
@@ -200,6 +206,17 @@ export class ArrecadacaoController {
       new Date(dto.data),
       dto.dias ?? 30,
     );
+  }
+
+  /**
+   * Histórico mensal do indicador (janela móvel, padrão 24 meses), com a
+   * evolução de um mês para o outro já interpretada pelo sentido do indicador.
+   */
+  @Get('historico')
+  historico(
+    @Query() dto: HistoricoArrecadacaoDto,
+  ): Promise<HistoricoIndicador> {
+    return this.historicoService.historico(dto.tipo, dto.meses);
   }
 
   /** Comparativo do mês/semana atual vs o período anterior. */

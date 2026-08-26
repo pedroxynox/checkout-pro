@@ -99,6 +99,16 @@ export class EnvironmentVariables {
   @Min(1)
   @IsOptional()
   RETENCAO_INATIVOS_MESES = 3;
+
+  // Janela móvel (em meses) do Histórico de Indicadores. Todo dia 1º o sistema
+  // congela a foto do mês que fechou e apaga os lançamentos, as vendas e as
+  // fotos anteriores à janela — entra um mês novo, sai o mais antigo. Padrão:
+  // 24 meses (2 anos). Aumente se o cliente precisar guardar mais histórico.
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  RETENCAO_INDICADORES_MESES = 24;
 }
 
 /**

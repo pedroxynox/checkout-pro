@@ -29,6 +29,7 @@ const APAGADORES: Readonly<Record<string, Apagador>> = {
   vendas_hora: (tx) => tx.vendaHora.deleteMany({}),
   registros_arrecadacao: (tx) => tx.registroArrecadacao.deleteMany({}),
   arrecadacao_sem_movimento: (tx) => tx.arrecadacaoSemMovimento.deleteMany({}),
+  fotos_mes_indicador: (tx) => tx.fotoMesIndicador.deleteMany({}),
   notificacoes: (tx) => tx.notificacao.deleteMany({}),
   mensagens_assistente: (tx) => tx.mensagemAssistente.deleteMany({}),
   fechamentos_concluidos: (tx) => tx.fechamentoConcluido.deleteMany({}),
