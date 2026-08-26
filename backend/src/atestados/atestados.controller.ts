@@ -20,6 +20,7 @@ import {
   AtestadosService,
   HistoricoCidItem,
   ResultadoAtestado,
+  ResultadoExclusaoAtestado,
 } from './atestados.service';
 import {
   BuscarCidDto,
@@ -76,10 +77,20 @@ export class AtestadosController {
     return this.atestados.historicoColaborador(id);
   }
 
-  /** Remove um atestado e as faltas diárias vinculadas (correção). */
+  /**
+   * Remove um atestado lançado por engano, junto das faltas diárias vinculadas.
+   * Só gerente, supervisor ou administrador (a alçada é conferida no serviço).
+   * Devolve o resumo do que foi desfeito, para a tela poder confirmar em texto.
+   */
   @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async remover(@Param('id') id: string): Promise<void> {
-    await this.atestados.remover(id);
+  @HttpCode(HttpStatus.OK)
+  async remover(
+    @Param('id') id: string,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<ResultadoExclusaoAtestado> {
+    return this.atestados.remover(id, usuario?.perfil, {
+      id: usuario?.sub,
+      nome: usuario?.nome ?? usuario?.login,
+    });
   }
 }

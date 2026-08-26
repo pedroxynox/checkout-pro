@@ -1,4 +1,6 @@
+import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsDateString,
   IsNotEmpty,
   IsOptional,
@@ -40,4 +42,13 @@ export class ListarFeriasDto {
   @IsOptional()
   @IsDateString({}, { message: 'A data deve ser uma data válida (ISO 8601).' })
   referencia?: string;
+
+  /**
+   * Inclui também os períodos JÁ ENCERRADOS. Por padrão a lista só traz as
+   * férias em curso e as futuras — o histórico não polui a tela de operação.
+   */
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  incluirEncerradas?: boolean;
 }

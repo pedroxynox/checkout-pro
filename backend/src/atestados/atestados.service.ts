@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
@@ -11,11 +11,13 @@ import {
   contarDiasCorridos,
   cruzouLimiteInss,
   normalizarCid,
+  podeExcluirAtestado,
 } from './atestados.domain';
 import {
   AtestadoNaoEncontradoError,
   AtestadoSobrepostoError,
   CidObrigatorioError,
+  ExclusaoAtestadoNaoPermitidaError,
   PeriodoAtestadoInvalidoError,
 } from './atestados.errors';
 import { marcarPeriodoJustificado } from '../operadores/marcar-periodo-justificado';
@@ -67,6 +69,26 @@ export interface AtestadoDetalhado {
   observacao: string | null;
   registradaPorNome: string | null;
   criadoEm: string;
+  /**
+   * Quantos dias deste atestado **voltam a ser falta** se ele for excluído (os
+   * dias que já eram falta antes do atestado). Serve para a confirmação da
+   * exclusão dizer exatamente o que vai acontecer.
+   */
+  diasQueVoltamAFalta: number;
+}
+
+/** Resultado da exclusão de um atestado (para a mensagem de confirmação). */
+export interface ResultadoExclusaoAtestado {
+  atestadoId: string;
+  /** Nome do colaborador (quando a ficha ainda existe). */
+  nome: string | null;
+  inicio: string;
+  fim: string;
+  cid: string | null;
+  /** Dias que foram apagados (existiam só por causa do atestado). */
+  diasRemovidos: number;
+  /** Dias que voltaram a ser falta PENDENTE (já eram falta antes). */
+  diasVoltaramAFalta: number;
 }
 
 /** Agrupamento por CID no histórico de um colaborador. */
@@ -100,6 +122,8 @@ const descricaoPorCid = new Map<string, string>(
  */
 @Injectable()
 export class AtestadosService {
+  private readonly logger = new Logger(AtestadosService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly notificacoes?: NotificacoesService,
@@ -286,6 +310,22 @@ export class AtestadosService {
         })
       : [];
     const nomePorId = new Map(colaboradores.map((c) => [c.id, c.nome]));
+    // Quantos dias de cada atestado voltariam a ser falta se ele fosse
+    // excluído: os que já eram falta antes da conversão (`faltaAnterior`).
+    // Uma única consulta agregada para toda a lista.
+    const grupos = atestados.length
+      ? await this.prisma.ausencia.groupBy({
+          by: ['atestadoId'],
+          where: {
+            atestadoId: { in: atestados.map((a) => a.id) },
+            faltaAnterior: true,
+          },
+          _count: { _all: true },
+        })
+      : [];
+    const voltamPorAtestado = new Map(
+      grupos.map((g) => [g.atestadoId ?? '', g._count._all]),
+    );
     return atestados.map((a) => ({
       id: a.id,
       colaboradorId: a.colaboradorId,
@@ -299,6 +339,7 @@ export class AtestadosService {
       observacao: a.observacao,
       registradaPorNome: a.registradaPorNome,
       criadoEm: a.criadoEm.toISOString(),
+      diasQueVoltamAFalta: voltamPorAtestado.get(a.id) ?? 0,
     }));
   }
 
@@ -404,20 +445,55 @@ export class AtestadosService {
     }
   }
 
-  /** Remove um atestado e as faltas diárias vinculadas (correção). */
-  async remover(atestadoId: string): Promise<void> {
+  /**
+   * Remove um atestado lançado por engano, junto das faltas diárias vinculadas.
+   *
+   * **Alçada:** só gerente, supervisor ou administrador (`podeExcluirAtestado`).
+   * Lançar é rotina da escala e o fiscal também lança, mas excluir é uma
+   * correção destrutiva e irreversível.
+   *
+   * **Bloqueio:** se o ciclo de folha (26→25) do início do atestado já estiver
+   * fechado, a exclusão é recusada — o mês já foi apurado.
+   *
+   * **Efeito:** os dias que JÁ ERAM FALTA antes do atestado voltam a ser falta
+   * PENDENTE (a ocorrência que o gestor ainda precisa tratar não desaparece); os
+   * dias criados pelo atestado são apagados; o documento é apagado. Avisa a
+   * escala com o nome de quem excluiu — o registro do atestado deixa de existir,
+   * então o aviso é a trilha de auditoria da exclusão.
+   */
+  async remover(
+    atestadoId: string,
+    perfil?: string,
+    autor: AutorAcao = {},
+  ): Promise<ResultadoExclusaoAtestado> {
+    if (!podeExcluirAtestado(perfil)) {
+      throw new ExclusaoAtestadoNaoPermitidaError();
+    }
     const atestado = await this.prisma.atestado.findUnique({
       where: { id: atestadoId },
-      select: { id: true, inicio: true },
+      select: {
+        id: true,
+        colaboradorId: true,
+        inicio: true,
+        fim: true,
+        dias: true,
+        cid: true,
+      },
     });
     if (!atestado) throw new AtestadoNaoEncontradoError();
     await this.cicloFolha?.exigirCicloAberto(atestado.inicio);
-    await this.prisma.$transaction([
+
+    const colaborador = await this.prisma.colaborador.findUnique({
+      where: { id: atestado.colaboradorId },
+      select: { nome: true },
+    });
+
+    const contagens = await this.prisma.$transaction(async (tx) => {
       // Dias que JÁ ERAM FALTA antes do atestado voltam a ser falta pendente,
       // em vez de desaparecer. Antes, remover um atestado apagava também a falta
       // que existia antes dele — o dia ficava limpo como se nada tivesse
       // acontecido, e a ocorrência que o gestor ainda precisava tratar sumia.
-      this.prisma.ausencia.updateMany({
+      const voltaram = await tx.ausencia.updateMany({
         where: { atestadoId, faltaAnterior: true },
         data: {
           atestadoId: null,
@@ -431,10 +507,61 @@ export class AtestadosService {
           justificadaPorNome: null,
           justificadaEm: null,
         },
-      }),
-      // Os demais dias foram CRIADOS pelo atestado: saem com ele.
-      this.prisma.ausencia.deleteMany({ where: { atestadoId } }),
-      this.prisma.atestado.delete({ where: { id: atestadoId } }),
-    ]);
+      });
+      // Os demais dias foram CRIADOS pelo atestado: saem com ele. Os de cima já
+      // ficaram com `atestadoId` nulo, então não entram nesta remoção.
+      const removidos = await tx.ausencia.deleteMany({ where: { atestadoId } });
+      await tx.atestado.delete({ where: { id: atestadoId } });
+      return {
+        diasVoltaramAFalta: voltaram.count,
+        diasRemovidos: removidos.count,
+      };
+    });
+
+    const resultado: ResultadoExclusaoAtestado = {
+      atestadoId,
+      nome: colaborador?.nome ?? null,
+      inicio: atestado.inicio.toISOString().slice(0, 10),
+      fim: atestado.fim.toISOString().slice(0, 10),
+      cid: atestado.cid,
+      ...contagens,
+    };
+
+    this.logger.log(
+      `Atestado excluído: ${resultado.nome ?? atestado.colaboradorId} ` +
+        `(${resultado.inicio} a ${resultado.fim}) por ${autor.nome ?? autor.id ?? 'desconhecido'} — ` +
+        `${contagens.diasRemovidos} dia(s) apagado(s), ${contagens.diasVoltaramAFalta} voltaram a falta.`,
+    );
+    await this.avisarAtestadoExcluido(resultado, autor);
+    return resultado;
+  }
+
+  /**
+   * Aviso da EXCLUSÃO de um atestado. Best-effort, mas importante: a linha do
+   * atestado é apagada fisicamente, então este aviso é o que registra **quem**
+   * excluiu e **quando**.
+   */
+  private async avisarAtestadoExcluido(
+    resultado: ResultadoExclusaoAtestado,
+    autor: AutorAcao,
+  ): Promise<void> {
+    if (!this.notificacoes || !resultado.nome) return;
+    try {
+      const de = formatarDiaMes(new Date(`${resultado.inicio}T00:00:00.000Z`));
+      const ate = formatarDiaMes(new Date(`${resultado.fim}T00:00:00.000Z`));
+      const porQuem = autor.nome ? ` por ${autor.nome}` : '';
+      const voltaram =
+        resultado.diasVoltaramAFalta > 0
+          ? ` ${resultado.diasVoltaramAFalta} dia(s) voltaram a ser falta pendente.`
+          : '';
+      await this.notificacoes.notificarComPermissao('OPERADORES_AUSENCIAS', {
+        titulo: '🗑️ Atestado excluído',
+        mensagem:
+          `Atestado de ${resultado.nome} (${de} a ${ate}) excluído${porQuem}.` +
+          voltaram,
+      });
+    } catch {
+      // best-effort: o aviso nunca deve impedir a correção.
+    }
   }
 }

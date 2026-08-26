@@ -26,14 +26,14 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 | `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1921 |
 | `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 458 |
 | `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 481 |
-| `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) | 398 |
+| `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) **e excluir** um lançado por engano | 542 |
 
 > **Atestado na escala:** o status **ATESTADO** (azul + CID) aparece tanto no
 > roster de operadores quanto na **linha do fiscal** (via `fiscalComoColaboradorDia`,
 > que lê a marca de atestado/CID da falta do dia), distinguindo-o da falta comum.
 > No card **"Atestados do dia"**, além do nome e do CID, mostra-se o **período do
 > atestado** ("início até fim", de `atestadoInicio`/`atestadoFim`).
-| `FeriasCard.tsx` | Card + modal para colocar de férias, listar e cancelar férias | 400 |
+| `FeriasCard.tsx` | Card + modal para colocar de férias, listar as em curso/futuras e cancelar | 406 |
 
 ## 4. Fluxo do usuário
 1. **Dia:** `OperadoresScreen` mostra o roster do dia selecionado agrupado por
@@ -62,9 +62,19 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
    folga) e **Cancelar** (desmarca/anula uma ausência a prazo inteira do período
    escolhido). Os motivos **não** incluem "atestado médico" — atestado tem card
    próprio (com CID); o modal traz uma dica apontando para ele.
-6. **Férias:** o card abre um modal para colocar um colaborador de férias por um
-   período (some da escala, sem virar falta), listar as férias cadastradas e
-   cancelá-las. Ambos os cards são de gestão (programar período).
+6. **Atestados (excluir):** o mesmo modal lista, abaixo do formulário, os
+   **atestados lançados** na janela recente (90 dias para trás e 60 para frente),
+   com período, dias, CID e quem lançou. O botão **Excluir** só aparece para
+   gerente, supervisor e administrador; a confirmação diz quantos dias serão
+   apagados e quantos **voltarão a ser falta pendente**, e avisa que a ação não
+   pode ser desfeita. Não há edição: para corrigir datas ou CID, exclua e lance
+   de novo.
+7. **Férias:** o card abre um modal para colocar um colaborador de férias por um
+   período (some da escala, sem virar falta), listar as férias **em curso e
+   futuras** e cancelá-las. Períodos já encerrados não aparecem (o backend não os
+   devolve) — a tela é operacional, e o registro continua guardado para os dias
+   passados seguirem corretos na escala. Ambos os cards são de gestão (programar
+   período).
 Trata **carregando / erro / vazio**.
 
 ## 5. Dados e integração com o backend
@@ -81,6 +91,8 @@ Trata **carregando / erro / vazio**.
 | Cancelar ausência a prazo | `operadoresService.removerAusenciaPeriodo(input)` | `DELETE /operadores/ausencias/periodo` |
 | Lançar atestado | `atestadosService.lancar(input)` | `POST /atestados` |
 | Autocompletar CID | `atestadosService.buscarCid(busca)` | `GET /atestados/cid` |
+| Listar atestados lançados | `atestadosService.listar(inicio, fim)` | `GET /atestados` |
+| Excluir atestado | `atestadosService.remover(id)` | `DELETE /atestados/:id` |
 | Registrar férias | `feriasService.registrar(input)` | `POST /ferias` |
 | Listar férias | `feriasService.listar(filtro)` | `GET /ferias` |
 | Cancelar férias | `feriasService.remover(id)` | `DELETE /ferias/:id` |
@@ -112,6 +124,10 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
   Fora) aparece na linha de qualquer pessoa que bateu ponto hoje. O `painel()`
   agora inclui operadores (com `tipoPessoa`), e o operador emite evento WebSocket
   ao bater ponto (tempo real); a reconsulta de 60s cobre as transições por tempo.
+- **Excluir atestado é alçada de gestão** (gerente/supervisor/administrador),
+  igual à exclusão de falta em Justificativas: lançar é rotina da escala, mas
+  desfazer é destrutivo. Se o ciclo de folha do mês já estiver fechado, o servidor
+  recusa a exclusão.
 - O mapa de **status ao vivo** é indexado pela **ficha canônica**
   (`colaboradorId`), com fallback ao `fiscalId` legado — painel, evento WebSocket
   e a busca na linha da escala usam a mesma chave (Fase 4 · Opção A · A.5).
@@ -126,7 +142,11 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
   modo (`registrar`/`cancelar`), regra de `podeConfirmar` (no cancelar o motivo
   não é exigido) e empurrar o fim junto do início.
 - Em `FeriasCard`: mesma busca/seleção de colaborador e período; lista as férias
-  cadastradas com `vigente` e permite cancelar (com confirmação).
+  em curso/futuras com `vigente` e permite cancelar (com confirmação).
+- Em `AtestadosCard`: `isoDeslocado(dias)` e `ddmm(iso)` para a janela e os
+  rótulos da lista; `PERFIS_EXCLUEM_ATESTADO` (espelho do backend) decide se o
+  botão **Excluir** aparece — quem decide de verdade é o servidor, que devolve 403
+  para quem não tem alçada.
 
 ## 8. Componentes e hooks compartilhados usados
 - `useRequisicao` — ver [Hooks e utilidades](hooks-e-utilidades.md).

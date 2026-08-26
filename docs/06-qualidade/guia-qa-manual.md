@@ -115,6 +115,10 @@ Preparar jornadas controladas; validar tanto o disparo após batida quanto o cro
 - [ ] Extras de dias comuns entram em 50%.
 - [ ] Extras de domingo/feriado entram em 100%.
 - [ ] Horas devidas, atestado, faltas e TAC aparecem nas colunas/resumo corretos.
+- [ ] Excluir um atestado no card "Atestados" (Escalas) apaga os dias criados e devolve a falta nos dias que já eram falta; a confirmação avisa quantos dias serão afetados.
+- [ ] O fiscal não vê o botão "Excluir" do atestado; a API recusa a exclusão pelo fiscal.
+- [ ] Excluir um atestado de um ciclo de folha já fechado é recusado.
+- [ ] A lista de férias mostra só as em curso e futuras; no dia seguinte ao fim, o período sai da lista, mas os dias passados continuam aparecendo como férias na escala.
 - [ ] Marcar uma falta como débito afeta horas devidas.
 - [ ] Saldo = extras 50% + extras 100% − horas devidas.
 - [ ] Dias sem dados não inventam jornada.

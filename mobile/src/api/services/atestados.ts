@@ -21,6 +21,21 @@ export interface AtestadoDetalhado {
   observacao: string | null;
   registradaPorNome: string | null;
   criadoEm: string;
+  /** Dias que voltam a ser falta se o atestado for excluído. */
+  diasQueVoltamAFalta: number;
+}
+
+/** Resumo do que foi desfeito ao excluir um atestado. */
+export interface ResultadoExclusaoAtestado {
+  atestadoId: string;
+  nome: string | null;
+  inicio: string;
+  fim: string;
+  cid: string | null;
+  /** Dias apagados (existiam só por causa do atestado). */
+  diasRemovidos: number;
+  /** Dias que voltaram a ser falta PENDENTE (já eram falta antes). */
+  diasVoltaramAFalta: number;
 }
 
 /** Agrupamento por CID no histórico de um colaborador. */
@@ -76,8 +91,12 @@ export const atestadosService = {
     );
   },
 
-  /** Remove um atestado e as faltas diárias vinculadas. */
-  remover(id: string): Promise<void> {
-    return apiClient.delete<void>(`/atestados/${id}`);
+  /**
+   * Exclui um atestado lançado por engano e as faltas diárias vinculadas.
+   * Só gerente, supervisor ou administrador. Devolve o resumo do que foi
+   * desfeito (dias apagados e dias que voltaram a ser falta).
+   */
+  remover(id: string): Promise<ResultadoExclusaoAtestado> {
+    return apiClient.delete<ResultadoExclusaoAtestado>(`/atestados/${id}`);
   },
 };

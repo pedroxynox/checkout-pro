@@ -1,18 +1,21 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `backend/src/atestados/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/atestados/`
 
 # Módulo: `atestados`
 
 ## 1. Propósito
 Gestão de **atestados médicos**: lançar um atestado (período + **CID**, ou "sem
 CID"), gerar as faltas justificadas do período identificadas como **ATESTADO**,
-e avisar a gestão quando o mesmo CID passa do limite do **INSS**.
+e avisar a gestão quando o mesmo CID passa do limite do **INSS**. Também
+**exclui** um atestado lançado por engano, desfazendo o que ele criou.
 
 ## 2. Responsabilidades e limites
 - **Faz:** cria o documento (`Atestado`) e, em cada dia corrido do período, uma
   falta JUSTIFICADA (motivo `ATESTADO_MEDICO`, `aPrazo`) vinculada por
   `atestadoId` e carimbada com o `cid` (convertendo faltas já existentes em vez
   de duplicar); autocompleta o CID-10; soma dias por CID e avisa quando cruza a
-  regra do INSS; lista atestados e o histórico por CID de um colaborador.
+  regra do INSS; lista atestados (informando quantos dias voltariam a ser falta
+  se fossem excluídos) e o histórico por CID de um colaborador; **exclui** um
+  atestado, com alçada restrita e desfazendo os dias que ele criou.
 - **Não faz:** não calcula o score (o peso da falta justificada por atestado é
   do domínio de [`operadores`](operadores.md)/`common`, ADR 0009); não anexa a
   foto do documento (previsto para o futuro; depende de storage de objetos/S3);
@@ -22,10 +25,10 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**.
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `atestados.domain.ts` | Regras puras: CID, dias e regra do INSS (15 dias / 60 dias) | 166 |
-| `atestados.service.ts` | Lançar, listar, histórico por CID e avisos | 440 |
-| `atestados.controller.ts` | Rotas HTTP (lançar, autocompletar CID, listar, histórico, remover) | 85 |
-| `atestados.errors.ts` | Erros de domínio (mapeados para HTTP) | 41 |
+| `atestados.domain.ts` | Regras puras: CID, dias, regra do INSS (15/60) e alçada da exclusão | 191 |
+| `atestados.service.ts` | Lançar, listar, histórico por CID, excluir e avisos | 567 |
+| `atestados.controller.ts` | Rotas HTTP (lançar, autocompletar CID, listar, histórico, excluir) | 96 |
+| `atestados.errors.ts` | Erros de domínio (mapeados para HTTP) | 74 |
 | `atestados.module.ts` | Ligações (DI) do módulo | 19 |
 | `cid10.catalogo.ts` | Catálogo CID-10 curado (autocompletar) | 177 |
 | `atestados.domain.spec.ts` | Testes do domínio (CID, dias, INSS) | 105 |
@@ -40,7 +43,11 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**.
 | `POST /atestados` | `OPERADORES_AUSENCIAS` | Lança o atestado e cria as faltas justificadas do período. |
 | `GET /atestados?inicio&fim` | `OPERADORES_AUSENCIAS` | Lista os atestados que intersectam o período. |
 | `GET /atestados/colaborador/:id` | `OPERADORES_AUSENCIAS` | Histórico do colaborador agrupado por CID (com regra do INSS). |
-| `DELETE /atestados/:id` | `OPERADORES_AUSENCIAS` | Remove o atestado; os dias que **já eram falta** voltam a ser falta e os criados por ele são apagados. |
+| `DELETE /atestados/:id` | `OPERADORES_AUSENCIAS` + perfil **gerente/supervisor/admin** | Exclui o atestado; os dias que **já eram falta** voltam a ser falta e os criados por ele são apagados. Devolve o resumo do que foi desfeito (200). |
+
+> A exclusão é a única rota do módulo com **alçada por perfil**: a funcionalidade
+> libera a rota (o fiscal a tem, porque também lança atestado), mas o serviço
+> recusa quem não é gerente, supervisor ou administrador (403).
 
 ## 5. Serviços e funções
 
@@ -58,7 +65,15 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**.
   do CID).
 - **`historicoColaborador(id)`** — agrupado por CID: episódios, total de dias,
   total na janela do INSS e bandeira `ultrapassaInss`.
-- **`buscarCid(termo)`** / **`remover(id)`**.
+- **`buscarCid(termo)`**.
+- **`remover(id, perfil, autor)`** — exclui um atestado lançado por engano.
+  Confere a **alçada** (`podeExcluirAtestado`: gerente, supervisor ou
+  administrador → `ExclusaoAtestadoNaoPermitidaError`, 403) **antes** de qualquer
+  leitura ou efeito; exige **ciclo de folha aberto** no início do atestado; numa
+  transação, devolve à condição de **falta PENDENTE** os dias marcados com
+  `faltaAnterior`, apaga os dias criados pelo atestado e apaga o documento.
+  Devolve `ResultadoExclusaoAtestado` (nome, período, CID, `diasRemovidos`,
+  `diasVoltaramAFalta`) e avisa a escala com o nome de quem excluiu.
 
 ## 6. Lógica de domínio (funções puras)
 - `normalizarCid(cid)` — maiúsculas, sem espaços, só letras/dígitos e ponto.
@@ -115,13 +130,25 @@ Não define enums próprios. Reutiliza `MotivoJustificativa.ATESTADO_MEDICO` e
 6. **Sem sobreposição:** um colaborador não pode ter dois atestados que se
    cruzam (um dia pertence a um único atestado); a contagem do INSS soma **dias
    distintos** na janela.
+7. **Lançar é rotina; EXCLUIR é alçada de gestão.** O fiscal lança atestado, mas
+   só gerente, supervisor e administrador excluem — a exclusão é destrutiva e
+   irreversível. A regra é pura (`podeExcluirAtestado`) e conferida no serviço,
+   não apenas na tela.
+8. **Não existe edição de atestado.** Para corrigir datas ou CID: excluir e
+   lançar de novo. Como a sobreposição é proibida, não dá para "lançar corrigido"
+   por cima do antigo.
+9. **Ciclo de folha fechado bloqueia a exclusão** (o mês já foi apurado), do
+   mesmo modo que bloqueia o lançamento.
+10. **A exclusão é a sua própria auditoria.** A linha do atestado é apagada
+    fisicamente, então o serviço registra no log e **avisa a escala** com o nome
+    de quem excluiu, o período e quantos dias voltaram a ser falta.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `atestados.domain.spec.ts` | CID, busca, dias, regra do INSS (janela/limite/virada) + dias distintos em sobreposição | 13 |
 | `atestados.service.spec.ts` | Guard de sobreposição e validação de período do `lancar` | 3 |
-| `atestado-converte-e-desfaz.spec.ts` | Busca pelas duas chaves (fiscal sem duplicar), marca `faltaAnterior` ao converter e devolve a falta ao remover o atestado | 7 |
+| `atestado-converte-e-desfaz.spec.ts` | Busca pelas duas chaves (fiscal sem duplicar), marca `faltaAnterior` ao converter, devolve a falta ao excluir, resumo da exclusão e alçada por perfil | 12 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
@@ -132,6 +159,10 @@ Não define enums próprios. Reutiliza `MotivoJustificativa.ATESTADO_MEDICO` e
 - 🔧 **Catálogo CID-10 curado:** cobre os motivos comuns; para o catálogo
   completo do DATASUS, ampliar `cid10.catalogo.ts` (ou carregá-lo de um
   arquivo/tabela) sem mudar a interface de busca.
+- 🔧 **Sem tabela de auditoria da exclusão.** O rastro de quem excluiu vive no
+  log do servidor e na notificação enviada à escala. Se o cliente precisar de um
+  histórico consultável de exclusões, será preciso uma tabela própria (como
+  `exclusoes_ocorrencia_automatica` faz para as ocorrências do ponto).
 - ℹ️ **Escala de fiscais:** o status ATESTADO aparece tanto no roster de
   operadores quanto na escala consolidada de fiscais (a linha do fiscal mostra
   "Atestado" + CID). O card-resumo "Atestados do dia" cobre o roster de

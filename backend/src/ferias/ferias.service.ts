@@ -132,18 +132,32 @@ export class FeriasService {
   }
 
   /**
-   * Lista as férias, opcionalmente de um colaborador, com o nome resolvido e a
-   * marca `vigente` (engloba a data de referência — hoje por padrão). Mais
-   * recentes primeiro.
+   * Lista as férias **em curso e futuras**, opcionalmente de um colaborador, com
+   * o nome resolvido e a marca `vigente` (engloba a data de referência — hoje
+   * por padrão). Mais recentes primeiro.
+   *
+   * Períodos **já encerrados** ficam fora: a lista é uma ferramenta de operação
+   * ("quem está de férias e quem vai entrar"), não um arquivo histórico, e sem
+   * esse corte ela cresceria para sempre. O registro **não é apagado** — é ele
+   * que faz os dias passados continuarem aparecendo como férias na escala.
+   * Passe `incluirEncerradas` para ver tudo (uso administrativo).
    */
   async listarFerias(
-    filtro: { colaboradorId?: string; referencia?: Date } = {},
+    filtro: {
+      colaboradorId?: string;
+      referencia?: Date;
+      incluirEncerradas?: boolean;
+    } = {},
   ): Promise<FeriasDetalhada[]> {
     const referencia = inicioDoDia(filtro.referencia ?? new Date());
     const ferias = await this.prisma.feriasColaborador.findMany({
-      where: filtro.colaboradorId
-        ? { colaboradorId: filtro.colaboradorId }
-        : {},
+      where: {
+        ...(filtro.colaboradorId
+          ? { colaboradorId: filtro.colaboradorId }
+          : {}),
+        // Encerradas (fim < referência) saem da lista.
+        ...(filtro.incluirEncerradas ? {} : { fim: { gte: referencia } }),
+      },
       orderBy: { inicio: 'desc' },
     });
     const ids = [...new Set(ferias.map((f) => f.colaboradorId))];

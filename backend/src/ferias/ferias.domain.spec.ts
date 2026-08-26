@@ -5,6 +5,7 @@ import {
   periodosSobrepoem,
   validarPeriodoFerias,
   MAX_DIAS_FERIAS,
+  feriasEncerrada,
 } from './ferias.domain';
 
 const dia = (ano: number, mes: number, d: number) =>
@@ -76,6 +77,30 @@ describe('ferias.domain', () => {
     it('rejeita período longo demais', () => {
       const r = validarPeriodoFerias(dia(2020, 0, 1), dia(2026, 0, 1));
       expect(r.ok).toBe(false);
+    });
+  });
+
+  describe('feriasEncerrada', () => {
+    const periodo = { inicio: dia(2026, 6, 10), fim: dia(2026, 6, 20) };
+
+    it('não está encerrada antes nem durante o período', () => {
+      expect(feriasEncerrada(periodo, dia(2026, 6, 1))).toBe(false);
+      expect(feriasEncerrada(periodo, dia(2026, 6, 10))).toBe(false);
+      expect(feriasEncerrada(periodo, dia(2026, 6, 15))).toBe(false);
+    });
+
+    it('o último dia AINDA não está encerrado (fim inclusivo)', () => {
+      expect(feriasEncerrada(periodo, dia(2026, 6, 20))).toBe(false);
+    });
+
+    it('está encerrada a partir do dia seguinte ao fim', () => {
+      expect(feriasEncerrada(periodo, dia(2026, 6, 21))).toBe(true);
+      expect(feriasEncerrada(periodo, dia(2027, 0, 1))).toBe(true);
+    });
+
+    it('ignora a hora do instante de referência (compara por dia civil)', () => {
+      const fimDoDia = new Date(Date.UTC(2026, 6, 20, 23, 59, 59));
+      expect(feriasEncerrada(periodo, fimDoDia)).toBe(false);
     });
   });
 

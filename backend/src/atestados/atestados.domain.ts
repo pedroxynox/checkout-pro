@@ -167,3 +167,25 @@ export function cruzouLimiteInss(
 ): boolean {
   return totalAntes <= limiteDias && totalDepois > limiteDias;
 }
+
+/**
+ * Perfis com alçada para **EXCLUIR** um atestado.
+ *
+ * Lançar é rotina da escala e o fiscal também lança (`OPERADORES_AUSENCIAS`).
+ * Excluir é diferente: é uma correção **destrutiva e irreversível** que apaga o
+ * documento, apaga os dias criados por ele e devolve à condição de falta os dias
+ * que já eram falta antes. Segue, por isso, a mesma alçada da exclusão de falta
+ * em Justificativas.
+ */
+export const PERFIS_EXCLUEM_ATESTADO: readonly string[] = Object.freeze([
+  'GERENTE',
+  'ADMINISTRADOR',
+  'SUPERVISOR',
+]);
+
+/** Verdadeiro se o perfil pode excluir um atestado. */
+export function podeExcluirAtestado(
+  perfil: string | undefined | null,
+): boolean {
+  return !!perfil && PERFIS_EXCLUEM_ATESTADO.includes(perfil);
+}

@@ -85,3 +85,22 @@ export function validarPeriodoFerias(
     return { ok: false, motivo: 'PERIODO_LONGO_DEMAIS' };
   return { ok: true, dias };
 }
+
+/**
+ * Verdadeiro quando o período de férias **já terminou** na data de referência
+ * (o último dia é anterior ao dia de referência).
+ *
+ * A listagem de férias é uma ferramenta de operação, não um arquivo histórico:
+ * mostra quem está de férias agora e quem vai entrar. Períodos encerrados só
+ * poluiriam a tela e, com o tempo, a lista cresceria para sempre. O registro
+ * **continua no banco** — é ele que faz os dias passados aparecerem
+ * corretamente como férias na escala e nos relatórios.
+ */
+export function feriasEncerrada(
+  periodo: PeriodoFerias,
+  referencia: Date,
+): boolean {
+  return (
+    inicioDoDiaUtc(periodo.fim).getTime() < inicioDoDiaUtc(referencia).getTime()
+  );
+}
