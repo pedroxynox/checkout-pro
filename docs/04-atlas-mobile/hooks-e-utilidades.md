@@ -31,7 +31,7 @@ o acesso a dados, permissões, persistência e formatação em pt-BR.
 | `utils/dialogos.ts` | `confirmar`, `notificar`, `registrarOuvinteDialogo` | API de diálogos consumida pelo `DialogHost`. |
 | `utils/impressao.ts` | `imprimirRelatorio` | Impressão/PDF (web via iframe, nativo via `expo-print`). |
 | `utils/relatorioPerfil.ts` | `htmlRelatorio`, `htmlPaginaOperador`, `svgBarras`, `htmlPizza`, ... | Geração pura do relatório de perfil em HTML/SVG. |
-| `utils/notificacoesLidas.ts` | `carregarLidas`, `salvarLidas` | Estado "lida" das notificações no cliente. |
+| `utils/notificacoesLidas.ts` | `carregarLidas`, `salvarLidas`, `limparLidas` | Estado "lida" das notificações no cliente. |
 | `utils/protecaoTela.ts` | `useProtecaoTela` | Proteção contra captura de tela. |
 | `utils/som.ts` | `tocarSomNotificacao`, `tocarSomAlerta` | Beeps de notificação (Web Audio). |
 
@@ -183,5 +183,7 @@ indiretamente pelos testes de tela e pela lógica pura acima.
 - ⚠️ A conectividade do `useOffline` é informada por `definirOnline` (não há um
   monitor de rede acoplado por padrão) — quem integra precisa alimentar o estado
   online/offline.
+- ℹ️ `limparLidas()` esquece todos os IDs lidos — usado ao limpar o centro de
+  notificações, para não guardar referências a avisos que não existem mais.
 - ⚠️ `notificacoesLidas` vive só no cliente (limite de ~800 IDs); o backend não
   persiste o "lida", então o estado não sincroniza entre aparelhos.

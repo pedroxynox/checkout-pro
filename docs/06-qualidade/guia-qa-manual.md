@@ -178,6 +178,10 @@ Preparar jornadas controladas; validar tanto o disparo após batida quanto o cro
 - [ ] Sino/badge atualiza sem recarregar.
 - [ ] Mudança de status de fiscal aparece em tempo real aos gestores.
 - [ ] Reconexão não duplica eventos persistidos.
+- [ ] A caixa nunca passa de 200 avisos: ao receber o 201º, o mais antigo deixa de aparecer.
+- [ ] O limite é por pessoa: lotar a caixa de um usuário não muda a de outro.
+- [ ] A lixeira pede confirmação; ao recusar, nada é apagado.
+- [ ] Ao confirmar, a caixa fica vazia, o badge zera e a caixa das outras pessoas segue intacta.
 
 ### Push Android
 - [ ] APK solicita permissão e registra token Expo após login.

@@ -7,15 +7,21 @@
  * não lida e UM botão de ação que leva DIRETO ao módulo correspondente (sem
  * abrir nenhuma janela, modal ou prévia).
  *
- * Barra superior: filtro Todas / Não lidas / Lidas, "Marcar todas como lidas" e
- * um filtro por módulo (chips inline). O estado "lida" é guardado no aparelho
- * (o backend não tem esse endpoint) — ver `utils/notificacoesLidas`.
+ * Barra superior: filtro Todas / Não lidas / Lidas, "Marcar todas como lidas",
+ * um filtro por módulo (chips inline) e um botão **discreto** (só a lixeira) de
+ * limpar a caixa. O estado "lida" é guardado no aparelho (o backend não tem esse
+ * endpoint) — ver `utils/notificacoesLidas`.
+ *
+ * A caixa guarda no máximo **200 avisos por pessoa**: quem controla isso é o
+ * backend, que apaga o mais antigo quando entra um novo. A tela não precisa
+ * paginar — a lista já vem limitada.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ApiError } from '../../api/client';
 import { notificacoesService } from '../../api/services';
 import { Notificacao } from '../../api/types';
 import { Carregando, EstadoVazio, MensagemErro, Segmentado, Tela } from '../../components';
@@ -23,8 +29,13 @@ import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
 import { useNotificacoes } from '../../notificacoes/NotificacoesContext';
 import { cores, coresModulos, espacamento, raio, sombra, tipografia } from '../../theme';
+import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarHora, hojeISO, isoParaDataBR } from '../../utils/formato';
-import { carregarLidas, salvarLidas } from '../../utils/notificacoesLidas';
+import {
+  carregarLidas,
+  limparLidas,
+  salvarLidas,
+} from '../../utils/notificacoesLidas';
 import {
   Categoria,
   classificarNotificacao,
@@ -95,6 +106,7 @@ export function NotificacoesScreen(): React.ReactElement {
   const [filtroLeitura, setFiltroLeitura] = React.useState<FiltroLeitura>('todas');
   const [filtroModulo, setFiltroModulo] = React.useState<string>('todos');
   const [mostrarFiltro, setMostrarFiltro] = React.useState(false);
+  const [limpando, setLimpando] = React.useState(false);
 
   // Carrega o estado "lida" (persistido no aparelho) uma vez.
   React.useEffect(() => {
@@ -183,6 +195,40 @@ export function NotificacoesScreen(): React.ReactElement {
     persistir(new Set([...lidas, ...itens.map((i) => i.id)]));
   }
 
+  /**
+   * Limpa a caixa do próprio usuário. Pede confirmação (é irreversível) e, ao
+   * concluir, esquece também os IDs lidos guardados no aparelho — sem isso
+   * ficariam referências a avisos que não existem mais.
+   */
+  async function limpar(): Promise<void> {
+    const ok = await confirmar(
+      'Limpar notificações',
+      `Apagar as suas ${itens.length} notificaç${itens.length === 1 ? 'ão' : 'ões'}? ` +
+        'Isso vale só para você — não afeta a caixa das outras pessoas.\n\n' +
+        'Esta ação não pode ser desfeita.',
+      'Limpar',
+    );
+    if (!ok) return;
+    setLimpando(true);
+    try {
+      await notificacoesService.limpar();
+      await limparLidas();
+      setLidas(new Set());
+      setFiltroLeitura('todas');
+      setFiltroModulo('todos');
+      setMostrarFiltro(false);
+      zerar();
+      requisicao.recarregar();
+    } catch (e) {
+      notificar(
+        'Erro',
+        e instanceof ApiError ? e.message : 'Falha ao limpar as notificações.',
+      );
+    } finally {
+      setLimpando(false);
+    }
+  }
+
   function abrir(item: ItemNotificacao): void {
     if (item.naoLida) persistir(new Set([...lidas, item.id]));
     try {
@@ -263,6 +309,24 @@ export function NotificacoesScreen(): React.ReactElement {
               >
                 Filtro
               </Text>
+            </Pressable>
+
+            {/* Limpar a caixa: discreto de propósito — só a lixeira, em cinza.
+                É destrutivo e de uso raro, não deve competir com as ações do
+                dia a dia. */}
+            <Pressable
+              onPress={() => void limpar()}
+              disabled={limpando}
+              hitSlop={10}
+              style={styles.acaoBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Limpar notificações"
+            >
+              <Ionicons
+                name="trash-outline"
+                size={16}
+                color={limpando ? cores.divisor : cores.textoSecundario}
+              />
             </Pressable>
           </View>
 
