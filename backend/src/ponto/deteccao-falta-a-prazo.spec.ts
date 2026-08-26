@@ -53,6 +53,7 @@ describe('PontoDeteccaoAutomaticaService — ausência a prazo não vira falta a
           ),
       },
       incidenciaEscala: { findMany: () => Promise.resolve([]) },
+      exclusaoOcorrenciaAutomatica: { findMany: () => Promise.resolve([]) },
     };
 
     const fiscais = {

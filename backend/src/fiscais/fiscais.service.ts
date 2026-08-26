@@ -123,6 +123,14 @@ export interface ItemEquipeDia extends ItemJornada {
   entradaPrevista: string | null;
   /** true quando há uma falta (ausência) marcada para a pessoa no dia. */
   falta: boolean;
+  /**
+   * true quando a ausência do dia é um ATESTADO médico.
+   *
+   * A pessoa continua aparecendo no painel — some do painel seria pior, porque
+   * não se saberia POR QUE ela não está — mas identificada: um atestado não é
+   * uma falta, e mostrá-lo como falta é o que fazia o painel parecer errado.
+   */
+  atestado: boolean;
   /** true: escalado, sem batidas e já passou 1h da entrada (só visual). */
   alertaAtraso: boolean;
 }
@@ -894,17 +902,37 @@ export class FiscaisService {
       idsFalta.add(j.pessoaId);
       if (j.colaboradorId) idsFalta.add(j.colaboradorId);
     }
+    // Casa AS DUAS colunas: a falta de um fiscal é gravada com `pessoaId =
+    // Fiscal.id` e a ficha em `colaboradorId`, então olhar só `pessoaId` deixava
+    // passar as ausências gravadas pela ficha (ausência a prazo, atestado).
     const ausencias =
       idsFalta.size > 0
         ? await this.prisma.ausencia.findMany({
-            where: { data: dia, pessoaId: { in: [...idsFalta] } },
-            select: { pessoaId: true },
+            where: {
+              data: dia,
+              OR: [
+                { pessoaId: { in: [...idsFalta] } },
+                { colaboradorId: { in: [...idsFalta] } },
+              ],
+            },
+            select: { pessoaId: true, colaboradorId: true, atestadoId: true },
           })
         : [];
-    const faltaSet = new Set(ausencias.map((a) => a.pessoaId));
+    const faltaSet = new Set<string>();
+    const atestadoSet = new Set<string>();
+    for (const a of ausencias) {
+      for (const id of [a.pessoaId, a.colaboradorId]) {
+        if (!id) continue;
+        faltaSet.add(id);
+        if (a.atestadoId) atestadoSet.add(id);
+      }
+    }
     const temFalta = (pessoaId: string, colaboradorId: string | null) =>
       faltaSet.has(pessoaId) ||
       (colaboradorId ? faltaSet.has(colaboradorId) : false);
+    const temAtestado = (pessoaId: string, colaboradorId: string | null) =>
+      atestadoSet.has(pessoaId) ||
+      (colaboradorId ? atestadoSet.has(colaboradorId) : false);
 
     const agora = agoraNaBrasilia();
     // O alerta de atraso ("Sem registrar", 1h após a entrada) é um estado de
@@ -920,6 +948,7 @@ export class FiscaisService {
         ...j,
         entradaPrevista: e?.entradaPrevista ?? null,
         falta: temFalta(j.pessoaId, j.colaboradorId),
+        atestado: temAtestado(j.pessoaId, j.colaboradorId),
         alertaAtraso: false,
       });
     }
@@ -947,6 +976,7 @@ export class FiscaisService {
         cargaHorariaMs: 0,
         entradaPrevista: e.entradaPrevista,
         falta,
+        atestado: temAtestado(e.pessoaId, e.colaboradorId),
         alertaAtraso,
       });
     }

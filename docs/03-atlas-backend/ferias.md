@@ -120,3 +120,10 @@ função pura `estaDeFerias`, nunca persistido como flag.
 - 🔧 As férias não criam linhas em `Ausencia` (não são falta). Se no futuro o
   RH quiser vê-las no painel de faltas como "férias", será preciso uni-las na
   leitura — hoje são fontes separadas de propósito (ausência esperada ≠ falta).
+- ✅ **Férias atribuídas depois limpam as faltas automáticas daqueles dias.** A
+  exclusão de `escaladosDoDia` é *prospectiva* (evita novas faltas), então uma
+  falta já lançada antes das férias existirem ficava pendurada na tela. Quem a
+  remove é a **revalidação** do Relógio Ponto, que trata "de férias no dia" como
+  motivo para a ocorrência automática deixar de ser verdade — ver regra 13 de
+  [`ponto`](ponto.md). Vale para o ciclo de folha aberto, o que cobre a
+  atribuição retroativa. As faltas **manuais** do gestor não são tocadas.

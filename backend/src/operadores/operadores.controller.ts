@@ -157,9 +157,10 @@ export class OperadoresController {
    * Restrito a gerente/supervisor/administrador (mesmos perfis que programam
    * ausências futuras) — o fiscal não exclui faltas.
    *
-   * Obs.: se a falta era **automática** e o colaborador continua escalado no dia
-   * sem bater ponto, a detecção pode remarcá-la; por isso a escala do dia deve
-   * estar corrigida antes (ex.: marcar a folga) para a exclusão ser definitiva.
+   * Obs.: quando a falta era **automática**, a exclusão é DEFINITIVA para aquele
+   * dia — a decisão do gestor é registrada e a detecção não a remarca, mesmo que
+   * a pessoa siga escalada e sem bater ponto. Antes era preciso corrigir a escala
+   * antes de excluir, senão a card voltava no ciclo seguinte.
    */
   @Delete('ausencias/:id')
   @Funcionalidade('OPERADORES_AUSENCIAS')
@@ -173,7 +174,11 @@ export class OperadoresController {
         'Apenas gerente, supervisor ou administrador pode excluir uma falta.',
       );
     }
-    await this.operadoresService.removerAusencia(id, usuario?.perfil as string);
+    await this.operadoresService.removerAusencia(
+      id,
+      usuario?.perfil as string,
+      { id: usuario?.sub ?? null, nome: usuario?.nome ?? usuario?.login ?? null },
+    );
   }
 
   /**

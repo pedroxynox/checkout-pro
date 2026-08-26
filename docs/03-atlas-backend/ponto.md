@@ -30,7 +30,7 @@ automaticamente faltas e não-retornos do intervalo.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `ponto.controller.ts` | Rotas HTTP (OCR, pessoas, dia, batidas, histórico TAC) | 122 |
-| `ponto.service.ts` | Regras de aplicação: persistência, classificação, avisos de TAC | 1421 |
+| `ponto.service.ts` | Regras de aplicação: persistência, classificação, avisos de TAC | 1437 |
 | `ponto.domain.ts` | Regras puras: classificação e cálculo da jornada/TAC | 410 |
 | `ponto.errors.ts` | Erros de domínio (mapeados para HTTP) | 94 |
 | `ponto.module.ts` | Ligações (DI) do módulo | 45 |
@@ -38,8 +38,9 @@ automaticamente faltas e não-retornos do intervalo.
 | `ponto-ocr.parser.ts` | Regras puras: extrai nome/data/hora do texto lido | 354 |
 | `ponto-nome-match.ts` | Regras puras: similaridade de nomes (Levenshtein) | 93 |
 | `ponto-alertas.service.ts` | Cron (1 min): verifica riscos de TAC (dia civil de Brasília) | 58 |
-| `ponto-deteccao-automatica.service.ts` | Cron (5 min): alerta de atraso (1h), falta automática (2h), não-retorno e auto-cura | 338 |
+| `ponto-deteccao-automatica.service.ts` | Cron (5 min): **revalidação** das ocorrências automáticas, alerta de atraso (1h), falta automática (2h) e não-retorno | 639 |
 | `deteccao-automatica.domain.ts` | Regras puras: estado do escalado sem batida | 71 |
+| `revalidacao-automatica.domain.ts` | Regras puras: quando uma ocorrência automática **deixa de ser verdade** | 136 |
 | `marcacoes-invalidas.domain.ts` | Regras puras: quantas marcações faltam no dia e **quais** | 303 |
 | `pessoas-ponto.ts` | Funções (não-fiscais) que batem ponto | 15 |
 | `dto/ponto.dto.ts` | Validação de entrada das rotas | 88 |
@@ -117,8 +118,34 @@ Recalcula a jornada de quem bateu ponto no dia e delega o aviso de TAC ao
 `PontoService` (dedup persistente e compartilhada com a batida).
 
 ### `PontoDeteccaoAutomaticaService.verificar()` (cron 5 min)
-Cruza a escala do dia com o Relógio Ponto: **avisa o atraso (1h)**, marca falta
-automática (2h após a entrada sem batida) e registra não-retorno do intervalo.
+Primeiro **revalida** as ocorrências que já existem, depois cruza a escala do dia
+com o Relógio Ponto: **avisa o atraso (1h)**, marca falta automática (2h após a
+entrada sem batida) e registra não-retorno do intervalo. Nessa ordem, uma
+ocorrência revalidada não é reavaliada no mesmo ciclo e o "já tem falta?" da
+detecção enxerga a base já limpa.
+
+**Revalidação (auto-cura) — `revalidarOcorrenciasAutomaticas`.** Varre as
+ocorrências **que o sistema criou** no **ciclo de folha aberto** e apaga as que já
+não são verdade, pela decisão pura de
+[`revalidacao-automatica.domain`](#auto-cura-revalidacao-automaticadomaints).
+
+- **Janela = ciclo de folha aberto:** é o período que ainda se pode corrigir, e é
+  o que viabiliza a correção **retroativa** (marcar férias hoje cobrindo dias da
+  semana passada). Ciclos fechados são história e não se mexe neles.
+- **Só toca o que o sistema criou:** faltas `automatica` ainda não convertidas e
+  não-retornos `DETECTADO_PONTO`. O que uma pessoa registrou nunca é apagado aqui.
+- **Casa as duas chaves** (`pessoaId` e `colaboradorId`) em batidas, coberturas e
+  férias: um fiscal bate ponto por uma identidade e tem a ficha noutra, e ignorar
+  isso era a origem de metade dos casos em que a limpeza não acontecia.
+- Best-effort: uma falha é registrada e não interrompe a detecção do ciclo.
+
+**A exclusão do gestor prevalece.** Antes de lançar uma falta ou um não-retorno,
+a detecção consulta `ExclusaoOcorrenciaAutomatica` (a "lápide" gravada quando o
+gestor exclui uma ocorrência automática) e **não insiste** naquele dia. Sem isso a
+detecção é reincidente por natureza: enquanto a condição seguisse verdadeira, a
+card voltava sozinha no ciclo seguinte e excluir à mão não tinha efeito prático.
+A leitura da lápide é defensiva — se falhar, volta ao comportamento antigo
+(insistir), nunca a "parar de detectar faltas".
 
 **Alerta de atraso (1h).** Quando um escalado já faz 1h da entrada prevista sem
 nenhuma batida (`estadoSemBatida === 'ALERTA'`), o cron **notifica** a
@@ -126,7 +153,12 @@ supervisão/gerência (`notificarComPermissao('CENTRAL_JORNADA')`) — só um av
 preventivo, não lança nada. Enviado **uma vez por pessoa/dia**: uma linha em
 `AlertaAtrasoEnviado` (índice único `pessoaId+dia`) é a trava atômica
 (reserva → envia; `P2002` = já avisado). Antes, o atraso de 1h era **apenas
-visual** na "equipe do dia" e nenhum aviso era disparado. O não-retorno usa o
+visual** na "equipe do dia" e nenhum aviso era disparado.
+
+> **Respeita a ausência do dia** (dupla chave, como a falta de 2h já fazia): com
+> atestado, ausência a prazo ou falta já lançada, o aviso **não** é enviado. Este
+> aviso não fazia nenhuma checagem, então dizia "estava escalado(a) e não bateu
+> ponto" para quem tinha atestado entregue — o sistema contradizia a si mesmo. O não-retorno usa o
 sinalizador `jornada.naoRetornoIntervalo` (calculado no domínio com o **máximo
 do contrato da pessoa**; 3h no 6x1): saiu para o intervalo, não voltou e passou
 do máximo — **inclusive quando o turno já foi dado por encerrado** por intervalo
@@ -189,6 +221,30 @@ da remoção imediata que o `PontoService` já faz na batida normal.
 - Detecção (`deteccao-automatica.domain.ts`): `minutosAposEntrada`,
   `estadoSemBatida` (`AGUARDANDO`/`ALERTA`/`FALTA`).
 
+### Auto-cura (`revalidacao-automatica.domain.ts`)
+A detecção escreve um **fato** sobre um dia (faltou; não voltou do intervalo).
+Esses fatos podem **deixar de ser verdade depois** — a pessoa bate o ponto em
+atraso, o gestor lança um atestado, marca férias, corrige uma batida à mão.
+
+Antes, cada limpeza era um remendo pendurado num evento (registrar batida) e
+cobria só aquele caminho; quem chegasse por outro deixava a ocorrência pendurada
+na tela pedindo justificativa por algo que já não existia. Este domínio inverte a
+pergunta: em vez de "o que fazer quando acontece X?", pergunta **"esta ocorrência
+ainda é verdade?"** — e isso não depende de como ela deixou de ser.
+
+- `motivoParaRemoverFalta(fatos)` → `MotivoRevalidacao | null`. **Qualquer** batida
+  no dia derruba a falta; atestado, ausência a prazo e férias também.
+- `motivoParaRemoverNaoRetorno(fatos)` → idem, mas com a assimetria que importa:
+  **ter batidas NÃO derruba** o não retorno (é o seu pressuposto — a pessoa bateu
+  a entrada e a saída); o que o derruba é o intervalo ter sido **fechado**.
+- `ehFaltaAutomaticaPendente({automatica, atestadoId, aPrazo})` → o filtro do que
+  a auto-cura pode apagar. A marca `automatica` **sozinha não basta**: quando um
+  atestado converte uma falta, a linha é reaproveitada e continua `automatica`
+  (é o histórico de como nasceu). Olhando só essa marca, a limpeza apagava um dia
+  de atestado legítimo e o atestado ficava com um buraco, em silêncio.
+- `MotivoRevalidacao`: `BATIDA_REGISTRADA` · `INTERVALO_FECHADO` · `ATESTADO` ·
+  `AUSENCIA_A_PRAZO` · `FERIAS`; `descreverMotivo` dá a frase do log.
+
 ### Marcações faltantes (`marcacoes-invalidas.domain.ts`)
 `calcularJornadaDia` responde "este dia está incompleto?" e, para isso, basta-lhe
 a classificação **posicional** (1ª = entrada, 2ª = saída, …). Serve ao cálculo
@@ -244,7 +300,9 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 - `RegrasContrato`: parâmetros de jornada por contrato (o padrão é o 6x1–2x1).
 
 ## 8. Dados que o módulo toca
-- **Escreve:** `BatidaPonto`, `AlertaTacEnviado`, `AlertaAtrasoEnviado` (dedup
+- **Escreve:** `ExclusaoOcorrenciaAutomatica` (a lápide da exclusão do gestor é
+  gravada pelos módulos `operadores`/`incidencias`; aqui ela é **lida** antes de
+  lançar), `BatidaPonto`, `AlertaTacEnviado`, `AlertaAtrasoEnviado` (dedup
   do aviso de atraso de 1h), `EventoAlertaTac`,
   `AliasLeituraPonto`, `RegistroPontoFiscal` (via `FiscaisService`; a ponte
   batidas → status agora repassa o `colaboradorId` da batida para gravar o
@@ -252,14 +310,17 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
   remoção), `IncidenciaEscala` (não-retorno: registro pela detecção e **remoção
   do auto-detectado** ao registrar um retorno de intervalo válido).
 - **Lê:** `Fiscal`, `Usuario`, `Colaborador`, `Ausencia`, `CicloFolha`,
-  `TipoContratoJornada` (via serviços).
+  `TipoContratoJornada`, `ExclusaoOcorrenciaAutomatica`, `FeriasColaborador`
+  (via serviços).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
 
 ## 9. Dependências
 - **Depende de:** `PrismaService`, `ValidacaoDataService`, e (opcionais)
   `FiscaisService`, `PontoOcrService`, `NotificacoesService`, `FeriadosService`,
   `EscalaDomingoService`, `CicloFolhaService`, `TiposContratoService`;
-  `OperadoresService` e `IncidenciasService` (detecção automática).
+  `OperadoresService` e `IncidenciasService` (detecção automática);
+  `FeriasService` (opcional — a revalidação usa "de férias no dia" como motivo;
+  sem ele os outros motivos seguem valendo).
 - **É usado por:** [`central-jornada`](central-jornada.md) (reaproveita
   `calcularJornadaDia`), a detecção automática e o app (telas de ponto/jornada).
 
@@ -274,6 +335,9 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 6. **Não bate ponto em dia de folga** (folga fixa ou domingo de folga do rodízio).
 7. **Ciclo de folha fechado bloqueia** registrar/corrigir/excluir batida.
 8. **Bater ponto remove a falta automática** do dia (faltas manuais permanecem).
+   A remoção usa o **dia da batida**, não o de hoje: uma marcação lançada em
+   atraso limpa a falta daquele dia. E não toca no que já foi **convertido** em
+   atestado/ausência a prazo (ver `ehFaltaAutomaticaPendente`).
 9. **Registrar o retorno do intervalo remove o não-retorno AUTOMÁTICO** do dia:
    quando a pessoa fecha o intervalo dentro do limite (retorno válido), um
    não-retorno auto-detectado (`origem = DETECTADO_PONTO`) — falso positivo do
@@ -297,6 +361,23 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
    resposta inventada. O cálculo da jornada **não muda** por isso — a análise é
    um segundo olhar, consumido pelo relatório da
    [`central-jornada`](central-jornada.md).
+13. **Uma ocorrência automática só sobrevive enquanto for verdade.** A detecção
+   escreve um fato; a **revalidação** (a cada 5 min, no ciclo de folha aberto)
+   pergunta se ele ainda se sustenta e apaga o que não. Motivos: apareceu batida
+   (para a falta), o intervalo foi fechado (para o não retorno), ou o dia passou a
+   ser coberto por **atestado**, **ausência a prazo** ou **férias**. Não importa
+   por qual caminho o fato deixou de ser verdade — é essa a diferença em relação
+   aos ganchos por evento que existiam antes, que cobriam só o registro da batida.
+
+   Duas fronteiras: **nada registrado por uma pessoa é apagado** por este caminho,
+   e um dia já **convertido** em atestado/ausência a prazo não é tocado, mesmo
+   tendo nascido automático.
+14. **A exclusão do gestor é definitiva para aquele dia.** Excluir uma falta ou um
+   não-retorno automático grava a decisão (`ExclusaoOcorrenciaAutomatica`) e a
+   detecção **não insiste**, ainda que a condição siga verdadeira. Antes era
+   preciso corrigir a escala antes de excluir, senão a card voltava em 5 minutos.
+   A lápide é por **pessoa + tipo + dia**: cada novo dia recomeça do zero, e
+   excluir uma falta não silencia o não-retorno (nem o contrário).
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
@@ -307,6 +388,9 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 | `ponto-ocr.service.spec.ts` | Só pessoas ativas nas sugestões e memória de aliases | 7 |
 | `ponto-nome-match.spec.ts` | Similaridade de nomes tolerante ao OCR | 6 |
 | `deteccao-automatica.domain.spec.ts` | Estado do escalado sem batida (alerta/falta) | 8 |
+| `revalidacao-automatica.domain.spec.ts` | Quando a ocorrência deixa de ser verdade; a assimetria falta × não retorno; o que a auto-cura **não** pode apagar | 14 |
+| `deteccao-revalidacao.spec.ts` | Auto-cura no ciclo: batida (inclusive em atraso), atestado, ausência a prazo, férias, fiscal por outra chave — e o que **fica** | 15 |
+| `deteccao-exclusao-gestor.spec.ts` | A exclusão do gestor prevalece (não recria) e o aviso de atraso respeita a ausência do dia | 8 |
 | `marcacoes-invalidas.domain.spec.ts` | Quantas marcações faltam e quais: entrada esquecida, ajustes por duração, sem turno, bordas e 4 propriedades invariantes (fast-check) | 25 |
 | `deteccao-falta-a-prazo.spec.ts` | Ausência a prazo (chave dupla) não vira falta automática duplicada | 3 |
 | `ponto-alertas.service.spec.ts` | Cron periódico de riscos de TAC | 1 |
@@ -315,7 +399,7 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `ponto.service.ts` (1352 linhas) concentra persistência, classificação,
+- 🔧 `ponto.service.ts` (1437 linhas) concentra persistência, classificação,
   avisos de TAC e pontes (fiscal/ausência). Candidato a extrair sub-serviços.
 - ⚠️ O deslocamento de Brasília é fixo (UTC−3): correto enquanto o país não
   tiver horário de verão; uma eventual volta exigiria revisão.

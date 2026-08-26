@@ -1,8 +1,12 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { Prisma } from '@prisma/client';
+import { Prisma, TipoOcorrenciaAutomatica } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { agoraNaBrasilia, inicioDoDia } from '../common/datas';
+import {
+  agoraNaBrasilia,
+  inicioDoDia,
+  periodoFolhaDeslocado,
+} from '../common/datas';
 import { FiscaisService, EscaladoDia } from '../fiscais/fiscais.service';
 import { OperadoresService } from '../operadores/operadores.service';
 import { IncidenciasService } from '../incidencias/incidencias.service';
@@ -16,6 +20,14 @@ import {
   estadoSemBatida,
   minutosAposEntrada,
 } from './deteccao-automatica.domain';
+import {
+  FatosDoDia,
+  descreverMotivo,
+  ehFaltaAutomaticaPendente,
+  motivoParaRemoverFalta,
+  motivoParaRemoverNaoRetorno,
+} from './revalidacao-automatica.domain';
+import { FeriasService } from '../ferias/ferias.service';
 
 /** Autor "sistema" das marcações automáticas (auditoria). */
 const AUTOR_SISTEMA = { id: 'sistema', nome: 'Detecção automática' };
@@ -53,6 +65,9 @@ export class PontoDeteccaoAutomaticaService {
     // Opcional: alguns testes instanciam o serviço sem o barramento de avisos.
     // Em produção o DI injeta (NotificacoesModule já é importado no módulo).
     @Optional() private readonly notificacoes?: NotificacoesService,
+    // Opcional: sem ele a revalidação simplesmente não usa "de férias" como
+    // motivo (os outros motivos seguem valendo).
+    @Optional() private readonly ferias?: FeriasService,
   ) {}
 
   /** Verifica faltas automáticas e não-retornos a cada 5 minutos. */
@@ -60,6 +75,17 @@ export class PontoDeteccaoAutomaticaService {
   async verificar(): Promise<void> {
     const agora = agoraNaBrasilia();
     const dia = inicioDoDia(agora);
+
+    // Primeiro apaga o que já não é verdade, depois detecta o que é. Nesta ordem
+    // uma ocorrência revalidada não é reavaliada no mesmo ciclo, e o "já tem
+    // falta?" da detecção enxerga a base já limpa.
+    try {
+      await this.revalidarOcorrenciasAutomaticas(agora);
+    } catch (erro) {
+      this.logger.warn(
+        `Falha na revalidação das ocorrências automáticas: ${String(erro)}`,
+      );
+    }
 
     let escalados: EscaladoDia[];
     try {
@@ -109,21 +135,34 @@ export class PontoDeteccaoAutomaticaService {
     const naoRetornoRegistrado = new Set(
       naoRetornosDoDia.map((i) => i.colaboradorId),
     );
+    // Dias que o gestor JÁ EXCLUIU à mão: a detecção não insiste. Sem isto,
+    // excluir uma card não tinha efeito prático — a condição seguia verdadeira e
+    // o próximo ciclo (5 min) recriava a ocorrência.
+    const [excluidasFalta, excluidasNaoRetorno] = await Promise.all([
+      this.idsComExclusao('FALTA', dia),
+      this.idsComExclusao('NAO_RETORNO_INTERVALO', dia),
+    ]);
 
     for (const escalado of escalados) {
       try {
         if (comAtividade.has(escalado.pessoaId)) {
-          await this.verificarNaoRetorno(escalado, dia, naoRetornoRegistrado);
+          await this.verificarNaoRetorno(
+            escalado,
+            dia,
+            naoRetornoRegistrado,
+            excluidasNaoRetorno,
+          );
         } else {
           // Sem batida: 1h de atraso → avisa (uma vez); 2h → falta automática.
           // Os estados são mutuamente exclusivos (ver `estadoSemBatida`), então
           // no máximo um dos dois age.
-          await this.verificarAtraso(escalado, dia, agora);
+          await this.verificarAtraso(escalado, dia, agora, idsComFalta);
           await this.verificarFaltaAutomatica(
             escalado,
             dia,
             agora,
             idsComFalta,
+            excluidasFalta,
           );
         }
       } catch (erro) {
@@ -132,6 +171,243 @@ export class PontoDeteccaoAutomaticaService {
         );
       }
     }
+  }
+
+  /**
+   * Ids (pessoa ou ficha) com exclusão do gestor para o tipo/dia informados.
+   *
+   * Defensivo por opção: se esta leitura falhar, devolve vazio e a detecção
+   * segue como antes (insistindo). O modo de falha correto aqui é "voltar ao
+   * comportamento antigo", nunca "parar de detectar faltas".
+   */
+  private async idsComExclusao(
+    tipo: TipoOcorrenciaAutomatica,
+    dia: Date,
+  ): Promise<Set<string>> {
+    const ids = new Set<string>();
+    try {
+      const exclusoes = await this.prisma.exclusaoOcorrenciaAutomatica.findMany({
+        where: { tipo, data: dia },
+        select: { pessoaId: true, colaboradorId: true },
+      });
+      for (const e of exclusoes) {
+        ids.add(e.pessoaId);
+        if (e.colaboradorId) ids.add(e.colaboradorId);
+      }
+    } catch (erro) {
+      this.logger.warn(
+        `Falha ao ler as exclusões de ${tipo}: ${String(erro)} — a detecção segue sem elas.`,
+      );
+    }
+    return ids;
+  }
+
+  /**
+   * REVALIDAÇÃO das ocorrências automáticas do ciclo de folha aberto.
+   *
+   * A detecção escreve um fato sobre um dia; este método pergunta, para cada
+   * fato que o SISTEMA lançou, **se ele ainda é verdade** — e apaga o que não é.
+   *
+   * Por que uma varredura, e não mais um gancho: os fatos deixam de ser verdade
+   * por muitos caminhos (batida em atraso, batida corrigida à mão, atestado
+   * lançado depois, férias atribuídas retroativamente, importação). Pendurar uma
+   * limpeza em cada um desses eventos significa cobrir só os que alguém lembrou
+   * — e foi exatamente o que aconteceu: as cards ficavam na tela pedindo
+   * justificativa por algo que já não existia. Perguntando "ainda é verdade?"
+   * não importa o caminho.
+   *
+   * **Janela: o ciclo de folha ABERTO.** É o período que ainda se pode corrigir;
+   * ciclos fechados são história e não se mexe neles. Também é o que permite a
+   * correção retroativa (marcar férias hoje cobrindo dias da semana passada).
+   *
+   * **Só toca o que o sistema criou:** faltas `automatica` ainda não convertidas
+   * (ver `ehFaltaAutomaticaPendente`) e não-retornos `DETECTADO_PONTO`. Nada
+   * registrado por uma pessoa é apagado aqui.
+   *
+   * Best-effort: qualquer falha é registrada e não interrompe o ciclo.
+   */
+  private async revalidarOcorrenciasAutomaticas(agora: Date): Promise<void> {
+    const { inicio, fimExclusivo } = periodoFolhaDeslocado(agora, 0);
+
+    const [faltas, naoRetornos] = await Promise.all([
+      this.prisma.ausencia.findMany({
+        where: {
+          data: { gte: inicio, lt: fimExclusivo },
+          automatica: true,
+          atestadoId: null,
+          aPrazo: false,
+        },
+        select: {
+          id: true,
+          pessoaId: true,
+          colaboradorId: true,
+          data: true,
+          automatica: true,
+          atestadoId: true,
+          aPrazo: true,
+        },
+      }),
+      this.prisma.incidenciaEscala.findMany({
+        where: {
+          tipo: 'NAO_RETORNO_INTERVALO',
+          origem: 'DETECTADO_PONTO',
+          data: { gte: inicio, lt: fimExclusivo },
+        },
+        select: {
+          id: true,
+          colaboradorId: true,
+          funcionarioId: true,
+          data: true,
+        },
+      }),
+    ]);
+    if (faltas.length === 0 && naoRetornos.length === 0) return;
+
+    // Fatos do período, carregados de uma vez (a varredura roda a cada 5 min).
+    const dias = [
+      ...new Set([
+        ...faltas.map((f) => f.data.getTime()),
+        ...naoRetornos.map((i) => i.data.getTime()),
+      ]),
+    ].map((t) => new Date(t));
+    const fatos = await this.carregarFatosDoPeriodo(inicio, fimExclusivo, dias);
+
+    for (const falta of faltas) {
+      // Guarda extra: a consulta já filtra, mas a regra de "o que é uma falta
+      // automática pendente" mora no domínio e é ela que vale.
+      if (!ehFaltaAutomaticaPendente(falta)) continue;
+      const motivo = motivoParaRemoverFalta(
+        fatos.para(falta.data, [falta.pessoaId, falta.colaboradorId]),
+      );
+      if (!motivo) continue;
+      try {
+        await this.prisma.ausencia.delete({ where: { id: falta.id } });
+        this.logger.log(
+          `Falta automática removida (${descreverMotivo(motivo)}): ${falta.pessoaId} em ${falta.data.toISOString().slice(0, 10)}.`,
+        );
+      } catch (erro) {
+        this.logger.warn(
+          `Não foi possível remover a falta automática ${falta.id}: ${String(erro)}`,
+        );
+      }
+    }
+
+    for (const inc of naoRetornos) {
+      const motivo = motivoParaRemoverNaoRetorno(
+        fatos.para(inc.data, [inc.colaboradorId, inc.funcionarioId]),
+      );
+      if (!motivo) continue;
+      try {
+        await this.prisma.incidenciaEscala.delete({ where: { id: inc.id } });
+        this.logger.log(
+          `Não retorno automático removido (${descreverMotivo(motivo)}): ${inc.colaboradorId} em ${inc.data.toISOString().slice(0, 10)}.`,
+        );
+      } catch (erro) {
+        this.logger.warn(
+          `Não foi possível remover o não-retorno ${inc.id}: ${String(erro)}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Carrega os fatos do período (batidas, coberturas e férias) e devolve um
+   * consultor `para(dia, ids)` que monta os `FatosDoDia` de uma pessoa num dia.
+   *
+   * Os ids são consultados aos pares (`pessoaId` e `colaboradorId`) porque um
+   * fiscal bate ponto por uma identidade e tem a ficha noutra — ignorar isso é a
+   * origem de metade dos casos em que a limpeza não acontecia.
+   */
+  private async carregarFatosDoPeriodo(
+    inicio: Date,
+    fimExclusivo: Date,
+    dias: readonly Date[],
+  ): Promise<{
+    para: (dia: Date, ids: readonly (string | null)[]) => FatosDoDia;
+  }> {
+    const [batidas, coberturas, feriasPorDia] = await Promise.all([
+      this.prisma.batidaPonto.findMany({
+        where: { data: { gte: inicio, lt: fimExclusivo } },
+        select: { pessoaId: true, colaboradorId: true, data: true, tipo: true },
+      }),
+      // Coberturas do dia: atestado (`atestadoId`) ou ausência a prazo.
+      this.prisma.ausencia.findMany({
+        where: {
+          data: { gte: inicio, lt: fimExclusivo },
+          OR: [{ atestadoId: { not: null } }, { aPrazo: true }],
+        },
+        select: {
+          pessoaId: true,
+          colaboradorId: true,
+          data: true,
+          atestadoId: true,
+          aPrazo: true,
+        },
+      }),
+      this.feriasPorDia(dias),
+    ]);
+
+    const chave = (dia: Date, id: string): string =>
+      `${dia.getTime()}|${id}`;
+    const comBatida = new Set<string>();
+    const comRetorno = new Set<string>();
+    for (const b of batidas) {
+      const d = inicioDoDia(b.data);
+      for (const id of [b.pessoaId, b.colaboradorId]) {
+        if (!id) continue;
+        comBatida.add(chave(d, id));
+        if (b.tipo === 'RETORNO_INTERVALO') comRetorno.add(chave(d, id));
+      }
+    }
+    const comAtestado = new Set<string>();
+    const comAPrazo = new Set<string>();
+    for (const c of coberturas) {
+      const d = inicioDoDia(c.data);
+      for (const id of [c.pessoaId, c.colaboradorId]) {
+        if (!id) continue;
+        if (c.atestadoId) comAtestado.add(chave(d, id));
+        if (c.aPrazo) comAPrazo.add(chave(d, id));
+      }
+    }
+
+    const algum = (conjunto: Set<string>, dia: Date, ids: readonly (string | null)[]) =>
+      ids.some((id) => !!id && conjunto.has(chave(dia, id)));
+
+    return {
+      para: (dia, ids) => {
+        const d = inicioDoDia(dia);
+        const deFerias = ids.some(
+          (id) => !!id && (feriasPorDia.get(d.getTime())?.has(id) ?? false),
+        );
+        return {
+          temBatida: algum(comBatida, d, ids),
+          // "Fechou o intervalo" = existe batida de RETORNO_INTERVALO no dia. A
+          // reclassificação do ponto mantém esse tipo coerente com a ordem das
+          // batidas, então a presença do retorno é o sinal de que voltou.
+          intervaloFechado: algum(comRetorno, d, ids),
+          temAtestado: algum(comAtestado, d, ids),
+          temAusenciaAPrazo: algum(comAPrazo, d, ids),
+          deFerias,
+        };
+      },
+    };
+  }
+
+  /** Colaboradores de férias em cada dia informado (vazio sem o serviço). */
+  private async feriasPorDia(
+    dias: readonly Date[],
+  ): Promise<Map<number, Set<string>>> {
+    const mapa = new Map<number, Set<string>>();
+    if (!this.ferias) return mapa;
+    for (const dia of dias) {
+      const d = inicioDoDia(dia);
+      try {
+        mapa.set(d.getTime(), await this.ferias.colaboradoresDeFeriasNoDia(d));
+      } catch {
+        // Best-effort: sem a informação de férias, apenas não se usa esse motivo.
+      }
+    }
+    return mapa;
   }
 
   /**
@@ -148,10 +424,21 @@ export class PontoDeteccaoAutomaticaService {
     escalado: EscaladoDia,
     dia: Date,
     agora: Date,
+    idsComFalta: ReadonlySet<string>,
   ): Promise<void> {
     if (!this.notificacoes) return;
     const minutos = minutosAposEntrada(escalado.entradaPrevista, agora);
     if (estadoSemBatida(minutos) !== 'ALERTA') return;
+
+    // Já há ausência registrada para o dia (atestado, ausência a prazo ou falta
+    // já lançada)? Então a pessoa NÃO era esperada, e avisar que ela "estava
+    // escalada e não bateu ponto" é ruído — pior: com um atestado em mãos, o
+    // aviso contradiz o próprio sistema. Mesma checagem de dupla chave que a
+    // falta automática já fazia; este aviso não fazia nenhuma.
+    const ids = [escalado.pessoaId, escalado.colaboradorId].filter(
+      (id): id is string => !!id,
+    );
+    if (ids.some((id) => idsComFalta.has(id))) return;
 
     // Reserva a trava (uma por pessoa/dia). Se já existe, alguém já avisou hoje.
     try {
@@ -195,6 +482,7 @@ export class PontoDeteccaoAutomaticaService {
     dia: Date,
     agora: Date,
     idsComFalta: ReadonlySet<string>,
+    excluidas: ReadonlySet<string>,
   ): Promise<void> {
     const minutos = minutosAposEntrada(escalado.entradaPrevista, agora);
     if (estadoSemBatida(minutos) !== 'FALTA') return;
@@ -212,6 +500,10 @@ export class PontoDeteccaoAutomaticaService {
       (v): v is string => !!v,
     );
     if (ids.some((id) => idsComFalta.has(id))) return;
+
+    // O gestor já excluiu a falta deste dia: a decisão dele prevalece sobre a
+    // detecção. Sem esta guarda, a card voltava sozinha no ciclo seguinte.
+    if (ids.some((id) => excluidas.has(id))) return;
 
     try {
       if (escalado.tipoPessoa === 'FISCAL') {
@@ -264,6 +556,7 @@ export class PontoDeteccaoAutomaticaService {
     escalado: EscaladoDia,
     dia: Date,
     naoRetornoRegistrado: ReadonlySet<string>,
+    excluidas: ReadonlySet<string>,
   ): Promise<void> {
     if (!escalado.colaboradorId) return;
 
@@ -308,6 +601,14 @@ export class PontoDeteccaoAutomaticaService {
     // obrigatório) — caso que antes escapava, pois a checagem exigia o status
     // EM_INTERVALO, que nunca ocorria nesses contratos ao cruzar o máximo.
     if (!resposta.jornada.naoRetornoIntervalo) return;
+
+    // O gestor já excluiu o não-retorno deste dia: não insiste.
+    if (
+      excluidas.has(escalado.colaboradorId) ||
+      excluidas.has(escalado.pessoaId)
+    ) {
+      return;
+    }
 
     const saida = resposta.batidas.find((b) => b.tipo === 'SAIDA_INTERVALO');
     const horaSaida = saida ? saida.hora.slice(11, 16) : undefined;

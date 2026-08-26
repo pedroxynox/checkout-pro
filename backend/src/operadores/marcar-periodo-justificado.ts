@@ -53,7 +53,13 @@ export async function marcarPeriodoJustificado(
   for (let t = params.inicio.getTime(); t <= fim; t += UM_DIA_MS) {
     const existId = params.idPorDia.get(t);
     if (existId) {
-      await tx.ausencia.update({ where: { id: existId }, data: params.dados });
+      // `faltaAnterior` é a memória para DESFAZER: este dia já era uma falta
+      // antes de ser convertido. Sem ela, remover o atestado apagava a falta
+      // que existia antes dele, como se o dia nunca tivesse tido nada.
+      await tx.ausencia.update({
+        where: { id: existId },
+        data: { ...params.dados, faltaAnterior: true },
+      });
       atualizadas += 1;
     } else {
       await tx.ausencia.create({

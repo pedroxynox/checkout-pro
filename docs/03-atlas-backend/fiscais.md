@@ -24,7 +24,7 @@ os alertas automáticos e a **escala de trabalho** (geral e horário especial).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `fiscais.controller.ts` | Rotas de status/jornada/painel do fiscal | 134 |
-| `fiscais.service.ts` | Regras de aplicação: status, jornada, extras, painel | 1659 |
+| `fiscais.service.ts` | Regras de aplicação: status, jornada, extras, painel | 1731 |
 | `fiscais.domain.ts` | Regras puras: status atual, jornada, transições | 150 |
 | `fiscais.errors.ts` | Erros de domínio (mapeados para HTTP) | 47 |
 | `fiscais.eventos.ts` | Barramento de eventos de status (produtor↔gateway) | 38 |
@@ -201,6 +201,12 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
    escala consolidada (com data) excluem quem está de férias — sem falta e sem
    mexer em `ativo` (ver [`ferias`](ferias.md)).
 
+10. **Atestado aparece como ATESTADO, não como falta.** `equipeDoDia` devolve
+   `atestado: boolean` junto de `falta`, e a pessoa **continua no painel** —
+   sumir seria pior, porque não se saberia por que ela não está. A consulta das
+   ausências do dia casa **as duas colunas** (`pessoaId` e `colaboradorId`): olhar
+   só uma deixava passar as ausências gravadas pela ficha (atestado e ausência a
+   prazo de fiscal), e a pessoa aparecia como se nada tivesse.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
@@ -221,7 +227,7 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `fiscais.service.ts` (1574 linhas) concentra status, painel, jornada,
+- 🔧 `fiscais.service.ts` (1731 linhas) concentra status, painel, jornada,
   extras, ranking e contexto — forte candidato a extrair sub-serviços.
 - ⚠️ **Coexistência de logs:** o status vem das batidas do Relógio de Ponto com
   fallback ao log legado (`RegistroPontoFiscal`); manter a ponte consistente é

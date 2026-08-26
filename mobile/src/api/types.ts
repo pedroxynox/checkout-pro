@@ -762,6 +762,12 @@ export interface ItemEquipeDiaFiscal extends ItemJornadaFiscal {
   entradaPrevista: string | null;
   /** true quando há uma falta (ausência) marcada para a pessoa no dia. */
   falta: boolean;
+  /**
+   * true quando a ausência do dia é um ATESTADO médico. A pessoa continua no
+   * painel (some seria pior: não se saberia por que ela não está), mas
+   * identificada — atestado não é falta.
+   */
+  atestado: boolean;
   /** true: escalado, sem batidas e já passou 1h da entrada (só visual). */
   alertaAtraso: boolean;
 }

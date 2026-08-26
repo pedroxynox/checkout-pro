@@ -113,7 +113,26 @@ de TAC, conflitos, atrasos e o **saldo** (banco de horas).
     domingos. Quem trabalha num feriado é exatamente quem trabalharia naquele dia
     da semana. Quem não tem horário de domingo cadastrado segue no seu horário
     habitual.
-22. **Atestado não é falta.** O atestado médico é ausência **abonada**: tem o seu
+22. **Uma ocorrência automática desaparece sozinha quando deixa de ser verdade.**
+    O sistema lança falta (2h sem bater ponto) e não retorno do intervalo; se o
+    fato depois deixa de existir, a ocorrência sai da tela **sem ninguém precisar
+    apagá-la**. Sai quando: aparece batida (mesmo lançada em atraso ou corrigida à
+    mão), o intervalo é fechado, ou o dia passa a ser coberto por **atestado**,
+    **ausência a prazo** ou **férias** — inclusive quando as férias ou o atestado
+    são lançados **depois**, cobrindo dias já passados do ciclo aberto.
+
+    Duas fronteiras: o que **uma pessoa registrou** nunca é apagado assim, e um
+    dia já convertido em atestado não é tocado.
+23. **Excluir uma ocorrência automática é definitivo para aquele dia.** A decisão
+    do gestor prevalece sobre a detecção: ela não insiste, mesmo que a pessoa siga
+    escalada e sem bater ponto. Antes a card voltava sozinha em 5 minutos e era
+    preciso corrigir a escala antes de excluir.
+24. **Quem tem ausência registrada no dia não recebe aviso de atraso.** O aviso de
+    1h ("estava escalado(a) e não bateu ponto") não é enviado a quem tem atestado,
+    ausência a prazo ou falta já lançada — antes era, e contradizia o próprio
+    sistema. No painel do dia essa pessoa aparece como **Atestado**, não como
+    falta, e continua visível (para se saber por que não está).
+25. **Atestado não é falta.** O atestado médico é ausência **abonada**: tem o seu
     próprio contador (`atestados`) e as suas horas (`horasAtestadoMs`), e **não**
     entra no número de **faltas**. Antes o mesmo dia somava nos dois, então o
     contador de faltas acusava justamente quem havia apresentado atestado. A

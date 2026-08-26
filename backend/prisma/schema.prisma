@@ -922,11 +922,54 @@ model Ausencia {
   atestadoId String?
   cid        String?
 
+  // Quando true, este dia JÁ ERA UMA FALTA antes de ser convertido em atestado
+  // (ou em ausência a prazo). Guarda a memória necessária para desfazer: ao
+  // remover o atestado, os dias com esta marca VOLTAM a ser falta pendente, e só
+  // os dias criados pelo atestado são apagados. Sem ela, remover um atestado
+  // apagava a falta que existia antes dele.
+  faltaAnterior Boolean @default(false)
+
   @@unique([pessoaId, data])
   @@index([colaboradorId])
   @@index([statusJustificativa])
   @@index([atestadoId])
   @@map("ausencias")
+}
+
+// Tipo de ocorrência lançada pela detecção automática do Relógio Ponto.
+enum TipoOcorrenciaAutomatica {
+  FALTA
+  NAO_RETORNO_INTERVALO
+}
+
+// Decisão do gestor de EXCLUIR uma ocorrência que o sistema havia lançado
+// automaticamente (falta ou não retorno do intervalo).
+//
+// Existe porque a detecção é idempotente e reincidente: enquanto a condição
+// seguir verdadeira (escalado, sem batida, 2h após a entrada), o cron recria a
+// falta a cada 5 minutos. Sem este registro, excluir à mão não tinha efeito
+// prático — a card voltava sozinha e o gestor não tinha como dizer "eu já
+// analisei este dia".
+//
+// É uma "lápide": não guarda a ocorrência, guarda a DECISÃO. O dia é a unidade
+// (uma decisão por pessoa/tipo/dia), então cada novo dia recomeça do zero.
+model ExclusaoOcorrenciaAutomatica {
+  id   String                   @id @default(uuid())
+  tipo TipoOcorrenciaAutomatica
+  // Identidade usada pela detecção: Fiscal.id para fiscais, Colaborador.id para
+  // os demais. `colaboradorId` guarda a ficha canônica quando conhecida — as
+  // duas chaves são consultadas, como no resto do fluxo de ponto.
+  pessoaId        String
+  colaboradorId   String?
+  data            DateTime
+  excluidaPorId   String?
+  excluidaPorNome String?
+  criadoEm        DateTime                 @default(now())
+
+  @@unique([tipo, pessoaId, data])
+  @@index([tipo, data])
+  @@index([colaboradorId])
+  @@map("exclusoes_ocorrencia_automatica")
 }
 
 model Notificacao {

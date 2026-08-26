@@ -24,7 +24,7 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `operadores.controller.ts` | Rotas de ausências/justificativa/contagem | 197 |
-| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 615 |
+| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 674 |
 | `marcar-periodo-justificado.ts` | Primitiva compartilhada: falta justificada dia a dia (a prazo + atestado) | 72 |
 | `operadores.domain.ts` | Regras puras: unicidade, turno, relatório, analítica | 517 |
 | `operadores.errors.ts` | Erros de domínio (mapeados para HTTP) | 104 |
@@ -118,9 +118,13 @@ reduzido — 2%/10%): aqui a ocorrência é apagada. A exclusão é **restrita a
 gerente/supervisor/administrador** (guarda de perfil no controller); o serviço
 ainda bloqueia o **fiscal** de desmarcar um dia `aPrazo`
 (`AusenciaAPrazoProtegidaError`) e impede remoção em ciclo de folha fechado.
-- ⚠️ Se a falta era **automática** e o colaborador continua escalado no dia sem
-  bater ponto, a detecção pode remarcá-la; por isso a escala do dia deve estar
-  corrigida antes (ex.: marcar a folga) para a exclusão ser definitiva.
+- ✅ Se a falta era **automática**, a exclusão é **definitiva** para aquele dia: o
+  serviço grava a decisão do gestor em `ExclusaoOcorrenciaAutomatica` (com o
+  autor) e a detecção **não a remarca**, mesmo que a pessoa siga escalada e sem
+  bater ponto — ver regra 14 de [`ponto`](ponto.md). Antes era preciso corrigir a
+  escala **antes** de excluir, senão a card voltava em 5 minutos. A lápide vale
+  para pessoa + dia: cada novo dia recomeça do zero. Faltas **manuais** não geram
+  lápide (não há detecção que as recrie).
 
 #### `justificarAusencia(ausenciaId, input, autor?)`
 Abona (`JUSTIFICADA`, exige motivo), reabre (`PENDENTE`, limpa tudo) ou marca
@@ -178,7 +182,8 @@ Delegam às funções puras homônimas do domínio.
 - `RiscoFalta`: `BAIXO` · `MEDIO` · `ALTO` (semáforo da analítica).
 
 ## 8. Dados que o módulo toca
-- **Escreve:** `Ausencia` (cria/atualiza/remove; grava `colaboradorId`).
+- **Escreve:** `Ausencia` (cria/atualiza/remove; grava `colaboradorId`) e
+  `ExclusaoOcorrenciaAutomatica` (a lápide da exclusão de uma falta automática).
 - **Lê:** `Ausencia`, `Colaborador`, `Fiscal` (apenas fallback de nome),
   `OperadorTurno` (Quadro/roster).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
