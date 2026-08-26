@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `backend/src/ferias/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/ferias/`
 
 # Módulo: `ferias`
 
@@ -10,9 +10,9 @@ gera falta automática — mas continua `ativo` (não é desligamento).
 ## 2. Responsabilidades e limites
 - **Faz:** cadastra um período de férias `[início, fim]` para um colaborador
   (validando o período e a não-sobreposição com férias já cadastradas); lista as
-  férias (todas ou de uma pessoa) com a marca de vigência; expõe **quem está de
-  férias num dia** (fonte única de exclusão da escala); cancela um período;
-  avisa a equipe ao registrar.
+  férias **em curso e futuras** (todas ou de uma pessoa) com a marca de
+  vigência; expõe **quem está de férias num dia** (fonte única de exclusão da
+  escala); cancela um período; avisa a equipe ao registrar.
 - **Não faz** (fica em outro módulo): a escala em si e a "equipe do dia" (ficam
   em [`fiscais`](fiscais.md), que **consome** este módulo para excluir quem está
   de férias); as faltas/ausência a prazo (ficam em [`operadores`](operadores.md));
@@ -24,11 +24,11 @@ gera falta automática — mas continua `ativo` (não é desligamento).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `ferias.controller.ts` | Rotas HTTP (registrar/listar/remover) | 69 |
-| `ferias.service.ts` | Regras de aplicação: período, sobreposição, avisos | 195 |
-| `ferias.domain.ts` | Regras puras: está de férias, sobreposição, validação | 87 |
+| `ferias.service.ts` | Regras de aplicação: período, sobreposição, avisos | 209 |
+| `ferias.domain.ts` | Regras puras: está de férias, sobreposição, validação, encerrada | 106 |
 | `ferias.errors.ts` | Erros de domínio (mapeados para HTTP) | 49 |
 | `ferias.module.ts` | Ligações (DI); exporta o `FeriasService` | 20 |
-| `dto/ferias.dto.ts` | Validação de entrada das rotas | 43 |
+| `dto/ferias.dto.ts` | Validação de entrada das rotas | 54 |
 
 ## 4. Endpoints (rotas HTTP)
 > Lista canônica em [API HTTP → `ferias`](../05-referencia-dados/api-http.md).
@@ -36,7 +36,7 @@ gera falta automática — mas continua `ativo` (não é desligamento).
 | Método + Rota | Permissão | O que faz |
 |---|---|---|
 | `POST /ferias` | `OPERADORES_CRUD` | Cadastra um período de férias de um colaborador (gestão). |
-| `GET /ferias` | `OPERADORES_AUSENCIAS` | Lista as férias (todas ou `?colaboradorId=`), com `vigente` na `?referencia=` (hoje por padrão). |
+| `GET /ferias` | `OPERADORES_AUSENCIAS` | Lista as férias **em curso e futuras** (todas ou `?colaboradorId=`), com `vigente` na `?referencia=` (hoje por padrão). `?incluirEncerradas=true` traz também o histórico. |
 | `DELETE /ferias/:id` | `OPERADORES_CRUD` | Cancela (remove) um período de férias (gestão). |
 
 ## 5. Serviços e funções
@@ -53,10 +53,17 @@ gera falta automática — mas continua `ativo` (não é desligamento).
 - **Erros:** `PeriodoFeriasInvalidoError`, `ColaboradorFeriasNaoEncontradoError`,
   `FeriasSobrepostaError`.
 
-#### `listarFerias({ colaboradorId?, referencia? })`
-Lista as férias (todas ou de um colaborador), com o nome/matrícula resolvidos e
-a marca `vigente` (o período engloba a `referencia`, hoje por padrão). Mais
-recentes primeiro.
+#### `listarFerias({ colaboradorId?, referencia?, incluirEncerradas? })`
+Lista as férias **em curso e futuras**, com o nome/matrícula resolvidos e a marca
+`vigente` (o período engloba a `referencia`, hoje por padrão). Mais recentes
+primeiro.
+
+Períodos **já encerrados** (`fim` anterior à referência) ficam **fora** da lista:
+ela é uma ferramenta de operação — "quem está de férias e quem vai entrar" — e
+sem esse corte cresceria indefinidamente. O último dia **ainda aparece** (o fim é
+inclusivo). O registro **não é apagado**: é ele que faz os dias passados
+continuarem aparecendo como férias na escala e nos relatórios. Passe
+`incluirEncerradas` para ver o histórico completo (uso administrativo).
 
 #### `colaboradoresDeFeriasNoDia(dia)`
 Devolve o `Set<colaboradorId>` de quem tem período vigente no dia (`inicio <= dia
@@ -73,6 +80,8 @@ Remove um período (404 `FeriasNaoEncontradaError` se não existir).
   (impede cadastrar férias em cima de férias).
 - `validarPeriodoFerias(inicio, fim)` → rejeita intervalo invertido ou longo
   demais (`MAX_DIAS_FERIAS = 366`); devolve os dias corridos quando ok.
+- `feriasEncerrada(periodo, referencia)` → o período já terminou (o `fim` é
+  anterior ao dia de referência). É o corte da listagem operacional.
 - `inicioDoDiaUtc(data)` → trunca para a meia-noite UTC (rótulo do dia).
 
 ## 7. Estados e enums
@@ -102,12 +111,15 @@ função pura `estaDeFerias`, nunca persistido como flag.
 4. **Só a gestão registra/cancela** (`OPERADORES_CRUD`); a leitura é liberada a
    quem vê a escala (`OPERADORES_AUSENCIAS`).
 5. **Avisos são best-effort:** nunca impedem o registro.
+6. **A lista mostra só o que ainda importa.** Férias encerradas saem da listagem
+   (a tela é operacional, não um arquivo), mas **nada é apagado** — a escala e os
+   relatórios dos dias passados continuam corretos.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `ferias.domain.spec.ts` | Está de férias, sobreposição e validação (inclui property-based) | 9 |
-| `ferias.service.spec.ts` | Registro, sobreposição, quem está de férias no dia, vigência e remoção | 7 |
+| `ferias.domain.spec.ts` | Está de férias, sobreposição, validação e período encerrado (inclui property-based) | 13 |
+| `ferias.service.spec.ts` | Registro, sobreposição, quem está de férias no dia, vigência, corte das encerradas e remoção | 9 |
 | `../fiscais/escalados-ferias.spec.ts` | `escaladosDoDia` exclui quem está de férias | 2 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).

@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** regras de negócio de ponto, jornada e TAC
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** regras de negócio de ponto, jornada e TAC
 
 # Ponto, jornada e TAC
 
@@ -138,6 +138,17 @@ de TAC, conflitos, atrasos e o **saldo** (banco de horas).
     contador de faltas acusava justamente quem havia apresentado atestado. A
     mudança é só de **classificação**: atestado nunca gerou hora devida, então
     horas devidas e saldo não mudam.
+26. **Atestado lançado por engano se EXCLUI, não se edita.** A exclusão apaga o
+    documento, apaga os dias que ele criou e **devolve à condição de falta
+    pendente** os dias que já eram falta antes — a ocorrência que o gestor ainda
+    precisava tratar não desaparece. Lançar é rotina da escala (o fiscal também
+    lança), mas **excluir é alçada de gerente, supervisor ou administrador**,
+    igual à exclusão de falta. Se o ciclo de folha do mês já estiver fechado, a
+    exclusão é recusada. Para corrigir datas ou CID: excluir e lançar de novo.
+27. **Férias encerradas saem da lista, não do sistema.** A lista de férias mostra
+    apenas as **em curso e futuras** (é uma tela de operação); os períodos
+    passados continuam guardados, e por isso os dias já vividos seguem
+    aparecendo corretamente como férias na escala e nos relatórios.
 
 ## 6. Observações
 

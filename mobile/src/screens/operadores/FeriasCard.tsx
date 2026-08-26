@@ -4,8 +4,12 @@
  * Permite colocar um colaborador de FÉRIAS por um período (início/fim). É uma
  * inativação NÃO rígida: enquanto vigente, o colaborador some da escala do dia
  * e não gera falta automática, mas continua ativo (não é desligamento). O modal
- * também lista as férias já cadastradas e permite cancelá-las. Uso típico:
- * gerente/supervisor.
+ * também lista as férias **em curso e futuras** e permite cancelá-las. Uso
+ * típico: gerente/supervisor.
+ *
+ * Períodos já ENCERRADOS não aparecem na lista (o backend não os devolve): é uma
+ * tela de operação, não um arquivo histórico. O registro continua guardado — é
+ * ele que faz os dias passados seguirem aparecendo como férias na escala.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
@@ -268,12 +272,14 @@ export function FeriasCard({
                 desabilitado={!podeConfirmar}
               />
 
-              {/* Lista de férias cadastradas */}
-              <Text style={styles.secao}>Férias cadastradas</Text>
+              {/* Férias em curso e futuras. As encerradas saem da lista. */}
+              <Text style={styles.secao}>Férias em curso e futuras</Text>
               {ferias.carregando ? (
                 <Carregando />
               ) : lista.length === 0 ? (
-                <Text style={styles.vazio}>Nenhuma férias cadastrada.</Text>
+                <Text style={styles.vazio}>
+                  Nenhuma férias em curso ou programada.
+                </Text>
               ) : (
                 lista.map((f) => (
                   <View key={f.id} style={styles.itemFerias}>

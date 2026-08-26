@@ -1,4 +1,6 @@
 import { AtestadosService } from './atestados.service';
+import { podeExcluirAtestado } from './atestados.domain';
+import { ExclusaoAtestadoNaoPermitidaError } from './atestados.errors';
 
 /**
  * Atestado × falta que já existia no dia. Duas coisas que estavam erradas:
@@ -136,44 +138,58 @@ describe('AtestadosService.lancar — converte a falta existente, não duplica',
   });
 });
 
-describe('AtestadosService.remover — devolve a falta que existia antes', () => {
-  function criarParaRemover() {
-    const operacoes: { tipo: string; args: unknown }[] = [];
-    const prismaFake = {
-      atestado: {
-        findUnique: () =>
-          Promise.resolve({ id: 'at-1', inicio: dia('2026-07-10') }),
-        delete: (args: unknown) => {
-          operacoes.push({ tipo: 'atestado.delete', args });
-          return Promise.resolve({});
-        },
+function criarParaRemover() {
+  const operacoes: { tipo: string; args: unknown }[] = [];
+  // O `$transaction` interativo recebe o próprio fake como cliente da transação,
+  // por isso a referência aparece dentro do literal que a define.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const prismaFake: any = {
+    atestado: {
+      findUnique: () =>
+        Promise.resolve({
+          id: 'at-1',
+          colaboradorId: 'col-1',
+          inicio: dia('2026-07-10'),
+          fim: dia('2026-07-11'),
+          dias: 2,
+          cid: 'M54.5',
+        }),
+      delete: (args: unknown) => {
+        operacoes.push({ tipo: 'atestado.delete', args });
+        return Promise.resolve({});
       },
-      ausencia: {
-        updateMany: (args: unknown) => {
-          operacoes.push({ tipo: 'ausencia.updateMany', args });
-          return Promise.resolve({ count: 1 });
-        },
-        deleteMany: (args: unknown) => {
-          operacoes.push({ tipo: 'ausencia.deleteMany', args });
-          return Promise.resolve({ count: 1 });
-        },
+    },
+    colaborador: {
+      findUnique: () => Promise.resolve({ nome: 'Fulano' }),
+    },
+    ausencia: {
+      updateMany: (args: unknown) => {
+        operacoes.push({ tipo: 'ausencia.updateMany', args });
+        return Promise.resolve({ count: 1 });
       },
-      // O serviço passa um ARRAY de operações ao $transaction.
-      $transaction: (ops: unknown[]) => Promise.all(ops),
-    };
-    const service = new AtestadosService(
-      prismaFake as never,
-      undefined,
-      undefined,
-      undefined,
-    );
-    return { service, operacoes };
-  }
+      deleteMany: (args: unknown) => {
+        operacoes.push({ tipo: 'ausencia.deleteMany', args });
+        return Promise.resolve({ count: 1 });
+      },
+    },
+    // O serviço usa transação INTERATIVA (precisa das contagens de cada passo).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    $transaction: (fn: any) => fn(prismaFake),
+  };
+  const service = new AtestadosService(
+    prismaFake as never,
+    undefined,
+    undefined,
+    undefined,
+  );
+  return { service, operacoes };
+}
 
+describe('AtestadosService.remover — devolve a falta que existia antes', () => {
   it('reverte a falta anterior ANTES de apagar os dias criados', async () => {
     const { service, operacoes } = criarParaRemover();
 
-    await service.remover('at-1');
+    await service.remover('at-1', 'GERENTE');
 
     // A ordem importa: se o delete viesse primeiro, não haveria o que reverter.
     expect(operacoes.map((o) => o.tipo)).toEqual([
@@ -186,7 +202,7 @@ describe('AtestadosService.remover — devolve a falta que existia antes', () =>
   it('a reversão volta o dia a ser uma falta PENDENTE, sem vínculo ao atestado', async () => {
     const { service, operacoes } = criarParaRemover();
 
-    await service.remover('at-1');
+    await service.remover('at-1', 'GERENTE');
 
     const reversao = operacoes.find((o) => o.tipo === 'ausencia.updateMany');
     expect(reversao?.args).toMatchObject({
@@ -205,9 +221,68 @@ describe('AtestadosService.remover — devolve a falta que existia antes', () =>
   it('os dias criados pelo atestado são apagados', async () => {
     const { service, operacoes } = criarParaRemover();
 
-    await service.remover('at-1');
+    await service.remover('at-1', 'GERENTE');
 
     const remocao = operacoes.find((o) => o.tipo === 'ausencia.deleteMany');
     expect(remocao?.args).toMatchObject({ where: { atestadoId: 'at-1' } });
+  });
+
+  it('devolve o resumo do que foi desfeito (para confirmar em texto)', async () => {
+    const { service } = criarParaRemover();
+
+    const r = await service.remover('at-1', 'GERENTE');
+
+    expect(r).toMatchObject({
+      atestadoId: 'at-1',
+      nome: 'Fulano',
+      inicio: '2026-07-10',
+      fim: '2026-07-11',
+      cid: 'M54.5',
+      diasVoltaramAFalta: 1,
+      diasRemovidos: 1,
+    });
+  });
+});
+
+/**
+ * Alçada da EXCLUSÃO. Lançar um atestado é rotina da escala e o fiscal também
+ * lança; excluir é uma correção destrutiva e irreversível, então segue a mesma
+ * alçada da exclusão de falta em Justificativas.
+ */
+describe('AtestadosService.remover — alçada por perfil', () => {
+  it('regra pura: só gerente, supervisor e administrador', () => {
+    expect(podeExcluirAtestado('GERENTE')).toBe(true);
+    expect(podeExcluirAtestado('SUPERVISOR')).toBe(true);
+    expect(podeExcluirAtestado('ADMINISTRADOR')).toBe(true);
+    expect(podeExcluirAtestado('FISCAL')).toBe(false);
+    expect(podeExcluirAtestado('IMPORTADOR')).toBe(false);
+    expect(podeExcluirAtestado(undefined)).toBe(false);
+    expect(podeExcluirAtestado('')).toBe(false);
+  });
+
+  it('o fiscal é recusado antes de qualquer efeito no banco', async () => {
+    const { service, operacoes } = criarParaRemover();
+
+    await expect(service.remover('at-1', 'FISCAL')).rejects.toBeInstanceOf(
+      ExclusaoAtestadoNaoPermitidaError,
+    );
+    // Nada foi tocado: a recusa acontece antes de ler ou apagar.
+    expect(operacoes).toHaveLength(0);
+  });
+
+  it('sem perfil informado também é recusado (defesa em profundidade)', async () => {
+    const { service } = criarParaRemover();
+    await expect(service.remover('at-1')).rejects.toBeInstanceOf(
+      ExclusaoAtestadoNaoPermitidaError,
+    );
+  });
+
+  it('supervisor e administrador conseguem excluir', async () => {
+    for (const perfil of ['SUPERVISOR', 'ADMINISTRADOR']) {
+      const { service } = criarParaRemover();
+      await expect(service.remover('at-1', perfil)).resolves.toMatchObject({
+        atestadoId: 'at-1',
+      });
+    }
   });
 });

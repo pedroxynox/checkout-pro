@@ -134,8 +134,34 @@ describe('FeriasService', () => {
     await service.registrarFerias('col-1', dia(10), dia(20));
     const vigentes = await service.listarFerias({ referencia: dia(15) });
     expect(vigentes[0].vigente).toBe(true);
-    const depois = await service.listarFerias({ referencia: dia(30) });
-    expect(depois[0].vigente).toBe(false);
+    // Antes de começar, o período aparece na lista mas ainda não é vigente.
+    const antes = await service.listarFerias({ referencia: dia(5) });
+    expect(antes[0].vigente).toBe(false);
+  });
+
+  it('listarFerias NÃO devolve períodos já encerrados', async () => {
+    const { service } = criarServico();
+    await service.registrarFerias('col-1', dia(10), dia(20));
+    // No último dia ainda aparece (fim inclusivo).
+    const noUltimoDia = await service.listarFerias({ referencia: dia(20) });
+    expect(noUltimoDia).toHaveLength(1);
+    // No dia seguinte já saiu da lista: a tela é operacional, não histórico.
+    const depois = await service.listarFerias({ referencia: dia(21) });
+    expect(depois).toHaveLength(0);
+  });
+
+  it('incluirEncerradas traz de volta o histórico (uso administrativo)', async () => {
+    const { service, ferias } = criarServico();
+    await service.registrarFerias('col-1', dia(10), dia(20));
+    const tudo = await service.listarFerias({
+      referencia: dia(30),
+      incluirEncerradas: true,
+    });
+    expect(tudo).toHaveLength(1);
+    expect(tudo[0].vigente).toBe(false);
+    // O registro nunca é apagado: é ele que faz os dias passados aparecerem
+    // como férias na escala.
+    expect(ferias).toHaveLength(1);
   });
 
   it('remover inexistente lança 404', async () => {

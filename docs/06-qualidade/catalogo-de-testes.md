@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 113 arquivos, 816 casos. **Mobile:** 28 arquivos, 128 casos. **Total: 944 casos.**
+> **Backend:** 113 arquivos, 827 casos. **Mobile:** 28 arquivos, 128 casos. **Total: 955 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -27,7 +27,7 @@
 | `src/arrecadacao/historico-indicadores.service.spec.ts` | 15 | 4 |
 | `src/arrecadacao/indicadores-inteligente.destaques.spec.ts` | 3 | 2 |
 | `src/assistente/gemini.client.spec.ts` | 3 | 1 |
-| `src/atestados/atestado-converte-e-desfaz.spec.ts` | 7 | 2 |
+| `src/atestados/atestado-converte-e-desfaz.spec.ts` | 12 | 3 |
 | `src/atestados/atestados.domain.spec.ts` | 13 | 5 |
 | `src/atestados/atestados.service.spec.ts` | 3 | 1 |
 | `src/central-jornada/agrupar-atestados.spec.ts` | 12 | 3 |
@@ -67,8 +67,8 @@
 | `src/fechamento/fechamento.domain.spec.ts` | 5 | 1 |
 | `src/feedforward/feedforward.domain.spec.ts` | 7 | 2 |
 | `src/feriados/feriados.domain.spec.ts` | 4 | 1 |
-| `src/ferias/ferias.domain.spec.ts` | 9 | 6 |
-| `src/ferias/ferias.service.spec.ts` | 7 | 1 |
+| `src/ferias/ferias.domain.spec.ts` | 13 | 7 |
+| `src/ferias/ferias.service.spec.ts` | 9 | 1 |
 | `src/fiscais/escala-colaborador.spec.ts` | 4 | 1 |
 | `src/fiscais/escala-inativo.spec.ts` | 1 | 1 |
 | `src/fiscais/escalados-feriado.spec.ts` | 8 | 1 |

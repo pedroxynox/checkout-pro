@@ -46,9 +46,10 @@ export class FeriasController {
   }
 
   /**
-   * Lista as férias (todas ou de um colaborador), com o nome e a marca de
-   * vigência na data de referência (hoje por padrão). Liberado a quem vê a
-   * escala.
+   * Lista as férias **em curso e futuras** (todas ou de um colaborador), com o
+   * nome e a marca de vigência na data de referência (hoje por padrão).
+   * Períodos já encerrados ficam fora, a menos que se peça
+   * `incluirEncerradas=true`. Liberado a quem vê a escala.
    */
   @Get()
   @Funcionalidade('OPERADORES_AUSENCIAS')
@@ -56,6 +57,7 @@ export class FeriasController {
     return this.ferias.listarFerias({
       colaboradorId: q.colaboradorId,
       referencia: q.referencia ? new Date(q.referencia) : undefined,
+      incluirEncerradas: q.incluirEncerradas,
     });
   }
 

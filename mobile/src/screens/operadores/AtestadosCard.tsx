@@ -6,6 +6,14 @@
  * o documento e uma falta JUSTIFICADA (identificada como ATESTADO) em cada dia
  * do período, e avisa a gestão quando o mesmo CID passa de 15 dias em 60
  * (regra do INSS). Uso típico: gerente/supervisor.
+ *
+ * Também LISTA os atestados lançados na janela recente e permite **excluir** um
+ * que foi lançado por engano. Excluir é uma correção destrutiva (apaga o
+ * documento, apaga os dias que ele criou e devolve à condição de falta os dias
+ * que já eram falta), então só aparece para gerente, supervisor e administrador —
+ * a mesma alçada da exclusão de falta em Justificativas, e o backend confere de
+ * novo. Não há edição de atestado: para corrigir datas ou CID, exclua e lance
+ * novamente.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -24,16 +32,42 @@ import {
   colaboradoresService,
   EntradaCid,
 } from '../../api/services';
+import type { AtestadoDetalhado } from '../../api/services/atestados';
 import { Colaborador } from '../../api/types';
-import { Botao, CampoTexto, SeletorData } from '../../components';
+import { useAuth } from '../../auth/AuthContext';
+import { Botao, CampoTexto, Carregando, SeletorData } from '../../components';
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
-import { notificar } from '../../utils/dialogos';
+import { confirmar, notificar } from '../../utils/dialogos';
 import { hojeISO } from '../../utils/formato';
 
 /** Máximo de colaboradores mostrados na busca. */
 const MAX_RESULTADOS = 8;
+
+/**
+ * Perfis com alçada para EXCLUIR um atestado — espelho de
+ * `PERFIS_EXCLUEM_ATESTADO` no backend, que é quem decide de verdade. Aqui só
+ * evita mostrar um botão que iria falhar com 403.
+ */
+const PERFIS_EXCLUEM_ATESTADO = ['GERENTE', 'ADMINISTRADOR', 'SUPERVISOR'];
+
+/** Dias para trás e para frente na listagem de atestados lançados. */
+const JANELA_ATRAS_DIAS = 90;
+const JANELA_FRENTE_DIAS = 60;
+
+/** Data ISO deslocada em `dias` a partir de hoje. */
+function isoDeslocado(dias: number): string {
+  const d = new Date(`${hojeISO()}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Formata "yyyy-mm-dd" como "dd/mm". */
+function ddmm(iso: string): string {
+  const [, mm, dd] = iso.slice(0, 10).split('-');
+  return `${dd}/${mm}`;
+}
 
 export function AtestadosCard({
   aoRegistrado,
@@ -41,10 +75,21 @@ export function AtestadosCard({
   aoRegistrado: () => void;
 }): React.ReactElement {
   const { dataInicial } = useConfigSistema();
+  const { perfil } = useAuth();
+  const podeExcluir = PERFIS_EXCLUEM_ATESTADO.includes(perfil ?? '');
   const [aberto, setAberto] = useState(false);
 
   const colaboradores = useRequisicao<Colaborador[]>(
     () => colaboradoresService.listar({ ativo: true }),
+    [],
+  );
+  // Atestados lançados na janela recente (para conferir e corrigir).
+  const lancados = useRequisicao<AtestadoDetalhado[]>(
+    () =>
+      atestadosService.listar(
+        isoDeslocado(-JANELA_ATRAS_DIAS),
+        isoDeslocado(JANELA_FRENTE_DIAS),
+      ),
     [],
   );
 
@@ -156,8 +201,8 @@ export function AtestadosCard({
             ? `\n\n⚠️ Já são ${r.totalDiasMesmoCid} dias com o mesmo CID em 60 dias — encaminhar ao INSS.`
             : ''),
       );
-      fechar();
       resetar();
+      lancados.recarregar();
       aoRegistrado();
     } catch (e) {
       notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao lançar o atestado.');
@@ -165,6 +210,43 @@ export function AtestadosCard({
       setOcupado(false);
     }
   };
+
+  /**
+   * Exclui um atestado lançado por engano. A confirmação diz exatamente o que
+   * vai acontecer: quantos dias saem e quantos voltam a ser falta pendente.
+   */
+  const excluir = async (a: AtestadoDetalhado): Promise<void> => {
+    const volta =
+      a.diasQueVoltamAFalta > 0
+        ? `\n\n${a.diasQueVoltamAFalta} dia(s) voltarão a ser FALTA pendente (já eram falta antes do atestado). Os outros ${a.dias - a.diasQueVoltamAFalta} dia(s) serão apagados.`
+        : `\n\nOs ${a.dias} dia(s) de falta criados por este atestado serão apagados.`;
+    const ok = await confirmar(
+      'Excluir atestado',
+      `Excluir o atestado de ${a.nome} (${ddmm(a.inicio)} a ${ddmm(a.fim)}${a.cid ? ` · CID ${a.cid}` : ''})?` +
+        volta +
+        '\n\nEsta ação não pode ser desfeita.',
+    );
+    if (!ok) return;
+    try {
+      const r = await atestadosService.remover(a.id);
+      notificar(
+        'Atestado excluído',
+        `${a.nome}: ${r.diasRemovidos} dia(s) apagado(s)` +
+          (r.diasVoltaramAFalta > 0
+            ? ` e ${r.diasVoltaramAFalta} dia(s) de volta como falta pendente.`
+            : '.'),
+      );
+      lancados.recarregar();
+      aoRegistrado();
+    } catch (e) {
+      notificar(
+        'Erro',
+        e instanceof ApiError ? e.message : 'Falha ao excluir o atestado.',
+      );
+    }
+  };
+
+  const lista = lancados.dados ?? [];
 
   return (
     <>
@@ -181,7 +263,7 @@ export function AtestadosCard({
         <View style={{ flex: 1 }}>
           <Text style={styles.titulo}>Atestados</Text>
           <Text style={styles.meta} numberOfLines={1}>
-            Lançar atestado médico com CID (falta identificada como atestado)
+            Lançar atestado com CID e excluir o que foi lançado por engano
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />
@@ -195,7 +277,7 @@ export function AtestadosCard({
                 <Ionicons name="close" size={24} color={cores.texto} />
               </TouchableOpacity>
               <Text style={styles.cabecalhoTitulo} numberOfLines={1}>
-                Lançar atestado
+                Atestados
               </Text>
               <View style={{ width: 24 }} />
             </View>
@@ -313,6 +395,46 @@ export function AtestadosCard({
                 carregando={ocupado}
                 desabilitado={!podeConfirmar}
               />
+
+              {/* Atestados lançados — conferir e corrigir. */}
+              <Text style={styles.secao}>Atestados lançados</Text>
+              {lancados.carregando ? (
+                <Carregando />
+              ) : lista.length === 0 ? (
+                <Text style={styles.vazio}>
+                  Nenhum atestado lançado nos últimos {JANELA_ATRAS_DIAS} dias.
+                </Text>
+              ) : (
+                lista.map((a) => (
+                  <View key={a.id} style={styles.itemAtestado}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.itemNome} numberOfLines={1}>
+                        {a.nome}
+                      </Text>
+                      <Text style={styles.itemMeta} numberOfLines={2}>
+                        {ddmm(a.inicio)} a {ddmm(a.fim)} · {a.dias} dia(s) ·{' '}
+                        {a.cid ? `CID ${a.cid}` : 'sem CID'}
+                        {a.registradaPorNome ? ` · por ${a.registradaPorNome}` : ''}
+                      </Text>
+                    </View>
+                    {podeExcluir ? (
+                      <TouchableOpacity
+                        onPress={() => void excluir(a)}
+                        hitSlop={8}
+                        accessibilityLabel={`Excluir atestado de ${a.nome}`}
+                      >
+                        <Text style={styles.excluir}>Excluir</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                ))
+              )}
+              {!podeExcluir && lista.length > 0 ? (
+                <Text style={styles.vazio}>
+                  Somente gerente, supervisor ou administrador pode excluir um
+                  atestado.
+                </Text>
+              ) : null}
             </ScrollView>
           </Pressable>
         </Pressable>
@@ -393,6 +515,28 @@ const styles = StyleSheet.create({
   },
   semCidToggle: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   semCidTexto: { ...tipografia.legenda, color: cores.textoSecundario },
+  secao: {
+    ...tipografia.rotulo,
+    color: cores.textoSecundario,
+    marginTop: espacamento.md,
+    marginBottom: espacamento.xs,
+  },
+  vazio: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    paddingVertical: espacamento.sm,
+  },
+  itemAtestado: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+    paddingVertical: espacamento.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: cores.divisor,
+  },
+  itemNome: { ...tipografia.corpo, fontWeight: '600', color: cores.texto },
+  itemMeta: { ...tipografia.legenda, color: cores.textoSecundario, marginTop: 1 },
+  excluir: { ...tipografia.rotulo, color: cores.erro },
 });
 
 export default AtestadosCard;

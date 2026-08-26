@@ -54,3 +54,21 @@ export class AtestadoSobrepostoError extends AtestadosError {
     super(mensagem);
   }
 }
+
+/**
+ * Lançado quando o perfil não tem alçada para EXCLUIR um atestado.
+ *
+ * Lançar um atestado é rotina da escala (o fiscal também lança), mas excluir é
+ * uma correção destrutiva e irreversível: apaga o documento, apaga os dias que
+ * ele criou e devolve à condição de falta os dias que já eram falta. Por isso
+ * segue a mesma alçada da exclusão de falta em Justificativas — gerente,
+ * supervisor ou administrador.
+ */
+export class ExclusaoAtestadoNaoPermitidaError extends AtestadosError {
+  readonly statusHttp = HttpStatus.FORBIDDEN;
+  constructor(
+    mensagem = 'Apenas gerente, supervisor ou administrador pode excluir um atestado.',
+  ) {
+    super(mensagem);
+  }
+}
