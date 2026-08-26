@@ -21,7 +21,7 @@ O sistema tem cinco perfis de acesso (enum `Perfil`):
 | **ADMINISTRADOR** | O "gerente desenvolvedor" | Enxerga e executa **absolutamente tudo**, inclusive funcionalidades futuras. |
 | **GERENTE** | Gestão da loja | Operação e gestão do dia a dia + Centro de Controle (cadastro, metas, relatórios). |
 | **SUPERVISOR** | Coordenação da operação | Tudo do fiscal + fechamento, edição de escala/jornada e Central de Jornada. |
-| **FISCAL** | Linha de frente | Rotina diária: ponto, insumos, checklist, APAE, indicadores e comunicação. |
+| **FISCAL** | Linha de frente | Rotina diária: ponto, insumos, checklist, indicadores e comunicação. |
 | **IMPORTADOR** | Login dedicado da loja | Só carrega os arquivos do dia (Importações); não vê mais nada. |
 
 ### 1.1 O "gerente desenvolvedor" e o perfil ADMINISTRADOR
@@ -103,8 +103,6 @@ observações.
 | `CHECKOUTS_GERENCIAR` — resolver avarias | ✅ | ✅ | ✅ | — | — |
 | `PRODUTOS_PESADOS` — consultar código de balança | ✅ | ✅ | ✅ | ✅ | — |
 | `PRODUTOS_PESADOS_GERENCIAR` — carregar o arquivo de códigos | ✅ | ✅ | — | — | — |
-| `LOTE_APAE` — sacolas APAE (ver/atualizar saldo) | ✅ | ✅ | — | ✅ | — |
-| `LOTE_APAE_GERENCIAR` — abrir/reiniciar/config APAE | ✅ | ✅ | — | — | — |
 
 ### 2.5 Pessoas, disciplina e desenvolvimento
 

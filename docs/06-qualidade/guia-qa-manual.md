@@ -149,14 +149,13 @@ Preparar jornadas controladas; validar tanto o disparo após batida quanto o cro
 - [ ] Advertência/suspensão aparece na linha do tempo do perfil.
 - [ ] Inativar colaborador preserva histórico no período de retenção; reativar restaura sua presença operacional.
 
-## 9. Insumos, requisições e APAE
+## 9. Insumos e requisições
 
 - [ ] Estoque mostra nível Crítico/Atenção/OK.
 - [ ] Entrada aprovada aumenta saldo; consumo reduz saldo.
 - [ ] Consumo maior que o saldo retorna conflito e não deixa saldo negativo.
 - [ ] Requisição manual exige decisão; alertas de estoque não criam entrada automaticamente.
 - [ ] Pedido recorrente aparece como sugestão para confirmação.
-- [ ] Sacolas APAE: lote, saldo, preço/meta e encerramento ao zerar funcionam conforme perfil.
 
 ## 10. Checklist
 

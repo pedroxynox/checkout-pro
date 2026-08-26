@@ -5,18 +5,16 @@
 ## 1. Propósito
 Centro de Controle ▸ **Metas**: definir as metas **mensais** de cada indicador
 (Vendas, Recargas de Celular, Cancelamento de Itens, Cancelamento de Cupom e
-Devoluções) para o mês escolhido; inclui também a configuração das **Sacolas
-APAE** (preço e meta geral).
+Devoluções) para o mês escolhido.
 
 ## 2. Quem usa (perfis)
 - **Gestor** (`OPERADORES_CRUD`): define/edita as metas mensais dos indicadores.
-- A seção **Sacolas APAE** só aparece para quem tem `LOTE_APAE_GERENCIAR`.
 - Ver [Perfis e permissões](../01-produto/perfis-e-permissoes.md).
 
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `MetasScreen.tsx` | Seletor de mês + cards de meta por indicador + Sacolas APAE | 378 |
+| `MetasScreen.tsx` | Seletor de mês + cards de meta por indicador | 276 |
 
 ## 4. Fluxo do usuário
 1. **Escolher o mês:** seletor no topo (◀/▶) que desloca o período mensal
@@ -26,25 +24,18 @@ APAE** (preço e meta geral).
 3. **Editar meta:** cada card mostra o valor atual (R$ ou %) e um botão "Editar
    meta"; abre o campo, valida (número ≥ 0) e salva via `definir`, recarregando
    a lista e notificando.
-4. **Sacolas APAE** (só `LOTE_APAE_GERENCIAR`): edita preço da sacola e meta
-   mensal (valores gerais, não variam por mês) e pode **limpar o histórico** de
-   lotes (confirmação obrigatória; ação irreversível).
 
 ## 5. Dados e integração com o backend
 | Ação na tela | Chamada | Endpoint |
 |---|---|---|
 | Listar metas do mês | `metasService.listar(anoMes)` | `GET /metas?anoMes=AAAA-MM` |
 | Definir/atualizar meta | `metasService.definir(tipo, anoMes, meta)` | `POST /metas` |
-| Config das Sacolas APAE | `loteApaeService.config()` | `GET /lote-apae/config` |
-| Salvar config APAE | `loteApaeService.definirConfig({ precoSacola, metaMensal })` | `PUT /lote-apae/config` |
-| Limpar histórico APAE | `loteApaeService.limparHistorico()` | `DELETE /lote-apae/historico` |
 
-Módulo(s) do backend relacionado(s): [`metas`](../03-atlas-backend/metas.md) e
-[`lote-apae`](../03-atlas-backend/lote-apae.md).
+Módulo(s) do backend relacionado(s): [`metas`](../03-atlas-backend/metas.md).
 
 ## 6. Estado local e regras de UI
 - Estado local: `anoMes` (período), `editTipo` + `valor` (edição de uma meta),
-  `salvando`; para APAE: `precoApae`, `metaApae`, `salvandoApae`, `limpandoApae`.
+  `salvando`.
 - Ao trocar de mês, fecha qualquer edição aberta (`editTipo = null`).
 - **Unidade por indicador:** `REAIS` (R$) ou `PERCENTUAL` (%); o rótulo do campo,
   a formatação do valor e o texto de ajuda variam conforme a unidade.
@@ -60,9 +51,9 @@ Módulo(s) do backend relacionado(s): [`metas`](../03-atlas-backend/metas.md) e
   unidade (R$ ou %); `ICONES` por tipo de meta.
 
 ## 8. Componentes e hooks compartilhados usados
-- `useRequisicao` (duas cargas: metas e config APAE) — ver [Hooks e utilidades](hooks-e-utilidades.md).
+- `useRequisicao` (carga das metas do mês) — ver [Hooks e utilidades](hooks-e-utilidades.md).
 - `Tela`, `Cartao`, `CampoTexto`, `Botao`, `Carregando`, `MensagemErro`,
-  `ApiError`, `confirmar`/`notificar` e utilidades de formato
+  `ApiError`, `notificar` e utilidades de formato
   (`formatarMoeda`, `formatarPercentual`, `mascaraMilhar`, `parseNumeroBR`) —
   ver [Componentes compartilhados](componentes-compartilhados.md).
 

@@ -6,17 +6,17 @@
 Assistente de IA da loja — a **"Cluby"** — um chat flutuante que ajuda a equipe
 em gestão de supermercado (frente de caixa, estoque, indicadores, CDC, escala,
 vendas), respondendo com base no conhecimento do modelo Google Gemini e em
-contexto real da operação (escala, indicadores, APAE e vendas).
+contexto real da operação (escala, indicadores e vendas).
 
 ## 2. Responsabilidades e limites
 - **Faz:** mantém a conversa de cada usuário isolada e **efêmera (24h)**; monta
   o histórico e chama o `GeminiClient` para gerar respostas; injeta no prompt o
-  contexto real da loja (escala dos fiscais, indicadores de arrecadação, Sacolas
-  APAE e vendas), lido direto via Prisma; persiste pergunta e resposta; limpa
+  contexto real da loja (escala dos fiscais, indicadores de arrecadação e
+  vendas), lido direto via Prisma; persiste pergunta e resposta; limpa
   diariamente (cron) as mensagens com mais de 24h.
 - **Não faz:** não é a fonte dos dados de escala/indicadores/vendas (apenas
-  lê o que os módulos [`fiscais`](fiscais.md), [`arrecadacao`](arrecadacao.md),
-  [`vendas`](vendas.md) e `lote-apae` gravam); não decide permissões (herda o
+  lê o que os módulos [`fiscais`](fiscais.md), [`arrecadacao`](arrecadacao.md)
+  e [`vendas`](vendas.md) gravam); não decide permissões (herda o
   `JwtAuthGuard` global); não faz entrega push/notificações
   (fica em [`notificacoes`](notificacoes.md)).
 
@@ -24,7 +24,7 @@ contexto real da operação (escala, indicadores, APAE e vendas).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `assistente.controller.ts` | Rotas HTTP do chat (status, conversa, mensagem, limpar) | 75 |
-| `assistente.service.ts` | Regras de aplicação: conversa efêmera, contexto e chamada ao modelo | 663 |
+| `assistente.service.ts` | Regras de aplicação: conversa efêmera, contexto e chamada ao modelo | 608 |
 | `assistente.prompt.ts` | Monta as instruções de sistema (papel da Cluby) e de procedimento | 159 |
 | `gemini.client.ts` | Cliente da API Google Gemini (concorrência, timeout, reintento) | 259 |
 | `procedimentos.service.ts` | Passo a passo ilustrado das normativas (hoje **desativado**) | 98 |
@@ -71,7 +71,7 @@ usuário só acessa a **própria** conversa, isolada por `usuario.sub`.
 - **Efeitos:** se a pergunta corresponder a um procedimento (hoje desativado),
   delega a `responderProcedimento`; senão, monta o histórico recente
   (`MAX_HISTORICO = 20`), agrega **em paralelo** os contextos de escala,
-  indicadores, APAE e vendas, monta a instrução de sistema, chama o Gemini e
+  indicadores e vendas, monta a instrução de sistema, chama o Gemini e
   **persiste** pergunta e resposta.
 - **Regras aplicadas:** só as últimas 20 mensagens vão ao modelo (controle de
   custo); contextos que falham ao montar retornam `undefined` e não quebram o
@@ -93,8 +93,6 @@ usuário só acessa a **própria** conversa, isolada por `usuario.sub`.
 - `montarContextoIndicadores()` — totais do mês por tipo de arrecadação, meta e
   semáforo (🟢/🟡/🔴), além dos destaques do mês (top por categoria, **excluindo
   fiscais**).
-- `montarContextoApae()` — arrecadação das Sacolas APAE no mês, meta e total
-  histórico.
 - `montarContextoVendas()` — vendas de hoje/ontem, comparação com a semana
   anterior, faturamento do mês, projeção e hora de pico.
 - `responderProcedimento(...)` / `montarBlocos(...)` — resumo do procedimento
@@ -133,8 +131,7 @@ e monta o "documento" com marcadores de foto. **Atualmente desativado** — ver 
 ## 8. Dados que o módulo toca
 - **Escreve:** `MensagemAssistente` (pergunta + resposta; efêmeras 24h).
 - **Lê (apenas contexto):** `Fiscal`, `EscalaEntry`, `MetaIndicador`,
-  `RegistroArrecadacao`, `VendaDiaria`, `VendaHora`, `ConfigApae`,
-  `MovimentoLoteApae`, `LoteApae`, `ConfigVendas`.
+  `RegistroArrecadacao`, `VendaDiaria`, `VendaHora`, `ConfigVendas`.
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
 
 ## 9. Dependências

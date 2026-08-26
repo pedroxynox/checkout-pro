@@ -6,7 +6,6 @@ export { vendasService } from './vendas';
 export type { ArquivoVendas } from './vendas';
 export { fechamentoService } from './fechamento';
 export { metasService } from './metas';
-export { loteApaeService } from './loteApae';
 export { insumosService } from './insumos';
 export { requisicoesService } from './requisicoes';
 export { fiscaisService, escalaService } from './fiscais';

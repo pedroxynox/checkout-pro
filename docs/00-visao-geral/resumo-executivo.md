@@ -47,8 +47,8 @@ Pensando no dia da loja, o sistema atua em cinco frentes:
   **troco solidário**).
 
 - **Estoque e rotinas.** Controle de insumos e requisições (o estoque nunca fica
-  negativo), o lote de sacolas da **APAE** e os **checklists** de abertura e
-  fechamento com foto, para garantir que a loja abriu e fechou como deveria.
+  negativo) e os **checklists** de abertura e fechamento com foto, para garantir
+  que a loja abriu e fechou como deveria.
 
 - **Comunicação.** Avisos aparecem dentro do app, em tempo real, e também como
   notificação no celular. Existe ainda uma assistente com inteligência

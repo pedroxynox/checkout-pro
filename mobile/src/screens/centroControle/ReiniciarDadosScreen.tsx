@@ -3,8 +3,8 @@
  *
  * Ação administrativa e irreversível, restrita ao gestor (`ADMIN_DADOS`): apaga
  * todos os dados de movimento (vendas, arrecadação, estoque em movimento,
- * sacolas APAE, jornada/escala por data, notificações, checklists e fluxos
- * legados) e zera o saldo dos insumos numa única transação no backend,
+ * jornada/escala por data, notificações, checklists e fluxos legados) e zera o
+ * saldo dos insumos numa única transação no backend,
  * conservando os cadastros (pessoas, escalas, insumos, configurações e metas).
  *
  * Exige uma confirmação explícita: o gestor precisa digitar "ZERAR" para
@@ -24,8 +24,6 @@ const PALAVRA_CONFIRMACAO = 'ZERAR';
 
 /** Rótulos amigáveis por entidade do resumo (pt-BR). */
 const ROTULO_ENTIDADE: Record<string, string> = {
-  movimentos_lote_apae: 'Movimentos de sacolas APAE',
-  lotes_apae: 'Lotes de sacolas APAE',
   movimentos_estoque: 'Movimentos de estoque',
   requisicoes: 'Requisições',
   sugestoes_pedido: 'Sugestões de pedido',

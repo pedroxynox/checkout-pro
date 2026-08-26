@@ -5,7 +5,7 @@
 
 Um documento por área de tela do app (`mobile/src/screens/`). Padrão em [`_modelo-tela.md`](./_modelo-tela.md).
 
-**Cobertura:** 26/26 documentados (100%).
+**Cobertura:** 25/25 documentados (100%).
 
 | Item | Documento | Estado |
 |---|---|---|
@@ -21,7 +21,6 @@ Um documento por área de tela do app (`mobile/src/screens/`). Padrão em [`_mod
 | `importacoes` | [`importacoes`](./importacoes.md) | ✅ documentado |
 | `indicadores` | [`indicadores`](./indicadores.md) | ✅ documentado |
 | `insumos` | [`insumos`](./insumos.md) | ✅ documentado |
-| `loteApae` | [`loteApae`](./loteApae.md) | ✅ documentado |
 | `mensagens` | [`mensagens`](./mensagens.md) | ✅ documentado |
 | `metas` | [`metas`](./metas.md) | ✅ documentado |
 | `normativas` | [`normativas`](./normativas.md) | ✅ documentado |

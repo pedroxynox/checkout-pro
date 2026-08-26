@@ -81,7 +81,6 @@ export const coresModulos: Record<string, string> = {
   Importacoes: '#22C55E',
   Indicadores: '#9333EA',
   PainelVendas: '#14B8A6',
-  LoteApae: '#F59E0B',
   Insumos: '#3B82F6',
   Fiscais: '#8B5CF6',
   Escala: '#EC4899',

@@ -106,16 +106,14 @@ export class AssistenteService {
 
     const conversa = await this.obterConversa(usuario.id);
     const recente = conversa.slice(-MAX_HISTORICO);
-    const [escala, indicadoresBase, apae, vendas] = await Promise.all([
+    const [escala, indicadoresBase, vendas] = await Promise.all([
       this.montarContextoEscala(),
       this.montarContextoIndicadores(),
-      this.montarContextoApae(),
       this.montarContextoVendas(),
     ]);
     const indicadores =
-      [indicadoresBase, apae, vendas]
-        .filter((s): s is string => !!s)
-        .join('\n\n') || undefined;
+      [indicadoresBase, vendas].filter((s): s is string => !!s).join('\n\n') ||
+      undefined;
     const instrucao = montarInstrucaoSistema({
       nomeUsuario: usuario.nome,
       perfil: usuario.perfil,
@@ -375,59 +373,6 @@ export class AssistenteService {
     } catch (erro) {
       this.logger.warn(
         `Não foi possível montar o contexto de indicadores: ${String(erro)}`,
-      );
-      return undefined;
-    }
-  }
-
-  /**
-   * Contexto das Sacolas APAE para a Cluby — lê via Prisma (config + movimentos
-   * + lotes). Permite responder "quanto arrecadamos para a APAE este mês?",
-   * "qual a meta?", "quanto já arrecadamos no total?". Desacoplado do módulo.
-   */
-  private async montarContextoApae(): Promise<string | undefined> {
-    try {
-      const agora = new Date();
-      const inicioMes = new Date(
-        Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), 1),
-      );
-      const inicioProxMes = new Date(
-        Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 1),
-      );
-
-      const cfg = await this.prisma.configApae.findUnique({
-        where: { id: 'apae' },
-      });
-      const preco = cfg ? Number(cfg.precoSacola) : 0.49;
-      const meta = cfg ? Number(cfg.metaMensal) : 500;
-
-      const [aggMes, aggTotal] = await Promise.all([
-        this.prisma.movimentoLoteApae.aggregate({
-          where: { em: { gte: inicioMes, lt: inicioProxMes } },
-          _sum: { vendidas: true },
-        }),
-        this.prisma.loteApae.aggregate({ _sum: { quantidadeVendida: true } }),
-      ]);
-      const vendidasMes = Number(aggMes._sum.vendidas ?? 0);
-      const arrecadadoMes = arredondar(vendidasMes * preco);
-      const totalHistorico = arredondar(
-        Number(aggTotal._sum.quantidadeVendida ?? 0) * preco,
-      );
-
-      // Só inclui se houver alguma arrecadação histórica (evita ruído).
-      if (totalHistorico <= 0 && arrecadadoMes <= 0) return undefined;
-
-      const pctMeta = meta > 0 ? Math.round((arrecadadoMes / meta) * 100) : 0;
-      const linhas = [
-        '=== SACOLAS APAE (causa social) ===',
-        `Preço por sacola: R$${arredondar(preco)}.`,
-        `Arrecadado no mês: R$${arrecadadoMes} (${vendidasMes} sacolas) — meta de R$${arredondar(meta)} (${pctMeta}% da meta).`,
-        `Total já arrecadado para a APAE (histórico): R$${totalHistorico}.`,
-      ];
-      return linhas.join('\n');
-    } catch (erro) {
-      this.logger.warn(
-        `Não foi possível montar o contexto da APAE: ${String(erro)}`,
       );
       return undefined;
     }

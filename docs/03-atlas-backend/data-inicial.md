@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/data-inicial/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/data-inicial/`
 
 # Módulo: `data-inicial`
 
@@ -21,7 +21,7 @@ regra "nenhum registro pode ser anterior à Data Inicial".
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `data-inicial.controller.ts` | Rotas HTTP (ler/editar a Data Inicial) | 41 |
-| `data-inicial.service.ts` | Leitura/escrita do singleton (upsert) | 55 |
+| `data-inicial.service.ts` | Leitura/escrita do singleton (upsert, mesmo padrão de `ConfigVendas`) | 55 |
 | `validacao-data.service.ts` | Validação de data mínima compartilhada | 31 |
 | `data-inicial.domain.ts` | Regra pura: `data ≥ Data Inicial` (por dia, UTC) | 30 |
 | `data-inicial.errors.ts` | Erro de domínio (data anterior à inicial) | 29 |

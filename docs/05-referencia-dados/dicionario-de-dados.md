@@ -3,7 +3,7 @@
 
 # Dicionário de Dados
 
-> Detalhe campo a campo das **56 tabelas**. Fonte: `backend/prisma/schema.prisma`.
+> Detalhe campo a campo das **53 tabelas**. Fonte: `backend/prisma/schema.prisma`.
 
 ## `Usuario`
 
@@ -186,45 +186,6 @@ fechamento). Alimenta os indicadores (total dia/semana/mes e ranking).
 | `data` | `DateTime` |  |  |
 | `marcadoPor` | `String?` |  |  |
 | `criadoEm` | `DateTime` |  |  |
-
-## `LoteApae`
-
-| Campo | Tipo | Chave | Descrição |
-|---|---|---|---|
-| `id` | `String` | PK |  |
-| `quantidadeInicial` | `Int` |  |  |
-| `saldoAtual` | `Int` |  |  |
-| `quantidadeVendida` | `Int` |  |  |
-| `dataInicio` | `DateTime` |  |  |
-| `dataEncerramento` | `DateTime?` |  |  |
-| `status` | `StatusLote` |  |  |
-| `movimentos` | `MovimentoLoteApae[]` |  |  |
-
-## `MovimentoLoteApae`
-
-arrecadação por período (sem exigir contagem por venda — só pelo saldo).
-
-| Campo | Tipo | Chave | Descrição |
-|---|---|---|---|
-| `id` | `String` | PK |  |
-| `loteId` | `String` |  |  |
-| `vendidas` | `Int` |  |  |
-| `saldoApos` | `Int` |  |  |
-| `em` | `DateTime` |  |  |
-| `responsavelId` | `String?` |  |  |
-| `lote` | `LoteApae` | relação |  |
-
-## `ConfigApae`
-
-arrecadação. Editável pelo gestor sem redeploy.
-
-| Campo | Tipo | Chave | Descrição |
-|---|---|---|---|
-| `id` | `String` | PK |  |
-| `precoSacola` | `Float` |  |  |
-| `metaMensal` | `Float` |  |  |
-| `atualizadoEm` | `DateTime` |  |  |
-| `atualizadoPor` | `String?` |  |  |
 
 ## `ConfigVendas`
 

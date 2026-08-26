@@ -29,28 +29,25 @@ export interface PassoReset {
  * `saldo` dos insumos (que são conservados). `Object.freeze` impede mutações.
  */
 export const PLANO_REINICIO: readonly PassoReset[] = Object.freeze([
-  // 1) Sacolas APAE: movimentos antes do lote (FK loteId, onDelete Cascade).
-  { entidade: 'movimentos_lote_apae', acao: 'APAGAR', ordem: 10 },
-  { entidade: 'lotes_apae', acao: 'APAGAR', ordem: 11 },
-  // 2) Estoque em movimento antes de zerar o saldo dos insumos (conservados).
+  // 1) Estoque em movimento antes de zerar o saldo dos insumos (conservados).
   { entidade: 'movimentos_estoque', acao: 'APAGAR', ordem: 20 },
   { entidade: 'requisicoes', acao: 'APAGAR', ordem: 21 },
   { entidade: 'sugestoes_pedido', acao: 'APAGAR', ordem: 22 },
   { entidade: 'insumos', acao: 'ZERAR_SALDO_INSUMOS', ordem: 23 },
-  // 3) Fluxo legado: registros antes das importações (FK importacaoId).
+  // 2) Fluxo legado: registros antes das importações (FK importacaoId).
   { entidade: 'registros_operacionais', acao: 'APAGAR', ordem: 30 },
   { entidade: 'registros_importacao', acao: 'APAGAR', ordem: 31 },
-  // 4) Jornada / escala por data (FK apenas para entidades conservadas).
+  // 3) Jornada / escala por data (FK apenas para entidades conservadas).
   { entidade: 'registros_ponto_fiscal', acao: 'APAGAR', ordem: 40 },
   { entidade: 'ausencias', acao: 'APAGAR', ordem: 41 },
   { entidade: 'incidencias_escala', acao: 'APAGAR', ordem: 42 },
-  // 5) Vendas.
+  // 4) Vendas.
   { entidade: 'vendas_diarias', acao: 'APAGAR', ordem: 50 },
   { entidade: 'vendas_hora', acao: 'APAGAR', ordem: 51 },
-  // 6) Arrecadação.
+  // 5) Arrecadação.
   { entidade: 'registros_arrecadacao', acao: 'APAGAR', ordem: 60 },
   { entidade: 'arrecadacao_sem_movimento', acao: 'APAGAR', ordem: 61 },
-  // 7) Avisos / assistente / fechamento / checklists.
+  // 6) Avisos / assistente / fechamento / checklists.
   { entidade: 'notificacoes', acao: 'APAGAR', ordem: 70 },
   { entidade: 'mensagens_assistente', acao: 'APAGAR', ordem: 71 },
   { entidade: 'fechamentos_concluidos', acao: 'APAGAR', ordem: 72 },
@@ -58,7 +55,7 @@ export const PLANO_REINICIO: readonly PassoReset[] = Object.freeze([
 ]);
 
 /**
- * As 18 entidades de `Dados_de_Movimento` que o reinício DEVE apagar
+ * As 16 entidades de `Dados_de_Movimento` que o reinício DEVE apagar
  * (Requisitos 2.1–2.7). Usada como referência de cobertura exata nos testes.
  */
 export const ENTIDADES_MOVIMENTO_ESPERADAS: readonly string[] = Object.freeze([
@@ -69,8 +66,6 @@ export const ENTIDADES_MOVIMENTO_ESPERADAS: readonly string[] = Object.freeze([
   'movimentos_estoque',
   'requisicoes',
   'sugestoes_pedido',
-  'movimentos_lote_apae',
-  'lotes_apae',
   'registros_ponto_fiscal',
   'ausencias',
   'incidencias_escala',
@@ -100,7 +95,6 @@ export const ENTIDADES_CONSERVADAS: readonly string[] = Object.freeze([
   'insumos',
   'fardos',
   'pedidos_recorrentes',
-  'config_apae',
   'config_vendas',
   'metas_indicador',
   'metas_mensais',
@@ -113,7 +107,6 @@ export const ENTIDADES_CONSERVADAS: readonly string[] = Object.freeze([
  */
 export const DEPENDENCIAS_FK: ReadonlyArray<readonly [string, string]> =
   Object.freeze([
-    ['movimentos_lote_apae', 'lotes_apae'],
     ['registros_operacionais', 'registros_importacao'],
   ] as const);
 

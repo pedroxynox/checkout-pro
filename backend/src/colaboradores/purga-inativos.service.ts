@@ -31,10 +31,10 @@ export interface ResumoPurgaInativos {
  * janela — importante para eventuais disputas trabalhistas.
  *
  * **Preserva os totais dos indicadores:** NÃO apaga `registros_arrecadacao`
- * (troco solidário, recargas, cancelamentos, devoluções) nem os movimentos do
- * lote APAE. Esses lançamentos continuam somando no total da loja — apenas
- * deixam de ser atribuídos a alguém no visual por operador (o vínculo por
- * matrícula/identificador some com a ficha).
+ * (troco solidário, recargas, cancelamentos, devoluções). Esses lançamentos
+ * continuam somando no total da loja — apenas deixam de ser atribuídos a alguém
+ * no visual por operador (o vínculo por matrícula/identificador some com a
+ * ficha).
  */
 @Injectable()
 export class PurgaInativosService {
@@ -81,8 +81,8 @@ export class PurgaInativosService {
    * Apaga, numa única transação, a ficha e o histórico de RRHH dos colaboradores
    * inativos DESLIGADOS HÁ MAIS DE `RETENCAO_INATIVOS_MESES` meses (janela de
    * retenção). Fichas inativas sem `desligadoEm` (dados legados) NÃO são
-   * purgadas por segurança. Conserva `registros_arrecadacao` e
-   * `movimentos_lote_apae` (totais preservados). Idempotente.
+   * purgadas por segurança. Conserva `registros_arrecadacao` (totais
+   * preservados). Idempotente.
    */
   async purgarInativos(): Promise<ResumoPurgaInativos> {
     const inativos = await this.prisma.colaborador.findMany({
@@ -127,7 +127,7 @@ export class PurgaInativosService {
         where: { colaboradorId: { in: ids } },
       });
       // A ficha por último (leva os identificadores em cascata). NÃO tocamos em
-      // registros_arrecadacao / movimentos_lote_apae → totais preservados.
+      // registros_arrecadacao → totais preservados.
       const colaboradores = await tx.colaborador.deleteMany({
         where: { id: { in: ids } },
       });

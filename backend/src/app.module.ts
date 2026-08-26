@@ -24,7 +24,6 @@ import { IncidenciasModule } from './incidencias/incidencias.module';
 import { AdvertenciasModule } from './advertencias/advertencias.module';
 import { ContratosModule } from './contratos/contratos.module';
 import { FeedforwardModule } from './feedforward/feedforward.module';
-import { LoteApaeModule } from './lote-apae/lote-apae.module';
 import { InsumosModule } from './insumos/insumos.module';
 import { RequisicoesModule } from './requisicoes/requisicoes.module';
 import { FiscaisModule } from './fiscais/fiscais.module';
@@ -71,7 +70,6 @@ import { AtestadosModule } from './atestados/atestados.module';
     AdvertenciasModule,
     ContratosModule,
     FeedforwardModule,
-    LoteApaeModule,
     InsumosModule,
     RequisicoesModule,
     FiscaisModule,

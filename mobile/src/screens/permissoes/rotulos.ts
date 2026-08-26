@@ -13,7 +13,6 @@ export interface RotuloFuncionalidade {
 export const ORDEM_AREAS: string[] = [
   'Carga e fechamento',
   'Indicadores e vendas',
-  'Sacolas APAE',
   'Insumos',
   'Fiscais e jornada',
   'Operação e pessoas',
@@ -44,16 +43,6 @@ export const ROTULOS_FUNCIONALIDADE: Record<string, RotuloFuncionalidade> = {
     titulo: 'Indicador de quebra',
     descricao: 'Em construção',
     area: 'Indicadores e vendas',
-  },
-  LOTE_APAE: {
-    titulo: 'Sacolas APAE',
-    descricao: 'Ver e usar sacolas',
-    area: 'Sacolas APAE',
-  },
-  LOTE_APAE_GERENCIAR: {
-    titulo: 'Gerenciar sacolas APAE',
-    descricao: 'Registrar/reiniciar lote',
-    area: 'Sacolas APAE',
   },
   INSUMOS: {
     titulo: 'Insumos',

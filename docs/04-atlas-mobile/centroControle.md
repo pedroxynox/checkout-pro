@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `mobile/src/screens/centroControle/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/centroControle/`
 
 # Área: `centroControle`
 
@@ -24,7 +24,7 @@ operacionais).
 | `ConfigEscalaDomingoScreen.tsx` | Configuração do rodízio de domingo (G1/G2/G3) | 268 |
 | `TiposContratoScreen.tsx` | CRUD dos tipos de contrato de jornada | 569 |
 | `InsumosDadosScreen.tsx` | Zerar estoque de insumos e limpar requisições | 214 |
-| `ReiniciarDadosScreen.tsx` | Reinício operacional (apaga dados de movimento) | 199 |
+| `ReiniciarDadosScreen.tsx` | Reinício operacional (apaga dados de movimento) | 197 |
 | `CentroControleScreen.test.tsx` | Testes de visibilidade do card de reinício | 44 |
 | `ReiniciarDadosScreen.test.tsx` | Testes da confirmação "ZERAR" | 58 |
 
@@ -44,7 +44,8 @@ operacionais).
 5. **Insumos (dados):** zera o estoque de um insumo, de todos, ou limpa o
    histórico de requisições — cada ação pede confirmação.
 6. **Zerar dados operacionais:** exige digitar `ZERAR` e confirmar; ao concluir,
-   mostra o resumo com a contagem apagada por entidade.
+   mostra o resumo com a contagem apagada por entidade (hoje 16 entidades de
+   movimento — os lotes de sacolas saíram do plano com a remoção da área APAE).
 Cada tela de dados trata os estados **carregando / erro / vazio**.
 
 ## 5. Dados e integração com o backend

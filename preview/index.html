@@ -319,18 +319,6 @@
         <div class="progress"><div style="width:40%;background:var(--red)"></div></div>
       </div>
 
-      <div class="card">
-        <div class="kpi">
-          <span class="dot">🟡</span>
-          <div class="kpi-main">
-            <div class="kpi-name">Sacolas APAE</div>
-            <div class="kpi-val">30% vendido</div>
-            <div class="kpi-meta">Lote atual</div>
-          </div>
-          <span class="pill yellow">Em curso</span>
-        </div>
-        <div class="progress"><div style="width:30%;background:var(--yellow)"></div></div>
-      </div>
 
       <div class="section-label">Ranking — Cancelamentos (operadores)</div>
       <div class="card" id="rankCancel"></div>
@@ -356,31 +344,6 @@
           <input type="number" id="vendaValor" placeholder="Ex: 82000" />
         </div>
         <button class="btn" onclick="informarVenda()">Salvar venda</button>
-      </div>
-    </section>
-
-    <!-- LOTE APAE -->
-    <section id="apae" class="view">
-      <h2 class="page-title">Lote APAE</h2>
-      <p class="subtitle">Sacolas em benefício da APAE</p>
-      <div class="stat-row">
-        <div class="stat"><div class="v">500</div><div class="l">Qtd. inicial</div></div>
-        <div class="stat"><div class="v">350</div><div class="l">Saldo</div></div>
-        <div class="stat"><div class="v">30%</div><div class="l">Vendido</div></div>
-      </div>
-      <div class="card">
-        <div class="row-between"><h3>Progresso do lote</h3><span class="badge-soft">150 vendidas</span></div>
-        <div class="progress" style="margin-top:12px;"><div style="width:30%;background:var(--primary)"></div></div>
-        <p class="label" style="margin-top:10px;">Início: 01/06 • Status: Aberto</p>
-      </div>
-      <div class="card">
-        <div class="field">
-          <label>Atualizar saldo restante</label>
-          <input type="number" placeholder="Ex: 320" id="apaeSaldo" />
-        </div>
-        <button class="btn secondary" onclick="toast('Saldo atualizado (exemplo)')">Atualizar saldo</button>
-        <div style="height:10px"></div>
-        <button class="btn ghost" onclick="toast('Lote reiniciado — novo lote iniciado (exemplo)')">↻ Reiniciar lote</button>
       </div>
     </section>
 
@@ -533,7 +496,6 @@ var notifData = [
 var areas = [
   {id:"indicadores", ico:"📊", title:"Indicadores", sub:"Metas e KPIs", gerenteOnly:false},
   {id:"vendas", ico:"💰", title:"Painel de Vendas", sub:"Acumulados", gerenteOnly:true},
-  {id:"apae", ico:"🛍️", title:"Lote APAE", sub:"Sacolas solidárias", gerenteOnly:false},
   {id:"insumos", ico:"📦", title:"Insumos", sub:"Estoque", gerenteOnly:false},
   {id:"fiscais", ico:"👮", title:"Fiscais", sub:"Tempo real", gerenteOnly:false},
   {id:"escala", ico:"📅", title:"Escala", sub:"Horários", gerenteOnly:false},
@@ -543,7 +505,7 @@ var areas = [
 ];
 
 var titles = {
-  home:"Check-out PRO", indicadores:"Indicadores", vendas:"Painel de Vendas", apae:"Lote APAE",
+  home:"Check-out PRO", indicadores:"Indicadores", vendas:"Painel de Vendas",
   insumos:"Insumos", fiscais:"Fiscais", escala:"Escala", checklist:"Checklist",
   operadores:"Operadores", notificacoes:"Notificações"
 };

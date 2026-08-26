@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/common/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/common/`
 
 # Módulo: `common`
 
@@ -149,7 +149,7 @@ fornece:
 |---|---|---|
 | `guards/jwt-auth.guard.spec.ts` | Rotas públicas, tokenVersion, revogação e token ausente/inválido | 7 |
 | `guards/perfil.guard.spec.ts` | Autorização por funcionalidade (gerente/fiscal) | 5 |
-| `filters/dominio-exception.filter.spec.ts` | Tradução de erros de domínio/HTTP/desconhecido | 3 |
+| `filters/dominio-exception.filter.spec.ts` | Tradução de erros de domínio/HTTP/desconhecido (a tabela deixou de cobrir os erros do extinto `lote-apae`) | 3 |
 | `datas.spec.ts` | Ciclo de folha 26→25, fim do dia em Brasília e sequência de dias | 13 |
 | `risco-ocorrencias.spec.ts` | Pontuação de risco partilhada (limiares + monotonia, fast-check) | 6 |
 | `justificativas.spec.ts` | Peso/soma ponderada e montagem dos campos de justificativa (fast-check) | 9 |

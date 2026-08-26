@@ -13,10 +13,6 @@ import {
   QuantidadeInvalidaError,
 } from '../../insumos/insumos.errors';
 import {
-  QuantidadeInicialInvalidaError,
-  SaldoInvalidoError,
-} from '../../lote-apae/lote-apae.errors';
-import {
   AusenciaDuplicadaError,
   NomeDuplicadoError,
 } from '../../operadores/operadores.errors';
@@ -88,16 +84,6 @@ describe('DominioExceptionFilter', () => {
     [
       'Fiscais: status inválido (400)',
       new StatusInvalidoError('X'),
-      HttpStatus.BAD_REQUEST,
-    ],
-    [
-      'Lote APAE: saldo inválido (400)',
-      new SaldoInvalidoError(10, 5),
-      HttpStatus.BAD_REQUEST,
-    ],
-    [
-      'Lote APAE: quantidade inicial inválida (400)',
-      new QuantidadeInicialInvalidaError(-1),
       HttpStatus.BAD_REQUEST,
     ],
     [

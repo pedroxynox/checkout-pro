@@ -126,5 +126,5 @@ usada apenas na formatação das notificações.
   mas também não há checagem de duplicidade se o gestor aprovar duas requisições
   iguais em sequência.
 - 🔧 Validações usam exceções genéricas do Nest em vez de erros de domínio
-  tipados (padrão adotado em `insumos`/`lote-apae`); padronizar se o módulo
+  tipados (padrão adotado em `insumos`); padronizar se o módulo
   crescer.

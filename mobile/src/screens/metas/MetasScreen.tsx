@@ -11,12 +11,11 @@
  * Apenas o gestor (funcionalidade OPERADORES_CRUD).
  */
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
-import { loteApaeService, metasService } from '../../api/services';
-import { ConfigApae, MetaMensal, TipoMeta } from '../../api/types';
-import { useAuth } from '../../auth/AuthContext';
+import { metasService } from '../../api/services';
+import { MetaMensal, TipoMeta } from '../../api/types';
 import {
   Botao,
   CampoTexto,
@@ -27,7 +26,7 @@ import {
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { confirmar, notificar } from '../../utils/dialogos';
+import { notificar } from '../../utils/dialogos';
 import {
   formatarMoeda,
   formatarPercentual,
@@ -84,8 +83,6 @@ function ajudaUnidade(item: MetaMensal): string {
 }
 
 export function MetasScreen(): React.ReactElement {
-  const { podeAcessar } = useAuth();
-  const podeGerenciarApae = podeAcessar('LOTE_APAE_GERENCIAR');
 
   const [anoMes, setAnoMes] = useState(mesAtual());
   const [editTipo, setEditTipo] = useState<TipoMeta | null>(null);
@@ -98,21 +95,7 @@ export function MetasScreen(): React.ReactElement {
   );
   const metas = req.dados ?? [];
 
-  // Configuração das Sacolas APAE (preço + meta mensal) — valor geral, não
-  // varia por mês. Editável apenas pelo gestor (LOTE_APAE_GERENCIAR).
-  const apaeReq = useRequisicao<ConfigApae>(() => loteApaeService.config(), []);
-  const [precoApae, setPrecoApae] = useState('');
-  const [metaApae, setMetaApae] = useState('');
-  const [salvandoApae, setSalvandoApae] = useState(false);
-  const [limpandoApae, setLimpandoApae] = useState(false);
 
-  useEffect(() => {
-    const cfg = apaeReq.dados;
-    if (cfg) {
-      setPrecoApae(mascaraMilhar(String(cfg.precoSacola).replace('.', ',')));
-      setMetaApae(mascaraMilhar(String(cfg.metaMensal).replace('.', ',')));
-    }
-  }, [apaeReq.dados]);
 
   const trocarMes = (delta: number) => {
     setEditTipo(null);
@@ -144,46 +127,7 @@ export function MetasScreen(): React.ReactElement {
     }
   };
 
-  const salvarApae = async () => {
-    const preco = parseNumeroBR(precoApae);
-    const meta = parseNumeroBR(metaApae);
-    if (!Number.isFinite(preco) || preco < 0) {
-      notificar('Preço inválido', 'Informe um valor em reais maior ou igual a zero.');
-      return;
-    }
-    if (!Number.isFinite(meta) || meta < 0) {
-      notificar('Meta inválida', 'Informe um valor em reais maior ou igual a zero.');
-      return;
-    }
-    setSalvandoApae(true);
-    try {
-      await loteApaeService.definirConfig({ precoSacola: preco, metaMensal: meta });
-      apaeReq.recarregar();
-      notificar('Sacolas APAE salvas', 'Preço da sacola e meta mensal atualizados.');
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
-    } finally {
-      setSalvandoApae(false);
-    }
-  };
 
-  const limparHistoricoApae = async () => {
-    const ok = await confirmar(
-      'Limpar histórico',
-      'Remover todos os lotes vendidos do histórico de Sacolas APAE? O lote ativo não é afetado. Esta ação não pode ser desfeita.',
-      'Limpar',
-    );
-    if (!ok) return;
-    setLimpandoApae(true);
-    try {
-      const { removidos } = await loteApaeService.limparHistorico();
-      notificar('Pronto', `${removidos} lote(s) removido(s) do histórico.`);
-    } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao limpar.');
-    } finally {
-      setLimpandoApae(false);
-    }
-  };
 
   return (
     <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
@@ -266,52 +210,6 @@ export function MetasScreen(): React.ReactElement {
         ))
       )}
 
-      {/* Sacolas APAE — preço e meta gerais (não variam por mês). */}
-      {podeGerenciarApae && (
-        <Cartao titulo="Sacolas APAE">
-          <Text style={styles.ajuda}>
-            Preço da sacola e meta de arrecadação da APAE. Valores gerais — não
-            variam por mês.
-          </Text>
-          {apaeReq.carregando ? (
-            <Carregando />
-          ) : apaeReq.erro ? (
-            <MensagemErro
-              mensagem={apaeReq.erro}
-              aoTentarNovamente={apaeReq.recarregar}
-            />
-          ) : (
-            <>
-              <CampoTexto
-                rotulo="Preço por sacola (R$)"
-                keyboardType="decimal-pad"
-                value={precoApae}
-                onChangeText={(t) => setPrecoApae(mascaraMilhar(t))}
-                placeholder="0,49"
-              />
-              <CampoTexto
-                rotulo="Meta mensal (R$)"
-                keyboardType="decimal-pad"
-                value={metaApae}
-                onChangeText={(t) => setMetaApae(mascaraMilhar(t))}
-                placeholder="500"
-                style={{ marginTop: espacamento.sm }}
-              />
-              <Botao
-                titulo="Salvar Sacolas APAE"
-                aoPressionar={() => void salvarApae()}
-                carregando={salvandoApae}
-              />
-              <Botao
-                titulo="Limpar histórico de Sacolas APAE"
-                variante="perigo"
-                aoPressionar={() => void limparHistoricoApae()}
-                carregando={limpandoApae}
-              />
-            </>
-          )}
-        </Cartao>
-      )}
     </Tela>
   );
 }

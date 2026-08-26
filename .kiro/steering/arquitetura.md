@@ -46,7 +46,7 @@ Deploy conhecido: API e web no Render. Código mergeado não equivale a deploy c
 | --- | --- |
 | Identidade | `acessos`, `usuarios`, `colaboradores` |
 | Comercial | `arrecadacao`, `vendas`, `metas`, `fechamento` |
-| Estoque | `insumos`, `requisicoes`, `lote-apae` |
+| Estoque | `insumos`, `requisicoes` |
 | Rotinas | `checklist`, `alertas`, `notificacoes` |
 | Pessoas | `operadores`, `fiscais`, `incidencias`, `advertencias`, `contratos`, `feedforward` |
 | Jornada | `ponto`, `central-jornada`, `feriados`, `escala-domingo`, `ciclo-folha` |
