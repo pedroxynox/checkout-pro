@@ -126,15 +126,33 @@ const AUSENCIAS = [
   },
 ];
 
-function montar() {
+/** Um dia de atestado vinculado a um documento (`atestadoId`). */
+function atestadoDia(id: string, iso: string, atestadoId: string) {
+  return {
+    id,
+    pessoaId: 'c1',
+    colaboradorId: 'c1',
+    data: dia(iso),
+    debitoHoras: false,
+    motivoJustificativa: 'ATESTADO_MEDICO',
+    statusJustificativa: 'JUSTIFICADA',
+    atestadoId,
+    aPrazo: true,
+  };
+}
+
+function montar(
+  batidas: typeof BATIDAS = BATIDAS,
+  ausencias: unknown[] = AUSENCIAS,
+) {
   const prismaFake = {
     colaborador: {
       findMany: jest
         .fn()
         .mockResolvedValue([ficha('c1', 'Ana Souza'), ficha('c2', 'Bruno Lima', 'FISCAL')]),
     },
-    batidaPonto: { findMany: jest.fn().mockResolvedValue(BATIDAS) },
-    ausencia: { findMany: jest.fn().mockResolvedValue(AUSENCIAS) },
+    batidaPonto: { findMany: jest.fn().mockResolvedValue(batidas) },
+    ausencia: { findMany: jest.fn().mockResolvedValue(ausencias) },
     fiscal: { findMany: jest.fn().mockResolvedValue([]) },
     usuario: { findMany: jest.fn().mockResolvedValue([]) },
   };
@@ -198,11 +216,41 @@ describe('CentralJornadaService.rankingsCiclo', () => {
     expect(ana.atestados).toBe(1);
     expect(ana.atestadosDetalhe).toHaveLength(1);
     const atestado = ana.atestadosDetalhe[0];
-    expect(atestado.data.slice(0, 10)).toBe('2026-07-03');
+    expect(atestado.inicio.slice(0, 10)).toBe('2026-07-03');
+    expect(atestado.fim.slice(0, 10)).toBe('2026-07-03');
+    expect(atestado.dias).toBe(1);
     // Sexta: base de 8h, abonadas (não viram hora devida).
     expect(atestado.horasAbonadasMs).toBe(8 * UMA_HORA);
     expect(ana.horasAtestadoMs).toBe(8 * UMA_HORA);
     expect(ana.horasDevidasMs).toBeGreaterThan(0); // o débito é da falta, não do atestado
+  });
+
+  it('conta ATESTADOS, não dias: 3 dias + 2 dias = 2 atestados', async () => {
+    const service = montar(
+      [],
+      [
+        // Atestado de 3 dias (seg 06 a qua 08).
+        atestadoDia('x1', '2026-07-06', 'at-1'),
+        atestadoDia('x2', '2026-07-07', 'at-1'),
+        atestadoDia('x3', '2026-07-08', 'at-1'),
+        // Atestado de 2 dias (seg 20 e ter 21).
+        atestadoDia('x4', '2026-07-20', 'at-2'),
+        atestadoDia('x5', '2026-07-21', 'at-2'),
+      ],
+    );
+
+    const ana = (await service.rankingsCiclo(0)).pessoas[0];
+
+    // 5 dias de atestado, mas DOIS atestados.
+    expect(ana.atestados).toBe(2);
+    expect(ana.atestadosDetalhe).toHaveLength(2);
+    expect(ana.atestadosDetalhe.map((a) => a.dias)).toEqual([2, 3]);
+    // As horas seguem sendo de DIAS (o atestado abona a carga de cada dia).
+    expect(ana.horasAtestadoMs).toBeGreaterThan(0);
+    // E o resumo do ciclo concorda com o ranking.
+    const resumo = await service.resumoCiclo(0);
+    expect(resumo.pessoas[0].atestados).toBe(2);
+    expect(resumo.totais.atestados).toBe(2);
   });
 
   it('detalha os atrasos com os minutos e o turno esperado', async () => {

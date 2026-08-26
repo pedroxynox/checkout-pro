@@ -138,13 +138,18 @@ const EXTRA_METRICA: Record<MetricaRanking, ExtraMetrica> = {
     vazio: 'Ninguém tem faltas neste ciclo.',
   },
   ATESTADOS: {
+    // Uma linha por ATESTADO (documento), não por dia: mostra o período que ele
+    // cobre, quantos dias são e as horas abonadas.
     detalhes: (p) =>
       p.atestadosDetalhe.map((a) => ({
-        chave: `atestado-${a.data}`,
-        dia: dataCurta(a.data),
-        texto: `Atestado médico — ${formatarDuracao(
+        chave: `atestado-${a.atestadoId ?? a.inicio}`,
+        dia:
+          a.inicio === a.fim
+            ? dataCurta(a.inicio)
+            : `${dataCurta(a.inicio)} a ${dataCurta(a.fim)}`,
+        texto: `${contar(a.dias, 'dia', 'dias')} · ${formatarDuracao(
           a.horasAbonadasMs,
-        )} abonadas`,
+        )} abonadas${a.atestadoId ? '' : ' · sem documento cadastrado'}`,
       })),
     vazio: 'Ninguém apresentou atestado neste ciclo.',
   },
