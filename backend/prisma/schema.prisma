@@ -975,6 +975,11 @@ model Notificacao {
   usuario Usuario @relation(fields: [usuarioId], references: [id])
 
   @@index([usuarioId])
+  // O centro de notificações guarda no máximo 200 avisos POR USUÁRIO: ao entrar
+  // um novo, o mais antigo sai. Este índice composto serve às duas operações
+  // quentes — listar o histórico do usuário (mais recentes primeiro) e achar o
+  // excedente a apagar — sem varrer a tabela.
+  @@index([usuarioId, criadaEm])
   @@map("notificacoes")
 }
 

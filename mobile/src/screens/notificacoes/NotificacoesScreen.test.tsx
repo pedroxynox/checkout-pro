@@ -1,6 +1,7 @@
 /**
- * Central de Notificações: agrupamento, título sem emoji e botão de ação que
- * navega direto ao módulo (sem abrir modal/prévia).
+ * Central de Notificações: agrupamento, título sem emoji, botão de ação que
+ * navega direto ao módulo (sem abrir modal/prévia) e o botão discreto de limpar
+ * a caixa (que só age depois de confirmar).
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
@@ -24,11 +25,18 @@ jest.mock('../../notificacoes/NotificacoesContext', () => ({
 }));
 
 jest.mock('../../api/services', () => ({
-  notificacoesService: { historico: jest.fn() },
+  notificacoesService: { historico: jest.fn(), limpar: jest.fn() },
+}));
+
+jest.mock('../../utils/dialogos', () => ({
+  confirmar: jest.fn(),
+  notificar: jest.fn(),
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { notificacoesService } = require('../../api/services');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { confirmar } = require('../../utils/dialogos');
 
 const AGORA = new Date().toISOString();
 
@@ -60,5 +68,32 @@ describe('NotificacoesScreen', () => {
     await screen.findByText('Estoque baixo');
     fireEvent.press(screen.getByText('Lidas'));
     expect(await screen.findByText('Nada por aqui')).toBeTruthy();
+  });
+
+  it('limpar pede confirmação antes de apagar', async () => {
+    confirmar.mockResolvedValue(false);
+    notificacoesService.limpar.mockResolvedValue({ removidas: 2 });
+    render(<NotificacoesScreen />);
+    await screen.findByText('Estoque baixo');
+
+    fireEvent.press(screen.getByLabelText('Limpar notificações'));
+
+    await waitFor(() => expect(confirmar).toHaveBeenCalled());
+    // Recusou: nada é apagado.
+    expect(notificacoesService.limpar).not.toHaveBeenCalled();
+  });
+
+  it('ao confirmar, limpa a caixa e a tela fica vazia', async () => {
+    confirmar.mockResolvedValue(true);
+    notificacoesService.limpar.mockResolvedValue({ removidas: 2 });
+    render(<NotificacoesScreen />);
+    await screen.findByText('Estoque baixo');
+    // Depois de limpar, o histórico volta vazio.
+    notificacoesService.historico.mockResolvedValue([]);
+
+    fireEvent.press(screen.getByLabelText('Limpar notificações'));
+
+    await waitFor(() => expect(notificacoesService.limpar).toHaveBeenCalled());
+    expect(await screen.findByText('Sem notificações')).toBeTruthy();
   });
 });

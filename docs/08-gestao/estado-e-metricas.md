@@ -9,23 +9,23 @@
 
 | Área | Arquivos | Linhas | Arquivos de teste | Linhas de teste |
 |---|---|---|---|---|
-| Backend (`backend/src`) | 240 | 39695 | 113 | 19199 |
-| Mobile (`mobile/src`) | 158 | 39496 | 28 | 3256 |
+| Backend (`backend/src`) | 240 | 39793 | 113 | 19355 |
+| Mobile (`mobile/src`) | 158 | 39581 | 28 | 3291 |
 
 ## Estrutura
 
 - **Módulos backend:** 36
 - **Áreas de tela (mobile):** 25
-- **Rotas HTTP:** 204
+- **Rotas HTTP:** 205
 - **Tabelas (Prisma):** 54
 - **Tipos/estados (enums):** 28
-- **Migrações:** 76
+- **Migrações:** 77
 
 ## Testes automatizados
 
-- **Backend:** 828 casos em 113 arquivos
-- **Mobile:** 128 casos em 28 arquivos
-- **Total:** 956 casos
+- **Backend:** 835 casos em 113 arquivos
+- **Mobile:** 130 casos em 28 arquivos
+- **Total:** 965 casos
 
 > Contagem por chamadas literais de `it()`/`test()` (determinística). Testes parametrizados (`it.each`) expandem em mais casos na execução do Jest.
 

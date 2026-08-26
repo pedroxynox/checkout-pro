@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -20,8 +21,10 @@ import {
 
 /**
  * Controller do serviço transversal de Notificações (Req 7.3): centro de
- * notificações in-app — histórico do usuário autenticado. Liberado ao fiscal
- * (`@Funcionalidade('NOTIFICACOES')`).
+ * notificações in-app — histórico do usuário autenticado, limpeza da própria
+ * caixa e registro do token de push. Liberado ao fiscal
+ * (`@Funcionalidade('NOTIFICACOES')`); todas as rotas operam sobre o usuário do
+ * token, então ninguém alcança a caixa de outra pessoa.
  */
 @Controller('notificacoes')
 @Funcionalidade('NOTIFICACOES')
@@ -34,6 +37,18 @@ export class NotificacoesController {
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<Notificacao[]> {
     return this.notificacoesService.historico(usuario.sub);
+  }
+
+  /**
+   * Limpa o centro de notificações do usuário autenticado. Apaga **apenas as
+   * notificações dele** — o `usuarioId` vem do token, não do corpo —, então não
+   * afeta a caixa de mais ninguém. Devolve quantas foram removidas.
+   */
+  @Delete()
+  async limpar(
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<{ removidas: number }> {
+    return this.notificacoesService.limparHistorico(usuario.sub);
   }
 
   /** Registra o token de push (Expo) do aparelho para o usuário logado. */

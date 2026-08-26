@@ -1,19 +1,21 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/notificacoes/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/notificacoes/`
 
 # Módulo: `notificacoes`
 
 ## 1. Propósito
 Serviço **transversal** de notificações: entrega avisos do sistema em **duplo
 canal** (push + in-app), resolve os destinatários conforme a permissão de cada
-funcionalidade e mantém o histórico por usuário, com entrega **em tempo real**
-via WebSocket.
+funcionalidade e mantém o histórico por usuário — numa **janela de 200 avisos
+por pessoa** —, com entrega **em tempo real** via WebSocket.
 
 ## 2. Responsabilidades e limites
 - **Faz:** registra cada entrega (push + in-app) por destinatário; resolve os
   alvos por **funcionalidade** (respeitando a Central de Permissões) ou pelos
   perfis operacionais; publica no barramento para entrega em tempo real
   (Socket.IO, por usuário); envia push via Expo (best-effort); gerencia os
-  tokens de push; expõe o histórico do usuário.
+  tokens de push; expõe o histórico do usuário; **mantém cada caixa no limite de
+  200** (ao entrar um aviso novo, o mais antigo sai) e permite ao usuário
+  **limpar a própria caixa**.
 - **Não faz:** não decide **quando** avisar (isso é de quem chama, ex.:
   [`alertas`](alertas.md), `insumos`, [`checklist`](checklist.md)); não calcula
   permissões — apenas reusa o domínio de [`acessos`](acessos.md); não faz a
@@ -22,11 +24,11 @@ via WebSocket.
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `notificacoes.service.ts` | Regras de aplicação: envio, alvos, push tokens, histórico | 298 |
-| `notificacoes.domain.ts` | Regras puras: destinatários e montagem das entregas | 71 |
+| `notificacoes.service.ts` | Regras de aplicação: envio, alvos, push tokens, histórico, janela de 200 e limpeza | 368 |
+| `notificacoes.domain.ts` | Regras puras: destinatários, montagem das entregas e o limite por usuário | 84 |
 | `notificacoes.gateway.ts` | Gateway WebSocket (Socket.IO), entrega por usuário | 86 |
 | `notificacoes.eventos.ts` | Barramento (RxJS) que desacopla serviço e gateway | 34 |
-| `notificacoes.controller.ts` | Rotas HTTP: histórico e push tokens | 59 |
+| `notificacoes.controller.ts` | Rotas HTTP: histórico, limpar e push tokens | 74 |
 | `notificacoes.module.ts` | Ligações (DI) do módulo | 22 |
 | `dto/notificacoes.dto.ts` | Validação do registro/remoção de push token | 27 |
 
@@ -39,9 +41,13 @@ operacionais.
 
 | Método + Rota | Permissão | O que faz |
 |---|---|---|
-| `GET /notificacoes/historico` | `NOTIFICACOES` | Histórico do usuário autenticado (mais recentes primeiro). |
+| `GET /notificacoes/historico` | `NOTIFICACOES` | Histórico do usuário autenticado (mais recentes primeiro, no máximo 200). |
+| `DELETE /notificacoes` | `NOTIFICACOES` | Limpa a caixa do usuário autenticado; devolve `{ removidas }`. |
 | `POST /notificacoes/push-token` | `NOTIFICACOES` | Registra/atualiza o token de push (Expo) do aparelho (204). |
 | `POST /notificacoes/push-token/remover` | `NOTIFICACOES` | Remove o token de push do aparelho no logout (204). |
+
+> Todas as rotas operam sobre o **usuário do token** (`usuario.sub`), nunca sobre
+> um id do corpo/da URL: ninguém alcança nem limpa a caixa de outra pessoa.
 
 > Além do HTTP, o módulo expõe um **gateway WebSocket** no namespace
 > `/notificacoes`: o cliente conecta com o token JWT no handshake e entra na
@@ -57,7 +63,8 @@ operacionais.
 - **Devolve:** as notificações criadas.
 - **Efeitos:** monta as entregas (duplo canal), grava cada `Notificacao` (uma a
   uma, em paralelo, para preservar `id`/`criadaEm`), **publica** cada uma no
-  barramento (tempo real) e dispara o **push Expo** (best-effort).
+  barramento (tempo real), **apara a caixa de cada destinatário** para caber na
+  janela de 200 (best-effort) e dispara o **push Expo** (best-effort).
 
 #### `destinatariosGerais()`
 Todos os usuários dos perfis operacionais que recebem avisos —
@@ -80,7 +87,25 @@ Gerenciam os tokens de push (Expo). O registro é **idempotente por token**:
 reaponta o token para o usuário atual (útil quando trocam de login no aparelho).
 
 #### `historico(usuarioId)`
-Lista as notificações do usuário, mais recentes primeiro.
+Lista as notificações do usuário, mais recentes primeiro, com
+`take: LIMITE_NOTIFICACOES_POR_USUARIO`. O `take` é **rede de segurança**: a
+aparagem no envio já mantém o tamanho, mas ela é best-effort e as caixas que
+existiam antes deste limite podem estar maiores — assim a tela nunca recebe uma
+lista gigante.
+
+#### `limparHistorico(usuarioId)`
+Apaga **apenas** as notificações do usuário informado e devolve
+`{ removidas: number }`. O `usuarioId` vem do token; é o que sustenta o botão
+discreto de limpar no app. Idempotente (limpar uma caixa vazia devolve 0).
+
+#### `apararCaixas(usuarioIds)` / `apararCaixa(usuarioId)` (privados)
+Mantêm a janela de 200 por pessoa. O corte é feito **pelo banco** (`skip` sobre
+a ordem decrescente), então só o excedente viaja para a aplicação — importante na
+primeira aparagem de uma caixa que já acumulou milhares de linhas. A ordenação
+desempata por `id` porque um aviso "para todos" cria várias linhas no **mesmo
+milissegundo**: sem isso a ordem entre elas seria indefinida. **Best-effort:**
+aparar é higiene, não a razão do envio — uma falha aqui é engolida (o aviso já
+foi criado e entregue) e a próxima notificação tenta de novo.
 
 #### `gestores()` · `loginGerencial()` · `destinatariosAlertaChecklist()`
 Métodos de alvo que hoje delegam a `destinatariosGerais`/`destinatariosComPermissao`
@@ -106,6 +131,9 @@ Em `notificacoes.domain.ts`:
   ordem (fiscais online primeiro).
 - `montarEntregas(destinatarios, conteudo)` → uma entrega por destinatário, com
   `canalPush` **e** `canalInApp` marcados (duplo canal).
+- `LIMITE_NOTIFICACOES_POR_USUARIO = 200` → o tamanho da janela. É constante de
+  domínio (não variável de ambiente): mudá-la é uma decisão de produto, de uma
+  linha só.
 
 ## 7. Estados e enums
 - `Perfil`: `FISCAL` · `SUPERVISOR` · `GERENTE` · `ADMINISTRADOR` (gerente
@@ -115,6 +143,8 @@ Em `notificacoes.domain.ts`:
 
 ## 8. Dados que o módulo toca
 - **Escreve:** `Notificacao` (cada entrega), `PushToken` (upsert/delete).
+- **Apaga:** `Notificacao` — o excedente da janela (por usuário, a cada envio) e
+  tudo do usuário na limpeza manual.
 - **Lê:** `Usuario` (+ `permissoes`), `PerfilPermissao` (para resolver alvos).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
 
@@ -136,11 +166,19 @@ Em `notificacoes.domain.ts`:
 5. **Token idempotente:** o mesmo aparelho reaponta o token ao novo usuário.
 6. **Entrega em tempo real por usuário:** o gateway emite só para a sala do
    destinatário (diferente do broadcast do painel de fiscais).
+7. **Janela de 200 por pessoa.** Cada caixa guarda no máximo 200 avisos: ao
+   entrar um novo, o **mais antigo** sai. O histórico não podia crescer para
+   sempre — a tela carrega tudo de uma vez e um aviso "para todos" cria uma linha
+   por pessoa. O limite é **por pessoa**, não da loja.
+8. **Limpar é sempre a própria caixa.** O `usuarioId` vem do token; limpar não
+   afeta ninguém mais. É irreversível (o app confirma antes).
+9. **Aparar nunca atrapalha o aviso.** A aparagem acontece depois de criar e
+   entregar, e é best-effort: se falhar, o aviso continua valendo.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `notificacoes.service.spec.ts` | Envio em duplo canal, alvos operacionais e histórico ordenado | 3 |
+| `notificacoes.service.spec.ts` | Envio em duplo canal, alvos operacionais, histórico ordenado, janela de 200 (por pessoa, tolerante a falha) e limpeza da própria caixa | 10 |
 | `notificacoes.properties.spec.ts` | Propriedades (fast-check): destinatários e duplo canal | 2 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
@@ -153,3 +191,9 @@ Em `notificacoes.domain.ts`:
   mudar o serviço; a persistência da notificação, porém, não depende disso.
 - 🔧 **Uma `create` por destinatário** (em vez de `createMany`) para obter os
   ids; aceitável no volume atual, mas pode pesar em envios muito grandes.
+- ℹ️ **A aparagem roda no envio, não num cron.** É onde a caixa cresce, então
+  basta. Uma caixa que parou de receber avisos e ficou acima de 200 só é aparada
+  no próximo aviso — mas o `take` do histórico já a mostra no tamanho certo.
+- 🔧 **O borrado não é avisado por WebSocket.** O gateway só emite criação; como
+  limpar é ação do próprio usuário na própria sessão, hoje não faz falta. Se
+  algum dia a limpeza puder vir de outro lugar, faltará o evento.

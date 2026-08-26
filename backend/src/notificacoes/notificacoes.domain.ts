@@ -69,3 +69,16 @@ export function montarEntregas(
     canalInApp: true,
   }));
 }
+
+/**
+ * Quantas notificações o centro de notificações guarda **por usuário**.
+ *
+ * O histórico não pode crescer para sempre: a tela carrega tudo de uma vez e um
+ * aviso "para todos" cria uma linha por pessoa, então em poucos meses a lista
+ * ficaria impossível de usar e a consulta, pesada. Ao entrar uma notificação
+ * nova, a mais **antiga** sai — uma janela deslizante de 200 por pessoa.
+ *
+ * É um limite por pessoa, não da loja: limpar ou lotar a caixa de alguém não
+ * mexe na de mais ninguém.
+ */
+export const LIMITE_NOTIFICACOES_POR_USUARIO = 200;

@@ -30,3 +30,16 @@ export async function salvarLidas(ids: string[]): Promise<void> {
     // Persistência é best-effort; ignora falhas.
   }
 }
+
+
+/**
+ * Esquece todos os IDs lidos. Usado ao limpar o centro de notificações: sem
+ * isso ficariam guardados IDs de avisos que não existem mais, crescendo à toa.
+ */
+export async function limparLidas(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(CHAVE);
+  } catch {
+    // Persistência é best-effort; ignora falhas.
+  }
+}

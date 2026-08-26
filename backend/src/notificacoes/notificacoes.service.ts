@@ -9,6 +9,7 @@ import {
 } from '../acessos/acessos.domain';
 import {
   ConteudoNotificacao,
+  LIMITE_NOTIFICACOES_POR_USUARIO,
   UsuarioRef,
   montarEntregas,
 } from './notificacoes.domain';
@@ -70,12 +71,60 @@ export class NotificacoesService {
         criadaEm: criada.criadaEm,
       });
     }
+    // Janela deslizante: cada caixa fica com no máximo
+    // LIMITE_NOTIFICACOES_POR_USUARIO avisos — o mais antigo sai quando entra um
+    // novo. Feito depois de criar (e por usuário distinto), best-effort.
+    await this.apararCaixas(destinatarios.map((d) => d.id));
     // Entrega PUSH (Expo) aos dispositivos registrados — best-effort.
     await this.enviarPush(
       destinatarios.map((d) => d.id),
       conteudo,
     );
     return criadas;
+  }
+
+  /**
+   * Mantém a caixa de cada usuário dentro do limite, apagando as notificações
+   * que passaram da janela (as mais antigas).
+   *
+   * **Best-effort de propósito:** aparar é higiene, não a razão do envio. Se o
+   * banco falhar aqui, o aviso já foi criado e entregue — engolir o erro é
+   * melhor do que derrubar o fluxo de negócio que gerou a notificação (mesma
+   * política do push). A próxima notificação tenta aparar de novo.
+   */
+  private async apararCaixas(usuarioIds: readonly string[]): Promise<void> {
+    for (const usuarioId of new Set(usuarioIds)) {
+      try {
+        await this.apararCaixa(usuarioId);
+      } catch {
+        // best-effort: a aparagem nunca deve quebrar o envio.
+      }
+    }
+  }
+
+  /**
+   * Apaga o excedente da caixa de UM usuário e devolve quantas saíram.
+   *
+   * O corte é feito pelo banco (`skip` sobre a ordem decrescente), então nada
+   * além do excedente viaja para a aplicação — importante na primeira aparagem
+   * de uma caixa que já acumulou milhares de linhas.
+   *
+   * O desempate por `id` existe porque um aviso "para todos" cria várias linhas
+   * no MESMO milissegundo: sem ele a ordem entre elas seria indefinida e a
+   * aparagem poderia escolher uma linha diferente a cada execução.
+   */
+  private async apararCaixa(usuarioId: string): Promise<number> {
+    const excedentes = await this.prisma.notificacao.findMany({
+      where: { usuarioId },
+      orderBy: [{ criadaEm: 'desc' }, { id: 'desc' }],
+      skip: LIMITE_NOTIFICACOES_POR_USUARIO,
+      select: { id: true },
+    });
+    if (excedentes.length === 0) return 0;
+    const { count } = await this.prisma.notificacao.deleteMany({
+      where: { id: { in: excedentes.map((e) => e.id) } },
+    });
+    return count;
   }
 
   /**
@@ -288,11 +337,32 @@ export class NotificacoesService {
     return this.notificarComPermissao('NOTIFICACOES', conteudo);
   }
 
-  /** Histórico de notificações de um usuário (Req 7.3.3), mais recentes primeiro. */
+  /**
+   * Histórico de notificações de um usuário (Req 7.3.3), mais recentes primeiro,
+   * limitado à janela de `LIMITE_NOTIFICACOES_POR_USUARIO`.
+   *
+   * O `take` é rede de segurança: a aparagem no envio já mantém a caixa no
+   * tamanho, mas ela é best-effort e as caixas que existiam antes deste limite
+   * podem estar maiores. Assim a tela nunca recebe uma lista gigante.
+   */
   async historico(usuarioId: string): Promise<Notificacao[]> {
     return this.prisma.notificacao.findMany({
       where: { usuarioId },
       orderBy: { criadaEm: 'desc' },
+      take: LIMITE_NOTIFICACOES_POR_USUARIO,
     });
+  }
+
+  /**
+   * Limpa o centro de notificações do usuário: apaga **apenas as dele**.
+   *
+   * O `usuarioId` vem do token, nunca do corpo da requisição — ninguém limpa a
+   * caixa de outra pessoa. Devolve quantas foram removidas.
+   */
+  async limparHistorico(usuarioId: string): Promise<{ removidas: number }> {
+    const { count } = await this.prisma.notificacao.deleteMany({
+      where: { usuarioId },
+    });
+    return { removidas: count };
   }
 }

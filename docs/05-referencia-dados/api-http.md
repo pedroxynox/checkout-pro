@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **204 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **205 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -261,6 +261,7 @@
 | Método | Rota | Handler | Permissão |
 |---|---|---|---|
 | GET | `/notificacoes/historico` | `historico` | `NOTIFICACOES` |
+| DELETE | `/notificacoes` | `limpar` | `NOTIFICACOES` |
 | POST | `/notificacoes/push-token` | `registrarPushToken` | `NOTIFICACOES` |
 | POST | `/notificacoes/push-token/remover` | `removerPushToken` | `NOTIFICACOES` |
 
