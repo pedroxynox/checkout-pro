@@ -1,6 +1,7 @@
 import { analisarFaltas } from './operadores.domain';
 import { OperadoresService } from './operadores.service';
 import {
+  AtestadoMedicoViaFluxoProprioError,
   AusenciaNaoEncontradaError,
   JustificativaInvalidaError,
 } from './operadores.errors';
@@ -130,15 +131,48 @@ describe('Justificativa de faltas', () => {
       'a1',
       {
         status: 'JUSTIFICADA',
-        motivo: 'ATESTADO_MEDICO',
-        observacao: 'atestado 2 dias',
+        motivo: 'LICENCA',
+        observacao: 'licença de 2 dias',
       },
       { id: 'g1', nome: 'Gestor' },
     );
     expect(linhas[0].statusJustificativa).toBe('JUSTIFICADA');
-    expect(linhas[0].motivoJustificativa).toBe('ATESTADO_MEDICO');
+    expect(linhas[0].motivoJustificativa).toBe('LICENCA');
     expect(linhas[0].justificadaPorNome).toBe('Gestor');
     expect(linhas[0].justificadaEm).toBeInstanceOf(Date);
+  });
+
+  it('RECUSA abonar como "atestado médico": atestado só pelo fluxo próprio', async () => {
+    // Era o último caminho por onde um atestado nascia SEM documento — sem CID,
+    // sem período e sem acompanhamento do INSS. A mesma regra que a ausência a
+    // prazo já aplicava.
+    const { service, linhas } = criar({ id: 'a1' });
+
+    await expect(
+      service.justificarAusencia(
+        'a1',
+        { status: 'JUSTIFICADA', motivo: 'ATESTADO_MEDICO' },
+        { id: 'g1', nome: 'Gestor' },
+      ),
+    ).rejects.toBeInstanceOf(AtestadoMedicoViaFluxoProprioError);
+    // E a falta fica intacta (nada foi gravado).
+    expect(linhas[0].statusJustificativa).toBe('PENDENTE');
+    expect(linhas[0].motivoJustificativa).toBeNull();
+  });
+
+  it('a recusa não impede reabrir um dia que já era atestado (legado)', async () => {
+    // Reabrir/injustificar não manda motivo, então o bloqueio não atrapalha a
+    // correção de um registro antigo.
+    const { service, linhas } = criar({
+      id: 'a1',
+      statusJustificativa: 'JUSTIFICADA',
+      motivoJustificativa: 'ATESTADO_MEDICO',
+    });
+
+    await service.justificarAusencia('a1', { status: 'PENDENTE' }, {});
+
+    expect(linhas[0].statusJustificativa).toBe('PENDENTE');
+    expect(linhas[0].motivoJustificativa).toBeNull();
   });
 
   it('reabrir (PENDENTE) limpa motivo e auditoria', async () => {

@@ -329,14 +329,19 @@ interface DiaAtestado {
  * diferente:
  *
  * - **Com documento** (`atestadoId`): agrupa por id. É exato — o documento diz
- *   quais dias lhe pertencem, mesmo que não sejam contíguos.
- * - **Sem documento** (`atestadoId` nulo): são dias abonados um a um com o motivo
- *   "atestado médico" (o caminho rápido, sem cadastrar o documento). Aqui não há
- *   id para agrupar, então **dias consecutivos contam como um só atestado** — é a
- *   leitura mais próxima da realidade: um bloco corrido de dias abonados veio de
- *   um mesmo comprovante. O limite conhecido: dois comprovantes de 1 dia em dias
- *   seguidos aparecem como um; os dados não permitem distinguir, e cadastrar o
- *   documento resolve.
+ *   quais dias lhe pertencem, mesmo que não sejam contíguos. **É o único caminho
+ *   possível hoje**: lançar um atestado exige o fluxo de Atestados (CID, período,
+ *   regra do INSS), e abonar uma falta com o motivo "atestado médico" é recusado
+ *   tanto na ausência a prazo quanto na justificativa individual
+ *   (`AtestadoMedicoViaFluxoProprioError`).
+ * - **Sem documento** (`atestadoId` nulo): **LEGADO**. São dias abonados um a um
+ *   com o motivo "atestado médico" antes de esse caminho ser fechado. Não há id
+ *   para agrupar, então **dias consecutivos contam como um só atestado** — a
+ *   leitura mais próxima da realidade, já que um bloco corrido de dias abonados
+ *   veio de um mesmo comprovante. Limite conhecido: dois comprovantes de 1 dia em
+ *   dias seguidos aparecem como um. Este ramo existe para não distorcer o
+ *   histórico (sem ele, esses dias voltariam a contar como FALTA); para os
+ *   registros novos a contagem é exata.
  *
  * Só enxerga os dias DENTRO do ciclo: um atestado que atravessa o corte 26→25
  * conta em cada um dos dois ciclos, com os dias que lhe cabem — é o esperado,

@@ -69,15 +69,27 @@ describe('JustificativasScreen', () => {
     render(<JustificativasScreen />);
     await screen.findByText('Ana Souza');
     fireEvent.press(screen.getByText('Justificar'));
-    fireEvent.press(await screen.findByText('Atestado médico'));
+    fireEvent.press(await screen.findByText('Licença'));
     fireEvent.press(screen.getByText('Confirmar justificativa'));
     await waitFor(() =>
       expect(operadoresService.justificarAusencia).toHaveBeenCalledWith('a1', {
         status: 'JUSTIFICADA',
-        motivo: 'ATESTADO_MEDICO',
+        motivo: 'LICENCA',
         observacao: undefined,
       }),
     );
+  });
+
+  it('NÃO oferece "atestado médico" como motivo (só pelo fluxo de Atestados)', async () => {
+    // Abonar por aqui criava um atestado sem documento: sem CID, sem período e
+    // sem acompanhamento do INSS. O servidor também recusa esse motivo.
+    render(<JustificativasScreen />);
+    await screen.findByText('Ana Souza');
+
+    fireEvent.press(screen.getByText('Justificar'));
+    await screen.findByText('Licença');
+
+    expect(screen.queryByText('Atestado médico')).toBeNull();
   });
 
   it('exclui uma falta lançada por engano (gestão)', async () => {

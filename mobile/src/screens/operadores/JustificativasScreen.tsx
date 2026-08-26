@@ -53,6 +53,11 @@ interface Ocorrencia {
   justificadaPorNome: string | null;
 }
 
+/**
+ * Rótulos de TODOS os motivos, inclusive `ATESTADO_MEDICO` — que não é
+ * escolhível (ver `MOTIVOS`) mas precisa de rótulo para EXIBIR os registros
+ * antigos e os dias criados pelo fluxo de Atestados.
+ */
 const ROTULO_MOTIVO: Record<MotivoJustificativa, string> = {
   ATESTADO_MEDICO: 'Atestado médico',
   ABONADA: 'Abonada',
@@ -60,8 +65,15 @@ const ROTULO_MOTIVO: Record<MotivoJustificativa, string> = {
   ATRASO_JUSTIFICADO: 'Atraso justificado',
   OUTRO: 'Outro',
 };
+
+/**
+ * Motivos que o gestor pode ESCOLHER aqui. `ATESTADO_MEDICO` ficou fora de
+ * propósito: atestado médico só entra pelo fluxo de **Atestados** (com CID,
+ * período e a regra do INSS). Abonar uma falta como "atestado médico" por aqui
+ * criava um atestado sem documento — sem CID, sem acompanhamento e impossível de
+ * contar com exatidão. O servidor também recusa esse motivo.
+ */
 const MOTIVOS: MotivoJustificativa[] = [
-  'ATESTADO_MEDICO',
   'ABONADA',
   'LICENCA',
   'ATRASO_JUSTIFICADO',

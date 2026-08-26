@@ -22,7 +22,7 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1886 |
-| `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 446 |
+| `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 458 |
 | `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 481 |
 | `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) | 398 |
 
@@ -45,7 +45,11 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
    e drill-down por colaborador (com advertência por falta não justificada).
 4. **Justificativas:** `JustificativasLista` reúne faltas e não-retornos dos
    últimos 30 dias; permite justificar (motivo), marcar como não justificada ou
-   reabrir, mostrando quem registrou/justificou. Gerente/supervisor/administrador
+   reabrir, mostrando quem registrou/justificou. Os motivos **não** incluem
+   "atestado médico" (mesma regra do card de ausências a prazo): atestado entra só
+   pelo card **Atestados**, com CID e período. Abonar por aqui criava um atestado
+   sem documento — o servidor também recusa esse motivo. O rótulo segue existindo
+   para **exibir** os registros antigos e os dias criados pelo fluxo de Atestados. Gerente/supervisor/administrador
    têm ainda **Excluir** — tanto para **faltas** quanto para **não-retornos** —
    que apaga a ocorrência lançada por engano (ex.: escala desatualizada, ou
    retorno do intervalo anotado em atraso, que fez o verificador marcar o
@@ -132,7 +136,7 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
 ## 9. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `JustificativasScreen.test.tsx` | Falta pendente, justificar com motivo e excluir (gestão) | 3 |
+| `JustificativasScreen.test.tsx` | Falta pendente, justificar com motivo, "atestado médico" fora da lista de motivos e excluir (gestão) | 5 |
 
 ## 10. Riscos, dívidas e pendências
 - 🔧 `OperadoresScreen.tsx` (>1800 linhas) reúne roster, ao vivo, análise
