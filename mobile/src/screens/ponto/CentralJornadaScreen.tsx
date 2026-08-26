@@ -33,6 +33,7 @@ import {
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
+import { IDENTIDADE_METRICA, ORDEM_METRICAS } from './metricasResumo';
 import { formatarDuracao, hojeISO } from '../../utils/formato';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 
@@ -218,57 +219,33 @@ export function CentralJornadaScreen(): React.ReactElement {
         />
       ) : (
         <>
-          {/* Resumo do time (métricas com ícone) */}
+          {/* Resumo do time: cada card abre o ranking daquela métrica. As seis
+              ficam sempre visíveis (posição fixa), esmaecidas quando zeradas. */}
           {resumo.dados && (
             <Cartao style={styles.cardResumo}>
               <Text style={styles.secaoTitulo}>Resumo do time</Text>
+              <Text style={styles.secaoAjuda}>
+                Toque numa métrica para ver o ranking da equipe.
+              </Text>
               <View style={styles.gridResumo}>
-                <CartaoMetrica
-                  icone="time-outline"
-                  cor={cores.verde}
-                  fundo={cores.verdeFundo}
-                  valor={formatarDuracao(resumo.dados.totais.extras50AtualMs)}
-                  rotulo="Extras 50%"
-                />
-                <CartaoMetrica
-                  icone="time-outline"
-                  cor={cores.verde}
-                  fundo={cores.verdeFundo}
-                  valor={formatarDuracao(resumo.dados.totais.extras100Ms)}
-                  rotulo="Extras 100%"
-                />
-                <CartaoMetrica
-                  icone="person-outline"
-                  cor={cores.laranja}
-                  fundo={cores.laranjaFundo}
-                  valor={String(resumo.dados.totais.faltas)}
-                  rotulo="Faltas"
-                />
-                <CartaoMetrica
-                  icone="document-text-outline"
-                  cor={cores.roxo}
-                  fundo={cores.roxoFundo}
-                  valor={String(resumo.dados.totais.diasTac)}
-                  rotulo="TAC"
-                />
-                {resumo.dados.totais.atrasos > 0 && (
-                  <CartaoMetrica
-                    icone="alarm-outline"
-                    cor={cores.laranja}
-                    fundo={cores.laranjaFundo}
-                    valor={String(resumo.dados.totais.atrasos)}
-                    rotulo="Atrasos"
-                  />
-                )}
-                {resumo.dados.totais.conflitos > 0 && (
-                  <CartaoMetrica
-                    icone="warning-outline"
-                    cor={cores.vermelho}
-                    fundo={cores.vermelhoFundo}
-                    valor={String(resumo.dados.totais.conflitos)}
-                    rotulo="Conflitos"
-                  />
-                )}
+                {ORDEM_METRICAS.map((metrica) => {
+                  const id = IDENTIDADE_METRICA[metrica];
+                  const valor = id.valorTotal(resumo.dados!.totais);
+                  return (
+                    <CartaoMetrica
+                      key={metrica}
+                      icone={id.icone}
+                      cor={id.cor}
+                      fundo={id.fundo}
+                      valor={id.formatar(valor)}
+                      rotulo={id.rotulo}
+                      apagado={valor <= 0}
+                      aoPressionar={() =>
+                        navigation.navigate('RankingTime', { metrica, ciclo })
+                      }
+                    />
+                  );
+                })}
               </View>
             </Cartao>
           )}
@@ -637,6 +614,11 @@ const styles = StyleSheet.create({
   secaoTitulo: {
     ...tipografia.secao,
     color: cores.texto,
+  },
+  secaoAjuda: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
     marginBottom: espacamento.sm,
   },
   gridResumo: { flexDirection: 'row', flexWrap: 'wrap', gap: espacamento.sm },

@@ -132,6 +132,73 @@ export interface CentralInconsistencias {
   itens: InconsistenciaItem[];
 }
 
+/**
+ * Métrica do "Resumo do time" cujo ranking se está vendo. Cada card da Central
+ * abre a mesma tela com uma destas.
+ */
+export type MetricaRanking =
+  | 'EXTRAS_50'
+  | 'EXTRAS_100'
+  | 'FALTAS'
+  | 'ATRASOS'
+  | 'TAC'
+  | 'CONFLITOS';
+
+/** Um dia de ausência (detalhe do ranking de faltas). */
+export interface DiaFaltaRanking {
+  data: string;
+  diaSemana: number;
+  ehFeriado: boolean;
+  /** `FALTA` (simples) · `FALTA_DEBITO` (débito de horas) · `ATESTADO` (abonada). */
+  tipo: 'FALTA' | 'FALTA_DEBITO' | 'ATESTADO';
+  debito: boolean;
+  /** Horas lançadas como devidas por esta falta. */
+  devidasMs: number;
+}
+
+/** Um dia com atraso na entrada (detalhe do ranking de atrasos). */
+export interface DiaAtrasoRanking {
+  data: string;
+  diaSemana: number;
+  minutos: number;
+  entradaPrevista: string | null;
+}
+
+/** Um dia em TAC e o(s) motivo(s) (detalhe do ranking de TAC). */
+export interface DiaTacRanking {
+  data: string;
+  diaSemana: number;
+  ehFeriado: boolean;
+  motivos: string[];
+}
+
+/** Um dia com conflito ponto↔ausência (detalhe do ranking de conflitos). */
+export interface DiaConflitoRanking {
+  data: string;
+  diaSemana: number;
+  motivoJustificativa: string | null;
+  statusJustificativa: string;
+  debito: boolean;
+}
+
+/**
+ * Uma pessoa no ranking: o **mesmo resumo** das cards da Central + o detalhe dia
+ * a dia dos seus problemas no ciclo. Como herda `CentralPessoaResumo`, serve
+ * direto para abrir o detalhe diário da pessoa.
+ */
+export interface RankingPessoa extends CentralPessoaResumo {
+  faltasDetalhe: DiaFaltaRanking[];
+  atrasosDetalhe: DiaAtrasoRanking[];
+  tacDetalhe: DiaTacRanking[];
+  conflitosDetalhe: DiaConflitoRanking[];
+}
+
+/** Base dos rankings do time: uma resposta serve às seis métricas. */
+export interface CentralRankings {
+  periodo: CentralPeriodo;
+  pessoas: RankingPessoa[];
+}
+
 /** Uma das quatro marcações canônicas do dia, na ordem em que acontecem. */
 export type MarcacaoCanonica =
   | 'ENTRADA'
@@ -248,6 +315,16 @@ export const centralJornadaService = {
       '/central-jornada/inconsistencias',
       { ciclo: String(ciclo) },
     );
+  },
+
+  /**
+   * Base dos rankings do time no ciclo (resumo por pessoa + detalhe dos dias de
+   * falta, atraso, TAC e conflito). A ordenação por métrica é feita na tela.
+   */
+  rankings(ciclo = 0): Promise<CentralRankings> {
+    return apiClient.get<CentralRankings>('/central-jornada/rankings', {
+      ciclo: String(ciclo),
+    });
   },
 
   /**

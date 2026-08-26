@@ -260,6 +260,84 @@ export interface MarcacaoInvalidaItem {
   devidasMs: number;
 }
 
+/**
+ * Um dia de ausência de uma pessoa no ciclo (detalhe do ranking de faltas).
+ *
+ * `tipo` distingue as três naturezas que o contador único de `faltas` reúne:
+ * `FALTA` (ausência simples), `FALTA_DEBITO` (marcada como débito de horas) e
+ * `ATESTADO` (abonada). O número total **não muda** por isso — o detalhe apenas
+ * mostra do que ele é feito.
+ */
+export interface DiaFaltaRanking {
+  data: string;
+  diaSemana: number;
+  ehFeriado: boolean;
+  tipo: 'FALTA' | 'FALTA_DEBITO' | 'ATESTADO';
+  /** true quando a falta está marcada como débito de horas (efetivo). */
+  debito: boolean;
+  /** Horas lançadas como devidas por esta falta. */
+  devidasMs: number;
+}
+
+/** Um dia com atraso na entrada (detalhe do ranking de atrasos). */
+export interface DiaAtrasoRanking {
+  data: string;
+  diaSemana: number;
+  /** Minutos totais de atraso além da tolerância do turno. */
+  minutos: number;
+  /** Horário de entrada esperado pela escala ("HH:mm"), quando há turno. */
+  entradaPrevista: string | null;
+}
+
+/** Um dia em TAC e o(s) motivo(s) (detalhe do ranking de TAC). */
+export interface DiaTacRanking {
+  data: string;
+  diaSemana: number;
+  ehFeriado: boolean;
+  /** Por que o dia é TAC (excesso de extras, intervalo fora da faixa...). */
+  motivos: string[];
+}
+
+/** Um dia com conflito ponto↔ausência (detalhe do ranking de conflitos). */
+export interface DiaConflitoRanking {
+  data: string;
+  diaSemana: number;
+  /** Motivo da ausência lançada no mesmo dia em que houve batida. */
+  motivoJustificativa: string | null;
+  statusJustificativa: string;
+  debito: boolean;
+}
+
+/**
+ * Uma pessoa no ranking do time: o **mesmo resumo** exibido na Central
+ * (`CentralPessoaResumo`, calculado pela mesma função) mais o **detalhe dia a
+ * dia** dos seus problemas no ciclo.
+ *
+ * Herdar o resumo inteiro é deliberado: garante que os números do ranking sejam,
+ * por construção, os mesmos das cards da Central (não há segundo cálculo que
+ * possa divergir) e permite abrir o detalhe diário da pessoa direto do ranking,
+ * que já recebe `CentralPessoaResumo`.
+ *
+ * As horas extras não têm detalhe por dia: ali o número **é** a informação.
+ */
+export interface RankingPessoa extends CentralPessoaResumo {
+  faltasDetalhe: DiaFaltaRanking[];
+  atrasosDetalhe: DiaAtrasoRanking[];
+  tacDetalhe: DiaTacRanking[];
+  conflitosDetalhe: DiaConflitoRanking[];
+}
+
+/**
+ * Base dos rankings do time no ciclo. **Uma única resposta** serve às seis
+ * métricas do "Resumo do time" (extras 50%, extras 100%, faltas, atrasos, TAC e
+ * conflitos): a ordenação é apresentação e fica na tela; aqui vão os números e
+ * o detalhe, sem contrato diferente por métrica.
+ */
+export interface CentralRankings {
+  periodo: CentralPeriodo;
+  pessoas: RankingPessoa[];
+}
+
 /** Relatório de marcações inválidas do ciclo (26→25). */
 export interface CentralMarcacoesInvalidas {
   periodo: CentralPeriodo;
@@ -1063,6 +1141,114 @@ export class CentralJornadaService {
         total: itens.length,
       },
       itens,
+    };
+  }
+
+  /**
+   * Base dos RANKINGS do time no ciclo — o que abre ao tocar numa card do
+   * "Resumo do time" da Central (extras 50%, extras 100%, faltas, atrasos, TAC
+   * ou conflitos).
+   *
+   * Devolve **uma única resposta para as seis métricas**: por pessoa, o mesmo
+   * `CentralPessoaResumo` das cards mais o detalhe dia a dia dos seus problemas.
+   * Duas razões para ser assim, e não um endpoint por métrica:
+   *
+   * - **os números não podem divergir.** O resumo vem de `calcularPessoa`, a
+   *   mesma função que alimenta a Central; não há segundo cálculo capaz de
+   *   discordar da card que o usuário acabou de tocar;
+   * - **uma passada só pelo ciclo** serve as seis telas, e o contrato fica
+   *   estável (sem união de formatos por métrica).
+   *
+   * A **ordenação é apresentação** e fica na tela: cada métrica ordena do maior
+   * para o menor pelo seu próprio campo. Aqui as pessoas saem em ordem
+   * alfabética (como `carregarCiclo` as traz).
+   *
+   * As horas extras não têm detalhe por dia — ali o número é a informação.
+   */
+  async rankingsCiclo(deslocamento = 0): Promise<CentralRankings> {
+    const dados = await this.carregarCiclo(deslocamento);
+    const batidas = dados.batidas as BatidaMin[];
+
+    const pessoas: RankingPessoa[] = await Promise.all(
+      dados.pessoas.map(async (c) => {
+        const regras = await this.regrasDe(c.tipoContratoJornadaId);
+        const { resumo, dias } = this.calcularPessoa(
+          this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador),
+          batidas,
+          dados.ausencias,
+          dados.feriadoMap,
+          dados.inicio,
+          dados.fimExclusivo,
+          dados.limite,
+          c,
+          dados.ancora,
+          regras,
+        );
+
+        // Cada detalhe abaixo é a lista dos dias que geraram o contador
+        // correspondente do resumo — por isso o tamanho de cada array é igual ao
+        // número exibido na card (garantido por teste).
+        const faltasDetalhe: DiaFaltaRanking[] = dias
+          .filter(
+            (d) =>
+              d.tipo === 'FALTA' ||
+              d.tipo === 'FALTA_DEBITO' ||
+              d.tipo === 'ATESTADO',
+          )
+          .map((d) => ({
+            data: d.data,
+            diaSemana: d.diaSemana,
+            ehFeriado: d.ehFeriado,
+            tipo: d.tipo as DiaFaltaRanking['tipo'],
+            debito: d.debito ?? false,
+            devidasMs: d.devidasMs,
+          }));
+
+        const atrasosDetalhe: DiaAtrasoRanking[] = dias
+          .filter((d) => d.atrasoMinutos != null)
+          .map((d) => ({
+            data: d.data,
+            diaSemana: d.diaSemana,
+            minutos: d.atrasoMinutos as number,
+            entradaPrevista: d.entradaPrevista ?? null,
+          }));
+
+        const tacDetalhe: DiaTacRanking[] = dias
+          .filter((d) => d.tac)
+          .map((d) => ({
+            data: d.data,
+            diaSemana: d.diaSemana,
+            ehFeriado: d.ehFeriado,
+            motivos: d.motivosTac,
+          }));
+
+        const conflitosDetalhe: DiaConflitoRanking[] = dias
+          .filter((d) => d.conflitoAusencia)
+          .map((d) => ({
+            data: d.data,
+            diaSemana: d.diaSemana,
+            motivoJustificativa: d.conflitoAusencia!.motivoJustificativa,
+            statusJustificativa: d.conflitoAusencia!.statusJustificativa,
+            debito: d.conflitoAusencia!.debito,
+          }));
+
+        return {
+          colaboradorId: c.id,
+          nome: c.nome,
+          primeiroNome: primeiroNome(c.nome),
+          funcao: c.funcao,
+          ...resumo,
+          faltasDetalhe,
+          atrasosDetalhe,
+          tacDetalhe,
+          conflitosDetalhe,
+        };
+      }),
+    );
+
+    return {
+      periodo: this.montarPeriodo(dados.periodo, deslocamento),
+      pessoas,
     };
   }
 

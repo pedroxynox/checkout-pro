@@ -11,9 +11,10 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 - **Faz:** agrega dia a dia as batidas do Relógio Ponto por pessoa no ciclo;
   calcula totais e saldo (individual e do time); monta o resumo, o detalhe por
   pessoa (drill-down), o painel de inconsistências, o **relatório de marcações
-  inválidas** (quantas marcações faltam em cada dia e quais), a exportação para
-  revisão e o comparativo entre ciclos; marca/desmarca uma falta como débito de
-  horas.
+  inválidas** (quantas marcações faltam em cada dia e quais), a **base dos
+  rankings do time** (resumo por pessoa + detalhe dos dias de falta, atraso, TAC
+  e conflito), a exportação para revisão e o comparativo entre ciclos;
+  marca/desmarca uma falta como débito de horas.
 - **Não faz** (fica em outro módulo): registrar/corrigir batidas e o cálculo do
   dia (fica em [`ponto`](ponto.md), cujo `calcularJornadaDia` é reaproveitado);
   fechar/reabrir o ciclo (fica em [`ciclo-folha`](ciclo-folha.md)); as regras de
@@ -23,8 +24,8 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `central-jornada.controller.ts` | Rotas HTTP do portal | 89 |
-| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 1388 |
+| `central-jornada.controller.ts` | Rotas HTTP do portal | 100 |
+| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 1574 |
 | `central-jornada.module.ts` | Ligações (DI) do módulo | 25 |
 | `dto/central-jornada.dto.ts` | Validação de entrada (marcar débito) | 7 |
 
@@ -41,6 +42,7 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 |---|---|---|
 | `GET /central-jornada` | `CENTRAL_JORNADA` | Resumo do ciclo: por pessoa + totais do time (`ciclo` 0 atual, −1...). |
 | `GET /central-jornada/inconsistencias` | `CENTRAL_JORNADA` | Painel de problemas (incompletas, duplicadas, conflitos, atrasos, TAC). |
+| `GET /central-jornada/rankings` | `CENTRAL_JORNADA` | Base dos rankings do time: resumo por pessoa + detalhe dos dias de falta, atraso, TAC e conflito. |
 | `GET /central-jornada/marcacoes-invalidas` | `CENTRAL_JORNADA` | Relatório de ajuste do ponto: dia a dia, quantas marcações faltam e **quais**. |
 | `GET /central-jornada/exportacao` | `CENTRAL_JORNADA` | Dados do ciclo para revisão antes do fechamento (uma linha por dia relevante). |
 | `GET /central-jornada/comparativos` | `CENTRAL_JORNADA` | Totais do time dos últimos `qtd` ciclos (1..12). |
@@ -65,6 +67,30 @@ diário — o drill-down abre rápido mesmo com muitos colaboradores.
 #### `inconsistenciasCiclo(deslocamento = 0)`
 Varre o dia a dia de cada pessoa e devolve a lista achatada dos problemas:
 `INCOMPLETA`, `DUPLICADA`, `CONFLITO_AUSENCIA`, `ATRASO`, `TAC`.
+
+#### `rankingsCiclo(deslocamento = 0)`
+- **Devolve:** `CentralRankings` — por pessoa, o **mesmo `CentralPessoaResumo`**
+  das cards da Central (`RankingPessoa` o estende) mais o detalhe dia a dia dos
+  seus problemas: `faltasDetalhe`, `atrasosDetalhe`, `tacDetalhe` e
+  `conflitosDetalhe`.
+- **Para que serve:** é o que abre ao tocar numa card do "Resumo do time"
+  (extras 50%, extras 100%, faltas, atrasos, TAC ou conflitos).
+- **Uma resposta para as seis métricas**, e não um endpoint por métrica, por dois
+  motivos: (a) **os números não podem divergir** — o resumo vem de
+  `calcularPessoa`, a mesma função que alimenta a Central, então não existe
+  segundo cálculo capaz de discordar da card que o usuário acabou de tocar; e
+  (b) **uma passada só** pelo ciclo serve as seis telas, com um contrato estável
+  (sem união de formatos por métrica).
+- **A ordenação é apresentação e fica na tela.** Aqui as pessoas saem em ordem
+  alfabética; cada métrica ordena pelo seu campo do maior para o menor.
+- **Invariante garantida por teste:** o tamanho de cada lista de detalhe é igual
+  ao contador correspondente do resumo (`faltasDetalhe.length === faltas` etc.).
+  Se divergissem, o ranking mentiria.
+- **Faltas incluem atestado.** O contador `faltas` sempre reuniu ausência
+  simples, falta com débito e atestado; o detalhe apenas mostra do que ele é
+  feito (campo `tipo`), **sem mudar o número**.
+- **Extras não têm detalhe por dia** — ali o número é a informação.
+- **Não escreve nada:** é leitura.
 
 #### `marcacoesInvalidasCiclo(deslocamento = 0)`
 - **Devolve:** `CentralMarcacoesInvalidas` — um item por **dia com marcação
@@ -154,6 +180,9 @@ faltas, TAC, conflitos e atrasos.
   `ENCERRAMENTO`), reusado de [`ponto`](ponto.md).
 - `MarcacaoInvalidaItem.confianca`: `ConfiancaAnalise` (`ALTA` · `BAIXA`),
   reusado de [`ponto`](ponto.md).
+- `DiaFaltaRanking.tipo`: `FALTA` · `FALTA_DEBITO` · `ATESTADO` — as três
+  naturezas que o contador único de `faltas` reúne (subconjunto de
+  `CentralDiaDetalhe.tipo`).
 - `StatusJornadaPonto` (reusado de [`ponto`](ponto.md)).
 - Não há máquina de estados própria (o módulo é de leitura/agregação, exceto o
   débito da falta).
@@ -223,19 +252,28 @@ faltas, TAC, conflitos e atrasos.
    **Não altera o cálculo das horas** — um dia incompleto continua gerando
    déficit pela regra 3; o relatório apenas expõe esse custo em `devidasMs`, para
    que o ajuste seja priorizado.
+10. **Ranking e card mostram o mesmo número, por construção.** `RankingPessoa`
+   **estende** `CentralPessoaResumo` em vez de recalcular: os valores vêm da
+   mesma `calcularPessoa` que alimenta o resumo, e o detalhe de cada métrica é a
+   lista dos dias que geraram aquele contador — invariante coberta por teste
+   (`faltasDetalhe.length === faltas` etc.). É também o que permite abrir o
+   detalhe diário direto do ranking, já que a tela de detalhe recebe um
+   `CentralPessoaResumo`. **O contador de faltas inclui atestado** (sempre
+   incluiu): o detalhe mostra do que ele é feito, sem mudar o número.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito) | 21 |
 | `marcacoes-invalidas.service.spec.ts` | Relatório de marcações faltantes: entrada esquecida, encerramento, as duas do intervalo, totais, ordenação, sem turno — e os dias legítimos que **não** entram (jornada curta válida, dia completo, dia sem registro) | 9 |
+| `rankings.service.spec.ts` | Base dos rankings: **detalhe do mesmo tamanho que o contador** de cada card, faltas separadas por tipo (atestado/débito), atrasos com minutos e turno, TAC com motivos, conflitos, pessoas zeradas e igualdade com `resumoCiclo` | 8 |
 | `saldo-time.spec.ts` | Regra do saldo do time (`contribuicaoSaldoTime`) | 4 |
 | `central-jornada.controller.spec.ts` | Permissão do débito de horas e do relatório de marcações inválidas | 2 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `central-jornada.service.ts` (1388 linhas) concentra carga, cálculo e
+- 🔧 `central-jornada.service.ts` (1574 linhas) concentra carga, cálculo e
   agregação; os tipos de resposta (`Central*`) e o cálculo diário podem ser
   extraídos conforme crescer.
 - 🔧 **Duas respostas para "o que falta no dia".** O painel de inconsistências
@@ -245,10 +283,12 @@ faltas, TAC, conflitos e atrasos.
   cálculo da jornada e nos seus testes congelados. Quando as heurísticas da
   análise estiverem validadas na operação, o painel deve passar a consumi-la — aí
   some a duplicidade.
-- 🔧 `marcacoesInvalidasCiclo` e `inconsistenciasCiclo` percorrem o ciclo de forma
-  independente (cada uma chama `calcularPessoa` para todo o time). Como a tela da
-  Central pede as duas, vale unificar a varredura se o tempo de resposta
-  incomodar.
+- 🔧 `resumoCiclo`, `inconsistenciasCiclo`, `rankingsCiclo` e
+  `marcacoesInvalidasCiclo` percorrem o ciclo de forma independente (cada uma
+  chama `calcularPessoa` para todo o time). A tela da Central pede três delas ao
+  abrir, então vale unificar a varredura (ou cachear o ciclo por requisição) se o
+  tempo de resposta incomodar. Nota: `rankingsCiclo` já devolve tudo o que
+  `resumoCiclo` devolve — a longo prazo um pode substituir o outro.
 - ✅ Inclui **todos os tipos de contrato** (Fase 2 do spec
   `solidez-contratos-jornada`): o filtro fixo por `tipoContrato` foi removido e as
   regras de jornada/TAC são resolvidas **por pessoa** via

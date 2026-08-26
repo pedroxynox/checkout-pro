@@ -26,6 +26,7 @@ import { CentralJornadaScreen } from '../screens/ponto/CentralJornadaScreen';
 import { DetalheJornadaScreen } from '../screens/ponto/DetalheJornadaScreen';
 import { InconsistenciasScreen } from '../screens/ponto/InconsistenciasScreen';
 import { MarcacoesInvalidasScreen } from '../screens/ponto/MarcacoesInvalidasScreen';
+import { RankingTimeScreen } from '../screens/ponto/RankingTimeScreen';
 import { ExportarCicloScreen } from '../screens/ponto/ExportarCicloScreen';
 import { FeriadosScreen } from '../screens/ponto/FeriadosScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
@@ -188,6 +189,10 @@ export function AppNavigator(): React.ReactElement {
           component={MarcacoesInvalidasScreen}
           options={{ title: 'Marcações inválidas' }}
         />
+      )}
+      {podeAcessar('CENTRAL_JORNADA') && (
+        // O título vem da própria tela (muda conforme a métrica do ranking).
+        <Stack.Screen name="RankingTime" component={RankingTimeScreen} />
       )}
       {podeAcessar('CENTRAL_JORNADA') && (
         <Stack.Screen

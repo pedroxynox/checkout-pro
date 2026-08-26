@@ -15,6 +15,7 @@ import {
   CentralInconsistencias,
   CentralJornadaService,
   CentralMarcacoesInvalidas,
+  CentralRankings,
   CentralResumo,
 } from './central-jornada.service';
 
@@ -47,6 +48,16 @@ export class CentralJornadaController {
     @Query('ciclo') ciclo?: string,
   ): Promise<CentralInconsistencias> {
     return this.service.inconsistenciasCiclo(deslocamentoDe(ciclo));
+  }
+
+  /**
+   * Base dos rankings do time no ciclo (o que abre ao tocar numa card do
+   * "Resumo do time"): resumo por pessoa + detalhe dos dias de falta, atraso,
+   * TAC e conflito. A ordenação por métrica é feita na tela.
+   */
+  @Get('rankings')
+  rankings(@Query('ciclo') ciclo?: string): Promise<CentralRankings> {
+    return this.service.rankingsCiclo(deslocamentoDe(ciclo));
   }
 
   /**
