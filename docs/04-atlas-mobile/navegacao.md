@@ -14,7 +14,7 @@ como cada **área** é liberada conforme o perfil/permissão do usuário. Usa o
 | `RootNavigator.tsx` | `RootNavigator` | Decide entre login e app conforme o `AuthContext`; monta `NavigationContainer`, tema, `linking` (URLs na web) e os provedores de Notificações/Assistente. | 107 |
 | `MainTabs.tsx` | `MainTabs` | Barra de abas inferior (Início, Tarefas, Ponto central, Notificações, Perfil), com selos de pendências/não lidas. | 206 |
 | `AppNavigator.tsx` | `AppNavigator` | Pilha de telas de módulo; cada rota só entra na pilha se `podeAcessar(funcionalidade)`. | 414 |
-| `areas.ts` | `AREAS`, `Area` | Catálogo das áreas funcionais (rota, ícone, título, `funcionalidade` exigida, marca `emBreve`) usado pela Home e pelo menu. | 172 |
+| `areas.ts` | `AREAS`, `Area` | Catálogo das áreas funcionais (rota, ícone, título, `funcionalidade` exigida, marca `emBreve`) usado pela Home e pelo menu. | 191 |
 | `types.ts` | `RootStackParamList`, `MainTabParamList`, `RotaApp`, `PropsTela`, `PropsTabInicio` | Tipagem de todas as rotas e seus parâmetros. | 94 |
 
 ## 3. Fluxo de login → app
@@ -51,9 +51,20 @@ O coração da navegação por perfil está em duas peças que se combinam:
 ### 5.1 `areas.ts` — catálogo de áreas
 Cada `Area` aponta para uma `rota`, um `icone`, um `titulo`/`descricao` e a
 `funcionalidade` exigida. A Home percorre `AREAS` e exibe **apenas** as áreas
-cuja funcionalidade o usuário pode acessar. Áreas marcadas com `emBreve: true`
-(Alertas de Fila, Normativas, Indicador de Quebra) ficam **ocultas do menu**
-mesmo para quem tem permissão, até serem concluídas.
+cuja funcionalidade o usuário pode acessar. Duas marcas mudam **onde** (ou se) a
+área aparece, sem tocar em permissão nem em rota:
+
+- **`emBreve: true`** (Alertas de Fila, Normativas, Indicador de Quebra) — a área
+  fica **oculta do menu** mesmo para quem tem permissão, até ser concluída.
+- **`noCabecalho: true`** (hoje só o **Centro de Controle**) — a área sai dos
+  "Acessos rápidos" **e** do menu lateral do desktop, e vira um **botão discreto
+  no cabeçalho** da Home, ao lado da identidade do usuário. O rótulo do botão vem
+  de `tituloCurto` (ex.: "Central"), mas o `titulo` completo continua sendo lido
+  por leitores de tela. Remover a marca devolve a área à grade, sem mais nada a
+  mudar.
+
+A diferença entre as duas: `emBreve` esconde algo que **não existe ainda**;
+`noCabecalho` apenas **muda de lugar** algo que existe e é alcançável.
 
 ### 5.2 `podeAcessar` — a regra de exibição
 Vem do `AuthContext` (`podeAcessar(funcionalidade)`). A fonte de verdade são as
@@ -72,6 +83,9 @@ ajustes por login da Central de Permissões); se ausentes, cai no espelho local
   individual: dados pessoais têm funcionalidade própria
   (`COLABORADORES_VISUALIZAR` / `COLABORADORES_PERFIL`).
 - **IMPORTADOR** — apenas Importações.
+
+O botão do cabeçalho segue a **mesma** funcionalidade da área (`OPERADORES_CRUD`
+no caso da Central): quem não tem acesso não o vê em lugar nenhum.
 
 ### 5.3 Defesa em profundidade no `AppNavigator`
 Além de a Home esconder o que o perfil não vê, o `AppNavigator` **só inclui a
@@ -102,8 +116,11 @@ histórico do navegador: cada tela tem sua URL (ex.: `tarefas`, `importacoes`,
 "voltar" retorna à tela anterior do app em vez de sair do site.
 
 ## 8. Testes
-Não se aplica — não há teste dedicado aos arquivos de navegação. A lógica de
-permissão que a navegação consome é testada em `auth`/backend (ver
+Não há teste dedicado aos arquivos de navegação, mas `AREAS` e as suas marcas são
+exercitadas pela Home: `screens/HomeScreen.test.tsx` percorre o catálogo com a
+regra real de `podeAcessar` e cobre as áreas visíveis por perfil, o botão
+"Central" do cabeçalho (área `noCabecalho`) e a navegação ao tocar. A lógica de
+permissão em si é testada em `auth`/backend (ver
 [Hooks e utilidades §3.2](hooks-e-utilidades.md#32-useauth--authcontext)).
 
 ## 9. Riscos e dívidas

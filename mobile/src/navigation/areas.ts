@@ -48,6 +48,25 @@ export interface Area {
    * desenvolvedor. Basta remover esta marca para voltar a exibi-la.
    */
   emBreve?: boolean;
+  /**
+   * Área que vive no **cabeçalho** da Home, não na lista de acessos.
+   *
+   * Quando `true`, a área sai dos "Acessos rápidos" (e do menu lateral no
+   * desktop) e passa a ser um botão discreto no topo, ao lado da identidade do
+   * usuário. É só uma mudança de LUGAR: a rota, o ícone e a `funcionalidade`
+   * exigida continuam os mesmos, e o botão só aparece para quem tem acesso.
+   *
+   * Diferente de `emBreve`, que esconde a área porque ela não existe ainda:
+   * aqui a área existe e é alcançável — apenas não ocupa espaço na grade.
+   * Remover esta marca devolve a área à lista, sem mais nada a mudar.
+   */
+  noCabecalho?: boolean;
+  /**
+   * Rótulo curto para o botão do cabeçalho (onde não cabe o título inteiro).
+   * Sem ele, usa-se o `titulo`. O nome completo continua sendo lido por
+   * leitores de tela.
+   */
+  tituloCurto?: string;
 }
 
 export const AREAS: Area[] = [
@@ -136,6 +155,10 @@ export const AREAS: Area[] = [
     descricao: 'Gestão: cadastro de colaboradores e configurações',
     icone: 'options-outline',
     funcionalidade: 'OPERADORES_CRUD',
+    // Vive no cabeçalho da Home (botão "Central"), não nos acessos rápidos: é
+    // uma área de gestão de uso pontual e ocupava um espaço nobre da grade.
+    noCabecalho: true,
+    tituloCurto: 'Central',
   },
   {
     rota: 'AlertasFila',
