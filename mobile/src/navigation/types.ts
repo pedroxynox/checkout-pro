@@ -43,6 +43,8 @@ export type RootStackParamList = {
     pessoa: CentralPessoaResumo;
   };
   Inconsistencias: undefined;
+  /** Relatório de marcações faltantes do ciclo (aberto pela Central). */
+  MarcacoesInvalidas: undefined;
   ExportarCiclo: undefined;
   Feriados: undefined;
   Checklist: undefined;

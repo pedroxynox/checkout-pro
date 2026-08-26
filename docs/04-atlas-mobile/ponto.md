@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `mobile/src/screens/ponto/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/ponto/`
 
 # Área: `ponto`
 
@@ -7,14 +7,16 @@ Registro de ponto por **comprovante**: escolher o colaborador, ver a **jornada
 do dia** calculada a partir das batidas e registrar/corrigir/remover batidas —
 com **leitura automática por câmera/OCR** (só no APK) — além do controle do
 **ciclo de folha (26→25)** pela Central de Jornada (saldo, extras, faltas,
-inconsistências, fechamento e feriados).
+inconsistências, **marcações inválidas**, fechamento e feriados).
 
 ## 2. Quem usa (perfis)
 - **Fiscal**: registra batidas novas (a hora do comprovante) e pode informar a
   própria falta do dia; não vê os botões de correção/exclusão.
 - **Gestão que corrige o ponto** (`PONTO_EDITAR`): corrige e exclui batidas.
 - **Central de Jornada** (`CENTRAL_JORNADA`): resumo do ciclo, inconsistências,
-  revisão e fechamento do ciclo, e gestão de feriados.
+  relatório de marcações inválidas, revisão e fechamento do ciclo, e gestão de
+  feriados. Quem **vê** o relatório precisa de `CENTRAL_JORNADA`; quem **ajusta**
+  a batida precisa de `PONTO_EDITAR` (o relatório é só leitura).
 - **Marcar falta como débito** (`OPERADORES_AUSENCIAS`): no detalhe da jornada.
 - **Reabrir ciclo** (`ADMIN_DADOS`): libera edições de um ciclo fechado.
 - Ver [Perfis e permissões](../01-produto/perfis-e-permissoes.md).
@@ -23,9 +25,10 @@ inconsistências, fechamento e feriados).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `RegistroPontoScreen.tsx` | Tela principal: busca, jornada do dia, batidas e leitor | 1213 |
-| `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, lista por pessoa, comparativo) | 670 |
+| `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, lista por pessoa, comparativo) | 697 |
 | `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 344 |
 | `InconsistenciasScreen.tsx` | Problemas do ciclo agrupados por dia | 325 |
+| `MarcacoesInvalidasScreen.tsx` | Marcações que faltam registrar: quantas e quais, por dia | 500 |
 | `ExportarCicloScreen.tsx` | Revisão dos totais e fechar/reabrir o ciclo | 246 |
 | `FeriadosScreen.tsx` | Feriados nacionais (automáticos) + estaduais/municipais (manuais) | 214 |
 | `leitorAoVivo.tsx` / `leitorAoVivo.native.tsx` | Leitor ao vivo (câmera): vazio na web, ML Kit no APK | 23 / 325 |
@@ -46,8 +49,14 @@ inconsistências, fechamento e feriados).
 4. **Painel da jornada:** mostra status (trabalhando/intervalo/encerrado/
    incompleto/sem registro), trabalhado, intervalo, extras (50%/100%), carga
    base, alerta de TAC iminente e "Como é calculado?".
-5. **Ciclo:** pela Central de Jornada abre inconsistências, revisão/fechamento
-   e feriados; toca numa pessoa para o detalhe diário.
+5. **Ciclo:** pela Central de Jornada abre inconsistências, **marcações
+   inválidas**, revisão/fechamento e feriados; toca numa pessoa para o detalhe
+   diário. O atalho "Marcações inválidas" mostra no rótulo **quantas marcações**
+   faltam no ciclo (não quantos dias).
+6. **Ajuste do ponto:** em `MarcacoesInvalidasScreen` o gestor vê, dia por dia,
+   quem tem marcação faltando, **quais** faltam e as horas que existem; com isso
+   volta ao `RegistroPontoScreen` (ou ao detalhe da jornada) para lançar a batida
+   que falta. O relatório não edita nada — só aponta.
 Cada tela trata os estados **carregando / erro / vazio**.
 
 ## 5. Dados e integração com o backend
@@ -63,6 +72,7 @@ Cada tela trata os estados **carregando / erro / vazio**.
 | Informar falta | `fiscaisService.informarFalta()` | `POST /fiscais/eu/falta` |
 | Resumo do ciclo | `centralJornadaService.resumo(ciclo)` | `GET /central-jornada` |
 | Inconsistências | `centralJornadaService.inconsistencias(ciclo)` | `GET /central-jornada/inconsistencias` |
+| Marcações inválidas | `centralJornadaService.marcacoesInvalidas(ciclo)` | `GET /central-jornada/marcacoes-invalidas` |
 | Comparativo | `centralJornadaService.comparativos(qtd)` | `GET /central-jornada/comparativos` |
 | Detalhe por pessoa | `centralJornadaService.pessoa(id, ciclo)` | `GET /central-jornada/pessoa/:id` |
 | Marcar débito | `centralJornadaService.marcarDebito(id, debito)` | `POST /central-jornada/ausencia/:id/debito` |
@@ -112,6 +122,16 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   **não aparece em domingo nem em feriado**: faltar nesses dias fica apenas como
   ausência e o servidor recusaria a marcação. O botão segue disponível nos
   demais dias para quem tem `OPERADORES_AUSENCIAS`.
+- **Marcações inválidas:** os dias vêm **abertos por padrão** (o estado guarda os
+  dias *fechados*), porque a tela é uma lista de trabalho — o gestor quer ver o
+  que ajustar sem ter que tocar em cada dia. É a diferença proposital em relação
+  a `InconsistenciasScreen`, que abre recolhida por ser um painel de leitura.
+  Filtra por pessoa (busca) e pela **marcação que falta** (`Segmentado`:
+  Todas · Entrada · Saída · Retorno · Fim). Cada item mostra, nessa ordem: o que
+  falta (frase + selos vermelhos), as horas que existem com o turno esperado, as
+  horas devidas que o dia gerou e — só quando `confianca === 'BAIXA'` — um aviso
+  laranja com a `observacao` do servidor. **Hipótese nunca é exibida como fato**:
+  sem o aviso, o item é conclusivo.
 
 ## 7. Lógica pura / utilidades
 - `leituraComprovanteUtil.ts`: `leituraCompleta(texto)` (gatilho do leitor ao
@@ -123,6 +143,10 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
 - Locais da tela: `seloStatus`/`descricaoStatus` (estados da jornada),
   `mascaraHora`, `corConfianca`/`rotuloConfianca` (confiança da leitura) e
   `progressoCiclo` (dias percorridos do ciclo, na Central).
+- `MarcacoesInvalidasScreen.tsx`: `rotuloMarcacao` (nome da marcação na tela) e
+  `seloQuantidade` (amarelo quando falta 1, vermelho quando faltam 2+). A
+  **decisão** de quais marcações faltam é do servidor — a tela não recalcula
+  nada, só apresenta.
 
 ## 8. Componentes e hooks compartilhados usados
 - `useRequisicao` (carregamento com estados) — ver [Hooks e utilidades](hooks-e-utilidades.md).
@@ -137,6 +161,7 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
 | `RegistroPontoScreen.test.tsx` | Busca, jornada, registro manual, limite de 4, erro de duplicidade e leitura do comprovante | 6 |
 | `ExportarCicloScreen.test.tsx` | Revisão (totais) e fechamento do ciclo com confirmação | 2 |
 | `InconsistenciasScreen.test.tsx` | Agrupamento por dia e filtro por pessoa | 2 |
+| `MarcacoesInvalidasScreen.test.tsx` | O que falta em cada dia (já expandido), horas registradas + turno, motivo da conferência, resumo, filtros por pessoa e por marcação, recolher dia e estado vazio | 8 |
 | `leituraComprovanteUtil.test.ts` | Gatilho `leituraCompleta` e extração `horaLida` (tolerante ao OCR) | 4 |
 | `montarTextoOcr.test.ts` | Reconstrução do texto pela geometria do OCR | 3 |
 

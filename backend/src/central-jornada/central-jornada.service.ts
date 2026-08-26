@@ -24,6 +24,14 @@ import {
   diaPagaAdicional100,
   StatusJornadaPonto,
 } from '../ponto/ponto.domain';
+import {
+  ConfiancaAnalise,
+  MarcacaoCanonica,
+  SEQUENCIA_MARCACOES,
+  analisarMarcacoesDoDia,
+  descreverFaltantes,
+  horaMarcacaoHHmm,
+} from '../ponto/marcacoes-invalidas.domain';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
@@ -201,6 +209,81 @@ export interface CentralInconsistencias {
     total: number;
   };
   itens: InconsistenciaItem[];
+}
+
+/**
+ * Um dia com MARCAÇÕES INVÁLIDAS (relatório de ajuste do ponto): quantas
+ * marcações faltam naquele dia daquela pessoa e **quais**, com as horas que
+ * foram registradas para o gestor conferir o comprovante antes de ajustar.
+ *
+ * Diferente do `InconsistenciaItem` (que só diz "jornada incompleta"), aqui os
+ * tipos faltantes vêm estruturados e a entrada esquecida é identificada como
+ * tal — ver `analisarMarcacoesDoDia` em
+ * [`ponto/marcacoes-invalidas.domain`](../ponto/marcacoes-invalidas.domain.ts).
+ */
+export interface MarcacaoInvalidaItem {
+  colaboradorId: string;
+  nome: string;
+  primeiroNome: string;
+  funcao: FuncaoColaborador;
+  /** Dia (ISO) da ocorrência. */
+  data: string;
+  diaSemana: number;
+  ehFeriado: boolean;
+  /** Horário de entrada esperado pela escala ("HH:mm"), quando há turno. */
+  entradaPrevista: string | null;
+  /** Horas das marcações registradas no dia ("HH:mm"), em ordem cronológica. */
+  horasRegistradas: string[];
+  /** Marcações que o dia deveria ter (4). */
+  esperadas: number;
+  /** Marcações efetivamente registradas. */
+  registradas: number;
+  /** Quantas faltam. */
+  quantidadeFaltante: number;
+  /** QUAIS faltam, na ordem do dia. */
+  tiposFaltantes: MarcacaoCanonica[];
+  /** Como as registradas foram interpretadas, na ordem do dia. */
+  tiposPresentes: MarcacaoCanonica[];
+  /** `BAIXA` quando o resultado é a hipótese mais provável e pede conferência. */
+  confianca: ConfiancaAnalise;
+  /** Por que precisa de conferência (só quando `confianca` é `BAIXA`). */
+  observacao: string | null;
+  /** Frase pronta do que falta ("Falta registrar: entrada"). */
+  detalhe: string;
+  /**
+   * Horas lançadas como DEVIDAS neste dia. Um registro incompleto derruba o
+   * trabalhado do dia, e o déficit contra a carga-base vira hora devida — por
+   * isso o número aparece aqui: é o custo de deixar a marcação sem ajustar.
+   * O cálculo em si não muda (segue a regra do módulo); o relatório apenas o
+   * torna visível.
+   */
+  devidasMs: number;
+}
+
+/** Relatório de marcações inválidas do ciclo (26→25). */
+export interface CentralMarcacoesInvalidas {
+  periodo: CentralPeriodo;
+  totais: {
+    /** Dias com marcação faltante no ciclo. */
+    dias: number;
+    /** Quantas pessoas distintas têm pelo menos um dia a ajustar. */
+    pessoas: number;
+    /** Total de marcações faltantes (soma de `quantidadeFaltante`). */
+    marcacoesFaltantes: number;
+    /** Dias em que falta exatamente uma marcação. */
+    faltaUma: number;
+    /** Dias em que faltam exatamente duas. */
+    faltamDuas: number;
+    /** Dias em que faltam três ou mais. */
+    faltamTresOuMais: number;
+    /** Dias com `confianca: 'BAIXA'` (precisam de conferência humana). */
+    aConferir: number;
+    /** Quantos dias têm cada tipo de marcação faltando. */
+    porTipo: Record<MarcacaoCanonica, number>;
+    /** Horas devidas acumuladas nos dias com marcação faltante. */
+    devidasMs: number;
+  };
+  itens: MarcacaoInvalidaItem[];
 }
 
 /** Uma linha do relatório de exportação (um dia relevante de um colaborador). */
@@ -978,6 +1061,130 @@ export class CentralJornadaService {
         atrasos: contar('ATRASO'),
         tac: contar('TAC'),
         total: itens.length,
+      },
+      itens,
+    };
+  }
+
+  /**
+   * Relatório de MARCAÇÕES INVÁLIDAS do ciclo — a lista de trabalho de quem vai
+   * **ajustar o ponto**. Para cada dia já encerrado em que o registro ficou
+   * incompleto, diz quantas marcações faltam e **quais** (entrada, saída para o
+   * intervalo, retorno ou encerramento), com as horas registradas ao lado.
+   *
+   * Por que é um relatório separado do painel de inconsistências:
+   * - o painel mistura cinco naturezas de problema (incompleta, duplicada,
+   *   conflito, atraso, TAC) e, para as incompletas, só devolve a frase
+   *   posicional de `calcularJornadaDia` — que nunca acusa a **entrada**
+   *   esquecida, porque a classificação por ordem a encobre;
+   * - aqui cada dia passa por `analisarMarcacoesDoDia`, que confronta a 1ª
+   *   batida com o turno da escala para saber se ela pode mesmo ser a entrada, e
+   *   devolve os tipos faltantes estruturados + o grau de confiança.
+   *
+   * Só entram dias `INCOMPLETO`: dias sem nenhuma batida são falta/folga (outro
+   * fluxo) e a jornada curta válida de duas batidas (até 4h50 em contrato sem
+   * intervalo obrigatório) é um dia **completo** — incluí-la encheria o
+   * relatório de falso positivo.
+   *
+   * Os filtros por pessoa/tipo ficam na tela (a lista do ciclo é leve).
+   */
+  async marcacoesInvalidasCiclo(
+    deslocamento = 0,
+  ): Promise<CentralMarcacoesInvalidas> {
+    const dados = await this.carregarCiclo(deslocamento);
+    const batidas = dados.batidas as BatidaMin[];
+    const itens: MarcacaoInvalidaItem[] = [];
+
+    for (const c of dados.pessoas) {
+      const ids = this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador);
+      const regras = await this.regrasDe(c.tipoContratoJornadaId);
+      const { dias } = this.calcularPessoa(
+        ids,
+        batidas,
+        dados.ausencias,
+        dados.feriadoMap,
+        dados.inicio,
+        dados.fimExclusivo,
+        dados.limite,
+        c,
+        dados.ancora,
+        regras,
+      );
+
+      // Horas das batidas da pessoa por dia — o relatório mostra as marcações
+      // que existem, não só as que faltam (é o que permite conferir e ajustar).
+      const horasPorDia = new Map<string, Date[]>();
+      for (const b of batidas) {
+        if (!this.daPessoa(b, ids)) continue;
+        const k = inicioDoDia(b.data).toISOString();
+        const arr = horasPorDia.get(k) ?? [];
+        arr.push(b.hora);
+        horasPorDia.set(k, arr);
+      }
+
+      for (const d of dias) {
+        if (d.tipo !== 'INCOMPLETO') continue;
+        const horas = [...(horasPorDia.get(d.data) ?? [])].sort(
+          (a, b) => a.getTime() - b.getTime(),
+        );
+        const analise = analisarMarcacoesDoDia(
+          horas,
+          d.entradaPrevista ?? null,
+          regras,
+        );
+        // Guarda: um dia INCOMPLETO tem sempre de 1 a 3 marcações, mas se a
+        // análise não encontrar nada faltando, não há o que ajustar.
+        if (analise.quantidadeFaltante === 0) continue;
+        itens.push({
+          colaboradorId: c.id,
+          nome: c.nome,
+          primeiroNome: primeiroNome(c.nome),
+          funcao: c.funcao,
+          data: d.data,
+          diaSemana: d.diaSemana,
+          ehFeriado: d.ehFeriado,
+          entradaPrevista: d.entradaPrevista ?? null,
+          horasRegistradas: horas.map(horaMarcacaoHHmm),
+          esperadas: analise.esperadas,
+          registradas: analise.registradas,
+          quantidadeFaltante: analise.quantidadeFaltante,
+          tiposFaltantes: analise.tiposFaltantes,
+          tiposPresentes: analise.tiposPresentes,
+          confianca: analise.confianca,
+          observacao: analise.observacao,
+          detalhe: descreverFaltantes(analise.tiposFaltantes),
+          devidasMs: d.devidasMs,
+        });
+      }
+    }
+
+    // Mais recentes primeiro; empate por nome.
+    itens.sort((a, b) =>
+      a.data === b.data
+        ? a.nome.localeCompare(b.nome)
+        : b.data.localeCompare(a.data),
+    );
+
+    const porTipo = SEQUENCIA_MARCACOES.reduce(
+      (acc, tipo) => {
+        acc[tipo] = itens.filter((i) => i.tiposFaltantes.includes(tipo)).length;
+        return acc;
+      },
+      {} as Record<MarcacaoCanonica, number>,
+    );
+
+    return {
+      periodo: this.montarPeriodo(dados.periodo, deslocamento),
+      totais: {
+        dias: itens.length,
+        pessoas: new Set(itens.map((i) => i.colaboradorId)).size,
+        marcacoesFaltantes: itens.reduce((s, i) => s + i.quantidadeFaltante, 0),
+        faltaUma: itens.filter((i) => i.quantidadeFaltante === 1).length,
+        faltamDuas: itens.filter((i) => i.quantidadeFaltante === 2).length,
+        faltamTresOuMais: itens.filter((i) => i.quantidadeFaltante >= 3).length,
+        aConferir: itens.filter((i) => i.confianca === 'BAIXA').length,
+        porTipo,
+        devidasMs: itens.reduce((s, i) => s + i.devidasMs, 0),
       },
       itens,
     };

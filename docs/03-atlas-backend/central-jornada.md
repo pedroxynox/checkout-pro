@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/central-jornada/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/central-jornada/`
 
 # Módulo: `central-jornada`
 
@@ -10,8 +10,10 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 ## 2. Responsabilidades e limites
 - **Faz:** agrega dia a dia as batidas do Relógio Ponto por pessoa no ciclo;
   calcula totais e saldo (individual e do time); monta o resumo, o detalhe por
-  pessoa (drill-down), o painel de inconsistências, a exportação para revisão e
-  o comparativo entre ciclos; marca/desmarca uma falta como débito de horas.
+  pessoa (drill-down), o painel de inconsistências, o **relatório de marcações
+  inválidas** (quantas marcações faltam em cada dia e quais), a exportação para
+  revisão e o comparativo entre ciclos; marca/desmarca uma falta como débito de
+  horas.
 - **Não faz** (fica em outro módulo): registrar/corrigir batidas e o cálculo do
   dia (fica em [`ponto`](ponto.md), cujo `calcularJornadaDia` é reaproveitado);
   fechar/reabrir o ciclo (fica em [`ciclo-folha`](ciclo-folha.md)); as regras de
@@ -21,14 +23,16 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `central-jornada.controller.ts` | Rotas HTTP do portal | 77 |
-| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 1086 |
+| `central-jornada.controller.ts` | Rotas HTTP do portal | 89 |
+| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 1388 |
 | `central-jornada.module.ts` | Ligações (DI) do módulo | 25 |
 | `dto/central-jornada.dto.ts` | Validação de entrada (marcar débito) | 7 |
 
 > Não há arquivo `*.domain.ts` próprio: a única função pura do módulo
 > (`contribuicaoSaldoTime`) vive no service; a matemática do dia é reusada de
-> [`ponto`](ponto.md).
+> [`ponto`](ponto.md) — inclusive a análise das marcações faltantes
+> (`marcacoes-invalidas.domain.ts`), que pertence ao módulo do Relógio Ponto
+> porque é sobre as batidas, não sobre o ciclo.
 
 ## 4. Endpoints (rotas HTTP)
 > A lista canônica está na [API HTTP → `central-jornada`](../05-referencia-dados/api-http.md#central-jornada). Aqui explicamos o que cada rota faz. Todo o controller exige `CENTRAL_JORNADA`.
@@ -37,6 +41,7 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 |---|---|---|
 | `GET /central-jornada` | `CENTRAL_JORNADA` | Resumo do ciclo: por pessoa + totais do time (`ciclo` 0 atual, −1...). |
 | `GET /central-jornada/inconsistencias` | `CENTRAL_JORNADA` | Painel de problemas (incompletas, duplicadas, conflitos, atrasos, TAC). |
+| `GET /central-jornada/marcacoes-invalidas` | `CENTRAL_JORNADA` | Relatório de ajuste do ponto: dia a dia, quantas marcações faltam e **quais**. |
 | `GET /central-jornada/exportacao` | `CENTRAL_JORNADA` | Dados do ciclo para revisão antes do fechamento (uma linha por dia relevante). |
 | `GET /central-jornada/comparativos` | `CENTRAL_JORNADA` | Totais do time dos últimos `qtd` ciclos (1..12). |
 | `GET /central-jornada/pessoa/:id` | `CENTRAL_JORNADA` | Detalhe diário de um colaborador no ciclo (drill-down). |
@@ -60,6 +65,30 @@ diário — o drill-down abre rápido mesmo com muitos colaboradores.
 #### `inconsistenciasCiclo(deslocamento = 0)`
 Varre o dia a dia de cada pessoa e devolve a lista achatada dos problemas:
 `INCOMPLETA`, `DUPLICADA`, `CONFLITO_AUSENCIA`, `ATRASO`, `TAC`.
+
+#### `marcacoesInvalidasCiclo(deslocamento = 0)`
+- **Devolve:** `CentralMarcacoesInvalidas` — um item por **dia com marcação
+  faltante** (`MarcacaoInvalidaItem`) + totais do ciclo.
+- **O que cada item traz:** `quantidadeFaltante` e `tiposFaltantes` (quais
+  marcações faltam, na ordem do dia), `tiposPresentes` (como as existentes foram
+  interpretadas), `horasRegistradas` (as horas que existem, "HH:mm", para
+  conferir o comprovante), `entradaPrevista` (turno da escala), `confianca` +
+  `observacao` (quando é hipótese e não fato), `detalhe` (frase pronta) e
+  `devidasMs` (as horas devidas que aquele dia lançou).
+- **Como decide:** delega cada dia a `analisarMarcacoesDoDia`
+  ([`ponto`](ponto.md)), que confronta a 1ª batida com o turno para saber se ela
+  pode mesmo ser a entrada. É o que separa este relatório do painel de
+  inconsistências: lá, a incompleta traz apenas a frase posicional de
+  `calcularJornadaDia`, que **nunca acusa a entrada** esquecida.
+- **Quem entra:** só dias `INCOMPLETO`. Dia sem nenhuma batida é falta/folga
+  (outro fluxo) e a **jornada curta válida de duas batidas** (até 4h50 em
+  contrato sem intervalo obrigatório) é um dia **completo** — incluí-la encheria
+  o relatório de falso positivo.
+- **Totais:** `dias`, `pessoas`, `marcacoesFaltantes`, `faltaUma`, `faltamDuas`,
+  `faltamTresOuMais`, `aConferir` (confiança baixa), `porTipo` (em quantos dias
+  cada marcação falta) e `devidasMs`.
+- **Não escreve nada:** é leitura. O ajuste em si continua sendo
+  `PATCH`/`DELETE /ponto/batidas/:id` (`PONTO_EDITAR`).
 
 #### `exportarCiclo(deslocamento = 0)`
 Uma linha por dia relevante (trabalho/incompleta/falta/atestado) com trabalhado,
@@ -111,14 +140,20 @@ faltas, TAC, conflitos e atrasos.
   decide se o dia é pago com adicional de 100% (domingo e todo feriado) e, pela
   **mesma regra vista do outro lado**, se o dia **gera hora devida**: o déficit
   só é lançado quando o dia NÃO paga 100%.
-- Demais cálculos do dia são reusados de [`ponto`](ponto.md) (`calcularJornadaDia`)
-  e de `escala-domingo` (`entradaEsperadaNoDia`, `minutosDeAtraso`).
+- Demais cálculos do dia são reusados de [`ponto`](ponto.md) (`calcularJornadaDia`,
+  `analisarMarcacoesDoDia`, `descreverFaltantes`, `horaMarcacaoHHmm`) e de
+  `escala-domingo` (`entradaEsperadaNoDia`, `minutosDeAtraso`).
 
 ## 7. Estados e enums
 - `CentralDiaDetalhe.tipo`: `TRABALHO` · `INCOMPLETO` · `FALTA` · `FALTA_DEBITO`
   · `ATESTADO` · `SEM_REGISTRO`.
 - `InconsistenciaItem.tipo`: `INCOMPLETA` · `DUPLICADA` · `CONFLITO_AUSENCIA` ·
   `ATRASO` · `TAC`.
+- `MarcacaoInvalidaItem.tiposFaltantes[]` / `tiposPresentes[]`:
+  `MarcacaoCanonica` (`ENTRADA` · `SAIDA_INTERVALO` · `RETORNO_INTERVALO` ·
+  `ENCERRAMENTO`), reusado de [`ponto`](ponto.md).
+- `MarcacaoInvalidaItem.confianca`: `ConfiancaAnalise` (`ALTA` · `BAIXA`),
+  reusado de [`ponto`](ponto.md).
 - `StatusJornadaPonto` (reusado de [`ponto`](ponto.md)).
 - Não há máquina de estados própria (o módulo é de leitura/agregação, exceto o
   débito da falta).
@@ -177,20 +212,43 @@ faltas, TAC, conflitos e atrasos.
 8. **Marcar débito respeita o ciclo fechado** e a regra 4 (domingo/feriado não
    aceitam débito). **Desmarcar é sempre permitido**, inclusive em domingo e
    feriado, para limpar registros marcados antes da regra 4.
+9. **O relatório de marcações inválidas identifica a marcação faltante pelo
+   turno, e admite quando não sabe.** Ele existe porque o painel de
+   inconsistências não serve para *corrigir*: a classificação por ordem encobre
+   a **entrada** esquecida e a aponta como "falta o encerramento". Aqui a 1ª
+   batida é confrontada com o horário da escala; quando os dados não permitem
+   afirmar (sem turno cadastrado, mais de uma faltando com a entrada entre elas,
+   ou hipótese derivada das durações), o item vem com `confianca: 'BAIXA'` e o
+   motivo em `observacao`, para o gestor conferir o comprovante.
+   **Não altera o cálculo das horas** — um dia incompleto continua gerando
+   déficit pela regra 3; o relatório apenas expõe esse custo em `devidasMs`, para
+   que o ajuste seja priorizado.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito) | 21 |
+| `marcacoes-invalidas.service.spec.ts` | Relatório de marcações faltantes: entrada esquecida, encerramento, as duas do intervalo, totais, ordenação, sem turno — e os dias legítimos que **não** entram (jornada curta válida, dia completo, dia sem registro) | 9 |
 | `saldo-time.spec.ts` | Regra do saldo do time (`contribuicaoSaldoTime`) | 4 |
-| `central-jornada.controller.spec.ts` | Permissão do débito de horas | 1 |
+| `central-jornada.controller.spec.ts` | Permissão do débito de horas e do relatório de marcações inválidas | 2 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `central-jornada.service.ts` (1086 linhas) concentra carga, cálculo e
+- 🔧 `central-jornada.service.ts` (1388 linhas) concentra carga, cálculo e
   agregação; os tipos de resposta (`Central*`) e o cálculo diário podem ser
   extraídos conforme crescer.
+- 🔧 **Duas respostas para "o que falta no dia".** O painel de inconsistências
+  segue exibindo o `faltando` posicional de `calcularJornadaDia` (texto livre,
+  que nunca acusa a entrada), enquanto o relatório de marcações inválidas usa a
+  análise nova. Foi uma escolha deliberada: trocar o `faltando` mexeria no
+  cálculo da jornada e nos seus testes congelados. Quando as heurísticas da
+  análise estiverem validadas na operação, o painel deve passar a consumi-la — aí
+  some a duplicidade.
+- 🔧 `marcacoesInvalidasCiclo` e `inconsistenciasCiclo` percorrem o ciclo de forma
+  independente (cada uma chama `calcularPessoa` para todo o time). Como a tela da
+  Central pede as duas, vale unificar a varredura se o tempo de resposta
+  incomodar.
 - ✅ Inclui **todos os tipos de contrato** (Fase 2 do spec
   `solidez-contratos-jornada`): o filtro fixo por `tipoContrato` foi removido e as
   regras de jornada/TAC são resolvidas **por pessoa** via
