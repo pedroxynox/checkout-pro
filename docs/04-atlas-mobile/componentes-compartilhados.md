@@ -21,7 +21,7 @@ as telas importam de `../../components`.
 |---|---|---|---|
 | `Tela.tsx` | `Tela` | Contêiner base de tela: área segura, fundo do tema, rolagem opcional e "pull-to-refresh" (`aoAtualizar`/`atualizando`). Inclui rodapé discreto "Uso interno · Conteúdo confidencial". | 98 |
 | `Cartao.tsx` | `Cartao` | Cartão de superfície com sombra leve para agrupar conteúdo; aceita `titulo`, `rodape` e estilos (`estilo`/`style`). | 54 |
-| `CartaoMetrica.tsx` | `CartaoMetrica` | Cartão de métrica com ícone em caixa de cor suave, valor em destaque e rótulo curto (grades de resumo). Opcionalmente **tocável** (`aoPressionar`, que exibe a seta de afordância) e com estado **`apagado`** em cinza, para grades de posição fixa em que a métrica zerada continua no lugar. | 138 |
+| `CartaoMetrica.tsx` | `CartaoMetrica` | Cartão de métrica com ícone em caixa de cor suave, valor e rótulo curto (grades de resumo). Opcionalmente **tocável** (`aoPressionar`, que exibe a seta de afordância) e com estado **`apagado`** em cinza, para grades de posição fixa em que a métrica zerada continua no lugar. **Tipografia enxuta** (valor 12, rótulo 10): numa grade de duas colunas o texto divide a largura com o ícone e a seta, e valores como "2 atestados" eram cortados com "…". | 146 |
 | `CartaoAcao.tsx` | `CartaoAcao` | Atalho tocável com ícone, título e linha de estado (contador/urgência); pensado para grade de 3 cartões. | 101 |
 | `Botao.tsx` | `Botao` | Botão padrão com variantes (`primario`, `secundario`, `perigo`, `texto`), estado `carregando` e `desabilitado`. | 93 |
 | `CampoTexto.tsx` | `CampoTexto` | Campo de texto rotulado, com mensagem de `erro` e todos os props de `TextInput`. | 70 |

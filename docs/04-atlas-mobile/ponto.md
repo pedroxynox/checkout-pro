@@ -130,6 +130,12 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   **não aparece em domingo nem em feriado**: faltar nesses dias fica apenas como
   ausência e o servidor recusaria a marcação. O botão segue disponível nos
   demais dias para quem tem `OPERADORES_AUSENCIAS`.
+- **As cards do resumo usam tipografia enxuta** (valor 12, rótulo 10, ícone 28).
+  Numa grade de duas colunas o texto divide a largura com o ícone e a seta, e
+  valores como "2 atestados" ou "12h 30min" apareciam **cortados com "…"** — um
+  valor cortado não informa nada. O `adjustsFontSizeToFit` que existia ali não
+  resolvia: só funciona no iOS, então no Android dava a falsa sensação de que
+  caberia. Ver [`CartaoMetrica`](componentes-compartilhados.md).
 - **Resumo do time: as sete cards são tocáveis e de posição fixa.** Antes, as
   cards de atraso e de conflito só apareciam quando havia ocorrência, então a
   grade mudava de tamanho e a posição de cada botão dançava; agora todas estão
