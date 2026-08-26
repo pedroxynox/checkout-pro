@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `mobile/src/screens/colaboradores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/colaboradores/`
 
 # Área: `colaboradores`
 
@@ -8,15 +8,23 @@ e editar (o formulário completo), ver o **Perfil Inteligente** de cada um e
 registrar **sanções/advertências** e **feedforward** (acompanhamento).
 
 ## 2. Quem usa (perfis)
-- **Gestão** (`OPERADORES_CRUD`): cadastra, edita, promove, define senha.
-- **Quem vê a escala** (`OPERADORES_AUSENCIAS`): lista e consulta perfil.
+Dados pessoais são **confidenciais**, por isso a área tem funcionalidades
+próprias (ajustáveis na Central de Permissões):
+- **`COLABORADORES_VISUALIZAR`**: abre a seção "Colaboradores" (a lista de
+  pessoas do quadro). Padrão: administrador, gerente e supervisor.
+- **`COLABORADORES_PERFIL`**: abre a **ficha individual** (Perfil Inteligente),
+  de qualquer ponto do app. Padrão: administrador, gerente e supervisor.
+- **`OPERADORES_CRUD`**: cadastra, edita, promove, define senha (Centro de
+  Controle ▸ Colaboradores).
+- O **fiscal** continua vendo a escala do dia (`OPERADORES_AUSENCIAS`), mas não a
+  seção nem a ficha de ninguém.
 - Ver [Perfis e permissões](../01-produto/perfis-e-permissoes.md).
 
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `ColaboradoresScreen.tsx` | Lista/hub de colaboradores | 335 |
-| `GestaoColaboradoresScreen.tsx` | Formulário de cadastro/edição | 738 |
+| `ColaboradoresScreen.tsx` | Lista/hub de colaboradores | 345 |
+| `GestaoColaboradoresScreen.tsx` | Formulário de cadastro/edição | 708 |
 | `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 907 |
 | `SancoesScreen.tsx` | Lista de sanções/advertências | 588 |
 | `RegistrarSancaoModal.tsx` | Modal para registrar sanção | 460 |
@@ -24,6 +32,8 @@ registrar **sanções/advertências** e **feedforward** (acompanhamento).
 
 ## 4. Fluxo do usuário
 1. **Lista:** abre `ColaboradoresScreen`, com busca por nome/matrícula e filtros.
+   Sem `COLABORADORES_PERFIL` a lista continua navegável, mas os itens não abrem
+   a ficha (a seta de avanço desaparece).
 2. **Cadastrar/editar:** abre `GestaoColaboradoresScreen`; preenche matrícula,
    nome, função, turno, horários, contrato; para função com acesso, define a
    **senha**. Salvar chama `cadastrar` ou `editar`.
@@ -40,7 +50,7 @@ Cada tela trata os estados **carregando / erro / vazio**.
 | Detalhe | `colaboradoresService.obter(id)` | `GET /colaboradores/:id` |
 | Cadastrar | `colaboradoresService.cadastrar(input)` | `POST /colaboradores` |
 | Editar/promover | `colaboradoresService.editar(id, input)` | `PATCH /colaboradores/:id` |
-| Perfil | `colaboradoresService.perfil(...)` | `GET /colaboradores/:id/perfil` |
+| Perfil (exige `COLABORADORES_PERFIL`) | `colaboradoresService.perfil(...)` | `GET /colaboradores/:id/perfil` |
 | Contas de acesso | `colaboradoresService.listarLogins()` | `GET /colaboradores/logins` |
 
 Módulo do backend relacionado: [`colaboradores`](../03-atlas-backend/colaboradores.md).
@@ -81,5 +91,8 @@ Módulo do backend relacionado: [`colaboradores`](../03-atlas-backend/colaborado
 ## 10. Riscos, dívidas e pendências
 - 🔧 `PerfilColaboradorScreen.tsx` e `FeedforwardSecao.tsx` são grandes (>800
   linhas); candidatos a quebrar em componentes menores.
+- ⚠️ A ficha é alcançada de **quatro** telas (Colaboradores, Escalas, Contratos e
+  Jornada da equipe). Toda entrada nova precisa conferir `COLABORADORES_PERFIL`
+  antes de navegar, senão abre um caminho lateral para um dado confidencial.
 - ⚠️ O formulário envia a senha na promoção; depende do backend criar o login
   (corrigido — ver [`colaboradores` backend §12](../03-atlas-backend/colaboradores.md#12-riscos-dívidas-e-pendências)).

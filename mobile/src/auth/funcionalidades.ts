@@ -50,6 +50,11 @@ export const TODAS_FUNCIONALIDADES = [
   'CHECKLIST',
   'OPERADORES_AUSENCIAS',
   'OPERADORES_CRUD',
+  // Colaboradores (dados pessoais — informação CONFIDENCIAL):
+  // COLABORADORES_VISUALIZAR abre a seção "Colaboradores" (lista de pessoas) e
+  // COLABORADORES_PERFIL abre a ficha individual (perfil inteligente).
+  'COLABORADORES_VISUALIZAR',
+  'COLABORADORES_PERFIL',
   // Decisão de solicitações automáticas de advertência (gerente/supervisor)
   'ADVERTENCIAS_DECIDIR',
   // Contratos de experiência (tempo de casa + marcos 45/90)
@@ -130,6 +135,9 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] = Object.free
   'CENTRAL_JORNADA',
   // Check-Outs: resolve as avarias reportadas pelos fiscais.
   'CHECKOUTS_GERENCIAR',
+  // Colaboradores: seção e ficha individual (o fiscal NÃO — é confidencial).
+  'COLABORADORES_VISUALIZAR',
+  'COLABORADORES_PERFIL',
   'CONTRATOS_VISUALIZAR',
   'FEEDFORWARD_VISUALIZAR',
   'FEEDFORWARD_GERIR',
@@ -174,6 +182,9 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
   'CHECKLIST',
   'OPERADORES_AUSENCIAS',
   'OPERADORES_CRUD',
+  // Colaboradores: seção e ficha individual (dados confidenciais).
+  'COLABORADORES_VISUALIZAR',
+  'COLABORADORES_PERFIL',
   'FISCAIS_STATUS',
   'FISCAIS_JORNADA',
   'CENTRAL_JORNADA',

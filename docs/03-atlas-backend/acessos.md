@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `backend/src/acessos/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/acessos/`
 
 # Módulo: `acessos`
 
@@ -25,7 +25,7 @@ conforme o perfil, aplicando os ajustes por perfil e por login.
 |---|---|---|
 | `acessos.controller.ts` | Rotas HTTP: login (público) e identidade | 53 |
 | `acessos.service.ts` | Efeitos colaterais: Prisma, bcrypt e JWT | 197 |
-| `acessos.domain.ts` | Regras puras: catálogo, perfis e decisão de acesso | 527 |
+| `acessos.domain.ts` | Regras puras: catálogo, perfis e decisão de acesso | 542 |
 | `acessos.errors.ts` | Erros de domínio (mapeados para HTTP) | 43 |
 | `acessos.module.ts` | Ligações (DI) e configuração do JWT | 38 |
 | `dto/login.dto.ts` | Validação de entrada do login | 12 |
@@ -105,6 +105,11 @@ Recompõe a identidade do usuário autenticado, buscando o `nome` atual no banco
   perfis operacionais (fiscal → supervisor → gerente; admin sempre); a carga do
   arquivo usa `PRODUTOS_PESADOS_GERENCIAR` (gerente/admin) — ver
   [`produtos-pesados`](produtos-pesados.md).
+- `COLABORADORES_VISUALIZAR` (seção Colaboradores) e `COLABORADORES_PERFIL`
+  (ficha individual) tratam **dados pessoais**: ficam com administrador, gerente
+  e supervisor; o fiscal **não** as recebe por padrão. São ajustáveis, então
+  liberar um login específico é decisão consciente do administrador — ver
+  [`colaboradores`](colaboradores.md).
 - `FUNCIONALIDADES_PROTEGIDAS`: exclusivas do administrador e não ajustáveis
   (`USUARIOS_CRUD`, `ADMIN_DADOS`, `ESCALA_DOMINGO_CONFIG`, `IMPORTACOES`,
   `PERMISSOES_GERENCIAR`, `CARGA_STATUS_VISUALIZAR`).
@@ -136,11 +141,14 @@ Recompõe a identidade do usuário autenticado, buscando o `nome` atual no banco
 6. **Sessão de 30 dias** por padrão (`JWT_EXPIRES_IN` configurável); o segredo é
    obrigatório em produção.
 7. **Antiforça-bruta:** o login aceita no máximo 8 tentativas por minuto por IP.
+8. **Dados pessoais não seguem a escala.** Ver o quadro do dia
+   (`OPERADORES_AUSENCIAS`) não dá acesso à seção Colaboradores nem à ficha
+   individual: essas usam `COLABORADORES_VISUALIZAR` e `COLABORADORES_PERFIL`.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `acessos.service.spec.ts` | Autenticação, autorização por perfil e disponibilidade de login | 9 |
+| `acessos.service.spec.ts` | Autenticação, autorização por perfil (inclui a confidencialidade de Colaboradores) e disponibilidade de login | 10 |
 | `acessos.controller.spec.ts` | Login (sucesso/erro) e identidade em `/eu` | 3 |
 | `acessos.permissoes.spec.ts` | Invariantes da fonte única (admin vê tudo; sem permissão fantasma) | 3 |
 | `acessos.properties.spec.ts` | Propriedades de autenticação/autorização e unicidade de login (property-based) | 3 |
@@ -151,7 +159,7 @@ Recompõe a identidade do usuário autenticado, buscando o `nome` atual no banco
 - ⚠️ **Espelho manual no app:** `mobile/src/auth/funcionalidades.ts` precisa
   refletir qualquer mudança no catálogo/perfis; os pacotes não compartilham
   código. A autorização que vale é sempre a do backend.
-- 🔧 `acessos.domain.ts` (536 linhas) concentra catálogo e regras dos perfis;
+- 🔧 `acessos.domain.ts` (542 linhas) concentra catálogo e regras dos perfis;
   cresce a cada nova funcionalidade — manter a ordem do catálogo e os testes-
   guarda evita "permissão fantasma".
 - ⛔ **Segredo do JWT em produção:** se `resolverSegredoJwt` não encontrar o

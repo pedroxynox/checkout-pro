@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `mobile/src/navigation/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/navigation/`
 
 # Navegação
 
@@ -13,8 +13,8 @@ como cada **área** é liberada conforme o perfil/permissão do usuário. Usa o
 |---|---|---|---|
 | `RootNavigator.tsx` | `RootNavigator` | Decide entre login e app conforme o `AuthContext`; monta `NavigationContainer`, tema, `linking` (URLs na web) e os provedores de Notificações/Assistente. | 107 |
 | `MainTabs.tsx` | `MainTabs` | Barra de abas inferior (Início, Tarefas, Ponto central, Notificações, Perfil), com selos de pendências/não lidas. | 206 |
-| `AppNavigator.tsx` | `AppNavigator` | Pilha de telas de módulo; cada rota só entra na pilha se `podeAcessar(funcionalidade)`. | 385 |
-| `areas.ts` | `AREAS`, `Area` | Catálogo das áreas funcionais (rota, ícone, título, `funcionalidade` exigida, marca `emBreve`) usado pela Home e pelo menu. | 162 |
+| `AppNavigator.tsx` | `AppNavigator` | Pilha de telas de módulo; cada rota só entra na pilha se `podeAcessar(funcionalidade)`. | 414 |
+| `areas.ts` | `AREAS`, `Area` | Catálogo das áreas funcionais (rota, ícone, título, `funcionalidade` exigida, marca `emBreve`) usado pela Home e pelo menu. | 172 |
 | `types.ts` | `RootStackParamList`, `MainTabParamList`, `RotaApp`, `PropsTela`, `PropsTabInicio` | Tipagem de todas as rotas e seus parâmetros. | 94 |
 
 ## 3. Fluxo de login → app
@@ -68,7 +68,9 @@ ajustes por login da Central de Permissões); se ausentes, cai no espelho local
 - **SUPERVISOR** — tudo do fiscal + fechamento, edição de escala/batidas e
   Central de Jornada.
 - **FISCAL** — conjunto operacional (checklist, insumos, escala, ponto,
-  indicadores, check-outs etc.).
+  indicadores, check-outs etc.). **Não** inclui a seção Colaboradores nem a ficha
+  individual: dados pessoais têm funcionalidade própria
+  (`COLABORADORES_VISUALIZAR` / `COLABORADORES_PERFIL`).
 - **IMPORTADOR** — apenas Importações.
 
 ### 5.3 Defesa em profundidade no `AppNavigator`
@@ -77,6 +79,11 @@ rota na pilha** quando `podeAcessar(...)` é verdadeiro (ex.: `Operadores`,
 `CentroControle`, `Permissoes`, `AdminDados`). Assim, um fiscal nem consegue
 navegar para telas restritas. A **autorização definitiva permanece no backend**
 — este filtro é apenas de UX/defesa extra.
+
+`PerfilColaborador` é um caso especial: a rota exige `COLABORADORES_PERFIL` e é
+alcançada de **quatro** telas diferentes (Colaboradores, Escalas, Contratos e
+Jornada da equipe). Cada uma delas confere a mesma permissão antes de navegar,
+então sem ela o toque no nome da pessoa simplesmente não faz nada.
 
 ## 6. Rotas e parâmetros (`types.ts`)
 `RootStackParamList` tipa todas as telas da pilha; `MainTabParamList` tipa as

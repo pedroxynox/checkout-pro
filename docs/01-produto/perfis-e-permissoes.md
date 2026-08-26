@@ -21,7 +21,7 @@ O sistema tem cinco perfis de acesso (enum `Perfil`):
 | **ADMINISTRADOR** | O "gerente desenvolvedor" | Enxerga e executa **absolutamente tudo**, inclusive funcionalidades futuras. |
 | **GERENTE** | Gestão da loja | Operação e gestão do dia a dia + Centro de Controle (cadastro, metas, relatórios). |
 | **SUPERVISOR** | Coordenação da operação | Tudo do fiscal + fechamento, edição de escala/jornada e Central de Jornada. |
-| **FISCAL** | Linha de frente | Rotina diária: ponto, insumos, checklist, indicadores e comunicação. |
+| **FISCAL** | Linha de frente | Rotina diária: ponto, insumos, checklist, indicadores e comunicação. **Não** vê os dados pessoais da equipe. |
 | **IMPORTADOR** | Login dedicado da loja | Só carrega os arquivos do dia (Importações); não vê mais nada. |
 
 ### 1.1 O "gerente desenvolvedor" e o perfil ADMINISTRADOR
@@ -51,7 +51,9 @@ O **IMPORTADOR** é um login dedicado, não vinculado a uma pessoa da operação
 ## 2. Matriz de funcionalidades por perfil
 
 Legenda: ✅ = liberado por padrão · — = não liberado · 🔒 = protegida (exclusiva
-do administrador e **não ajustável** pela Central de Permissões).
+do administrador e **não ajustável** pela Central de Permissões) · 🕵️ =
+**confidencial** (dá acesso a dados pessoais da equipe; é ajustável, mas deve ser
+concedida com critério).
 
 O **ADMINISTRADOR** tem acesso a **todas** as funcionalidades (coluna sempre ✅) —
 inclusive as que surgirem no futuro — por isso não é repetido linha a linha nas
@@ -110,6 +112,8 @@ observações.
 |---|:---:|:---:|:---:|:---:|:---:|
 | `OPERADORES_AUSENCIAS` — ver ausências/incidências | ✅ | ✅ | ✅ | ✅ | — |
 | `OPERADORES_CRUD` — cadastro de colaboradores/metas | ✅ | ✅ | — | — | — |
+| `COLABORADORES_VISUALIZAR` — abrir a seção Colaboradores 🕵️ | ✅ | ✅ | ✅ | — | — |
+| `COLABORADORES_PERFIL` — abrir a ficha individual (perfil) 🕵️ | ✅ | ✅ | ✅ | — | — |
 | `ADVERTENCIAS_DECIDIR` — decidir solicitações de advertência | ✅ | ✅ | ✅ | — | — |
 | `CONTRATOS_VISUALIZAR` — carteira de contratos | ✅ | ✅ | ✅ | — | — |
 | `CONTRATOS_GERIR` — admissão e decisões de marco | ✅ | ✅ | — | — | — |
@@ -147,6 +151,13 @@ observações.
    `CARGA_STATUS_VISUALIZAR`) **nunca** são concedidas por ajuste — barra a
    escalada de privilégios.
 5. **O administrador é imutável.** Não é ajustável na Central de Permissões.
+6. **Dados pessoais têm permissão própria.** A seção **Colaboradores** e a
+   **ficha individual** (perfil inteligente: score, faltas, indicadores com
+   ranking) são informação confidencial e não acompanham mais a escala: usam
+   `COLABORADORES_VISUALIZAR` e `COLABORADORES_PERFIL`. Por padrão ficam com
+   administrador, gerente e supervisor; o fiscal continua vendo a escala do dia,
+   mas não a ficha de ninguém. As duas são **ajustáveis** login a login, então
+   liberar um fiscal específico é uma decisão consciente do administrador.
 
 ## 4. Central de Permissões
 

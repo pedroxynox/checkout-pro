@@ -107,6 +107,8 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     expect(screen.getByText('Insumos')).toBeTruthy();
     expect(screen.getByText('Checklist')).toBeTruthy();
     expect(screen.getByText('Escalas')).toBeTruthy();
+    // Dados pessoais: a gestão enxerga a seção Colaboradores.
+    expect(screen.getByText('Colaboradores')).toBeTruthy();
 
     // Gestão estrutural de dados NÃO aparece para o gerente comum.
     expect(screen.queryByText('Pessoas e Acessos')).toBeNull();
@@ -125,6 +127,10 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
 
     // Área restrita ao gerente (gestão de pessoas/acessos) não aparece.
     expect(screen.queryByText('Pessoas e Acessos')).toBeNull();
+
+    // "Colaboradores" guarda dados pessoais (confidenciais) e passou a ter
+    // funcionalidade própria: o fiscal não vê a seção.
+    expect(screen.queryByText('Colaboradores')).toBeNull();
   });
 
   it('navega para a rota da área ao tocar no cartão', async () => {

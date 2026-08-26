@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 111 arquivos, 777 casos. **Mobile:** 27 arquivos, 119 casos. **Total: 896 casos.**
+> **Backend:** 111 arquivos, 778 casos. **Mobile:** 27 arquivos, 119 casos. **Total: 897 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -16,7 +16,7 @@
 | `src/acessos/acessos.controller.spec.ts` | 3 | 1 |
 | `src/acessos/acessos.permissoes.spec.ts` | 3 | 1 |
 | `src/acessos/acessos.properties.spec.ts` | 3 | 1 |
-| `src/acessos/acessos.service.spec.ts` | 9 | 4 |
+| `src/acessos/acessos.service.spec.ts` | 10 | 4 |
 | `src/alertas/alertas.service.spec.ts` | 10 | 5 |
 | `src/alertas/saudacao-diaria.domain.spec.ts` | 6 | 1 |
 | `src/alertas/saudacao-diaria.service.spec.ts` | 1 | 1 |

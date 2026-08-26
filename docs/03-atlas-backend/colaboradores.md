@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/colaboradores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/colaboradores/`
 
 # Módulo: `colaboradores`
 
@@ -22,7 +22,7 @@ base do **Perfil Inteligente** do colaborador (score, indicadores e insígnias).
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `colaboradores.controller.ts` | Rotas HTTP do cadastro e do perfil | 222 |
+| `colaboradores.controller.ts` | Rotas HTTP do cadastro e do perfil | 234 |
 | `colaboradores.service.ts` | Regras de aplicação: CRUD, conta de acesso, escala | 840 |
 | `colaboradores.domain.ts` | Regras puras: normalização e turno obrigatório | 17 |
 | `colaboradores.errors.ts` | Erros de domínio (mapeados para HTTP) | 111 |
@@ -40,8 +40,8 @@ base do **Perfil Inteligente** do colaborador (score, indicadores e insígnias).
 | `POST /colaboradores` | `OPERADORES_CRUD` | Cadastra um colaborador (operador por padrão). |
 | `GET /colaboradores` | `OPERADORES_AUSENCIAS` | Lista com busca/filtros (função, turno, ativo). |
 | `GET /colaboradores/logins` | `OPERADORES_CRUD` | Contas de acesso e a quem já estão vinculadas. |
-| `GET /colaboradores/:id` | `OPERADORES_AUSENCIAS` | Detalhe de um colaborador (com identificadores). |
-| `GET /colaboradores/:id/perfil` | `OPERADORES_AUSENCIAS` | Perfil Inteligente no período (score, indicadores, insígnias). |
+| `GET /colaboradores/:id` | `OPERADORES_CRUD` | Detalhe cadastral (com identificadores) — usado só pela tela de gestão. |
+| `GET /colaboradores/:id/perfil` | `COLABORADORES_PERFIL` | Perfil Inteligente no período (score, indicadores, insígnias). **Dado confidencial** — permissão própria, ajustável na Central de Permissões. |
 | `PATCH /colaboradores/:id` | `OPERADORES_CRUD` | Edita; **cria o login na promoção** (ver §5). |
 | `POST /colaboradores/:id/inativar` | `OPERADORES_CRUD` | Inativa preservando histórico. |
 | `POST /colaboradores/:id/reativar` | `OPERADORES_CRUD` | Reativa e recria a escala. |
@@ -147,6 +147,12 @@ totais de arrecadação. Roda no cron mensal (dia 1º) e sob demanda.
 6. **O cadastro é a fonte única da escala** (Opção A): editar regenera a escala
    geral preservando exceções.
 7. **Inativar preserva histórico**; a purga respeita a janela de retenção.
+8. **A ficha individual é confidencial.** `GET /colaboradores/:id/perfil` exige
+   `COLABORADORES_PERFIL` — funcionalidade própria, separada da escala e
+   ajustável na Central de Permissões. A listagem (`GET /colaboradores`)
+   permanece em `OPERADORES_AUSENCIAS` porque devolve só nome/matrícula/função/
+   turno e alimenta os seletores de pessoa de ausências, atestados, férias,
+   sanções e justificativas.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |

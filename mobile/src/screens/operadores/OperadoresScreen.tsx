@@ -193,11 +193,17 @@ function contarTurnos(cols: ColaboradorDia[]): {
 function ColaboradorRow({
   c,
   onAbrirPerfil,
+  podeAbrirPerfil,
   semRetornoAtivo,
   statusAoVivo,
 }: {
   c: ColaboradorDia;
   onAbrirPerfil: (c: ColaboradorDia) => void;
+  /**
+   * A ficha do colaborador é confidencial (`COLABORADORES_PERFIL`). Sem a
+   * permissão a linha continua visível (a escala é aberta), mas não navega.
+   */
+  podeAbrirPerfil: boolean;
   semRetornoAtivo: boolean;
   /**
    * Status AO VIVO (Disponível/Intervalo/Fora), vindo das batidas do ponto.
@@ -232,9 +238,12 @@ function ColaboradorRow({
   return (
     <TouchableOpacity
       activeOpacity={0.6}
+      disabled={!podeAbrirPerfil}
       onPress={() => onAbrirPerfil(c)}
       style={[styles.linha, { borderLeftColor: cor.texto }]}
-      accessibilityLabel={`Abrir perfil de ${c.nome}`}
+      accessibilityLabel={
+        podeAbrirPerfil ? `Abrir perfil de ${c.nome}` : c.nome
+      }
     >
       <View style={[styles.avatar, { backgroundColor: cor.fundo }]}>
         <Ionicons name={iconeGenero(c.genero, c.nome)} size={20} color={cor.texto} />
@@ -973,8 +982,14 @@ export function OperadoresScreen(): React.ReactElement {
     setVersaoJustificativas((v) => v + 1);
   };
 
-  /** Toca na linha → abre o perfil do colaborador. */
+  /**
+   * Toca na linha → abre o perfil do colaborador. A ficha é confidencial, por
+   * isso depende de `COLABORADORES_PERFIL` (ajustável na Central de
+   * Permissões); sem a permissão a linha simplesmente não navega.
+   */
+  const podeVerPerfil = podeAcessar('COLABORADORES_PERFIL');
   const abrirPerfil = (c: ColaboradorDia) => {
+    if (!podeVerPerfil) return;
     navigation.navigate('PerfilColaborador', { colaboradorId: c.id });
   };
 
@@ -1135,6 +1150,7 @@ export function OperadoresScreen(): React.ReactElement {
                 key={f.funcionarioId}
                 c={cd}
                 onAbrirPerfil={abrirPerfil}
+                podeAbrirPerfil={podeVerPerfil}
                 semRetornoAtivo={semRetornoIds.has(cd.id)}
                 statusAoVivo={
                   ehHoje
@@ -1249,6 +1265,7 @@ export function OperadoresScreen(): React.ReactElement {
                     key={c.id}
                     c={c}
                     onAbrirPerfil={abrirPerfil}
+                    podeAbrirPerfil={podeVerPerfil}
                     semRetornoAtivo={semRetornoIds.has(c.id)}
                     statusAoVivo={ehHoje ? (statusFiscais[c.id] ?? null) : null}
                   />

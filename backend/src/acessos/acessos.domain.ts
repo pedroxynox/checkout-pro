@@ -65,6 +65,14 @@ export const TODAS_FUNCIONALIDADES = [
   'CHECKLIST',
   'OPERADORES_AUSENCIAS',
   'OPERADORES_CRUD',
+  // Colaboradores (dados pessoais — informação CONFIDENCIAL).
+  // COLABORADORES_VISUALIZAR = abre a seção "Colaboradores" (lista de pessoas
+  // do quadro). COLABORADORES_PERFIL = abre a ficha individual (perfil
+  // inteligente: score, faltas, indicadores com ranking, insígnias), de onde
+  // quer que se toque no nome da pessoa. São separadas de propósito: dá para
+  // liberar a lista sem liberar a ficha.
+  'COLABORADORES_VISUALIZAR',
+  'COLABORADORES_PERFIL',
   // Decisão de solicitações automáticas de advertência (gerente/supervisor)
   'ADVERTENCIAS_DECIDIR',
   // Contratos de experiência (tempo de casa + marcos 45/90)
@@ -156,6 +164,10 @@ export const FUNCIONALIDADES_SUPERVISOR: readonly Funcionalidade[] =
     'CENTRAL_JORNADA',
     // Check-Outs: resolve as avarias reportadas pelos fiscais.
     'CHECKOUTS_GERENCIAR',
+    // Colaboradores: o supervisor abre a seção e a ficha individual das
+    // pessoas do quadro (o fiscal NÃO — é informação confidencial).
+    'COLABORADORES_VISUALIZAR',
+    'COLABORADORES_PERFIL',
     // Contratos: o supervisor acompanha (visualiza), mas não decide os marcos.
     'CONTRATOS_VISUALIZAR',
     // Feedforward: supervisor cria/edita e acompanha.
@@ -211,6 +223,9 @@ export const FUNCIONALIDADES_GERENTE: readonly Funcionalidade[] = Object.freeze(
     'CHECKLIST',
     'OPERADORES_AUSENCIAS',
     'OPERADORES_CRUD',
+    // Colaboradores: seção e ficha individual (dados confidenciais).
+    'COLABORADORES_VISUALIZAR',
+    'COLABORADORES_PERFIL',
     'FISCAIS_STATUS',
     // Log de jornada dos fiscais (horas trabalhadas e intervalos).
     'FISCAIS_JORNADA',
