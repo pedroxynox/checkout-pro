@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **210 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **211 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -76,6 +76,7 @@
 |---|---|---|---|
 | GET | `/central-jornada` | `resumo` | `CENTRAL_JORNADA` |
 | GET | `/central-jornada/inconsistencias` | `inconsistencias` | `CENTRAL_JORNADA` |
+| GET | `/central-jornada/marcacoes-invalidas` | `marcacoesInvalidas` | `CENTRAL_JORNADA` |
 | GET | `/central-jornada/exportacao` | `exportacao` | `CENTRAL_JORNADA` |
 | GET | `/central-jornada/comparativos` | `comparativos` | `CENTRAL_JORNADA` |
 | GET | `/central-jornada/pessoa/:id` | `pessoa` | `CENTRAL_JORNADA` |

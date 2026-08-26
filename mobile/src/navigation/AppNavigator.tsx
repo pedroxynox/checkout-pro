@@ -25,6 +25,7 @@ import { RegistroPontoScreen } from '../screens/ponto/RegistroPontoScreen';
 import { CentralJornadaScreen } from '../screens/ponto/CentralJornadaScreen';
 import { DetalheJornadaScreen } from '../screens/ponto/DetalheJornadaScreen';
 import { InconsistenciasScreen } from '../screens/ponto/InconsistenciasScreen';
+import { MarcacoesInvalidasScreen } from '../screens/ponto/MarcacoesInvalidasScreen';
 import { ExportarCicloScreen } from '../screens/ponto/ExportarCicloScreen';
 import { FeriadosScreen } from '../screens/ponto/FeriadosScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
@@ -179,6 +180,13 @@ export function AppNavigator(): React.ReactElement {
           name="Inconsistencias"
           component={InconsistenciasScreen}
           options={{ title: 'Inconsistências' }}
+        />
+      )}
+      {podeAcessar('CENTRAL_JORNADA') && (
+        <Stack.Screen
+          name="MarcacoesInvalidas"
+          component={MarcacoesInvalidasScreen}
+          options={{ title: 'Marcações inválidas' }}
         />
       )}
       {podeAcessar('CENTRAL_JORNADA') && (

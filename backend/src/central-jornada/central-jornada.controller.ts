@@ -14,6 +14,7 @@ import {
   CentralExportacao,
   CentralInconsistencias,
   CentralJornadaService,
+  CentralMarcacoesInvalidas,
   CentralResumo,
 } from './central-jornada.service';
 
@@ -46,6 +47,17 @@ export class CentralJornadaController {
     @Query('ciclo') ciclo?: string,
   ): Promise<CentralInconsistencias> {
     return this.service.inconsistenciasCiclo(deslocamentoDe(ciclo));
+  }
+
+  /**
+   * Relatório de marcações inválidas do ciclo: dia a dia, quantas marcações
+   * faltam e QUAIS (entrada, saída/retorno do intervalo, encerramento).
+   */
+  @Get('marcacoes-invalidas')
+  marcacoesInvalidas(
+    @Query('ciclo') ciclo?: string,
+  ): Promise<CentralMarcacoesInvalidas> {
+    return this.service.marcacoesInvalidasCiclo(deslocamentoDe(ciclo));
   }
 
   /** Dados do ciclo para revisão antes do fechamento. */

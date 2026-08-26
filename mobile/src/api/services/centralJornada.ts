@@ -132,6 +132,62 @@ export interface CentralInconsistencias {
   itens: InconsistenciaItem[];
 }
 
+/** Uma das quatro marcações canônicas do dia, na ordem em que acontecem. */
+export type MarcacaoCanonica =
+  | 'ENTRADA'
+  | 'SAIDA_INTERVALO'
+  | 'RETORNO_INTERVALO'
+  | 'ENCERRAMENTO';
+
+/** Grau de certeza da análise: `BAIXA` pede conferência humana. */
+export type ConfiancaAnalise = 'ALTA' | 'BAIXA';
+
+/** Um dia com marcações faltando (relatório de ajuste do ponto). */
+export interface MarcacaoInvalidaItem {
+  colaboradorId: string;
+  nome: string;
+  primeiroNome: string;
+  funcao: FuncaoPessoa;
+  data: string;
+  diaSemana: number;
+  ehFeriado: boolean;
+  /** Horário de entrada esperado pela escala ("HH:mm"), quando há turno. */
+  entradaPrevista: string | null;
+  /** Horas registradas no dia ("HH:mm"), em ordem cronológica. */
+  horasRegistradas: string[];
+  esperadas: number;
+  registradas: number;
+  quantidadeFaltante: number;
+  /** QUAIS marcações faltam, na ordem do dia. */
+  tiposFaltantes: MarcacaoCanonica[];
+  /** Como as registradas foram interpretadas, na ordem do dia. */
+  tiposPresentes: MarcacaoCanonica[];
+  confianca: ConfiancaAnalise;
+  /** Por que precisa de conferência (só quando `confianca` é `BAIXA`). */
+  observacao: string | null;
+  /** Frase pronta do que falta ("Falta registrar: entrada"). */
+  detalhe: string;
+  /** Horas lançadas como devidas neste dia por causa do registro incompleto. */
+  devidasMs: number;
+}
+
+/** Relatório de marcações inválidas do ciclo (26→25). */
+export interface CentralMarcacoesInvalidas {
+  periodo: CentralPeriodo;
+  totais: {
+    dias: number;
+    pessoas: number;
+    marcacoesFaltantes: number;
+    faltaUma: number;
+    faltamDuas: number;
+    faltamTresOuMais: number;
+    aConferir: number;
+    porTipo: Record<MarcacaoCanonica, number>;
+    devidasMs: number;
+  };
+  itens: MarcacaoInvalidaItem[];
+}
+
 /** Uma linha do relatório de exportação (um dia relevante de um colaborador). */
 export interface LinhaExportacaoCiclo {
   colaboradorId: string;
@@ -190,6 +246,17 @@ export const centralJornadaService = {
   inconsistencias(ciclo = 0): Promise<CentralInconsistencias> {
     return apiClient.get<CentralInconsistencias>(
       '/central-jornada/inconsistencias',
+      { ciclo: String(ciclo) },
+    );
+  },
+
+  /**
+   * Relatório de marcações inválidas do ciclo: dia a dia, quantas marcações
+   * faltam e QUAIS. `ciclo` 0 = atual, -1 = anterior.
+   */
+  marcacoesInvalidas(ciclo = 0): Promise<CentralMarcacoesInvalidas> {
+    return apiClient.get<CentralMarcacoesInvalidas>(
+      '/central-jornada/marcacoes-invalidas',
       { ciclo: String(ciclo) },
     );
   },

@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 105 arquivos, 669 casos. **Mobile:** 25 arquivos, 100 casos. **Total: 769 casos.**
+> **Backend:** 107 arquivos, 704 casos. **Mobile:** 26 arquivos, 108 casos. **Total: 812 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -27,8 +27,9 @@
 | `src/assistente/gemini.client.spec.ts` | 3 | 1 |
 | `src/atestados/atestados.domain.spec.ts` | 13 | 5 |
 | `src/atestados/atestados.service.spec.ts` | 3 | 1 |
-| `src/central-jornada/central-jornada.controller.spec.ts` | 1 | 1 |
+| `src/central-jornada/central-jornada.controller.spec.ts` | 2 | 2 |
 | `src/central-jornada/central-jornada.service.spec.ts` | 21 | 3 |
+| `src/central-jornada/marcacoes-invalidas.service.spec.ts` | 9 | 1 |
 | `src/central-jornada/saldo-time.spec.ts` | 4 | 1 |
 | `src/checklist/checklist.controller.spec.ts` | 5 | 1 |
 | `src/checklist/checklist.properties.spec.ts` | 5 | 1 |
@@ -104,6 +105,7 @@
 | `src/ponto/deteccao-autocura-nao-retorno.spec.ts` | 3 | 1 |
 | `src/ponto/deteccao-automatica.domain.spec.ts` | 8 | 4 |
 | `src/ponto/deteccao-falta-a-prazo.spec.ts` | 3 | 1 |
+| `src/ponto/marcacoes-invalidas.domain.spec.ts` | 25 | 7 |
 | `src/ponto/ponto-alertas.service.spec.ts` | 2 | 2 |
 | `src/ponto/ponto-nome-match.spec.ts` | 6 | 1 |
 | `src/ponto/ponto-ocr.parser.spec.ts` | 17 | 1 |
@@ -143,6 +145,7 @@
 | `src/screens/operadores/JustificativasScreen.test.tsx` | 4 | 1 |
 | `src/screens/ponto/ExportarCicloScreen.test.tsx` | 2 | 1 |
 | `src/screens/ponto/InconsistenciasScreen.test.tsx` | 2 | 1 |
+| `src/screens/ponto/MarcacoesInvalidasScreen.test.tsx` | 8 | 1 |
 | `src/screens/ponto/RegistroPontoScreen.test.tsx` | 6 | 1 |
 | `src/screens/ponto/leituraComprovanteUtil.test.ts` | 4 | 2 |
 | `src/screens/ponto/montarTextoOcr.test.ts` | 3 | 1 |

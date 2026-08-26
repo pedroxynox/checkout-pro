@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `backend/src/ponto/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/ponto/`
 
 # Módulo: `ponto`
 
@@ -16,7 +16,9 @@ automaticamente faltas e não-retornos do intervalo.
   riscos de TAC (1h30 → 1h40 → TAC); marca faltas automáticas (2h sem batida) e
   não-retorno do intervalo (acima do intervalo máximo do **contrato da pessoa**,
   3h no 6x1); sincroniza o status do fiscal e remove a falta automática quando a
-  pessoa bate ponto.
+  pessoa bate ponto; analisa **quantas marcações faltam num dia e quais**
+  (entrada, saída/retorno do intervalo, encerramento), cruzando a 1ª batida com
+  o turno da escala.
 - **Não faz** (fica em outro módulo): agregação por ciclo de folha
   (fica em [`central-jornada`](central-jornada.md)); fechamento do ciclo
   (fica em [`ciclo-folha`](ciclo-folha.md)); as regras data-driven de cada
@@ -38,6 +40,7 @@ automaticamente faltas e não-retornos do intervalo.
 | `ponto-alertas.service.ts` | Cron (1 min): verifica riscos de TAC (dia civil de Brasília) | 58 |
 | `ponto-deteccao-automatica.service.ts` | Cron (5 min): alerta de atraso (1h), falta automática (2h), não-retorno e auto-cura | 338 |
 | `deteccao-automatica.domain.ts` | Regras puras: estado do escalado sem batida | 71 |
+| `marcacoes-invalidas.domain.ts` | Regras puras: quantas marcações faltam no dia e **quais** | 303 |
 | `pessoas-ponto.ts` | Funções (não-fiscais) que batem ponto | 15 |
 | `dto/ponto.dto.ts` | Validação de entrada das rotas | 88 |
 
@@ -186,6 +189,45 @@ da remoção imediata que o `PontoService` já faz na batida normal.
 - Detecção (`deteccao-automatica.domain.ts`): `minutosAposEntrada`,
   `estadoSemBatida` (`AGUARDANDO`/`ALERTA`/`FALTA`).
 
+### Marcações faltantes (`marcacoes-invalidas.domain.ts`)
+`calcularJornadaDia` responde "este dia está incompleto?" e, para isso, basta-lhe
+a classificação **posicional** (1ª = entrada, 2ª = saída, …). Serve ao cálculo
+das horas, mas não a quem vai **corrigir** o ponto: quem esquece justamente a
+ENTRADA desloca todos os tipos, e o dia sai apontado como "falta o encerramento"
+quando o que falta é a entrada. O `faltando` de `calcularJornadaDia` é texto
+livre e nunca contém `'entrada'`.
+
+Este domínio responde à pergunta seguinte — **quantas marcações faltam e
+QUAIS** — e alimenta o relatório de marcações inválidas da
+[`central-jornada`](central-jornada.md).
+
+- `analisarMarcacoesDoDia(horas, entradaPrevista, regras, esperadas)` →
+  `AnaliseMarcacoesDia` com `esperadas`, `registradas`, `quantidadeFaltante`,
+  `tiposFaltantes`, `tiposPresentes`, `entradaAusente`, `confianca` e
+  `observacao`. O raciocínio tem duas etapas:
+  1. **onde ancorar a sequência** — se a entrada foi esquecida, as batidas
+     existentes são o **fim** da sequência (o que falta está no começo); senão
+     são o **começo** (o que falta está no fim). É a correção central em relação
+     à classificação posicional, que só sabe ancorar no começo;
+  2. **ajustes pelas durações** (só quando ancorada no começo): **duas** batidas
+     cobrindo mais que `maxTrabalhoSemIntervaloMs` são entrada e encerramento —
+     faltam as **duas do intervalo**, não retorno e encerramento; **três**
+     batidas cujo vão do meio passa de `intervaloMaximoMs` indicam que a 3ª é o
+     encerramento — falta o **retorno do intervalo**.
+- `entradaFoiEsquecida(primeiraHora, entradaPrevista, margemMin)` → `true` quando
+  a 1ª batida vem mais de `MARGEM_ENTRADA_AUSENTE_MIN` (**180 min**) depois do
+  turno; `null` quando não há turno cadastrado (folga, feriado ou horário em
+  branco) — sem essa referência a pergunta não tem resposta. A margem é folgada
+  de propósito: atraso real fica na casa dos minutos (tolerância de 15 min,
+  falta automática às 2h), então 3h evita transformar atraso em "entrada
+  faltando".
+- `rotuloMarcacao(tipo)`, `descreverFaltantes(tipos)` (frase pronta, singular ou
+  plural) e `horaMarcacaoHHmm(hora)` → textos do relatório.
+- **Confiança:** `BAIXA` sempre que o resultado é a hipótese mais provável e não
+  um fato (sem turno cadastrado, mais de uma marcação faltando com a entrada
+  entre elas, ou um dos ajustes por duração), com o motivo em `observacao`. O
+  domínio **nunca inventa** uma resposta silenciosamente.
+
 ## 7. Estados e enums
 - `TipoBatida`: `ENTRADA` · `SAIDA_INTERVALO` · `RETORNO_INTERVALO` ·
   `ENCERRAMENTO` · `EXTRA`.
@@ -193,6 +235,12 @@ da remoção imediata que o `PontoService` já faz na batida normal.
   `ENCERRADO` · `INCOMPLETO`.
 - `EtapaAlertaTac`: `RISCO_1H30` → `RISCO_1H40` → `TAC` (escalada monotônica).
 - `EstadoSemBatida`: `AGUARDANDO` · `ALERTA` (1h) · `FALTA` (2h).
+- `MarcacaoCanonica`: `ENTRADA` · `SAIDA_INTERVALO` · `RETORNO_INTERVALO` ·
+  `ENCERRAMENTO` — as quatro marcações esperadas do dia, na ordem em que
+  acontecem (`SEQUENCIA_MARCACOES`). É `TipoBatida` **sem** o `EXTRA`: a 5ª
+  batida em diante não faz parte do dia esperado e não é objeto de ajuste.
+- `ConfiancaAnalise`: `ALTA` · `BAIXA` (a análise das marcações faltantes precisa
+  de conferência humana).
 - `RegrasContrato`: parâmetros de jornada por contrato (o padrão é o 6x1–2x1).
 
 ## 8. Dados que o módulo toca
@@ -240,6 +288,15 @@ da remoção imediata que o `PontoService` já faz na batida normal.
    domingo, mesmo caindo numa segunda. Nos dias de 100% não há hora devida —
    ver `diaPagaAdicional100` e a regra 4 da
    [`central-jornada`](central-jornada.md).
+12. **Para AJUSTAR o ponto, a marcação faltante é identificada pelo turno — não
+   pela ordem.** O tipo de cada batida é derivado da posição cronológica, o que
+   basta para calcular as horas mas encobre a **entrada** esquecida (ela desloca
+   todos os tipos). `analisarMarcacoesDoDia` confronta a 1ª batida com o horário
+   da escala para dizer quantas marcações faltam e quais; quando os dados não
+   permitem afirmar, devolve confiança `BAIXA` com o motivo, em vez de uma
+   resposta inventada. O cálculo da jornada **não muda** por isso — a análise é
+   um segundo olhar, consumido pelo relatório da
+   [`central-jornada`](central-jornada.md).
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
@@ -250,6 +307,7 @@ da remoção imediata que o `PontoService` já faz na batida normal.
 | `ponto-ocr.service.spec.ts` | Só pessoas ativas nas sugestões e memória de aliases | 7 |
 | `ponto-nome-match.spec.ts` | Similaridade de nomes tolerante ao OCR | 6 |
 | `deteccao-automatica.domain.spec.ts` | Estado do escalado sem batida (alerta/falta) | 8 |
+| `marcacoes-invalidas.domain.spec.ts` | Quantas marcações faltam e quais: entrada esquecida, ajustes por duração, sem turno, bordas e 4 propriedades invariantes (fast-check) | 25 |
 | `deteccao-falta-a-prazo.spec.ts` | Ausência a prazo (chave dupla) não vira falta automática duplicada | 3 |
 | `ponto-alertas.service.spec.ts` | Cron periódico de riscos de TAC | 1 |
 | `contrato-6x1-congelado.spec.ts` | Congela as cargas e os limites de TAC do 6x1 (regra não muda sem intenção) | 6 |

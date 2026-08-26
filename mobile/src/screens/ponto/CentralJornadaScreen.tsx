@@ -16,6 +16,7 @@ import { centralJornadaService, feriadosService } from '../../api/services';
 import {
   CentralComparativo,
   CentralInconsistencias,
+  CentralMarcacoesInvalidas,
   CentralPeriodo,
   CentralPessoaResumo,
   CentralResumo,
@@ -90,6 +91,11 @@ export function CentralJornadaScreen(): React.ReactElement {
     () => centralJornadaService.inconsistencias(ciclo),
     [ciclo],
   );
+  // Marcações faltantes do ciclo (relatório de ajuste do ponto).
+  const marcacoes = useRequisicao<CentralMarcacoesInvalidas>(
+    () => centralJornadaService.marcacoesInvalidas(ciclo),
+    [ciclo],
+  );
   const feriados = useRequisicao(() => feriadosService.listar(), []);
   const comparativo = useRequisicao<CentralComparativo[]>(
     () =>
@@ -102,6 +108,7 @@ export function CentralJornadaScreen(): React.ReactElement {
   function recarregarTudo(): void {
     resumo.recarregar();
     inconsistencias.recarregar();
+    marcacoes.recarregar();
     feriados.recarregar();
   }
 
@@ -128,6 +135,9 @@ export function CentralJornadaScreen(): React.ReactElement {
     .sort((a, b) => a.nome.localeCompare(b.nome));
 
   const totalPendencias = inconsistencias.dados?.totais.total ?? 0;
+  // Marcações que faltam registrar no ciclo (não dias): é o tamanho do ajuste.
+  const totalMarcacoesFaltantes =
+    marcacoes.dados?.totais.marcacoesFaltantes ?? 0;
   // "Registrados" = feriados manuais (estaduais/municipais); os nacionais são
   // automáticos e não contam como cadastro do usuário.
   const feriadosRegistrados = (feriados.dados ?? []).filter(
@@ -159,6 +169,21 @@ export function CentralJornadaScreen(): React.ReactElement {
           }
           estadoCor={totalPendencias > 0 ? cores.vermelho : cores.verde}
           aoPressionar={() => navigation.navigate('Inconsistencias')}
+        />
+        <CartaoAcao
+          icone="alarm"
+          cor={cores.laranja}
+          fundo={cores.laranjaFundo}
+          titulo="Marcações inválidas"
+          estado={
+            totalMarcacoesFaltantes > 0
+              ? `${totalMarcacoesFaltantes} a ajustar`
+              : 'Tudo registrado'
+          }
+          estadoCor={
+            totalMarcacoesFaltantes > 0 ? cores.laranja : cores.verde
+          }
+          aoPressionar={() => navigation.navigate('MarcacoesInvalidas')}
         />
         <CartaoAcao
           icone="checkmark-circle"
