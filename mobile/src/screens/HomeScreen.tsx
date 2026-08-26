@@ -6,6 +6,12 @@
  * ("Acessos rápidos"): o gerente vê todas; o fiscal vê apenas as operacionais.
  * Mostra também a identidade do usuário e a ação de sair.
  *
+ * Algumas áreas vivem no **cabeçalho** em vez da grade (marca `noCabecalho` em
+ * `navigation/areas`) — hoje o Centro de Controle, como um botão discreto
+ * "Central" ao lado da identidade. É só uma mudança de lugar: mesma rota, mesmo
+ * ícone e mesma funcionalidade exigida. Vale para celular e para o layout de
+ * desktop (nos dois casos a área sai da lista de acessos).
+ *
  * Visual: identidade SaaS executiva — header com degradê, saudação inteligente
  * por horário, e módulos em grade (ícone colorido + rótulo), ordenados por
  * relevância (os com pendência sobem e ganham um selo). A LÓGICA (áreas
@@ -102,11 +108,20 @@ export function HomeScreen({
   const areasVisiveis = AREAS.filter(
     (a) =>
       !a.emBreve &&
+      // Áreas marcadas com `noCabecalho` viram um botão discreto no topo (ver
+      // `areasDoCabecalho`) e saem da grade/menu lateral.
+      !a.noCabecalho &&
       podeAcessar(a.funcionalidade) &&
       // "Importações" saiu da Home para quem tem o Centro de Controle (agora ela
       // vive lá dentro). O importador (sem Centro de Controle) continua vendo a
       // card na Home, para seguir carregando os arquivos do dia.
       !(a.rota === 'Importacoes' && podeAcessar('OPERADORES_CRUD')),
+  );
+  // Áreas que vivem no CABEÇALHO (hoje só o Centro de Controle, como "Central").
+  // A regra é a mesma da grade — precisa da funcionalidade e não estar em
+  // construção —, só muda o lugar onde o atalho aparece.
+  const areasDoCabecalho = AREAS.filter(
+    (a) => a.noCabecalho && !a.emBreve && podeAcessar(a.funcionalidade),
   );
   // Ordena os acessos por ordem alfabética do título (não pelas pendências).
   // As pendências continuam aparecendo como selo em cada módulo. O `useMemo`
@@ -179,6 +194,33 @@ export function HomeScreen({
             </View>
 
             <View style={styles.acoesTopo}>
+              {/* Atalhos que saíram da grade e vivem no topo. Discretos de
+                  propósito: pastilha translúcida, letra pequena — não devem
+                  competir com a identidade do usuário nem com os acessos. */}
+              {areasDoCabecalho.map((area) => {
+                const Icone = ICONES_MODULO[area.rota] ?? LayoutGrid;
+                return (
+                  <Pressable
+                    key={area.rota}
+                    onPress={() => navigation.navigate(area.rota)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    // O rótulo visível é curto ("Central"); o leitor de tela
+                    // anuncia o nome completo da área.
+                    accessibilityLabel={area.titulo}
+                    style={({ pressed }) => [
+                      styles.botaoCabecalho,
+                      pressed && styles.botaoCabecalhoPressionado,
+                    ]}
+                  >
+                    <Icone size={13} color={cores.textoInverso} />
+                    <Text style={styles.botaoCabecalhoTexto} numberOfLines={1}>
+                      {area.tituloCurto ?? area.titulo}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+
               <Pressable
                 onPress={() => void sair()}
                 hitSlop={10}
@@ -353,6 +395,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+  },
+  /** Pastilha dos atalhos do cabeçalho (ex.: "Central"). Discreta sobre o degradê. */
+  botaoCabecalho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    height: 32,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.28)',
+  },
+  botaoCabecalhoPressionado: { opacity: 0.7 },
+  botaoCabecalhoTexto: {
+    color: cores.textoInverso,
+    fontSize: 12,
+    fontWeight: '700',
   },
   sinoBadge: {
     position: 'absolute',

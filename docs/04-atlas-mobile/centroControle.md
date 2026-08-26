@@ -9,6 +9,11 @@ central de vendas, check-outs, relatórios, acesso, permissões, importações,
 produtos pesados, tipos de contrato, insumos e o reinício de dados
 operacionais).
 
+> **Como se chega:** pelo botão discreto **"Central"** no cabeçalho da tela
+> inicial, ao lado da identidade do usuário. O hub saiu dos "Acessos rápidos"
+> (é gestão de uso pontual e ocupava espaço nobre da grade); a rota e a permissão
+> continuam as mesmas — ver [navegação §5.1](navegacao.md).
+
 ## 2. Quem usa (perfis)
 - **Gestão** (`OPERADORES_CRUD`): vê o hub e a maioria dos cards.
 - Cada card pode exigir uma funcionalidade extra (ex.: `ADMIN_DADOS`,

@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 113 arquivos, 835 casos. **Mobile:** 28 arquivos, 130 casos. **Total: 965 casos.**
+> **Backend:** 113 arquivos, 835 casos. **Mobile:** 28 arquivos, 131 casos. **Total: 966 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -135,7 +135,7 @@
 | `src/components/SeletorData.test.tsx` | 4 | 1 |
 | `src/offline/fila.test.ts` | 6 | 2 |
 | `src/offline/sincronizacao.test.tsx` | 7 | 2 |
-| `src/screens/HomeScreen.test.tsx` | 4 | 1 |
+| `src/screens/HomeScreen.test.tsx` | 5 | 1 |
 | `src/screens/centroControle/CentroControleScreen.test.tsx` | 2 | 1 |
 | `src/screens/centroControle/ReiniciarDadosScreen.test.tsx` | 2 | 1 |
 | `src/screens/colaboradores/ColaboradoresScreen.test.tsx` | 3 | 1 |

@@ -5,7 +5,8 @@
  * fiscal vê **apenas** as operacionais (Req 7.2.2–7.2.4). A filtragem usa a
  * regra real de `podeAcessar`, garantindo consistência com a allowlist do
  * fiscal. Também verifica que tocar em uma área navega para a rota
- * correspondente.
+ * correspondente e que as áreas marcadas com `noCabecalho` saem da grade e
+ * viram um botão discreto no topo.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
@@ -80,9 +81,10 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     await act(async () => {});
 
     // Vê todas as áreas prontas — exceto "Importações", que saiu da Home para
-    // o Centro de Controle quando o usuário tem acesso ao Centro de Controle.
+    // o Centro de Controle quando o usuário tem acesso ao Centro de Controle, e
+    // as marcadas com `noCabecalho`, que viram botão no topo.
     for (const area of AREAS.filter(
-      (a) => !a.emBreve && a.rota !== 'Importacoes',
+      (a) => !a.emBreve && !a.noCabecalho && a.rota !== 'Importacoes',
     )) {
       expect(screen.getByText(area.titulo)).toBeTruthy();
     }
@@ -110,6 +112,11 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     // Dados pessoais: a gestão enxerga a seção Colaboradores.
     expect(screen.getByText('Colaboradores')).toBeTruthy();
 
+    // O Centro de Controle saiu dos acessos rápidos: vive no cabeçalho como
+    // "Central". O título longo não aparece mais na grade.
+    expect(screen.getByText('Central')).toBeTruthy();
+    expect(screen.queryByText('Centro de Controle')).toBeNull();
+
     // Gestão estrutural de dados NÃO aparece para o gerente comum.
     expect(screen.queryByText('Pessoas e Acessos')).toBeNull();
     expect(screen.queryByText('Gerenciar dados')).toBeNull();
@@ -131,6 +138,24 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     // "Colaboradores" guarda dados pessoais (confidenciais) e passou a ter
     // funcionalidade própria: o fiscal não vê a seção.
     expect(screen.queryByText('Colaboradores')).toBeNull();
+
+    // O botão "Central" do cabeçalho segue a mesma permissão da área
+    // (OPERADORES_CRUD): o fiscal não o vê em lugar nenhum.
+    expect(screen.queryByText('Central')).toBeNull();
+    expect(screen.queryByText('Centro de Controle')).toBeNull();
+  });
+
+  it('o botão "Central" do cabeçalho leva ao Centro de Controle', async () => {
+    montarAuth('GERENTE');
+    const navigation = navegacaoFake();
+    render(<HomeScreen navigation={navigation} route={{} as never} />);
+    await act(async () => {});
+
+    fireEvent.press(screen.getByText('Central'));
+    expect((navigation as { navigate: jest.Mock }).navigate).toHaveBeenCalledWith(
+      'CentroControle',
+    );
+    await act(async () => {});
   });
 
   it('navega para a rota da área ao tocar no cartão', async () => {
