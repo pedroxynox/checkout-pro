@@ -86,17 +86,36 @@ têm registro e não são removíveis).
 
 ## 9. Dependências
 - **Depende de:** `PrismaService` (global).
-- **É usado por:** a [`central-jornada`](central-jornada.md) (aplica a regra de
-  100% nos feriados via `mapaNoPeriodo`/`ehFeriado`); o módulo **exporta** `FeriadosService`.
+- **É usado por** (o módulo **exporta** `FeriadosService`, sempre injetado com
+  `@Optional()` — sem ele o dia é tratado como normal):
+  - [`central-jornada`](central-jornada.md): `mapaNoPeriodo` por ciclo → carga de
+    domingo, extras a 100%, isenção de hora devida e o turno do feriado;
+  - [`ponto`](ponto.md): `ehFeriado` pontual em `jornadaDoDia`;
+  - [`fiscais`](fiscais.md): base/adicional do dia, classificação das extras do
+    mês, dias úteis da previsão de extras e o **horário esperado do feriado** em
+    `escaladosDoDia`.
+- **Não** consultam feriados: `checklist`, `metas` e `arrecadacao` (não há
+  ajuste de metas nem expectativa de arrecadação diferente em feriado).
 
 ## 10. Regras de negócio-chave
 1. **Nacionais são automáticos** (calculados, não cadastrados nem removíveis).
 2. **Manuais só estadual/municipal**, com data única e sem colidir com um nacional.
 3. **O nacional prevalece** sobre um manual na mesma data.
-4. **Feriado segue a regra do domingo (100%)** para a jornada, sem o rodízio por grupos.
+4. **Feriado segue a regra do domingo (100%)** para a jornada, sem o rodízio por
+   grupos — e, desde a regra 7 de [`escala-domingo`](escala-domingo.md), também
+   no **horário esperado** (turno de domingo). O que o feriado **não** muda é a
+   **folga**: ele não dispensa ninguém do trabalho nem desloca o rodízio de
+   domingos. Ou seja: quem trabalha num feriado é exatamente quem trabalharia
+   naquele dia da semana, só o horário e o pagamento mudam.
 5. **Facultativos não entram automaticamente** (Carnaval/Corpus Christi): o
    gestor os cadastra manualmente se a unidade os observa.
 6. **Gestão restrita a `CENTRAL_JORNADA`.**
+7. **O âmbito (estadual/municipal) é informativo.** Nenhum consumidor lê
+   `ambito`: para a jornada, um feriado nacional, estadual ou municipal produz
+   exatamente o mesmo efeito. O campo serve para a leitura humana na tela.
+8. **Os manuais não se repetem por ano.** A data é absoluta e única, então
+   Carnaval/Corpus Christi (e qualquer feriado local) precisam ser cadastrados a
+   cada ano. Não há edição: corrigir é remover e cadastrar de novo.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |

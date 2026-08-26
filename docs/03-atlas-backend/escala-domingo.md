@@ -78,9 +78,12 @@ do ciclo e calcula, de forma determinística, qual grupo folga em cada domingo.
 - `ehDiaDeFolga(ficha, dia, ancora)` → regra unificada de folga (usada pelo
   Relógio Ponto): seg–sáb usa `folgaDiaSemana`; domingo segue o rodízio, com
   folga fixa (`folgaDiaSemana = 0`) prevalecendo e "sem âncora" não afirmando folga.
-- `entradaEsperadaNoDia(ficha, dia, ancora)` → horário de entrada do turno
-  ("HH:mm") ou `null`: seg–qui = semana, sex–sáb = fim de semana, domingo =
+- `entradaEsperadaNoDia(ficha, dia, ancora, ehFeriado?)` → horário de entrada do
+  turno ("HH:mm") ou `null`: seg–qui = semana, sex–sáb = fim de semana, domingo =
   horário de domingo (só quando o rodízio está ancorado e manda trabalhar).
+  **Em feriado (`ehFeriado = true`) vale o horário de DOMINGO** — ver regra 7. O
+  parâmetro é opcional (`false` por padrão) e o domínio **não** consulta o
+  calendário: quem chama resolve se o dia é feriado e informa.
 - `minutosDeAtraso(entradaPrevista, entradaReal, tolerancia?)` → minutos de
   atraso apenas quando ultrapassam a tolerância (`TOLERANCIA_ATRASO_MIN = 15`).
 
@@ -111,11 +114,24 @@ do ciclo e calcula, de forma determinística, qual grupo folga em cada domingo.
    apontar atraso por engano enquanto o rodízio não foi configurado).
 6. **Compatibilidade:** a config antiga (grupo único) continua funcionando via
    ordem legada até ser regravada.
+7. **Feriado muda o HORÁRIO, nunca a folga.** Num feriado o turno esperado é o
+   **horário de domingo** da pessoa (`entradaDom`) — a mesma regra que a jornada
+   já aplicava ao pagamento (carga de domingo + extras a 100%), agora também no
+   turno. O que **não** muda:
+   - a **folga** continua sendo a do dia real da semana: quem folga na terça
+     segue folgando numa terça feriado;
+   - o **rodízio de domingos não é deslocado** por feriado, nem quando o feriado
+     cai num domingo.
+
+   **Fallback:** sem `entradaDom` cadastrado (típico de quem está fora do
+   rodízio), o feriado **mantém o horário normal do dia** em vez de deixar a
+   pessoa sem turno — sem turno ela desapareceria da equipe do dia, o que seria
+   pior e mais surpreendente do que seguir no horário habitual.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `escala-domingo.domain.spec.ts` | Rodízio, folga, turno esperado e atraso (funções puras) | 24 |
+| `escala-domingo.domain.spec.ts` | Rodízio, folga, turno esperado, **turno de feriado (horário de domingo, folga inalterada)** e atraso (funções puras) | 30 |
 
 > Contagem sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

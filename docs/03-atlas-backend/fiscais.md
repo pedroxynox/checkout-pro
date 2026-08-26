@@ -102,7 +102,19 @@ Propaga em tempo real (mesmo canal WebSocket dos fiscais) o status ao vivo de um
 escala consolidada + operadores pelo cadastro/rodízio) e alimenta tanto a
 "equipe do dia" quanto a detecção automática de falta. **Quem está de férias no
 dia é excluído aqui** (pela ficha, via `FeriasService.colaboradoresDeFeriasNoDia`),
-então some da escala e não vira falta automática. Os demais: log de tempos por
+então some da escala e não vira falta automática.
+
+**Em feriado o horário esperado é o de DOMINGO**, e a folga não muda (regra 7 de
+[`escala-domingo`](escala-domingo.md)). Para operadores/supervisores isso vem de
+`entradaEsperadaNoDia(..., ehFeriado)`; para **fiscais** o horário de domingo
+mora na **ficha** (`Colaborador.entradaDom`) e não na escala semanal, então
+`escaladosDoDia` busca as fichas dos consolidados
+(`entradaDomDasFichas`) e substitui só o horário — a folga continua vindo da
+escala consolidada do dia real. Sem `entradaDom`, mantém o horário da escala
+(ninguém fica sem turno e desaparece da equipe do dia). Sem `FeriadosService`
+(injetado com `@Optional()`), o dia é tratado como normal.
+
+Os demais: log de tempos por
 fiscal; jornada de equipe (todos os escalados, com atraso e falta); e o
 acumulado de horas extras do mês (extra 50% em dias comuns e 100% aos domingos).
 
@@ -203,6 +215,7 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 | `escala-colaborador.spec.ts` | Geração da escala semanal a partir do cadastro | 4 |
 | `escala-inativo.spec.ts` | Escala de colaborador inativo | 1 |
 | `escalados-ferias.spec.ts` | `escaladosDoDia` exclui quem está de férias | 2 |
+| `escalados-feriado.spec.ts` | `escaladosDoDia` em feriado: horário de domingo (operador e fiscal), folga inalterada, fallback sem `entradaDom` e sem `FeriadosService` | 8 |
 | `integridade-vinculo.spec.ts` | Detecção de vínculos órfãos fiscal ↔ ficha (Fase 4) | 6 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).

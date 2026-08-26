@@ -180,6 +180,51 @@ describe('entradaEsperadaNoDia', () => {
   it('domingo com grupo mas SEM âncora não afirma turno (evita atraso falso)', () => {
     expect(entradaEsperadaNoDia(ficha, DOM1, null)).toBeNull();
   });
+
+  describe('feriado segue o horário de domingo', () => {
+    it('feriado de terça usa o horário de domingo, não o de semana', () => {
+      expect(entradaEsperadaNoDia(ficha, TERCA, ancora, true)).toBe('09:00');
+      // Sem feriado, a mesma terça segue no horário de semana.
+      expect(entradaEsperadaNoDia(ficha, TERCA, ancora, false)).toBe('07:00');
+    });
+
+    it('feriado de sexta usa o horário de domingo, não o de fim de semana', () => {
+      expect(entradaEsperadaNoDia(ficha, SEXTA, ancora, true)).toBe('09:00');
+      expect(entradaEsperadaNoDia(ficha, SEXTA, ancora, false)).toBe('08:00');
+    });
+
+    it('a FOLGA não muda no feriado: quem folga na segunda segue sem turno', () => {
+      // É a regra acordada: o feriado muda o horário, nunca a folga.
+      expect(entradaEsperadaNoDia(ficha, SEGUNDA, ancora, true)).toBeNull();
+    });
+
+    it('feriado em domingo não altera o rodízio (quem folga segue folgando)', () => {
+      const g1 = { ...ficha, grupoDomingo: 'G1' }; // folga no DOM1
+      expect(entradaEsperadaNoDia(g1, DOM1, ancora, true)).toBeNull();
+      // E quem trabalha segue com o horário de domingo, como já era.
+      expect(entradaEsperadaNoDia(ficha, DOM1, ancora, true)).toBe('09:00');
+    });
+
+    it('sem horário de domingo cadastrado, o feriado mantém o horário normal', () => {
+      // Quem está fora do rodízio costuma não ter `entradaDom`. Deixá-lo sem
+      // turno o faria desaparecer da equipe do dia — pior que seguir no seu
+      // horário habitual.
+      const semDomingo = { ...ficha, entradaDom: null };
+      expect(entradaEsperadaNoDia(semDomingo, TERCA, ancora, true)).toBe('07:00');
+      expect(entradaEsperadaNoDia(semDomingo, SEXTA, ancora, true)).toBe('08:00');
+    });
+
+    it('sem horário nenhum cadastrado, segue sem turno esperado', () => {
+      const vazio = {
+        folgaDiaSemana: 1,
+        grupoDomingo: 'G2',
+        entradaSemana: null,
+        entradaFds: null,
+        entradaDom: null,
+      };
+      expect(entradaEsperadaNoDia(vazio, TERCA, ancora, true)).toBeNull();
+    });
+  });
 });
 
 describe('minutosDeAtraso', () => {

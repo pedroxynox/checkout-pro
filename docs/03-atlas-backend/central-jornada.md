@@ -280,6 +280,14 @@ faltas, TAC, conflitos e atrasos.
    não retorno **sem** a incidência registrada continua aparecendo como marcação
    faltante; é o comportamento correto, já que sem o registro o sistema não sabe
    o que aconteceu.
+13. **Em feriado o atraso É apontado, pelo turno de DOMINGO.** Antes o feriado
+   era tratado como "turno ambíguo" e o atraso simplesmente não era calculado no
+   dia — o que escondia atraso real. Agora `entradaEsperadaNoDia` recebe
+   `ehFeriado` e devolve o horário de domingo da pessoa (regra 7 de
+   [`escala-domingo`](escala-domingo.md)); sem `entradaDom` cadastrado, cai no
+   horário normal do dia. **A folga não muda**: feriado no dia de folga segue sem
+   turno e sem atraso. O pagamento do feriado continua igual (carga de domingo e
+   extras a 100%, regra 4).
 10. **Ranking e card mostram o mesmo número, por construção.** `RankingPessoa`
    **estende** `CentralPessoaResumo` em vez de recalcular: os valores vêm da
    mesma `calcularPessoa` que alimenta o resumo, e o detalhe de cada métrica é a
@@ -307,7 +315,7 @@ faltas, TAC, conflitos e atrasos.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito) | 21 |
+| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito) e **atraso em feriado pelo turno de domingo** | 23 |
 | `marcacoes-invalidas.service.spec.ts` | Relatório de marcações faltantes: entrada esquecida, encerramento, as duas do intervalo, totais, ordenação, sem turno — e os dias que **não** entram (não retorno do intervalo, jornada curta válida, dia completo, dia sem registro) | 12 |
 | `rankings.service.spec.ts` | Base dos rankings: **detalhe do mesmo tamanho que o contador** de cada card, faltas sem atestado, atestados à parte (com horas abonadas), atrasos com minutos e turno, TAC com motivos, conflitos, pessoas zeradas e igualdade com `resumoCiclo` | 9 |
 | `saldo-time.spec.ts` | Regra do saldo do time (`contribuicaoSaldoTime`) | 4 |

@@ -155,12 +155,21 @@ export interface FichaEscala {
  * ou null quando não há turno: dia de folga, domingo fora do rodízio ou horário
  * não cadastrado. Seg–Qui usam o horário de semana; Sex–Sáb o de fim de semana;
  * domingo o horário de domingo (só quando o rodízio manda trabalhar).
+ *
+ * **Feriado segue o horário de DOMINGO** (`ehFeriado = true`): é a mesma regra
+ * que a jornada já aplicava ao pagamento (carga de domingo + extras a 100%),
+ * agora também no turno. O que **não** muda no feriado é a folga: quem folga na
+ * terça continua folgando numa terça feriado, e o rodízio de domingos não é
+ * deslocado. Só o horário muda.
  */
 export function entradaEsperadaNoDia(
   ficha: FichaEscala,
   dia: Date,
   ancoraDomingo: { data: Date; ordem: readonly GrupoDomingo[] } | null,
+  ehFeriado = false,
 ): string | null {
+  // A FOLGA é decidida sempre pelo dia REAL da semana — inclusive em feriado.
+  // Feriado não dá folga a ninguém nem mexe no rodízio: só o horário muda.
   if (ehDiaDeFolga(ficha, dia, ancoraDomingo)) return null;
   const dow = dia.getUTCDay();
   if (dow === 0) {
@@ -169,8 +178,16 @@ export function entradaEsperadaNoDia(
     // apontar atraso por engano).
     return ancoraDomingo ? (ficha.entradaDom ?? null) : null;
   }
-  if (dow >= 1 && dow <= 4) return ficha.entradaSemana ?? null;
-  return ficha.entradaFds ?? null;
+  const horarioNormal = dow >= 1 && dow <= 4 ? ficha.entradaSemana : ficha.entradaFds;
+  if (ehFeriado) {
+    // Feriado funciona como domingo: vale o horário de domingo da pessoa.
+    // Se ela não tem horário de domingo cadastrado (típico de quem está fora do
+    // rodízio), mantemos o horário normal do dia em vez de deixá-la SEM turno —
+    // sem turno ela desapareceria da equipe do dia, o que seria pior e mais
+    // surpreendente do que seguir com o horário habitual.
+    return ficha.entradaDom ?? horarioNormal ?? null;
+  }
+  return horarioNormal ?? null;
 }
 
 /** Tolerância padrão (minutos) antes de considerar a entrada como atraso. */

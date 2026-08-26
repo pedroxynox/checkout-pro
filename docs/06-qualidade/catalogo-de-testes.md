@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 108 arquivos, 716 casos. **Mobile:** 27 arquivos, 118 casos. **Total: 834 casos.**
+> **Backend:** 109 arquivos, 732 casos. **Mobile:** 27 arquivos, 118 casos. **Total: 850 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -28,7 +28,7 @@
 | `src/atestados/atestados.domain.spec.ts` | 13 | 5 |
 | `src/atestados/atestados.service.spec.ts` | 3 | 1 |
 | `src/central-jornada/central-jornada.controller.spec.ts` | 2 | 2 |
-| `src/central-jornada/central-jornada.service.spec.ts` | 21 | 3 |
+| `src/central-jornada/central-jornada.service.spec.ts` | 23 | 3 |
 | `src/central-jornada/marcacoes-invalidas.service.spec.ts` | 12 | 1 |
 | `src/central-jornada/rankings.service.spec.ts` | 9 | 1 |
 | `src/central-jornada/saldo-time.spec.ts` | 4 | 1 |
@@ -59,7 +59,7 @@
 | `src/data-inicial/data-inicial.domain.spec.ts` | 5 | 2 |
 | `src/data-inicial/data-inicial.properties.spec.ts` | 2 | 1 |
 | `src/data-inicial/validacao-data.service.spec.ts` | 3 | 1 |
-| `src/escala-domingo/escala-domingo.domain.spec.ts` | 24 | 4 |
+| `src/escala-domingo/escala-domingo.domain.spec.ts` | 30 | 5 |
 | `src/fechamento/fechamento.domain.spec.ts` | 5 | 1 |
 | `src/feedforward/feedforward.domain.spec.ts` | 7 | 2 |
 | `src/feriados/feriados.domain.spec.ts` | 4 | 1 |
@@ -67,6 +67,7 @@
 | `src/ferias/ferias.service.spec.ts` | 7 | 1 |
 | `src/fiscais/escala-colaborador.spec.ts` | 4 | 1 |
 | `src/fiscais/escala-inativo.spec.ts` | 1 | 1 |
+| `src/fiscais/escalados-feriado.spec.ts` | 8 | 1 |
 | `src/fiscais/escalados-ferias.spec.ts` | 2 | 1 |
 | `src/fiscais/fiscais-alertas.intervalo.spec.ts` | 2 | 1 |
 | `src/fiscais/fiscais.controller.spec.ts` | 4 | 1 |
