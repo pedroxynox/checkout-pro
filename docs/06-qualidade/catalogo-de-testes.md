@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 111 arquivos, 778 casos. **Mobile:** 27 arquivos, 119 casos. **Total: 897 casos.**
+> **Backend:** 113 arquivos, 816 casos. **Mobile:** 28 arquivos, 128 casos. **Total: 944 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -23,6 +23,8 @@
 | `src/app.service.spec.ts` | 5 | 1 |
 | `src/arrecadacao/arrecadacao.nao-reconhecidos.spec.ts` | 2 | 1 |
 | `src/arrecadacao/destaque-menos-cancelou.spec.ts` | 1 | 1 |
+| `src/arrecadacao/historico-indicadores.domain.spec.ts` | 23 | 7 |
+| `src/arrecadacao/historico-indicadores.service.spec.ts` | 15 | 4 |
 | `src/arrecadacao/indicadores-inteligente.destaques.spec.ts` | 3 | 2 |
 | `src/assistente/gemini.client.spec.ts` | 3 | 1 |
 | `src/atestados/atestado-converte-e-desfaz.spec.ts` | 7 | 2 |
@@ -155,4 +157,5 @@
 | `src/screens/ponto/leituraComprovanteUtil.test.ts` | 4 | 2 |
 | `src/screens/ponto/montarTextoOcr.test.ts` | 3 | 1 |
 | `src/utils/formato.test.ts` | 10 | 3 |
+| `src/utils/periodoMensal.test.ts` | 9 | 5 |
 | `src/utils/relatorioPerfil.test.ts` | 12 | 9 |

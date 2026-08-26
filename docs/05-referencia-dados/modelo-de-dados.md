@@ -3,7 +3,7 @@
 
 # Modelo de Dados (Prisma)
 
-> Fonte: `backend/prisma/schema.prisma`. Total: **53 tabelas** e **28 tipos (enums)**.
+> Fonte: `backend/prisma/schema.prisma`. Total: **54 tabelas** e **28 tipos (enums)**.
 
 Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dicionario-de-dados.md).
 
@@ -24,6 +24,7 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `VendaHora` | 4 | espelhado em VendaDiaria, que alimenta os percentuais dos indicadores. |
 | `RegistroArrecadacao` | 12 | fechamento). Alimenta os indicadores (total dia/semana/mes e ranking). |
 | `ArrecadacaoSemMovimento` | 5 | "pendente/não enviado". Único por (tipo, data). |
+| `FotoMesIndicador` | 11 | O mês CORRENTE nunca é congelado: é sempre calculado ao vivo (parcial). |
 | `ConfigVendas` | 4 | "sem meta definida" (a projeção é exibida sem comparação). |
 | `ConfigSistema` | 8 | qual começam os calendários do app. Editável pelo gestor sem redeploy. |
 | `CheckoutReporte` | 12 | histórico, sem depender de joins. |

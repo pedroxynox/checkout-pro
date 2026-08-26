@@ -8,6 +8,7 @@ import {
   Min,
 } from 'class-validator';
 import { TIPOS_ARRECADACAO, TipoArrecadacao } from '../arrecadacao.domain';
+import { MESES_HISTORICO_MAX } from '../historico-indicadores.domain';
 
 export class UploadArrecadacaoDto {
   @IsIn(TIPOS_ARRECADACAO as unknown as string[], {
@@ -97,6 +98,27 @@ export class IndicadorTipoDataDto {
 export class DataIndicadorDto {
   @IsISO8601()
   data!: string;
+}
+
+/**
+ * Histórico mensal de um indicador: tipo + quantos meses (1..60). O valor é
+ * limitado pela retenção configurada no servidor — não existe histórico além
+ * dela, porque os dados já foram apagados.
+ */
+export class HistoricoArrecadacaoDto {
+  @IsIn(TIPOS_ARRECADACAO as unknown as string[], {
+    message: 'Tipo de arrecadação inválido.',
+  })
+  tipo!: TipoArrecadacao;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'O número de meses deve ser um número.' })
+  @Min(1, { message: 'O número de meses deve ser pelo menos 1.' })
+  @Max(MESES_HISTORICO_MAX, {
+    message: `O número de meses não pode passar de ${MESES_HISTORICO_MAX}.`,
+  })
+  meses?: number;
 }
 
 /** Série temporal (tendência): tipo + data + janela de dias (1..365). */

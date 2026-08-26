@@ -42,6 +42,7 @@
 | GET | `/arrecadacao/nao-reconhecidos` | `OPERADORES_CRUD` | Fila de códigos soltos p/ associar/criar |
 | GET | `/arrecadacao/metas` | `INDICADORES_VISUALIZAR` | Metas configuradas (c/ fallback) |
 | POST | `/arrecadacao/metas` | `ADMIN_DADOS` | Define meta de um indicador |
+| GET | `/arrecadacao/historico` | `INDICADORES_VISUALIZAR` | Série mensal da janela (padrão 24 meses) com meta do mês e evolução |
 | GET | `/arrecadacao/tendencia` | `INDICADORES_VISUALIZAR` | Série dos últimos N dias |
 | GET | `/arrecadacao/comparativo` | `INDICADORES_VISUALIZAR` | Mês/semana atual vs anterior |
 | GET | `/arrecadacao/projecao` | `INDICADORES_VISUALIZAR` | Projeção de fechamento do mês |

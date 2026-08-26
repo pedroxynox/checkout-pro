@@ -3,7 +3,7 @@
 
 # Dicionário de Dados
 
-> Detalhe campo a campo das **53 tabelas**. Fonte: `backend/prisma/schema.prisma`.
+> Detalhe campo a campo das **54 tabelas**. Fonte: `backend/prisma/schema.prisma`.
 
 ## `Usuario`
 
@@ -186,6 +186,24 @@ fechamento). Alimenta os indicadores (total dia/semana/mes e ranking).
 | `data` | `DateTime` |  |  |
 | `marcadoPor` | `String?` |  |  |
 | `criadoEm` | `DateTime` |  |  |
+
+## `FotoMesIndicador`
+
+O mês CORRENTE nunca é congelado: é sempre calculado ao vivo (parcial).
+
+| Campo | Tipo | Chave | Descrição |
+|---|---|---|---|
+| `id` | `String` | PK |  |
+| `tipo` | `String` |  | Tipo do indicador (ex.: TROCO_SOLIDARIO, CANCELAMENTO_ITENS). |
+| `anoMes` | `String` |  | Período mensal no formato "AAAA-MM" (ex.: "2026-07"). |
+| `total` | `Decimal` |  | Soma dos lançamentos do mês (R$). |
+| `itens` | `Int` |  | Soma das quantidades (itens/cupons) informadas no mês. |
+| `vendas` | `Decimal` |  | Vendas da loja no mês (denominador dos indicadores base VENDAS). |
+| `percentual` | `Float?` |  | % sobre as vendas do mês (apenas base VENDAS; null nas metas em R$). |
+| `meta` | `Float` |  | Meta que valia naquele mês (R$ ou %), resolvida no momento de congelar. |
+| `nivel` | `String` |  | Semáforo do mês: OK \| ATENCAO \| FORA. |
+| `cumpriu` | `Boolean` |  | true se o mês cumpriu a meta. |
+| `congeladoEm` | `DateTime` |  |  |
 
 ## `ConfigVendas`
 
