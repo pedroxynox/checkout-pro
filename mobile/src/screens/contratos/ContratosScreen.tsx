@@ -106,6 +106,9 @@ export function ContratosScreen({
 }: PropsTela<'Contratos'>): React.ReactElement {
   const { podeAcessar } = useAuth();
   const podeGerir = podeAcessar('CONTRATOS_GERIR');
+  // Tocar no nome abre a ficha do colaborador (dado confidencial): depende de
+  // `COLABORADORES_PERFIL`, ajustável na Central de Permissões.
+  const podeVerPerfil = podeAcessar('COLABORADORES_PERFIL');
 
   const req = useRequisicao<DadosContratos>(
     async () => {
@@ -279,6 +282,7 @@ export function ContratosScreen({
             <View key={c.colaboradorId} style={styles.card}>
               <TouchableOpacity
                 activeOpacity={0.7}
+                disabled={!podeVerPerfil}
                 onPress={() =>
                   navigation.navigate('PerfilColaborador', {
                     colaboradorId: c.colaboradorId,

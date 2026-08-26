@@ -125,8 +125,8 @@
 | POST | `/colaboradores` | `cadastrar` | `OPERADORES_CRUD` |
 | GET | `/colaboradores` | `listar` | `OPERADORES_AUSENCIAS` |
 | GET | `/colaboradores/logins` | `logins` | `OPERADORES_CRUD` |
-| GET | `/colaboradores/:id` | `obter` | `OPERADORES_AUSENCIAS` |
-| GET | `/colaboradores/:id/perfil` | `perfil` | `OPERADORES_AUSENCIAS` |
+| GET | `/colaboradores/:id` | `obter` | `OPERADORES_CRUD` |
+| GET | `/colaboradores/:id/perfil` | `perfil` | `COLABORADORES_PERFIL` |
 | PATCH | `/colaboradores/:id` | `editar` | `OPERADORES_CRUD` |
 | POST | `/colaboradores/:id/inativar` | `inativar` | `OPERADORES_CRUD` |
 | POST | `/colaboradores/:id/reativar` | `reativar` | `OPERADORES_CRUD` |

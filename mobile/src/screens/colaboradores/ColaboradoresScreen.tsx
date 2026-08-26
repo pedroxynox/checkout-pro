@@ -43,6 +43,9 @@ export function ColaboradoresScreen({
   navigation,
 }: PropsTela<'Colaboradores'>): React.ReactElement {
   const { podeAcessar } = useAuth();
+  // A ficha individual é confidencial e tem funcionalidade própria
+  // (`COLABORADORES_PERFIL`): quem só pode ver a lista não navega para ela.
+  const podeVerPerfil = podeAcessar('COLABORADORES_PERFIL');
   const lista = useRequisicao<Colaborador[]>(
     () => colaboradoresService.listar(),
     [],
@@ -217,6 +220,7 @@ export function ColaboradoresScreen({
             ) : null}
           <TouchableOpacity
             activeOpacity={0.7}
+            disabled={!podeVerPerfil}
             onPress={() =>
               navigation.navigate('PerfilColaborador', { colaboradorId: c.id })
             }
@@ -240,7 +244,13 @@ export function ColaboradoresScreen({
                   .join(' · ')}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />
+            {podeVerPerfil ? (
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={cores.textoSecundario}
+              />
+            ) : null}
           </TouchableOpacity>
           </React.Fragment>
         ))

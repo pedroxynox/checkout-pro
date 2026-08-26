@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `mobile/src/screens/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/operadores/`
 
 # Área: `operadores`
 
@@ -12,6 +12,8 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 ## 2. Quem usa (perfis)
 - **Escala/ausências** (`OPERADORES_AUSENCIAS`): vê justificativas, faltas do
   dia/mês e o status ao vivo dos fiscais.
+- **Abrir o Perfil pela linha do quadro** exige `COLABORADORES_PERFIL` (a ficha é
+  dado confidencial); sem a permissão a linha continua visível, mas não navega.
 - **Programar período** (Gerente/Administrador/Supervisor): abre "Ausências a
   prazo".
 - **Jornada da equipe** (`FISCAIS_JORNADA`): atalho para a Jornada de Equipe.
@@ -21,7 +23,7 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1886 |
+| `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1921 |
 | `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 458 |
 | `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 481 |
 | `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) | 398 |
@@ -36,7 +38,7 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 ## 4. Fluxo do usuário
 1. **Dia:** `OperadoresScreen` mostra o roster do dia selecionado agrupado por
    turno (do cadastro), com estado por cor (🟢 trabalha · 🔴 falta · ⚪ folga · azul
-   "no retorno"); tocar numa linha abre o Perfil.
+   "no retorno"); tocar numa linha abre o Perfil (só com `COLABORADORES_PERFIL`).
 2. **Ao vivo:** "Agora no caixa" traz relógio de Brasília, disponíveis/esperados
    e avisos de faltas e não-retornos da franja atual; fiscais têm status ao vivo
    (WebSocket + reconsulta a cada 60s).

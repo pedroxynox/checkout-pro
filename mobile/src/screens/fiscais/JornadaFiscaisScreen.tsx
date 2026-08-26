@@ -155,7 +155,9 @@ export function JornadaFiscaisScreen(): React.ReactElement {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { podeAcessar } = useAuth();
   const { dataInicial } = useConfigSistema();
-  const podeVerPerfil = podeAcessar('OPERADORES_AUSENCIAS');
+  // A ficha do colaborador é confidencial: funcionalidade própria, ajustável
+  // na Central de Permissões.
+  const podeVerPerfil = podeAcessar('COLABORADORES_PERFIL');
 
   // Dia selecionado (padrão: hoje). Permite ver a equipe de dias anteriores.
   const [data, setData] = React.useState(hojeISO());

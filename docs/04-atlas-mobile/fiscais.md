@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `mobile/src/screens/fiscais/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/fiscais/`
 
 # Área: `fiscais`
 
@@ -11,8 +11,9 @@ intervalo" e sanções) reutilizado para criar/editar/excluir.
 
 ## 2. Quem usa (perfis)
 - **Jornada de equipe** (`FISCAIS_JORNADA`): abre a tela e vê a equipe do dia.
-- **Quem vê o perfil** (`OPERADORES_AUSENCIAS`): toca num card para abrir o
-  Perfil do colaborador.
+- **Quem vê o perfil** (`COLABORADORES_PERFIL`): toca num card para abrir o
+  Perfil do colaborador. É dado confidencial e tem permissão própria — sem ela o
+  card fica visível, mas não navega.
 - O modal de incidência é acionado por telas de gestão (perfil/disciplina),
   respeitando a permissão de excluir de quem o abre.
 - Ver [Perfis e permissões](../01-produto/perfis-e-permissoes.md).
@@ -20,7 +21,7 @@ intervalo" e sanções) reutilizado para criar/editar/excluir.
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `JornadaFiscaisScreen.tsx` | Jornada de equipe do dia (roster + marcações + estado) | 525 |
+| `JornadaFiscaisScreen.tsx` | Jornada de equipe do dia (roster + marcações + estado) | 527 |
 | `RegistrarIncidenciaModal.tsx` | Modal de criar/editar/excluir incidência de escala | 445 |
 
 ## 4. Fluxo do usuário

@@ -59,6 +59,9 @@ const ITENS: ItemControle[] = [
     titulo: 'Relatórios',
     descricao: 'Baixar relatórios dos operadores em PDF (semana ou período)',
     icone: 'document-text-outline',
+    // O relatório é montado a partir da ficha individual de cada operador
+    // (dado confidencial), então segue a mesma permissão do perfil.
+    funcionalidade: 'COLABORADORES_PERFIL',
   },
   {
     rota: 'Usuarios',

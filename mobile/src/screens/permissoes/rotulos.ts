@@ -16,6 +16,7 @@ export const ORDEM_AREAS: string[] = [
   'Insumos',
   'Fiscais e jornada',
   'Operação e pessoas',
+  'Colaboradores (dados pessoais)',
   'Check-Outs',
   'Avisos',
 ];
@@ -103,6 +104,16 @@ export const ROTULOS_FUNCIONALIDADE: Record<string, RotuloFuncionalidade> = {
     titulo: 'Centro de Controle',
     descricao: 'Cadastro de colaboradores, metas, central de vendas e relatórios',
     area: 'Operação e pessoas',
+  },
+  COLABORADORES_VISUALIZAR: {
+    titulo: 'Seção Colaboradores',
+    descricao: 'Abrir a seção e ver a lista de pessoas do quadro',
+    area: 'Colaboradores (dados pessoais)',
+  },
+  COLABORADORES_PERFIL: {
+    titulo: 'Perfil do colaborador',
+    descricao: 'Abrir a ficha individual: score, faltas, indicadores e insígnias',
+    area: 'Colaboradores (dados pessoais)',
   },
   ADVERTENCIAS_DECIDIR: {
     titulo: 'Decidir advertências',

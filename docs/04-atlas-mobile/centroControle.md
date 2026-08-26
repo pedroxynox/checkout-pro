@@ -14,12 +14,15 @@ operacionais).
 - Cada card pode exigir uma funcionalidade extra (ex.: `ADMIN_DADOS`,
   `USUARIOS_CRUD`, `PERMISSOES_GERENCIAR`, `ESCALA_DOMINGO_CONFIG`,
   `IMPORTACOES`); os cards sem permissão não aparecem.
+- **Relatórios** exige `COLABORADORES_PERFIL`: o PDF é montado a partir da ficha
+  individual de cada operador, que é dado confidencial — ver
+  [`colaboradores`](colaboradores.md).
 - Ver [Perfis e permissões](../01-produto/perfis-e-permissoes.md).
 
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `CentroControleScreen.tsx` | Hub/índice de atalhos de gestão | 176 |
+| `CentroControleScreen.tsx` | Hub/índice de atalhos de gestão | 179 |
 | `CentralVendasScreen.tsx` | Estimativas de venda por dia do mês | 237 |
 | `ConfigEscalaDomingoScreen.tsx` | Configuração do rodízio de domingo (G1/G2/G3) | 268 |
 | `TiposContratoScreen.tsx` | CRUD dos tipos de contrato de jornada | 569 |

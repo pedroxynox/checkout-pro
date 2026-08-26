@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `mobile/src/screens/contratos/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/contratos/`
 
 # Área: `contratos`
 
@@ -8,8 +8,9 @@ carteira com resumo, filtros por etiqueta e um card por pessoa mostrando o tempo
 de casa, a etapa atual e o semáforo de urgência.
 
 ## 2. Quem usa (perfis)
-- **Todos com acesso à área** veem a lista, o resumo e podem abrir o perfil da
-  pessoa (tocando no card).
+- **Todos com acesso à área** veem a lista e o resumo.
+- **Abrir o perfil pelo card** exige `COLABORADORES_PERFIL` (a ficha é dado
+  confidencial); sem a permissão o card não navega.
 - **Quem tem `CONTRATOS_GERIR`** (gerente) pode, além disso, **definir/editar a
   data de admissão** e **encerrar** um contrato em experiência.
 - Ver [Perfis e permissões](../01-produto/perfis-e-permissoes.md).
@@ -17,7 +18,7 @@ de casa, a etapa atual e o semáforo de urgência.
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `ContratosScreen.tsx` | Carteira de contratos (resumo, filtros e cards) | 425 |
+| `ContratosScreen.tsx` | Carteira de contratos (resumo, filtros e cards) | 429 |
 | `ContratosScreen.test.tsx` | Testes de render/permissão | 128 |
 
 ## 4. Fluxo do usuário

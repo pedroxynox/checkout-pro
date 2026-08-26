@@ -119,6 +119,21 @@ describe('AcessosService', () => {
       expect(service.autorizar('FISCAL', 'OPERADORES_CRUD')).toBe(false);
     });
 
+    it('a seção Colaboradores e a ficha individual são confidenciais: gestão sim, fiscal não', () => {
+      const service = criarServico([]);
+      for (const perfil of ['ADMINISTRADOR', 'GERENTE', 'SUPERVISOR'] as const) {
+        expect(service.autorizar(perfil, 'COLABORADORES_VISUALIZAR')).toBe(true);
+        expect(service.autorizar(perfil, 'COLABORADORES_PERFIL')).toBe(true);
+      }
+      // O fiscal continua vendo a escala, mas não a seção de dados pessoais
+      // nem a ficha individual de ninguém.
+      expect(service.autorizar('FISCAL', 'OPERADORES_AUSENCIAS')).toBe(true);
+      expect(service.autorizar('FISCAL', 'COLABORADORES_VISUALIZAR')).toBe(false);
+      expect(service.autorizar('FISCAL', 'COLABORADORES_PERFIL')).toBe(false);
+      // O importador só carrega arquivos.
+      expect(service.autorizar('IMPORTADOR', 'COLABORADORES_PERFIL')).toBe(false);
+    });
+
     it('exigirAutorizacao lança PermissaoInsuficienteError para fiscal em gerente-only', () => {
       const service = criarServico([]);
       expect(() =>

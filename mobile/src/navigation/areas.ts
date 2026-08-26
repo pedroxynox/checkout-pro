@@ -126,7 +126,9 @@ export const AREAS: Area[] = [
     titulo: 'Colaboradores',
     descricao: 'Perfil de cada operador e fiscal',
     icone: 'id-card-outline',
-    funcionalidade: 'OPERADORES_AUSENCIAS',
+    // Dados pessoais são CONFIDENCIAIS: a seção tem funcionalidade própria
+    // (ajustável na Central de Permissões) e não acompanha mais a escala.
+    funcionalidade: 'COLABORADORES_VISUALIZAR',
   },
   {
     rota: 'CentroControle',

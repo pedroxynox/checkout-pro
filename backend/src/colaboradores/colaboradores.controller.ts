@@ -43,8 +43,16 @@ import {
 /**
  * Controller do Cadastro Unificado de Colaboradores. É uma área administrativa
  * (gestor), por isso usa a mesma funcionalidade da gestão de operadores
- * (`OPERADORES_CRUD`). A listagem é liberada a quem já vê o quadro/escala
- * (`OPERADORES_AUSENCIAS`).
+ * (`OPERADORES_CRUD`) como padrão da classe.
+ *
+ * Duas exceções, porque são leituras usadas por outras áreas:
+ * - `GET /colaboradores` (listagem) fica liberada a quem já vê o quadro/escala
+ *   (`OPERADORES_AUSENCIAS`): devolve apenas nome/matrícula/função/turno e é a
+ *   fonte dos seletores de pessoa em ausências, atestados, férias, sanções e
+ *   justificativas. Não expõe dado confidencial.
+ * - `GET /colaboradores/:id/perfil` (ficha individual) exige a funcionalidade
+ *   **`COLABORADORES_PERFIL`**: é o dado CONFIDENCIAL da pessoa (score, faltas,
+ *   indicadores com ranking, insígnias). Ajustável na Central de Permissões.
  */
 @Controller('colaboradores')
 @Funcionalidade('OPERADORES_CRUD')
@@ -128,9 +136,12 @@ export class ColaboradoresController {
     return this.service.listarLogins();
   }
 
-  /** Detalhe de um colaborador. Liberado a quem vê a escala. */
+  /**
+   * Detalhe cadastral de um colaborador (horários, contrato, identificadores).
+   * Usado só pela tela de gestão, por isso segue o padrão da classe
+   * (`OPERADORES_CRUD`).
+   */
   @Get(':id')
-  @Funcionalidade('OPERADORES_AUSENCIAS')
   async obter(@Param('id') id: string): Promise<Colaborador> {
     return this.service.obter(id);
   }
@@ -138,10 +149,14 @@ export class ColaboradoresController {
   /**
    * Perfil inteligente do colaborador no período (score, indicadores com
    * ranking/tendência, faltas com gráficos, resumo e insígnias). Sem `inicio`/
-   * `fim`, usa o mês corrente. Liberado a quem vê a escala.
+   * `fim`, usa o mês corrente.
+   *
+   * Dado CONFIDENCIAL: exige `COLABORADORES_PERFIL`, funcionalidade própria e
+   * ajustável na Central de Permissões. Vale também para os Relatórios, que
+   * montam o consolidado da equipe a partir desta mesma ficha.
    */
   @Get(':id/perfil')
-  @Funcionalidade('OPERADORES_AUSENCIAS')
+  @Funcionalidade('COLABORADORES_PERFIL')
   async perfil(
     @Param('id') id: string,
     @Query() q: PerfilColaboradorDto,

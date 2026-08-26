@@ -235,14 +235,14 @@ export function AppNavigator(): React.ReactElement {
           options={{ title: 'Justificativas' }}
         />
       )}
-      {podeAcessar('OPERADORES_AUSENCIAS') && (
+      {podeAcessar('COLABORADORES_VISUALIZAR') && (
         <Stack.Screen
           name="Colaboradores"
           component={ColaboradoresScreen}
           options={{ title: 'Colaboradores' }}
         />
       )}
-      {podeAcessar('OPERADORES_AUSENCIAS') && (
+      {podeAcessar('COLABORADORES_PERFIL') && (
         <Stack.Screen
           name="PerfilColaborador"
           component={PerfilColaboradorScreen}
