@@ -32,7 +32,7 @@ outro.
 | `arrecadacao.service.ts` | Regras de aplicação: importação, totais, ranking, metas | 563 |
 | `indicadores-inteligente.service.ts` | Inteligência: tendência, projeção, destaques, anomalias | 766 |
 | `indicadores-resumo.service.ts` | Resumo diário automático (cron 08:00) | 122 |
-| `historico-indicadores.service.ts` | Histórico mensal: foto do mês, série de 24 meses e limpeza da janela (cron dia 1º) | 477 |
+| `historico-indicadores.service.ts` | Histórico mensal: foto do mês, série de 24 meses e limpeza da janela (cron dia 1º) | 478 |
 | `historico-indicadores.domain.ts` | Regras puras: aritmética de "AAAA-MM", semáforo do mês, variação e evolução por sentido | 211 |
 | `arrecadacao.parser.ts` | Lê o `.txt` por cabeçalho (nome/valor/qtd/motivo) | 152 |
 | `arrecadacao.domain.ts` | Regras puras: tipos, config de indicadores, utilitários de período | 87 |
@@ -218,7 +218,7 @@ indicador, destaques e anomalias) e notifica quem tem `INDICADORES_VISUALIZAR`.
 | `destaque-menos-cancelou.spec.ts` | "Menos cancelou": exclui falta/inativo, premia por % sobre vendas | 1 |
 | `indicadores-inteligente.destaques.spec.ts` | Destaques do mês só para operadores | 3 |
 | `historico-indicadores.domain.spec.ts` | Aritmética de "AAAA-MM", semáforo do mês, variação e evolução por sentido, sequência | 24 |
-| `historico-indicadores.service.spec.ts` | Série (foto vs ao vivo), congelamento idempotente e limites da limpeza | 14 |
+| `historico-indicadores.service.spec.ts` | Série (foto vs ao vivo), congelamento idempotente e limites da limpeza | 15 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

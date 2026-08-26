@@ -728,6 +728,12 @@ export interface ItemJornadaFiscal extends JornadaTempos {
   /** Função (FISCAL/OPERADOR/SUPERVISOR) para exibir o papel. */
   funcao: string;
   colaboradorId: string | null;
+  /**
+   * Nome COMPLETO da pessoa. A Jornada de Equipe mostra o nome inteiro (em duas
+   * linhas quando não cabe): com o primeiro nome apenas, homônimos ficavam
+   * indistinguíveis na lista.
+   */
+  nome: string;
   primeiroNome: string;
   status: StatusFiscal;
   jornadaStatus:

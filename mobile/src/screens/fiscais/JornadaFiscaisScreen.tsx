@@ -304,19 +304,24 @@ export function JornadaFiscaisScreen(): React.ReactElement {
               <Cartao style={styles.cartao}>
                 <View style={[styles.bordaLateral, { backgroundColor: ap.cor }]} />
 
-                {/* Cabeçalho: ícone + nome + papel + estado */}
+                {/* Cabeçalho: ícone + nome completo (+ papel) + estado.
+                    O nome ocupa até DUAS linhas: com só o primeiro nome, dois
+                    homônimos ficavam indistinguíveis na lista. O papel desceu
+                    para baixo do nome para não roubar largura dele. */}
                 <View style={styles.topo}>
                   <View style={[styles.iconeContainer, { backgroundColor: ap.fundo }]}>
                     <Ionicons name={ap.icone} size={18} color={ap.cor} />
                   </View>
-                  <Text style={styles.nome} numberOfLines={1}>
-                    {item.primeiroNome}
-                  </Text>
-                  {item.tipoPessoa === 'OPERADOR' ? (
-                    <Text style={styles.papelTag}>
-                      {ROTULO_FUNCAO[item.funcao] ?? 'Colaborador'}
+                  <View style={styles.identidade}>
+                    <Text style={styles.nome} numberOfLines={2}>
+                      {item.nome}
                     </Text>
-                  ) : null}
+                    {item.tipoPessoa === 'OPERADOR' ? (
+                      <Text style={styles.papelTag}>
+                        {ROTULO_FUNCAO[item.funcao] ?? 'Colaborador'}
+                      </Text>
+                    ) : null}
+                  </View>
                   <View style={[styles.badgeStatus, { backgroundColor: ap.fundo }]}>
                     <View style={[styles.pontinho, { backgroundColor: ap.cor }]} />
                     <Text style={[styles.statusTexto, { color: ap.cor }]}>
@@ -460,7 +465,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  nome: { ...tipografia.rotulo, color: cores.texto, flex: 1 },
+  /** Nome completo + papel, empilhados, ocupando a largura que sobra. */
+  identidade: { flex: 1, gap: 2 },
+  nome: { ...tipografia.rotulo, color: cores.texto, fontWeight: '700' },
   papelTag: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
@@ -469,6 +476,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: raio.pill,
     overflow: 'hidden',
+    alignSelf: 'flex-start',
   },
   badgeStatus: {
     flexDirection: 'row',

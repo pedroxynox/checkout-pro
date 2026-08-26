@@ -120,7 +120,8 @@ function montar(cenario: Cenario = {}): Montagem {
         return Promise.resolve(
           fotos.filter(
             (f) =>
-              lista.includes(f.anoMes) && (tipo === undefined || f.tipo === tipo),
+              lista.includes(f.anoMes) &&
+              (tipo === undefined || f.tipo === tipo),
           ),
         );
       },
@@ -336,11 +337,22 @@ describe('HistoricoIndicadoresService', () => {
       const { servico, upserts } = montar({
         meses: { '2026-07': { total: { TROCO_SOLIDARIO: 2500 } } },
       });
+      // `congeladoEm` é o instante da gravação e muda a cada execução — a
+      // idempotência é dos NÚMEROS, não do carimbo de tempo.
+      const semCarimbo = (u: (typeof upserts)[number]) => {
+        const dados: Record<string, unknown> = { ...u.dados };
+        delete dados.congeladoEm;
+        return { tipo: u.tipo, anoMes: u.anoMes, dados };
+      };
+
       await servico.congelarMes('2026-07');
-      const primeira = JSON.stringify(upserts);
+      const primeira = upserts.map(semCarimbo);
+      const quantidade = upserts.length;
+
       await servico.congelarMes('2026-07');
-      const segunda = JSON.stringify(upserts.slice(upserts.length / 2));
-      expect(segunda).toBe(JSON.stringify(JSON.parse(primeira)));
+      const segunda = upserts.slice(quantidade).map(semCarimbo);
+
+      expect(segunda).toEqual(primeira);
     });
   });
 
@@ -355,7 +367,9 @@ describe('HistoricoIndicadoresService', () => {
       const corte = new Date('2024-09-01T00:00:00.000Z');
       expect(apagados.registros.lt?.toISOString()).toBe(corte.toISOString());
       expect(apagados.semMovimento.lt?.toISOString()).toBe(corte.toISOString());
-      expect(apagados.vendasDiarias.lt?.toISOString()).toBe(corte.toISOString());
+      expect(apagados.vendasDiarias.lt?.toISOString()).toBe(
+        corte.toISOString(),
+      );
       expect(apagados.vendasHora.lt?.toISOString()).toBe(corte.toISOString());
       expect(apagados.fotos.lt).toBe('2024-09');
     });

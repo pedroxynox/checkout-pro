@@ -21,14 +21,15 @@ intervalo" e sanções) reutilizado para criar/editar/excluir.
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `JornadaFiscaisScreen.tsx` | Jornada de equipe do dia (roster + marcações + estado) | 527 |
+| `JornadaFiscaisScreen.tsx` | Jornada de equipe do dia (roster + marcações + estado) | 535 |
 | `RegistrarIncidenciaModal.tsx` | Modal de criar/editar/excluir incidência de escala | 445 |
 
 ## 4. Fluxo do usuário
 1. **Equipe do dia:** `JornadaFiscaisScreen` seleciona o dia (padrão hoje) e
    carrega todos os escalados. O topo traz um resumo por estado
    (trabalhando/intervalo/sem registrar/faltas).
-2. **Cards:** cada colaborador exibe, em linha, Entrada · Intervalo · Retorno ·
+2. **Cards:** cada colaborador exibe o **nome completo** no topo (em até duas
+   linhas, para caber nomes longos) e, em linha, Entrada · Intervalo · Retorno ·
    Saída · Carga (tempo trabalhado em tempo real), o estado com cor e a entrada
    prevista; jornadas incompletas mostram o que falta registrar. Quem está
    **em intervalo** exibe um **cronômetro ao vivo** do tempo de intervalo (só no
@@ -68,6 +69,10 @@ Módulos do backend relacionados: [`fiscais`](../03-atlas-backend/fiscais.md)
   inflar "Faltas".
 - O chip "sem registrar" (atraso) só aparece quando o dia é hoje; ao ver dias
   anteriores, mostram-se apenas as batidas registradas.
+- **Nome completo, em até duas linhas.** O card mostrava só o primeiro nome, o
+  que tornava dois homônimos indistinguíveis na lista. O nome agora usa `nome`
+  (do backend) com `numberOfLines={2}`, e o chip de papel (Operador/Supervisor)
+  desceu para baixo do nome — antes disputava a mesma linha e roubava largura.
 - **Cronômetro de intervalo ao vivo:** para quem está `EM_INTERVALO` no dia de
   hoje, a tela soma o tempo de intervalo vindo do backend (`tempoIntervaloMs`,
   calculado até o instante do carregamento) com o tempo decorrido desde a carga,
