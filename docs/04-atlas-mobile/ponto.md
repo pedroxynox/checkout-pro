@@ -31,7 +31,7 @@ feriados).
 | `metricasResumo.ts` | Identidade das sete métricas do resumo (fonte única de card + ranking) | 153 |
 | `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 344 |
 | `InconsistenciasScreen.tsx` | Problemas do ciclo agrupados por dia | 325 |
-| `MarcacoesInvalidasScreen.tsx` | Marcações que faltam registrar: quantas e quais, por dia | 500 |
+| `MarcacoesInvalidasScreen.tsx` | Marcações que faltam registrar: quantas e quais, por dia | 533 |
 | `ExportarCicloScreen.tsx` | Revisão dos totais e fechar/reabrir o ciclo | 246 |
 | `FeriadosScreen.tsx` | Feriados nacionais (automáticos) + estaduais/municipais (manuais) | 214 |
 | `leitorAoVivo.tsx` / `leitorAoVivo.native.tsx` | Leitor ao vivo (câmera): vazio na web, ML Kit no APK | 23 / 325 |
@@ -167,6 +167,13 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   minutos além do turno e o horário previsto; TAC, os motivos do dia; conflitos,
   o motivo e o estado da ausência. **Horas extras não têm detalhe** — ali o
   número é a informação.
+- **Marcações inválidas × não retorno do intervalo.** Dias de não retorno **não**
+  aparecem na lista: ali a pessoa saiu e não voltou, então não há marcação
+  esquecida a ajustar (regra 12 da
+  [`central-jornada`](../03-atlas-backend/central-jornada.md)). Mas a tela
+  **avisa quantos foram** (`totais.naoRetornosExcluidos`) e diz que são
+  incidências — se o dia simplesmente desaparecesse, um ciclo só com não-retornos
+  pareceria limpo.
 - **Marcações inválidas:** os dias vêm **abertos por padrão** (o estado guarda os
   dias *fechados*), porque a tela é uma lista de trabalho — o gestor quer ver o
   que ajustar sem ter que tocar em cada dia. É a diferença proposital em relação
@@ -213,7 +220,7 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
 | `RegistroPontoScreen.test.tsx` | Busca, jornada, registro manual, limite de 4, erro de duplicidade e leitura do comprovante | 6 |
 | `ExportarCicloScreen.test.tsx` | Revisão (totais) e fechamento do ciclo com confirmação | 2 |
 | `InconsistenciasScreen.test.tsx` | Agrupamento por dia e filtro por pessoa | 2 |
-| `MarcacoesInvalidasScreen.test.tsx` | O que falta em cada dia (já expandido), horas registradas + turno, motivo da conferência, resumo, filtros por pessoa e por marcação, recolher dia e estado vazio | 8 |
+| `MarcacoesInvalidasScreen.test.tsx` | O que falta em cada dia (já expandido), horas registradas + turno, motivo da conferência, resumo, filtros por pessoa e por marcação, recolher dia, estado vazio e aviso dos não-retornos deixados fora | 9 |
 | `RankingTimeScreen.test.tsx` | Ordem do maior ao menor, total do time, zerados no rodapé recolhido, detalhe dia a dia, navegação ao detalhe diário, título/formato por métrica, atestados como métrica separada das faltas, estado vazio e ciclo recebido | 9 |
 | `leituraComprovanteUtil.test.ts` | Gatilho `leituraCompleta` e extração `horaLida` (tolerante ao OCR) | 4 |
 | `montarTextoOcr.test.ts` | Reconstrução do texto pela geometria do OCR | 3 |
