@@ -1,9 +1,9 @@
 /**
  * Ranking do time numa métrica do "Resumo do time" (uso gerencial —
  * CENTRAL_JORNADA). É o que abre ao tocar numa card do resumo da Central:
- * extras 50%, extras 100%, faltas, atrasos, TAC ou conflitos.
+ * extras 50%, extras 100%, faltas, atestados, TAC, atrasos ou conflitos.
  *
- * **Uma tela para as seis métricas.** O que muda é a configuração: a identidade
+ * **Uma tela para as sete métricas.** O que muda é a configuração: a identidade
  * (título, ícone, cor, como ler e formatar o valor) vem de
  * [`metricasResumo`](./metricasResumo.ts) — a mesma fonte que a card usa, para
  * card e ranking não poderem divergir — e aqui se junta apenas o que é próprio
@@ -131,13 +131,22 @@ const EXTRA_METRICA: Record<MetricaRanking, ExtraMetrica> = {
         chave: `falta-${f.data}`,
         dia: dataCurta(f.data),
         texto:
-          f.tipo === 'ATESTADO'
-            ? 'Atestado médico (abonado)'
-            : f.tipo === 'FALTA_DEBITO'
-              ? `Falta com débito de ${formatarDuracao(f.devidasMs)}`
-              : 'Falta sem débito de horas',
+          f.tipo === 'FALTA_DEBITO'
+            ? `Falta com débito de ${formatarDuracao(f.devidasMs)}`
+            : 'Falta sem débito de horas',
       })),
     vazio: 'Ninguém tem faltas neste ciclo.',
+  },
+  ATESTADOS: {
+    detalhes: (p) =>
+      p.atestadosDetalhe.map((a) => ({
+        chave: `atestado-${a.data}`,
+        dia: dataCurta(a.data),
+        texto: `Atestado médico — ${formatarDuracao(
+          a.horasAbonadasMs,
+        )} abonadas`,
+      })),
+    vazio: 'Ninguém apresentou atestado neste ciclo.',
   },
   TAC: {
     detalhes: (p) =>

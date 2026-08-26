@@ -34,6 +34,7 @@ const EXPORT = {
     horasDevidasMs: 0,
     horasAtestadoMs: 0,
     faltas: 0,
+    atestados: 0,
     diasTac: 1,
     conflitos: 0,
     atrasos: 0,

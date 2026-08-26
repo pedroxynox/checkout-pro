@@ -88,6 +88,19 @@ export const IDENTIDADE_METRICA: Record<MetricaRanking, IdentidadeMetrica> = {
     valorTotal: (t) => t.faltas,
     valorPessoa: (p) => p.faltas,
   },
+  ATESTADOS: {
+    rotulo: 'Atestados',
+    titulo: 'Ranking — Atestados',
+    icone: 'medkit-outline',
+    cor: cores.azul,
+    fundo: cores.azulFundo,
+    // Atestado é ausência ABONADA, não uma infração: azul (neutro/informativo)
+    // e semântica positiva no texto — quem tem mais atestados não está "pior".
+    semantica: 'POSITIVA',
+    formatar: (v) => contar(v, 'atestado', 'atestados'),
+    valorTotal: (t) => t.atestados,
+    valorPessoa: (p) => p.atestados,
+  },
   TAC: {
     rotulo: 'TAC',
     titulo: 'Ranking — TAC',
@@ -133,6 +146,7 @@ export const ORDEM_METRICAS: MetricaRanking[] = [
   'EXTRAS_50',
   'EXTRAS_100',
   'FALTAS',
+  'ATESTADOS',
   'TAC',
   'ATRASOS',
   'CONFLITOS',

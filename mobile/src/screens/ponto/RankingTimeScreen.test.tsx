@@ -44,12 +44,14 @@ function pessoa(over: Record<string, unknown>) {
     horasDevidasAtualMs: 0,
     horasAtestadoMs: 0,
     faltas: 0,
+    atestados: 0,
     diasTac: 0,
     conflitos: 0,
     atrasos: 0,
     saldoMs: 0,
     saldo50Ms: 0,
     faltasDetalhe: [],
+    atestadosDetalhe: [],
     atrasosDetalhe: [],
     tacDetalhe: [],
     conflitosDetalhe: [],
@@ -68,9 +70,25 @@ const ANA = pessoa({
       data: '2026-07-03T00:00:00.000Z',
       diaSemana: 5,
       ehFeriado: false,
-      tipo: 'ATESTADO',
+      tipo: 'FALTA',
       debito: false,
       devidasMs: 0,
+    },
+  ],
+  // Atestado é contador PRÓPRIO: não soma em faltas.
+  atestados: 2,
+  atestadosDetalhe: [
+    {
+      data: '2026-07-08T00:00:00.000Z',
+      diaSemana: 3,
+      ehFeriado: false,
+      horasAbonadasMs: 7 * 3_600_000,
+    },
+    {
+      data: '2026-07-09T00:00:00.000Z',
+      diaSemana: 4,
+      ehFeriado: false,
+      horasAbonadasMs: 7 * 3_600_000,
     },
   ],
 });
@@ -203,6 +221,31 @@ describe('RankingTimeScreen', () => {
     ).toBeTruthy();
     // Extras não têm detalhe por dia.
     expect(screen.queryByText(/^Ver \d+ dia/)).toBeNull();
+  });
+
+  it('trata atestados como métrica própria, separada das faltas', async () => {
+    mockRota.params = { metrica: 'ATESTADOS', ciclo: 0 };
+    render(<RankingTimeScreen />);
+    await screen.findByText('Ana Souza');
+
+    expect(mockDefinirOpcoes).toHaveBeenCalledWith({
+      title: 'Ranking — Atestados',
+    });
+    // Só Ana apresentou atestado; Bruno tem 3 FALTAS e fica de fora. "2
+    // atestados" aparece duas vezes — o total do time e a linha da Ana — o que
+    // confirma que o total é a soma da coluna.
+    expect(screen.getAllByText('2 atestados')).toHaveLength(2);
+    expect(screen.queryByText('Bruno Lima')).toBeNull();
+    expect(screen.getByText('2 pessoas sem novidade')).toBeTruthy();
+    // Atestado é ausência abonada, não infração: leitura positiva.
+    expect(
+      screen.getByText('Do que mais acumulou ao que menos acumulou.'),
+    ).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Ver 2 dias'));
+    expect(
+      screen.getAllByText('Atestado médico — 7h 00min abonadas'),
+    ).toHaveLength(2);
   });
 
   it('mostra estado vazio quando ninguém pontuou na métrica', async () => {

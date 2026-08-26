@@ -247,7 +247,9 @@ describe('CentralJornadaService.resumoCiclo', () => {
     // Deve REAL = 9h − 1h de extra 50% = 8h.
     expect(p.horasDevidasAtualMs).toBe(2 * UMA_HORA + H7 - UMA_HORA);
     expect(p.horasAtestadoMs).toBe(H8); // atestado 8h (sexta)
-    expect(p.faltas).toBe(2);
+    // Atestado é ausência ABONADA: conta em `atestados`, não em `faltas`.
+    expect(p.faltas).toBe(1); // só a falta com débito (quinta)
+    expect(p.atestados).toBe(1); // o atestado da sexta
     expect(p.diasTac).toBe(0);
     expect(p.saldoMs).toBe(2 * UMA_HORA - (2 * UMA_HORA + H7)); // extras − devidas
     // Saldo da card = SÓ as 50%: 1h de extra − 9h que deve = −8h (as 100% do
@@ -447,7 +449,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
     const r = await service.resumoCiclo(0);
     const p = r.pessoas[0];
 
-    expect(p.faltas).toBe(1); // segue contando como falta
+    expect(p.faltas).toBe(1); // segue contando como falta (não é atestado)
+    expect(p.atestados).toBe(0);
     expect(p.horasDevidasMs).toBe(0); // mas sem débito de horas
     expect(p.saldoMs).toBe(0);
 

@@ -105,6 +105,12 @@ de TAC, conflitos, atrasos e o **saldo** (banco de horas).
     ordinárias na jornada daquele período; **reabrir** exige administrador
     (`ADMIN_DADOS`). A apuração é sempre sob demanda, então reabrir já reflete nas
     próximas leituras.
+21. **Atestado não é falta.** O atestado médico é ausência **abonada**: tem o seu
+    próprio contador (`atestados`) e as suas horas (`horasAtestadoMs`), e **não**
+    entra no número de **faltas**. Antes o mesmo dia somava nos dois, então o
+    contador de faltas acusava justamente quem havia apresentado atestado. A
+    mudança é só de **classificação**: atestado nunca gerou hora devida, então
+    horas devidas e saldo não mudam.
 
 ## 6. Observações
 

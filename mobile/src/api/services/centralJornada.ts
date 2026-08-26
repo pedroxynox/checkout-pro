@@ -17,7 +17,13 @@ export interface CentralTotais {
   extras100Ms: number;
   horasDevidasMs: number;
   horasAtestadoMs: number;
+  /**
+   * Dias de ausência que **não** são atestado (falta simples ou com débito).
+   * O atestado médico é abonado e tem contador próprio (`atestados`).
+   */
   faltas: number;
+  /** Dias de atestado médico (abonados); as horas vão em `horasAtestadoMs`. */
+  atestados: number;
   diasTac: number;
   /** Dias com conflito: bateu ponto E tem ausência marcada no mesmo dia. */
   conflitos: number;
@@ -140,20 +146,33 @@ export type MetricaRanking =
   | 'EXTRAS_50'
   | 'EXTRAS_100'
   | 'FALTAS'
+  | 'ATESTADOS'
   | 'ATRASOS'
   | 'TAC'
   | 'CONFLITOS';
 
-/** Um dia de ausência (detalhe do ranking de faltas). */
+/**
+ * Um dia de ausência (detalhe do ranking de faltas). Atestado não entra aqui:
+ * é ausência abonada e tem contador e detalhe próprios.
+ */
 export interface DiaFaltaRanking {
   data: string;
   diaSemana: number;
   ehFeriado: boolean;
-  /** `FALTA` (simples) · `FALTA_DEBITO` (débito de horas) · `ATESTADO` (abonada). */
-  tipo: 'FALTA' | 'FALTA_DEBITO' | 'ATESTADO';
+  /** `FALTA` (simples) · `FALTA_DEBITO` (marcada como débito de horas). */
+  tipo: 'FALTA' | 'FALTA_DEBITO';
   debito: boolean;
   /** Horas lançadas como devidas por esta falta. */
   devidasMs: number;
+}
+
+/** Um dia de atestado médico, abonado (detalhe do ranking de atestados). */
+export interface DiaAtestadoRanking {
+  data: string;
+  diaSemana: number;
+  ehFeriado: boolean;
+  /** Carga-base do dia, abonada pelo atestado (não vira hora devida). */
+  horasAbonadasMs: number;
 }
 
 /** Um dia com atraso na entrada (detalhe do ranking de atrasos). */
@@ -188,6 +207,7 @@ export interface DiaConflitoRanking {
  */
 export interface RankingPessoa extends CentralPessoaResumo {
   faltasDetalhe: DiaFaltaRanking[];
+  atestadosDetalhe: DiaAtestadoRanking[];
   atrasosDetalhe: DiaAtrasoRanking[];
   tacDetalhe: DiaTacRanking[];
   conflitosDetalhe: DiaConflitoRanking[];
@@ -284,6 +304,7 @@ export interface CentralExportacao {
     horasDevidasMs: number;
     horasAtestadoMs: number;
     faltas: number;
+    atestados: number;
     diasTac: number;
     conflitos: number;
     atrasos: number;
