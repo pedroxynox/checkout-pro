@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 115 arquivos, 866 casos. **Mobile:** 31 arquivos, 178 casos. **Total: 1044 casos.**
+> **Backend:** 119 arquivos, 888 casos. **Mobile:** 31 arquivos, 178 casos. **Total: 1066 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -64,6 +64,7 @@
 | `src/data-inicial/data-inicial.properties.spec.ts` | 2 | 1 |
 | `src/data-inicial/validacao-data.service.spec.ts` | 3 | 1 |
 | `src/escala-domingo/escala-domingo.domain.spec.ts` | 37 | 6 |
+| `src/escala-domingo/folga.service.spec.ts` | 10 | 2 |
 | `src/escala-exportacao/escala-exportacao.service.spec.ts` | 10 | 2 |
 | `src/escala-exportacao/escala-publicada.domain.spec.ts` | 14 | 5 |
 | `src/fechamento/fechamento.domain.spec.ts` | 5 | 1 |
@@ -75,6 +76,7 @@
 | `src/fiscais/escala-inativo.spec.ts` | 1 | 1 |
 | `src/fiscais/escalados-feriado.spec.ts` | 8 | 1 |
 | `src/fiscais/escalados-ferias.spec.ts` | 2 | 1 |
+| `src/fiscais/escalados-folga.spec.ts` | 3 | 1 |
 | `src/fiscais/fiscais-alertas.intervalo.spec.ts` | 2 | 1 |
 | `src/fiscais/fiscais.controller.spec.ts` | 4 | 1 |
 | `src/fiscais/fiscais.gateway.spec.ts` | 3 | 1 |
@@ -97,6 +99,7 @@
 | `src/notificacoes/notificacoes.service.spec.ts` | 10 | 3 |
 | `src/operadores/ausencia-a-prazo-vinculo.spec.ts` | 1 | 1 |
 | `src/operadores/ausencia-a-prazo.spec.ts` | 3 | 1 |
+| `src/operadores/falta-em-folga.spec.ts` | 3 | 1 |
 | `src/operadores/listar-ausencias-ficha.spec.ts` | 1 | 1 |
 | `src/operadores/marcar-periodo-justificado.spec.ts` | 1 | 1 |
 | `src/operadores/operador-turno.roster-turno.spec.ts` | 5 | 3 |
@@ -104,6 +107,7 @@
 | `src/operadores/operadores.justificativa.spec.ts` | 8 | 1 |
 | `src/operadores/operadores.properties.spec.ts` | 5 | 1 |
 | `src/operadores/operadores.service.spec.ts` | 12 | 4 |
+| `src/operadores/quadro-folga-escala.spec.ts` | 4 | 1 |
 | `src/operadores/remover-ausencia-periodo.spec.ts` | 4 | 1 |
 | `src/ponto/contrato-6x1-congelado.spec.ts` | 5 | 1 |
 | `src/ponto/deteccao-alerta-atraso.spec.ts` | 3 | 1 |
@@ -120,7 +124,7 @@
 | `src/ponto/ponto-remover-nao-retorno.spec.ts` | 3 | 1 |
 | `src/ponto/ponto.domain.spec.ts` | 38 | 7 |
 | `src/ponto/ponto.service.spec.ts` | 42 | 4 |
-| `src/ponto/revalidacao-automatica.domain.spec.ts` | 14 | 4 |
+| `src/ponto/revalidacao-automatica.domain.spec.ts` | 16 | 4 |
 | `src/produtos-pesados/produtos-pesados.parser.spec.ts` | 7 | 2 |
 | `src/requisicoes/requisicoes.controller.spec.ts` | 4 | 1 |
 | `src/requisicoes/requisicoes.service.spec.ts` | 3 | 1 |

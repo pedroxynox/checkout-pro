@@ -1,14 +1,11 @@
 import { Injectable, Optional } from '@nestjs/common';
-import {
-  Ausencia,
-  Prisma,
-  TipoOcorrenciaAutomatica,
-} from '@prisma/client';
+import { Ausencia, Prisma, TipoOcorrenciaAutomatica } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ehFaltaAutomaticaPendente } from '../ponto/revalidacao-automatica.domain';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
+import { FolgaService } from '../escala-domingo/folga.service';
 import { inicioDoDia } from '../common/datas';
 import {
   AusenciaRegistro,
@@ -34,6 +31,7 @@ import {
   AusenciaAPrazoProtegidaError,
   AusenciaDuplicadaError,
   AusenciaNaoEncontradaError,
+  FaltaEmDiaDeFolgaError,
   JustificativaInvalidaError,
   PeriodoAusenciaInvalidoError,
 } from './operadores.errors';
@@ -131,6 +129,9 @@ export class OperadoresService {
     // Fechamento do ciclo: bloqueia mexer em faltas de um ciclo já fechado.
     // Opcional para não quebrar testes unitários de ausências.
     @Optional() private readonly cicloFolha?: CicloFolhaService,
+    // Regra única de folga (ficha + escala semanal): impede marcar falta em dia
+    // de descanso. Opcional para não quebrar testes unitários de ausências.
+    @Optional() private readonly folga?: FolgaService,
   ) {}
 
   // O cadastro/edição/listagem de operadores pelo model simples `Operador` foi
@@ -157,6 +158,13 @@ export class OperadoresService {
     await this.validacaoData?.exigirDataPermitida(dia);
     // Bloqueia lançar falta num ciclo de folha já fechado.
     await this.cicloFolha?.exigirCicloAberto(dia);
+    // Falta é a ausência de quem era ESPERADO: em dia de folga não há o que
+    // faltar. Vale para a falta manual e para a automática (o cron trata o erro
+    // como "não é caso de marcar" e segue). Ausência a prazo e atestado passam
+    // por outro caminho e continuam cobrindo os dias de folga de propósito.
+    if (this.folga && (await this.folga.ehFolga(dia, [pessoaId]))) {
+      throw new FaltaEmDiaDeFolgaError();
+    }
     // Duplicidade por (pessoa, dia): consulta PONTUAL pela chave única (antes
     // varria TODAS as ausências da pessoa e filtrava em memória — O(histórico)
     // e sujeito a corrida). Roda a cada 5 min no cron de falta automática.

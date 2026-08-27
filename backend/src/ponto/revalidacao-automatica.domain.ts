@@ -32,7 +32,9 @@ export type MotivoRevalidacao =
   /** O dia entrou numa ausência a prazo lançada pelo gestor (licença etc.). */
   | 'AUSENCIA_A_PRAZO'
   /** A pessoa está de férias no dia: não era esperada. */
-  | 'FERIAS';
+  | 'FERIAS'
+  /** O dia é FOLGA da pessoa: não havia expediente para faltar. */
+  | 'FOLGA';
 
 /** Frase curta do motivo, para o log da auto-cura. */
 export function descreverMotivo(motivo: MotivoRevalidacao): string {
@@ -45,6 +47,8 @@ export function descreverMotivo(motivo: MotivoRevalidacao): string {
       return 'dia coberto por atestado';
     case 'AUSENCIA_A_PRAZO':
       return 'dia coberto por ausência a prazo';
+    case 'FOLGA':
+      return 'dia de folga da pessoa';
     default:
       return 'de férias no dia';
   }
@@ -69,6 +73,13 @@ export interface FatosDoDia {
   temAusenciaAPrazo: boolean;
   /** A pessoa está de férias no dia. */
   deFerias: boolean;
+  /**
+   * O dia é FOLGA da pessoa pela regra única (ficha + escala semanal).
+   *
+   * Existe porque a falta em dia de folga **não se curava nunca**: a auto-cura
+   * esperava uma batida, e num dia de descanso ela jamais chega.
+   */
+  ehFolga: boolean;
 }
 
 /**
@@ -95,6 +106,11 @@ export function motivoParaRemoverFalta(
   fatos: FatosDoDia,
 ): MotivoRevalidacao | null {
   if (fatos.temBatida) return 'BATIDA_REGISTRADA';
+  // Folga derruba a falta: não havia expediente para faltar. É o único motivo
+  // que **não** vale para o não-retorno (ver `motivoParaRemoverNaoRetorno`), e é
+  // o que resgata as faltas indevidas já gravadas — sem isso elas ficariam para
+  // sempre, porque em dia de folga nunca aparece a batida que as curaria.
+  if (fatos.ehFolga) return 'FOLGA';
   return motivoDeCobertura(fatos);
 }
 
@@ -105,6 +121,11 @@ export function motivoParaRemoverFalta(
  * Aqui **a existência de batidas não derruba nada** — pelo contrário: o não
  * retorno pressupõe que a pessoa bateu a entrada e a saída para o intervalo. O
  * que o derruba é o intervalo ter sido **fechado** (apareceu o retorno).
+ *
+ * **Folga NÃO derruba um não-retorno**, de propósito: se há batidas de entrada e
+ * de saída para o intervalo, a pessoa trabalhou naquele dia — mesmo que fosse a
+ * folga dela. O fato aconteceu e apagá-lo seria perder informação real. Já a
+ * falta é o oposto: ela afirma uma expectativa que não existia.
  */
 export function motivoParaRemoverNaoRetorno(
   fatos: FatosDoDia,

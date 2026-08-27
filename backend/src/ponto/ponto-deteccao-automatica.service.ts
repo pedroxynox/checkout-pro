@@ -12,7 +12,11 @@ import { OperadoresService } from '../operadores/operadores.service';
 import { IncidenciasService } from '../incidencias/incidencias.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { IncidenciaDuplicadaError } from '../incidencias/incidencias.errors';
-import { AusenciaDuplicadaError } from '../operadores/operadores.errors';
+import { FiscalDeFolgaError } from '../fiscais/fiscais.errors';
+import {
+  AusenciaDuplicadaError,
+  FaltaEmDiaDeFolgaError,
+} from '../operadores/operadores.errors';
 import { PontoService } from './ponto.service';
 import {
   ALERTA_ATRASO_MIN,
@@ -28,6 +32,7 @@ import {
   motivoParaRemoverNaoRetorno,
 } from './revalidacao-automatica.domain';
 import { FeriasService } from '../ferias/ferias.service';
+import { FolgaService } from '../escala-domingo/folga.service';
 
 /** Autor "sistema" das marcações automáticas (auditoria). */
 const AUTOR_SISTEMA = { id: 'sistema', nome: 'Detecção automática' };
@@ -68,6 +73,9 @@ export class PontoDeteccaoAutomaticaService {
     // Opcional: sem ele a revalidação simplesmente não usa "de férias" como
     // motivo (os outros motivos seguem valendo).
     @Optional() private readonly ferias?: FeriasService,
+    // Regra única de folga (ficha + escala semanal). Sem ela a auto-cura não usa
+    // "dia de folga" como motivo — os outros seguem valendo.
+    @Optional() private readonly folga?: FolgaService,
   ) {}
 
   /** Verifica faltas automáticas e não-retornos a cada 5 minutos. */
@@ -186,10 +194,12 @@ export class PontoDeteccaoAutomaticaService {
   ): Promise<Set<string>> {
     const ids = new Set<string>();
     try {
-      const exclusoes = await this.prisma.exclusaoOcorrenciaAutomatica.findMany({
-        where: { tipo, data: dia },
-        select: { pessoaId: true, colaboradorId: true },
-      });
+      const exclusoes = await this.prisma.exclusaoOcorrenciaAutomatica.findMany(
+        {
+          where: { tipo, data: dia },
+          select: { pessoaId: true, colaboradorId: true },
+        },
+      );
       for (const e of exclusoes) {
         ids.add(e.pessoaId);
         if (e.colaboradorId) ids.add(e.colaboradorId);
@@ -325,6 +335,11 @@ export class PontoDeteccaoAutomaticaService {
   ): Promise<{
     para: (dia: Date, ids: readonly (string | null)[]) => FatosDoDia;
   }> {
+    // Consultor de folga dos dias varridos: é o que permite apagar a falta
+    // lançada em dia de descanso, que de outra forma ficaria para sempre (a
+    // auto-cura espera uma batida, e num dia de folga ela nunca chega).
+    const consultorFolga = this.folga ? await this.folga.consultor(dias) : null;
+
     const [batidas, coberturas, feriasPorDia] = await Promise.all([
       this.prisma.batidaPonto.findMany({
         where: { data: { gte: inicio, lt: fimExclusivo } },
@@ -347,8 +362,7 @@ export class PontoDeteccaoAutomaticaService {
       this.feriasPorDia(dias),
     ]);
 
-    const chave = (dia: Date, id: string): string =>
-      `${dia.getTime()}|${id}`;
+    const chave = (dia: Date, id: string): string => `${dia.getTime()}|${id}`;
     const comBatida = new Set<string>();
     const comRetorno = new Set<string>();
     for (const b of batidas) {
@@ -370,8 +384,11 @@ export class PontoDeteccaoAutomaticaService {
       }
     }
 
-    const algum = (conjunto: Set<string>, dia: Date, ids: readonly (string | null)[]) =>
-      ids.some((id) => !!id && conjunto.has(chave(dia, id)));
+    const algum = (
+      conjunto: Set<string>,
+      dia: Date,
+      ids: readonly (string | null)[],
+    ) => ids.some((id) => !!id && conjunto.has(chave(dia, id)));
 
     return {
       para: (dia, ids) => {
@@ -388,6 +405,7 @@ export class PontoDeteccaoAutomaticaService {
           temAtestado: algum(comAtestado, d, ids),
           temAusenciaAPrazo: algum(comAPrazo, d, ids),
           deFerias,
+          ehFolga: consultorFolga?.ehFolga(d, ids) ?? false,
         };
       },
     };
@@ -528,8 +546,18 @@ export class PontoDeteccaoAutomaticaService {
       );
     } catch (erro) {
       // Corrida (bateu ponto/foi marcado agora), folga ou ciclo fechado: não é
-      // erro — só não marca. Duplicidade é silenciosa.
-      if (!(erro instanceof AusenciaDuplicadaError)) {
+      // erro — só não marca.
+      //
+      // Duplicidade e FOLGA são silenciosas: são "não é caso de marcar", e este
+      // método roda a cada 5 minutos — avisar sobre elas encheria o log com a
+      // mesma linha o dia inteiro para a mesma pessoa. A guarda de folga aqui é
+      // a última linha de defesa: quem está de folga já deveria ter ficado fora
+      // de `escaladosDoDia`.
+      const naoEhCasoDeMarcar =
+        erro instanceof AusenciaDuplicadaError ||
+        erro instanceof FaltaEmDiaDeFolgaError ||
+        erro instanceof FiscalDeFolgaError;
+      if (!naoEhCasoDeMarcar) {
         this.logger.warn(
           `Não foi possível marcar falta de ${escalado.nome}: ${String(erro)}`,
         );

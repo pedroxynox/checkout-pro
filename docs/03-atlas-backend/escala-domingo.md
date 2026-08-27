@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/escala-domingo/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-27 · **Cobre:** `backend/src/escala-domingo/`
 
 # Módulo: `escala-domingo`
 
@@ -24,7 +24,8 @@ do ciclo e calcula, de forma determinística, qual grupo folga em cada domingo.
 | `escala-domingo.controller.ts` | Rotas HTTP (ler e definir a âncora) | 39 |
 | `escala-domingo.service.ts` | Lê/grava a âncora no `ConfigSistema` e monta o preview | 143 |
 | `escala-domingo.domain.ts` | Regras puras: rodízio, folga, turno esperado e atraso | 198 |
-| `escala-domingo.module.ts` | Ligações (DI); exporta o serviço | 17 |
+| `folga.service.ts` | **Regra única de folga**: ficha + escala semanal, para todo o sistema | 142 |
+| `escala-domingo.module.ts` | Ligações (DI); exporta os dois serviços | 23 |
 | `dto/escala-domingo.dto.ts` | Validação de entrada do `PUT` | 28 |
 
 ## 4. Endpoints (rotas HTTP)
@@ -61,6 +62,56 @@ do ciclo e calcula, de forma determinística, qual grupo folga em cada domingo.
   compatibilidade) e `atualizadoPor`.
 - **Erros possíveis:** `BadRequestException` se a ordem não for uma permutação
   de G1/G2/G3, se a data for inválida ou se **não for um domingo**.
+
+### `FolgaService` — a regra ÚNICA de folga
+
+A folga de uma pessoa está escrita em **duas** fontes:
+
+- a **ficha** do colaborador (`folgaDiaSemana` + `grupoDomingo`) — fonte dos
+  operadores e supervisores;
+- a **escala semanal** (`EscalaEntry.folga`) — fonte dos fiscais, e onde também
+  vivem as exceções individuais.
+
+Cada parte do sistema consultava **só a sua** e ignorava a outra. O resultado
+apareceu na operação: um fiscal com folga na terça **na ficha**, cuja escala
+semanal não havia sido atualizada, era escalado, não batia ponto (estava
+descansando) e recebia **falta automática** duas horas depois — no próprio dia de
+descanso. E a falta não se curava: a auto-cura espera uma batida, que num dia de
+folga nunca chega.
+
+**A regra:** se **qualquer** uma das fontes diz que a pessoa descansa, é folga.
+
+O viés é deliberado e conservador. Quando as fontes discordam, o sistema não sabe
+a verdade — e entre "deixar de cobrar o ponto de alguém" e "marcar falta em quem
+estava descansando", o segundo erro é muito mais grave: um custa uma conversa, o
+outro mexe no registro de trabalho de uma pessoa.
+
+O preço: se a fonte desatualizada for a que diz "folga", quem realmente trabalhou
+não é cobrado por não bater ponto. É uma **omissão visível** (a pessoa aparece de
+folga na escala publicada, onde qualquer um percebe), diferente da falta indevida,
+que aparecia como fato consumado.
+
+| Método | O que faz |
+|---|---|
+| `consultor(dias)` | Carrega fichas + folgas da escala + âncora **de uma vez** e devolve `ehFolga(dia, ids)`. É o que a varredura de 5 minutos e o quadro usam. |
+| `ehFolga(dia, ids)` | Atalho para uma pessoa num dia. |
+
+`ids` aceita a pessoa em **todas** as suas identidades (`Fiscal.id`,
+`Colaborador.id`): um fiscal bate ponto por uma e tem ficha na outra, e consultar
+só uma delas era a origem de metade dos casos em que a regra não pegava.
+
+**Onde é usada** (e por que em cada lugar):
+- `FiscaisService.escaladosDoDia` — quem está de folga por qualquer fonte não é
+  escalado, então **a falta não nasce**;
+- `OperadoresService.registrarAusencia` e `FiscaisService.registrarFalta` — última
+  linha de defesa: recusam marcar falta em dia de folga;
+- auto-cura do Relógio Ponto — **apaga** as faltas indevidas já gravadas;
+- Quadro de Operadores (`diaOperadores` e `grade`) — para o quadro e a escala
+  publicada não discordarem sobre o que é folga.
+
+**Onde NÃO é usada, de propósito:** o **registro de ponto** (`definirStatus`).
+Quem está na loja batendo o ponto não pode ser barrado por um cadastro velho.
+Deixar de cobrar é reversível; impedir alguém de registrar trabalho, não.
 
 ## 6. Lógica de domínio (funções puras)
 - `ehDomingo(data)` → verdadeiro se o dia da semana (UTC) é domingo.
@@ -138,7 +189,8 @@ do ciclo e calcula, de forma determinística, qual grupo folga em cada domingo.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `escala-domingo.domain.spec.ts` | Rodízio, folga, turno esperado, **turno de feriado (horário de domingo, folga inalterada)** e atraso (funções puras) | 30 |
+| `escala-domingo.domain.spec.ts` | Rodízio, folga, turno esperado, **turno de feriado (horário de domingo, folga inalterada)** e atraso (funções puras) | 37 |
+| `folga.service.spec.ts` | Regra única: folga da ficha valendo contra a escala que escala (o caso real), folga da escala valendo sem a ficha, resolução pelas duas identidades, pessoa desconhecida, rodízio de domingo (com e sem âncora) e o consultor de vários dias | 10 |
 
 > Contagem sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

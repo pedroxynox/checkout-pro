@@ -45,6 +45,7 @@ import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { FeriadosService } from '../feriados/feriados.service';
 import { EscalaService } from './escala.service';
 import { FeriasService } from '../ferias/ferias.service';
+import { FolgaService } from '../escala-domingo/folga.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
 import {
@@ -210,6 +211,9 @@ export class FiscaisService {
     // e, por consequência, não gera falta automática. Opcional para não quebrar
     // testes unitários que constroem o serviço sem a dependência.
     @Optional() private readonly ferias?: FeriasService,
+    // Regra única de folga (ficha + escala semanal). Sem ela o serviço continua
+    // funcionando com a regra antiga — cada fonte olhando só para si.
+    @Optional() private readonly folga?: FolgaService,
   ) {}
 
   /**
@@ -879,9 +883,20 @@ export class FiscaisService {
       ? await this.ferias.colaboradoresDeFeriasNoDia(inicio)
       : new Set<string>();
 
+    // FOLGA pela regra única (ficha + escala semanal). Cada ramo acima consultou
+    // só a SUA fonte — os fiscais a escala, os operadores a ficha —, e quem
+    // tinha as duas fontes em desacordo era escalado e acabava com falta
+    // automática no próprio dia de descanso. Aqui as duas valem para todos.
+    const consultorFolga = this.folga
+      ? await this.folga.consultor([inicio])
+      : null;
+
     // Ordena por hora de entrada (mais cedo primeiro), depois por nome.
     return [...dosFiscais, ...dosOperadores]
       .filter((e) => !(e.colaboradorId && deFerias.has(e.colaboradorId)))
+      .filter(
+        (e) => !consultorFolga?.ehFolga(inicio, [e.pessoaId, e.colaboradorId]),
+      )
       .sort((a, b) => {
         const ea = a.entradaPrevista ?? '99:99';
         const eb = b.entradaPrevista ?? '99:99';
@@ -1082,8 +1097,31 @@ export class FiscaisService {
     // Bloqueia marcar falta num ciclo de folha já fechado.
     await this.cicloFolha?.exigirCicloAberto(data);
 
-    // Valida: se está de folga hoje, não pode marcar falta.
+    // Ficha canônica: resolvida ANTES da validação de folga, porque a regra única
+    // precisa das duas identidades da pessoa (o fiscal bate ponto por uma e tem
+    // ficha na outra). É reaproveitada no upsert e na notificação abaixo.
+    const fiscal = await this.prisma.fiscal.findUnique({
+      where: { id: fiscalId },
+    });
+    const colaboradorId = await this.colaboradorIdDoFiscal(fiscal);
+
+    // Valida: se está de folga, não pode marcar falta.
+    //
+    // Duas checagens de propósito. `isFolgaHoje` olha a escala semanal (a fonte
+    // dos fiscais). A regra única olha TAMBÉM a ficha — é exatamente o caso que
+    // gerou falta em dia de descanso: folga na terça na ficha, com a escala
+    // semanal desatualizada. Na dúvida entre as fontes, não se marca falta.
+    //
+    // A mesma regra NÃO é aplicada ao registro de ponto (`definirStatus`): quem
+    // está na loja batendo o ponto não pode ser barrado por um cadastro velho.
+    // Deixar de cobrar é reversível; impedir alguém de registrar trabalho, não.
     if (await this.isFolgaHoje(fiscalId, dia)) {
+      throw new FiscalDeFolgaError();
+    }
+    if (
+      this.folga &&
+      (await this.folga.ehFolga(data, [fiscalId, colaboradorId]))
+    ) {
       throw new FiscalDeFolgaError();
     }
 
@@ -1103,13 +1141,9 @@ export class FiscaisService {
       select: { id: true },
     });
 
-    // Ficha canônica (Fase 4): a falta do fiscal também guarda o vínculo com o
-    // Colaborador, para a Central de Jornada e os relatórios lerem por ficha.
-    // Carregamos o fiscal aqui e o reaproveitamos na notificação abaixo.
-    const fiscal = await this.prisma.fiscal.findUnique({
-      where: { id: fiscalId },
-    });
-    const colaboradorId = await this.colaboradorIdDoFiscal(fiscal);
+    // (A ficha canônica e o fiscal já foram resolvidos acima, para a validação
+    // de folga; o vínculo `colaboradorId` faz a Central de Jornada e os
+    // relatórios lerem esta falta pela ficha.)
 
     // `automatica` marca a falta lançada pela detecção do Relógio Ponto (será
     // removida se a pessoa bater ponto depois); a manual permanece. O `update`

@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/ponto/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-27 · **Cobre:** `backend/src/ponto/`
 
 # Módulo: `ponto`
 
@@ -233,17 +233,25 @@ pergunta: em vez de "o que fazer quando acontece X?", pergunta **"esta ocorrênc
 ainda é verdade?"** — e isso não depende de como ela deixou de ser.
 
 - `motivoParaRemoverFalta(fatos)` → `MotivoRevalidacao | null`. **Qualquer** batida
-  no dia derruba a falta; atestado, ausência a prazo e férias também.
-- `motivoParaRemoverNaoRetorno(fatos)` → idem, mas com a assimetria que importa:
+  no dia derruba a falta; atestado, ausência a prazo, férias e **folga** também.
+- `motivoParaRemoverNaoRetorno(fatos)` → idem, mas com **duas** assimetrias:
   **ter batidas NÃO derruba** o não retorno (é o seu pressuposto — a pessoa bateu
-  a entrada e a saída); o que o derruba é o intervalo ter sido **fechado**.
+  a entrada e a saída), e a **folga também não**. Se há batidas de entrada e de
+  saída para o intervalo, a pessoa trabalhou naquele dia — mesmo sendo a folga
+  dela —, e apagar o registro seria perder informação real. A falta é o oposto:
+  ela afirma uma expectativa que não existia.
+- **`ehFolga` existe porque a falta em dia de folga não se curava nunca:** a
+  auto-cura esperava uma batida, e num dia de descanso ela jamais chega. É este
+  motivo que resgata as faltas indevidas **já gravadas** — a guarda na criação
+  impede as novas, mas não desfaz o passado. A folga vem da regra única
+  ([`FolgaService`](escala-domingo.md)), que considera ficha **e** escala semanal.
 - `ehFaltaAutomaticaPendente({automatica, atestadoId, aPrazo})` → o filtro do que
   a auto-cura pode apagar. A marca `automatica` **sozinha não basta**: quando um
   atestado converte uma falta, a linha é reaproveitada e continua `automatica`
   (é o histórico de como nasceu). Olhando só essa marca, a limpeza apagava um dia
   de atestado legítimo e o atestado ficava com um buraco, em silêncio.
 - `MotivoRevalidacao`: `BATIDA_REGISTRADA` · `INTERVALO_FECHADO` · `ATESTADO` ·
-  `AUSENCIA_A_PRAZO` · `FERIAS`; `descreverMotivo` dá a frase do log.
+  `AUSENCIA_A_PRAZO` · `FERIAS` · `FOLGA`; `descreverMotivo` dá a frase do log.
 
 ### Marcações faltantes (`marcacoes-invalidas.domain.ts`)
 `calcularJornadaDia` responde "este dia está incompleto?" e, para isso, basta-lhe
@@ -388,7 +396,7 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 | `ponto-ocr.service.spec.ts` | Só pessoas ativas nas sugestões e memória de aliases | 7 |
 | `ponto-nome-match.spec.ts` | Similaridade de nomes tolerante ao OCR | 6 |
 | `deteccao-automatica.domain.spec.ts` | Estado do escalado sem batida (alerta/falta) | 8 |
-| `revalidacao-automatica.domain.spec.ts` | Quando a ocorrência deixa de ser verdade; a assimetria falta × não retorno; o que a auto-cura **não** pode apagar | 14 |
+| `revalidacao-automatica.domain.spec.ts` | Quando a ocorrência deixa de ser verdade; as assimetrias falta × não retorno (batida e **folga**); o que a auto-cura **não** pode apagar | 16 |
 | `deteccao-revalidacao.spec.ts` | Auto-cura no ciclo: batida (inclusive em atraso), atestado, ausência a prazo, férias, fiscal por outra chave — e o que **fica** | 15 |
 | `deteccao-exclusao-gestor.spec.ts` | A exclusão do gestor prevalece (não recria) e o aviso de atraso respeita a ausência do dia | 8 |
 | `marcacoes-invalidas.domain.spec.ts` | Quantas marcações faltam e quais: entrada esquecida, ajustes por duração, sem turno, bordas e 4 propriedades invariantes (fast-check) | 25 |
