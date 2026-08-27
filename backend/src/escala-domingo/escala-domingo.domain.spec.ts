@@ -9,6 +9,7 @@ import {
   ordemValida,
   proximoDomingo,
   proximosDomingos,
+  saidaEsperadaNoDia,
   trabalhaNoDomingo,
 } from './escala-domingo.domain';
 
@@ -244,5 +245,55 @@ describe('minutosDeAtraso', () => {
 
   it('chegar antes do horário nunca é atraso', () => {
     expect(minutosDeAtraso('07:00', H('06:45'))).toBeNull();
+  });
+});
+
+
+describe('saidaEsperadaNoDia', () => {
+  const ancora = { data: DOM1, ordem: ORDEM };
+  const ficha = {
+    folgaDiaSemana: 1, // segunda
+    grupoDomingo: 'G2',
+    entradaSemana: '07:00',
+    entradaFds: '08:00',
+    entradaDom: '09:00',
+    saidaSemana: '15:20',
+    saidaFds: '17:20',
+    saidaDom: '16:20',
+  };
+  const SEGUNDA = new Date('2026-07-20T00:00:00.000Z');
+  const TERCA = new Date('2026-07-21T00:00:00.000Z');
+  const SEXTA = new Date('2026-07-24T00:00:00.000Z');
+
+  it('seg–qui usa a saída de semana', () => {
+    expect(saidaEsperadaNoDia(ficha, TERCA, ancora)).toBe('15:20');
+  });
+
+  it('sex–sáb usa a saída de fim de semana', () => {
+    expect(saidaEsperadaNoDia(ficha, SEXTA, ancora)).toBe('17:20');
+  });
+
+  it('domingo trabalhado pelo rodízio usa a saída de domingo', () => {
+    expect(saidaEsperadaNoDia(ficha, DOM1, ancora)).toBe('16:20');
+  });
+
+  it('dia de folga não tem saída esperada', () => {
+    expect(saidaEsperadaNoDia(ficha, SEGUNDA, ancora)).toBeNull();
+  });
+
+  it('domingo com grupo mas SEM âncora não afirma saída', () => {
+    expect(saidaEsperadaNoDia(ficha, DOM1, null)).toBeNull();
+  });
+
+  it('feriado segue a saída de domingo, igual à entrada', () => {
+    // As duas pontas do turno precisam concordar: publicar a entrada de domingo
+    // com a saída de dia útil descreveria um turno que não existe.
+    expect(saidaEsperadaNoDia(ficha, TERCA, ancora, true)).toBe('16:20');
+    expect(entradaEsperadaNoDia(ficha, TERCA, ancora, true)).toBe('09:00');
+  });
+
+  it('feriado sem horário de domingo cadastrado mantém o horário normal', () => {
+    const semDomingo = { ...ficha, entradaDom: null, saidaDom: null };
+    expect(saidaEsperadaNoDia(semDomingo, TERCA, ancora, true)).toBe('15:20');
   });
 });

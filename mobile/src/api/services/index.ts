@@ -9,6 +9,15 @@ export { metasService } from './metas';
 export { insumosService } from './insumos';
 export { requisicoesService } from './requisicoes';
 export { fiscaisService, escalaService } from './fiscais';
+export { escalaExportacaoService } from './escalaExportacao';
+export type {
+  EscalaDiaPublicada,
+  EscalaSemanaPublicada,
+  LinhaEscala,
+  SecaoEscala,
+  StatusEscala,
+  FuncaoEscala,
+} from './escalaExportacao';
 export { pontoService } from './ponto';
 export { feriadosService } from './feriados';
 export type { Feriado, AmbitoFeriado } from './feriados';

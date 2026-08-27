@@ -34,6 +34,7 @@ import { NotificacoesModule } from './notificacoes/notificacoes.module';
 import { AssistenteModule } from './assistente/assistente.module';
 import { DataInicialModule } from './data-inicial/data-inicial.module';
 import { EscalaDomingoModule } from './escala-domingo/escala-domingo.module';
+import { EscalaExportacaoModule } from './escala-exportacao/escala-exportacao.module';
 import { ResetOperacionalModule } from './reset-operacional/reset-operacional.module';
 import { FeriadosModule } from './feriados/feriados.module';
 import { CentralJornadaModule } from './central-jornada/central-jornada.module';
@@ -81,6 +82,7 @@ import { AtestadosModule } from './atestados/atestados.module';
     AlertasModule,
     DataInicialModule,
     EscalaDomingoModule,
+    EscalaExportacaoModule,
     ResetOperacionalModule,
     FeriadosModule,
     CentralJornadaModule,

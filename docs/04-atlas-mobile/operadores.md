@@ -23,7 +23,7 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1921 |
+| `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1937 |
 | `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 458 |
 | `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 481 |
 | `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) **e excluir** um lançado por engano | 542 |
@@ -36,6 +36,11 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 | `FeriasCard.tsx` | Card + modal para colocar de férias, listar as em curso/futuras e cancelar | 406 |
 
 ## 4. Fluxo do usuário
+0. **Atalhos do topo:** "Ver jornada da equipe" (`FISCAIS_JORNADA`) e **"Publicar
+   escala (PDF ou imagem)"** (`ESCALA_VISUALIZAR`), que abre a área
+   [`escala`](escala.md). O atalho de publicar vive aqui, e não na Home, porque é
+   a **mesma escala desta tela vista como documento** — quem vai publicar já está
+   olhando o dia.
 1. **Dia:** `OperadoresScreen` mostra o roster do dia selecionado agrupado por
    turno (do cadastro), com estado por cor (🟢 trabalha · 🔴 falta · ⚪ folga · azul
    "no retorno"); tocar numa linha abre o Perfil (só com `COLABORADORES_PERFIL`).

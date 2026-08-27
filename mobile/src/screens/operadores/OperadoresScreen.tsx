@@ -1021,6 +1021,22 @@ export function OperadoresScreen(): React.ReactElement {
         </Pressable>
       ) : null}
 
+      {/* Publicar a escala (PDF/imagem para enviar à equipe). Fica aqui, e não
+          na Home, porque é a mesma escala desta tela vista como documento —
+          quem quer publicar já está olhando o dia. */}
+      {podeAcessar('ESCALA_VISUALIZAR') ? (
+        <Pressable
+          onPress={() => navigation.navigate('Escala')}
+          style={styles.linkJornada}
+        >
+          <Ionicons name="share-outline" size={20} color={cores.primaria} />
+          <Text style={styles.linkJornadaTexto}>
+            Publicar escala (PDF ou imagem)
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={cores.textoSecundario} />
+        </Pressable>
+      ) : null}
+
       {/* Domingo: rodízio de grupos. Mostra quem folga e quem trabalha nesse
           domingo (ou avisa que o rodízio ainda não foi configurado). */}
       {dados?.diaSemana === 0 ? (

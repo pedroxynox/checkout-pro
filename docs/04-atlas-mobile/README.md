@@ -5,7 +5,7 @@
 
 Um documento por área de tela do app (`mobile/src/screens/`). Padrão em [`_modelo-tela.md`](./_modelo-tela.md).
 
-**Cobertura:** 25/25 documentados (100%).
+**Cobertura:** 26/26 documentados (100%).
 
 | Item | Documento | Estado |
 |---|---|---|
@@ -16,6 +16,7 @@ Um documento por área de tela do app (`mobile/src/screens/`). Padrão em [`_mod
 | `checkouts` | [`checkouts`](./checkouts.md) | ✅ documentado |
 | `colaboradores` | [`colaboradores`](./colaboradores.md) | ✅ documentado |
 | `contratos` | [`contratos`](./contratos.md) | ✅ documentado |
+| `escala` | [`escala`](./escala.md) | ✅ documentado |
 | `fechamento` | [`fechamento`](./fechamento.md) | ✅ documentado |
 | `fiscais` | [`fiscais`](./fiscais.md) | ✅ documentado |
 | `importacoes` | [`importacoes`](./importacoes.md) | ✅ documentado |

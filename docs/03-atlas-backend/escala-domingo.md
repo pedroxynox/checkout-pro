@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/escala-domingo/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/escala-domingo/`
 
 # Módulo: `escala-domingo`
 
@@ -81,6 +81,13 @@ do ciclo e calcula, de forma determinística, qual grupo folga em cada domingo.
 - `entradaEsperadaNoDia(ficha, dia, ancora, ehFeriado?)` → horário de entrada do
   turno ("HH:mm") ou `null`: seg–qui = semana, sex–sáb = fim de semana, domingo =
   horário de domingo (só quando o rodízio está ancorado e manda trabalhar).
+- `saidaEsperadaNoDia(ficha, dia, ancora, ehFeriado?)` → o **outro lado do mesmo
+  turno**, regra por regra igual à entrada (inclusive feriado seguindo o horário
+  de domingo e a folga decidida pelo dia real). As duas andam juntas de propósito:
+  publicar uma escala com a entrada de um dia e a saída de outro descreveria um
+  turno que não existe. Criada para a
+  [escala publicada](escala-exportacao.md) — antes só existia a entrada, porque só
+  o atraso era calculado.
   **Em feriado (`ehFeriado = true`) vale o horário de DOMINGO** — ver regra 7. O
   parâmetro é opcional (`false` por padrão) e o domínio **não** consulta o
   calendário: quem chama resolve se o dia é feriado e informa.
