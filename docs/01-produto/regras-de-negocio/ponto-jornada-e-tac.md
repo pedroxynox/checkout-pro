@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** regras de negócio de ponto, jornada e TAC
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-27 · **Cobre:** regras de negócio de ponto, jornada e TAC
 
 # Ponto, jornada e TAC
 
@@ -50,16 +50,60 @@ extras e o TAC:
    [Contratos e jornada](contratos-e-jornada.md)); no padrão vigente, a
    referência dos fiscais é Seg–Qui 7h, Sex–Sáb 8h e Domingo 7h20.
 
-## 3. TAC — os limites do dia
+## 3. TAC — o que é, oficialmente
 
-O **TAC** sinaliza quando a jornada saiu dos parâmetros aceitáveis. Ele é
+**TAC = Termo de Ajustamento de Conduta.** É o compromisso da empresa com uma
+jornada saudável e conforme a lei — não é uma punição ao colaborador. O
+informativo oficial da rede (Comercial Zaffari · Stok Center) lista **oito**
+regras. Elas são a **fonte de verdade** deste tema:
+
+| # | Regra oficial | Limite |
+|---|---|---|
+| A | **Intervalo intrajornada** | não pode ser inferior a **1 hora** |
+| B | **Interjornada** | mínimo de **11 horas** entre uma jornada e outra |
+| C | **Pausa durante a jornada** | não mais de **5 horas consecutivas** sem pausa de **15 minutos** (num turno) |
+| D | **Horas extras** | até **2 horas** extras por dia |
+| E | **Dias consecutivos** | não mais de **6 dias consecutivos** sem descanso |
+| F | **Limite diário** | a jornada total do dia não pode passar de **10 horas** trabalhadas |
+| G | **DSR — domingos** | não trabalhar mais de **2 domingos consecutivos** |
+| H | **Descanso após o repouso semanal** | mínimo de **35 horas** antes do retorno |
+
+### 3.1 O que o sistema verifica hoje (e o que não verifica)
+
+Estado real do código, para não se confundir o que o app garante com o que a
+regra manda:
+
+| Regra | O sistema verifica? |
+|---|---|
+| A · intervalo mínimo de 1h | ✅ sim — `intervaloMinimoMs`, gera TAC |
+| D · horas extras | ⚠️ sim, mas com **outro número**: o app aponta TAC acima de **1h50**, e a regra oficial é **2 horas** |
+| B · interjornada 11h | ❌ não existe |
+| C · pausa de 15 min em 5h | ❌ não existe |
+| E · 6 dias consecutivos | ❌ não existe |
+| F · limite diário de 10h | ❌ não existe |
+| G · 2 domingos consecutivos | ⚠️ o rodízio de 3 grupos **evita por construção** (cada grupo folga 1 domingo em 3), mas **nada verifica** — se a âncora ou os grupos ficarem errados, ninguém é avisado |
+| H · 35h após o repouso | ❌ não existe |
+
+**Além disso, o sistema tem um gatilho que NÃO está na lista oficial:** intervalo
+**acima de 3 horas** é tratado como TAC. Na prática isso descreve "saiu e não
+voltou", que é conduta e não excesso de jornada — provavelmente pertence às
+**incidências**, não ao TAC.
+
+> **Duas decisões pendentes com o dono** (registradas para não serem inventadas):
+> 1. As extras: o TAC fica nas **2 horas** da regra oficial (e 1h50 passa a ser
+>    apenas aviso preventivo), ou a empresa quer mesmo marcar TAC 10 minutos antes?
+> 2. O intervalo acima de 3h continua sendo TAC ou passa a ser incidência?
+
+### 3.2 Como o TAC é acionado hoje no código
+
+O **TAC** sinaliza quando a jornada saiu dos parâmetros aceitáveis. Hoje ele é
 acionado quando:
 
 10. as **horas extras passam de 1h50**; **ou**
 11. o **intervalo é menor que 1 hora**; **ou**
 12. o **intervalo passa de 3 horas**.
 
-### 3.1 Escalada de aviso e o intervalo máximo
+### 3.3 Escalada de aviso e o intervalo máximo
 
 - A supervisão é avisada em **etapas monotônicas**: risco a **1h30** → risco a
   **1h40** → **TAC** (só a etapa mais grave é anunciada).

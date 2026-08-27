@@ -85,9 +85,17 @@ horas é exigido · se conta como trabalhado.
 (50/100) configuráveis · se o contrato admite extras · tolerância antes de começar
 a contar.
 
-**TAC — o que o define:** limiar de extras · degraus de aviso preventivo ·
-intervalo curto/longo · encerrar sem intervalo · desrespeitar o descanso entre
-jornadas · trabalhar em dia de folga · a quem avisar e com que antecedência.
+**TAC — o que o define:** o grupo de TAC deve mapear **1:1 as oito regras
+oficiais** do informativo da rede, hoje transcritas em
+[`docs/01-produto/regras-de-negocio/ponto-jornada-e-tac.md`](../../docs/01-produto/regras-de-negocio/ponto-jornada-e-tac.md)
+(seção 3). **O sistema verifica hoje apenas 2 das 8** — intervalo mínimo de 1h e
+horas extras (esta com número divergente). Faltam por completo: interjornada de
+11h, pausa de 15 min a cada 5h consecutivas, máximo de 6 dias consecutivos,
+limite diário de 10h trabalhadas, 2 domingos consecutivos (o rodízio evita por
+construção, mas nada verifica) e 35h de descanso após o repouso semanal.
+
+Além dos limites, o grupo precisa dos degraus de aviso preventivo, a quem avisar
+e com que antecedência.
 
 **Atrasos e saídas:** tolerância de atraso (hoje `TOLERANCIA_ATRASO_MIN = 15`,
 global) · tolerância de saída antecipada · a partir de quantos minutos gera
@@ -126,10 +134,24 @@ E o contrato precisa dizer **o que fazer quando os dois se contradizem** (ex.:
 disponibilidade de 10h num contrato com teto de 8h → avisa, bloqueia ou aceita
 como extra?). Decisão ainda pendente com o dono.
 
+## O que é o TAC (informativo oficial recebido)
+
+**TAC = Termo de Ajustamento de Conduta** — o compromisso da empresa com uma
+jornada saudável e conforme a lei, **não** uma punição ao colaborador. O
+informativo oficial da rede foi transcrito, com o comparativo do que o sistema
+verifica hoje, em
+[`docs/01-produto/regras-de-negocio/ponto-jornada-e-tac.md`](../../docs/01-produto/regras-de-negocio/ponto-jornada-e-tac.md)
+(seção 3). **Ler antes de mexer em qualquer regra de TAC.**
+
+O ponto que reorienta as fases 3 e 4: são **oito** regras oficiais e o sistema
+cobre **duas**.
+
 ## Estado / pendências
 
-- Aguardando do dono: um **informativo sobre o TAC** (o que é, como funciona na
-  prática), que deve ser lido **antes** de mexer nas regras de TAC das fases 1 e 3.
+- **Duas decisões pendentes com o dono**, registradas na seção 3.1 daquele
+  documento: (1) o TAC de extras fica nas **2h** oficiais, com 1h50 como aviso, ou
+  a empresa marca mesmo 10 minutos antes? (2) o intervalo acima de 3h continua
+  sendo TAC ou passa a ser incidência?
 - Os contratos reais serão cadastrados pelo dono depois das regras novas.
 - Ver também `.kiro/specs/solidez-contratos-jornada/` (plano anterior, com
   `tasks.md` desatualizado em relação ao código já entregue) e
