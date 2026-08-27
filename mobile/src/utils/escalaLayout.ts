@@ -317,7 +317,7 @@ function envelope(largura: number, altura: number, conteudo: string): string {
 /* ------------------------------------------------------------------ */
 
 const MARGEM_DIA = 90;
-const ALTURA_LINHA_DIA = 92;
+const ALTURA_LINHA_DIA = 104;
 const ALTURA_TITULO_SECAO = 78;
 
 /** Uma linha de pessoa na escala do dia. */
@@ -331,7 +331,10 @@ function linhaPessoaDia(
   const x = MARGEM_DIA;
   const fim = largura - MARGEM_DIA;
   if (zebra) {
-    partes.push(retangulo(x, y, fim - x, ALTURA_LINHA_DIA, COR.zebra));
+    // Recuado 3 px no topo de propósito: o fundo começa exatamente onde está o
+    // separador da linha ANTERIOR e, sendo pintado depois, o apagaria — as
+    // linhas entre nomes desapareceriam em toda linha zebrada.
+    partes.push(retangulo(x, y + 3, fim - x, ALTURA_LINHA_DIA - 3, COR.zebra));
   }
 
   const baseTexto = y + ALTURA_LINHA_DIA * 0.62;
@@ -359,7 +362,7 @@ function linhaPessoaDia(
     );
   } else {
     partes.push(
-      texto(fim, baseTexto - (horario ? 14 : 0), aparencia.rotulo, {
+      texto(fim, baseTexto - (horario ? 18 : 0), aparencia.rotulo, {
         tamanho: 42,
         peso: '700',
         cor: aparencia.cor,
@@ -370,7 +373,7 @@ function linhaPessoaDia(
     // horário ficou descoberto.
     if (horario) {
       partes.push(
-        texto(fim, baseTexto + 34, horario, {
+        texto(fim, baseTexto + 26, horario, {
           tamanho: 30,
           cor: COR.textoSec,
           ancora: 'end',
@@ -386,22 +389,26 @@ function linhaPessoaDia(
     .filter(Boolean)
     .join(' · ');
   partes.push(
-    texto(x + 8, baseTexto - (complemento ? 16 : 0), encurtar(linha.nome, larguraNome, 46), {
+    texto(x + 8, baseTexto - (complemento ? 18 : 0), encurtar(linha.nome, larguraNome, 46), {
       tamanho: 46,
       peso: '600',
       cor: trabalha ? COR.texto : COR.textoSec,
     }),
   );
   if (complemento) {
+    // +26 (e não mais): a descida das letras precisa terminar acima do separador,
+    // senão o "g" de "Fechamento" encosta na linha da próxima pessoa.
     partes.push(
-      texto(x + 8, baseTexto + 32, complemento, {
+      texto(x + 8, baseTexto + 26, complemento, {
         tamanho: 28,
         cor: COR.textoSec,
       }),
     );
   }
 
-  partes.push(linhaH(x, fim, y + ALTURA_LINHA_DIA, COR.divisor, 2));
+  // Separador em `borda`, não em `divisor`: a linha entre nomes é um pedido
+  // explícito do documento, e no tom mais claro ela praticamente não aparecia.
+  partes.push(linhaH(x, fim, y + ALTURA_LINHA_DIA, COR.borda, 2));
   return partes.join('');
 }
 
@@ -435,7 +442,9 @@ export function svgEscalaDia(
       espacamento: 6,
     }),
   );
-  y += 110;
+  // Espaço suficiente para a subida das letras do dia da semana (fonte 96) não
+  // invadir o rótulo acima.
+  y += 152;
   partes.push(
     texto(MARGEM_DIA, y, DIAS_SEMANA[escala.diaSemana], {
       tamanho: 96,
@@ -548,7 +557,7 @@ export function svgEscalaDia(
 
 const MARGEM_SEMANA = 100;
 const LARGURA_NOME_SEMANA = 820;
-const ALTURA_LINHA_SEMANA = 116;
+const ALTURA_LINHA_SEMANA = 124;
 const ALTURA_CABECALHO_GRADE = 130;
 
 /**
@@ -648,7 +657,11 @@ export function svgEscalaSemana(
 
     secao.pessoas.forEach((pessoa, idx) => {
       if (idx % 2 === 1) {
-        partes.push(retangulo(xInicio, y, xFim - xInicio, ALTURA_LINHA_SEMANA, COR.zebra));
+        // Recuado no topo pelo mesmo motivo da escala do dia: sem isso o fundo
+        // apaga o separador da linha anterior.
+        partes.push(
+          retangulo(xInicio, y + 3, xFim - xInicio, ALTURA_LINHA_SEMANA - 3, COR.zebra),
+        );
       }
       const turnoRotulo = pessoa.turno
         ? (TITULO_TURNO[pessoa.turno] ?? pessoa.turno)
@@ -702,7 +715,7 @@ export function svgEscalaSemana(
         }
       });
 
-      partes.push(linhaH(xInicio, xFim, y + ALTURA_LINHA_SEMANA, COR.divisor, 2));
+      partes.push(linhaH(xInicio, xFim, y + ALTURA_LINHA_SEMANA, COR.borda, 2));
       y += ALTURA_LINHA_SEMANA;
     });
   }

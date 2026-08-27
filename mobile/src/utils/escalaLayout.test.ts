@@ -171,6 +171,26 @@ describe('svgEscalaDia', () => {
     expect(svg).toContain('09:00 – 17:20');
   });
 
+  it('o fundo zebrado não cobre o separador da linha anterior', () => {
+    // No SVG quem é pintado depois cobre quem veio antes. O fundo da linha
+    // zebrada começa exatamente onde está o separador da pessoa anterior, então
+    // sem o recuo as linhas entre nomes desaparecem em toda linha alternada —
+    // e "linhas separando cada nome" é o pedido central do documento.
+    const { svg } = svgEscalaDia(DIA, { geradoEm: GERADO_EM });
+
+    const separadores = [
+      ...svg.matchAll(/<line[^>]*y1="([\d.]+)"[^>]*stroke="#EDF1F6"/g),
+    ].map((m) => Number(m[1]));
+    const zebras = [
+      ...svg.matchAll(/<rect[^>]*y="([\d.]+)"[^>]*fill="#F7FAFC"/g),
+    ].map((m) => Number(m[1]));
+
+    expect(zebras.length).toBeGreaterThan(0);
+    for (const y of zebras) {
+      expect(separadores).not.toContain(y);
+    }
+  });
+
   it('marca o horário especial', () => {
     const { svg } = svgEscalaDia(DIA, { geradoEm: GERADO_EM });
     expect(svg).toContain('Horário especial');

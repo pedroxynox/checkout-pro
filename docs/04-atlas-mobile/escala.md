@@ -88,6 +88,13 @@ Módulo do backend relacionado:
   nome comprido invadiria a coluna do horário) e o escape XML (um `&` num nome
   quebraria o SVG inteiro e a escala sairia **em branco**).
 
+Duas armadilhas do desenho já resolvidas, e cobertas por teste:
+- **O fundo zebrado é recuado 3 px no topo.** Ele começa exatamente onde está o
+  separador da pessoa anterior e, sendo pintado depois, apagaria essa linha — as
+  linhas entre nomes desapareciam em toda linha alternada.
+- **O separador usa o tom `borda`, não `divisor`.** No tom mais claro a linha
+  entre nomes praticamente não aparecia no papel nem na imagem.
+
 `utils/imagemEscala.ts`:
 - `suportaImagemPng()` → decide qual botão oferecer.
 - `baixarEscalaComoPng(imagem, nome)` → rasteriza **1:1** (sem reamostragem, que é
