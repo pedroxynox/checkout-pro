@@ -5,7 +5,7 @@
 
 Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modulo.md`](./_modelo-modulo.md).
 
-**Cobertura:** 36/36 documentados (100%).
+**Cobertura:** 37/37 documentados (100%).
 
 | Item | Documento | Estado |
 |---|---|---|
@@ -25,6 +25,7 @@ Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modul
 | `contratos` | [`contratos`](./contratos.md) | ✅ documentado |
 | `data-inicial` | [`data-inicial`](./data-inicial.md) | ✅ documentado |
 | `escala-domingo` | [`escala-domingo`](./escala-domingo.md) | ✅ documentado |
+| `escala-exportacao` | [`escala-exportacao`](./escala-exportacao.md) | ✅ documentado |
 | `fechamento` | [`fechamento`](./fechamento.md) | ✅ documentado |
 | `feedforward` | [`feedforward`](./feedforward.md) | ✅ documentado |
 | `feriados` | [`feriados`](./feriados.md) | ✅ documentado |

@@ -112,6 +112,9 @@ abas. Exemplos de rotas com parâmetros:
   voltaria até ele e descartaria a lista, quebrando o "voltar" do fluxo de
   correção. Ver [`ponto`](ponto.md).
 - `PerfilColaborador: { colaboradorId }`
+- `Escala: undefined` — publicar a escala (PDF/imagem), aberta pelo atalho do
+  Quadro de Operadores e protegida por `ESCALA_VISUALIZAR`. Ver
+  [`escala`](escala.md).
 - `DetalheJornada: { colaboradorId, ciclo, pessoa }`
 
 `PropsTela<T>` e `PropsTabInicio` são os helpers de tipagem usados pelas telas.

@@ -31,6 +31,9 @@ o acesso a dados, permissões, persistência e formatação em pt-BR.
 | `utils/dialogos.ts` | `confirmar`, `notificar`, `registrarOuvinteDialogo` | API de diálogos consumida pelo `DialogHost`. |
 | `utils/impressao.ts` | `imprimirRelatorio` | Impressão/PDF (web via iframe, nativo via `expo-print`). |
 | `utils/relatorioPerfil.ts` | `htmlRelatorio`, `htmlPaginaOperador`, `svgBarras`, `htmlPizza`, ... | Geração pura do relatório de perfil em HTML/SVG. |
+| `utils/escalaLayout.ts` | `svgEscalaDia`, `svgEscalaSemana`, `htmlDeImpressao`, `nomeArquivoEscala` | Desenho puro da escala publicada em SVG, no tamanho final (ver [`escala`](escala.md)). |
+| `utils/imagemEscala.ts` | `suportaImagemPng`, `baixarEscalaComoPng` | Converte o SVG da escala em PNG 4K e baixa (só onde há `canvas`). |
+| `utils/logoEscala.ts` | `LOGO_ESCALA_DATA_URI` | Logo do rodapé da escala como data URI (ponto único de troca). |
 | `utils/notificacoesLidas.ts` | `carregarLidas`, `salvarLidas`, `limparLidas` | Estado "lida" das notificações no cliente. |
 | `utils/protecaoTela.ts` | `useProtecaoTela` | Proteção contra captura de tela. |
 | `utils/som.ts` | `tocarSomNotificacao`, `tocarSomAlerta` | Beeps de notificação (Web Audio). |

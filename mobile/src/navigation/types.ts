@@ -72,6 +72,8 @@ export type RootStackParamList = {
     ciclo: number;
     pessoa: CentralPessoaResumo;
   };
+  /** Escala para publicar (dia/semana) em PDF e imagem 4K. */
+  Escala: undefined;
   Inconsistencias: undefined;
   /** Relatório de marcações faltantes do ciclo (aberto pela Central). */
   MarcacoesInvalidas: undefined;

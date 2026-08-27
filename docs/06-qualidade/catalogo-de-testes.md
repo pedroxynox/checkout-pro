@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 113 arquivos, 835 casos. **Mobile:** 29 arquivos, 152 casos. **Total: 987 casos.**
+> **Backend:** 115 arquivos, 866 casos. **Mobile:** 31 arquivos, 177 casos. **Total: 1043 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -63,7 +63,9 @@
 | `src/data-inicial/data-inicial.domain.spec.ts` | 5 | 2 |
 | `src/data-inicial/data-inicial.properties.spec.ts` | 2 | 1 |
 | `src/data-inicial/validacao-data.service.spec.ts` | 3 | 1 |
-| `src/escala-domingo/escala-domingo.domain.spec.ts` | 30 | 5 |
+| `src/escala-domingo/escala-domingo.domain.spec.ts` | 37 | 6 |
+| `src/escala-exportacao/escala-exportacao.service.spec.ts` | 10 | 2 |
+| `src/escala-exportacao/escala-publicada.domain.spec.ts` | 14 | 5 |
 | `src/fechamento/fechamento.domain.spec.ts` | 5 | 1 |
 | `src/feedforward/feedforward.domain.spec.ts` | 7 | 2 |
 | `src/feriados/feriados.domain.spec.ts` | 4 | 1 |
@@ -142,6 +144,7 @@
 | `src/screens/colaboradores/GestaoColaboradoresScreen.test.tsx` | 2 | 1 |
 | `src/screens/colaboradores/PerfilColaboradorScreen.test.tsx` | 3 | 2 |
 | `src/screens/contratos/ContratosScreen.test.tsx` | 5 | 1 |
+| `src/screens/escala/EscalaScreen.test.tsx` | 6 | 1 |
 | `src/screens/fechamento/FechamentoScreen.test.tsx` | 2 | 1 |
 | `src/screens/importacoes/ImportacoesScreen.test.tsx` | 2 | 1 |
 | `src/screens/indicadores/NaoReconhecidosScreen.test.tsx` | 3 | 1 |
@@ -157,6 +160,7 @@
 | `src/screens/ponto/filaCorrecao.test.ts` | 10 | 4 |
 | `src/screens/ponto/leituraComprovanteUtil.test.ts` | 4 | 2 |
 | `src/screens/ponto/montarTextoOcr.test.ts` | 3 | 1 |
+| `src/utils/escalaLayout.test.ts` | 19 | 4 |
 | `src/utils/formato.test.ts` | 10 | 3 |
 | `src/utils/periodoMensal.test.ts` | 9 | 5 |
 | `src/utils/relatorioPerfil.test.ts` | 12 | 9 |

@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **205 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **207 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -156,6 +156,13 @@
 |---|---|---|---|
 | GET | `/config/escala-domingo` | `obter` | `—` |
 | PUT | `/config/escala-domingo` | `definir` | `ESCALA_DOMINGO_CONFIG` |
+
+## `escala-exportacao`
+
+| Método | Rota | Handler | Permissão |
+|---|---|---|---|
+| GET | `/escala-exportacao/dia` | `dia` | `ESCALA_VISUALIZAR` |
+| GET | `/escala-exportacao/semana` | `semana` | `ESCALA_VISUALIZAR` |
 
 ## `fechamento`
 

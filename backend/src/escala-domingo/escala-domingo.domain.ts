@@ -190,6 +190,40 @@ export function entradaEsperadaNoDia(
   return horarioNormal ?? null;
 }
 
+/** Cadastro de escala com os dois lados do turno (entrada e saída). */
+export interface FichaEscalaTurno extends FichaEscala {
+  saidaSemana: string | null;
+  saidaFds: string | null;
+  saidaDom: string | null;
+}
+
+/**
+ * Horário de SAÍDA esperado do colaborador no dia ("HH:mm"), ou null quando não
+ * há turno (folga, domingo fora do rodízio ou horário não cadastrado).
+ *
+ * Espelha `entradaEsperadaNoDia` regra por regra — inclusive o feriado seguindo
+ * o horário de domingo e a folga decidida pelo dia REAL. As duas funções andam
+ * juntas de propósito: publicar uma escala com a entrada de um dia e a saída de
+ * outro seria pior do que não publicar nada.
+ */
+export function saidaEsperadaNoDia(
+  ficha: FichaEscalaTurno,
+  dia: Date,
+  ancoraDomingo: { data: Date; ordem: readonly GrupoDomingo[] } | null,
+  ehFeriado = false,
+): string | null {
+  if (ehDiaDeFolga(ficha, dia, ancoraDomingo)) return null;
+  const dow = dia.getUTCDay();
+  if (dow === 0) {
+    return ancoraDomingo ? (ficha.saidaDom ?? null) : null;
+  }
+  const horarioNormal = dow >= 1 && dow <= 4 ? ficha.saidaSemana : ficha.saidaFds;
+  if (ehFeriado) {
+    return ficha.saidaDom ?? horarioNormal ?? null;
+  }
+  return horarioNormal ?? null;
+}
+
 /** Tolerância padrão (minutos) antes de considerar a entrada como atraso. */
 export const TOLERANCIA_ATRASO_MIN = 15;
 
