@@ -8,6 +8,8 @@ import type {
   EscalaSemanaPublicada,
 } from '../api/services/escalaExportacao';
 import {
+  ALTURA_DIA,
+  ALTURA_SEMANA,
   LARGURA_DIA,
   LARGURA_SEMANA,
   htmlDeImpressao,
@@ -126,17 +128,71 @@ describe('svgEscalaDia', () => {
     expect(img.svg).toContain(`width="${LARGURA_DIA}"`);
   });
 
-  it('declara retrato mesmo quando a equipe é pequena e o desenho fica baixo', () => {
-    // A altura depende de quantas pessoas há: deduzir a orientação da proporção
-    // imprimiria a escala do dia em paisagem num dia de equipe reduzida.
+  it('com a equipe do dia inteira, preenche exatamente a folha 4K', () => {
+    // O fator de preenchimento resolve as alturas para o conteúdo ocupar a
+    // página: é isso que elimina a faixa branca no fim.
+    const muitos = {
+      ...DIA,
+      secoes: [
+        {
+          funcao: 'OPERADOR' as const,
+          linhas: Array.from({ length: 22 }, (_, i) => ({
+            ...DIA.secoes[1].linhas[0],
+            colaboradorId: `o${i}`,
+            nome: `Pessoa ${i}`,
+          })),
+        },
+      ],
+    };
+
+    const img = svgEscalaDia(muitos, { geradoEm: GERADO_EM });
+
+    expect(img.largura).toBe(LARGURA_DIA);
+    expect(img.altura).toBe(ALTURA_DIA);
+  });
+
+  it('equipe pequena encurta a folha em vez de deixar um vazio', () => {
+    // Preencher 3840 px com três pessoas exigiria linhas absurdas; encurtar a
+    // folha é o que evita tanto o vazio quanto a linha gigante.
     const img = svgEscalaDia(
       { ...DIA, secoes: [{ funcao: 'FISCAL', linhas: [DIA.secoes[0].linhas[0]] }] },
       { geradoEm: GERADO_EM },
     );
 
-    expect(img.altura).toBeLessThan(img.largura);
+    expect(img.altura).toBeLessThan(ALTURA_DIA);
     expect(img.orientacao).toBe('retrato');
     expect(htmlDeImpressao(img, 'x')).toContain('size: 210mm');
+  });
+
+  it('equipe grande alonga a folha em vez de encolher a fonte', () => {
+    // Texto ilegível é pior do que uma página mais longa.
+    const enorme = {
+      ...DIA,
+      secoes: [
+        {
+          funcao: 'OPERADOR' as const,
+          linhas: Array.from({ length: 60 }, (_, i) => ({
+            ...DIA.secoes[1].linhas[0],
+            colaboradorId: `o${i}`,
+            nome: `Pessoa ${i}`,
+          })),
+        },
+      ],
+    };
+
+    expect(svgEscalaDia(enorme, { geradoEm: GERADO_EM }).altura).toBeGreaterThan(
+      ALTURA_DIA,
+    );
+  });
+
+  it('não mostra o turno do cadastro', () => {
+    // O turno é classificação interna de gestão; na folha só roubava a linha de
+    // baixo de cada pessoa e obrigava a fonte a ser menor.
+    const { svg } = svgEscalaDia(DIA, { geradoEm: GERADO_EM });
+
+    for (const turno of ['Abertura', 'Intermediário', 'Fechamento', 'Apoio']) {
+      expect(svg).not.toContain(turno);
+    }
   });
 
   it('mostra o dia da semana, a data e as seções por função', () => {
@@ -191,9 +247,11 @@ describe('svgEscalaDia', () => {
     }
   });
 
-  it('marca o horário especial', () => {
+  it('marca a exceção de horário ao lado do nome', () => {
+    // Ao lado, e não abaixo: é raro e não pode mudar a altura da linha, senão
+    // quebraria o ritmo de toda a folha.
     const { svg } = svgEscalaDia(DIA, { geradoEm: GERADO_EM });
-    expect(svg).toContain('Horário especial');
+    expect(svg).toContain('• especial');
   });
 
   it('destaca o feriado com o nome', () => {
@@ -266,6 +324,33 @@ describe('svgEscalaSemana', () => {
 
     expect(img.largura).toBe(LARGURA_SEMANA);
     expect(img.svg).toContain(`width="${LARGURA_SEMANA}"`);
+  });
+
+  it('com a equipe inteira, preenche exatamente a folha 4K paisagem', () => {
+    const muitos = {
+      ...SEMANA,
+      secoes: [
+        {
+          funcao: 'OPERADOR' as const,
+          pessoas: Array.from({ length: 12 }, (_, i) => ({
+            ...SEMANA.secoes[0].pessoas[0],
+            colaboradorId: `o${i}`,
+            nome: `Pessoa ${i}`,
+          })),
+        },
+      ],
+    };
+
+    const img = svgEscalaSemana(muitos, { geradoEm: GERADO_EM });
+
+    expect(img.largura).toBe(LARGURA_SEMANA);
+    expect(img.altura).toBe(ALTURA_SEMANA);
+  });
+
+  it('não mostra o turno do cadastro na grade', () => {
+    const { svg } = svgEscalaSemana(SEMANA, { geradoEm: GERADO_EM });
+    expect(svg).not.toContain('Abertura');
+    expect(svg).not.toContain('Fechamento');
   });
 
   it('traz o período e o cabeçalho dos sete dias', () => {

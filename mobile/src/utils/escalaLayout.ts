@@ -33,12 +33,28 @@ import { LOGO_ESCALA_DATA_URI, LOGO_ESCALA_PROPORCAO } from './logoEscala';
 export const LARGURA_DIA = 2160;
 
 /**
+ * Altura da escala do DIA: 3840 px — o 4K retrato exato (2160 × 3840).
+ *
+ * A folha tem tamanho **fixo** e o conteúdo se ajusta a ela: a altura das linhas
+ * e o tamanho das fontes são calculados para preencher a página. Antes a folha
+ * crescia com o número de pessoas, e uma equipe pequena produzia uma imagem baixa
+ * e larga, com o texto pequeno perdido no meio de muito branco.
+ *
+ * Só é ultrapassada quando há gente demais para caber com fonte legível — aí é
+ * melhor uma folha mais longa do que um texto que ninguém lê (ver `METRICAS`).
+ */
+export const ALTURA_DIA = 3840;
+
+/**
  * Largura da escala da SEMANA: paisagem (4K cheio).
  *
  * A semana é uma grade de 7 colunas; em retrato as colunas ficariam estreitas
  * demais para caber "07:00–15:20" sem apertar a fonte.
  */
 export const LARGURA_SEMANA = 3840;
+
+/** Altura da escala da SEMANA: 2160 px — o 4K paisagem exato (3840 × 2160). */
+export const ALTURA_SEMANA = 2160;
 
 /** Cores da escala impressa (espelho do tema do app). */
 const COR = {
@@ -79,13 +95,10 @@ const TITULO_FUNCAO: Record<string, string> = {
   OPERADOR: 'Operadores de caixa',
 };
 
-/** Rótulo curto do turno do cadastro. */
-const TITULO_TURNO: Record<string, string> = {
-  ABERTURA: 'Abertura',
-  INTERMEDIARIO: 'Intermediário',
-  FECHAMENTO: 'Fechamento',
-  APOIO: 'Apoio',
-};
+// O rótulo do turno (Abertura/Intermediário/Fechamento/Apoio) foi REMOVIDO da
+// folha de propósito: é uma classificação interna de gestão, e quem lê a escala
+// quer saber a que hora entra — o horário já responde isso. Tirá-lo deixou cada
+// pessoa numa linha só, o que liberou o espaço para as fontes maiores.
 
 /** Como cada estado aparece na escala (palavra e cor). */
 const APARENCIA_STATUS: Record<StatusEscala, { rotulo: string; cor: string }> = {
@@ -123,9 +136,29 @@ function esc(valor: unknown): string {
  * pouco e sempre para o lado seguro.
  */
 function encurtar(texto: string, larguraMax: number, tamanhoFonte: number): string {
-  const maxChars = Math.floor(larguraMax / (tamanhoFonte * 0.52));
+  const maxChars = Math.floor(larguraMax / (tamanhoFonte * LARGURA_MEDIA_CARACTERE));
   if (texto.length <= maxChars) return texto;
   return `${texto.slice(0, Math.max(1, maxChars - 1))}…`;
+}
+
+/**
+ * Largura média de um caractere como fração do tamanho da fonte.
+ *
+ * Aproximação deliberada: SVG não mede texto, e medir de verdade exigiria uma
+ * tabela de métricas da fonte. Erra por pouco e sempre para o lado seguro
+ * (superestima), então o texto é cortado um pouco antes em vez de invadir a
+ * coluna vizinha.
+ */
+const LARGURA_MEDIA_CARACTERE = 0.52;
+
+/** Largura aproximada de um texto num tamanho de fonte. */
+function larguraEstimada(texto: string, tamanhoFonte: number): number {
+  return texto.length * tamanhoFonte * LARGURA_MEDIA_CARACTERE;
+}
+
+/** Mantém um valor dentro de um intervalo. */
+function limitar(valor: number, minimo: number, maximo: number): number {
+  return Math.min(maximo, Math.max(minimo, valor));
 }
 
 /** Fonte usada no SVG: só famílias do sistema, que existem na conversão. */
@@ -274,12 +307,12 @@ function rodape(
   logo: string | null,
   geradoEm: Date,
   loja: string,
-): { svg: string; altura: number } {
+): string {
   const partes: string[] = [linhaH(margem, largura - margem, y, COR.borda, 3)];
   let cursor = y + 60;
 
   if (logo) {
-    const larguraLogo = Math.min(760, largura - margem * 2);
+    const larguraLogo = larguraDoLogo(largura, margem);
     const alturaLogo = larguraLogo / LOGO_ESCALA_PROPORCAO;
     partes.push(
       `<image x="${(largura - larguraLogo) / 2}" y="${cursor}" width="${larguraLogo}" height="${alturaLogo}" href="${logo}" preserveAspectRatio="xMidYMid meet"/>`,
@@ -304,7 +337,30 @@ function rodape(
       ancora: 'middle',
     }),
   );
-  return { svg: partes.join(''), altura: cursor + 26 + 40 - y };
+  return partes.join('');
+}
+
+/** Largura do logo no rodapé. */
+function larguraDoLogo(largura: number, margem: number): number {
+  return Math.min(760, largura - margem * 2);
+}
+
+/**
+ * Altura que o rodapé vai ocupar — calculada **antes** de desenhar.
+ *
+ * É o que permite ancorar o rodapé no fim da folha e distribuir o espaço restante
+ * entre as linhas: sem saber a altura do rodapé de antemão, ou ele flutuaria no
+ * meio da página ou sobraria uma faixa branca embaixo dele.
+ */
+function alturaRodape(
+  largura: number,
+  margem: number,
+  logo: string | null,
+): number {
+  const alturaMarca = logo
+    ? larguraDoLogo(largura, margem) / LOGO_ESCALA_PROPORCAO + 40
+    : 76;
+  return 60 + alturaMarca + 26 + 40;
 }
 
 /** Envelope do SVG com fundo branco. */
@@ -317,15 +373,130 @@ function envelope(largura: number, altura: number, conteudo: string): string {
 /* ------------------------------------------------------------------ */
 
 const MARGEM_DIA = 90;
-const ALTURA_LINHA_DIA = 104;
-const ALTURA_TITULO_SECAO = 78;
 
-/** Uma linha de pessoa na escala do dia. */
+/* Medidas de referência (fator de preenchimento = 1). */
+const ALTURA_LINHA_BASE = 104;
+const ALTURA_SECAO_BASE = 78;
+const ESPACO_ANTES_SECAO_BASE = 56;
+const FONTE_NOME_BASE = 46;
+
+/**
+ * Limites do fator de preenchimento.
+ *
+ * - **Mínimo:** abaixo disto a fonte fica pequena para ler no celular; em vez de
+ *   encolher mais, a folha cresce (equipe muito grande).
+ * - **Máximo:** acima disto as linhas ficariam absurdamente altas numa equipe
+ *   pequena. O espaço que sobra vai para os intervalos entre as seções, que é
+ *   respiro proposital em vez de um bloco de branco no fim da página.
+ */
+const FATOR_MINIMO = 0.62;
+const FATOR_MAXIMO = 1.9;
+
+/** Respiro extra máximo por seção quando sobra espaço (evita o "buraco"). */
+const EXTRA_MAXIMO_ENTRE_SECOES = 140;
+
+/** O fator ideal saiu dos limites? (equipe pequena ou grande demais). */
+function ehFatorLimitado(fatorIdeal: number): boolean {
+  return fatorIdeal < FATOR_MINIMO || fatorIdeal > FATOR_MAXIMO;
+}
+
+/** Tamanhos calculados para preencher a folha do dia. */
+interface MetricasDia {
+  alturaLinha: number;
+  alturaSecao: number;
+  espacoAntesSecao: number;
+  fonteNome: number;
+  fonteHorario: number;
+  fonteEstado: number;
+  fonteSecundaria: number;
+  fonteTituloSecao: number;
+  /** Altura final da folha (só passa de `ALTURA_DIA` se não couber). */
+  alturaFolha: number;
+}
+
+/**
+ * Resolve as medidas para que o conteúdo **preencha** a folha.
+ *
+ * A conta é direta: mede-se o conteúdo com as medidas de referência, compara-se
+ * com o espaço livre entre cabeçalho e rodapé, e o resultado é o fator que
+ * multiplica alturas e fontes. Como o fator é **um só**, tudo cresce junto e a
+ * imagem não distorce — é diferente de esticar o desenho, que deformaria as
+ * letras.
+ */
+function metricasDia(
+  linhas: number,
+  secoes: number,
+  alturaTopo: number,
+  alturaRodape: number,
+): MetricasDia {
+  const conteudoBase =
+    secoes * (ALTURA_SECAO_BASE + ESPACO_ANTES_SECAO_BASE + 8) +
+    linhas * ALTURA_LINHA_BASE;
+  const disponivel = ALTURA_DIA - alturaTopo - alturaRodape;
+  const fatorIdeal = conteudoBase > 0 ? disponivel / conteudoBase : 1;
+  const fator = limitar(fatorIdeal, FATOR_MINIMO, FATOR_MAXIMO);
+
+  const alturaLinha = Math.round(ALTURA_LINHA_BASE * fator);
+  const alturaSecao = Math.round(ALTURA_SECAO_BASE * fator);
+  const conteudoReal = secoes * (alturaSecao + 8) + linhas * alturaLinha;
+
+  // Sobra (equipe pequena): parte vira respiro entre as seções, com **limite**.
+  // Sem o limite, uma equipe de quatro pessoas empurrava a primeira seção mil
+  // pixels para baixo — deixava de ser respiro e virava um buraco.
+  const sobra = disponivel - conteudoReal - secoes * ESPACO_ANTES_SECAO_BASE;
+  const extraPorSecao =
+    sobra > 0 && secoes > 0
+      ? Math.min(Math.floor(sobra / secoes), EXTRA_MAXIMO_ENTRE_SECOES)
+      : 0;
+  const espacoAntesSecao =
+    sobra > 0
+      ? ESPACO_ANTES_SECAO_BASE + extraPorSecao
+      : Math.round(ESPACO_ANTES_SECAO_BASE * fator);
+  const alturaConteudo = conteudoReal + secoes * espacoAntesSecao;
+
+  // A folha acompanha o conteúdo: fica com 3840 no caso normal (o fator resolve
+  // exatamente o espaço), mais CURTA quando a equipe é pequena demais para
+  // preencher sem linhas absurdas, e mais LONGA quando é grande demais para
+  // caber com fonte legível. Em nenhum dos casos sobra faixa branca.
+  //
+  // Quando o fator NÃO foi limitado, a folha é exatamente 4K: os poucos pixels
+  // perdidos ao arredondar as alturas viram um fio de espaço acima do rodapé, em
+  // vez de deixar a imagem com 3839 px.
+  const alturaFolha = ehFatorLimitado(fatorIdeal)
+    ? alturaTopo + alturaConteudo + alturaRodape
+    : ALTURA_DIA;
+
+  const fonteNome = Math.round(limitar(FONTE_NOME_BASE * fator, 30, 76));
+  return {
+    alturaLinha,
+    alturaSecao,
+    espacoAntesSecao,
+    fonteNome,
+    fonteHorario: fonteNome,
+    fonteEstado: Math.round(fonteNome * 0.92),
+    fonteSecundaria: Math.round(limitar(fonteNome * 0.62, 22, 44)),
+    fonteTituloSecao: Math.round(limitar(fonteNome * 0.92, 30, 64)),
+    alturaFolha,
+  };
+}
+
+/**
+ * Uma linha de pessoa na escala do dia: **nome à esquerda, horário à direita**.
+ *
+ * O turno do cadastro (Abertura/Intermediário/Fechamento/Apoio) **não** aparece:
+ * quem lê a escala quer saber a que hora entra, e o horário já diz isso. O rótulo
+ * do turno era uma classificação interna de gestão — na folha só roubava a linha
+ * de baixo de cada pessoa e obrigava a fonte a ser menor.
+ *
+ * Com isso a linha é de **uma só linha de texto**, o que permite fontes bem
+ * maiores e é o que faz a escala preencher a folha.
+ */
 function linhaPessoaDia(
   largura: number,
   y: number,
   linha: LinhaEscala,
   zebra: boolean,
+  m: MetricasDia,
 ): string {
   const partes: string[] = [];
   const x = MARGEM_DIA;
@@ -334,10 +505,10 @@ function linhaPessoaDia(
     // Recuado 3 px no topo de propósito: o fundo começa exatamente onde está o
     // separador da linha ANTERIOR e, sendo pintado depois, o apagaria — as
     // linhas entre nomes desapareceriam em toda linha zebrada.
-    partes.push(retangulo(x, y + 3, fim - x, ALTURA_LINHA_DIA - 3, COR.zebra));
+    partes.push(retangulo(x, y + 3, fim - x, m.alturaLinha - 3, COR.zebra));
   }
 
-  const baseTexto = y + ALTURA_LINHA_DIA * 0.62;
+  const baseTexto = y + m.alturaLinha * 0.66;
   const aparencia = APARENCIA_STATUS[linha.status];
   const trabalha = linha.status === 'TRABALHA';
 
@@ -349,66 +520,74 @@ function linhaPessoaDia(
       : linha.entrada
         ? `A partir de ${linha.entrada}`
         : '';
-  const larguraHorario = 460;
+
+  // Largura que a direita ocupa — usada para cortar o nome antes de invadi-la.
+  let larguraDireita = 0;
 
   if (trabalha) {
     partes.push(
       texto(fim, baseTexto, horario, {
-        tamanho: 46,
+        tamanho: m.fonteHorario,
         peso: '700',
         cor: COR.texto,
         ancora: 'end',
       }),
     );
+    larguraDireita = larguraEstimada(horario, m.fonteHorario);
   } else {
+    // Estado e horário previsto na MESMA linha: o horário diz qual turno ficou
+    // descoberto, e empilhá-los obrigaria a linha a ser mais alta só por causa
+    // dos poucos casos de falta.
     partes.push(
-      texto(fim, baseTexto - (horario ? 18 : 0), aparencia.rotulo, {
-        tamanho: 42,
+      texto(fim, baseTexto, aparencia.rotulo, {
+        tamanho: m.fonteEstado,
         peso: '700',
         cor: aparencia.cor,
         ancora: 'end',
       }),
     );
-    // Numa falta/atestado o turno previsto continua visível: é o que diz qual
-    // horário ficou descoberto.
+    larguraDireita = larguraEstimada(aparencia.rotulo, m.fonteEstado);
     if (horario) {
+      const recuo = larguraDireita + m.fonteEstado * 0.6;
       partes.push(
-        texto(fim, baseTexto + 26, horario, {
-          tamanho: 30,
+        texto(fim - recuo, baseTexto, horario, {
+          tamanho: m.fonteSecundaria,
           cor: COR.textoSec,
           ancora: 'end',
         }),
       );
+      larguraDireita = recuo + larguraEstimada(horario, m.fonteSecundaria);
     }
   }
 
-  // Coluna da esquerda: nome e, abaixo, o turno do cadastro.
-  const larguraNome = fim - x - larguraHorario - 40;
-  const turnoRotulo = linha.turno ? TITULO_TURNO[linha.turno] ?? linha.turno : null;
-  const complemento = [turnoRotulo, linha.horarioEspecial ? 'Horário especial' : null]
-    .filter(Boolean)
-    .join(' · ');
+  // Coluna da esquerda: só o nome (e a marca de exceção, quando houver).
+  const larguraNome = fim - x - larguraDireita - m.fonteNome;
   partes.push(
-    texto(x + 8, baseTexto - (complemento ? 18 : 0), encurtar(linha.nome, larguraNome, 46), {
-      tamanho: 46,
+    texto(x + 8, baseTexto, encurtar(linha.nome, larguraNome, m.fonteNome), {
+      tamanho: m.fonteNome,
       peso: '600',
       cor: trabalha ? COR.texto : COR.textoSec,
     }),
   );
-  if (complemento) {
-    // +26 (e não mais): a descida das letras precisa terminar acima do separador,
-    // senão o "g" de "Fechamento" encosta na linha da próxima pessoa.
+  // "Horário especial" fica ao lado do nome, não abaixo: é raro e não deve
+  // mudar a altura da linha (o que quebraria o ritmo de toda a folha).
+  if (linha.horarioEspecial) {
+    const depoisDoNome =
+      x + 8 + larguraEstimada(encurtar(linha.nome, larguraNome, m.fonteNome), m.fonteNome);
+    // Folga generosa: a largura do nome é estimada, e quando a estimativa erra
+    // para baixo o rótulo cola na última letra e parece parte do nome.
     partes.push(
-      texto(x + 8, baseTexto + 26, complemento, {
-        tamanho: 28,
-        cor: COR.textoSec,
+      texto(depoisDoNome + m.fonteSecundaria * 1.2, baseTexto, '• especial', {
+        tamanho: m.fonteSecundaria,
+        cor: COR.primaria,
+        peso: '600',
       }),
     );
   }
 
   // Separador em `borda`, não em `divisor`: a linha entre nomes é um pedido
   // explícito do documento, e no tom mais claro ela praticamente não aparecia.
-  partes.push(linhaH(x, fim, y + ALTURA_LINHA_DIA, COR.borda, 2));
+  partes.push(linhaH(x, fim, y + m.alturaLinha, COR.borda, 2));
   return partes.join('');
 }
 
@@ -508,40 +687,66 @@ export function svgEscalaDia(
   );
   y += 40;
 
+  // Aqui termina o cabeçalho. Com a altura dele e a do rodapé já conhecidas, as
+  // medidas do corpo são resolvidas para PREENCHER a folha.
+  const alturaTopo = y;
+  const alturaPe = alturaRodape(largura, MARGEM_DIA, logo);
+  const totalLinhas = escala.secoes.reduce((s, sec) => s + sec.linhas.length, 0);
+  const m = metricasDia(
+    totalLinhas,
+    escala.secoes.length,
+    alturaTopo,
+    alturaPe,
+  );
+
   // Seções por função.
   for (const secao of escala.secoes) {
-    y += 56;
+    y += m.espacoAntesSecao;
     partes.push(
-      retangulo(MARGEM_DIA, y, largura - MARGEM_DIA * 2, ALTURA_TITULO_SECAO, COR.primariaClara, 12),
+      retangulo(
+        MARGEM_DIA,
+        y,
+        largura - MARGEM_DIA * 2,
+        m.alturaSecao,
+        COR.primariaClara,
+        12,
+      ),
     );
     partes.push(
       texto(
         MARGEM_DIA + 26,
-        y + ALTURA_TITULO_SECAO * 0.66,
+        y + m.alturaSecao * 0.66,
         TITULO_FUNCAO[secao.funcao] ?? secao.funcao,
-        { tamanho: 42, peso: '700', cor: COR.primariaEscura },
+        { tamanho: m.fonteTituloSecao, peso: '700', cor: COR.primariaEscura },
       ),
     );
     partes.push(
       texto(
         largura - MARGEM_DIA - 26,
-        y + ALTURA_TITULO_SECAO * 0.66,
+        y + m.alturaSecao * 0.66,
         `${secao.linhas.length} pessoa${secao.linhas.length === 1 ? '' : 's'}`,
-        { tamanho: 32, cor: COR.primaria, peso: '600', ancora: 'end' },
+        {
+          tamanho: m.fonteSecundaria,
+          cor: COR.primaria,
+          peso: '600',
+          ancora: 'end',
+        },
       ),
     );
-    y += ALTURA_TITULO_SECAO + 8;
+    y += m.alturaSecao + 8;
 
     secao.linhas.forEach((linha, i) => {
-      partes.push(linhaPessoaDia(largura, y, linha, i % 2 === 1));
-      y += ALTURA_LINHA_DIA;
+      partes.push(linhaPessoaDia(largura, y, linha, i % 2 === 1, m));
+      y += m.alturaLinha;
     });
   }
 
-  y += 70;
-  const pe = rodape(largura, MARGEM_DIA, y, logo, geradoEm, loja);
-  partes.push(pe.svg);
-  const altura = y + pe.altura;
+  // Rodapé ancorado no FIM da folha: é o que garante que não sobre uma faixa
+  // branca embaixo (nem que ele flutue no meio quando a equipe é pequena).
+  const altura = m.alturaFolha;
+  partes.push(
+    rodape(largura, MARGEM_DIA, altura - alturaPe, logo, geradoEm, loja),
+  );
 
   return {
     svg: envelope(largura, altura, partes.join('')),
@@ -557,8 +762,63 @@ export function svgEscalaDia(
 
 const MARGEM_SEMANA = 100;
 const LARGURA_NOME_SEMANA = 820;
-const ALTURA_LINHA_SEMANA = 124;
 const ALTURA_CABECALHO_GRADE = 130;
+
+/* Medidas de referência da semana (fator de preenchimento = 1). */
+const ALTURA_LINHA_SEMANA_BASE = 124;
+const ALTURA_FAIXA_BASE = 66;
+const FONTE_NOME_SEMANA_BASE = 42;
+
+/** Tamanhos calculados para preencher a folha da semana. */
+interface MetricasSemana {
+  alturaLinha: number;
+  alturaFaixa: number;
+  fonteNome: number;
+  fonteFaixa: number;
+  fonteHora: number;
+  fonteHoraSaida: number;
+  alturaFolha: number;
+}
+
+/**
+ * Mesma ideia da escala do dia, aplicada à grade: um **único** fator escala as
+ * alturas e as fontes até o conteúdo ocupar a folha de 3840 × 2160.
+ *
+ * Aqui não há sobra para distribuir entre seções (a grade é contínua e uma faixa
+ * de função enorme ficaria estranha), então quando a equipe é pequena a linha
+ * simplesmente fica mais alta — o que é exatamente o que preenche a página.
+ */
+function metricasSemana(
+  pessoas: number,
+  secoes: number,
+  alturaTopo: number,
+  alturaPe: number,
+): MetricasSemana {
+  const conteudoBase =
+    secoes * ALTURA_FAIXA_BASE + pessoas * ALTURA_LINHA_SEMANA_BASE;
+  const disponivel = ALTURA_SEMANA - alturaTopo - alturaPe;
+  const fatorIdeal = conteudoBase > 0 ? disponivel / conteudoBase : 1;
+  const fator = limitar(fatorIdeal, FATOR_MINIMO, FATOR_MAXIMO);
+
+  const alturaLinha = Math.round(ALTURA_LINHA_SEMANA_BASE * fator);
+  const alturaFaixa = Math.round(ALTURA_FAIXA_BASE * fator);
+  // Como no dia: a folha acompanha o conteúdo, sem faixa branca sobrando, e é
+  // exatamente 4K quando o fator não precisou ser limitado.
+  const alturaFolha = ehFatorLimitado(fatorIdeal)
+    ? alturaTopo + secoes * alturaFaixa + pessoas * alturaLinha + alturaPe
+    : ALTURA_SEMANA;
+
+  const fonteNome = Math.round(limitar(FONTE_NOME_SEMANA_BASE * fator, 28, 68));
+  return {
+    alturaLinha,
+    alturaFaixa,
+    fonteNome,
+    fonteFaixa: Math.round(limitar(fonteNome * 0.72, 24, 44)),
+    fonteHora: Math.round(limitar(fonteNome * 0.9, 26, 60)),
+    fonteHoraSaida: Math.round(limitar(fonteNome * 0.8, 24, 52)),
+    alturaFolha,
+  };
+}
 
 /**
  * Escala da semana como grade: pessoas nas linhas, os sete dias nas colunas.
@@ -642,61 +902,70 @@ export function svgEscalaSemana(
 
   const yGradeInicio = y;
 
+  // Medidas do corpo resolvidas para preencher a folha (mesma ideia do dia).
+  const alturaPe = alturaRodape(largura, MARGEM_SEMANA, logo);
+  const totalPessoas = escala.secoes.reduce((s, sec) => s + sec.pessoas.length, 0);
+  const m = metricasSemana(
+    totalPessoas,
+    escala.secoes.length,
+    yGradeInicio,
+    alturaPe,
+  );
+
   for (const secao of escala.secoes) {
     // Faixa da função dentro da grade.
-    partes.push(retangulo(xInicio, y, xFim - xInicio, 66, COR.divisor));
+    partes.push(retangulo(xInicio, y, xFim - xInicio, m.alturaFaixa, COR.divisor));
     partes.push(
-      texto(xInicio + 26, y + 46, (TITULO_FUNCAO[secao.funcao] ?? secao.funcao).toUpperCase(), {
-        tamanho: 30,
-        peso: '700',
-        cor: COR.primaria,
-        espacamento: 4,
-      }),
+      texto(
+        xInicio + 26,
+        y + m.alturaFaixa * 0.7,
+        (TITULO_FUNCAO[secao.funcao] ?? secao.funcao).toUpperCase(),
+        {
+          tamanho: m.fonteFaixa,
+          peso: '700',
+          cor: COR.primaria,
+          espacamento: 4,
+        },
+      ),
     );
-    y += 66;
+    y += m.alturaFaixa;
 
     secao.pessoas.forEach((pessoa, idx) => {
       if (idx % 2 === 1) {
         // Recuado no topo pelo mesmo motivo da escala do dia: sem isso o fundo
         // apaga o separador da linha anterior.
         partes.push(
-          retangulo(xInicio, y + 3, xFim - xInicio, ALTURA_LINHA_SEMANA - 3, COR.zebra),
+          retangulo(xInicio, y + 3, xFim - xInicio, m.alturaLinha - 3, COR.zebra),
         );
       }
-      const turnoRotulo = pessoa.turno
-        ? (TITULO_TURNO[pessoa.turno] ?? pessoa.turno)
-        : null;
+      // Só o nome: o turno do cadastro saiu da folha (o horário de cada dia já
+      // diz o que a pessoa precisa saber), e a linha passou a ser de uma linha
+      // só — é o que libera espaço para as fontes maiores.
       partes.push(
         texto(
           xInicio + 26,
-          y + (turnoRotulo ? 56 : ALTURA_LINHA_SEMANA * 0.62),
-          encurtar(pessoa.nome, LARGURA_NOME_SEMANA - 52, 42),
-          { tamanho: 42, peso: '600' },
+          y + m.alturaLinha * 0.63,
+          encurtar(pessoa.nome, LARGURA_NOME_SEMANA - 52, m.fonteNome),
+          { tamanho: m.fonteNome, peso: '600' },
         ),
       );
-      if (turnoRotulo) {
-        partes.push(
-          texto(xInicio + 26, y + 96, turnoRotulo, {
-            tamanho: 28,
-            cor: COR.textoSec,
-          }),
-        );
-      }
 
       pessoa.celulas.forEach((celula, i) => {
         const centro = xDia(i) + larguraDia / 2;
         if (celula.status === 'TRABALHA' && celula.entrada) {
+          // Entrada em cima e saída embaixo, ambas centradas na coluna: é a
+          // leitura natural de "de … até …" num espaço estreito.
           partes.push(
-            texto(centro, y + 52, celula.entrada, {
-              tamanho: 38,
+            texto(centro, y + m.alturaLinha * 0.45, celula.entrada, {
+              tamanho: m.fonteHora,
               peso: '700',
               ancora: 'middle',
             }),
           );
           if (celula.saida) {
             partes.push(
-              texto(centro, y + 96, celula.saida, {
-                tamanho: 34,
+              texto(centro, y + m.alturaLinha * 0.84, celula.saida, {
+                tamanho: m.fonteHoraSaida,
                 cor: COR.textoSec,
                 ancora: 'middle',
               }),
@@ -705,8 +974,8 @@ export function svgEscalaSemana(
         } else {
           const aparencia = APARENCIA_STATUS[celula.status];
           partes.push(
-            texto(centro, y + ALTURA_LINHA_SEMANA * 0.6, STATUS_CURTO[celula.status], {
-              tamanho: 34,
+            texto(centro, y + m.alturaLinha * 0.63, STATUS_CURTO[celula.status], {
+              tamanho: m.fonteHoraSaida,
               peso: '600',
               cor: aparencia.cor,
               ancora: 'middle',
@@ -715,8 +984,8 @@ export function svgEscalaSemana(
         }
       });
 
-      partes.push(linhaH(xInicio, xFim, y + ALTURA_LINHA_SEMANA, COR.borda, 2));
-      y += ALTURA_LINHA_SEMANA;
+      partes.push(linhaH(xInicio, xFim, y + m.alturaLinha, COR.borda, 2));
+      y += m.alturaLinha;
     });
   }
 
@@ -726,10 +995,11 @@ export function svgEscalaSemana(
   }
   partes.push(linhaH(xInicio, xFim, yGradeInicio, COR.borda, 2));
 
-  y += 70;
-  const pe = rodape(largura, MARGEM_SEMANA, y, logo, geradoEm, loja);
-  partes.push(pe.svg);
-  const altura = y + pe.altura;
+  // Rodapé ancorado no fim da folha (ver a escala do dia).
+  const altura = m.alturaFolha;
+  partes.push(
+    rodape(largura, MARGEM_SEMANA, altura - alturaPe, logo, geradoEm, loja),
+  );
 
   return {
     svg: envelope(largura, altura, partes.join('')),
