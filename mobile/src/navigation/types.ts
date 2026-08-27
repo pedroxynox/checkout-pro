@@ -5,6 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { TipoArrecadacao } from '../api/types';
 import type {
   CentralPessoaResumo,
+  MarcacaoCanonica,
   MetricaRanking,
 } from '../api/services/centralJornada';
 
@@ -35,8 +36,35 @@ export type RootStackParamList = {
   InsumoDetalhe: { insumoId: string; nome: string };
   Requisicoes: undefined;
   JornadaFiscais: undefined;
-  /** `abrirScanner` (nonce) abre a câmera do leitor de ponto ao entrar. */
-  RegistroPonto: { abrirScanner?: number } | undefined;
+  /**
+   * Relógio Ponto.
+   *
+   * `abrirScanner` (nonce) abre a câmera do leitor de ponto ao entrar. Os
+   * demais parâmetros vêm do relatório de **marcações inválidas** e montam o
+   * "modo correção": a tela já abre na pessoa e no dia que faltam ajustar, diz
+   * qual marcação falta e sabe caminhar até a próxima pendência da fila.
+   */
+  RegistroPonto:
+    | {
+        abrirScanner?: number;
+        /** Ficha do colaborador do item de marcação inválida. */
+        correcaoColaboradorId?: string;
+        /** Nome completo, usado para localizar a pessoa no ponto. */
+        correcaoNome?: string;
+        /** Dia a ajustar (`yyyy-mm-dd`). */
+        correcaoData?: string;
+        /** Marcações que faltam nesse dia, na ordem do dia. */
+        correcaoFaltantes?: MarcacaoCanonica[];
+        /** Entrada prevista pela escala ("HH:mm"), quando há turno. */
+        correcaoEntradaPrevista?: string | null;
+        /** Ciclo (0 = atual) de onde saiu a fila, para reconsultá-la. */
+        correcaoCiclo?: number;
+        /** Filtro de pessoa aplicado na lista, para a fila não fugir dele. */
+        correcaoFiltroNome?: string;
+        /** Filtro de marcação aplicado na lista. */
+        correcaoFiltroTipo?: MarcacaoCanonica;
+      }
+    | undefined;
   CentralJornada: undefined;
   /** Detalhe diário da jornada de um colaborador no ciclo (aberto pela Central). */
   DetalheJornada: {

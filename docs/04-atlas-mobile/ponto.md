@@ -25,13 +25,14 @@ feriados).
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `RegistroPontoScreen.tsx` | Tela principal: busca, jornada do dia, batidas e leitor | 1213 |
-| `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, lista por pessoa, comparativo) | 688 |
+| `RegistroPontoScreen.tsx` | Tela principal: busca, jornada do dia, batidas, leitor e **modo correção** | 1704 |
+| `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, lista por pessoa, comparativo) | 694 |
 | `RankingTimeScreen.tsx` | Ranking do time numa métrica do resumo (uma tela para as sete) | 549 |
 | `metricasResumo.ts` | Identidade das sete métricas do resumo (fonte única de card + ranking) | 153 |
 | `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 344 |
 | `InconsistenciasScreen.tsx` | Problemas do ciclo agrupados por dia | 325 |
-| `MarcacoesInvalidasScreen.tsx` | Marcações que faltam registrar: quantas e quais, por dia | 533 |
+| `MarcacoesInvalidasScreen.tsx` | Marcações que faltam registrar: quantas e quais, por dia; cada item abre o ajuste | 644 |
+| `filaCorrecao.ts` | Fila de correção (lógica pura): filtros, ordem de trabalho e próxima pendência | 118 |
 | `ExportarCicloScreen.tsx` | Revisão dos totais e fechar/reabrir o ciclo | 246 |
 | `FeriadosScreen.tsx` | Feriados nacionais (automáticos) + estaduais/municipais (manuais) | 214 |
 | `leitorAoVivo.tsx` / `leitorAoVivo.native.tsx` | Leitor ao vivo (câmera): vazio na web, ML Kit no APK | 23 / 325 |
@@ -58,10 +59,17 @@ feriados).
    como na Jornada de Equipe — com só o primeiro nome, dois homônimos ficavam
    indistinguíveis na lista do ciclo. O atalho "Marcações inválidas" mostra no
    rótulo **quantas marcações** faltam no ciclo (não quantos dias).
-6. **Ajuste do ponto:** em `MarcacoesInvalidasScreen` o gestor vê, dia por dia,
-   quem tem marcação faltando, **quais** faltam e as horas que existem; com isso
-   volta ao `RegistroPontoScreen` (ou ao detalhe da jornada) para lançar a batida
-   que falta. O relatório não edita nada — só aponta.
+6. **Ajuste do ponto (fluxo de correção):** em `MarcacoesInvalidasScreen` o
+   gestor vê, dia por dia, quem tem marcação faltando, **quais** faltam e as
+   horas que existem. **Cada item é tocável** e abre o `RegistroPontoScreen` em
+   **modo correção**, já na pessoa e no dia daquele item, com o aviso do que
+   falta registrar. Dali o gestor pode:
+   - **lançar a batida** e, se o dia ficou completo, seguir para a **próxima
+     pendência** sem sair da tela (botão "Próxima: …"); ou
+   - **voltar à lista**, que se recarrega no foco — o item resolvido desaparece.
+
+   O relatório continua não editando nada: ele aponta, e o ajuste acontece no
+   Relógio Ponto (é lá que vivem as permissões e a validação da batida).
 7. **Ranking do time:** cada card do "Resumo do time" abre o
    `RankingTimeScreen` daquela métrica (extras 50%, extras 100%, faltas,
    atestados, TAC, atrasos ou conflitos), da pessoa que mais tem à que menos tem;
@@ -198,6 +206,42 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   horas devidas que o dia gerou e — só quando `confianca === 'BAIXA'` — um aviso
   laranja com a `observacao` do servidor. **Hipótese nunca é exibida como fato**:
   sem o aviso, o item é conclusivo.
+- **Item tocável só com acesso ao Relógio Ponto** (`PONTO_VISUALIZAR`). A rota
+  `RegistroPonto` só existe na pilha de quem tem essa alçada, então para os
+  demais o item segue sendo texto de leitura — um item que parece clicável e não
+  faz nada é pior do que um item claramente estático. Na prática, quem vê o
+  relatório (`CENTRAL_JORNADA`) é gestão e também tem `PONTO_EDITAR`.
+- **A navegação usa `push`, não `navigate`.** O Relógio Ponto costuma já estar
+  embaixo na pilha (ele tem um atalho para a Central), e `navigate` voltaria até
+  ele, descartando a lista — o "voltar" deixaria de trazer o gestor ao trabalho
+  que ele estava fazendo.
+- **Modo correção do `RegistroPontoScreen`** (parâmetros `correcao*`): fixa o dia
+  e resolve a pessoa **pela ficha do Cadastro** (`colaboradorId`), não pelo id do
+  ponto — para fiscais `PessoaPonto.id` é o id do fiscal, e casar pelo id erraria
+  a pessoa. Quando não dá para resolver, a tela **não adivinha**: deixa o nome na
+  busca e explica o que fazer.
+- **A hora nunca é preenchida sozinha.** Quando a marcação que falta é a entrada
+  e a escala tem turno, o cartão oferece o horário previsto como **sugestão**
+  tocável ("Turno previsto 08:00 — usar como hora"). Preencher e salvar sozinho
+  transformaria a previsão da escala em batida registrada, que é exatamente o que
+  o ponto não pode fazer.
+- **Quem decide a próxima pendência é o servidor.** Após cada batida a tela
+  reconsulta `marcacoes-invalidas` do mesmo ciclo: se o dia **continua**
+  incompleto, permanece nele e só atualiza o que falta (um dia com duas marcações
+  faltando não se resolve com uma batida); se saiu do relatório, oferece o item
+  seguinte; se não há mais nada, avisa que a fila acabou. Sem conexão a fila
+  **não anda** — o servidor ainda não conhece a batida enfileirada e diria que o
+  dia segue incompleto.
+- **A fila respeita os filtros da lista de origem** (pessoa e marcação), que
+  viajam nos parâmetros da rota. Sem isso, "próxima" levaria a um item que a
+  lista nem estava mostrando.
+- **No modo correção o atalho da Central sai** do topo (o cabeçalho é o próprio
+  ajuste pedido) e o aviso genérico de "dia diferente de hoje" também: o cartão
+  já mostra o dia do ajuste e avisa, em amarelo, se o gestor **mudar** de dia no
+  seletor. Trocar de pessoa ("Trocar") **encerra** o modo correção.
+- **Central de Jornada: os contadores dos atalhos recarregam no foco.** Antes só
+  o resumo era atualizado ao voltar; com o ajuste de marcações acontecendo em
+  outra tela, um contador congelado diria que ainda há trabalho onde já não há.
 
 ## 7. Lógica pura / utilidades
 - `leituraComprovanteUtil.ts`: `leituraCompleta(texto)` (gatilho do leitor ao
@@ -220,6 +264,12 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   `seloQuantidade` (amarelo quando falta 1, vermelho quando faltam 2+). A
   **decisão** de quais marcações faltam é do servidor — a tela não recalcula
   nada, só apresenta.
+- `filaCorrecao.ts`: `chaveFila` (identidade do item — o relatório é derivado e
+  não tem id próprio, então a chave é pessoa + dia, tolerante às duas formas de
+  data), `filtrarFila`, `ordenarFila` (dia mais recente primeiro, pessoas em
+  ordem alfabética) e `proximaPendencia`. É a **fonte única** dos filtros e da
+  ordem: a lista e o Relógio Ponto precisam concordar sobre quais itens estão em
+  jogo e em que sequência, senão "próxima" foge do trabalho em curso.
 
 ## 8. Componentes e hooks compartilhados usados
 - `useRequisicao` (carregamento com estados) — ver [Hooks e utilidades](hooks-e-utilidades.md).
@@ -231,17 +281,20 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
 ## 9. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `RegistroPontoScreen.test.tsx` | Busca, jornada, registro manual, limite de 4, erro de duplicidade e leitura do comprovante | 6 |
+| `RegistroPontoScreen.test.tsx` | Busca, jornada, registro manual, limite de 4, erro de duplicidade, leitura do comprovante e o **modo correção** (abre na pessoa/dia pedidos, sugestão do turno sem registrar sozinho, próxima pendência, permanência no dia incompleto, fim da fila, voltar à lista e pessoa não localizada) | 13 |
 | `ExportarCicloScreen.test.tsx` | Revisão (totais) e fechamento do ciclo com confirmação | 2 |
 | `InconsistenciasScreen.test.tsx` | Agrupamento por dia e filtro por pessoa | 2 |
-| `MarcacoesInvalidasScreen.test.tsx` | O que falta em cada dia (já expandido), horas registradas + turno, motivo da conferência, resumo, filtros por pessoa e por marcação, recolher dia, estado vazio e aviso dos não-retornos deixados fora | 9 |
+| `MarcacoesInvalidasScreen.test.tsx` | O que falta em cada dia (já expandido), horas registradas + turno, motivo da conferência, resumo, filtros por pessoa e por marcação, recolher dia, estado vazio, aviso dos não-retornos deixados fora, abertura do ajuste na pessoa/dia do item, filtros levados para a fila, item não tocável sem acesso ao ponto e guarda do primeiro foco | 13 |
+| `filaCorrecao.test.ts` | Identidade do item, filtros, ordem de trabalho e próxima pendência (mesmo dia ainda incompleto, item seguinte, volta ao topo, respeito aos filtros e fim da fila) | 10 |
 | `RankingTimeScreen.test.tsx` | Ordem do maior ao menor, total do time, zerados no rodapé recolhido, detalhe dia a dia, navegação ao detalhe diário, título/formato por métrica, atestados como métrica separada das faltas, estado vazio e ciclo recebido | 9 |
 | `leituraComprovanteUtil.test.ts` | Gatilho `leituraCompleta` e extração `horaLida` (tolerante ao OCR) | 4 |
 | `montarTextoOcr.test.ts` | Reconstrução do texto pela geometria do OCR | 3 |
 
 ## 10. Riscos, dívidas e pendências
-- 🔧 `RegistroPontoScreen.tsx` (>1200 linhas) concentra busca, leitor, jornada,
-  formulário e fila offline; candidato a quebrar em componentes/hooks.
+- 🔧 `RegistroPontoScreen.tsx` (>1700 linhas) concentra busca, leitor, jornada,
+  formulário, fila offline e o modo correção; candidato a quebrar em
+  componentes/hooks (o cartão de correção e o modo correção já saem quase
+  inteiros como um hook próprio).
 - ⚠️ O OCR só existe no APK (ML Kit); na web o registro é sempre manual — o OCR
   de imagem no servidor foi desativado.
 - ⚠️ A leitura da hora nas batidas assume a "hora de parede" do ISO (sem fuso);

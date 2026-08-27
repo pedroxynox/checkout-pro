@@ -10,7 +10,15 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
-import { fiscaisService, pontoService } from '../../api/services';
+import {
+  centralJornadaService,
+  fiscaisService,
+  pontoService,
+} from '../../api/services';
+import type {
+  MarcacaoCanonica,
+  MarcacaoInvalidaItem,
+} from '../../api/services/centralJornada';
 import {
   BatidaPontoView,
   CandidatoPonto,
@@ -36,6 +44,7 @@ import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, formatarDuracao, hojeISO } from '../../utils/formato';
 import { capturarComprovante } from './leitorComprovante';
 import { LeitorComprovanteAoVivo } from './leitorAoVivo';
+import { chaveFila, FiltrosFila, proximaPendencia } from './filaCorrecao';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -52,6 +61,44 @@ const ROTULO_TIPO: Record<TipoBatida, string> = {
   ENCERRAMENTO: 'Encerramento',
   EXTRA: 'Batida extra',
 };
+
+/**
+ * "Modo correção": o dia/pessoa que o gestor veio ajustar a partir do relatório
+ * de marcações inválidas.
+ *
+ * Guarda também o **ciclo** e os **filtros** da lista de origem, para que a
+ * própria tela consiga consultar o relatório de novo e caminhar até a próxima
+ * pendência sem obrigar o gestor a voltar e entrar item por item.
+ */
+interface ContextoCorrecao {
+  colaboradorId: string;
+  nome: string;
+  /** Dia a ajustar, em `yyyy-mm-dd`. */
+  data: string;
+  /** Marcações que faltam nesse dia (decisão do servidor). */
+  faltantes: MarcacaoCanonica[];
+  /** Entrada prevista pela escala ("HH:mm"), quando há turno. */
+  entradaPrevista: string | null;
+  ciclo: number;
+  filtros: FiltrosFila;
+}
+
+/** Converte um item do relatório no contexto de correção da tela. */
+function contextoDoItem(
+  item: MarcacaoInvalidaItem,
+  ciclo: number,
+  filtros: FiltrosFila,
+): ContextoCorrecao {
+  return {
+    colaboradorId: item.colaboradorId,
+    nome: item.nome,
+    data: item.data.slice(0, 10),
+    faltantes: item.tiposFaltantes,
+    entradaPrevista: item.entradaPrevista,
+    ciclo,
+    filtros,
+  };
+}
 
 
 
@@ -169,6 +216,13 @@ export function RegistroPontoScreen(): React.ReactElement {
     null,
   );
 
+  // Modo correção (aberto pelo relatório de marcações inválidas).
+  const [correcao, setCorrecao] = useState<ContextoCorrecao | null>(null);
+  const [correcaoCarregando, setCorrecaoCarregando] = useState(false);
+  const [correcaoErro, setCorrecaoErro] = useState<string | null>(null);
+  const [proxima, setProxima] = useState<MarcacaoInvalidaItem | null>(null);
+  const [filaConcluida, setFilaConcluida] = useState(false);
+
   // Aberto pelo botão central "Ponto": abre a câmera do leitor ao entrar. Usa
   // um nonce (timestamp) para reabrir mesmo em toques repetidos na mesma tela.
   const abrirScannerNonce = route.params?.abrirScanner;
@@ -219,6 +273,144 @@ export function RegistroPontoScreen(): React.ReactElement {
     }, 350);
     return () => clearTimeout(t);
   }, [busca, pessoa]);
+
+  /**
+   * Entra (ou avança) no modo correção: fixa o dia e resolve a pessoa do item.
+   *
+   * O relatório identifica a pessoa pela **ficha do Cadastro de Colaboradores**,
+   * mas o ponto trabalha com `PessoaPonto` — e para fiscais o `id` é o do
+   * fiscal, não o do colaborador. Por isso a pessoa é localizada pela busca do
+   * ponto e casada por `colaboradorId` (que vem preenchido nos dois casos); o
+   * nome é só desempate. Se não der para resolver, a tela **não adivinha**:
+   * deixa o nome na busca e explica, para o gestor escolher.
+   */
+  const aplicarCorrecao = useCallback(async (ctx: ContextoCorrecao) => {
+    setCorrecao(ctx);
+    setProxima(null);
+    setFilaConcluida(false);
+    setData(ctx.data);
+    setMostrarForm(false);
+    setEditandoId(null);
+    setHoraTexto('');
+    setErro(null);
+    setErroForm(null);
+    setCandidatos([]);
+    setLeituraInfo(null);
+    setNomeLidoPendente(null);
+    setConfiancaPendente(null);
+    setCorrecaoErro(null);
+    setCorrecaoCarregando(true);
+    try {
+      const encontrados = await pontoService.buscarPessoas(ctx.nome);
+      const alvo =
+        encontrados.find((p) => p.colaboradorId === ctx.colaboradorId) ??
+        encontrados.find((p) => p.nome === ctx.nome) ??
+        null;
+      if (alvo) {
+        setPessoa(alvo);
+        setBusca('');
+        setResultados([]);
+      } else {
+        setPessoa(null);
+        setBusca(ctx.nome);
+        setCorrecaoErro(
+          'Não localizei essa pessoa no Relógio Ponto. Escolha na busca abaixo para continuar.',
+        );
+      }
+    } catch {
+      setPessoa(null);
+      setBusca(ctx.nome);
+      setCorrecaoErro(
+        'Não foi possível carregar a pessoa deste ajuste. Use a busca abaixo.',
+      );
+    } finally {
+      setCorrecaoCarregando(false);
+    }
+  }, []);
+
+  // Chegada pelo relatório de marcações inválidas: a tela abre já na pessoa e
+  // no dia do item. A assinatura (pessoa + dia) evita reaplicar a cada render.
+  const {
+    correcaoColaboradorId,
+    correcaoNome,
+    correcaoData,
+    correcaoFaltantes,
+    correcaoEntradaPrevista,
+    correcaoCiclo,
+    correcaoFiltroNome,
+    correcaoFiltroTipo,
+  } = route.params ?? {};
+  useEffect(() => {
+    if (!correcaoColaboradorId || !correcaoData || !correcaoNome) return;
+    void aplicarCorrecao({
+      colaboradorId: correcaoColaboradorId,
+      nome: correcaoNome,
+      data: correcaoData,
+      faltantes: correcaoFaltantes ?? [],
+      entradaPrevista: correcaoEntradaPrevista ?? null,
+      ciclo: correcaoCiclo ?? 0,
+      filtros: { nome: correcaoFiltroNome, tipo: correcaoFiltroTipo },
+    });
+  }, [
+    aplicarCorrecao,
+    correcaoColaboradorId,
+    correcaoNome,
+    correcaoData,
+    correcaoFaltantes,
+    correcaoEntradaPrevista,
+    correcaoCiclo,
+    correcaoFiltroNome,
+    correcaoFiltroTipo,
+  ]);
+
+  /**
+   * Depois de mexer na batida, reconsulta o relatório do ciclo e decide o que
+   * vem a seguir — sempre com a resposta do servidor, nunca com uma suposição
+   * da tela:
+   *
+   * - o dia ainda tem marcação faltando → segue aqui, atualizando o que falta;
+   * - o dia saiu do relatório → oferece a **próxima pendência** da fila;
+   * - não há mais nada → avisa que a fila acabou.
+   *
+   * Falha em silêncio: é uma comodidade de navegação e não pode atrapalhar o
+   * registro da batida, que já foi gravado.
+   */
+  const atualizarFila = useCallback(async (ctx: ContextoCorrecao) => {
+    try {
+      const relatorio = await centralJornadaService.marcacoesInvalidas(
+        ctx.ciclo,
+      );
+      const alvo = proximaPendencia(relatorio.itens, ctx.filtros, {
+        colaboradorId: ctx.colaboradorId,
+        data: ctx.data,
+        nome: ctx.nome,
+      });
+      if (!alvo) {
+        setProxima(null);
+        setFilaConcluida(true);
+        return;
+      }
+      setFilaConcluida(false);
+      const mesmoItem = chaveFila(alvo) === chaveFila(ctx);
+      if (mesmoItem) {
+        // Dia com duas marcações faltando: uma batida não fecha o dia.
+        setProxima(null);
+        setCorrecao((atual) =>
+          atual && chaveFila(atual) === chaveFila(ctx)
+            ? {
+                ...atual,
+                faltantes: alvo.tiposFaltantes,
+                entradaPrevista: alvo.entradaPrevista,
+              }
+            : atual,
+        );
+      } else {
+        setProxima(alvo);
+      }
+    } catch {
+      /* comodidade de navegação: sem fila, o gestor volta pela lista. */
+    }
+  }, []);
 
   const carregarJornada = useCallback(async () => {
     if (!pessoa) return;
@@ -349,6 +541,32 @@ export function RegistroPontoScreen(): React.ReactElement {
     setMostrarForm(false);
     setEditandoId(null);
     setCandidatos([]);
+    // Trocar de pessoa é uma escolha deliberada: sai do modo correção para o
+    // aviso do ajuste não ficar apontando para quem não está mais na tela.
+    setCorrecao(null);
+    setProxima(null);
+    setFilaConcluida(false);
+    setCorrecaoErro(null);
+  }
+
+  /**
+   * Usa o horário de entrada da escala como **sugestão** de hora.
+   *
+   * Só preenche o campo e abre o formulário: quem confirma é o gestor, com o
+   * comprovante na mão. Preencher e salvar sozinho transformaria a previsão da
+   * escala em batida registrada — que é exatamente o que o ponto não pode fazer.
+   */
+  function usarHoraPrevista(hora: string): void {
+    if (limiteBatidasAtingido) {
+      setErroForm('Limite de 4 batidas atingido para este dia.');
+      return;
+    }
+    setEditandoId(null);
+    setNomeLidoPendente(null);
+    setConfiancaPendente(null);
+    setHoraTexto(hora);
+    setErroForm(null);
+    setMostrarForm(true);
   }
 
   function abrirRegistro(): void {
@@ -426,10 +644,14 @@ export function RegistroPontoScreen(): React.ReactElement {
         setSessao((s) => s + 1);
         setNomeLidoPendente(null);
         setConfiancaPendente(null);
-        // No modo lote, volta para escolher o próximo colaborador.
-        if (loteAtivo) trocarPessoa();
+        // No modo lote, volta para escolher o próximo colaborador. No modo
+        // correção a pessoa é a do item, então não se troca por conta.
+        if (loteAtivo && !correcao) trocarPessoa();
       }
       setEditandoId(null);
+      // A batida chegou ao servidor: o relatório do ciclo já mudou, então a fila
+      // de correção pode andar.
+      if (correcao) void atualizarFila(correcao);
     } catch (e) {
       // Sem conexão (ApiError status 0) numa batida NOVA: guarda na fila offline
       // e informa; será enviada ao reconectar, sem duplicar (idempotência pela
@@ -460,8 +682,10 @@ export function RegistroPontoScreen(): React.ReactElement {
           setSessao((s) => s + 1);
           setNomeLidoPendente(null);
           setConfiancaPendente(null);
-          if (loteAtivo) trocarPessoa();
+          if (loteAtivo && !correcao) trocarPessoa();
           setEditandoId(null);
+          // Sem rede a fila NÃO anda: o servidor ainda não conhece esta batida,
+          // e reconsultar o relatório diria que o dia continua incompleto.
           notificar(
             'Sem conexão',
             'A batida foi guardada no aparelho e será enviada automaticamente ao reconectar.',
@@ -497,6 +721,8 @@ export function RegistroPontoScreen(): React.ReactElement {
     try {
       const resp = await pontoService.removerBatida(b.id);
       setDados(resp);
+      // Remover pode reabrir uma pendência: a fila é reconsultada igual.
+      if (correcao) void atualizarFila(correcao);
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Não foi possível remover a batida.');
     }
@@ -507,8 +733,27 @@ export function RegistroPontoScreen(): React.ReactElement {
 
   return (
     <Tela aoAtualizar={pessoa ? carregarJornada : undefined} atualizando={carregando}>
-      {/* Atalho para a Central de Jornada (controle do ciclo 26→25). */}
-      {podeAcessar('CENTRAL_JORNADA') && (
+      {/* No modo correção o cabeçalho é o próprio ajuste pedido — o atalho para
+          a Central sairia do trabalho em curso. Fora dele, o atalho normal. */}
+      {correcao ? (
+        <CartaoCorrecao
+          correcao={correcao}
+          dataAtual={data}
+          carregando={correcaoCarregando}
+          erro={correcaoErro}
+          registradasNaSessao={sessao}
+          proxima={proxima}
+          filaConcluida={filaConcluida}
+          aoUsarHoraPrevista={usarHoraPrevista}
+          aoIrParaProxima={() => {
+            if (!proxima) return;
+            void aplicarCorrecao(
+              contextoDoItem(proxima, correcao.ciclo, correcao.filtros),
+            );
+          }}
+          aoVoltarParaLista={() => navigation.goBack()}
+        />
+      ) : podeAcessar('CENTRAL_JORNADA') ? (
         <Pressable
           onPress={() => navigation.navigate('CentralJornada')}
           style={styles.cardCentral}
@@ -524,7 +769,7 @@ export function RegistroPontoScreen(): React.ReactElement {
           </View>
           <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />
         </Pressable>
-      )}
+      ) : null}
 
       {/* Autosserviço do fiscal logado: informar a própria falta de hoje. */}
       {meuFiscal && data === hojeISO() ? (
@@ -714,7 +959,10 @@ export function RegistroPontoScreen(): React.ReactElement {
               </Pressable>
             </View>
 
-            {dataDiferenteDeHoje ? (
+            {/* No modo correção o dia do ajuste está escrito no cartão do topo
+                (que avisa também se o gestor mudar de dia): repetir aqui que
+                "não é hoje" só faria ruído. */}
+            {dataDiferenteDeHoje && !correcao ? (
               <View style={styles.aviso}>
                 <Ionicons name="alert-circle-outline" size={16} color={cores.amarelo} />
                 <Text style={styles.avisoTexto}>
@@ -819,6 +1067,149 @@ export function RegistroPontoScreen(): React.ReactElement {
         </>
       )}
     </Tela>
+  );
+}
+
+/**
+ * Cartão do "modo correção": diz **o que** o gestor veio ajustar e para onde ir
+ * depois.
+ *
+ * Existe para o gestor não precisar guardar na cabeça (nem voltar à lista para
+ * reler) qual marcação faltava naquele dia. Mostra a pessoa, o dia, as marcações
+ * que faltam e — quando a que falta é a entrada e há turno na escala — oferece o
+ * horário previsto como **sugestão** de preenchimento.
+ */
+function CartaoCorrecao({
+  correcao,
+  dataAtual,
+  carregando,
+  erro,
+  registradasNaSessao,
+  proxima,
+  filaConcluida,
+  aoUsarHoraPrevista,
+  aoIrParaProxima,
+  aoVoltarParaLista,
+}: {
+  correcao: ContextoCorrecao;
+  dataAtual: string;
+  carregando: boolean;
+  erro: string | null;
+  registradasNaSessao: number;
+  proxima: MarcacaoInvalidaItem | null;
+  filaConcluida: boolean;
+  aoUsarHoraPrevista: (hora: string) => void;
+  aoIrParaProxima: () => void;
+  aoVoltarParaLista: () => void;
+}): React.ReactElement {
+  const diaTrocado = dataAtual !== correcao.data;
+  const faltaEntrada = correcao.faltantes.includes('ENTRADA');
+  const resolvido = correcao.faltantes.length === 0;
+
+  return (
+    <Cartao style={styles.cardCorrecao}>
+      <View style={styles.correcaoTopo}>
+        <Ionicons name="alarm-outline" size={20} color={cores.laranja} />
+        <Text style={styles.correcaoTitulo}>Ajuste do ponto</Text>
+      </View>
+
+      <Text style={styles.correcaoPessoa} numberOfLines={2}>
+        {correcao.nome}
+      </Text>
+      <Text style={styles.correcaoDia}>{formatarData(correcao.data)}</Text>
+
+      {/* O que falta: é a razão de o gestor estar nesta tela. */}
+      {resolvido ? (
+        <Text style={styles.correcaoResolvido}>
+          Nada mais falta neste dia.
+        </Text>
+      ) : (
+        <>
+          <Text style={styles.correcaoFalta}>
+            {correcao.faltantes.length === 1
+              ? 'Falta registrar:'
+              : 'Faltam registrar:'}
+          </Text>
+          <View style={styles.correcaoChips}>
+            {correcao.faltantes.map((t) => (
+              <Selo
+                key={t}
+                texto={ROTULO_TIPO[t]}
+                cor={cores.vermelho}
+                fundo={cores.vermelhoFundo}
+              />
+            ))}
+          </View>
+        </>
+      )}
+
+      {/* Sugestão da escala — nunca preenchida sozinha: o valor válido é o do
+          comprovante, e a escala só diz o que era esperado. */}
+      {faltaEntrada && correcao.entradaPrevista ? (
+        <Pressable
+          onPress={() => aoUsarHoraPrevista(correcao.entradaPrevista as string)}
+          style={styles.correcaoSugestao}
+          accessibilityRole="button"
+        >
+          <Ionicons name="time-outline" size={16} color={cores.primaria} />
+          <Text style={styles.correcaoSugestaoTexto}>
+            Turno previsto {correcao.entradaPrevista} — usar como hora (confira o
+            comprovante)
+          </Text>
+        </Pressable>
+      ) : null}
+
+      {carregando ? (
+        <Text style={styles.correcaoInfo}>Carregando a pessoa do ajuste…</Text>
+      ) : null}
+      {erro ? (
+        <View style={styles.correcaoErro}>
+          <Ionicons name="alert-circle-outline" size={16} color={cores.vermelho} />
+          <Text style={styles.correcaoErroTexto}>{erro}</Text>
+        </View>
+      ) : null}
+
+      {/* Mudou o dia no seletor: avisa que saiu do ajuste pedido, porque a
+          batida iria para outra data sem que nada na tela indicasse. */}
+      {diaTrocado ? (
+        <View style={styles.correcaoAviso}>
+          <Ionicons name="alert-circle-outline" size={16} color={cores.amarelo} />
+          <Text style={styles.correcaoAvisoTexto}>
+            Você mudou o dia: o ajuste pedido é {formatarData(correcao.data)}.
+          </Text>
+        </View>
+      ) : null}
+
+      {registradasNaSessao > 0 ? (
+        <Text style={styles.correcaoInfo}>
+          Batidas lançadas nesta sessão: {registradasNaSessao}
+        </Text>
+      ) : null}
+
+      {/* Para onde ir depois: encadear pendências é o que economiza toques. */}
+      {filaConcluida ? (
+        <View style={styles.correcaoFim}>
+          <Ionicons name="checkmark-done-outline" size={16} color={cores.verde} />
+          <Text style={styles.correcaoFimTexto}>
+            Fila concluída: não há mais marcações a ajustar neste ciclo.
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={styles.correcaoBotoes}>
+        {proxima ? (
+          <Botao
+            titulo={`Próxima: ${proxima.primeiroNome} · ${formatarData(proxima.data.slice(0, 10))}`}
+            aoPressionar={aoIrParaProxima}
+          />
+        ) : null}
+        <Botao
+          titulo="Voltar à lista"
+          variante="secundario"
+          aoPressionar={aoVoltarParaLista}
+        />
+      </View>
+    </Cartao>
   );
 }
 
@@ -951,6 +1342,106 @@ const styles = StyleSheet.create({
   },
   cardCentralTitulo: { ...tipografia.rotulo, color: cores.texto, fontWeight: '700' },
   cardCentralSub: { ...tipografia.legenda, color: cores.textoSecundario, marginTop: 2 },
+  cardCorrecao: {
+    borderLeftWidth: 4,
+    borderLeftColor: cores.laranja,
+  },
+  correcaoTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+  },
+  correcaoTitulo: {
+    ...tipografia.legenda,
+    color: cores.laranja,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  correcaoPessoa: {
+    ...tipografia.subtitulo,
+    color: cores.texto,
+    marginTop: espacamento.xs,
+  },
+  correcaoDia: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  correcaoFalta: {
+    ...tipografia.corpo,
+    color: cores.texto,
+    fontWeight: '600',
+    marginTop: espacamento.sm,
+  },
+  correcaoResolvido: {
+    ...tipografia.corpo,
+    color: cores.verde,
+    fontWeight: '600',
+    marginTop: espacamento.sm,
+  },
+  correcaoChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espacamento.xs,
+    marginTop: espacamento.xs,
+  },
+  correcaoSugestao: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.xs,
+    marginTop: espacamento.sm,
+    padding: espacamento.sm,
+    borderRadius: raio.sm,
+    backgroundColor: cores.primariaClara ?? '#EEF2FF',
+  },
+  correcaoSugestaoTexto: {
+    ...tipografia.legenda,
+    color: cores.primaria,
+    fontWeight: '600',
+    flex: 1,
+  },
+  correcaoInfo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: espacamento.sm,
+  },
+  correcaoErro: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: espacamento.xs,
+    marginTop: espacamento.sm,
+  },
+  correcaoErroTexto: {
+    ...tipografia.legenda,
+    color: cores.vermelho,
+    flex: 1,
+  },
+  correcaoAviso: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: espacamento.xs,
+    marginTop: espacamento.sm,
+  },
+  correcaoAvisoTexto: {
+    ...tipografia.legenda,
+    color: cores.amarelo,
+    flex: 1,
+  },
+  correcaoFim: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: espacamento.xs,
+    marginTop: espacamento.sm,
+  },
+  correcaoFimTexto: {
+    ...tipografia.legenda,
+    color: cores.verde,
+    fontWeight: '600',
+    flex: 1,
+  },
+  correcaoBotoes: {
+    marginTop: espacamento.md,
+    gap: espacamento.sm,
+  },
   loteLinha: {
     flexDirection: 'row',
     alignItems: 'center',

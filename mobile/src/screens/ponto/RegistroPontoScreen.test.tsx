@@ -12,11 +12,14 @@ import React from 'react';
 import { RegistroPontoScreen } from './RegistroPontoScreen';
 import { ApiError } from '../../api/client';
 
-// Sem NavigationContainer no teste: mocka o hook de navegação (só usamos o
-// atalho para a Central de Jornada, que não é exercitado aqui).
+// Sem NavigationContainer no teste: mocka o hook de navegação. Os parâmetros da
+// rota são configuráveis para exercitar o "modo correção" (chegada pelo
+// relatório de marcações inválidas).
+let mockParams: Record<string, unknown> = {};
+const mockGoBack = jest.fn();
 jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: jest.fn() }),
-  useRoute: () => ({ params: {} }),
+  useNavigation: () => ({ navigate: jest.fn(), goBack: mockGoBack }),
+  useRoute: () => ({ params: mockParams }),
 }));
 
 // Sem AuthProvider no teste: o atalho da Central de Jornada fica oculto.
@@ -49,6 +52,8 @@ jest.mock('../../api/services', () => ({
     meuResumo: jest.fn(),
     informarFalta: jest.fn(),
   },
+  // Usado só no modo correção, para saber qual é a próxima pendência.
+  centralJornadaService: { marcacoesInvalidas: jest.fn() },
 }));
 
 jest.mock('./leitorComprovante', () => ({
@@ -64,7 +69,11 @@ jest.mock('./leitorAoVivo', () => ({
 const { capturarComprovante } = require('./leitorComprovante');
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { pontoService, fiscaisService } = require('../../api/services');
+const {
+  pontoService,
+  fiscaisService,
+  centralJornadaService,
+} = require('../../api/services');
 
 const JORNADA_VAZIA = {
   pessoaId: 'f1',
@@ -104,6 +113,7 @@ const JORNADA_QUATRO = {
 describe('RegistroPontoScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockParams = {};
     pontoService.buscarPessoas.mockResolvedValue([
       { id: 'f1', nome: 'Ana Souza', tipoPessoa: 'FISCAL' },
     ]);
@@ -236,5 +246,175 @@ describe('RegistroPontoScreen', () => {
     expect(pontoService.lerComprovante).toHaveBeenCalledWith({
       texto: 'FUNCIONARIO ANA SOUZA 07:56',
     });
+  });
+});
+
+/**
+ * Modo correção: a tela é aberta por um item do relatório de marcações
+ * inválidas, já na pessoa e no dia daquele item.
+ */
+describe('RegistroPontoScreen — modo correção', () => {
+  const PARAMS_CORRECAO = {
+    correcaoColaboradorId: 'c1',
+    correcaoNome: 'Ana Souza',
+    correcaoData: '2026-06-29',
+    correcaoFaltantes: ['ENTRADA'],
+    correcaoEntradaPrevista: '08:00',
+    correcaoCiclo: 0,
+  };
+
+  const ITEM_BRUNO = {
+    colaboradorId: 'c2',
+    nome: 'Bruno Lima',
+    primeiroNome: 'Bruno',
+    funcao: 'OPERADOR',
+    data: '2026-06-27T00:00:00.000Z',
+    diaSemana: 6,
+    ehFeriado: false,
+    entradaPrevista: '08:00',
+    horasRegistradas: ['08:00'],
+    esperadas: 4,
+    registradas: 1,
+    quantidadeFaltante: 3,
+    tiposFaltantes: ['SAIDA_INTERVALO'],
+    tiposPresentes: ['ENTRADA'],
+    confianca: 'ALTA',
+    observacao: null,
+    detalhe: 'Falta registrar: saída para o intervalo',
+    devidasMs: 0,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockParams = { ...PARAMS_CORRECAO };
+    // A pessoa é casada pela ficha do Cadastro (colaboradorId), não pelo id do
+    // ponto: para fiscais os dois são diferentes.
+    pontoService.buscarPessoas.mockResolvedValue([
+      {
+        id: 'f1',
+        nome: 'Ana Souza',
+        tipoPessoa: 'FISCAL',
+        colaboradorId: 'c1',
+      },
+    ]);
+    pontoService.jornadaDoDia.mockResolvedValue(JORNADA_VAZIA);
+    pontoService.registrarBatida.mockResolvedValue(JORNADA_VAZIA);
+    fiscaisService.meuResumo.mockResolvedValue(null);
+    centralJornadaService.marcacoesInvalidas.mockResolvedValue({
+      itens: [],
+    });
+  });
+
+  it('abre na pessoa e no dia pedidos, dizendo qual marcação falta', async () => {
+    render(<RegistroPontoScreen />);
+
+    expect(await screen.findByText('Ajuste do ponto')).toBeTruthy();
+    // O nome aparece no cartão do ajuste e no cabeçalho da pessoa selecionada.
+    expect(screen.getAllByText('Ana Souza').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('29/06/2026').length).toBeGreaterThan(0);
+    expect(screen.getByText('Falta registrar:')).toBeTruthy();
+
+    // Sem busca manual: a jornada do dia certo já é carregada.
+    await waitFor(() =>
+      expect(pontoService.jornadaDoDia).toHaveBeenCalledWith(
+        'f1',
+        '2026-06-29',
+        'FISCAL',
+      ),
+    );
+  });
+
+  it('oferece o turno previsto como sugestão, sem registrar sozinho', async () => {
+    render(<RegistroPontoScreen />);
+    await screen.findByText('Ajuste do ponto');
+
+    fireEvent.press(screen.getByText(/Turno previsto 08:00/));
+
+    // Preenche o campo e espera a confirmação: a escala diz o esperado, o valor
+    // válido é o do comprovante.
+    expect(await screen.findByDisplayValue('08:00')).toBeTruthy();
+    expect(pontoService.registrarBatida).not.toHaveBeenCalled();
+  });
+
+  it('oferece a próxima pendência depois de lançar a batida', async () => {
+    centralJornadaService.marcacoesInvalidas.mockResolvedValue({
+      itens: [ITEM_BRUNO],
+    });
+
+    render(<RegistroPontoScreen />);
+    await screen.findByText('Ajuste do ponto');
+    await screen.findByText('Jornada do dia');
+
+    fireEvent.press(screen.getByText(/Turno previsto 08:00/));
+    fireEvent.press(screen.getByText('Registrar'));
+
+    expect(
+      await screen.findByText('Próxima: Bruno · 27/06/2026'),
+    ).toBeTruthy();
+  });
+
+  it('segue no mesmo dia enquanto ele continuar incompleto', async () => {
+    // Dia com duas marcações faltando: uma batida não fecha o dia, então a fila
+    // não anda — só o aviso do que ainda falta é atualizado.
+    centralJornadaService.marcacoesInvalidas.mockResolvedValue({
+      itens: [
+        {
+          ...ITEM_BRUNO,
+          colaboradorId: 'c1',
+          nome: 'Ana Souza',
+          primeiroNome: 'Ana',
+          data: '2026-06-29T00:00:00.000Z',
+          tiposFaltantes: ['ENCERRAMENTO'],
+          detalhe: 'Falta registrar: encerramento',
+        },
+      ],
+    });
+
+    render(<RegistroPontoScreen />);
+    await screen.findByText('Jornada do dia');
+
+    fireEvent.press(screen.getByText(/Turno previsto 08:00/));
+    fireEvent.press(screen.getByText('Registrar'));
+
+    expect(await screen.findByText('Encerramento')).toBeTruthy();
+    expect(screen.queryByText(/^Próxima:/)).toBeNull();
+  });
+
+  it('avisa quando a fila acaba', async () => {
+    render(<RegistroPontoScreen />);
+    await screen.findByText('Jornada do dia');
+
+    fireEvent.press(screen.getByText(/Turno previsto 08:00/));
+    fireEvent.press(screen.getByText('Registrar'));
+
+    expect(
+      await screen.findByText(
+        'Fila concluída: não há mais marcações a ajustar neste ciclo.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('volta à lista pelo botão do cartão', async () => {
+    render(<RegistroPontoScreen />);
+    await screen.findByText('Ajuste do ponto');
+
+    fireEvent.press(screen.getByText('Voltar à lista'));
+
+    expect(mockGoBack).toHaveBeenCalled();
+  });
+
+  it('pede escolha manual quando não localiza a pessoa no ponto', async () => {
+    // Nunca adivinha a pessoa: registrar batida no colaborador errado é pior do
+    // que pedir uma confirmação.
+    pontoService.buscarPessoas.mockResolvedValue([]);
+
+    render(<RegistroPontoScreen />);
+
+    expect(
+      await screen.findByText(
+        'Não localizei essa pessoa no Relógio Ponto. Escolha na busca abaixo para continuar.',
+      ),
+    ).toBeTruthy();
+    expect(pontoService.jornadaDoDia).not.toHaveBeenCalled();
   });
 });

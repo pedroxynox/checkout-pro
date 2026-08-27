@@ -103,7 +103,14 @@ então sem ela o toque no nome da pessoa simplesmente não faz nada.
 `RootStackParamList` tipa todas as telas da pilha; `MainTabParamList` tipa as
 abas. Exemplos de rotas com parâmetros:
 - `IndicadorDetalhe: { tipo, operadorNome?, alertaMensagem? }`
-- `RegistroPonto: { abrirScanner?: number } | undefined` (nonce da câmera)
+- `RegistroPonto: { abrirScanner?: number; correcao* } | undefined` — o nonce da
+  câmera e, opcionalmente, o **ajuste pedido** pelo relatório de marcações
+  inválidas (`correcaoColaboradorId`, `correcaoNome`, `correcaoData`,
+  `correcaoFaltantes`, `correcaoEntradaPrevista`, `correcaoCiclo` e os filtros
+  `correcaoFiltroNome`/`correcaoFiltroTipo`). A lista usa **`push`** para abrir
+  essa rota: como o Relógio Ponto pode já estar embaixo na pilha, `navigate`
+  voltaria até ele e descartaria a lista, quebrando o "voltar" do fluxo de
+  correção. Ver [`ponto`](ponto.md).
 - `PerfilColaborador: { colaboradorId }`
 - `DetalheJornada: { colaboradorId, ciclo, pessoa }`
 
