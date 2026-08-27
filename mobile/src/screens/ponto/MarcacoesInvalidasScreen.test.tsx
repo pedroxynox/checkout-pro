@@ -11,6 +11,23 @@ jest.mock('../../api/services', () => ({
   centralJornadaService: { marcacoesInvalidas: jest.fn() },
 }));
 
+// Sem NavigationContainer no teste: o `push` é observado direto e o efeito de
+// foco roda como um efeito comum (o primeiro foco é ignorado pela tela).
+const mockPush = jest.fn();
+jest.mock('@react-navigation/native', () => {
+  const ReactLocal = require('react');
+  return {
+    useNavigation: () => ({ push: mockPush }),
+    useFocusEffect: (cb: () => void) => ReactLocal.useEffect(cb, [cb]),
+  };
+});
+
+// Acesso ao Relógio Ponto: define se os itens são tocáveis.
+let mockAcessoAoPonto = true;
+jest.mock('../../auth/AuthContext', () => ({
+  useAuth: () => ({ podeAcessar: () => mockAcessoAoPonto }),
+}));
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { centralJornadaService } = require('../../api/services');
 
@@ -82,6 +99,7 @@ const RESPOSTA = {
 describe('MarcacoesInvalidasScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAcessoAoPonto = true;
     centralJornadaService.marcacoesInvalidas.mockResolvedValue(RESPOSTA);
   });
 
@@ -190,6 +208,68 @@ describe('MarcacoesInvalidasScreen', () => {
     expect(
       screen.getByText('Nenhuma marcação faltante neste ciclo. 🎉'),
     ).toBeTruthy();
+  });
+
+  it('abre o Relógio Ponto na pessoa e no dia do item tocado', async () => {
+    render(<MarcacoesInvalidasScreen />);
+
+    fireEvent.press(
+      await screen.findByLabelText(/Ajustar o ponto de Ana Souza/),
+    );
+
+    expect(mockPush).toHaveBeenCalledWith(
+      'RegistroPonto',
+      expect.objectContaining({
+        correcaoColaboradorId: 'c1',
+        correcaoNome: 'Ana Souza',
+        // O item traz ISO completo; o Relógio Ponto trabalha em yyyy-mm-dd.
+        correcaoData: '2026-06-29',
+        correcaoFaltantes: ['ENTRADA'],
+        correcaoEntradaPrevista: '08:00',
+        correcaoCiclo: 0,
+      }),
+    );
+  });
+
+  it('leva os filtros aplicados, para a fila não fugir deles', async () => {
+    render(<MarcacoesInvalidasScreen />);
+    await screen.findByText('Ana Souza');
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Nome do colaborador…'),
+      'bruno',
+    );
+    fireEvent.press(screen.getByLabelText(/Ajustar o ponto de Bruno Lima/));
+
+    expect(mockPush).toHaveBeenCalledWith(
+      'RegistroPonto',
+      expect.objectContaining({ correcaoFiltroNome: 'bruno' }),
+    );
+  });
+
+  it('mantém os itens como leitura para quem não acessa o Relógio Ponto', async () => {
+    // A rota do Relógio Ponto não existe na pilha desse usuário: um item que
+    // parece clicável e não faz nada é pior do que um item estático.
+    mockAcessoAoPonto = false;
+
+    render(<MarcacoesInvalidasScreen />);
+    await screen.findByText('Ana Souza');
+
+    expect(screen.queryByLabelText(/Ajustar o ponto de Ana Souza/)).toBeNull();
+    expect(
+      screen.queryByText(
+        'Toque em uma pessoa para lançar a marcação que falta no Relógio Ponto.',
+      ),
+    ).toBeNull();
+  });
+
+  it('não recarrega no primeiro foco (a carga inicial já é do useRequisicao)', async () => {
+    render(<MarcacoesInvalidasScreen />);
+    await screen.findByText('Ana Souza');
+
+    // Uma chamada só: sem o guarda de primeiro foco, a tela buscaria duas vezes
+    // a cada abertura.
+    expect(centralJornadaService.marcacoesInvalidas).toHaveBeenCalledTimes(1);
   });
 
   it('avisa quantos dias de não retorno ficaram fora da lista', async () => {

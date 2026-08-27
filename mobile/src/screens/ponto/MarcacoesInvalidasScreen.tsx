@@ -14,9 +14,16 @@
  *
  * Os dias vêm agrupados por data (do mais recente para o mais antigo), abertos
  * por padrão, com busca por pessoa e filtro pela marcação que falta.
+ *
+ * Cada item é **tocável**: abre o Relógio Ponto já na pessoa e no dia daquele
+ * item (modo correção), de onde o gestor lança a batida que falta e volta —
+ * ou segue direto para a próxima pendência. Ao voltar, a lista se recarrega,
+ * então o que foi resolvido desaparece.
  */
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { centralJornadaService } from '../../api/services';
 import {
@@ -24,6 +31,9 @@ import {
   MarcacaoCanonica,
   MarcacaoInvalidaItem,
 } from '../../api/services/centralJornada';
+import { useAuth } from '../../auth/AuthContext';
+import { RootStackParamList } from '../../navigation/types';
+import { filtrarFila, ordenarFila } from './filaCorrecao';
 import {
   Cartao,
   CampoTexto,
@@ -88,6 +98,9 @@ function seloQuantidade(quantidade: number): { rotulo: string; cor: string; fund
 }
 
 export function MarcacoesInvalidasScreen(): React.ReactElement {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { podeAcessar } = useAuth();
   const [ciclo, setCiclo] = useState(0);
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<FiltroTipo>('TODAS');
@@ -100,15 +113,32 @@ export function MarcacoesInvalidasScreen(): React.ReactElement {
     [ciclo],
   );
 
+  // Ao voltar do Relógio Ponto (onde a batida que faltava foi lançada), a lista
+  // é recarregada: sem isso, o item já resolvido continuaria aqui e o gestor
+  // ajustaria o mesmo dia duas vezes. Pula o primeiro foco — a carga inicial já
+  // é feita pelo useRequisicao ao montar.
+  const recarregarRef = useRef(req.recarregar);
+  recarregarRef.current = req.recarregar;
+  const primeiroFoco = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (primeiroFoco.current) {
+        primeiroFoco.current = false;
+        return;
+      }
+      recarregarRef.current();
+    }, []),
+  );
+
+  // Os filtros e a ordem vivem em `filaCorrecao` porque o Relógio Ponto usa os
+  // mesmos para caminhar até a próxima pendência.
+  const filtros = useMemo(
+    () => ({ nome: busca, tipo: filtro === 'TODAS' ? undefined : filtro }),
+    [busca, filtro],
+  );
+
   const porDia = useMemo(() => {
-    const itens = req.dados?.itens ?? [];
-    const alvo = busca.trim().toLowerCase();
-    const filtrados = itens.filter((i) => {
-      const casaNome = alvo ? i.nome.toLowerCase().includes(alvo) : true;
-      const casaTipo =
-        filtro === 'TODAS' ? true : i.tiposFaltantes.includes(filtro);
-      return casaNome && casaTipo;
-    });
+    const filtrados = ordenarFila(filtrarFila(req.dados?.itens ?? [], filtros));
     const mapa = new Map<string, MarcacaoInvalidaItem[]>();
     for (const item of filtrados) {
       const arr = mapa.get(item.data) ?? [];
@@ -116,7 +146,35 @@ export function MarcacoesInvalidasScreen(): React.ReactElement {
       mapa.set(item.data, arr);
     }
     return [...mapa.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-  }, [req.dados, busca, filtro]);
+  }, [req.dados, filtros]);
+
+  /**
+   * Abre o Relógio Ponto já na pessoa e no dia do item, em "modo correção".
+   *
+   * Usa `push` (e não `navigate`): o Relógio Ponto pode já estar embaixo na
+   * pilha — há um atalho dele para a Central —, e `navigate` faria voltar até
+   * ele, tirando esta lista da pilha. Com `push`, o "voltar" traz o gestor de
+   * volta à lista, que é o fluxo de trabalho.
+   */
+  function ajustarItem(item: MarcacaoInvalidaItem): void {
+    navigation.push('RegistroPonto', {
+      correcaoColaboradorId: item.colaboradorId,
+      correcaoNome: item.nome,
+      // O item traz o ISO do início do dia; o Relógio Ponto trabalha em
+      // `yyyy-mm-dd`.
+      correcaoData: item.data.slice(0, 10),
+      correcaoFaltantes: item.tiposFaltantes,
+      correcaoEntradaPrevista: item.entradaPrevista,
+      correcaoCiclo: ciclo,
+      correcaoFiltroNome: filtros.nome?.trim() || undefined,
+      correcaoFiltroTipo: filtros.tipo,
+    });
+  }
+
+  // Ajustar a batida acontece no Relógio Ponto: sem acesso a ele, o item não é
+  // tocável (a rota nem existe na pilha desse usuário) e a lista segue sendo o
+  // relatório de leitura que sempre foi.
+  const podeAjustar = podeAcessar('PONTO_VISUALIZAR');
 
   function alternarDia(data: string): void {
     setDiasFechados((prev) => {
@@ -166,7 +224,7 @@ export function MarcacoesInvalidasScreen(): React.ReactElement {
         <MensagemErro mensagem={req.erro} aoTentarNovamente={req.recarregar} />
       ) : (
         <>
-          {totais && <ResumoCiclo totais={totais} />}
+          {totais && <ResumoCiclo totais={totais} podeAjustar={podeAjustar} />}
 
           <Cartao>
             <CampoTexto
@@ -223,6 +281,9 @@ export function MarcacoesInvalidasScreen(): React.ReactElement {
                       <ItemMarcacao
                         key={`${item.colaboradorId}-${item.data}`}
                         item={item}
+                        aoPressionar={
+                          podeAjustar ? () => ajustarItem(item) : undefined
+                        }
                       />
                     ))}
                 </Cartao>
@@ -238,8 +299,10 @@ export function MarcacoesInvalidasScreen(): React.ReactElement {
 /** Cartão de resumo do ciclo: o tamanho do trabalho a fazer. */
 function ResumoCiclo({
   totais,
+  podeAjustar,
 }: {
   totais: CentralMarcacoesInvalidas['totais'];
+  podeAjustar: boolean;
 }): React.ReactElement {
   if (totais.dias === 0) {
     return (
@@ -259,6 +322,11 @@ function ResumoCiclo({
       <Text style={styles.resumoTexto}>
         Em {totais.dias} dia(s), de {totais.pessoas} pessoa(s).
       </Text>
+      {podeAjustar && (
+        <Text style={styles.resumoDica}>
+          Toque em uma pessoa para lançar a marcação que falta no Relógio Ponto.
+        </Text>
+      )}
       <View style={styles.resumoChips}>
         {totais.faltaUma > 0 && (
           <Selo
@@ -341,19 +409,36 @@ function AvisoNaoRetorno({
   );
 }
 
+/**
+ * Um dia de uma pessoa com marcação faltando.
+ *
+ * Com `aoPressionar`, o item é a **porta de entrada do ajuste**: leva ao Relógio
+ * Ponto já na pessoa e no dia certos. Sem ele (usuário sem acesso ao Relógio
+ * Ponto), continua sendo texto de leitura — um item que parece clicável e não
+ * faz nada é pior do que um item claramente estático.
+ */
 function ItemMarcacao({
   item,
+  aoPressionar,
 }: {
   item: MarcacaoInvalidaItem;
+  aoPressionar?: () => void;
 }): React.ReactElement {
   const selo = seloQuantidade(item.quantidadeFaltante);
-  return (
-    <View style={styles.itemLinha}>
+  const conteudo = (
+    <>
       <View style={styles.itemTopo}>
         <Text style={styles.itemNome} numberOfLines={1}>
           {item.nome}
         </Text>
         <Selo texto={selo.rotulo} cor={selo.cor} fundo={selo.fundo} />
+        {aoPressionar ? (
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={cores.textoSecundario}
+          />
+        ) : null}
       </View>
       <Text style={styles.itemSub}>{rotuloFuncao(item.funcao)}</Text>
 
@@ -396,7 +481,23 @@ function ItemMarcacao({
           <Text style={styles.avisoTexto}>{item.observacao}</Text>
         </View>
       )}
-    </View>
+    </>
+  );
+
+  if (!aoPressionar) return <View style={styles.itemLinha}>{conteudo}</View>;
+
+  return (
+    <Pressable
+      onPress={aoPressionar}
+      style={({ pressed }) => [
+        styles.itemLinha,
+        pressed && styles.itemPressionado,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={`Ajustar o ponto de ${item.nome} em ${dataCurta(item.data)}. ${item.detalhe}.`}
+    >
+      {conteudo}
+    </Pressable>
   );
 }
 
@@ -432,6 +533,12 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginTop: espacamento.sm,
+  },
+  resumoDica: {
+    ...tipografia.legenda,
+    color: cores.primaria,
+    marginTop: espacamento.xs,
+    fontWeight: '600',
   },
   resumoNaoRetorno: {
     ...tipografia.legenda,
@@ -475,6 +582,10 @@ const styles = StyleSheet.create({
     paddingTop: espacamento.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: cores.divisor,
+  },
+  itemPressionado: {
+    backgroundColor: cores.superficieAlternativa,
+    borderRadius: raio.sm,
   },
   itemTopo: {
     flexDirection: 'row',

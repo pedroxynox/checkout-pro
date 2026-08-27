@@ -117,11 +117,17 @@ export function CentralJornadaScreen(): React.ReactElement {
     feriados.recarregar();
   }
 
-  // Ao voltar do detalhe (onde se pode marcar falta como débito), atualiza o
-  // resumo — assim o saldo/hero reflete a mudança. Pula o primeiro foco: a
+  // Ao voltar de uma tela filha, atualiza o resumo (o saldo/hero muda quando se
+  // marca falta como débito) e os CONTADORES dos atalhos: quem ajusta uma
+  // marcação pelo relatório volta por aqui, e um contador congelado diria que
+  // ainda há trabalho onde já não há — ou o contrário. Pula o primeiro foco: a
   // carga inicial já é feita pelo useRequisicao ao montar.
-  const recarregarResumoRef = React.useRef(resumo.recarregar);
-  recarregarResumoRef.current = resumo.recarregar;
+  const recarregarAoVoltarRef = React.useRef<() => void>(() => undefined);
+  recarregarAoVoltarRef.current = () => {
+    resumo.recarregar();
+    inconsistencias.recarregar();
+    marcacoes.recarregar();
+  };
   const primeiroFoco = React.useRef(true);
   useFocusEffect(
     React.useCallback(() => {
@@ -129,7 +135,7 @@ export function CentralJornadaScreen(): React.ReactElement {
         primeiroFoco.current = false;
         return;
       }
-      recarregarResumoRef.current();
+      recarregarAoVoltarRef.current();
     }, []),
   );
 
