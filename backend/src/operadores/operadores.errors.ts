@@ -44,6 +44,27 @@ export class AusenciaDuplicadaError extends OperadoresError {
   }
 }
 
+/**
+ * Lançado ao tentar marcar FALTA num dia em que a pessoa está de FOLGA.
+ *
+ * Falta é a ausência de quem era esperado; em dia de descanso não há o que
+ * faltar. Antes o sistema aceitava, e a detecção automática chegou a lançar falta
+ * no dia de folga de um colaborador porque as duas fontes de folga (ficha e
+ * escala semanal) discordavam.
+ *
+ * Não afeta **ausência a prazo** nem **atestado**: esses cobrem períodos e
+ * incluem os dias de folga de propósito, por outro caminho
+ * (`marcarPeriodoJustificado`).
+ */
+export class FaltaEmDiaDeFolgaError extends OperadoresError {
+  readonly statusHttp = HttpStatus.CONFLICT;
+  constructor(
+    mensagem = 'Este dia é folga da pessoa — não é possível marcar falta. Para cobrir um período (licença, atestado), use a ausência a prazo.',
+  ) {
+    super(mensagem);
+  }
+}
+
 /** Lançado quando a ausência informada (para justificar/remover) não existe. */
 export class AusenciaNaoEncontradaError extends OperadoresError {
   readonly statusHttp = HttpStatus.NOT_FOUND;

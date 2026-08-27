@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `backend/src/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-27 · **Cobre:** `backend/src/operadores/`
 
 # Módulo: `operadores`
 
@@ -82,7 +82,15 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 - **Corrida:** se duas escritas disputarem o mesmo dia, o banco recusa pela
   unicidade e a violação (**P2002**) é tratada como `AusenciaDuplicadaError`
   (mesmo idiom de `ponto`/`incidencias`) — idempotente.
-- **Erros:** `AusenciaDuplicadaError` (além dos de data/ciclo).
+- **Folga:** recusa marcar falta em **dia de folga** pela regra única
+  ([`FolgaService`](escala-domingo.md)) — falta é a ausência de quem era
+  *esperado*, e em dia de descanso não há o que faltar. Antes o sistema aceitava,
+  e a detecção automática chegou a lançar falta no dia de folga de um colaborador
+  porque as duas fontes de folga (ficha e escala semanal) discordavam. No cron a
+  recusa é silenciosa (é "não é caso de marcar", e ele roda a cada 5 minutos); no
+  endpoint manual o gestor recebe a mensagem explicando o que fazer.
+- **Erros:** `AusenciaDuplicadaError`, `FaltaEmDiaDeFolgaError` (além dos de
+  data/ciclo).
 
 #### `registrarAusenciaPeriodo(pessoaId, inicio, fim, input, autor?)`
 - **Efeitos:** marca **falta justificada** em cada dia corrido do intervalo
@@ -164,6 +172,11 @@ Delegam às funções puras homônimas do domínio.
 - `grade(dataRef?)` — grade semanal (Seg–Sáb) com trabalha/folga/**falta ou
   atestado**/cobertura por dia. O dia vinculado a um atestado aparece como
   `ATESTADO` (mesma regra do roster diário), não como `FALTA`.
+- **FOLGA no quadro segue a regra única** (`FolgaService`): a ficha **ou** a escala
+  semanal. Antes o quadro olhava só `folgaDiaSemana`, enquanto a escala publicada
+  também respeitava a escala semanal — com as duas fontes em desacordo, o mesmo
+  dia saía FOLGA num lugar e FALTA no outro. A folga **vence** uma falta já
+  gravada no dia (a auto-cura do Relógio Ponto a remove em seguida).
 - `diaOperadores(dataRef?)` — roster de um dia, ordenado por entrada (folga ao
   fim); propaga o turno do cadastro.
 - `aoVivo()` — quem deveria estar no caixa agora (fuso de Brasília).
@@ -214,14 +227,20 @@ Delegam às funções puras homônimas do domínio.
 2. **Ausência futura só com gerente/supervisor** (programação).
 3. **Ausência a prazo é atômica** e conta todos os dias corridos (inclusive
    folga); só a gestão desmarca esses dias (fiscal não).
-4. **Justificar exige motivo**; reabrir limpa o motivo e a auditoria.
-5. **Ciclo de folha fechado bloqueia** registrar/remover/justificar faltas.
-6. **Turno pela hora de entrada** (10:00 e 13:00 como fronteiras).
-7. **Avisos são best-effort:** nunca impedem o registro da falta.
-8. **Excluir ≠ justificar:** justificar/abonar mantém a falta com peso reduzido
+4. **Falta NÃO se marca em dia de folga** (regra única de folga: ficha **ou**
+   escala semanal — ver [`escala-domingo`](escala-domingo.md)). Falta é a ausência
+   de quem era *esperado*; em dia de descanso não há o que faltar. Vale para a
+   falta manual e para a automática, e **não** vale para ausência a prazo /
+   atestado, que cobrem períodos e incluem a folga de propósito (regra 3), por
+   outro caminho.
+5. **Justificar exige motivo**; reabrir limpa o motivo e a auditoria.
+6. **Ciclo de folha fechado bloqueia** registrar/remover/justificar faltas.
+7. **Turno pela hora de entrada** (10:00 e 13:00 como fronteiras).
+8. **Avisos são best-effort:** nunca impedem o registro da falta.
+9. **Excluir ≠ justificar:** justificar/abonar mantém a falta com peso reduzido
    (2%/10%); **excluir** apaga a falta lançada por engano (peso zero, some do
    histórico) e é restrito a gerente/supervisor/administrador.
-9. **Médico só por atestado:** a ausência a prazo NÃO aceita motivo
+10. **Médico só por atestado:** a ausência a prazo NÃO aceita motivo
    `ATESTADO_MEDICO` — atestado tem fluxo próprio (com CID e INSS). Abonar uma
    falta avulsa como atestado médico (na tela de Justificativas) continua
    permitido (é abono de uma ocorrência já existente, não um período novo).
@@ -239,6 +258,8 @@ Delegam às funções puras homônimas do domínio.
 | `operador-turno.roster-turno.spec.ts` | Turno do cadastro no roster do dia + grade distingue ATESTADO de FALTA | 3 |
 | `operadores.controller.spec.ts` | Contagem por turno e exclusão de falta restrita à gestão | 3 |
 | `listar-ausencias-ficha.spec.ts` | Nome da falta resolvido pela ficha canônica (A.3) | 1 |
+| `falta-em-folga.spec.ts` | Recusa falta em dia de folga; marca normalmente em dia de trabalho; e o contrapeso: **ausência a prazo segue cobrindo a folga** | 3 |
+| `quadro-folga-escala.spec.ts` | O quadro mostra FOLGA quando só a escala semanal marca folga; a folga vence uma falta já gravada; TRABALHA quando nenhuma fonte diz folga; e a grade usa a mesma regra | 4 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

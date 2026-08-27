@@ -18,6 +18,7 @@ const NADA: FatosDoDia = {
   temAtestado: false,
   temAusenciaAPrazo: false,
   deFerias: false,
+  ehFolga: false,
 };
 
 describe('motivoParaRemoverFalta', () => {
@@ -51,7 +52,15 @@ describe('motivoParaRemoverFalta', () => {
   it('fechar o intervalo NÃO é motivo para remover uma falta', () => {
     // "Fechou o intervalo" é assunto do não retorno; para a falta o que importa
     // é ter batido ponto (e se fechou o intervalo, bateu — daí temBatida).
-    expect(motivoParaRemoverFalta({ ...NADA, intervaloFechado: true })).toBeNull();
+    expect(
+      motivoParaRemoverFalta({ ...NADA, intervaloFechado: true }),
+    ).toBeNull();
+  });
+
+  it('dia de FOLGA derruba a falta', () => {
+    // Sem isto a falta lançada em dia de descanso ficava para sempre: a auto-cura
+    // esperava uma batida que num dia de folga nunca chega.
+    expect(motivoParaRemoverFalta({ ...NADA, ehFolga: true })).toBe('FOLGA');
   });
 });
 
@@ -64,7 +73,9 @@ describe('motivoParaRemoverNaoRetorno', () => {
     // O não retorno pressupõe entrada + saída para o intervalo: existir batida é
     // justamente a condição dele, não a sua negação. Esta é a assimetria com a
     // falta e o erro mais fácil de cometer aqui.
-    expect(motivoParaRemoverNaoRetorno({ ...NADA, temBatida: true })).toBeNull();
+    expect(
+      motivoParaRemoverNaoRetorno({ ...NADA, temBatida: true }),
+    ).toBeNull();
   });
 
   it('fechar o intervalo derruba o não retorno', () => {
@@ -83,6 +94,14 @@ describe('motivoParaRemoverNaoRetorno', () => {
     expect(motivoParaRemoverNaoRetorno({ ...NADA, deFerias: true })).toBe(
       'FERIAS',
     );
+  });
+
+  it('FOLGA não derruba o não retorno (a pessoa trabalhou naquele dia)', () => {
+    // Assimetria proposital com a falta: se há batidas de entrada e de saída
+    // para o intervalo, o fato aconteceu — mesmo sendo a folga dela. Apagá-lo
+    // seria perder informação real; já a falta afirma uma expectativa que não
+    // existia.
+    expect(motivoParaRemoverNaoRetorno({ ...NADA, ehFolga: true })).toBeNull();
   });
 });
 
@@ -140,5 +159,6 @@ describe('descreverMotivo', () => {
       'dia coberto por ausência a prazo',
     );
     expect(descreverMotivo('FERIAS')).toBe('de férias no dia');
+    expect(descreverMotivo('FOLGA')).toBe('dia de folga da pessoa');
   });
 });

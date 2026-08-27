@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/fiscais/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-27 · **Cobre:** `backend/src/fiscais/`
 
 # Módulo: `fiscais`
 
@@ -85,6 +85,12 @@ Registra a falta do dia do próprio fiscal; bloqueia se já iniciou jornada
 criada já grava o vínculo `colaboradorId` (ficha canônica), preenchendo também
 faltas antigas sem vínculo (Fase 4 · Opção A).
 
+A folga é verificada **duas vezes**, de propósito: `isFolgaHoje` olha a escala
+semanal (a fonte dos fiscais) e a **regra única**
+([`FolgaService`](escala-domingo.md)) olha **também a ficha**. Foi exatamente essa
+lacuna que gerou falta em dia de descanso — folga na terça na ficha, com a escala
+semanal desatualizada. Na dúvida entre as fontes, não se marca falta.
+
 #### `painel()`
 Status atual ao vivo, usando a mesma inteligência da jornada (prefere as batidas
 do Relógio de Ponto e aplica as regras de contrato), refletindo o fim do
@@ -103,6 +109,13 @@ escala consolidada + operadores pelo cadastro/rodízio) e alimenta tanto a
 "equipe do dia" quanto a detecção automática de falta. **Quem está de férias no
 dia é excluído aqui** (pela ficha, via `FeriasService.colaboradoresDeFeriasNoDia`),
 então some da escala e não vira falta automática.
+
+**Quem está de FOLGA por qualquer fonte também é excluído aqui**, pela regra única
+([`FolgaService`](escala-domingo.md)): antes cada ramo consultava só a sua fonte —
+os fiscais a escala semanal, os operadores a ficha —, e quem tinha as duas em
+desacordo era escalado e acabava com **falta automática no próprio dia de
+descanso**. Sair de `escaladosDoDia` é o que impede a falta de nascer; as guardas
+em `registrarFalta`/`registrarAusencia` são a segunda linha.
 
 **Em feriado o horário esperado é o de DOMINGO**, e a folga não muda (regra 7 de
 [`escala-domingo`](escala-domingo.md)). Para operadores/supervisores isso vem de
@@ -226,6 +239,7 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 | `escala-colaborador.spec.ts` | Geração da escala semanal a partir do cadastro | 4 |
 | `escala-inativo.spec.ts` | Escala de colaborador inativo | 1 |
 | `escalados-ferias.spec.ts` | `escaladosDoDia` exclui quem está de férias | 2 |
+| `escalados-folga.spec.ts` | **Regressão:** `escaladosDoDia` respeita a folga das duas fontes — não escala o fiscal com folga na ficha mesmo com a escala semanal escalando (o caso real), nem quem tem folga na escala | 3 |
 | `escalados-feriado.spec.ts` | `escaladosDoDia` em feriado: horário de domingo (operador e fiscal), folga inalterada, fallback sem `entradaDom` e sem `FeriadosService` | 8 |
 | `integridade-vinculo.spec.ts` | Detecção de vínculos órfãos fiscal ↔ ficha (Fase 4) | 6 |
 

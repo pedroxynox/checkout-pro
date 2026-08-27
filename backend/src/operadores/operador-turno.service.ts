@@ -10,6 +10,7 @@ import {
 } from './operadores.domain';
 import { StatusJustificativa } from '../common/justificativas';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
+import { FolgaService } from '../escala-domingo/folga.service';
 import {
   GrupoDomingo,
   grupoFolgaNoDomingo,
@@ -239,6 +240,9 @@ export class OperadorTurnoService {
     private readonly prisma: PrismaService,
     @Optional() private readonly notificacoes?: NotificacoesService,
     @Optional() private readonly escalaDomingo?: EscalaDomingoService,
+    // Regra única de folga (ficha + escala semanal). Sem ela o quadro mantém a
+    // regra antiga (só a ficha), que discordava da escala publicada.
+    @Optional() private readonly folga?: FolgaService,
   ) {}
 
   /**
@@ -364,9 +368,24 @@ export class OperadorTurnoService {
     const ehFimDeSemana = (diaSemana: number): boolean =>
       diaSemana === 5 || diaSemana === 6;
 
+    // Folga pela regra única, carregada uma vez para os seis dias da grade.
+    const consultorFolga = this.folga
+      ? await this.folga.consultor(
+          dias.map((d) => new Date(`${d.data}T00:00:00.000Z`)),
+        )
+      : null;
+
     const gradeOperadores: GradeOperador[] = operadores.map((op) => {
       const celulas: GradeCelula[] = dias.map((dia) => {
-        if (dia.diaSemana === op.folgaDiaSemana) {
+        // Folga pela regra única: a ficha OU a escala semanal. Antes só a ficha
+        // valia aqui, então um dia marcado como folga na escala aparecia como
+        // FALTA neste quadro e como FOLGA na escala publicada.
+        if (
+          dia.diaSemana === op.folgaDiaSemana ||
+          consultorFolga?.ehFolga(new Date(`${dia.data}T00:00:00.000Z`), [
+            op.id,
+          ])
+        ) {
           return {
             diaSemana: dia.diaSemana,
             data: dia.data,
@@ -561,9 +580,19 @@ export class OperadorTurnoService {
       aPrazo: false,
     });
 
+    // Folga pela regra única (ficha + escala semanal). É o que faz este quadro
+    // concordar com a escala publicada: antes, um dia de folga registrado apenas
+    // na escala semanal aparecia aqui como FALTA — foi assim que uma falta
+    // indevida ficou visível no dia de descanso de um colaborador.
+    const consultorFolga = this.folga
+      ? await this.folga.consultor([diaInicio])
+      : null;
+    const deFolgaPelaRegra = (id: string): boolean =>
+      consultorFolga?.ehFolga(diaInicio, [id]) ?? false;
+
     const colaboradores: ColaboradorDia[] = ehDom
       ? domingo!.itens.map((it) =>
-          it.trabalha
+          it.trabalha && !deFolgaPelaRegra(it.id)
             ? linhaComFalta({
                 id: it.id,
                 nome: it.nome,
@@ -580,7 +609,7 @@ export class OperadorTurnoService {
               }),
         )
       : operadores.map((op) =>
-          op.folgaDiaSemana === diaSemana
+          op.folgaDiaSemana === diaSemana || deFolgaPelaRegra(op.id)
             ? folga({
                 id: op.id,
                 nome: op.nome,
@@ -906,7 +935,9 @@ export class OperadorTurnoService {
       const inicio = new Date(fim.getTime() - 7 * 24 * 60 * 60 * 1000);
       const analitica = await this.analiticaFaltas(inicio, fim);
       if (analitica.total === 0) return;
-      const gestores = await this.notificacoes.destinatariosComPermissao('OPERADORES_AUSENCIAS');
+      const gestores = await this.notificacoes.destinatariosComPermissao(
+        'OPERADORES_AUSENCIAS',
+      );
       if (gestores.length === 0) return;
 
       const topo = analitica.porOperador
@@ -944,7 +975,9 @@ export class OperadorTurnoService {
       });
       const disponiveis = escalados.length - faltas;
       if (disponiveis < COBERTURA_MINIMA) {
-        const gestores = await this.notificacoes.destinatariosComPermissao('OPERADORES_AUSENCIAS');
+        const gestores = await this.notificacoes.destinatariosComPermissao(
+          'OPERADORES_AUSENCIAS',
+        );
         if (gestores.length === 0) return;
         await this.notificacoes.enviar(gestores, {
           titulo: '⚠️ Cobertura baixa hoje',
