@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/escala/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-27 · **Cobre:** `mobile/src/screens/escala/`
 
 # Área: `escala`
 
@@ -69,15 +69,39 @@ Módulo do backend relacionado:
   perde. O aviso está na tela porque é a decepção mais provável do fluxo: gerar
   em 4K e a equipe receber algo borrado.
 - **Orientação por tipo de documento**, não pela proporção: o dia é **retrato**
-  (2160 px de largura — o lado curto do 4K, que é o que dá nitidez ao ampliar no
-  celular) e a semana é **paisagem** (3840 px, porque a grade tem sete colunas e
-  em retrato elas ficariam estreitas demais para "07:00 – 15:20").
+  (2160 × 3840 — o 4K retrato, que é o que dá nitidez ao ampliar no celular) e a
+  semana é **paisagem** (3840 × 2160, porque a grade tem sete colunas e em retrato
+  elas ficariam estreitas demais para "07:00 – 15:20").
+- **A folha tem tamanho fixo e o conteúdo se ajusta a ela.** As alturas de linha e
+  os tamanhos de fonte saem de um **fator de preenchimento** único (espaço livre ÷
+  conteúdo de referência), então tudo cresce junto e a imagem **não distorce** —
+  é diferente de esticar o desenho, que deformaria as letras. Antes a folha
+  crescia com o número de pessoas, e uma equipe pequena gerava uma imagem baixa e
+  larga com o texto perdido no meio de muito branco.
+- **O fator tem limites, e cada limite tem uma saída.** Equipe pequena demais para
+  preencher sem linhas absurdas ⇒ a folha **encurta** (nada de faixa branca no
+  fim). Equipe grande demais para caber com fonte legível ⇒ a folha **alonga**,
+  porque texto que ninguém lê é pior do que uma página mais longa. Quando o fator
+  não precisa ser limitado — o caso normal — a folha é **exatamente 4K**.
+- **O rodapé é ancorado no fim da folha**, e a sua altura é calculada *antes* de
+  desenhar. Sem isso, ou ele flutuava no meio da página ou sobrava uma faixa
+  branca embaixo dele.
+- **O turno do cadastro (Abertura/Intermediário/Fechamento/Apoio) não aparece.** É
+  uma classificação interna de gestão; quem lê a escala quer saber a que hora
+  entra, e o horário já responde isso. Tirá-lo deixou cada pessoa numa **linha
+  só** — e é justamente esse espaço que permite as fontes grandes.
+- **A exceção de horário fica AO LADO do nome, não abaixo.** É rara e não pode
+  mudar a altura da linha, senão quebraria o ritmo de toda a folha. Pelo mesmo
+  motivo, numa falta o estado e o horário previsto ficam na **mesma** linha.
 
 ## 7. Lógica pura / utilidades
 `utils/escalaLayout.ts` (testado):
 - `svgEscalaDia(escala, opcoes)` → retrato: identidade da loja, dia em destaque,
   selos de feriado/rodízio, contagens, seções por função com uma linha por pessoa
-  (nome + turno à esquerda, horário à direita, separador e zebra) e rodapé.
+  (**nome** à esquerda, horário à direita, separador e zebra) e rodapé.
+- `metricasDia` / `metricasSemana` → o **fator de preenchimento** e os tamanhos que
+  saem dele (alturas de linha, de seção e todas as fontes). É o coração do
+  "preencher a folha sem distorcer".
 - `svgEscalaSemana(escala, opcoes)` → paisagem: grade com pessoas nas linhas e os
   sete dias nas colunas; cada célula traz entrada/saída ou o estado.
 - `htmlDeImpressao(imagem, titulo)` → documento de uma página com a folha
@@ -124,7 +148,7 @@ perfil). Ver [Componentes compartilhados](componentes-compartilhados.md) e
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `EscalaScreen.test.tsx` | Prévia do dia (nome, horário, quem folga), PDF com o desenho, imagem com nome de arquivo previsível, aviso do WhatsApp, ausência do botão de imagem sem canvas e troca para a semana | 6 |
-| `utils/escalaLayout.test.ts` | Dimensões e orientação declarada, dia da semana/data, seções, horários, folga, falta com turno preservado, horário especial, feriado, rodízio do domingo, assinatura do rodapé, logo (com e sem), escape de caracteres, grade dos sete dias e a folha de impressão | 19 |
+| `utils/escalaLayout.test.ts` | Dimensões e orientação declarada, **preenchimento exato da folha 4K** (e o encurtar/alongar nos extremos), ausência do turno, dia da semana/data, seções, horários, folga, falta com turno preservado, exceção ao lado do nome, feriado, rodízio do domingo, assinatura do rodapé, logo (com e sem), escape de caracteres, grade dos sete dias e a folha de impressão | 25 |
 
 ## 10. Riscos, dívidas e pendências
 - ⚠️ **A imagem não é gerada no APK** (não há `canvas`). O caminho para resolver é
