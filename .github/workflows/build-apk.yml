@@ -38,3 +38,15 @@ jobs:
         working-directory: mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Descargar APK
+        run: eas build:download --platform android --latest
+        working-directory: mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Subir APK a GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkout-pro-apk
+          path: mobile/*.apk
