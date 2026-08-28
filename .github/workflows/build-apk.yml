@@ -34,19 +34,25 @@ jobs:
         working-directory: mobile
 
       - name: Crear APK
-        run: eas build --platform android --profile ${{ github.event.inputs.profile }} --non-interactive
+        run: |
+          eas build \
+            --platform android \
+            --profile ${{ github.event.inputs.profile }} \
+            --non-interactive \
+            --json > build.json
         working-directory: mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Descargar APK
-        run: eas build:download --platform android --latest
+        run: |
+          APK_URL=$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync('build.json','utf8')); console.log(data[0].artifacts.buildUrl)")
+          echo "Descargando APK..."
+          curl -L "$APK_URL" -o app.apk
         working-directory: mobile
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Subir APK a GitHub
         uses: actions/upload-artifact@v4
         with:
           name: checkout-pro-apk
-          path: mobile/*.apk
+          path: mobile/app.apk
