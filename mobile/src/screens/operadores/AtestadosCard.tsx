@@ -8,7 +8,9 @@
  * (regra do INSS). Uso típico: gerente/supervisor.
  *
  * Também LISTA os atestados **em curso e programados** — os já encerrados ficam
- * fora, porque esta é uma tela de operação e não um arquivo histórico — e
+ * fora por padrão, porque esta é uma tela de operação e não um arquivo
+ * histórico, e o filtro "mostrar encerrados" os traz de volta quando é preciso
+ * corrigir um lançamento passado — e
  * permite **excluir** um que foi lançado por engano. Excluir é uma correção
  * destrutiva (apaga o documento, apaga os dias que ele criou e devolve à
  * condição de falta os dias que já eram falta), então só aparece para gerente,
@@ -64,12 +66,19 @@ const MAX_RESULTADOS = 8;
 const PERFIS_EXCLUEM_ATESTADO = ['GERENTE', 'ADMINISTRADOR', 'SUPERVISOR'];
 
 /**
- * Dias para frente na listagem. A janela começa **hoje**: como o backend
- * devolve os atestados que INTERSECTAM o período, a lista traz os que estão em
- * curso (começaram antes mas ainda não terminaram) e os programados — e deixa
- * de fora os já encerrados. É uma tela de operação, não um arquivo histórico.
+ * Dias para frente na listagem. Por padrão a janela começa **hoje**: como o
+ * backend devolve os atestados que INTERSECTAM o período, a lista traz os que
+ * estão em curso (começaram antes mas ainda não terminaram) e os programados —
+ * e deixa de fora os já encerrados. É uma tela de operação, não um arquivo.
  */
 const JANELA_FRENTE_DIAS = 60;
+
+/**
+ * Dias para trás quando se pede "mostrar encerrados". Existe porque, sem ver um
+ * atestado já terminado, não há como EXCLUIR um que foi lançado por engano num
+ * período passado — e essa correção é justamente uma das funções da seção.
+ */
+const JANELA_ATRAS_DIAS = 90;
 
 /**
  * Dias de atestado a partir dos quais avisamos sobre o INSS. Espelha
@@ -99,10 +108,16 @@ export function AtestadosCard({
     [],
   );
   // Atestados lançados na janela recente (para conferir e corrigir).
-  // Atestados em curso e programados (os encerrados ficam fora).
+  // Por padrão só os em curso e programados. Recuar o início da janela é o que
+  // traz os encerrados de volta — a dependência garante o recarregamento.
+  const [mostrarEncerrados, setMostrarEncerrados] = useState(false);
   const lancados = useRequisicao<AtestadoDetalhado[]>(
-    () => atestadosService.listar(hojeISO(), isoDeslocado(JANELA_FRENTE_DIAS)),
-    [],
+    () =>
+      atestadosService.listar(
+        mostrarEncerrados ? isoDeslocado(-JANELA_ATRAS_DIAS) : hojeISO(),
+        isoDeslocado(JANELA_FRENTE_DIAS),
+      ),
+    [mostrarEncerrados],
   );
 
   const [busca, setBusca] = useState('');
@@ -415,13 +430,46 @@ export function AtestadosCard({
                 desabilitado={!podeConfirmar}
               />
 
-              {/* Atestados em curso e programados — conferir e corrigir. */}
-              <Text style={styles.secao}>Atestados em curso e programados</Text>
+              {/* Atestados — conferir e corrigir. Por padrão só os ativos; o
+                  filtro traz os encerrados quando é preciso corrigir um. */}
+              <View style={styles.secaoCabecalho}>
+                <Text style={styles.secao}>
+                  {mostrarEncerrados
+                    ? 'Atestados (com encerrados)'
+                    : 'Atestados em curso e programados'}
+                </Text>
+                <Pressable
+                  onPress={() => setMostrarEncerrados((v) => !v)}
+                  style={styles.filtroToggle}
+                  hitSlop={6}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: mostrarEncerrados }}
+                  accessibilityLabel="Mostrar encerrados"
+                >
+                  <Ionicons
+                    name={mostrarEncerrados ? 'checkbox' : 'square-outline'}
+                    size={18}
+                    color={
+                      mostrarEncerrados ? cores.primaria : cores.textoSecundario
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.filtroTexto,
+                      mostrarEncerrados && { color: cores.primaria },
+                    ]}
+                  >
+                    Mostrar encerrados
+                  </Text>
+                </Pressable>
+              </View>
               {lancados.carregando ? (
                 <Carregando />
               ) : lista.length === 0 ? (
                 <Text style={styles.vazio}>
-                  Nenhum atestado em curso ou programado.
+                  {mostrarEncerrados
+                    ? `Nenhum atestado nos últimos ${JANELA_ATRAS_DIAS} dias.`
+                    : 'Nenhum atestado em curso ou programado.'}
                 </Text>
               ) : (
                 lista.map((a) => (
@@ -430,6 +478,7 @@ export function AtestadosCard({
                       <Text style={styles.itemNome} numberOfLines={1}>
                         {a.nome}
                         {a.vigente ? '  •  em atestado' : ''}
+                        {a.encerrado ? '  •  encerrado' : ''}
                       </Text>
                       <Text style={styles.itemMeta} numberOfLines={2}>
                         {isoParaDiaMes(a.inicio)} a {isoParaDiaMes(a.fim)} · {a.dias} dia(s) ·{' '}
@@ -541,6 +590,20 @@ const styles = StyleSheet.create({
     marginTop: espacamento.md,
     marginBottom: espacamento.xs,
   },
+  secaoCabecalho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: espacamento.sm,
+  },
+  filtroToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: espacamento.md,
+    marginBottom: espacamento.xs,
+  },
+  filtroTexto: { ...tipografia.legenda, color: cores.textoSecundario },
   vazio: {
     ...tipografia.legenda,
     color: cores.textoSecundario,

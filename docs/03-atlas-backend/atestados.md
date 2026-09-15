@@ -26,7 +26,7 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**. Também
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `atestados.domain.ts` | Regras puras: CID, dias, regra do INSS (15/60) e alçada da exclusão | 191 |
-| `atestados.service.ts` | Lançar, listar, histórico por CID, excluir e avisos | 585 |
+| `atestados.service.ts` | Lançar, listar, histórico por CID, excluir e avisos | 593 |
 | `atestados.controller.ts` | Rotas HTTP (lançar, autocompletar CID, listar, histórico, excluir) | 96 |
 | `atestados.errors.ts` | Erros de domínio (mapeados para HTTP) | 74 |
 | `atestados.module.ts` | Ligações (DI) do módulo | 19 |
@@ -67,10 +67,14 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**. Também
   do CID). Cada item traz `vigente`: o atestado engloba a data de **referência**
   (hoje, dia civil de Brasília, por padrão) — ou seja, está **em curso**, e não
   apenas programado. É derivado das datas, nunca persistido.
+  - Cada item traz também `encerrado` (o período já terminou na referência).
+    Juntos, os dois campos dão os três estados sem o app comparar datas:
+    `vigente` → em curso; `encerrado` → passado; nenhum dos dois → programado.
   - Como o filtro é de **interseção** (não de "começa dentro"), pedir uma janela
     que **comece hoje** devolve os atestados em curso (começaram antes e ainda não
     terminaram) e os programados, deixando de fora os já encerrados. É assim que o
-    card de Atestados na escala mostra só os ativos.
+    card de Atestados na escala mostra só os ativos por padrão; recuando o início
+    da janela, os encerrados voltam (é o que faz o filtro "mostrar encerrados").
 - **`historicoColaborador(id)`** — agrupado por CID: episódios, total de dias,
   total na janela do INSS e bandeira `ultrapassaInss`.
 - **`buscarCid(termo)`**.
@@ -160,7 +164,7 @@ Não define enums próprios. Reutiliza `MotivoJustificativa.ATESTADO_MEDICO` e
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `atestados.domain.spec.ts` | CID, busca, dias, regra do INSS (janela/limite/virada) + dias distintos em sobreposição | 13 |
-| `atestados.service.spec.ts` | Guard de sobreposição e validação de período do `lancar`; a marca `vigente` do `listar` (em curso, programado, extremos do período) e a janela que começa hoje deixando de fora os encerrados | 7 |
+| `atestados.service.spec.ts` | Guard de sobreposição e validação de período do `lancar`; as marcas `vigente`/`encerrado` do `listar` (os três estados, extremos do período, o último dia ainda não encerrado) e as duas janelas — a que começa hoje descartando os encerrados e a recuada que os traz de volta | 10 |
 | `atestado-converte-e-desfaz.spec.ts` | Busca pelas duas chaves (fiscal sem duplicar), marca `faltaAnterior` ao converter, devolve a falta ao excluir, resumo da exclusão e alçada por perfil | 12 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).

@@ -4,6 +4,7 @@ import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import {
+  chaveDiaUTC,
   diaCivilBrasilia,
   diaDentroDoPeriodo,
   inicioDoDia,
@@ -85,6 +86,12 @@ export interface AtestadoDetalhado {
    * (programado) ou já encerrado. Derivado das datas, nunca persistido.
    */
   vigente: boolean;
+  /**
+   * true quando o período **já terminou** na data de referência. Junto com
+   * `vigente` distingue os três estados sem o app precisar comparar datas:
+   * `vigente` → em curso; `encerrado` → passado; nenhum dos dois → programado.
+   */
+  encerrado: boolean;
 }
 
 /** Resultado da exclusão de um atestado (para a mensagem de confirmação). */
@@ -356,6 +363,7 @@ export class AtestadosService {
       criadoEm: a.criadoEm.toISOString(),
       diasQueVoltamAFalta: voltamPorAtestado.get(a.id) ?? 0,
       vigente: diaDentroDoPeriodo(referencia, a.inicio, a.fim),
+      encerrado: chaveDiaUTC(a.fim) < chaveDiaUTC(referencia),
     }));
   }
 
