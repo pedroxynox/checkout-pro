@@ -9,14 +9,17 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { FeriasColaborador } from '@prisma/client';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
 import {
   UsuarioAtual,
   UsuarioAutenticado,
 } from '../common/decorators/usuario-atual.decorator';
 import { ListarFeriasDto, RegistrarFeriasDto } from './dto/ferias.dto';
-import { FeriasDetalhada, FeriasService } from './ferias.service';
+import {
+  FeriasDetalhada,
+  FeriasRegistrada,
+  FeriasService,
+} from './ferias.service';
 
 /**
  * API do módulo de Férias (inativação NÃO rígida).
@@ -29,13 +32,16 @@ import { FeriasDetalhada, FeriasService } from './ferias.service';
 export class FeriasController {
   constructor(private readonly ferias: FeriasService) {}
 
-  /** Cadastra um período de férias para um colaborador (gestão). */
+  /**
+   * Cadastra um período de férias para um colaborador (gestão). Devolve o
+   * registro criado com a duração em `dias` (dias corridos).
+   */
   @Post()
   @Funcionalidade('OPERADORES_CRUD')
   async registrar(
     @Body() dto: RegistrarFeriasDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
-  ): Promise<FeriasColaborador> {
+  ): Promise<FeriasRegistrada> {
     return this.ferias.registrarFerias(
       dto.colaboradorId,
       new Date(dto.inicio),

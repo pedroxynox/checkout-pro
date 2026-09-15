@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/common/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `backend/src/common/`
 
 # Módulo: `common`
 
@@ -30,7 +30,7 @@ justificativas), CORS e opções de upload.
 | `decorators/usuario-atual.decorator.ts` | `@UsuarioAtual()` e tipo `UsuarioAutenticado` | 36 |
 | `filters/dominio-exception.filter.ts` | Filtro global de exceções → HTTP em PT | 76 |
 | `errors/erro-dominio.ts` | Base `ErroDominio` com `statusHttp` próprio | 15 |
-| `datas.ts` | Utilidades puras de período (UTC, folha 26→25, Brasília) + sequência de dias | 192 |
+| `datas.ts` | Utilidades puras de período (UTC, folha 26→25, Brasília) + sequência e duração de dias | 256 |
 | `numeros.ts` | `arredondar` e `parseValor` (monetário) | 37 |
 | `justificativas.ts` | Peso e montagem dos campos de justificativa (ADR 0009) | 156 |
 | `risco-ocorrencias.ts` | Pontuação de risco partilhada por faltas e não-retornos | 42 |
@@ -88,15 +88,27 @@ fornece:
   (reflete a origem) quando ausente.
 
 ## 6. Lógica de domínio (funções puras)
-- **Datas (`datas.ts`):** `inicioDoDia` / `inicioDoProximoDia`,
+- **Datas (`datas.ts`):** `UM_DIA_MS`, `inicioDoDia` / `inicioDoProximoDia`,
   `inicioDaSemana` / `inicioDaProximaSemana`, `inicioDoMes` /
   `inicioDoProximoMes` / `fimDoMes`; **ciclo de folha 26→25** (`periodoFolha`,
-  `periodoFolhaDeslocado`, `rotuloPeriodoFolha`); **Brasília** (`diaCivilBrasilia`,
+  `periodoFolhaDeslocado`, `rotuloPeriodoFolha`, `ciclosDoIntervalo`);
+  **Brasília** (`diaCivilBrasilia`,
   `agoraNaBrasilia`, `diaEncerradoEmBrasilia`, `fimDoDiaBrasiliaEmUtc`,
-  `OFFSET_BRASILIA_MS`); **sequência de dias** (`chaveDiaUTC(d)` = chave de dia
-  civil em ms UTC, `maiorSequenciaDias(datas)` = maior sequência de dias civis
-  consecutivos, deduplicando por dia). Fonte única — antes duplicadas em vários
-  domínios (inclusive `maiorSequencia`/`diaUTC` espelhados em faltas e não-retornos).
+  `OFFSET_BRASILIA_MS`); **sequência e duração de dias** (`chaveDiaUTC(d)` =
+  chave de dia civil em ms UTC, `maiorSequenciaDias(datas)` = maior sequência de
+  dias civis consecutivos deduplicando por dia, `contarDiasCorridos(inicio, fim)`
+  = duração de um período contando os dois extremos). Fonte única — antes
+  duplicadas em vários domínios (inclusive `maiorSequencia`/`diaUTC` espelhados em
+  faltas e não-retornos, e `contarDiasCorridos` repetido em `atestados`,
+  `operadores` e `ferias`).
+  - `contarDiasCorridos` é a duração usada por atestado, ausência a prazo e
+    férias: **domingo, feriado e folga contam**, porque o sistema grava um dia de
+    ausência por cada dia corrido. Devolve 0 se o período estiver invertido.
+    `atestados.domain` a **reexporta** para não quebrar os imports antigos.
+  - `ciclosDoIntervalo(inicio, fim)` recorta um período nos ciclos de folha que
+    ele toca, devolvendo para cada um a âncora, o rótulo e **quantos dias do
+    período** lhe cabem. É a base do bloqueio e do aviso de período que atravessa
+    o corte 26→25 — ver [`ciclo-folha`](ciclo-folha.md).
 - **Números (`numeros.ts`):** `arredondar(n)` (2 casas) e `parseValor(bruto)`
   (aceita "1.234,56" e "1234.56"; `NaN` quando não interpretável).
 - **Risco de ocorrências (`risco-ocorrencias.ts`):** pontuação partilhada por
@@ -150,7 +162,7 @@ fornece:
 | `guards/jwt-auth.guard.spec.ts` | Rotas públicas, tokenVersion, revogação e token ausente/inválido | 7 |
 | `guards/perfil.guard.spec.ts` | Autorização por funcionalidade (gerente/fiscal) | 5 |
 | `filters/dominio-exception.filter.spec.ts` | Tradução de erros de domínio/HTTP/desconhecido (a tabela deixou de cobrir os erros do extinto `lote-apae`) | 3 |
-| `datas.spec.ts` | Ciclo de folha 26→25, fim do dia em Brasília e sequência de dias | 13 |
+| `datas.spec.ts` | Ciclo de folha 26→25, fim do dia em Brasília, sequência de dias, `contarDiasCorridos` (extremos, feriados, virada de ano/bissexto, invertido) e `ciclosDoIntervalo` (reparto entre ciclos, três ciclos, dia 25 vs 26, virada de ano) | 25 |
 | `risco-ocorrencias.spec.ts` | Pontuação de risco partilhada (limiares + monotonia, fast-check) | 6 |
 | `justificativas.spec.ts` | Peso/soma ponderada e montagem dos campos de justificativa (fast-check) | 9 |
 | `cors.spec.ts` | Resolução de `CORS_ORIGINS` | 5 |

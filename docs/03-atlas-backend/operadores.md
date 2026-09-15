@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-27 · **Cobre:** `backend/src/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `backend/src/operadores/`
 
 # Módulo: `operadores`
 
@@ -115,7 +115,8 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
   `colaboradorId`, cobrindo registros novos e legados); preserva as faltas
   comuns/automáticas **e os dias de ATESTADO** (`atestadoId != null` — não são
   removidos aqui, para não deixar o documento `Atestado` órfão; cancela-se pelo
-  próprio atestado); exige ciclo de folha aberto; envia um único aviso. Retorna
+  próprio atestado); exige **todos os ciclos de folha do período abertos** (o
+  `deleteMany` cobre o intervalo inteiro); envia um único aviso. Retorna
   `{ removidas }`. A autorização (gerente/supervisor/administrador) é feita no
   controller, como no registro do período.
 - **Erros:** `PeriodoAusenciaInvalidoError` (data final antes da inicial).
@@ -234,7 +235,11 @@ Delegam às funções puras homônimas do domínio.
    atestado, que cobrem períodos e incluem a folga de propósito (regra 3), por
    outro caminho.
 5. **Justificar exige motivo**; reabrir limpa o motivo e a auditoria.
-6. **Ciclo de folha fechado bloqueia** registrar/remover/justificar faltas.
+6. **Ciclo de folha fechado bloqueia** registrar/remover/justificar faltas. Nas
+   operações de **período** (ausência a prazo, registrar e cancelar), basta **um**
+   dos ciclos tocados estar fechado para bloquear — antes só o ciclo do primeiro
+   dia era verificado, e o resto do período entrava sem controle. Ver
+   `exigirCiclosAbertos` em [`ciclo-folha`](ciclo-folha.md).
 7. **Turno pela hora de entrada** (10:00 e 13:00 como fronteiras).
 8. **Avisos são best-effort:** nunca impedem o registro da falta.
 9. **Excluir ≠ justificar:** justificar/abonar mantém a falta com peso reduzido

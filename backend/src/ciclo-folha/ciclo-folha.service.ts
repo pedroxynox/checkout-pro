@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
 import {
+  UM_DIA_MS,
   agoraNaBrasilia,
+  ciclosDoIntervalo,
   periodoFolha,
   periodoFolhaDeslocado,
   rotuloPeriodoFolha,
@@ -32,6 +34,25 @@ export interface EventoCicloView {
   tipo: 'FECHADO' | 'REABERTO';
   porNome: string | null;
   em: string;
+}
+
+/** Um ciclo tocado por um período, com o estado e os dias que lhe cabem. */
+export interface CicloIntervaloView {
+  inicio: string;
+  fim: string;
+  rotulo: string;
+  /** Dias **do período consultado** que caem neste ciclo. */
+  dias: number;
+  status: 'ABERTO' | 'FECHADO';
+}
+
+/** Resultado da consulta "que ciclos este período toca?". */
+export interface IntervaloCiclosView {
+  ciclos: CicloIntervaloView[];
+  /** true quando o período se reparte entre mais de um ciclo. */
+  atravessaCiclos: boolean;
+  /** Rótulos dos ciclos fechados (vazio quando todos estão abertos). */
+  fechados: string[];
 }
 
 /**
@@ -176,8 +197,10 @@ export class CicloFolhaService {
 
   /**
    * Lança `CicloFechadoError` (409) quando a `data` cai num ciclo FECHADO.
-   * Usado pelo Ponto (registrar/corrigir/excluir batida) e pela Central
-   * (marcar débito) para bloquear modificações ordinárias em ciclos fechados.
+   * Usado pelo Ponto (registrar/corrigir/excluir batida) para bloquear
+   * modificações ordinárias de **um dia** em ciclos fechados.
+   *
+   * Para um PERÍODO, use `exigirCiclosAbertos` — este método olha um dia só.
    */
   async exigirCicloAberto(data: Date): Promise<void> {
     const { inicio } = periodoFolha(data);
@@ -186,7 +209,73 @@ export class CicloFolhaService {
       select: { status: true },
     });
     if (ciclo?.status === 'FECHADO') {
-      throw new CicloFechadoError();
+      throw new CicloFechadoError([rotuloPeriodoFolha(periodoFolha(data))]);
     }
+  }
+
+  /**
+   * Lança `CicloFechadoError` (409) quando **qualquer** ciclo tocado pelo
+   * período `[inicio, fim]` está FECHADO, nomeando os ciclos culpados.
+   *
+   * Existe porque um período longo (atestado, ausência a prazo) pode atravessar
+   * o corte 26→25 e gravar um dia de ausência em cada dia corrido: validar só o
+   * primeiro dia deixava o resto do período entrar num ciclo já fechado sem
+   * nenhum controle. Resolve todos os ciclos numa única consulta.
+   */
+  async exigirCiclosAbertos(inicio: Date, fim: Date): Promise<void> {
+    const ciclos = ciclosDoIntervalo(inicio, fim);
+    if (ciclos.length === 0) return;
+    const fechados = await this.prisma.cicloFolha.findMany({
+      where: {
+        inicio: { in: ciclos.map((c) => c.inicio) },
+        status: 'FECHADO',
+      },
+      select: { inicio: true },
+    });
+    if (fechados.length === 0) return;
+    const ancoras = new Set(fechados.map((f) => f.inicio.getTime()));
+    const rotulos = ciclos
+      .filter((c) => ancoras.has(c.inicio.getTime()))
+      .map((c) => c.rotulo);
+    throw new CicloFechadoError(rotulos);
+  }
+
+  /**
+   * Ciclos tocados por um período, cada um com o estado e quantos dias do
+   * período lhe cabem. Consulta informativa: permite ao app avisar **antes** de
+   * salvar que o período atravessa o fechamento da folha (ou que cai num ciclo
+   * fechado), sem duplicar a regra do dia 26 no cliente.
+   */
+  async consultarIntervalo(
+    inicio: Date,
+    fim: Date,
+  ): Promise<IntervaloCiclosView> {
+    const ciclos = ciclosDoIntervalo(inicio, fim);
+    if (ciclos.length === 0) {
+      return { ciclos: [], atravessaCiclos: false, fechados: [] };
+    }
+    const registros = await this.prisma.cicloFolha.findMany({
+      where: { inicio: { in: ciclos.map((c) => c.inicio) } },
+      select: { inicio: true, status: true },
+    });
+    const statusPorAncora = new Map(
+      registros.map((r) => [r.inicio.getTime(), r.status]),
+    );
+    const view = ciclos.map((c) => {
+      const fim = new Date(c.fimExclusivo.getTime() - UM_DIA_MS);
+      const fechado = statusPorAncora.get(c.inicio.getTime()) === 'FECHADO';
+      return {
+        inicio: c.inicio.toISOString(),
+        fim: fim.toISOString(),
+        rotulo: c.rotulo,
+        dias: c.dias,
+        status: fechado ? ('FECHADO' as const) : ('ABERTO' as const),
+      };
+    });
+    return {
+      ciclos: view,
+      atravessaCiclos: view.length > 1,
+      fechados: view.filter((c) => c.status === 'FECHADO').map((c) => c.rotulo),
+    };
   }
 }

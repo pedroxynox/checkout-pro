@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 121 arquivos, 912 casos. **Mobile:** 32 arquivos, 212 casos. **Total: 1124 casos.**
+> **Backend:** 121 arquivos, 936 casos. **Mobile:** 33 arquivos, 222 casos. **Total: 1158 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -39,7 +39,7 @@
 | `src/checklist/checklist.controller.spec.ts` | 5 | 1 |
 | `src/checklist/checklist.properties.spec.ts` | 5 | 1 |
 | `src/checklist/checklist.service.spec.ts` | 8 | 2 |
-| `src/ciclo-folha/ciclo-folha.service.spec.ts` | 4 | 1 |
+| `src/ciclo-folha/ciclo-folha.service.spec.ts` | 14 | 3 |
 | `src/colaboradores/colaboradores.adicionar-identificador.spec.ts` | 4 | 1 |
 | `src/colaboradores/colaboradores.promocao-acesso.spec.ts` | 3 | 1 |
 | `src/colaboradores/colaboradores.turno-obrigatorio.spec.ts` | 9 | 5 |
@@ -50,7 +50,7 @@
 | `src/common/config/jwt-secret.spec.ts` | 4 | 1 |
 | `src/common/correlation-id.middleware.spec.ts` | 3 | 1 |
 | `src/common/cors.spec.ts` | 5 | 1 |
-| `src/common/datas.spec.ts` | 14 | 4 |
+| `src/common/datas.spec.ts` | 25 | 6 |
 | `src/common/filters/dominio-exception.filter.spec.ts` | 3 | 1 |
 | `src/common/guards/jwt-auth.guard.spec.ts` | 7 | 1 |
 | `src/common/guards/perfil.guard.spec.ts` | 5 | 1 |
@@ -71,7 +71,7 @@
 | `src/feedforward/feedforward.domain.spec.ts` | 7 | 2 |
 | `src/feriados/feriados.domain.spec.ts` | 4 | 1 |
 | `src/ferias/ferias.domain.spec.ts` | 13 | 7 |
-| `src/ferias/ferias.service.spec.ts` | 9 | 1 |
+| `src/ferias/ferias.service.spec.ts` | 12 | 1 |
 | `src/fiscais/escala-colaborador.spec.ts` | 4 | 1 |
 | `src/fiscais/escala-inativo.spec.ts` | 1 | 1 |
 | `src/fiscais/escalados-feriado.spec.ts` | 8 | 1 |
@@ -141,7 +141,8 @@
 |---|---|---|
 | `src/components/LeitorCodigoBarras.test.tsx` | 4 | 1 |
 | `src/components/SeletorData.test.tsx` | 4 | 1 |
-| `src/components/SeletorPeriodo.test.tsx` | 14 | 4 |
+| `src/components/SeletorPeriodo.test.tsx` | 17 | 5 |
+| `src/hooks/useAvisoCicloFolha.test.ts` | 7 | 1 |
 | `src/offline/fila.test.ts` | 6 | 2 |
 | `src/offline/sincronizacao.test.tsx` | 7 | 2 |
 | `src/screens/HomeScreen.test.tsx` | 5 | 1 |

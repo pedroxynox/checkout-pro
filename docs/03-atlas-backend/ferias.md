@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/ferias/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `backend/src/ferias/`
 
 # Módulo: `ferias`
 
@@ -23,9 +23,9 @@ gera falta automática — mas continua `ativo` (não é desligamento).
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `ferias.controller.ts` | Rotas HTTP (registrar/listar/remover) | 69 |
-| `ferias.service.ts` | Regras de aplicação: período, sobreposição, avisos | 209 |
-| `ferias.domain.ts` | Regras puras: está de férias, sobreposição, validação, encerrada | 106 |
+| `ferias.controller.ts` | Rotas HTTP (registrar/listar/remover) | 77 |
+| `ferias.service.ts` | Regras de aplicação: período, sobreposição, duração, avisos | 226 |
+| `ferias.domain.ts` | Regras puras: está de férias, sobreposição, validação, duração, encerrada | 117 |
 | `ferias.errors.ts` | Erros de domínio (mapeados para HTTP) | 49 |
 | `ferias.module.ts` | Ligações (DI); exporta o `FeriasService` | 20 |
 | `dto/ferias.dto.ts` | Validação de entrada das rotas | 54 |
@@ -45,7 +45,9 @@ gera falta automática — mas continua `ativo` (não é desligamento).
 
 #### `registrarFerias(colaboradorId, inicio, fim, dados?, autor?)`
 - **Recebe:** a ficha, o intervalo inclusivo e uma observação opcional.
-- **Devolve:** a `FeriasColaborador` criada.
+- **Devolve:** `FeriasRegistrada` — o registro criado **mais `dias`** (a duração
+  em dias corridos). O valor vem da própria validação do domínio, que antes o
+  calculava e descartava, deixando o app sem alternativa a não ser recontar.
 - **Efeitos:** valida o período (domínio); confirma que o colaborador existe;
   rejeita sobreposição com férias já cadastradas do mesmo colaborador; cria o
   registro (datas truncadas a 00:00 UTC); avisa todos (best-effort). **Não toca
@@ -80,6 +82,10 @@ Remove um período (404 `FeriasNaoEncontradaError` se não existir).
   (impede cadastrar férias em cima de férias).
 - `validarPeriodoFerias(inicio, fim)` → rejeita intervalo invertido ou longo
   demais (`MAX_DIAS_FERIAS = 366`); devolve os dias corridos quando ok.
+- `diasDeFerias(periodo)` → duração em **dias corridos**, contando os dois
+  extremos (domingo, feriado e folga contam: são dias de férias como qualquer
+  outro). Delega a `contarDiasCorridos` de [`common/datas`](common.md), então
+  escrita e leitura usam a mesma conta.
 - `feriasEncerrada(periodo, referencia)` → o período já terminou (o `fim` é
   anterior ao dia de referência). É o corte da listagem operacional.
 - `inicioDoDiaUtc(data)` → trunca para a meia-noite UTC (rótulo do dia).
@@ -92,6 +98,11 @@ função pura `estaDeFerias`, nunca persistido como flag.
 ## 8. Dados que o módulo toca
 - **Escreve:** `FeriasColaborador` (cria/remove).
 - **Lê:** `FeriasColaborador`, `Colaborador` (nome/matrícula e existência).
+- **Não persiste a duração:** `dias` é **derivado** de `inicio`/`fim` na leitura,
+  sem coluna nem migração. É função pura das datas (que já são gravadas truncadas
+  a 00:00 UTC), então não pode divergir, e nada consulta férias por duração — ao
+  contrário de `Atestado.dias`, que é persistido porque a regra do INSS o **soma**
+  numa janela de 60 dias.
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
 
 ## 9. Dependências
@@ -119,12 +130,18 @@ função pura `estaDeFerias`, nunca persistido como flag.
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `ferias.domain.spec.ts` | Está de férias, sobreposição, validação e período encerrado (inclui property-based) | 13 |
-| `ferias.service.spec.ts` | Registro, sobreposição, quem está de férias no dia, vigência, corte das encerradas e remoção | 9 |
+| `ferias.service.spec.ts` | Registro, sobreposição, quem está de férias no dia, vigência, corte das encerradas, remoção e a **duração em dias** (ao registrar, ao listar e num único dia) | 12 |
 | `../fiscais/escalados-ferias.spec.ts` | `escaladosDoDia` exclui quem está de férias | 2 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
+- ⚠️ **Férias não passa por nenhum guard de ciclo de folha**, ao contrário de
+  atestado e ausência a prazo: não grava uma linha por dia, é um intervalo único
+  que a escala **lê**. A consequência é que registrar/cancelar férias retroativas
+  muda o que um ciclo já fechado mostra. O app **avisa** quando o período alcança
+  um ciclo fechado (sem bloquear); se algum dia isso precisar travar, o guard é
+  `exigirCiclosAbertos` de [`ciclo-folha`](ciclo-folha.md).
 - ⚠️ A exclusão da escala semanal (tela "Escala") só é aplicada quando há uma
   **data concreta** (`dataISO`); a grade semanal genérica (sem data) não conhece
   férias, pois elas são por dia — a "equipe do dia" e o cron, que operam por

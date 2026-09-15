@@ -40,6 +40,7 @@ export function SeletorPeriodo({
   rotuloFim = 'Fim',
   limiteAviso,
   textoAviso,
+  avisoExtra,
 }: {
   /** Data de início (ISO `yyyy-mm-dd`). */
   inicio: string;
@@ -57,6 +58,11 @@ export function SeletorPeriodo({
    */
   limiteAviso?: number;
   textoAviso?: string;
+  /**
+   * Aviso adicional, independente da duração (ex.: o período atravessa o
+   * fechamento da folha). `null` quando não há nada a dizer.
+   */
+  avisoExtra?: { texto: string; tom: 'info' | 'alerta' } | null;
 }): React.ReactElement {
   /**
    * Texto em edição no campo de duração. `null` significa "mostrar a duração
@@ -134,6 +140,10 @@ export function SeletorPeriodo({
       </Text>
 
       {mostrarAviso ? <Aviso tom="alerta" texto={textoAviso} /> : null}
+
+      {avisoExtra ? (
+        <Aviso tom={avisoExtra.tom} texto={avisoExtra.texto} />
+      ) : null}
     </View>
   );
 }

@@ -98,6 +98,29 @@ describe('FeriasService', () => {
     expect(ferias).toHaveLength(1);
   });
 
+  it('devolve a duração em dias ao registrar (10 a 20 = 11 dias)', async () => {
+    const { service } = criarServico();
+    const criada = await service.registrarFerias('col-1', dia(10), dia(20));
+    // Antes o domínio calculava os dias e o serviço os descartava, obrigando o
+    // app a recontar por conta própria.
+    expect(criada.dias).toBe(11);
+  });
+
+  it('listarFerias expõe a duração em dias corridos', async () => {
+    const { service } = criarServico();
+    await service.registrarFerias('col-1', dia(10), dia(20));
+    const lista = await service.listarFerias({ referencia: dia(15) });
+    expect(lista[0].dias).toBe(11);
+  });
+
+  it('um único dia de férias conta 1', async () => {
+    const { service } = criarServico();
+    const criada = await service.registrarFerias('col-1', dia(10), dia(10));
+    expect(criada.dias).toBe(1);
+    const lista = await service.listarFerias({ referencia: dia(10) });
+    expect(lista[0].dias).toBe(1);
+  });
+
   it('rejeita colaborador inexistente', async () => {
     const { service } = criarServico({ colaboradorExiste: false });
     await expect(
