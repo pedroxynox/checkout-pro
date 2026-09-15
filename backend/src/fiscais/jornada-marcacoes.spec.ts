@@ -14,10 +14,13 @@ describe('FiscaisService.jornadaDoDia — marcações do dia', () => {
       usuario: { findMany: () => Promise.resolve([]) },
       registroPontoFiscal: { findMany: () => Promise.resolve([]) },
       colaborador: {
-        findMany: ({ where }: { where?: { funcao?: { in?: string[] } } }) =>
-          // where.funcao.in => consulta de operadores; senão, mapaColaboradores.
+        // A consulta de operadores agora busca as fichas POR ID (as pessoas que
+        // bateram ponto no dia), e não por `funcao` — senão o painel de um dia
+        // passado perderia quem mudou de função depois. Sem `id.in` é a consulta
+        // do mapaColaboradores.
+        findMany: ({ where }: { where?: { id?: { in?: string[] } } }) =>
           Promise.resolve(
-            where?.funcao?.in
+            where?.id?.in?.includes('op1')
               ? [{ id: 'op1', nome: 'Karen Mendoza', funcao: 'OPERADOR' }]
               : [],
           ),
@@ -91,9 +94,9 @@ describe('FiscaisService.jornadaDoDia — marcações do dia', () => {
         usuario: { findMany: () => Promise.resolve([]) },
         registroPontoFiscal: { findMany: () => Promise.resolve([]) },
         colaborador: {
-          findMany: ({ where }: { where?: { funcao?: { in?: string[] } } }) =>
+          findMany: ({ where }: { where?: { id?: { in?: string[] } } }) =>
             Promise.resolve(
-              where?.funcao?.in
+              where?.id?.in?.includes('op1')
                 ? [{ id: 'op1', nome: 'Karen Mendoza', funcao: 'OPERADOR' }]
                 : [],
             ),

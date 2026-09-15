@@ -1119,24 +1119,33 @@ export class FiscaisService {
     diaEncerrado: boolean,
     ehFeriado: boolean,
   ): Promise<ItemJornada[]> {
-    const [colaboradores, batidas] = await Promise.all([
-      this.prisma.colaborador.findMany({
-        where: { ativo: true, funcao: { in: FUNCOES_PONTO_NAO_FISCAL } },
-        orderBy: { nome: 'asc' },
-      }),
-      this.prisma.batidaPonto.findMany({
-        where: { tipoPessoa: 'OPERADOR', data: dia },
-        orderBy: { hora: 'asc' },
-        select: { id: true, pessoaId: true, hora: true },
-      }),
-    ]);
+    // Quem bateu ponto como operador NESTE dia — e depois quem são essas
+    // pessoas. A ordem importa: buscar as fichas por `funcao` primeiro (como se
+    // fazia) apaga do painel de um dia PASSADO quem mudou de função depois. A
+    // função de hoje não decide o que aconteceu naquele dia; as batidas sim.
+    const batidas = await this.prisma.batidaPonto.findMany({
+      where: { tipoPessoa: 'OPERADOR', data: dia },
+      orderBy: { hora: 'asc' },
+      select: { id: true, pessoaId: true, hora: true, colaboradorId: true },
+    });
 
     const porPessoa = new Map<string, { id: string; hora: Date }[]>();
     for (const b of batidas) {
-      const arr = porPessoa.get(b.pessoaId) ?? [];
+      // Agrupa pela FICHA quando ela está gravada: é a chave estável da pessoa
+      // ao longo das mudanças de função. Num operador as duas coincidem.
+      const chave = b.colaboradorId ?? b.pessoaId;
+      const arr = porPessoa.get(chave) ?? [];
       arr.push({ id: b.id, hora: b.hora });
-      porPessoa.set(b.pessoaId, arr);
+      porPessoa.set(chave, arr);
     }
+
+    const colaboradores =
+      porPessoa.size === 0
+        ? []
+        : await this.prisma.colaborador.findMany({
+            where: { id: { in: [...porPessoa.keys()] } },
+            orderBy: { nome: 'asc' },
+          });
 
     const diaSemana = dia.getUTCDay();
     return Promise.all(
@@ -1462,31 +1471,43 @@ export class FiscaisService {
     agoraReal: Date,
     feriadoSet: Set<number>,
   ): Promise<ItemHorasExtras[]> {
-    const [colaboradores, batidas] = await Promise.all([
-      this.prisma.colaborador.findMany({
-        where: { ativo: true, funcao: { in: FUNCOES_PONTO_NAO_FISCAL } },
-        orderBy: { nome: 'asc' },
-      }),
-      this.prisma.batidaPonto.findMany({
-        where: { tipoPessoa: 'OPERADOR', data: { gte: inicioMes, lt: fimMes } },
-        orderBy: { hora: 'asc' },
-        select: { id: true, pessoaId: true, hora: true, data: true },
-      }),
-    ]);
+    // Como no painel do dia: primeiro as batidas do mês, depois quem são essas
+    // pessoas. Buscar as fichas por `funcao` apagava as extras JÁ TRABALHADAS de
+    // quem mudou de função no meio do mês — o cálculo do mês não pode depender do
+    // cargo de hoje.
+    const batidas = await this.prisma.batidaPonto.findMany({
+      where: { tipoPessoa: 'OPERADOR', data: { gte: inicioMes, lt: fimMes } },
+      orderBy: { hora: 'asc' },
+      select: {
+        id: true,
+        pessoaId: true,
+        hora: true,
+        data: true,
+        colaboradorId: true,
+      },
+    });
 
-    // Agrupar batidas por pessoa e por dia.
+    // Agrupar batidas por pessoa (pela FICHA, chave estável) e por dia.
     const porPessoaDia = new Map<
       string,
       Map<string, { id: string; hora: Date }[]>
     >();
     for (const b of batidas) {
+      const chave = b.colaboradorId ?? b.pessoaId;
       const diaKey = b.data.toISOString();
-      if (!porPessoaDia.has(b.pessoaId))
-        porPessoaDia.set(b.pessoaId, new Map());
-      const mapaPessoa = porPessoaDia.get(b.pessoaId)!;
+      if (!porPessoaDia.has(chave)) porPessoaDia.set(chave, new Map());
+      const mapaPessoa = porPessoaDia.get(chave)!;
       if (!mapaPessoa.has(diaKey)) mapaPessoa.set(diaKey, []);
       mapaPessoa.get(diaKey)!.push({ id: b.id, hora: b.hora });
     }
+
+    const colaboradores =
+      porPessoaDia.size === 0
+        ? []
+        : await this.prisma.colaborador.findMany({
+            where: { id: { in: [...porPessoaDia.keys()] } },
+            orderBy: { nome: 'asc' },
+          });
 
     return Promise.all(
       colaboradores

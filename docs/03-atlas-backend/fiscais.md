@@ -358,6 +358,16 @@ casos de ficha vazia, preencher os horários **primeiro**.
   perde metade dos casos — foi assim que a escala publicada passou a dizer
   "trabalha" sobre um fiscal que faltou. Qualquer consulta nova a `Ausencia` deve
   olhar **as duas chaves**.
+- ⚠️ **Listar pessoas por `funcao` apaga o passado de quem mudou de cargo.** O
+  painel do dia e as horas extras do mês buscavam as fichas por
+  `funcao: { in: FUNCOES_PONTO_NAO_FISCAL }` e só depois as batidas. Quando um
+  operador é promovido a fiscal, ele sai desse filtro e **desaparece dos dias em
+  que ainda era operador** — inclusive das horas extras já trabalhadas.
+
+  A ordem foi invertida: primeiro as batidas do período, depois as fichas de quem
+  bateu (`where: { id: { in } }`, sem filtro de função), agrupando por
+  `colaboradorId ?? pessoaId` — a ficha é a chave estável ao longo das mudanças de
+  cargo. Ver [ADR 0020](../02-arquitetura/decisoes/0020-mudanca-de-funcao-preserva-o-ponto.md).
 - ⚠️ **Coexistência de logs:** o status vem das batidas do Relógio de Ponto com
   fallback ao log legado (`RegistroPontoFiscal`); manter a ponte consistente é
   crítico para o painel não divergir.
