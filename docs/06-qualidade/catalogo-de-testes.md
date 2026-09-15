@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 121 arquivos, 946 casos. **Mobile:** 33 arquivos, 222 casos. **Total: 1168 casos.**
+> **Backend:** 121 arquivos, 948 casos. **Mobile:** 33 arquivos, 222 casos. **Total: 1170 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -71,7 +71,7 @@
 | `src/feedforward/feedforward.domain.spec.ts` | 7 | 2 |
 | `src/feriados/feriados.domain.spec.ts` | 4 | 1 |
 | `src/ferias/ferias.domain.spec.ts` | 13 | 7 |
-| `src/ferias/ferias.service.spec.ts` | 12 | 1 |
+| `src/ferias/ferias.service.spec.ts` | 14 | 1 |
 | `src/fiscais/escala-colaborador.spec.ts` | 4 | 1 |
 | `src/fiscais/escala-inativo.spec.ts` | 1 | 1 |
 | `src/fiscais/escalados-feriado.spec.ts` | 8 | 1 |

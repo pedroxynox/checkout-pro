@@ -33,7 +33,7 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 > que lê a marca de atestado/CID da falta do dia), distinguindo-o da falta comum.
 > No card **"Atestados do dia"**, além do nome e do CID, mostra-se o **período do
 > atestado** ("início até fim", de `atestadoInicio`/`atestadoFim`).
-| `FeriasCard.tsx` | Card + modal para colocar de férias, listar as em curso/futuras e cancelar | 416 |
+| `FeriasCard.tsx` | Card + modal para colocar de férias, listar as em curso/futuras (com filtro para incluir as encerradas) e cancelar | 471 |
 
 ## 4. Fluxo do usuário
 0. **Atalhos do topo:** "Ver jornada da equipe" (`FISCAIS_JORNADA`) e **"Publicar
@@ -101,9 +101,14 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
    dias corridos** (duração usual de um ciclo) — é só um alerta, não um bloqueio.
    A duração vem do **backend** (`dias` em `FeriasDetalhada` e na resposta do
    registro), tanto no aviso de confirmação quanto na lista.
-   Períodos já encerrados não aparecem (o backend não os devolve) — a tela é
-   operacional, e o registro continua guardado para os dias passados seguirem
-   corretos na escala. Todos esses cards são de gestão (programar período).
+   Períodos já encerrados não aparecem **por padrão** — a tela é operacional, e o
+   registro continua guardado para os dias passados seguirem corretos na escala.
+   O filtro **“Mostrar encerradas”** envia `incluirEncerradas` e os traz de volta,
+   que é o caminho para **cancelar umas férias lançadas por engano num período
+   passado**. Cada linha marca o estado: **“• em férias”** (em curso) ou
+   **“• encerrada”**; sem marca é uma férias programada — campos
+   `vigente`/`encerrada`, derivados no backend.
+   Todos esses cards são de gestão (programar período).
 Trata **carregando / erro / vazio**.
 
 ### Aviso de ciclo de folha (nos três fluxos de período)
@@ -190,9 +195,10 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
   não é exigido). O ajuste das datas saiu daqui: quem cuida do período é o
   `SeletorPeriodo`.
 - Em `FeriasCard`: mesma busca/seleção de colaborador e período; lista as férias
-  em curso/futuras com `vigente` e permite cancelar (com confirmação).
-  `DIAS_FERIAS_USUAIS = 30` é o limite do aviso de duração; `contarDiasCorridos`
-  fornece os dias exibidos na lista e na confirmação.
+  em curso/futuras com `vigente`/`encerrada` e permite cancelar (com confirmação).
+  `DIAS_FERIAS_USUAIS = 30` é o limite do aviso de duração; os dias exibidos vêm
+  do backend. O estado `mostrarEncerradas` entra nas dependências do
+  `useRequisicao`, para a lista recarregar ao alternar o filtro.
 - Em `AtestadosCard`: `isoDeslocado(dias)` (sobre `deslocarDiasISO`) para os
   limites da janela da listagem, que **começa em `hojeISO()`** — é o que descarta
   os atestados encerrados — ou em `-JANELA_ATRAS_DIAS` quando `mostrarEncerrados`
@@ -232,10 +238,10 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
 - ⚠️ A janela da listagem vai só **60 dias à frente**: um atestado programado para
   além disso não aparece. E com "mostrar encerrados" ela alcança **90 dias para
   trás** — um atestado mais antigo que isso continua inalcançável para exclusão.
-- ⚠️ **A lista de férias não tem o equivalente:** os períodos encerrados ficam
-  fora e não há filtro para trazê-los, então uma férias lançada por engano num
-  período passado não pode ser cancelada pela tela. O backend já aceita
-  `incluirEncerradas`, então é só trabalho de tela quando incomodar.
+- ⚠️ O filtro de férias **não tem recorte de janela**: ligá-lo traz o histórico
+  inteiro do colaborador (ou de todos). Hoje isso é irrelevante, mas com anos de
+  operação a lista cresce — o backend aceita `referencia`, então há por onde
+  limitar quando incomodar. (Em atestados o recorte já existe: 90 dias.)
 - ⚠️ Os limites dos avisos (**15** dias no atestado, **30** nas férias) são
   espelhos escritos à mão. O do atestado acompanha `LIMITE_INSS_DIAS` do
   backend; o das férias **não existe no backend** (lá o único teto é 366 dias),

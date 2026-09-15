@@ -6,6 +6,7 @@ import { inicioDoDia } from '../common/datas';
 import {
   diasDeFerias,
   estaDeFerias,
+  feriasEncerrada,
   periodosSobrepoem,
   validarPeriodoFerias,
 } from './ferias.domain';
@@ -41,6 +42,13 @@ export interface FeriasDetalhada {
   criadaEm: string;
   /** true quando o período engloba a data de referência (hoje, por padrão). */
   vigente: boolean;
+  /**
+   * true quando o período **já terminou** na data de referência. Só aparece
+   * verdadeiro com `incluirEncerradas`, já que sem ele os encerrados nem vêm.
+   * Junto com `vigente` dá os três estados sem o app comparar datas:
+   * `vigente` → em curso; `encerrada` → passada; nenhuma das duas → programada.
+   */
+  encerrada: boolean;
 }
 
 /**
@@ -196,6 +204,7 @@ export class FeriasService {
       registradaPorNome: f.registradaPorNome,
       criadaEm: f.criadaEm.toISOString(),
       vigente: estaDeFerias([{ inicio: f.inicio, fim: f.fim }], referencia),
+      encerrada: feriasEncerrada({ inicio: f.inicio, fim: f.fim }, referencia),
     }));
   }
 
