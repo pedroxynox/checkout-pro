@@ -28,6 +28,11 @@ export interface AtestadoDetalhado {
    * começar (programado) ou já encerrado.
    */
   vigente: boolean;
+  /**
+   * true quando o período já terminou. Com `vigente`, dá os três estados sem
+   * comparar datas no app: em curso, encerrado, ou (nenhum dos dois) programado.
+   */
+  encerrado: boolean;
 }
 
 /** Resumo do que foi desfeito ao excluir um atestado. */

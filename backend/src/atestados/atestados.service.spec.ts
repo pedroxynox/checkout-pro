@@ -121,13 +121,17 @@ describe('AtestadosService.listar (vigente)', () => {
         }: {
           where: { inicio: { lte: Date }; fim: { gte: Date } };
         }) =>
-          // Reproduz a interseção de períodos do serviço.
+          // Reproduz a interseção de períodos E a ordenação do serviço
+          // (`orderBy: { inicio: 'desc' }`), para que a ordem asseverada nos
+          // testes seja a real.
           Promise.resolve(
-            gravados.filter(
-              (a) =>
-                a.inicio.getTime() <= where.inicio.lte.getTime() &&
-                a.fim.getTime() >= where.fim.gte.getTime(),
-            ),
+            gravados
+              .filter(
+                (a) =>
+                  a.inicio.getTime() <= where.inicio.lte.getTime() &&
+                  a.fim.getTime() >= where.fim.gte.getTime(),
+              )
+              .sort((a, b) => b.inicio.getTime() - a.inicio.getTime()),
           ),
       },
       colaborador: {
@@ -194,6 +198,66 @@ describe('AtestadosService.listar (vigente)', () => {
       ...janela,
       referencia: dia('2026-07-10'),
     });
-    expect(lista.map((a) => a.id)).toEqual(['em-curso', 'programado']);
+    // Ordenado por início decrescente: o programado (20/07) vem antes do que
+    // está em curso (08/07). O encerrado (junho) fica fora da janela.
+    expect(lista.map((a) => a.id)).toEqual(['programado', 'em-curso']);
+  });
+
+  it('recuar o início da janela traz os encerrados de volta', async () => {
+    const service = criarServico([
+      atestadoFake('encerrado', '2026-06-01', '2026-06-05'),
+      atestadoFake('em-curso', '2026-07-08', '2026-07-12'),
+    ]);
+    // É o que o filtro "mostrar encerrados" faz: mesma consulta, janela maior.
+    const lista = await service.listar({
+      inicio: dia('2026-04-11'),
+      fim: janela.fim,
+      referencia: dia('2026-07-10'),
+    });
+    expect(lista.map((a) => a.id)).toEqual(['em-curso', 'encerrado']);
+  });
+
+  it('os três estados são distinguíveis por vigente/encerrado', async () => {
+    const service = criarServico([
+      atestadoFake('encerrado', '2026-06-01', '2026-06-05'),
+      atestadoFake('em-curso', '2026-07-08', '2026-07-12'),
+      atestadoFake('programado', '2026-07-20', '2026-07-25'),
+    ]);
+    const lista = await service.listar({
+      inicio: dia('2026-04-11'),
+      fim: janela.fim,
+      referencia: dia('2026-07-10'),
+    });
+    const porId = new Map(lista.map((a) => [a.id, a]));
+    expect(porId.get('em-curso')).toMatchObject({
+      vigente: true,
+      encerrado: false,
+    });
+    expect(porId.get('encerrado')).toMatchObject({
+      vigente: false,
+      encerrado: true,
+    });
+    expect(porId.get('programado')).toMatchObject({
+      vigente: false,
+      encerrado: false,
+    });
+  });
+
+  it('o último dia do período ainda NÃO está encerrado', async () => {
+    const service = criarServico([
+      atestadoFake('a1', '2026-07-08', '2026-07-10'),
+    ]);
+    const noUltimoDia = await service.listar({
+      ...janela,
+      referencia: dia('2026-07-10'),
+    });
+    expect(noUltimoDia[0]).toMatchObject({ vigente: true, encerrado: false });
+
+    const noDiaSeguinte = await service.listar({
+      inicio: dia('2026-04-11'),
+      fim: janela.fim,
+      referencia: dia('2026-07-11'),
+    });
+    expect(noDiaSeguinte[0]).toMatchObject({ vigente: false, encerrado: true });
   });
 });
