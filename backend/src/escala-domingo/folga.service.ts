@@ -80,11 +80,13 @@ export class FolgaService {
       }),
       diasSemana.length > 0
         ? this.prisma.escalaEntry.findMany({
-            where: { diaSemana: { in: diasSemana }, folga: true },
+            where: { diaSemana: { in: diasSemana } },
             select: {
               funcionarioId: true,
               colaboradorId: true,
               diaSemana: true,
+              folga: true,
+              especial: true,
             },
           })
         : Promise.resolve([]),
@@ -106,9 +108,13 @@ export class FolgaService {
     // Chave `diaSemana|id`, com as duas identidades da escala (o vínculo com a
     // ficha pode estar vazio em escalas antigas).
     const folgaNaEscala = new Set<string>();
+    // Convocações: exceções individuais que mandam a pessoa TRABALHAR nesse dia.
+    const convocadoNaEscala = new Set<string>();
     for (const e of entradasDeFolga) {
       for (const id of [e.funcionarioId, e.colaboradorId]) {
-        if (id) folgaNaEscala.add(`${e.diaSemana}|${id}`);
+        if (!id) continue;
+        if (e.folga) folgaNaEscala.add(`${e.diaSemana}|${id}`);
+        else if (e.especial) convocadoNaEscala.add(`${e.diaSemana}|${id}`);
       }
     }
 
@@ -119,6 +125,17 @@ export class FolgaService {
       ehFolga: (dia, ids) => {
         const diaSemana = dia.getUTCDay();
         const conhecidos = ids.filter((id): id is string => !!id);
+
+        // CONVOCAÇÃO primeiro: uma exceção individual que manda trabalhar vence
+        // a folga. É a única coisa que vence, e vence porque é o registro mais
+        // específico e mais recente que existe sobre aquele dia — é assim que se
+        // chama alguém no descanso. Sem este passo a convocação se perdia: a
+        // pessoa era chamada, não aparecia na lista de esperados, e ninguém
+        // cobrava o ponto dela; ou pior, a falta nascia e a revalidação a
+        // apagava cinco minutos depois, em laço.
+        for (const id of conhecidos) {
+          if (convocadoNaEscala.has(`${diaSemana}|${id}`)) return false;
+        }
 
         // Fonte 1: a escala semanal marca folga nesse dia.
         for (const id of conhecidos) {

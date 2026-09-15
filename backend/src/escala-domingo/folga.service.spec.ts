@@ -20,10 +20,18 @@ interface Cenario {
     folgaDiaSemana: number | null;
     grupoDomingo: string | null;
   }[];
+  /**
+   * Entradas da escala semanal. `folga` e `especial` são obrigatórios porque o
+   * serviço lê os dois: `folga` marca descanso e `especial` sem folga é uma
+   * CONVOCAÇÃO (que vence a folga da ficha). Um `EscalaEntry` real sempre traz
+   * as duas colunas; omiti-las aqui esconderia essa distinção.
+   */
   escala?: {
     funcionarioId: string;
     colaboradorId: string | null;
     diaSemana: number;
+    folga: boolean;
+    especial?: boolean;
   }[];
   ancora?: { data: Date; ordem: ('G1' | 'G2' | 'G3')[] } | null;
 }
@@ -74,7 +82,12 @@ describe('FolgaService', () => {
         { id: 'col-1', folgaDiaSemana: null, grupoDomingo: null },
       ],
       escala: [
-        { funcionarioId: 'col-1', colaboradorId: 'col-1', diaSemana: 2 },
+        {
+          funcionarioId: 'col-1',
+          colaboradorId: 'col-1',
+          diaSemana: 2,
+          folga: true,
+        },
       ],
     });
 
@@ -89,12 +102,83 @@ describe('FolgaService', () => {
         { id: 'col-2', folgaDiaSemana: null, grupoDomingo: null },
       ],
       escala: [
-        { funcionarioId: 'fiscal-2', colaboradorId: 'col-2', diaSemana: 2 },
+        {
+          funcionarioId: 'fiscal-2',
+          colaboradorId: 'col-2',
+          diaSemana: 2,
+          folga: true,
+        },
       ],
     });
 
     expect(await service.ehFolga(TERCA, ['col-2'])).toBe(true);
     expect(await service.ehFolga(TERCA, ['fiscal-2'])).toBe(true);
+  });
+
+  it('uma CONVOCAÇÃO por exceção vence a folga da ficha', async () => {
+    // O gestor chamou a pessoa no dia em que ela folgaria, gravando uma exceção
+    // individual. Se a folga continuasse valendo aqui, a convocação se perdia em
+    // todo lugar que consulta esta regra: a pessoa não entrava na lista de
+    // esperados (ninguém cobrava o ponto dela) e, se a falta fosse gravada por
+    // outro caminho, a revalidação a apagaria a cada cinco minutos, em laço.
+    const service = criarServico({
+      colaboradores: [{ id: 'col-3', folgaDiaSemana: 2, grupoDomingo: null }],
+      escala: [
+        {
+          funcionarioId: 'col-3',
+          colaboradorId: 'col-3',
+          diaSemana: 2,
+          folga: false,
+          especial: true,
+        },
+      ],
+    });
+
+    expect(await service.ehFolga(TERCA, ['col-3'])).toBe(false);
+  });
+
+  it('uma exceção marcada como FOLGA é dispensa, e continua sendo folga', async () => {
+    // Contrapeso do caso acima: se o `especial` sempre vencesse a folga,
+    // dispensar alguém pela escala semanal passaria a convocá-lo — o oposto do
+    // que o gestor quis. O que vence é a exceção que manda TRABALHAR.
+    const service = criarServico({
+      colaboradores: [
+        { id: 'col-4', folgaDiaSemana: null, grupoDomingo: null },
+      ],
+      escala: [
+        {
+          funcionarioId: 'col-4',
+          colaboradorId: 'col-4',
+          diaSemana: 2,
+          folga: true,
+          especial: true,
+        },
+      ],
+    });
+
+    expect(await service.ehFolga(TERCA, ['col-4'])).toBe(true);
+  });
+
+  it('uma entrada COMUM que escala a pessoa não vence a folga da ficha', async () => {
+    // A distinção importa: só a EXCEÇÃO é uma convocação. Uma entrada comum da
+    // escala semanal que diz "trabalha" não pode derrubar a folga da ficha — foi
+    // exatamente a escala desatualizada contra a ficha correta que gerou faltas
+    // indevidas em dia de descanso, e o viés conservador desta regra existe para
+    // isso.
+    const service = criarServico({
+      colaboradores: [{ id: 'col-5', folgaDiaSemana: 2, grupoDomingo: null }],
+      escala: [
+        {
+          funcionarioId: 'col-5',
+          colaboradorId: 'col-5',
+          diaSemana: 2,
+          folga: false,
+          especial: false,
+        },
+      ],
+    });
+
+    expect(await service.ehFolga(TERCA, ['col-5'])).toBe(true);
   });
 
   it('sem nenhuma fonte dizendo folga, é dia de trabalho', async () => {

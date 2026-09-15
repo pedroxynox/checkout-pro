@@ -106,10 +106,18 @@ escala publicada — antes só existia a entrada).
 
 ## 8. Dados que o módulo toca
 - **Lê:** `Colaborador`, `Feriado`, `EscalaEntry` (as `especial` para o horário e,
-  via `FolgaService`, **todas** as marcadas como folga), `Ausencia`,
+  via `FolgaService`, as de folga **e as convocações**), `Ausencia`,
   `Atestado` (indiretamente, pelo vínculo da ausência), `ConfigSistema`,
   `FeriasColaborador`.
 - **Escreve:** nada.
+
+> **As ausências são lidas pelas DUAS chaves.** `Ausencia.pessoaId` guarda o id
+> com que a pessoa bate ponto: para operadores e supervisores é o
+> `Colaborador.id`, mas para um **fiscal** é o `Fiscal.id` — outro registro, outro
+> id — e o vínculo com a ficha vai em `Ausencia.colaboradorId`. Procurar só por
+> `pessoaId` (o que se fazia) significava que a falta de um fiscal **nunca**
+> casava: este documento, que a equipe inteira lê, dizia "trabalha" sobre quem
+> faltou. Verificado em `fiscais/coerencia-escalados-escala.spec.ts`.
 
 ## 9. Dependências
 - **Depende de:** [`escala-domingo`](escala-domingo.md) (âncora do rodízio e

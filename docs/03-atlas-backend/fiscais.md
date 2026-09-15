@@ -104,11 +104,25 @@ Propaga em tempo real (mesmo canal WebSocket dos fiscais) o status ao vivo de um
 `PontoService` quando um operador bate ponto.
 
 #### `escaladosDoDia(dia)` / `jornadaDoDia(dia)` / `equipeDoDia(dia)` / `horasExtrasMes(mes?)`
-`escaladosDoDia` é a **fonte única** de quem deve trabalhar no dia (fiscais pela
-escala consolidada + operadores pelo cadastro/rodízio) e alimenta tanto a
-"equipe do dia" quanto a detecção automática de falta. **Quem está de férias no
-dia é excluído aqui** (pela ficha, via `FeriasService.colaboradoresDeFeriasNoDia`),
-então some da escala e não vira falta automática.
+`escaladosDoDia` diz quem deve trabalhar no dia (fiscais pela escala consolidada +
+operadores pelo cadastro/rodízio) e alimenta tanto a "equipe do dia" quanto a
+detecção automática de falta. **Quem está de férias no dia é excluído aqui** (pela
+ficha, via `FeriasService.colaboradoresDeFeriasNoDia`), então some da escala e não
+vira falta automática.
+
+> **Não é a "fonte única".** Ela é uma das três respostas para "quem trabalha
+> hoje" — as outras duas são o [Quadro de Operadores](operadores.md) e a
+> [escala publicada](escala-exportacao.md), que já convergiram em
+> `montarLinhaEscala`. Esta ainda tem forma própria (é uma **whitelist**: estar na
+> lista é a única informação, e não estar mistura folga, férias e "sem horário") e
+> só carrega a **entrada** — o cron não usa a saída. A coerência com a escala
+> publicada é verificada em `coerencia-escalados-escala.spec.ts`. Ver os riscos.
+
+**Exceções de horário** (`EscalaEntry.especial`) valem também para operadores e
+supervisores, na mesma precedência de `montarLinhaEscala`: a exceção vence o turno
+do cadastro. Antes o ramo dos operadores as ignorava por completo — a detecção
+esperava a pessoa no horário do turno padrão e não no que o gestor combinou com
+ela, e duas horas depois disso nascia uma falta em quem chegou no horário certo.
 
 **Quem está de FOLGA por qualquer fonte também é excluído aqui**, pela regra única
 ([`FolgaService`](escala-domingo.md)): antes cada ramo consultava só a sua fonte —
@@ -241,13 +255,37 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 | `escalados-ferias.spec.ts` | `escaladosDoDia` exclui quem está de férias | 2 |
 | `escalados-folga.spec.ts` | **Regressão:** `escaladosDoDia` respeita a folga das duas fontes — não escala o fiscal com folga na ficha mesmo com a escala semanal escalando (o caso real), nem quem tem folga na escala | 3 |
 | `escalados-feriado.spec.ts` | `escaladosDoDia` em feriado: horário de domingo (operador e fiscal), folga inalterada, fallback sem `entradaDom` e sem `FeriadosService` | 8 |
+| `coerencia-escalados-escala.spec.ts` | **Coerência entre `escaladosDoDia` e a [escala publicada](escala-exportacao.md):** dia normal, folga, falta do operador, **falta do fiscal** (a que a publicada não via, por causa da tradução de ids), exceção de horário, convocação em dia de folga — e os dois casos que impedem o laço da revalidação (a convocação vence a folga; a dispensa não) | 8 |
 | `integridade-vinculo.spec.ts` | Detecção de vínculos órfãos fiscal ↔ ficha (Fase 4) | 6 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `fiscais.service.ts` (1747 linhas) concentra status, painel, jornada,
-  extras, ranking e contexto — forte candidato a extrair sub-serviços.
+- 🔧 `fiscais.service.ts` concentra status, painel, jornada, extras, ranking e
+  contexto — forte candidato a extrair sub-serviços. (Tamanho atual em
+  [estado-e-métricas](../08-gestao/estado-e-metricas.md).)
+- ⚠️ **`escaladosDoDia` é a terceira forma de responder "quem trabalha hoje".** O
+  Quadro de Operadores e a escala publicada já convergiram em
+  `montarLinhaEscala`; esta não. O que ainda a separa:
+  1. **A fonte do horário do fiscal.** Aqui a hora vem da **escala semanal**
+     (`EscalaEntry.entrada`); em `montarLinhaEscala` vem sempre da **ficha**. Se as
+     duas divergirem para um fiscal, a detecção o espera num horário e a escala
+     publicada mostra outro. Qual das duas é a verdade para um fiscal é uma
+     **decisão de produto**, não um bug a corrigir sozinho — por isso não foi
+     unificada.
+  2. **A forma.** Whitelist sem estado nem saída, contra uma tabela de estados.
+     Um fiscal **sem `EscalaEntry`** para o dia simplesmente não existe aqui (não
+     sai como folga: não sai), então nunca recebe falta automática.
+  3. **A identidade.** `EscaladoDia` carrega o par `(pessoaId, tipoPessoa)` porque
+     o cron precisa gravar a falta com o id certo — `Fiscal.id` para fiscais,
+     `Colaborador.id` para os demais. `LinhaEscala` só conhece a ficha, então uma
+     unificação total teria de levar essa tradução por fora do domínio puro.
+- ⚠️ **A tradução de ids esconde bugs de leitura.** A falta de um fiscal é gravada
+  com `Fiscal.id` em `Ausencia.pessoaId` e o vínculo com a ficha em
+  `Ausencia.colaboradorId`. Quem procurar as ausências só por uma das colunas
+  perde metade dos casos — foi assim que a escala publicada passou a dizer
+  "trabalha" sobre um fiscal que faltou. Qualquer consulta nova a `Ausencia` deve
+  olhar **as duas chaves**.
 - ⚠️ **Coexistência de logs:** o status vem das batidas do Relógio de Ponto com
   fallback ao log legado (`RegistroPontoFiscal`); manter a ponte consistente é
   crítico para o painel não divergir.

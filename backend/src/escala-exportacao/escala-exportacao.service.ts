@@ -201,7 +201,20 @@ export class EscalaExportacaoService {
     return mapa;
   }
 
-  /** Ausências do intervalo por `colaboradorId|yyyy-mm-dd`. */
+  /**
+   * Ausências do intervalo por `colaboradorId|yyyy-mm-dd`.
+   *
+   * **Procura pelas DUAS chaves.** `Ausencia.pessoaId` guarda o id com que a
+   * pessoa bate ponto: para operadores e supervisores é o `Colaborador.id`, mas
+   * para um **fiscal** é o `Fiscal.id` — outro registro, outro id. O vínculo com
+   * a ficha vai em `Ausencia.colaboradorId`.
+   *
+   * Buscar só por `pessoaId` (que era o que se fazia) significava que a falta de
+   * um fiscal **nunca casava**: a escala publicada dizia "trabalha" sobre quem
+   * faltou, no documento que a equipe inteira lê. O `colaboradorId` é o que
+   * fecha a tradução, e é por ele que a chave do mapa é montada — quem consome é
+   * a linha da escala, que só conhece a ficha.
+   */
   private async ocorrencias(
     ids: string[],
     inicio: Date,
@@ -210,11 +223,12 @@ export class EscalaExportacaoService {
     if (ids.length === 0) return new Map();
     const ausencias = await this.prisma.ausencia.findMany({
       where: {
-        pessoaId: { in: ids },
+        OR: [{ pessoaId: { in: ids } }, { colaboradorId: { in: ids } }],
         data: { gte: inicio, lt: fimExclusivo },
       },
       select: {
         pessoaId: true,
+        colaboradorId: true,
         data: true,
         atestadoId: true,
         motivoJustificativa: true,
@@ -222,7 +236,11 @@ export class EscalaExportacaoService {
     });
     const mapa = new Map<string, { ehAtestado: boolean }>();
     for (const a of ausencias) {
-      mapa.set(`${a.pessoaId}|${isoDoDia(a.data)}`, {
+      // `colaboradorId` primeiro: é a chave da ficha, e a única que serve para
+      // um fiscal. `pessoaId` cobre as faltas antigas gravadas antes do vínculo
+      // existir (nelas as duas chaves são a mesma coisa).
+      const chave = a.colaboradorId ?? a.pessoaId;
+      mapa.set(`${chave}|${isoDoDia(a.data)}`, {
         // Mesma regra do Quadro de Operadores: atestado é a falta ligada a um
         // atestado (ou lançada com esse motivo).
         ehAtestado:

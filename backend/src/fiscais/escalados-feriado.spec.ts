@@ -73,6 +73,9 @@ function criarServico({
             )
           : Promise.resolve(operadores),
     },
+    // Exceções de horário: `escaladosDoDia` agora consulta a mesma fonte que a
+    // escala publicada. Nenhuma exceção nestes cenários.
+    escalaEntry: { findMany: () => Promise.resolve([]) },
   };
   const feriadosFake = { ehFeriado: () => Promise.resolve(ehFeriado) };
   const escalaFake = { escalaConsolidada: () => Promise.resolve(consolidada) };
@@ -187,6 +190,7 @@ describe('FiscaisService.escaladosDoDia — feriado usa o horário de domingo', 
     // `FeriadosService` é opcional: sem ele nada muda (comportamento antigo).
     const prismaFake = {
       colaborador: { findMany: () => Promise.resolve([TRABALHA_SEGUNDA]) },
+      escalaEntry: { findMany: () => Promise.resolve([]) },
     };
     const service = new FiscaisService(prismaFake as never);
 
