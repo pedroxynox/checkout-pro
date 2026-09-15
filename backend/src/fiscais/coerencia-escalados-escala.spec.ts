@@ -36,6 +36,11 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
     especialOperador?: { diaSemana: number; entrada: string; saida: string };
     /** Falta registrada. `pessoaId` distingue o id da batida do da ficha. */
     faltaDe?: 'OPERADOR' | 'FISCAL';
+    /**
+     * Hora gravada na escala SEMANAL da fiscal, quando se quer deixá-la em
+     * desacordo com a ficha dela (07:00) — o caso da escala velha.
+     */
+    entradaNaEscalaDaBia?: string;
   }
 
   /**
@@ -178,9 +183,9 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
       usuario: { findMany: () => Promise.resolve([]) },
     };
 
-    // A escala consolidada dos fiscais: a Bia trabalha na quarta, 07:00 — o
-    // MESMO horário da ficha dela, para que este teste não misture a divergência
-    // de falta com a divergência de fonte de horário do fiscal.
+    // A escala consolidada dos fiscais. Por padrão a Bia trabalha na quarta às
+    // 07:00 — o MESMO horário da ficha dela. `entradaNaEscalaDaBia` permite
+    // deixar a escala semanal em desacordo com a ficha (o caso da escala velha).
     const escalaFake = {
       escalaConsolidada: () =>
         Promise.resolve([
@@ -192,7 +197,7 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
             efetiva: {
               funcionarioId: 'fiscal-bia',
               diaSemana: 3,
-              entrada: '07:00',
+              entrada: cenario.entradaNaEscalaDaBia ?? '07:00',
               saida: '15:20',
               intervaloMin: 60,
               folga: false,
@@ -366,6 +371,33 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
     );
 
     expect(await folga.ehFolga(QUARTA, ['col-erick'])).toBe(false);
+  });
+
+  it('escala semanal VELHA e mais cedo: a detecção passa a usar a hora da ficha', async () => {
+    // O desencontro que a equipe sentia: a ficha (e a escala publicada que ela
+    // recebe) diz 07:00, mas a escala semanal ficou em 06:50 depois de uma edição
+    // que não sincronizou. A detecção cobrava 06:50 e marcava falta às 08:50 em
+    // quem chegou às 07:00. Agora as duas dizem 07:00.
+    const { deteccao, publicada } = await comparar({
+      entradaNaEscalaDaBia: '06:50',
+    });
+
+    expect(publicada.get('col-bia')).toBe('07:00');
+    expect(deteccao).toEqual(publicada);
+  });
+
+  it('escala semanal mais TARDE que a ficha: a detecção NÃO adianta a cobrança', async () => {
+    // O contrapeso, e a razão de a regra ser conservadora em vez de "a ficha
+    // manda": aqui usar a ficha (07:00) ADIANTARIA a cobrança que hoje é 08:00,
+    // criando falta em quem chega 07:30 confiando no horário antigo. A detecção
+    // segue em 08:00; a divergência aparece no `npm run integridade`, para o
+    // gestor resolver reabrindo o cadastro.
+    const { deteccao, publicada } = await comparar({
+      entradaNaEscalaDaBia: '08:00',
+    });
+
+    expect(publicada.get('col-bia')).toBe('07:00');
+    expect(deteccao.get('col-bia')).toBe('08:00');
   });
 
   it('exceção marcada como FOLGA continua sendo folga (dispensa, não convocação)', async () => {
