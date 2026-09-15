@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 121 arquivos, 936 casos. **Mobile:** 33 arquivos, 222 casos. **Total: 1158 casos.**
+> **Backend:** 121 arquivos, 943 casos. **Mobile:** 33 arquivos, 222 casos. **Total: 1165 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -29,7 +29,7 @@
 | `src/assistente/gemini.client.spec.ts` | 3 | 1 |
 | `src/atestados/atestado-converte-e-desfaz.spec.ts` | 12 | 3 |
 | `src/atestados/atestados.domain.spec.ts` | 13 | 5 |
-| `src/atestados/atestados.service.spec.ts` | 3 | 1 |
+| `src/atestados/atestados.service.spec.ts` | 7 | 2 |
 | `src/central-jornada/agrupar-atestados.spec.ts` | 12 | 3 |
 | `src/central-jornada/central-jornada.controller.spec.ts` | 2 | 2 |
 | `src/central-jornada/central-jornada.service.spec.ts` | 23 | 3 |
@@ -50,7 +50,7 @@
 | `src/common/config/jwt-secret.spec.ts` | 4 | 1 |
 | `src/common/correlation-id.middleware.spec.ts` | 3 | 1 |
 | `src/common/cors.spec.ts` | 5 | 1 |
-| `src/common/datas.spec.ts` | 25 | 6 |
+| `src/common/datas.spec.ts` | 28 | 7 |
 | `src/common/filters/dominio-exception.filter.spec.ts` | 3 | 1 |
 | `src/common/guards/jwt-auth.guard.spec.ts` | 7 | 1 |
 | `src/common/guards/perfil.guard.spec.ts` | 5 | 1 |

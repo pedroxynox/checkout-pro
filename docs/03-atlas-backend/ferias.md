@@ -78,6 +78,9 @@ Remove um período (404 `FeriasNaoEncontradaError` se não existir).
 ## 6. Lógica de domínio (funções puras)
 - `estaDeFerias(periodos, dia)` → verdadeiro se algum período engloba o dia.
 - `diaDentroDoPeriodo(dia, periodo)` → comparação em dia civil (ignora a hora).
+  Delega a `diaDentroDoPeriodo` de [`common/datas`](common.md), fonte única
+  partilhada com atestados (a marca `vigente`); aqui fica só a assinatura que
+  recebe o período como objeto.
 - `periodosSobrepoem(a, b)` → dois períodos compartilham ao menos um dia
   (impede cadastrar férias em cima de férias).
 - `validarPeriodoFerias(inicio, fim)` → rejeita intervalo invertido ou longo

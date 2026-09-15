@@ -7,10 +7,12 @@
  * do período, e avisa a gestão quando o mesmo CID passa de 15 dias em 60
  * (regra do INSS). Uso típico: gerente/supervisor.
  *
- * Também LISTA os atestados lançados na janela recente e permite **excluir** um
- * que foi lançado por engano. Excluir é uma correção destrutiva (apaga o
- * documento, apaga os dias que ele criou e devolve à condição de falta os dias
- * que já eram falta), então só aparece para gerente, supervisor e administrador —
+ * Também LISTA os atestados **em curso e programados** — os já encerrados ficam
+ * fora, porque esta é uma tela de operação e não um arquivo histórico — e
+ * permite **excluir** um que foi lançado por engano. Excluir é uma correção
+ * destrutiva (apaga o documento, apaga os dias que ele criou e devolve à
+ * condição de falta os dias que já eram falta), então só aparece para gerente,
+ * supervisor e administrador —
  * a mesma alçada da exclusão de falta em Justificativas, e o backend confere de
  * novo. Não há edição de atestado: para corrigir datas ou CID, exclua e lance
  * novamente.
@@ -61,8 +63,12 @@ const MAX_RESULTADOS = 8;
  */
 const PERFIS_EXCLUEM_ATESTADO = ['GERENTE', 'ADMINISTRADOR', 'SUPERVISOR'];
 
-/** Dias para trás e para frente na listagem de atestados lançados. */
-const JANELA_ATRAS_DIAS = 90;
+/**
+ * Dias para frente na listagem. A janela começa **hoje**: como o backend
+ * devolve os atestados que INTERSECTAM o período, a lista traz os que estão em
+ * curso (começaram antes mas ainda não terminaram) e os programados — e deixa
+ * de fora os já encerrados. É uma tela de operação, não um arquivo histórico.
+ */
 const JANELA_FRENTE_DIAS = 60;
 
 /**
@@ -93,12 +99,9 @@ export function AtestadosCard({
     [],
   );
   // Atestados lançados na janela recente (para conferir e corrigir).
+  // Atestados em curso e programados (os encerrados ficam fora).
   const lancados = useRequisicao<AtestadoDetalhado[]>(
-    () =>
-      atestadosService.listar(
-        isoDeslocado(-JANELA_ATRAS_DIAS),
-        isoDeslocado(JANELA_FRENTE_DIAS),
-      ),
+    () => atestadosService.listar(hojeISO(), isoDeslocado(JANELA_FRENTE_DIAS)),
     [],
   );
 
@@ -271,7 +274,7 @@ export function AtestadosCard({
         <View style={{ flex: 1 }}>
           <Text style={styles.titulo}>Atestados</Text>
           <Text style={styles.meta} numberOfLines={1}>
-            Lançar atestado com CID e excluir o que foi lançado por engano
+            Lançar atestado com CID e ver os que estão em curso
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={cores.textoSecundario} />
@@ -412,13 +415,13 @@ export function AtestadosCard({
                 desabilitado={!podeConfirmar}
               />
 
-              {/* Atestados lançados — conferir e corrigir. */}
-              <Text style={styles.secao}>Atestados lançados</Text>
+              {/* Atestados em curso e programados — conferir e corrigir. */}
+              <Text style={styles.secao}>Atestados em curso e programados</Text>
               {lancados.carregando ? (
                 <Carregando />
               ) : lista.length === 0 ? (
                 <Text style={styles.vazio}>
-                  Nenhum atestado lançado nos últimos {JANELA_ATRAS_DIAS} dias.
+                  Nenhum atestado em curso ou programado.
                 </Text>
               ) : (
                 lista.map((a) => (
@@ -426,6 +429,7 @@ export function AtestadosCard({
                     <View style={{ flex: 1 }}>
                       <Text style={styles.itemNome} numberOfLines={1}>
                         {a.nome}
+                        {a.vigente ? '  •  em atestado' : ''}
                       </Text>
                       <Text style={styles.itemMeta} numberOfLines={2}>
                         {isoParaDiaMes(a.inicio)} a {isoParaDiaMes(a.fim)} · {a.dias} dia(s) ·{' '}

@@ -7,7 +7,10 @@
  * cai dentro de algum período de férias, o colaborador é considerado "de
  * férias" naquele dia: some da escala e não gera falta automática.
  */
-import { contarDiasCorridos } from '../common/datas';
+import {
+  contarDiasCorridos,
+  diaDentroDoPeriodo as dentroDoPeriodo,
+} from '../common/datas';
 
 /** Um período de férias já persistido (só o que o domínio precisa). */
 export interface PeriodoFerias {
@@ -31,10 +34,7 @@ export function inicioDoDiaUtc(data: Date): Date {
  * influencia.
  */
 export function diaDentroDoPeriodo(dia: Date, periodo: PeriodoFerias): boolean {
-  const d = inicioDoDiaUtc(dia).getTime();
-  const i = inicioDoDiaUtc(periodo.inicio).getTime();
-  const f = inicioDoDiaUtc(periodo.fim).getTime();
-  return d >= i && d <= f;
+  return dentroDoPeriodo(dia, periodo.inicio, periodo.fim);
 }
 
 /**
