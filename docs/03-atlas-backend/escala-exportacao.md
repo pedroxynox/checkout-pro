@@ -71,7 +71,7 @@ amanhã justamente no horário em que ela é enviada à equipe.
 
 ## 6. Lógica de domínio (funções puras)
 Em `escala-publicada.domain.ts`:
-- `montarLinhaEscala({ ficha, dia, ancoraDomingo, ehFeriado, deFerias, especial, ocorrencia })`
+- `montarLinhaEscala({ ficha, dia, ancoraDomingo, ehFeriado, deFerias, deFolga, especial, ocorrencia })`
   → a linha de uma pessoa num dia, aplicando a **precedência** da seção 10.
 - `ordenarLinhas(linhas)` → quem entra mais cedo primeiro (a ordem em que o dia
   acontece na loja); quem não trabalha vai para o fim, por nome.
@@ -96,7 +96,8 @@ escala publicada — antes só existia a entrada).
 - `StatusEscala`: `TRABALHA`, `FOLGA`, `FALTA`, `ATESTADO`, `FERIAS`.
 
 ## 8. Dados que o módulo toca
-- **Lê:** `Colaborador`, `Feriado`, `EscalaEntry` (só as `especial`), `Ausencia`,
+- **Lê:** `Colaborador`, `Feriado`, `EscalaEntry` (as `especial` para o horário e,
+  via `FolgaService`, **todas** as marcadas como folga), `Ausencia`,
   `Atestado` (indiretamente, pelo vínculo da ausência), `ConfigSistema`,
   `FeriasColaborador`.
 - **Escreve:** nada.
@@ -113,11 +114,17 @@ escala publicada — antes só existia a entrada).
 **Precedência do estado de uma pessoa no dia** (a ordem é o coração do módulo):
 1. **Férias** ganham de tudo — período aprovado não tem turno nem falta.
 2. **Horário especial** do dia da semana (`EscalaEntry.especial`) prevalece sobre
-   o turno do cadastro: é a exceção que o gestor cadastrou justamente para isso.
-3. **Turno do cadastro**, pelas regras de dia útil / fim de semana / domingo com
+   a folga e sobre o turno do cadastro: é a exceção que o gestor cadastrou
+   justamente para isso — é assim que se convoca alguém no seu dia de descanso.
+3. **Folga pela regra única** (`FolgaService`: a ficha **ou** a escala semanal).
+   Vem depois do especial e **antes** do turno. Sem este passo, uma folga escrita
+   só na escala semanal e não marcada como exceção saía `FOLGA` no Quadro de
+   Operadores e `TRABALHA` aqui — a mesma classe de incoerência das férias, achada
+   pelo teste de coerência `coerencia-quadro-escala.spec.ts` (em `operadores`).
+4. **Turno do cadastro**, pelas regras de dia útil / fim de semana / domingo com
    rodízio / feriado.
-4. **Sem turno no dia ⇒ folga** (é o que "sem horário" significa aqui).
-5. **Ausência** só se aplica a quem deveria trabalhar: falta em dia de folga não
+5. **Sem turno no dia ⇒ folga** (é o que "sem horário" significa aqui).
+6. **Ausência** só se aplica a quem deveria trabalhar: falta em dia de folga não
    existe, e mostrá-la assustaria quem lê.
 
 **Quem não trabalha também aparece** (folga, falta, atestado, férias). Numa
@@ -142,6 +149,7 @@ que a equipe recebe.
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `escala-publicada.domain.spec.ts` | Precedência (férias, especial, folga, falta, atestado), feriado nas duas pontas, ordem por entrada, agrupamento por função, totais e a semana segunda→domingo | 14 |
+| `../operadores/coerencia-quadro-escala.spec.ts` | **Coerência** com o Quadro de Operadores: para o mesmo dia e pessoa, as duas vistas dizem o mesmo (trabalho, folga da ficha, folga da escala semanal com e sem exceção, férias, falta, atestado) | 7 |
 | `escala-exportacao.service.spec.ts` | Cobertura de todas as funções, feriado com nome, férias, exceção de horário, falta com turno preservado, grupo do domingo, inativos fora, e a grade semanal (sete células, regra por dia, ordem por nome) | 10 |
 
 > Contagem sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).

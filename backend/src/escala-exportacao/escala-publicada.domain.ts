@@ -32,11 +32,7 @@ export type FuncaoEscala = 'OPERADOR' | 'FISCAL' | 'SUPERVISOR';
 
 /** Estado de uma pessoa num dia da escala. */
 export type StatusEscala =
-  | 'TRABALHA'
-  | 'FOLGA'
-  | 'FALTA'
-  | 'ATESTADO'
-  | 'FERIAS';
+  'TRABALHA' | 'FOLGA' | 'FALTA' | 'ATESTADO' | 'FERIAS';
 
 /** Ficha necessária para montar a linha da escala. */
 export interface FichaColaboradorEscala extends FichaEscalaTurno {
@@ -79,11 +75,17 @@ export interface LinhaEscala {
  * Precedência (a ordem importa e é o coração desta função):
  *  1. **Férias** — período aprovado ganha de tudo; não há turno nem falta.
  *  2. **Horário especial** do dia da semana — é a exceção que o gestor cadastrou
- *     justamente para prevalecer sobre o turno padrão.
- *  3. **Turno do cadastro**, pelas regras de dia útil / fim de semana / domingo
+ *     justamente para prevalecer sobre o turno padrão (e sobre a folga da ficha:
+ *     é assim que se convoca alguém no seu dia de descanso).
+ *  3. **Folga pela regra única** (`deFolga`) — a ficha **ou** a escala semanal.
+ *     Vem depois do especial (que é a exceção explícita) e antes do turno,
+ *     porque uma folga escrita só na escala semanal não é visível para o turno
+ *     do cadastro. Sem este passo, o mesmo dia saía FOLGA no Quadro de
+ *     Operadores e TRABALHA aqui.
+ *  4. **Turno do cadastro**, pelas regras de dia útil / fim de semana / domingo
  *     com rodízio / feriado.
- *  4. **Sem turno no dia** ⇒ folga (é o que "sem horário" significa aqui).
- *  5. **Ausência** só é aplicada a quem deveria trabalhar: falta em dia de folga
+ *  5. **Sem turno no dia** ⇒ folga (é o que "sem horário" significa aqui).
+ *  6. **Ausência** só é aplicada a quem deveria trabalhar: falta em dia de folga
  *     não existe, e mostrá-la assustaria quem lê.
  */
 export function montarLinhaEscala(params: {
@@ -92,11 +94,25 @@ export function montarLinhaEscala(params: {
   ancoraDomingo: { data: Date; ordem: readonly GrupoDomingo[] } | null;
   ehFeriado: boolean;
   deFerias: boolean;
+  /**
+   * Resultado da **regra única de folga** (`FolgaService`): a ficha ou a escala
+   * semanal dizem que a pessoa descansa neste dia. Obrigatório de propósito —
+   * esquecê-lo era justamente o bug.
+   */
+  deFolga: boolean;
   especial: HorarioEspecialDia | null;
   ocorrencia: OcorrenciaDia | null;
 }): LinhaEscala {
-  const { ficha, dia, ancoraDomingo, ehFeriado, deFerias, especial, ocorrencia } =
-    params;
+  const {
+    ficha,
+    dia,
+    ancoraDomingo,
+    ehFeriado,
+    deFerias,
+    deFolga,
+    especial,
+    ocorrencia,
+  } = params;
   const base = {
     colaboradorId: ficha.colaboradorId,
     nome: ficha.nome,
@@ -115,6 +131,18 @@ export function montarLinhaEscala(params: {
   }
 
   const usaEspecial = especial != null;
+
+  // Folga pela regra única, depois da exceção do gestor e antes do turno.
+  if (!usaEspecial && deFolga) {
+    return {
+      ...base,
+      status: 'FOLGA',
+      entrada: null,
+      saida: null,
+      horarioEspecial: false,
+    };
+  }
+
   const entrada = usaEspecial
     ? especial.folga
       ? null
@@ -138,7 +166,11 @@ export function montarLinhaEscala(params: {
 
   return {
     ...base,
-    status: ocorrencia ? (ocorrencia.ehAtestado ? 'ATESTADO' : 'FALTA') : 'TRABALHA',
+    status: ocorrencia
+      ? ocorrencia.ehAtestado
+        ? 'ATESTADO'
+        : 'FALTA'
+      : 'TRABALHA',
     entrada,
     saida,
     horarioEspecial: usaEspecial,

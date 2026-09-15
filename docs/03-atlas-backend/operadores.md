@@ -293,6 +293,7 @@ Delegam às funções puras homônimas do domínio.
 | `falta-em-folga.spec.ts` | Recusa falta em dia de folga; marca normalmente em dia de trabalho; e o contrapeso: **ausência a prazo segue cobrindo a folga** | 3 |
 | `quadro-folga-escala.spec.ts` | O quadro mostra FOLGA quando só a escala semanal marca folga; a folga vence uma falta já gravada; TRABALHA quando nenhuma fonte diz folga; e a grade usa a mesma regra | 4 |
 | `quadro-ferias-escala.spec.ts` | Quem está de férias sai do roster do dia (inclusive no domingo) e dos totais; as férias vencem uma falta gravada; fora do período segue normal; sem o serviço de férias nada é excluído; a grade marca **FERIAS** só no dia coberto (sem apagar a linha da semana) e não conta férias na cobertura; o tablero ao vivo não espera quem está de férias; e o **aviso de cobertura** não conta quem está de férias nem grita quando ninguém era esperado | 14 |
+| `coerencia-quadro-escala.spec.ts` | **Coerência entre telas:** para o mesmo dia e pessoa, o Quadro e a [escala publicada](escala-exportacao.md) dizem o mesmo (trabalho, folga da ficha, folga da escala semanal com e sem exceção, férias, falta, atestado). É o teste que faltava — foi ele que achou a divergência de folga | 7 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
@@ -302,6 +303,12 @@ Delegam às funções puras homônimas do domínio.
   `OperadorTurno` antigo coexiste — ver [ADR 0004](../02-arquitetura/decisoes/0004-cadastro-unificado-e-escala-opcao-a.md).
 - 🔧 `operador-turno.service.ts` (1056 linhas) concentra grade, roster, ao vivo e
   analítica; candidato a extrair sub-serviços.
+- ✅ **Existe um teste de coerência entre as telas**
+  (`coerencia-quadro-escala.spec.ts`): para o mesmo dia e a mesma pessoa, o Quadro
+  e a escala publicada têm de dizer o mesmo. Foi ele que revelou a divergência de
+  folga, e é a rede que faltava — antes cada tela provava só o seu lado, e a
+  incoerência vivia no vão entre elas. **Um caso novo de escala deve ganhar uma
+  linha lá.**
 - ⚠️ **O Quadro é uma segunda fonte de "quem trabalha hoje".** A
   [ADR 0015](../02-arquitetura/decisoes/0015-ferias-inativacao-nao-rigida.md)
   assumiu que `FiscaisService.escaladosDoDia` era a **fonte única**, e por isso

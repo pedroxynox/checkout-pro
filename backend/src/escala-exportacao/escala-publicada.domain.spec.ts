@@ -50,6 +50,7 @@ function montar(parcial: Partial<ParamsMontar> = {}): LinhaEscala {
     ancoraDomingo: ANCORA,
     ehFeriado: false,
     deFerias: false,
+    deFolga: false,
     especial: null,
     ocorrencia: null,
     ...parcial,
@@ -131,7 +132,10 @@ describe('ordenarLinhas', () => {
   it('ordena por hora de entrada e joga quem não trabalha para o fim', () => {
     const linhas = [
       montar({ ficha: ficha({ colaboradorId: 'c3', nome: 'Zeca' }) }),
-      montar({ dia: SEGUNDA, ficha: ficha({ colaboradorId: 'c2', nome: 'Bia' }) }),
+      montar({
+        dia: SEGUNDA,
+        ficha: ficha({ colaboradorId: 'c2', nome: 'Bia' }),
+      }),
       montar({
         ficha: ficha({
           colaboradorId: 'c1',
@@ -151,7 +155,9 @@ describe('ordenarLinhas', () => {
 describe('agruparPorFuncao', () => {
   it('mantém a ordem fixa supervisor → fiscal → operador e omite seções vazias', () => {
     const linhas = [
-      montar({ ficha: ficha({ colaboradorId: 'a', nome: 'Op', funcao: 'OPERADOR' }) }),
+      montar({
+        ficha: ficha({ colaboradorId: 'a', nome: 'Op', funcao: 'OPERADOR' }),
+      }),
       montar({
         ficha: ficha({ colaboradorId: 'b', nome: 'Sup', funcao: 'SUPERVISOR' }),
       }),

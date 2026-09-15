@@ -15,9 +15,13 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
-import { GrupoDomingo, grupoFolgaNoDomingo } from '../escala-domingo/escala-domingo.domain';
+import {
+  GrupoDomingo,
+  grupoFolgaNoDomingo,
+} from '../escala-domingo/escala-domingo.domain';
 import { feriadosNacionais } from '../feriados/feriados.domain';
 import { FeriasService } from '../ferias/ferias.service';
+import { FolgaService } from '../escala-domingo/folga.service';
 import {
   FichaColaboradorEscala,
   FuncaoEscala,
@@ -90,6 +94,10 @@ export class EscalaExportacaoService {
     // mesmo padrão já usado por EscalaService e OperadorTurnoService.
     @Optional() private readonly escalaDomingo?: EscalaDomingoService,
     @Optional() private readonly ferias?: FeriasService,
+    // Regra ÚNICA de folga (ficha + escala semanal). Sem ela, uma folga escrita
+    // só na escala semanal (e não marcada como exceção) saía FOLGA no Quadro de
+    // Operadores e TRABALHA aqui — a mesma classe de incoerência das férias.
+    @Optional() private readonly folga?: FolgaService,
   ) {}
 
   /** Fichas ativas das funções escaladas, já no formato do domínio. */
@@ -249,6 +257,10 @@ export class EscalaExportacaoService {
         : Promise.resolve(new Set<string>()),
     ]);
 
+    const consultorFolga = this.folga
+      ? await this.folga.consultor([dia])
+      : null;
+
     const nomeFeriado = feriados.get(iso) ?? null;
     const linhas: LinhaEscala[] = fichas.map((ficha) =>
       montarLinhaEscala({
@@ -257,6 +269,7 @@ export class EscalaExportacaoService {
         ancoraDomingo,
         ehFeriado: nomeFeriado != null,
         deFerias: deFerias.has(ficha.colaboradorId),
+        deFolga: consultorFolga?.ehFolga(dia, [ficha.colaboradorId]) ?? false,
         especial:
           especiais.get(`${ficha.colaboradorId}|${dia.getUTCDay()}`) ?? null,
         ocorrencia: ocorrencias.get(`${ficha.colaboradorId}|${iso}`) ?? null,
@@ -307,6 +320,10 @@ export class EscalaExportacaoService {
           : new Set<string>(),
       );
     }
+    // A regra de folga carrega os sete dias de uma vez.
+    const consultorFolga = this.folga
+      ? await this.folga.consultor(diasISO.map((iso) => diaUTC(iso)))
+      : null;
 
     const dias: DiaSemanaEscala[] = diasISO.map((iso) => {
       const nome = feriados.get(iso) ?? null;
@@ -332,6 +349,7 @@ export class EscalaExportacaoService {
           ehFeriado: d.ehFeriado,
           deFerias:
             feriasPorDia.get(d.dataISO)?.has(ficha.colaboradorId) ?? false,
+          deFolga: consultorFolga?.ehFolga(dia, [ficha.colaboradorId]) ?? false,
           especial:
             especiais.get(`${ficha.colaboradorId}|${dia.getUTCDay()}`) ?? null,
           ocorrencia:
