@@ -233,3 +233,107 @@ describe('OperadorTurnoService — férias saem do quadro', () => {
     });
   });
 });
+
+/**
+ * O aviso diário de cobertura crítica também respeita as férias.
+ *
+ * Antes ele fazia a sua própria contagem (`escaladosNoDia`: a ficha menos a
+ * folga da ficha, menos as faltas), que ignorava as férias, a regra única de
+ * folga e o rodízio de domingo. O efeito era o pior possível num alerta:
+ * superestimar a cobertura e **não disparar** quando devia. Agora reaproveita o
+ * roster do dia, que já resolve os três.
+ */
+describe('OperadorTurnoService — aviso de cobertura respeita férias', () => {
+  const QUARTA_ISO = '2026-07-22';
+
+  beforeAll(() => {
+    jest.useFakeTimers();
+    // Quarta 22/07/2026, 12:00 em Brasília (15:00 UTC).
+    jest.setSystemTime(new Date('2026-07-22T15:00:00.000Z'));
+  });
+  afterAll(() => jest.useRealTimers());
+
+  let enviadas: { titulo: string; mensagem: string }[] = [];
+
+  /** `quantos` operadores ativos; os de `feriasDe` estão de férias na quarta. */
+  function criarServico(quantos: number, feriasDe: string[] = []) {
+    const cols = Array.from({ length: quantos }, (_, i) => ({
+      id: `c${i + 1}`,
+      nome: `Op ${i + 1}`,
+      genero: 'F',
+      turno: 'ABERTURA',
+      entradaSemana: '08:00',
+      saidaSemana: '16:00',
+      entradaFds: '08:00',
+      saidaFds: '16:00',
+      folgaDiaSemana: 1, // folga na segunda
+      grupoDomingo: null,
+      entradaDom: '08:00',
+      saidaDom: '16:00',
+      ativo: true,
+      criadoEm: new Date(),
+    }));
+
+    const prismaFake = {
+      colaborador: { findMany: () => Promise.resolve(cols) },
+      ausencia: { findMany: () => Promise.resolve([]) },
+      atestado: { findMany: () => Promise.resolve([]) },
+      escalaEntry: { findMany: () => Promise.resolve([]) },
+      incidenciaEscala: { findMany: () => Promise.resolve([]) },
+    };
+    const feriasFake = {
+      colaboradoresDeFeriasNoDia: (dia: Date) =>
+        Promise.resolve(
+          dia.toISOString().slice(0, 10) === QUARTA_ISO
+            ? new Set(feriasDe)
+            : new Set<string>(),
+        ),
+    };
+    const notificacoesFake = {
+      destinatariosComPermissao: () => Promise.resolve(['gestor-1']),
+      enviar: (_: unknown, msg: { titulo: string; mensagem: string }) => {
+        enviadas.push(msg);
+        return Promise.resolve();
+      },
+    };
+    return new OperadorTurnoService(
+      prismaFake as never,
+      notificacoesFake as never,
+      undefined,
+      undefined,
+      feriasFake as never,
+    );
+  }
+
+  beforeEach(() => {
+    enviadas = [];
+  });
+
+  it('não conta quem está de férias como estando no caixa', async () => {
+    // 3 operadores, 2 de férias → só 1 no caixa (antes diria 3).
+    const service = criarServico(3, ['c1', 'c2']);
+
+    await service.avisoCoberturaCritica();
+
+    expect(enviadas).toHaveLength(1);
+    expect(enviadas[0].mensagem).toContain('há 1 operadores no caixa');
+  });
+
+  it('não avisa quando ninguém era esperado (todos de férias)', async () => {
+    // Sem este corte, o aviso gritaria "0 operadores no caixa" num dia em que
+    // simplesmente não havia operação a cobrir.
+    const service = criarServico(2, ['c1', 'c2']);
+
+    await service.avisoCoberturaCritica();
+
+    expect(enviadas).toHaveLength(0);
+  });
+
+  it('sem férias, conta todos os escalados', async () => {
+    const service = criarServico(3);
+
+    await service.avisoCoberturaCritica();
+
+    expect(enviadas[0].mensagem).toContain('há 3 operadores no caixa');
+  });
+});

@@ -983,12 +983,6 @@ export class OperadorTurnoService {
     });
   }
 
-  /** Operadores que deveriam trabalhar num dia da semana (não estão de folga). */
-  private async escaladosNoDia(diaSemana: number): Promise<OperadorTurno[]> {
-    const operadores = await this.listar();
-    return operadores.filter((o) => o.folgaDiaSemana !== diaSemana);
-  }
-
   /**
    * Alerta semanal de faltas (segunda-feira 08:00 Brasília): envia aos gestores
    * o resumo das faltas dos últimos 7 dias (ranking e dia com mais faltas).
@@ -1030,26 +1024,31 @@ export class OperadorTurnoService {
   async avisoCoberturaCritica(): Promise<void> {
     if (!this.notificacoes) return;
     try {
-      const { dataISO, diaSemana } = agoraBrasilia();
-      const escalados = await this.escaladosNoDia(diaSemana);
-      const ids = escalados.map((o) => o.id);
-      if (ids.length === 0) return;
-      const diaInicio = new Date(`${dataISO}T00:00:00.000Z`);
-      const diaFim = addDias(diaInicio, 1);
-      const faltas = await this.prisma.ausencia.count({
-        where: { pessoaId: { in: ids }, data: { gte: diaInicio, lt: diaFim } },
+      // Reaproveita o roster do dia em vez de recontar por conta própria. A
+      // contagem antiga (`escaladosNoDia` = ficha menos a folga da ficha, menos
+      // as faltas) ignorava TRÊS coisas e por isso superestimava a cobertura —
+      // o erro que faz este aviso NÃO disparar quando devia:
+      //  - as FÉRIAS (a pessoa contava como se estivesse no caixa);
+      //  - a regra única de FOLGA (um dia de folga só na escala semanal);
+      //  - o RODÍZIO DE DOMINGO (contava quase todos, quando só 2 de 3 grupos
+      //    trabalham).
+      const dia = await this.diaOperadores();
+      const disponiveis = dia.trabalhando;
+      const ausentes = dia.faltas + dia.atestados;
+      // Ninguém era esperado hoje (loja fechada, todos de folga/férias): não há
+      // cobertura a alertar. Mesmo critério do alerta de fiscais, que não grita
+      // quando não há operação a cobrir.
+      if (disponiveis + ausentes === 0) return;
+      if (disponiveis >= COBERTURA_MINIMA) return;
+
+      const gestores = await this.notificacoes.destinatariosComPermissao(
+        'OPERADORES_AUSENCIAS',
+      );
+      if (gestores.length === 0) return;
+      await this.notificacoes.enviar(gestores, {
+        titulo: '⚠️ Cobertura baixa hoje',
+        mensagem: `Hoje (${NOMES_DIA[dia.diaSemana]}) há ${disponiveis} operadores no caixa — abaixo do mínimo de ${COBERTURA_MINIMA}${ausentes > 0 ? ` (${ausentes} ausência(s))` : ''}.`,
       });
-      const disponiveis = escalados.length - faltas;
-      if (disponiveis < COBERTURA_MINIMA) {
-        const gestores = await this.notificacoes.destinatariosComPermissao(
-          'OPERADORES_AUSENCIAS',
-        );
-        if (gestores.length === 0) return;
-        await this.notificacoes.enviar(gestores, {
-          titulo: '⚠️ Cobertura baixa hoje',
-          mensagem: `Hoje (${NOMES_DIA[diaSemana]}) há ${disponiveis} operadores no caixa — abaixo do mínimo de ${COBERTURA_MINIMA}${faltas > 0 ? ` (${faltas} falta(s))` : ''}.`,
-        });
-      }
     } catch (erro) {
       this.logger.warn(`Falha no aviso de cobertura: ${String(erro)}`);
     }
