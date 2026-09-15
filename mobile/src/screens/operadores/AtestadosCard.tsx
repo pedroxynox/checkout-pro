@@ -14,6 +14,10 @@
  * a mesma alçada da exclusão de falta em Justificativas, e o backend confere de
  * novo. Não há edição de atestado: para corrigir datas ou CID, exclua e lance
  * novamente.
+ *
+ * O período usa o `SeletorPeriodo`, que mostra a duração ao vivo e permite
+ * digitar os dias direto (um atestado de 5 dias não precisa mais ser contado de
+ * cabeça), com aviso acima de 15 dias corridos por causa do INSS.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -35,12 +39,16 @@ import {
 import type { AtestadoDetalhado } from '../../api/services/atestados';
 import { Colaborador } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
-import { Botao, CampoTexto, Carregando, SeletorData } from '../../components';
+import { Botao, CampoTexto, Carregando, SeletorPeriodo } from '../../components';
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
-import { hojeISO } from '../../utils/formato';
+import {
+  deslocarDiasISO,
+  hojeISO,
+  isoParaDiaMes,
+} from '../../utils/formato';
 
 /** Máximo de colaboradores mostrados na busca. */
 const MAX_RESULTADOS = 8;
@@ -56,17 +64,17 @@ const PERFIS_EXCLUEM_ATESTADO = ['GERENTE', 'ADMINISTRADOR', 'SUPERVISOR'];
 const JANELA_ATRAS_DIAS = 90;
 const JANELA_FRENTE_DIAS = 60;
 
+/**
+ * Dias de atestado a partir dos quais avisamos sobre o INSS. Espelha
+ * `LIMITE_INSS_DIAS` do backend, que é quem decide de verdade: lá o limite é
+ * avaliado sobre a soma dos dias do MESMO CID numa janela de 60 dias, então
+ * aqui o aviso fala só deste atestado.
+ */
+const LIMITE_INSS_DIAS = 15;
+
 /** Data ISO deslocada em `dias` a partir de hoje. */
 function isoDeslocado(dias: number): string {
-  const d = new Date(`${hojeISO()}T00:00:00.000Z`);
-  d.setUTCDate(d.getUTCDate() + dias);
-  return d.toISOString().slice(0, 10);
-}
-
-/** Formata "yyyy-mm-dd" como "dd/mm". */
-function ddmm(iso: string): string {
-  const [, mm, dd] = iso.slice(0, 10).split('-');
-  return `${dd}/${mm}`;
+  return deslocarDiasISO(hojeISO(), dias);
 }
 
 export function AtestadosCard({
@@ -166,11 +174,6 @@ export function AtestadosCard({
 
   const fechar = (): void => setAberto(false);
 
-  const mudarInicio = (iso: string): void => {
-    setInicio(iso);
-    if (iso > fim) setFim(iso);
-  };
-
   const cidInformado = semCid ? '' : (cidSelecionado ?? cidTexto).trim();
   const podeConfirmar =
     !!selId && (semCid || cidInformado.length > 0) && fim >= inicio && !ocupado;
@@ -222,7 +225,7 @@ export function AtestadosCard({
         : `\n\nOs ${a.dias} dia(s) de falta criados por este atestado serão apagados.`;
     const ok = await confirmar(
       'Excluir atestado',
-      `Excluir o atestado de ${a.nome} (${ddmm(a.inicio)} a ${ddmm(a.fim)}${a.cid ? ` · CID ${a.cid}` : ''})?` +
+      `Excluir o atestado de ${a.nome} (${isoParaDiaMes(a.inicio)} a ${isoParaDiaMes(a.fim)}${a.cid ? ` · CID ${a.cid}` : ''})?` +
         volta +
         '\n\nEsta ação não pode ser desfeita.',
     );
@@ -328,10 +331,17 @@ export function AtestadosCard({
                 </>
               )}
 
-              {/* 2) Período */}
+              {/* 2) Período — com contador de dias e duração editável. */}
               <View style={{ marginTop: espacamento.sm }}>
-                <SeletorData rotulo="Início" valor={inicio} aoMudar={mudarInicio} dataMinima={dataInicial} />
-                <SeletorData rotulo="Fim" valor={fim} aoMudar={setFim} dataMinima={inicio} />
+                <SeletorPeriodo
+                  inicio={inicio}
+                  fim={fim}
+                  aoMudarInicio={setInicio}
+                  aoMudarFim={setFim}
+                  dataMinima={dataInicial}
+                  limiteAviso={LIMITE_INSS_DIAS}
+                  textoAviso={`Este atestado já passa de ${LIMITE_INSS_DIAS} dias corridos. Pode ser caso de encaminhamento ao INSS — ao lançar, o sistema confirma somando os dias do mesmo CID nos últimos 60 dias.`}
+                />
               </View>
 
               {/* 3) CID */}
@@ -412,7 +422,7 @@ export function AtestadosCard({
                         {a.nome}
                       </Text>
                       <Text style={styles.itemMeta} numberOfLines={2}>
-                        {ddmm(a.inicio)} a {ddmm(a.fim)} · {a.dias} dia(s) ·{' '}
+                        {isoParaDiaMes(a.inicio)} a {isoParaDiaMes(a.fim)} · {a.dias} dia(s) ·{' '}
                         {a.cid ? `CID ${a.cid}` : 'sem CID'}
                         {a.registradaPorNome ? ` · por ${a.registradaPorNome}` : ''}
                       </Text>

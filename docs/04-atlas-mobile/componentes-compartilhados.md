@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `mobile/src/components/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `mobile/src/components/`
 
 # Componentes compartilhados
 
@@ -30,6 +30,7 @@ as telas importam de `../../components`.
 | `Estados.tsx` | `Carregando`, `MensagemErro`, `EstadoVazio` | Feedbacks padronizados de tela: spinner, erro (com "Tentar novamente") e vazio (ícone/título/descrição). | 83 |
 | `Diversos.tsx` | `Segmentado`, `LinhaInfo` | Controle segmentado (abas de seleção) e linha rótulo/valor. | 102 |
 | `SeletorData.tsx` | `SeletorData` | Seletor de data anterior/seguinte sobre ISO `yyyy-mm-dd` (UTC), com limites de futuro e data mínima. | 100 |
+| `SeletorPeriodo.tsx` | `SeletorPeriodo` | Período (início + fim) com **contador de dias ao vivo** e campo **Duração (dias)** editável: mexer nas datas atualiza a contagem, digitar a duração reposiciona o fim. Mover o início **preserva a duração** (desloca a janela). Avisa acima de `limiteAviso` dias, sem bloquear. | 153 |
 | `Graficos.tsx` | `GraficoPizza`, `GraficoBarrasVerticais`, `montarFatias`, `CORES_GRAFICO`; tipos `FatiaGrafico`, `BarraVertical` | Gráficos sem dependências externas além de `react-native-svg`: pizza (rosca) interativa com legenda e barras verticais. | 337 |
 | `LeitorCodigoBarras.tsx` | `LeitorCodigoBarras` | Modal de leitura de código de barras via `expo-camera`, com entrada manual como alternativa. | 177 |
 | `MarkdownTexto.tsx` | `MarkdownTexto` | Renderizador leve de Markdown (negrito, listas, títulos) para as respostas da assistente. | 134 |
@@ -58,6 +59,11 @@ as telas importam de `../../components`.
 - **Diálogos:** não chame `Alert`/`window.confirm`; use `confirmar`/`notificar`
   de [`utils/dialogos`](hooks-e-utilidades.md#42-dialogos), exibidos pelo
   `DialogHost` (único, montado no `App.tsx`).
+- **Períodos:** para escolher um intervalo cuja **duração importa** (atestado,
+  férias, ausência a prazo), use `SeletorPeriodo` em vez de dois `SeletorData`
+  soltos — ele mantém datas e duração coerentes e mostra quantos dias serão
+  gravados. Dois `SeletorData` seguem sendo o certo para filtros de consulta
+  (relatórios, painel de vendas), onde a duração não é o dado que se registra.
 
 ## 4. Dependências e integrações
 - **Tema:** `../theme` — base de todos os estilos.
@@ -76,9 +82,10 @@ Cobrem os componentes com lógica não trivial (o restante é visual):
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `SeletorData.test.tsx` | Navegação de dias e bloqueio de futuro/data mínima | 4 |
+| `SeletorPeriodo.test.tsx` | Contador de dias (plural/singular, feriados), duração digitada (válida, longa, texto, acima do máximo), mover início preservando a duração, mover fim, e o aviso na fronteira do limite | 14 |
 | `LeitorCodigoBarras.test.tsx` | Leitura, entrada manual e permissão de câmera | 4 |
 
-Total: **8 casos** em 2 arquivos. Os componentes puramente visuais (ex.:
+Total: **22 casos** em 3 arquivos. Os componentes puramente visuais (ex.:
 `Cartao`, `Selo`, `Aviso`) não têm teste dedicado.
 
 ## 6. Riscos e dívidas
@@ -89,3 +96,9 @@ Total: **8 casos** em 2 arquivos. Os componentes puramente visuais (ex.:
   suportado — adequado só às respostas da assistente.
 - ⚠️ `LeitorCodigoBarras` depende de hardware de câmera; a **entrada manual** é
   o caminho garantido em web/emulador (e nos testes).
+- ⚠️ `SeletorData` **não tem `dataMaxima`**, então `SeletorPeriodo` também não
+  limita o fim por cima: a duração máxima só é recusada pelo backend, ao salvar.
+  O campo de duração para em 366 dias apenas para não gerar datas absurdas.
+- ⚠️ Nenhum dos dois seletores usa date-picker nativo: são setas de um dia por
+  toque, iguais em web e Android. É o que torna o campo **Duração (dias)**
+  essencial para períodos longos — 30 dias seriam 30 toques.

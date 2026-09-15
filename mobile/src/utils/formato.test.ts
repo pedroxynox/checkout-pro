@@ -8,7 +8,13 @@
 import { diaSemanaHoje, formatarCronometro, hojeISO } from './formato';
 
 
-import { mascaraMilhar, parseNumeroBR } from './formato';
+import {
+  contarDiasCorridos,
+  deslocarDiasISO,
+  isoParaDiaMes,
+  mascaraMilhar,
+  parseNumeroBR,
+} from './formato';
 
 describe('hojeISO / diaSemanaHoje (fuso de Brasília)', () => {
   afterEach(() => {
@@ -80,5 +86,84 @@ describe('formatarCronometro', () => {
 
   it('nunca é negativo', () => {
     expect(formatarCronometro(-5000)).toBe('0:00');
+  });
+});
+
+
+describe('contarDiasCorridos (duração de períodos)', () => {
+  it('conta os dois extremos (10/10 a 14/10 = 5 dias)', () => {
+    expect(contarDiasCorridos('2026-10-10', '2026-10-14')).toBe(5);
+  });
+
+  it('mesmo dia conta 1', () => {
+    expect(contarDiasCorridos('2026-10-10', '2026-10-10')).toBe(1);
+  });
+
+  it('conta domingos e feriados como qualquer outro dia', () => {
+    // 01/01 é feriado e a semana inteira entra: o sistema grava todos os dias.
+    expect(contarDiasCorridos('2026-01-01', '2026-01-07')).toBe(7);
+  });
+
+  it('atravessa a virada de mês e de ano', () => {
+    expect(contarDiasCorridos('2026-10-28', '2026-11-03')).toBe(7);
+    expect(contarDiasCorridos('2026-12-30', '2027-01-02')).toBe(4);
+  });
+
+  it('conta o dia extra em ano bissexto', () => {
+    expect(contarDiasCorridos('2028-02-27', '2028-03-01')).toBe(4);
+  });
+
+  it('devolve 0 quando o período está invertido', () => {
+    expect(contarDiasCorridos('2026-10-14', '2026-10-10')).toBe(0);
+  });
+
+  it('devolve 0 quando a data é inválida', () => {
+    expect(contarDiasCorridos('', '2026-10-10')).toBe(0);
+    expect(contarDiasCorridos('2026-10-10', 'ontem')).toBe(0);
+  });
+});
+
+describe('deslocarDiasISO', () => {
+  it('avança e recua dias', () => {
+    expect(deslocarDiasISO('2026-10-10', 4)).toBe('2026-10-14');
+    expect(deslocarDiasISO('2026-10-10', -1)).toBe('2026-10-09');
+    expect(deslocarDiasISO('2026-10-10', 0)).toBe('2026-10-10');
+  });
+
+  it('atravessa meses e anos', () => {
+    expect(deslocarDiasISO('2026-10-31', 1)).toBe('2026-11-01');
+    expect(deslocarDiasISO('2026-12-31', 1)).toBe('2027-01-01');
+    expect(deslocarDiasISO('2027-01-01', -1)).toBe('2026-12-31');
+  });
+
+  it('respeita o ano bissexto', () => {
+    expect(deslocarDiasISO('2028-02-28', 1)).toBe('2028-02-29');
+  });
+
+  it('é a operação inversa de contarDiasCorridos', () => {
+    // Duração de 5 dias a partir de 10/10 termina em 14/10.
+    const fim = deslocarDiasISO('2026-10-10', 5 - 1);
+    expect(fim).toBe('2026-10-14');
+    expect(contarDiasCorridos('2026-10-10', fim)).toBe(5);
+  });
+
+  it('devolve string vazia para data inválida', () => {
+    expect(deslocarDiasISO('', 3)).toBe('');
+  });
+});
+
+describe('isoParaDiaMes', () => {
+  it('formata como dd/mm', () => {
+    expect(isoParaDiaMes('2026-10-14')).toBe('14/10');
+    expect(isoParaDiaMes('2026-01-01')).toBe('01/01');
+  });
+
+  it('aceita ISO com hora', () => {
+    expect(isoParaDiaMes('2026-10-14T00:00:00.000Z')).toBe('14/10');
+  });
+
+  it('devolve vazio para entrada inválida', () => {
+    expect(isoParaDiaMes('14/10/2026')).toBe('');
+    expect(isoParaDiaMes('')).toBe('');
   });
 });

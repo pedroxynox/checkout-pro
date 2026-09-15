@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `mobile/src/screens/operadores/`
 
 # Área: `operadores`
 
@@ -25,15 +25,15 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 |---|---|---|
 | `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1937 |
 | `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 458 |
-| `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 481 |
-| `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) **e excluir** um lançado por engano | 542 |
+| `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 474 |
+| `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) **e excluir** um lançado por engano | 552 |
 
 > **Atestado na escala:** o status **ATESTADO** (azul + CID) aparece tanto no
 > roster de operadores quanto na **linha do fiscal** (via `fiscalComoColaboradorDia`,
 > que lê a marca de atestado/CID da falta do dia), distinguindo-o da falta comum.
 > No card **"Atestados do dia"**, além do nome e do CID, mostra-se o **período do
 > atestado** ("início até fim", de `atestadoInicio`/`atestadoFim`).
-| `FeriasCard.tsx` | Card + modal para colocar de férias, listar as em curso/futuras e cancelar | 406 |
+| `FeriasCard.tsx` | Card + modal para colocar de férias, listar as em curso/futuras e cancelar | 410 |
 
 ## 4. Fluxo do usuário
 0. **Atalhos do topo:** "Ver jornada da equipe" (`FISCAIS_JORNADA`) e **"Publicar
@@ -66,20 +66,34 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
    (ausenta por período, criando faltas justificadas em cada dia, inclusive a
    folga) e **Cancelar** (desmarca/anula uma ausência a prazo inteira do período
    escolhido). Os motivos **não** incluem "atestado médico" — atestado tem card
-   próprio (com CID); o modal traz uma dica apontando para ele.
-6. **Atestados (excluir):** o mesmo modal lista, abaixo do formulário, os
+   próprio (com CID); o modal traz uma dica apontando para ele. O período usa o
+   [`SeletorPeriodo`](componentes-compartilhados.md), com contador de dias ao
+   vivo e duração digitável (sem aviso de limite neste fluxo).
+6. **Atestados (lançar):** o período usa o
+   [`SeletorPeriodo`](componentes-compartilhados.md): o contador mostra quantos
+   dias corridos o atestado cobre e o campo **Duração (dias)** posiciona o fim
+   sozinho — um atestado de 5 dias não precisa mais ser contado de cabeça. Acima
+   de **15 dias corridos** aparece um aviso sobre possível encaminhamento ao
+   INSS. O aviso fala apenas **deste** atestado: a regra real soma os dias do
+   **mesmo CID** numa janela de 60 dias e só o servidor a avalia, devolvendo
+   `ultrapassaInss`/`totalDiasMesmoCid` ao lançar.
+7. **Atestados (excluir):** o mesmo modal lista, abaixo do formulário, os
    **atestados lançados** na janela recente (90 dias para trás e 60 para frente),
    com período, dias, CID e quem lançou. O botão **Excluir** só aparece para
    gerente, supervisor e administrador; a confirmação diz quantos dias serão
    apagados e quantos **voltarão a ser falta pendente**, e avisa que a ação não
    pode ser desfeita. Não há edição: para corrigir datas ou CID, exclua e lance
    de novo.
-7. **Férias:** o card abre um modal para colocar um colaborador de férias por um
+8. **Férias:** o card abre um modal para colocar um colaborador de férias por um
    período (some da escala, sem virar falta), listar as férias **em curso e
-   futuras** e cancelá-las. Períodos já encerrados não aparecem (o backend não os
-   devolve) — a tela é operacional, e o registro continua guardado para os dias
-   passados seguirem corretos na escala. Ambos os cards são de gestão (programar
-   período).
+   futuras** e cancelá-las. O período usa o
+   [`SeletorPeriodo`](componentes-compartilhados.md), com aviso acima de **30
+   dias corridos** (duração usual de um ciclo) — é só um alerta, não um bloqueio.
+   A duração das férias é contada **no app**: o backend a calcula para validar,
+   mas não a devolve, então o card e a lista usam `contarDiasCorridos`.
+   Períodos já encerrados não aparecem (o backend não os devolve) — a tela é
+   operacional, e o registro continua guardado para os dias passados seguirem
+   corretos na escala. Todos esses cards são de gestão (programar período).
 Trata **carregando / erro / vazio**.
 
 ## 5. Dados e integração com o backend
@@ -144,17 +158,27 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
 - Em `JustificativasScreen`: `janela()` (últimos 30 dias em dia-calendário de
   Brasília), `coresStatus` e a ordenação por estado.
 - Em `AusenciasAPrazo`: filtro de busca com `MAX_RESULTADOS`, alternância de
-  modo (`registrar`/`cancelar`), regra de `podeConfirmar` (no cancelar o motivo
-  não é exigido) e empurrar o fim junto do início.
+  modo (`registrar`/`cancelar`) e regra de `podeConfirmar` (no cancelar o motivo
+  não é exigido). O ajuste das datas saiu daqui: quem cuida do período é o
+  `SeletorPeriodo`.
 - Em `FeriasCard`: mesma busca/seleção de colaborador e período; lista as férias
   em curso/futuras com `vigente` e permite cancelar (com confirmação).
-- Em `AtestadosCard`: `isoDeslocado(dias)` e `ddmm(iso)` para a janela e os
-  rótulos da lista; `PERFIS_EXCLUEM_ATESTADO` (espelho do backend) decide se o
-  botão **Excluir** aparece — quem decide de verdade é o servidor, que devolve 403
-  para quem não tem alçada.
+  `DIAS_FERIAS_USUAIS = 30` é o limite do aviso de duração; `contarDiasCorridos`
+  fornece os dias exibidos na lista e na confirmação.
+- Em `AtestadosCard`: `isoDeslocado(dias)` (sobre `deslocarDiasISO`) para a
+  janela da listagem; `LIMITE_INSS_DIAS = 15` é o limite do aviso (espelho do
+  backend, que decide de verdade); `PERFIS_EXCLUEM_ATESTADO` (também espelho)
+  decide se o botão **Excluir** aparece — quem decide de verdade é o servidor,
+  que devolve 403 para quem não tem alçada.
+- Os três cards deixaram de ter o seu próprio `ddmm(iso)`: a formatação curta é
+  `isoParaDiaMes` em [`utils/formato`](hooks-e-utilidades.md).
 
 ## 8. Componentes e hooks compartilhados usados
 - `useRequisicao` — ver [Hooks e utilidades](hooks-e-utilidades.md).
+- `SeletorPeriodo` — período com contador de dias e duração editável, usado nos
+  três fluxos de período (ausência a prazo, atestado e férias).
+- `contarDiasCorridos`, `deslocarDiasISO` e `isoParaDiaMes` de `utils/formato` —
+  ver [Hooks e utilidades](hooks-e-utilidades.md).
 - `Tela`, `Cartao`, `Selo`, `SeletorData`, `CampoTexto`, `Botao`, `Aviso`,
   `EstadoVazio`, `MensagemErro`, `Carregando`, `Modal`/`ScrollView` (RN);
   `ApiError`, `confirmar`/`notificar`, `conectarPainelFiscais` (socket),
@@ -172,3 +196,15 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
   por tempo não geram batida.
 - ⚠️ Faltas de fiscais são alternadas por ausências do dia (eles não estão no
   roster de operadores); depende de `OPERADORES_AUSENCIAS`.
+- ⚠️ **A duração das férias é contada no app.** O backend calcula os dias em
+  `validarPeriodoFerias` mas não os persiste nem os devolve, então o número
+  exibido é recalculado no cliente. Se as duas contas divergirem algum dia, a
+  tela mostrará algo diferente do que o servidor validou — o certo seria o
+  backend expor `dias` em `FeriasDetalhada`.
+- ⚠️ Os limites dos avisos (**15** dias no atestado, **30** nas férias) são
+  espelhos escritos à mão. O do atestado acompanha `LIMITE_INSS_DIAS` do
+  backend; o das férias **não existe no backend** (lá o único teto é 366 dias),
+  então é uma convenção só da tela.
+- 🔧 O período cruzando o fechamento do ciclo de folha não é avisado: o backend
+  valida apenas o **primeiro** dia do intervalo. Agora que a duração fica
+  visível, um aviso de "este período atravessa o fechamento" seria natural.

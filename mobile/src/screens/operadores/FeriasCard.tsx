@@ -10,6 +10,10 @@
  * Períodos já ENCERRADOS não aparecem na lista (o backend não os devolve): é uma
  * tela de operação, não um arquivo histórico. O registro continua guardado — é
  * ele que faz os dias passados seguirem aparecendo como férias na escala.
+ *
+ * O período usa o `SeletorPeriodo`, que mostra a duração ao vivo e permite
+ * digitar os dias direto, com aviso acima de 30 dias corridos. A duração é
+ * contada **no app**: o backend calcula os dias mas não os devolve.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
@@ -25,21 +29,26 @@ import {
 import { ApiError } from '../../api/client';
 import { colaboradoresService, feriasService } from '../../api/services';
 import { Colaborador, FeriasDetalhada } from '../../api/types';
-import { Botao, CampoTexto, Carregando, SeletorData } from '../../components';
+import { Botao, CampoTexto, Carregando, SeletorPeriodo } from '../../components';
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
-import { hojeISO } from '../../utils/formato';
+import {
+  contarDiasCorridos,
+  hojeISO,
+  isoParaDiaMes,
+} from '../../utils/formato';
 
 /** Máximo de colaboradores mostrados na busca (evita listas enormes). */
 const MAX_RESULTADOS = 8;
 
-/** Formata "yyyy-mm-dd" como "dd/mm". */
-function ddmm(iso: string): string {
-  const [, mm, dd] = iso.slice(0, 10).split('-');
-  return `${dd}/${mm}`;
-}
+/**
+ * Duração usual de um ciclo de férias, em dias corridos. Acima disso o modal
+ * avisa — **não bloqueia**: o backend só recusa períodos acima de 366 dias, e
+ * casos legítimos mais longos existem (férias coletivas emendadas, licença).
+ */
+const DIAS_FERIAS_USUAIS = 30;
 
 export function FeriasCard({
   aoMudar,
@@ -90,11 +99,6 @@ export function FeriasCard({
 
   const fechar = (): void => setAberto(false);
 
-  const mudarInicio = (iso: string): void => {
-    setInicio(iso);
-    if (iso > fim) setFim(iso);
-  };
-
   const recarregar = (): void => {
     ferias.recarregar();
     aoMudar();
@@ -112,9 +116,11 @@ export function FeriasCard({
         fim,
         observacao: obs.trim() || undefined,
       });
+      // Os dias são contados aqui: o backend não devolve a duração das férias.
+      const dias = contarDiasCorridos(inicio, fim);
       notificar(
         'Férias registradas',
-        `${selNome}: ${ddmm(inicio)} a ${ddmm(fim)}.`,
+        `${selNome}: ${isoParaDiaMes(inicio)} a ${isoParaDiaMes(fim)} · ${dias} dia(s).`,
       );
       resetar();
       recarregar();
@@ -128,7 +134,7 @@ export function FeriasCard({
   const cancelar = async (f: FeriasDetalhada): Promise<void> => {
     const ok = await confirmar(
       'Cancelar férias',
-      `Cancelar as férias de ${f.nome} (${ddmm(f.inicio)} a ${ddmm(f.fim)})?`,
+      `Cancelar as férias de ${f.nome} (${isoParaDiaMes(f.inicio)} a ${isoParaDiaMes(f.fim)})?`,
     );
     if (!ok) return;
     try {
@@ -241,19 +247,16 @@ export function FeriasCard({
                 </>
               )}
 
-              {/* 2) Período */}
+              {/* 2) Período — com contador de dias e duração editável. */}
               <View style={{ marginTop: espacamento.sm }}>
-                <SeletorData
-                  rotulo="Início"
-                  valor={inicio}
-                  aoMudar={mudarInicio}
+                <SeletorPeriodo
+                  inicio={inicio}
+                  fim={fim}
+                  aoMudarInicio={setInicio}
+                  aoMudarFim={setFim}
                   dataMinima={dataInicial}
-                />
-                <SeletorData
-                  rotulo="Fim"
-                  valor={fim}
-                  aoMudar={setFim}
-                  dataMinima={inicio}
+                  limiteAviso={DIAS_FERIAS_USUAIS}
+                  textoAviso={`Este período passa de ${DIAS_FERIAS_USUAIS} dias corridos, o mais comum de um ciclo de férias. Confira se é intencional.`}
                 />
               </View>
 
@@ -262,7 +265,7 @@ export function FeriasCard({
                 rotulo="Observação (opcional)"
                 value={obs}
                 onChangeText={setObs}
-                placeholder="Ex.: férias 30 dias"
+                placeholder="Ex.: férias coletivas"
               />
 
               <Botao
@@ -289,7 +292,8 @@ export function FeriasCard({
                         {f.vigente ? '  •  em férias' : ''}
                       </Text>
                       <Text style={styles.itemMeta}>
-                        {ddmm(f.inicio)} a {ddmm(f.fim)}
+                        {isoParaDiaMes(f.inicio)} a {isoParaDiaMes(f.fim)} ·{' '}
+                        {contarDiasCorridos(f.inicio, f.fim)} dia(s)
                         {f.observacao ? ` — ${f.observacao}` : ''}
                       </Text>
                     </View>

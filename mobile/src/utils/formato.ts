@@ -91,6 +91,50 @@ export function isoParaDataBR(iso: string): string {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
 }
 
+/**
+ * Converte uma data ISO (yyyy-mm-dd) para "dd/mm" — forma curta usada quando o
+ * ano é óbvio pelo contexto (períodos de atestado, férias, ausência a prazo).
+ * Devolve string vazia quando a data não é válida.
+ */
+export function isoParaDiaMes(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.slice(0, 10));
+  return m ? `${m[3]}/${m[2]}` : '';
+}
+
+/** Um dia em milissegundos. */
+const UM_DIA_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Data ISO (yyyy-mm-dd) deslocada em `dias` (pode ser negativo). Opera em UTC,
+ * como o resto do app, então não sofre com horário de verão.
+ * Devolve string vazia quando a data de entrada não é válida.
+ */
+export function deslocarDiasISO(iso: string, dias: number): string {
+  const data = new Date(`${iso.slice(0, 10)}T00:00:00.000Z`);
+  if (Number.isNaN(data.getTime())) return '';
+  data.setUTCDate(data.getUTCDate() + dias);
+  return data.toISOString().slice(0, 10);
+}
+
+/**
+ * Total de **dias corridos** de um período `[inicio, fim]`, contando os dois
+ * extremos. Ex.: 10/10 a 14/10 → 5 dias.
+ *
+ * Espelha `contarDiasCorridos` do backend (`atestados.domain.ts`), que é quem
+ * conta de verdade os dias de atestado, férias e ausência a prazo: **domingos,
+ * feriados e folga contam**, porque o sistema registra um dia de ausência para
+ * cada dia corrido do intervalo. Por isso o número mostrado aqui é o mesmo que
+ * será gravado.
+ *
+ * Devolve 0 quando o período é inválido ou está invertido (`fim < inicio`).
+ */
+export function contarDiasCorridos(inicioISO: string, fimISO: string): number {
+  const d0 = new Date(`${inicioISO.slice(0, 10)}T00:00:00.000Z`).getTime();
+  const d1 = new Date(`${fimISO.slice(0, 10)}T00:00:00.000Z`).getTime();
+  if (Number.isNaN(d0) || Number.isNaN(d1) || d1 < d0) return 0;
+  return Math.round((d1 - d0) / UM_DIA_MS) + 1;
+}
+
 /** Formata uma data ISO/Date para dd/mm/aaaa HH:mm (horário local). */
 export function formatarDataHora(valor: string | Date): string {
   const data = typeof valor === 'string' ? new Date(valor) : valor;

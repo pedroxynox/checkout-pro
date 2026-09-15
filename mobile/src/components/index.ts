@@ -9,6 +9,7 @@ export { Skeleton } from './Skeleton';
 export { Carregando, MensagemErro, EstadoVazio } from './Estados';
 export { Segmentado, LinhaInfo } from './Diversos';
 export { SeletorData } from './SeletorData';
+export { SeletorPeriodo } from './SeletorPeriodo';
 export { Aviso } from './Aviso';
 export {
   GraficoPizza,
