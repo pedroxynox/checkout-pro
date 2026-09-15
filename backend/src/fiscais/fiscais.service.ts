@@ -217,6 +217,33 @@ export class FiscaisService {
   ) {}
 
   /**
+   * Exceções de horário de um dia da semana, por `Colaborador.id`.
+   *
+   * Mesma consulta que a escala publicada faz (`EscalaEntry.especial` com
+   * `colaboradorId` preenchido): são as entradas que existem justamente para
+   * prevalecer sobre o turno do cadastro. Entradas sem `colaboradorId` ficam de
+   * fora — sem a ficha não há como saber de quem é a exceção, e aplicá-la no
+   * palpite seria pior do que ignorá-la.
+   */
+  private async especiaisPorColaborador(
+    diaSemana: number,
+  ): Promise<Map<string, { entrada: string | null; folga: boolean }>> {
+    const entries = await this.prisma.escalaEntry.findMany({
+      where: { diaSemana, especial: true, colaboradorId: { not: null } },
+      select: { colaboradorId: true, entrada: true, folga: true },
+    });
+    const mapa = new Map<string, { entrada: string | null; folga: boolean }>();
+    for (const e of entries) {
+      if (!e.colaboradorId) continue;
+      mapa.set(e.colaboradorId, {
+        entrada: e.entrada ?? null,
+        folga: e.folga,
+      });
+    }
+    return mapa;
+  }
+
+  /**
    * Regras de jornada do colaborador (contrato atribuído) para o cálculo.
    * `undefined` quando não há serviço — o `calcularJornadaDia` cai no padrão.
    */
@@ -848,19 +875,34 @@ export class FiscaisService {
       where: { ativo: true, funcao: { in: FUNCOES_PONTO_NAO_FISCAL } },
       orderBy: { nome: 'asc' },
     });
+    // Exceções de horário do dia da semana (`EscalaEntry.especial`), a mesma
+    // fonte que a escala publicada consulta. O ramo dos fiscais já as recebia
+    // pela escala consolidada; o dos operadores as ignorava por completo — então
+    // a detecção esperava a pessoa no horário do turno padrão, e não no que o
+    // gestor combinou com ela. Duas horas depois disso nasce uma falta.
+    const especiais = await this.especiaisPorColaborador(diaSemana);
+
     const dosOperadores: EscaladoDia[] = colaboradores.flatMap((c) => {
-      const entrada = entradaEsperadaNoDia(
-        {
-          folgaDiaSemana: c.folgaDiaSemana,
-          grupoDomingo: c.grupoDomingo,
-          entradaSemana: c.entradaSemana,
-          entradaFds: c.entradaFds,
-          entradaDom: c.entradaDom,
-        },
-        inicio,
-        ancora ? { data: ancora.data, ordem: ancora.ordem } : null,
-        ehFeriado,
-      );
+      const especial = especiais.get(c.id) ?? null;
+      // Mesma precedência de `montarLinhaEscala`: a exceção vence o turno E a
+      // folga da ficha — é assim que se convoca alguém no seu dia de descanso.
+      // Uma exceção marcada como folga é uma dispensa, e sai da lista.
+      const entrada = especial
+        ? especial.folga
+          ? null
+          : especial.entrada
+        : entradaEsperadaNoDia(
+            {
+              folgaDiaSemana: c.folgaDiaSemana,
+              grupoDomingo: c.grupoDomingo,
+              entradaSemana: c.entradaSemana,
+              entradaFds: c.entradaFds,
+              entradaDom: c.entradaDom,
+            },
+            inicio,
+            ancora ? { data: ancora.data, ordem: ancora.ordem } : null,
+            ehFeriado,
+          );
       if (!entrada) return [];
       return [
         {
@@ -892,16 +934,23 @@ export class FiscaisService {
       : null;
 
     // Ordena por hora de entrada (mais cedo primeiro), depois por nome.
-    return [...dosFiscais, ...dosOperadores]
-      .filter((e) => !(e.colaboradorId && deFerias.has(e.colaboradorId)))
-      .filter(
-        (e) => !consultorFolga?.ehFolga(inicio, [e.pessoaId, e.colaboradorId]),
-      )
-      .sort((a, b) => {
-        const ea = a.entradaPrevista ?? '99:99';
-        const eb = b.entradaPrevista ?? '99:99';
-        return ea.localeCompare(eb) || a.nome.localeCompare(b.nome);
-      });
+    return (
+      [...dosFiscais, ...dosOperadores]
+        .filter((e) => !(e.colaboradorId && deFerias.has(e.colaboradorId)))
+        // A regra única de folga já sabe que uma convocação por exceção vence a
+        // folga (`FolgaService`), então quem foi chamado no descanso atravessa
+        // este filtro — e a revalidação, que usa a mesma regra, não apaga a falta
+        // dele cinco minutos depois.
+        .filter(
+          (e) =>
+            !consultorFolga?.ehFolga(inicio, [e.pessoaId, e.colaboradorId]),
+        )
+        .sort((a, b) => {
+          const ea = a.entradaPrevista ?? '99:99';
+          const eb = b.entradaPrevista ?? '99:99';
+          return ea.localeCompare(eb) || a.nome.localeCompare(b.nome);
+        })
+    );
   }
 
   /**

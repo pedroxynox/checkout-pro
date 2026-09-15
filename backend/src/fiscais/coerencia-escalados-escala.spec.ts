@@ -1,0 +1,398 @@
+import { EscalaExportacaoService } from '../escala-exportacao/escala-exportacao.service';
+import { FolgaService } from '../escala-domingo/folga.service';
+import { FeriadosService } from '../feriados/feriados.service';
+import { FiscaisService } from './fiscais.service';
+
+/**
+ * COERÊNCIA entre a TERCEIRA fonte de "quem trabalha hoje" e a escala publicada.
+ *
+ * O Quadro de Operadores e a escala publicada já convergiram em
+ * `montarLinhaEscala` (ver `operadores/coerencia-quadro-escala.spec.ts`).
+ * `FiscaisService.escaladosDoDia` **não**: ela monta a sua própria lista, e é a
+ * lista que mais importa acertar, porque não alimenta uma tela — alimenta o
+ * **cron de detecção automática**, que ESCREVE falta duas horas depois da
+ * entrada prevista. Aqui um desacordo não confunde quem lê: cria uma falta que
+ * ninguém cometeu, ou deixa de cobrar quem realmente faltou.
+ *
+ * Duas diferenças de forma, tratadas na comparação:
+ *
+ * 1. `escaladosDoDia` é uma **whitelist**, não uma tabela de estados: estar na
+ *    lista significa "espera-se esta pessoa hoje"; não estar mistura folga,
+ *    férias e "sem horário". Por isso comparamos contra o conjunto de quem a
+ *    escala publicada diz que TRABALHA (incluindo quem faltou — a falta não
+ *    muda quem era esperado).
+ * 2. `escaladosDoDia` só tem `entradaPrevista` (o cron não usa a saída). A
+ *    comparação de horário é só da entrada.
+ */
+describe('Coerência: escaladosDoDia × Escala publicada', () => {
+  // Quarta-feira, 22/07/2026 (diaSemana 3). Não é feriado nacional.
+  const QUARTA = new Date(Date.UTC(2026, 6, 22));
+  const QUARTA_ISO = '2026-07-22';
+
+  interface Cenario {
+    /** Dia da semana da folga na ficha do OPERADOR (1 = segunda). */
+    folgaOperador?: number;
+    /** Exceção de horário do OPERADOR para o dia da semana. */
+    especialOperador?: { diaSemana: number; entrada: string; saida: string };
+    /** Falta registrada. `pessoaId` distingue o id da batida do da ficha. */
+    faltaDe?: 'OPERADOR' | 'FISCAL';
+  }
+
+  /**
+   * Um operador e um fiscal sobre O MESMO Prisma falso.
+   *
+   * O fiscal existe para exercitar a tradução de ids: ele bate ponto com
+   * `Fiscal.id` (`fiscal-bia`) e a ficha dele é outro registro (`col-bia`). É
+   * essa dobra que faz a falta de um fiscal ser gravada com uma chave e lida com
+   * outra.
+   */
+  function montar(cenario: Cenario) {
+    const operador = {
+      id: 'col-erick',
+      nome: 'Erick',
+      genero: 'M',
+      funcao: 'OPERADOR',
+      turno: 'ABERTURA',
+      folgaDiaSemana: cenario.folgaOperador ?? 1,
+      grupoDomingo: null,
+      entradaSemana: '08:00',
+      saidaSemana: '16:00',
+      entradaFds: '09:00',
+      saidaFds: '17:00',
+      entradaDom: '07:00',
+      saidaDom: '13:00',
+      ativo: true,
+      criadoEm: new Date(),
+    };
+    const fiscalFicha = {
+      id: 'col-bia',
+      nome: 'Bia',
+      genero: 'F',
+      funcao: 'FISCAL',
+      turno: null,
+      folgaDiaSemana: 1,
+      grupoDomingo: null,
+      entradaSemana: '07:00',
+      saidaSemana: '15:20',
+      entradaFds: '07:00',
+      saidaFds: '15:20',
+      entradaDom: '07:00',
+      saidaDom: '13:00',
+      ativo: true,
+      criadoEm: new Date(),
+    };
+    const fichas = [operador, fiscalFicha];
+
+    const entradasEscala = cenario.especialOperador
+      ? [
+          {
+            funcionarioId: 'col-erick',
+            colaboradorId: 'col-erick',
+            diaSemana: cenario.especialOperador.diaSemana,
+            folga: false,
+            especial: true,
+            entrada: cenario.especialOperador.entrada,
+            saida: cenario.especialOperador.saida,
+          },
+        ]
+      : [];
+
+    // A falta do OPERADOR é gravada com o id da ficha; a do FISCAL, com o
+    // `Fiscal.id` — e o vínculo com a ficha vai em `colaboradorId`. É exatamente
+    // o que `FiscaisService.registrarFalta` faz.
+    const ausencias =
+      cenario.faltaDe === 'OPERADOR'
+        ? [
+            {
+              id: 'au1',
+              pessoaId: 'col-erick',
+              colaboradorId: 'col-erick',
+              data: new Date(`${QUARTA_ISO}T00:00:00.000Z`),
+              atestadoId: null,
+              motivoJustificativa: null,
+            },
+          ]
+        : cenario.faltaDe === 'FISCAL'
+          ? [
+              {
+                id: 'au2',
+                pessoaId: 'fiscal-bia',
+                colaboradorId: 'col-bia',
+                data: new Date(`${QUARTA_ISO}T00:00:00.000Z`),
+                atestadoId: null,
+                motivoJustificativa: null,
+              },
+            ]
+          : [];
+
+    const prismaFake = {
+      colaborador: {
+        findMany: (args?: {
+          where?: { funcao?: string | { in: string[] } };
+        }) => {
+          const f = args?.where?.funcao;
+          if (f == null) return Promise.resolve(fichas);
+          const aceitas = typeof f === 'string' ? [f] : f.in;
+          return Promise.resolve(
+            fichas.filter((c) => aceitas.includes(c.funcao)),
+          );
+        },
+        findFirst: () => Promise.resolve(null),
+      },
+      escalaEntry: {
+        findMany: (args?: {
+          where?: {
+            especial?: boolean;
+            folga?: boolean;
+            diaSemana?: number | { in: number[] };
+          };
+        }) => {
+          const w = args?.where ?? {};
+          return Promise.resolve(
+            entradasEscala.filter((e) => {
+              if (w.especial !== undefined && e.especial !== w.especial) {
+                return false;
+              }
+              if (w.folga !== undefined && e.folga !== w.folga) return false;
+              if (typeof w.diaSemana === 'number') {
+                return e.diaSemana === w.diaSemana;
+              }
+              if (w.diaSemana) return w.diaSemana.in.includes(e.diaSemana);
+              return true;
+            }),
+          );
+        },
+      },
+      ausencia: { findMany: () => Promise.resolve(ausencias) },
+      atestado: { findMany: () => Promise.resolve([]) },
+      feriado: {
+        findMany: () => Promise.resolve([]),
+        findUnique: () => Promise.resolve(null),
+      },
+      fiscal: {
+        findMany: () =>
+          Promise.resolve([
+            { id: 'fiscal-bia', nome: 'Bia', usuarioId: 'u-bia', ativo: true },
+          ]),
+      },
+      usuario: { findMany: () => Promise.resolve([]) },
+    };
+
+    // A escala consolidada dos fiscais: a Bia trabalha na quarta, 07:00 — o
+    // MESMO horário da ficha dela, para que este teste não misture a divergência
+    // de falta com a divergência de fonte de horário do fiscal.
+    const escalaFake = {
+      escalaConsolidada: () =>
+        Promise.resolve([
+          {
+            funcionarioId: 'fiscal-bia',
+            colaboradorId: 'col-bia',
+            nome: 'Bia',
+            matricula: null,
+            efetiva: {
+              funcionarioId: 'fiscal-bia',
+              diaSemana: 3,
+              entrada: '07:00',
+              saida: '15:20',
+              intervaloMin: 60,
+              folga: false,
+              especial: false,
+            },
+          },
+        ]),
+    };
+
+    const folga = new FolgaService(prismaFake as never, undefined);
+    const feriados = new FeriadosService(prismaFake as never);
+
+    // Ordem: prisma, eventos, notificacoes, validacaoData, feriados,
+    // cicloFolha, tiposContrato, escala, escalaDomingo, ferias, folga.
+    const escalados = new FiscaisService(
+      prismaFake as never,
+      undefined,
+      undefined,
+      undefined,
+      feriados,
+      undefined,
+      undefined,
+      escalaFake as never,
+      undefined,
+      undefined,
+      folga,
+    );
+    // Ordem: prisma, escalaDomingo, ferias, folga.
+    const publicada = new EscalaExportacaoService(
+      prismaFake as never,
+      undefined,
+      undefined,
+      folga,
+    );
+    return { escalados, publicada };
+  }
+
+  /** Quem `escaladosDoDia` espera hoje: `colaboradorId → entrada`. */
+  async function esperadosPelaDeteccao(
+    fiscais: FiscaisService,
+    dia: Date,
+  ): Promise<Map<string, string | null>> {
+    const lista = await fiscais.escaladosDoDia(dia);
+    return new Map(
+      lista.map((e) => [e.colaboradorId ?? e.pessoaId, e.entradaPrevista]),
+    );
+  }
+
+  /**
+   * Quem a escala publicada diz que era esperado hoje: `colaboradorId → entrada`.
+   *
+   * FALTA e ATESTADO entram: quem faltou **era** esperado (é o que torna a falta
+   * uma falta). O que não entra é FOLGA/FERIAS.
+   */
+  async function esperadosPelaPublicada(
+    publicada: EscalaExportacaoService,
+    dataISO: string,
+  ): Promise<Map<string, string | null>> {
+    const escala = await publicada.escalaDoDia(dataISO);
+    const linhas = escala.secoes.flatMap((s) => s.linhas);
+    return new Map(
+      linhas
+        .filter((l) => l.status !== 'FOLGA' && l.status !== 'FERIAS')
+        .map((l) => [l.colaboradorId, l.entrada]),
+    );
+  }
+
+  /** Estado que cada uma das duas fontes atribui ao dia. */
+  async function comparar(cenario: Cenario) {
+    const { escalados, publicada } = montar(cenario);
+    return {
+      deteccao: await esperadosPelaDeteccao(escalados, QUARTA),
+      publicada: await esperadosPelaPublicada(publicada, QUARTA_ISO),
+    };
+  }
+
+  /** O status que a escala publicada dá a uma pessoa (para os casos de falta). */
+  async function statusNaPublicada(
+    cenario: Cenario,
+    colaboradorId: string,
+  ): Promise<string | undefined> {
+    const { publicada } = montar(cenario);
+    const escala = await publicada.escalaDoDia(QUARTA_ISO);
+    return escala.secoes
+      .flatMap((s) => s.linhas)
+      .find((l) => l.colaboradorId === colaboradorId)?.status;
+  }
+
+  it('dia normal: as duas esperam as mesmas pessoas no mesmo horário', async () => {
+    const { deteccao, publicada } = await comparar({});
+
+    expect(deteccao.get('col-erick')).toBe('08:00');
+    expect(deteccao.get('col-bia')).toBe('07:00');
+    expect(deteccao).toEqual(publicada);
+  });
+
+  it('folga da ficha: nenhuma das duas espera a pessoa', async () => {
+    const { deteccao, publicada } = await comparar({ folgaOperador: 3 });
+
+    expect(deteccao.has('col-erick')).toBe(false);
+    expect(deteccao).toEqual(publicada);
+  });
+
+  it('falta do OPERADOR: as duas continuam esperando (a falta não apaga a escala)', async () => {
+    const { deteccao, publicada } = await comparar({ faltaDe: 'OPERADOR' });
+
+    expect(await statusNaPublicada({ faltaDe: 'OPERADOR' }, 'col-erick')).toBe(
+      'FALTA',
+    );
+    expect(deteccao).toEqual(publicada);
+  });
+
+  it('falta do FISCAL: a escala publicada TAMBÉM tem de mostrar FALTA', async () => {
+    // A falta de um fiscal é gravada com `Fiscal.id` em `pessoaId` (é o id com
+    // que ele bate ponto) e o vínculo com a ficha vai em `colaboradorId`. A
+    // escala publicada procurava as ausências SÓ por `pessoaId`, usando os ids
+    // das fichas — então a falta de um fiscal nunca casava, e o documento que a
+    // equipe lê dizia "trabalha" sobre quem faltou.
+    expect(await statusNaPublicada({ faltaDe: 'FISCAL' }, 'col-bia')).toBe(
+      'FALTA',
+    );
+  });
+
+  it('exceção de horário do OPERADOR: as duas usam o horário da exceção', async () => {
+    // A exceção do gestor para a quarta (10:00) prevalece sobre o turno da
+    // ficha (08:00). A escala publicada aplica; a detecção automática ignorava —
+    // e ficava esperando a pessoa duas horas antes do combinado, o que marca
+    // falta em quem chegou no horário certo.
+    const cenario: Cenario = {
+      especialOperador: { diaSemana: 3, entrada: '10:00', saida: '18:00' },
+    };
+    const { deteccao, publicada } = await comparar(cenario);
+
+    expect(publicada.get('col-erick')).toBe('10:00');
+    expect(deteccao).toEqual(publicada);
+  });
+
+  it('convocação por exceção no dia de folga da ficha: as duas esperam a pessoa', async () => {
+    // Uma exceção cadastrada para o dia em que a pessoa folga é justamente como
+    // se convoca alguém no descanso. A escala publicada a convoca (o `especial`
+    // vence a folga); a detecção automática a descartava no filtro de folga —
+    // ninguém cobrava o ponto de quem foi chamado.
+    const cenario: Cenario = {
+      folgaOperador: 3,
+      especialOperador: { diaSemana: 3, entrada: '10:00', saida: '18:00' },
+    };
+    const { deteccao, publicada } = await comparar(cenario);
+
+    expect(publicada.get('col-erick')).toBe('10:00');
+    expect(deteccao).toEqual(publicada);
+  });
+
+  it('a regra única de folga concorda: quem foi convocado NÃO está de folga', async () => {
+    // Este caso não é sobre as duas telas — é sobre o laço que a correção
+    // anterior poderia criar. A revalidação do Relógio Ponto apaga uma falta
+    // automática quando `FolgaService` diz que o dia era de folga. Se a
+    // convocação só fosse conhecida por `escaladosDoDia`, a falta de quem foi
+    // chamado e não veio nasceria e seria apagada a cada cinco minutos, num laço
+    // de notificações — pior do que o bug original.
+    //
+    // Por isso a convocação vive na regra ÚNICA de folga: quem a consulta
+    // (detecção, revalidação, Quadro, escala publicada) recebe a mesma resposta.
+    const { escalados } = montar({
+      folgaOperador: 3,
+      especialOperador: { diaSemana: 3, entrada: '10:00', saida: '18:00' },
+    });
+    const folga = new FolgaService(
+      // Reaproveita o mesmo Prisma falso do cenário, via o serviço já montado.
+      (escalados as unknown as { prisma: unknown }).prisma as never,
+      undefined,
+    );
+
+    expect(await folga.ehFolga(QUARTA, ['col-erick'])).toBe(false);
+  });
+
+  it('exceção marcada como FOLGA continua sendo folga (dispensa, não convocação)', async () => {
+    // O contrapeso do caso acima: uma exceção pode ser uma DISPENSA. Se o
+    // `especial` sempre vencesse a folga, dispensar alguém pela escala semanal
+    // passaria a convocá-lo — o oposto do que o gestor quis.
+    const { escalados } = montar({
+      especialOperador: { diaSemana: 3, entrada: '10:00', saida: '18:00' },
+    });
+    const prisma = (escalados as unknown as { prisma: unknown }).prisma as {
+      escalaEntry: { findMany: unknown };
+    };
+    // Reescreve a exceção do cenário como folga.
+    prisma.escalaEntry.findMany = () =>
+      Promise.resolve([
+        {
+          funcionarioId: 'col-erick',
+          colaboradorId: 'col-erick',
+          diaSemana: 3,
+          folga: true,
+          especial: true,
+          entrada: null,
+          saida: null,
+        },
+      ]);
+    const folga = new FolgaService(prisma as never, undefined);
+
+    expect(await folga.ehFolga(QUARTA, ['col-erick'])).toBe(true);
+  });
+});

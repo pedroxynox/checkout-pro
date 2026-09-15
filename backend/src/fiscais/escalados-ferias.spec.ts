@@ -36,6 +36,7 @@ describe('FiscaisService.escaladosDoDia — exclui quem está de férias', () =>
             },
           ]),
       },
+      escalaEntry: { findMany: () => Promise.resolve([]) },
     };
     const feriasFake = {
       colaboradoresDeFeriasNoDia: () => Promise.resolve(feriasSet),

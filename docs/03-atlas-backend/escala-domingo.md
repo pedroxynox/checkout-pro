@@ -79,12 +79,40 @@ descansando) e recebia **falta automática** duas horas depois — no próprio d
 descanso. E a falta não se curava: a auto-cura espera uma batida, que num dia de
 folga nunca chega.
 
-**A regra:** se **qualquer** uma das fontes diz que a pessoa descansa, é folga.
+**A regra:** se **qualquer** uma das fontes diz que a pessoa descansa, é folga —
+**exceto** quando existe uma **convocação**.
 
 O viés é deliberado e conservador. Quando as fontes discordam, o sistema não sabe
 a verdade — e entre "deixar de cobrar o ponto de alguém" e "marcar falta em quem
 estava descansando", o segundo erro é muito mais grave: um custa uma conversa, o
 outro mexe no registro de trabalho de uma pessoa.
+
+#### A convocação é a única coisa que vence a folga
+
+Uma **exceção individual que manda trabalhar** (`EscalaEntry` com
+`especial: true` e `folga: false`) derruba a folga da ficha. É o registro mais
+específico que existe sobre aquele dia, e é exactamente assim que se chama alguém
+no descanso.
+
+A distinção é fina e importa nas duas pontas:
+
+| Entrada na escala semanal | Resultado |
+|---|---|
+| `especial: true`, `folga: false` | **Convocação** — não é folga |
+| `especial: true`, `folga: true` | **Dispensa** — é folga |
+| `especial: false`, `folga: false` | Entrada comum — **não** vence a folga da ficha |
+| `especial: false`, `folga: true` | É folga |
+
+A terceira linha preserva o viés conservador: foi a escala semanal desatualizada
+contra a ficha correta que gerou faltas indevidas em dia de descanso, então uma
+entrada comum que diz "trabalha" **não** basta para convocar.
+
+Antes desta regra a convocação se perdia em todo lugar que consulta a folga:
+a pessoa era chamada, não entrava na lista de esperados do dia (ninguém cobrava o
+ponto dela) e — pior — se a falta nascesse por outro caminho, a revalidação do
+Relógio Ponto a apagava a cada cinco minutos, **em laço**, porque via um dia de
+folga. A precedência já existia em `montarLinhaEscala` (escala publicada e Quadro
+de Operadores); aqui ela passa a valer para a detecção automática também.
 
 O preço: se a fonte desatualizada for a que diz "folga", quem realmente trabalhou
 não é cobrado por não bater ponto. É uma **omissão visível** (a pessoa aparece de
@@ -93,7 +121,7 @@ que aparecia como fato consumado.
 
 | Método | O que faz |
 |---|---|
-| `consultor(dias)` | Carrega fichas + folgas da escala + âncora **de uma vez** e devolve `ehFolga(dia, ids)`. É o que a varredura de 5 minutos e o quadro usam. |
+| `consultor(dias)` | Carrega fichas + entradas da escala (folgas **e** convocações) + âncora **de uma vez** e devolve `ehFolga(dia, ids)`. É o que a varredura de 5 minutos e o quadro usam. |
 | `ehFolga(dia, ids)` | Atalho para uma pessoa num dia. |
 
 `ids` aceita a pessoa em **todas** as suas identidades (`Fiscal.id`,

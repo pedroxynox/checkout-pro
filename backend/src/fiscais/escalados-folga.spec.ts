@@ -43,6 +43,10 @@ describe('FiscaisService.escaladosDoDia — respeita a folga das duas fontes', (
             funcionarioId: 'fiscal-erick',
             colaboradorId: 'col-erick',
             diaSemana: 2,
+            // `folga`/`especial` são lidos pela regra única: `folga` marca
+            // descanso; `especial` sem folga seria uma convocação.
+            folga: true,
+            especial: false,
           },
         ]
       : [];

@@ -23,6 +23,20 @@
   `FERIAS` na grade semanal), mas a lição fica: **a exclusão não é central**, e
   cada construtor de escala precisa aplicá-la — ver os riscos em
   [`ferias`](../../03-atlas-backend/ferias.md) e [`operadores`](../../03-atlas-backend/operadores.md).
+- **Convergência (2026-09-15, depois):** a resposta à lição acima não foi
+  "lembrar de aplicar em cada lugar" — foi reduzir o número de lugares. O Quadro
+  de Operadores e a escala publicada passaram a decidir estado e horário pela
+  **mesma função pura**, `montarLinhaEscala`
+  ([`escala-exportacao`](../../03-atlas-backend/escala-exportacao.md)), e a folga
+  passou a ter uma regra única de verdade (`FolgaService`), incluindo a
+  **convocação** que vence o descanso. `escaladosDoDia` **não** foi unificada: ela
+  tem forma própria (whitelist, só entrada) e carrega a tradução
+  `Fiscal.id ↔ Colaborador.id` que o domínio puro não conhece; além disso, a fonte
+  do horário do fiscal (escala semanal × ficha) é uma decisão de produto ainda
+  aberta. O que se fez foi **prender as duas com um teste de coerência**
+  (`fiscais/coerencia-escalados-escala.spec.ts`), que já revelou três divergências
+  reais. A duplicação restante está documentada como risco em
+  [`fiscais`](../../03-atlas-backend/fiscais.md).
 - **Decisão:**
   1. **Modelo dedicado `FeriasColaborador`** (`id`, `colaboradorId`, `inicio`,
      `fim` inclusivos em 00:00 UTC, `observacao?`, auditoria e `criadaEm`), com
