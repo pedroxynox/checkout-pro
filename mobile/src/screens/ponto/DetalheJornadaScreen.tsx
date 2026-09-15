@@ -5,14 +5,14 @@
  * débito. Fica em tela própria para não pesar a Central: o backend carrega
  * apenas os dados desta pessoa.
  */
-import { useRoute } from '@react-navigation/native';
-import type { RouteProp } from '@react-navigation/native';
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ApiError } from '../../api/client';
-import { centralJornadaService } from '../../api/services';
-import { CentralDiaDetalhe } from '../../api/services/centralJornada';
-import { useAuth } from '../../auth/AuthContext';
+import { useRoute } from "@react-navigation/native";
+import type { RouteProp } from "@react-navigation/native";
+import React from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ApiError } from "../../api/client";
+import { centralJornadaService } from "../../api/services";
+import { CentralDiaDetalhe } from "../../api/services/centralJornada";
+import { useAuth } from "../../auth/AuthContext";
 import {
   Cartao,
   Carregando,
@@ -20,48 +20,53 @@ import {
   MensagemErro,
   Selo,
   Tela,
-} from '../../components';
-import { useRequisicao } from '../../hooks/useRequisicao';
-import { RootStackParamList } from '../../navigation/types';
-import { formatarDuracao } from '../../utils/formato';
-import { notificar } from '../../utils/dialogos';
-import { cores, espacamento, raio, tipografia } from '../../theme';
+} from "../../components";
+import { useRequisicao } from "../../hooks/useRequisicao";
+import { RootStackParamList } from "../../navigation/types";
+import { formatarDuracao } from "../../utils/formato";
+import { notificar } from "../../utils/dialogos";
+import { cores, espacamento, raio, tipografia } from "../../theme";
 
-const NOMES_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const NOMES_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 /** Saldo com sinal: "+2h 30min" / "−7h". */
 function formatarSaldo(ms: number): string {
-  if (ms === 0) return '0min';
-  const sinal = ms > 0 ? '+' : '−';
+  if (ms === 0) return "0min";
+  const sinal = ms > 0 ? "+" : "−";
   return `${sinal}${formatarDuracao(Math.abs(ms))}`;
 }
 
 function rotuloFuncao(f: string): string {
-  if (f === 'FISCAL') return 'Fiscal';
-  if (f === 'SUPERVISOR') return 'Supervisor';
-  if (f === 'OPERADOR') return 'Operador';
-  return 'Gestor';
+  if (f === "FISCAL") return "Fiscal";
+  if (f === "SUPERVISOR") return "Supervisor";
+  if (f === "OPERADOR") return "Operador";
+  return "Gestor";
 }
 
 function dataCurta(iso: string): string {
   const d = new Date(iso);
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
   return `${NOMES_SEMANA[d.getUTCDay()]} ${dd}/${mm}`;
 }
 
-function rotuloTipoDia(tipo: CentralDiaDetalhe['tipo']): string {
+function rotuloTipoDia(tipo: CentralDiaDetalhe["tipo"]): string {
   switch (tipo) {
-    case 'FALTA':
-      return 'Falta';
-    case 'FALTA_DEBITO':
-      return 'Falta (débito)';
-    case 'ATESTADO':
-      return 'Atestado';
-    case 'INCOMPLETO':
-      return 'Incompleto';
+    case "FALTA":
+      return "Falta";
+    case "FALTA_DEBITO":
+      return "Falta (débito)";
+    // Estava escalado, o dia terminou e não há ponto nem falta lançada. O rótulo
+    // diz "não registrada" de propósito: não é uma falta oficial (não existe
+    // `Ausencia`, não conta nos totais), é um dia que pede decisão do gestor.
+    case "FALTA_NAO_REGISTRADA":
+      return "Faltou (não registrada)";
+    case "ATESTADO":
+      return "Atestado";
+    case "INCOMPLETO":
+      return "Incompleto";
     default:
-      return 'Trabalho';
+      return "Trabalho";
   }
 }
 
@@ -75,9 +80,9 @@ function aceitaDebito(dia: CentralDiaDetalhe): boolean {
 }
 
 export function DetalheJornadaScreen(): React.ReactElement {
-  const route = useRoute<RouteProp<RootStackParamList, 'DetalheJornada'>>();
+  const route = useRoute<RouteProp<RootStackParamList, "DetalheJornada">>();
   const { podeAcessar } = useAuth();
-  const podeMarcarDebito = podeAcessar('OPERADORES_AUSENCIAS');
+  const podeMarcarDebito = podeAcessar("OPERADORES_AUSENCIAS");
   const { colaboradorId, ciclo, pessoa } = route.params;
 
   const detalhe = useRequisicao<{ dias: CentralDiaDetalhe[] } | null>(
@@ -91,12 +96,12 @@ export function DetalheJornadaScreen(): React.ReactElement {
       await centralJornadaService.marcarDebito(dia.ausenciaId, !dia.debito);
       detalhe.recarregar();
     } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao salvar.');
+      notificar("Erro", e instanceof ApiError ? e.message : "Falha ao salvar.");
     }
   }
 
   const dias = (detalhe.dados?.dias ?? []).filter(
-    (d) => d.tipo !== 'SEM_REGISTRO',
+    (d) => d.tipo !== "SEM_REGISTRO",
   );
 
   return (
@@ -210,53 +215,64 @@ export function DetalheJornadaScreen(): React.ReactElement {
               <View style={{ flex: 1 }}>
                 <Text style={styles.diaData}>
                   {dataCurta(d.data)}
-                  {d.ehFeriado ? ' • Feriado' : ''}
+                  {d.ehFeriado ? " • Feriado" : ""}
                 </Text>
                 <Text style={styles.diaInfo}>
                   {rotuloTipoDia(d.tipo)}
-                  {d.tipo === 'TRABALHO'
+                  {d.tipo === "TRABALHO"
                     ? ` • ${formatarDuracao(d.trabalhadoMs)} de ${formatarDuracao(d.baseMs)}`
-                    : ''}
+                    : ""}
                   {d.extras50Ms > 0
                     ? ` • +50% ${formatarDuracao(d.extras50Ms)}`
-                    : ''}
+                    : ""}
                   {d.extras100Ms > 0
                     ? ` • +100% ${formatarDuracao(d.extras100Ms)}`
-                    : ''}
+                    : ""}
                   {d.devidasMs > 0
                     ? ` • deve ${formatarDuracao(d.devidasMs)}`
-                    : ''}
+                    : ""}
                 </Text>
-                {d.tipo === 'INCOMPLETO' && d.faltando.length > 0 && (
+                {d.tipo === "INCOMPLETO" && d.faltando.length > 0 && (
                   <Text style={styles.diaIncompleto}>
-                    Falta registrar: {d.faltando.join(', ')}
+                    Falta registrar: {d.faltando.join(", ")}
                   </Text>
                 )}
                 {d.tac && (
                   <Text style={styles.diaTac}>
-                    TAC: {d.motivosTac.join('; ')}
+                    TAC: {d.motivosTac.join("; ")}
                   </Text>
                 )}
                 {d.conflitoAusencia && (
                   <Text style={styles.diaConflito}>
-                    ⚠️ Também há falta/atestado marcado neste dia. Verifique qual
-                    está correto.
+                    ⚠️ Também há falta/atestado marcado neste dia. Verifique
+                    qual está correto.
                   </Text>
                 )}
                 {d.atrasoMinutos != null && (
                   <Text style={styles.diaAtraso}>
                     Atraso de {d.atrasoMinutos} min na entrada
-                    {d.entradaPrevista ? ` (turno ${d.entradaPrevista})` : ''}.
+                    {d.entradaPrevista ? ` (turno ${d.entradaPrevista})` : ""}.
+                  </Text>
+                )}
+                {d.tipo === "FALTA_NAO_REGISTRADA" && (
+                  <Text style={styles.diaFaltaNaoRegistrada}>
+                    ⚠️ Estava escalado
+                    {d.entradaPrevista ? ` (turno ${d.entradaPrevista})` : ""} e
+                    não há ponto nem falta lançada. Lance a falta pela escala do
+                    dia se ele realmente não trabalhou.
                   </Text>
                 )}
               </View>
               {podeMarcarDebito &&
-                (d.tipo === 'FALTA' || d.tipo === 'FALTA_DEBITO') &&
+                (d.tipo === "FALTA" || d.tipo === "FALTA_DEBITO") &&
                 aceitaDebito(d) &&
                 d.ausenciaId && (
                   <Pressable
                     onPress={() => alternarDebito(d)}
-                    style={[styles.debitoBtn, d.debito && styles.debitoBtnAtivo]}
+                    style={[
+                      styles.debitoBtn,
+                      d.debito && styles.debitoBtnAtivo,
+                    ]}
                   >
                     <Text
                       style={[
@@ -264,7 +280,7 @@ export function DetalheJornadaScreen(): React.ReactElement {
                         d.debito && styles.debitoBtnTextoAtivo,
                       ]}
                     >
-                      {d.debito ? 'Débito ✓' : 'Débito'}
+                      {d.debito ? "Débito ✓" : "Débito"}
                     </Text>
                   </Pressable>
                 )}
@@ -277,19 +293,19 @@ export function DetalheJornadaScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  topo: { flexDirection: 'row', alignItems: 'center', gap: espacamento.sm },
-  nome: { ...tipografia.subtitulo, color: cores.texto, fontWeight: '700' },
+  topo: { flexDirection: "row", alignItems: "center", gap: espacamento.sm },
+  nome: { ...tipografia.subtitulo, color: cores.texto, fontWeight: "700" },
   funcao: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginTop: 2,
   },
-  saldoBox: { alignItems: 'flex-end' },
-  saldo: { ...tipografia.rotulo, fontWeight: '700' },
+  saldoBox: { alignItems: "flex-end" },
+  saldo: { ...tipografia.rotulo, fontWeight: "700" },
   saldoLabel: { ...tipografia.legenda, color: cores.textoSecundario },
   chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: espacamento.xs,
     marginTop: espacamento.sm,
   },
@@ -300,8 +316,8 @@ const styles = StyleSheet.create({
     marginBottom: espacamento.sm,
   },
   diaLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: espacamento.sm,
     paddingVertical: espacamento.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -317,25 +333,32 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.vermelho,
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   diaTac: {
     ...tipografia.legenda,
     color: cores.amarelo,
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   diaConflito: {
     ...tipografia.legenda,
     color: cores.vermelho,
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   diaAtraso: {
     ...tipografia.legenda,
     color: cores.amarelo,
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: "600",
+  },
+  // Laranja, não vermelho: é um dia a decidir, não uma falta confirmada.
+  diaFaltaNaoRegistrada: {
+    ...tipografia.legenda,
+    color: cores.laranja,
+    marginTop: 2,
+    fontWeight: "600",
   },
   debitoBtn: {
     paddingHorizontal: espacamento.sm,
@@ -348,7 +371,7 @@ const styles = StyleSheet.create({
   debitoBtnTexto: {
     ...tipografia.legenda,
     color: cores.vermelho,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   debitoBtnTextoAtivo: { color: cores.textoInverso },
 });

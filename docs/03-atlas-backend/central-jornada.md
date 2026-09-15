@@ -139,7 +139,7 @@ ordem cronológica.
 
 #### `calcularPessoa(...)` (privado, coração do módulo)
 Agrupa batidas/ausências por dia e, para cada dia do ciclo, decide o tipo
-(`TRABALHO`/`INCOMPLETO`/`FALTA`/`FALTA_DEBITO`/`ATESTADO`/`SEM_REGISTRO`),
+(`TRABALHO`/`INCOMPLETO`/`FALTA`/`FALTA_DEBITO`/`FALTA_NAO_REGISTRADA`/`ATESTADO`/`SEM_REGISTRO`),
 delega o cálculo a `calcularJornadaDia`, acumula extras, devidas (só em dias
 completos **e que geram débito** — domingo e feriado nunca geram), atestados,
 faltas, TAC, conflitos e atrasos.
@@ -182,7 +182,9 @@ faltas, TAC, conflitos e atrasos.
 
 ## 7. Estados e enums
 - `CentralDiaDetalhe.tipo`: `TRABALHO` · `INCOMPLETO` · `FALTA` · `FALTA_DEBITO`
-  · `ATESTADO` · `SEM_REGISTRO`.
+  · **`FALTA_NAO_REGISTRADA`** · `ATESTADO` · `SEM_REGISTRO`.
+  `FALTA_NAO_REGISTRADA` é o dia em que a pessoa **estava escalada**, o dia já
+  terminou, ela não bateu ponto e **ninguém lançou a falta** — ver a regra 15.
 - `InconsistenciaItem.tipo`: `INCOMPLETA` · `DUPLICADA` · `CONFLITO_AUSENCIA` ·
   `ATRASO` · `TAC`.
 - `MarcacaoInvalidaItem.tiposFaltantes[]` / `tiposPresentes[]`:
@@ -191,7 +193,9 @@ faltas, TAC, conflitos e atrasos.
 - `MarcacaoInvalidaItem.confianca`: `ConfiancaAnalise` (`ALTA` · `BAIXA`),
   reusado de [`ponto`](ponto.md).
 - `DiaFaltaRanking.tipo`: `FALTA` · `FALTA_DEBITO` (subconjunto de
-  `CentralDiaDetalhe.tipo`). O dia de `ATESTADO` **não** entra aqui: vai em
+  `CentralDiaDetalhe.tipo`). **`FALTA_NAO_REGISTRADA` também não entra aqui**: sem
+  `Ausencia` gravada não é uma falta oficial, e incluí-la quebraria a regra 10
+  (`faltasDetalhe.length === faltas`). O dia de `ATESTADO` **não** entra aqui: vai em
   `AtestadoRanking` (ver regras 11 e 12).
 - `StatusJornadaPonto` (reusado de [`ponto`](ponto.md)).
 - Não há máquina de estados própria (o módulo é de leitura/agregação, exceto o
@@ -300,6 +304,33 @@ faltas, TAC, conflitos e atrasos.
    horário normal do dia. **A folga não muda**: feriado no dia de folga segue sem
    turno e sem atraso. O pagamento do feriado continua igual (carga de domingo e
    extras a 100%, regra 4).
+14. **Um dia ESCALADO sem ponto e sem falta lançada é apontado**
+   (`FALTA_NAO_REGISTRADA`), em vez de virar um dia vazio invisível.
+
+   O caso que motivou: um **domingo** em que a pessoa estava escalada pelo
+   rodízio, não bateu ponto e ninguém lançou a falta. O dia saía `SEM_REGISTRO` e
+   a tela o esconde, então aquele domingo descoberto não aparecia nem como
+   problema — quem olhasse a card não tinha como saber.
+
+   O apontamento é **visual**: não existe `Ausencia`, então **não** soma em
+   `faltas`, **não** gera hora devida e **não** move nenhum valor. Preserva a
+   regra 10 (`faltasDetalhe.length === faltas`), porque `FALTA_NAO_REGISTRADA`
+   fica fora de `DiaFaltaRanking`. É um pedido de decisão ao gestor: lançar a
+   falta (ou não) pela escala do dia.
+
+   Três guardas, e as duas primeiras são o que impede o erro grave — apontar
+   falta em quem estava descansando:
+   - **tem turno previsto** (`entradaEsperadaNoDia`: ficha, rodízio de domingo,
+     feriado). Sem `grupoDomingo`, sem âncora ou sem `entradaDom`, nenhum domingo
+     é apontado;
+   - **não está de folga pela regra única** (`FolgaService`), que também lê a
+     folga marcada apenas na escala semanal. `@Optional()`: sem o serviço vale só
+     a ficha, e o comportamento degrada em vez de quebrar;
+   - **o dia já terminou.** Um dia em curso ou futuro sem batidas não é falta —
+     a pessoa ainda pode entrar.
+
+   Não é uma regra de domingo: vale para **qualquer** dia escalado. O domingo era
+   só onde mais aparecia, por ser o dia cuja escala vem do rodízio.
 10. **Ranking e card mostram o mesmo número, por construção.** `RankingPessoa`
    **estende** `CentralPessoaResumo` em vez de recalcular: os valores vêm da
    mesma `calcularPessoa` que alimenta o resumo, e o detalhe de cada métrica é a
@@ -352,7 +383,7 @@ faltas, TAC, conflitos e atrasos.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito) e **atraso em feriado pelo turno de domingo** | 23 |
+| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito), **atraso em feriado pelo turno de domingo** e o **dia escalado sem registro** (`FALTA_NAO_REGISTRADA`: domingo pelo rodízio, e as guardas que evitam apontar folga — sem grupo, sem `entradaDom`, folga da ficha, folga só na escala semanal, dia não terminado — mais a prova de que não mexe nos totais) | 33 |
 | `marcacoes-invalidas.service.spec.ts` | Relatório de marcações faltantes: entrada esquecida, encerramento, as duas do intervalo, totais, ordenação, sem turno — e os dias que **não** entram (não retorno do intervalo, jornada curta válida, dia completo, dia sem registro) | 12 |
 | `rankings.service.spec.ts` | Base dos rankings: **detalhe do mesmo tamanho que o contador** de cada card, faltas sem atestado, atestados à parte (contados por documento), atrasos com minutos e turno, TAC com motivos, conflitos, pessoas zeradas e igualdade com `resumoCiclo` | 10 |
 | `agrupar-atestados.spec.ts` | Agrupamento por documento e por bloco de dias consecutivos: 3+2 dias = 2 atestados, dias não contíguos, virada de mês e o total de dias preservado | 12 |

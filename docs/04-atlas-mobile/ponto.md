@@ -140,6 +140,17 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   **não aparece em domingo nem em feriado**: faltar nesses dias fica apenas como
   ausência e o servidor recusaria a marcação. O botão segue disponível nos
   demais dias para quem tem `OPERADORES_AUSENCIAS`.
+- **"Faltou (não registrada)"** (`FALTA_NAO_REGISTRADA`, em laranja) é o dia em que
+  a pessoa **estava escalada**, o dia terminou, não bateu ponto e ninguém lançou a
+  falta. Antes esse dia vinha como `SEM_REGISTRO` e a lista o **esconde**
+  (`.filter(d => d.tipo !== 'SEM_REGISTRO')`), então um **domingo** escalado e não
+  cumprido não aparecia na card — nem como problema. Não é uma falta oficial: não
+  entra no contador de faltas nem no "Deve"; é um aviso para o gestor lançar a
+  falta pela escala do dia, se for o caso. Regra 14 da
+  [`central-jornada`](../03-atlas-backend/central-jornada.md).
+  > O filtro de `SEM_REGISTRO` continua: dias de folga e dias que ainda não
+  > terminaram seguem fora da lista, para a card não virar um calendário cheio de
+  > linhas vazias.
 - **As cards do resumo usam tipografia enxuta** (valor 12, rótulo 10, ícone 28).
   Numa grade de duas colunas o texto divide a largura com o ícone e a seta, e
   valores como "2 atestados" ou "12h 30min" apareciam **cortados com "…"** — um
