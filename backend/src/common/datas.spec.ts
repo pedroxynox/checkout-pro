@@ -2,6 +2,7 @@ import {
   chaveDiaUTC,
   ciclosDoIntervalo,
   contarDiasCorridos,
+  diaDentroDoPeriodo,
   diaEncerradoEmBrasilia,
   fimDoDiaBrasiliaEmUtc,
   maiorSequenciaDias,
@@ -204,5 +205,51 @@ describe('ciclosDoIntervalo (períodos que atravessam o corte 26→25)', () => {
 
   it('devolve lista vazia para intervalo invertido', () => {
     expect(ciclosDoIntervalo(dia('2026-07-28'), dia('2026-07-24'))).toEqual([]);
+  });
+});
+
+describe('diaDentroDoPeriodo', () => {
+  it('inclui os dois extremos', () => {
+    expect(
+      diaDentroDoPeriodo(
+        dia('2026-07-10'),
+        dia('2026-07-10'),
+        dia('2026-07-14'),
+      ),
+    ).toBe(true);
+    expect(
+      diaDentroDoPeriodo(
+        dia('2026-07-14'),
+        dia('2026-07-10'),
+        dia('2026-07-14'),
+      ),
+    ).toBe(true);
+  });
+
+  it('exclui o dia anterior e o posterior ao período', () => {
+    expect(
+      diaDentroDoPeriodo(
+        dia('2026-07-09'),
+        dia('2026-07-10'),
+        dia('2026-07-14'),
+      ),
+    ).toBe(false);
+    expect(
+      diaDentroDoPeriodo(
+        dia('2026-07-15'),
+        dia('2026-07-10'),
+        dia('2026-07-14'),
+      ),
+    ).toBe(false);
+  });
+
+  it('ignora a hora gravada nos limites', () => {
+    expect(
+      diaDentroDoPeriodo(
+        new Date('2026-07-14T23:59:00.000Z'),
+        dia('2026-07-10'),
+        new Date('2026-07-14T00:00:00.000Z'),
+      ),
+    ).toBe(true);
   });
 });

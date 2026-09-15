@@ -170,6 +170,23 @@ export function chaveDiaUTC(d: Date): number {
 }
 
 /**
+ * Verdadeiro quando `dia` cai dentro do período `[inicio, fim]`, **inclusive**
+ * nos dois extremos. A comparação é em dia civil, então a hora gravada nos
+ * limites não influencia.
+ *
+ * É o "está vigente hoje?" dos períodos de negócio (atestado, férias, ausência
+ * a prazo).
+ */
+export function diaDentroDoPeriodo(
+  dia: Date,
+  inicio: Date,
+  fim: Date,
+): boolean {
+  const d = chaveDiaUTC(dia);
+  return d >= chaveDiaUTC(inicio) && d <= chaveDiaUTC(fim);
+}
+
+/**
  * Total de **dias corridos** de um período `[inicio, fim]`, contando os dois
  * extremos (14/07 a 19/07 → 6). Devolve 0 quando o período está invertido.
  *

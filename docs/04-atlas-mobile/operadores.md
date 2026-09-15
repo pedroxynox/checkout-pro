@@ -26,7 +26,7 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 | `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1937 |
 | `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 458 |
 | `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 480 |
-| `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) **e excluir** um lançado por engano | 558 |
+| `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID), ver os **em curso e programados** **e excluir** um lançado por engano | 562 |
 
 > **Atestado na escala:** o status **ATESTADO** (azul + CID) aparece tanto no
 > roster de operadores quanto na **linha do fiscal** (via `fiscalComoColaboradorDia`,
@@ -77,9 +77,14 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
    INSS. O aviso fala apenas **deste** atestado: a regra real soma os dias do
    **mesmo CID** numa janela de 60 dias e só o servidor a avalia, devolvendo
    `ultrapassaInss`/`totalDiasMesmoCid` ao lançar.
-7. **Atestados (excluir):** o mesmo modal lista, abaixo do formulário, os
-   **atestados lançados** na janela recente (90 dias para trás e 60 para frente),
-   com período, dias, CID e quem lançou. O botão **Excluir** só aparece para
+7. **Atestados (conferir e excluir):** o mesmo modal lista, abaixo do formulário,
+   os **atestados em curso e programados** — os já encerrados ficam **fora**,
+   porque a seção é operacional ("quem está de atestado e quem vai entrar"), não
+   um arquivo histórico. A janela pedida ao backend **começa hoje** e vai 60 dias
+   à frente; como o filtro do backend é de **interseção**, um atestado que
+   começou antes e ainda não terminou continua aparecendo. Os que estão em curso
+   hoje levam a marca **“• em atestado”** (campo `vigente`, derivado no backend).
+   Cada linha traz período, dias, CID e quem lançou. O botão **Excluir** só aparece para
    gerente, supervisor e administrador; a confirmação diz quantos dias serão
    apagados e quantos **voltarão a ser falta pendente**, e avisa que a ação não
    pode ser desfeita. Não há edição: para corrigir datas ou CID, exclua e lance
@@ -126,7 +131,7 @@ sem controle.
 | Cancelar ausência a prazo | `operadoresService.removerAusenciaPeriodo(input)` | `DELETE /operadores/ausencias/periodo` |
 | Lançar atestado | `atestadosService.lancar(input)` | `POST /atestados` |
 | Autocompletar CID | `atestadosService.buscarCid(busca)` | `GET /atestados/cid` |
-| Listar atestados lançados | `atestadosService.listar(inicio, fim)` | `GET /atestados` |
+| Listar atestados em curso e programados | `atestadosService.listar(hoje, hoje+60)` | `GET /atestados` |
 | Excluir atestado | `atestadosService.remover(id)` | `DELETE /atestados/:id` |
 | Registrar férias | `feriasService.registrar(input)` | `POST /ferias` |
 | Ciclos tocados pelo período | `cicloFolhaService.intervalo(inicio, fim)` | `GET /ciclo-folha/intervalo` |
@@ -183,8 +188,9 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
   em curso/futuras com `vigente` e permite cancelar (com confirmação).
   `DIAS_FERIAS_USUAIS = 30` é o limite do aviso de duração; `contarDiasCorridos`
   fornece os dias exibidos na lista e na confirmação.
-- Em `AtestadosCard`: `isoDeslocado(dias)` (sobre `deslocarDiasISO`) para a
-  janela da listagem; `LIMITE_INSS_DIAS = 15` é o limite do aviso (espelho do
+- Em `AtestadosCard`: `isoDeslocado(dias)` (sobre `deslocarDiasISO`) para o fim
+  da janela da listagem, que **começa em `hojeISO()`** — é o que descarta os
+  atestados encerrados; `LIMITE_INSS_DIAS = 15` é o limite do aviso (espelho do
   backend, que decide de verdade); `PERFIS_EXCLUEM_ATESTADO` (também espelho)
   decide se o botão **Excluir** aparece — quem decide de verdade é o servidor,
   que devolve 403 para quem não tem alçada.
@@ -216,6 +222,14 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
   por tempo não geram batida.
 - ⚠️ Faltas de fiscais são alternadas por ausências do dia (eles não estão no
   roster de operadores); depende de `OPERADORES_AUSENCIAS`.
+- ⚠️ **Um atestado já encerrado não aparece mais na lista, então não há por onde
+  excluí-lo.** É a contrapartida de mostrar só os ativos: um atestado lançado por
+  engano num período passado só pode ser corrigido enquanto ainda estiver em
+  curso. Se isso incomodar, o caminho é um filtro "mostrar encerrados" — o
+  backend já aceita qualquer janela de datas, então é só trabalho de tela. (O
+  mesmo vale para a lista de férias, pelo mesmo motivo.)
+- ⚠️ A janela da listagem vai só **60 dias à frente**: um atestado programado para
+  além disso não aparece.
 - ⚠️ Os limites dos avisos (**15** dias no atestado, **30** nas férias) são
   espelhos escritos à mão. O do atestado acompanha `LIMITE_INSS_DIAS` do
   backend; o das férias **não existe no backend** (lá o único teto é 366 dias),

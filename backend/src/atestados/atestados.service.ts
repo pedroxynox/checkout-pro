@@ -3,7 +3,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
-import { inicioDoDia } from '../common/datas';
+import {
+  diaCivilBrasilia,
+  diaDentroDoPeriodo,
+  inicioDoDia,
+} from '../common/datas';
 import { CID10, EntradaCid } from './cid10.catalogo';
 import {
   avaliarRegraInss,
@@ -75,6 +79,12 @@ export interface AtestadoDetalhado {
    * exclusão dizer exatamente o que vai acontecer.
    */
   diasQueVoltamAFalta: number;
+  /**
+   * true quando o período engloba a data de referência (hoje, por padrão) — o
+   * atestado está **em curso**. Falso num atestado ainda por começar
+   * (programado) ou já encerrado. Derivado das datas, nunca persistido.
+   */
+  vigente: boolean;
 }
 
 /** Resultado da exclusão de um atestado (para a mensagem de confirmação). */
@@ -299,7 +309,10 @@ export class AtestadosService {
   async listar(periodo: {
     inicio: Date;
     fim: Date;
+    /** Dia usado para marcar `vigente`. Padrão: hoje (Brasília). */
+    referencia?: Date;
   }): Promise<AtestadoDetalhado[]> {
+    const referencia = inicioDoDia(periodo.referencia ?? diaCivilBrasilia());
     const atestados = await this.prisma.atestado.findMany({
       where: { inicio: { lte: periodo.fim }, fim: { gte: periodo.inicio } },
       orderBy: { inicio: 'desc' },
@@ -342,6 +355,7 @@ export class AtestadosService {
       registradaPorNome: a.registradaPorNome,
       criadoEm: a.criadoEm.toISOString(),
       diasQueVoltamAFalta: voltamPorAtestado.get(a.id) ?? 0,
+      vigente: diaDentroDoPeriodo(referencia, a.inicio, a.fim),
     }));
   }
 

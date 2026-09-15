@@ -30,7 +30,7 @@ justificativas), CORS e opções de upload.
 | `decorators/usuario-atual.decorator.ts` | `@UsuarioAtual()` e tipo `UsuarioAutenticado` | 36 |
 | `filters/dominio-exception.filter.ts` | Filtro global de exceções → HTTP em PT | 76 |
 | `errors/erro-dominio.ts` | Base `ErroDominio` com `statusHttp` próprio | 15 |
-| `datas.ts` | Utilidades puras de período (UTC, folha 26→25, Brasília) + sequência e duração de dias | 256 |
+| `datas.ts` | Utilidades puras de período (UTC, folha 26→25, Brasília) + sequência, duração e vigência de dias | 273 |
 | `numeros.ts` | `arredondar` e `parseValor` (monetário) | 37 |
 | `justificativas.ts` | Peso e montagem dos campos de justificativa (ADR 0009) | 156 |
 | `risco-ocorrencias.ts` | Pontuação de risco partilhada por faltas e não-retornos | 42 |
@@ -88,6 +88,9 @@ fornece:
   (reflete a origem) quando ausente.
 
 ## 6. Lógica de domínio (funções puras)
+- **Períodos:** `diaDentroDoPeriodo(dia, inicio, fim)` — o dia cai no período,
+  **inclusive** nos dois extremos e comparando em dia civil. É o "está vigente
+  hoje?" de atestado, férias e ausência a prazo; `ferias.domain` delega a ela.
 - **Datas (`datas.ts`):** `UM_DIA_MS`, `inicioDoDia` / `inicioDoProximoDia`,
   `inicioDaSemana` / `inicioDaProximaSemana`, `inicioDoMes` /
   `inicioDoProximoMes` / `fimDoMes`; **ciclo de folha 26→25** (`periodoFolha`,
@@ -162,7 +165,7 @@ fornece:
 | `guards/jwt-auth.guard.spec.ts` | Rotas públicas, tokenVersion, revogação e token ausente/inválido | 7 |
 | `guards/perfil.guard.spec.ts` | Autorização por funcionalidade (gerente/fiscal) | 5 |
 | `filters/dominio-exception.filter.spec.ts` | Tradução de erros de domínio/HTTP/desconhecido (a tabela deixou de cobrir os erros do extinto `lote-apae`) | 3 |
-| `datas.spec.ts` | Ciclo de folha 26→25, fim do dia em Brasília, sequência de dias, `contarDiasCorridos` (extremos, feriados, virada de ano/bissexto, invertido) e `ciclosDoIntervalo` (reparto entre ciclos, três ciclos, dia 25 vs 26, virada de ano) | 25 |
+| `datas.spec.ts` | Ciclo de folha 26→25, fim do dia em Brasília, sequência de dias, `contarDiasCorridos` (extremos, feriados, virada de ano/bissexto, invertido), `ciclosDoIntervalo` (reparto entre ciclos, três ciclos, dia 25 vs 26, virada de ano) e `diaDentroDoPeriodo` (extremos inclusive, fora do período, hora ignorada) | 28 |
 | `risco-ocorrencias.spec.ts` | Pontuação de risco partilhada (limiares + monotonia, fast-check) | 6 |
 | `justificativas.spec.ts` | Peso/soma ponderada e montagem dos campos de justificativa (fast-check) | 9 |
 | `cors.spec.ts` | Resolução de `CORS_ORIGINS` | 5 |

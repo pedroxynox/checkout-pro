@@ -23,6 +23,11 @@ export interface AtestadoDetalhado {
   criadoEm: string;
   /** Dias que voltam a ser falta se o atestado for excluído. */
   diasQueVoltamAFalta: number;
+  /**
+   * true quando o atestado está **em curso** hoje. Falso num atestado ainda por
+   * começar (programado) ou já encerrado.
+   */
+  vigente: boolean;
 }
 
 /** Resumo do que foi desfeito ao excluir um atestado. */
