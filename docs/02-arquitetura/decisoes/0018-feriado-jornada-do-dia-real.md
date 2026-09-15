@@ -1,52 +1,35 @@
-# ADR 0018 — Feriado: jornada do dia real, adicional de domingo
+# ADR 0018 — Feriado: jornada de 7h20 com valor próprio (não derivada do domingo)
 
 - **Status:** aceita
-- **Data:** 2026-09-15
+- **Data:** 2026-09-15 (revisada no mesmo dia — ver "Correção")
 - **Contexto:** jornada, folha, Central de Jornada
 
 ## Contexto
 
-"Feriado segue a regra do domingo" foi tratado como uma frase só, e virou uma
-linha só de código:
+"Feriado segue a regra do domingo" era tratado como uma frase só, e virou uma
+linha só:
 
 ```ts
 const baseMs = regras.cargaBaseMs(ehFeriado ? 0 : diaSemana);
 ```
 
-O feriado era **remapeado para domingo** e, com isso, três respostas diferentes
-sobre o mesmo dia passavam a vir juntas. São três perguntas distintas:
-
-| Pergunta | Resposta correta |
-|---|---|
-| Que **horário** a pessoa cumpre? | o de domingo |
-| As extras são 50% ou **100%**? | 100%, como domingo |
-| Qual a **jornada esperada** do dia? | **a do dia real** |
-
-Só as duas primeiras seguem o domingo. A terceira nunca deveria: uma segunda
-feriada é uma segunda, com a jornada de uma segunda.
-
-### O que isso custava na prática
-
-O contrato é data-driven por dia da semana (`cargaBaseMinPorDia`, um valor para
-cada dia). Para quem **folga fixo no domingo**, a forma natural de modelar o
-contrato é pôr a carga de domingo em **zero**.
+O feriado era remapeado para o **índice 0** do contrato — o domingo **daquela
+pessoa**. E aí está o defeito: o contrato é data-driven por dia da semana, e para
+quem **folga fixo no domingo** a forma natural de modelar é pôr a carga de domingo
+em **zero**.
 
 Com o remapeamento, todo feriado dessas pessoas passava a esperar **zero hora**.
-Uma pessoa escalada numa segunda feriada, trabalhando a jornada normal dela:
+Uma pessoa escalada numa segunda feriada, cumprindo a jornada normal:
 
 1. `horasExtras = trabalhado − 0` ⇒ **a jornada inteira virava extra**;
 2. o feriado paga 100% ⇒ **tudo a 100%**;
 3. o total passava o limite de extras (1h50) ⇒ **TAC**, um dia irregular.
 
-Ou seja: o sistema tratava o dia como se a pessoa tivesse trabalhado num dia em
-que não devia nada — quando na verdade **era o dia dela**, e ela tinha folgado no
-domingo, como sempre. O relato de quem sentiu o problema foi exatamente esse: "a
-pessoa folga domingo, trabalha o feriado na segunda, e o sistema acusa TAC e
-manda tudo como hora extra".
-
-Com o contrato 6x1 padrão (domingo 7h20) o efeito era mais suave, mas igualmente
-errado: a segunda feriada esperava 7h20 em vez de 7h, e um atestado nesse dia
-abonava 7h20 em vez das 7h que a pessoa devia cumprir.
+O sistema tratava o dia como se a pessoa tivesse trabalhado num dia em que não
+devia nada. Mas ela **não estava de folga**: era o dia dela, e o domingo ela
+folgou como sempre. O relato foi exatamente esse: "a pessoa folga domingo,
+trabalha o feriado na segunda, e o sistema acusa TAC e manda tudo como hora
+extra".
 
 A regra também estava **escrita duas vezes** — no cálculo do dia e na base dos
 dias de ausência/atestado. Uma regra de dinheiro duplicada é uma regra que vai
@@ -54,68 +37,104 @@ divergir.
 
 ## Decisão
 
-**A jornada esperada de um feriado é a do seu próprio dia da semana.** Extraída
-para uma função única, `cargaBaseDoDia(diaSemana, regras)`, que **não recebe
-`ehFeriado`** — é o que impede o remapeamento voltar por descuido.
+**A jornada de um feriado é 7h20 — a de um domingo —, em qualquer dia da semana em
+que ele caia.** Vem de um valor próprio, `RegrasContrato.cargaFeriadoMs`, e **não**
+de `cargaBaseMs(0)`.
 
-O feriado **continua** herdando do domingo:
+A distinção é o coração desta ADR: 7h20 é a jornada do **feriado**, não "a carga
+de domingo desta pessoa". Quem nunca trabalha domingo também cumpre 7h20 num
+feriado.
 
-- o **horário** de entrada/saída (`entradaEsperadaNoDia`/`saidaEsperadaNoDia`);
-- o **adicional de 100%** sobre o que exceder a jornada;
-- a **isenção de hora devida** que viaja com o adicional.
+A leitura passa por uma função única, `cargaBaseDoDia(diaSemana, ehFeriado,
+regras)`, usada pelos dois chamadores que antes repetiam a regra.
+
+### O que o feriado herda do domingo
+
+| Herança | Detalhe |
+|---|---|
+| **Jornada** | 7h20 (`cargaFeriadoMs`) |
+| **Horário** de entrada/saída | `entradaEsperadaNoDia`/`saidaEsperadaNoDia` |
+| **Adicional de 100%** | sobre o que exceder as 7h20 |
+| **Isenção de hora devida** | viaja com o adicional |
+
+### O que o feriado NÃO herda
+
+- **O rodízio de grupos de domingo.**
+- **A folga.** `ehDiaDeFolga` não recebe `ehFeriado` e decide pelo dia REAL: quem
+  folga no domingo e está escalado numa segunda feriada **trabalha** nessa
+  segunda. Isso já estava correto antes desta ADR e há teste que o protege — foi
+  verificado explicitamente, porque a hipótese inicial era de que a folga
+  estivesse deslocada. Não estava.
 
 ### Por que a isenção de débito continua
 
-Foi uma decisão explícita do dono do produto, e a razão é boa: as horas do
-feriado são pagas a **100%** e o trabalhador as cobra. Debitá-las seria cobrar o
-mesmo dia duas vezes. Quem trabalha menos que a jornada num feriado não fica
-devendo.
+Decisão explícita do dono do produto: as horas do feriado são pagas a **100%** e
+o trabalhador as cobra. Debitá-las seria cobrar o mesmo dia duas vezes. Quem
+trabalha menos que as 7h20 num feriado não fica devendo.
 
-Note a assimetria deliberada: o feriado **não** herda a jornada de domingo (isso
-inflava as extras), mas **sim** a isenção. São perguntas diferentes, e agora estão
-separadas no código — `cargaBaseDoDia` responde a jornada, `diaPagaAdicional100`
-responde o adicional e a isenção.
+### Limites que não mudam
 
-### O que NÃO muda
+O teto de extras é **1h50 por dia, em todos os dias** — acima disso é TAC. Num
+feriado, com jornada de 7h20, isso significa TAC a partir de 9h10 trabalhadas.
+As jornadas normais do 6x1 seguem: domingo 7h20, segunda a quinta 7h, sexta e
+sábado 8h.
 
-A **folga** nunca seguiu o feriado, e continua não seguindo: `ehDiaDeFolga` não
-recebe `ehFeriado` e decide pelo dia REAL. Quem folga no domingo e trabalha numa
-segunda feriada **não** está de folga na segunda. Isso já estava correto e há
-teste que o protege — foi verificado antes desta mudança, porque a hipótese
-inicial era justamente de que a folga estivesse deslocada. Não estava; o defeito
-era só na jornada esperada.
+## Correção (mesma data)
+
+A primeira versão desta ADR decidiu o **oposto**: que a jornada do feriado seria a
+do **dia real** (uma segunda feriada esperaria 7h). Estava errada, e foi corrigida
+pelo dono do produto no mesmo dia.
+
+O erro veio de uma leitura ambígua do requisito ("que apenas seja o horário de
+domingo") somada a um diagnóstico correto: o problema *era* o remapeamento para o
+índice 0. Mas a conclusão não seguia. A jornada do feriado **é** 7h20; o defeito
+estava em **de onde** esse número era lido — do domingo de cada contrato, que pode
+ser zero — e não no valor em si.
+
+Efeito prático da versão errada, enquanto durou: uma segunda feriada com 8h20
+trabalhadas contava 1h20 de extra em vez de 1h, porque media contra 7h em vez de
+7h20. Quem cumpria exatamente 7h20 num feriado ganhava 20 minutos de extra
+indevidos.
+
+A alternativa 1 abaixo ("dar ao contrato uma carga própria de feriado") havia sido
+**descartada** na primeira versão. Era a correta.
 
 ## Alternativas descartadas
 
-1. **Dar ao contrato uma carga própria de feriado** (um oitavo valor no arreglo).
-   Modelaria o feriado como um "dia especial" configurável. Descartada: o feriado
-   cai num dia da semana que já tem jornada definida, e um segundo número para o
-   mesmo dia seria uma fonte a mais para ficar desatualizada — o problema que
-   este ADR resolve.
-2. **Tirar também a isenção de débito** ("feriado é como qualquer dia, então quem
+1. **Ler a jornada do feriado de `cargaBaseMs(0)`** (o comportamento original).
+   É o defeito: para quem folga fixo no domingo esse valor é zero, e o feriado
+   passa a esperar zero hora.
+2. **Usar a jornada do dia real** (a primeira versão desta ADR). Descartada: a
+   jornada de um feriado é 7h20 por regra, não a do dia em que ele cai. Media as
+   extras contra a base errada.
+3. **Tirar a isenção de débito** ("feriado é como qualquer dia, então quem
    trabalha menos deve"). Descartada pelo dono do produto: as horas são pagas a
    100% e cobrá-las de volta como débito seria cobrar duas vezes.
-3. **Proibir carga zero nos contratos.** Trataria o sintoma e quebraria um caso
-   legítimo — um contrato 5x2 com domingo em zero está correto, e num domingo
-   REAL trabalhado é certo que tudo conte como extra.
+4. **Proibir carga zero nos contratos.** Trataria o sintoma e quebraria um caso
+   legítimo — um contrato com domingo em zero está correto, e num domingo REAL
+   trabalhado é certo que tudo conte como extra.
+5. **Coluna `cargaFeriadoMin` no `TipoContratoJornada`.** Não descartada, apenas
+   adiada: hoje 7h20 vale para todos os contratos, e `cargaFeriadoMs` no
+   adaptador é o ponto de entrada pronto para quando a gestão precisar variá-la
+   por contrato. Evita uma migração sem demanda.
 
 ## Consequências
 
-- **Extras de feriado passam a ser calculadas sobre a jornada do dia.** No 6x1,
-  uma segunda feriada com 8h20 trabalhadas dá 1h20 a 100% (era 1h, medida contra
-  as 7h20 de domingo). Em contratos com domingo zerado, deixa de contar a jornada
-  inteira como extra — a correção mais significativa em valor.
-- **Fim dos TAC falsos em feriado** para quem tinha o domingo zerado.
-- **Atestado em feriado abona a carga do dia real** (7h numa segunda, não 7h20).
+- **Fim dos TAC falsos e das extras infladas em feriado** para quem tem o domingo
+  zerado no contrato: a jornada esperada passa de 0 para 7h20.
+- **Quem cumpre 7h20 num feriado não gera extra** — nem os 20 minutos que a versão
+  errada desta ADR produzia.
+- **Atestado em feriado abona 7h20**, a jornada do feriado.
 - **A isenção de hora devida em feriado permanece**, com teste dedicado para que
-  a correção da jornada não a arraste.
+  nenhuma correção futura a arraste.
 - A regra deixa de estar duplicada: os dois chamadores usam `cargaBaseDoDia`.
-- Dois testes que codificavam o comportamento antigo foram atualizados, com o
-  porquê da mudança escrito neles.
+- `cargaFeriadoMs` é obrigatório em `RegrasContrato`: um contrato novo não pode
+  esquecer de definir a jornada do feriado.
 
 ## Referências
 
-- [`ponto`](../../03-atlas-backend/ponto.md) — `cargaBaseDoDia`, `diaPagaAdicional100`
+- [`ponto`](../../03-atlas-backend/ponto.md) — `cargaBaseDoDia`, `CARGA_FERIADO_MS`, `diaPagaAdicional100`
 - [`central-jornada`](../../03-atlas-backend/central-jornada.md) — regra 4 (isenção)
 - [`feriados`](../../03-atlas-backend/feriados.md) — regra 4
 - [`escala-domingo`](../../03-atlas-backend/escala-domingo.md) — regra 7 (horário)
+- [`tipos-contrato`](../../03-atlas-backend/tipos-contrato.md) — parâmetros por contrato

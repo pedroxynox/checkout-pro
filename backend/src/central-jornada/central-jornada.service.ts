@@ -609,13 +609,17 @@ export class CentralJornadaService {
   }
 
   /**
-   * Carga-base do dia. Delega à regra única (`cargaBaseDoDia`): o feriado usa a
-   * jornada do seu PRÓPRIO dia da semana, não a de domingo. Este método tinha
-   * uma cópia da regra, e era por onde um atestado em feriado abonava a carga de
-   * domingo em vez da do dia real.
+   * Carga-base do dia. Delega à regra única (`cargaBaseDoDia`): o feriado tem
+   * jornada de 7h20 (a de domingo), vinda de um valor próprio do contrato e não
+   * do domingo dele — quem folga fixo no domingo tem esse dia zerado. Este
+   * método tinha uma cópia da regra.
    */
-  private baseDoDia(dia: Date, regras: RegrasContrato): number {
-    return cargaBaseDoDia(dia.getUTCDay(), regras);
+  private baseDoDia(
+    dia: Date,
+    ehFeriado: boolean,
+    regras: RegrasContrato,
+  ): number {
+    return cargaBaseDoDia(dia.getUTCDay(), ehFeriado, regras);
   }
 
   /** Carrega os dados brutos do ciclo (pessoas, batidas, ausências, feriados). */
@@ -903,7 +907,7 @@ export class CentralJornadaService {
       const diaSemana = dia.getUTCDay();
       const ehFeriado = feriadoMap.has(dia.getTime());
       const feriadoNome = feriadoMap.get(dia.getTime());
-      const baseMs = this.baseDoDia(dia, regras);
+      const baseMs = this.baseDoDia(dia, ehFeriado, regras);
       const regs = batidasPorDia.get(k);
       const ausencia = ausenciaPorDia.get(k);
       const diaCompleto = inicioDoProximoDia(dia).getTime() <= limite.getTime();

@@ -101,25 +101,25 @@ têm registro e não são removíveis).
 1. **Nacionais são automáticos** (calculados, não cadastrados nem removíveis).
 2. **Manuais só estadual/municipal**, com data única e sem colidir com um nacional.
 3. **O nacional prevalece** sobre um manual na mesma data.
-4. **Do domingo, o feriado herda o HORÁRIO e o ADICIONAL de 100% — não a jornada
-   esperada.** São três perguntas distintas sobre o mesmo dia, e só duas seguem o
-   domingo:
+4. **O feriado tem jornada de 7h20 e paga 100%, como um domingo — mas não dispensa
+   ninguém.** O que ele herda e o que não herda:
 
-   | Pergunta | Segue o domingo? |
+   | | Herda do domingo? |
    |---|---|
-   | Que **horário** a pessoa cumpre? | **sim** (regra 7 de [`escala-domingo`](escala-domingo.md)) |
-   | As extras são 50% ou **100%**? | **sim**, com a isenção de hora devida |
-   | Qual a **jornada esperada** do dia? | **não** — é a do dia real |
+   | **Jornada** esperada do dia (7h20) | **sim** |
+   | **Horário** de entrada/saída | **sim** (regra 7 de [`escala-domingo`](escala-domingo.md)) |
+   | Extras a **100%** (com isenção de hora devida) | **sim** |
+   | **Rodízio** de grupos | **não** |
+   | **Folga** | **não** |
 
-   A jornada de uma segunda feriada é a de uma segunda. Ver
-   [ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md):
-   enquanto a carga era remapeada para domingo, quem tinha o domingo zerado no
-   contrato (o normal de quem folga fixo no domingo) via **toda** a jornada do
-   feriado virar extra a 100%, com TAC por exceder o limite.
+   Ou seja: quem trabalha num feriado é exatamente quem trabalharia naquele dia da
+   semana. Quem folga fixo no domingo e está escalado numa segunda feriada
+   **trabalha** nessa segunda, cumprindo 7h20.
 
-   O feriado também **não** muda a **folga**: não dispensa ninguém do trabalho nem
-   desloca o rodízio de domingos. Quem trabalha num feriado é exatamente quem
-   trabalharia naquele dia da semana.
+   A jornada vem de um **valor próprio** do contrato e **não** da carga de domingo
+   dele — quem folga no domingo tem esse dia zerado, e ler dali fazia o feriado
+   esperar zero hora, com a jornada inteira virando extra e o dia caindo em TAC.
+   Ver [ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md).
 5. **Facultativos não entram automaticamente** (Carnaval/Corpus Christi): o
    gestor os cadastra manualmente se a unidade os observa.
 6. **Gestão restrita a `CENTRAL_JORNADA`.**

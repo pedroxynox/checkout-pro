@@ -219,11 +219,11 @@ faltas, TAC, conflitos e atrasos.
    déficit).
 4. **Domingo e feriado NUNCA geram hora devida** — por nenhum caminho. No feriado
    a isenção é deliberada: as horas são pagas a **100%** e o trabalhador as cobra,
-   então debitá-las seria cobrar o mesmo dia duas vezes. Note a assimetria com a
-   **carga-base**, que no feriado é a do dia real e não a de domingo
-   ([ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md)):
-   são perguntas diferentes, e `baseDoDia` delega à regra única `cargaBaseDoDia`
-   em vez de repeti-la. Esses
+   então debitá-las seria cobrar o mesmo dia duas vezes. A **jornada** desses dias
+   no feriado é 7h20, vinda de um valor próprio do contrato e não da carga de
+   domingo dele
+   ([ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md));
+   `baseDoDia` delega à regra única `cargaBaseDoDia` em vez de repeti-la. Esses
    dias pagam a carga efetivamente cumprida: o que passa da carga-base rende
    extra de **100%**, o que fica abaixo dela **não vira débito**. Vale para as
    duas origens de hora devida:

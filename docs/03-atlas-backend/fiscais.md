@@ -279,10 +279,11 @@ casos de ficha vazia, preencher os horários **primeiro**.
    noite.
 4. **Toda transição notifica os gestores** e é propagada em tempo real.
 5. **Horas extras:** 50% em dias comuns, 100% aos domingos **e em todo feriado**,
-   sobre a jornada esperada do dia. No feriado a jornada esperada é a do **dia
-   real** (uma segunda feriada espera a jornada de uma segunda), não a de domingo —
-   ver [ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md).
-   Do domingo, o feriado herda só o horário e o adicional de 100%.
+   sobre a jornada esperada do dia. A jornada de um feriado é **7h20** (a de um
+   domingo), em qualquer dia da semana; nos demais dias, a carga do próprio dia
+   (seg-qui 7h · sex-sáb 8h). O teto de extras é 1h50 por dia, sempre — acima
+   disso é TAC. Ver
+   [ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md).
 6. **Horário especial prevalece** sobre a escala geral (escala efetiva).
 7. **O cadastro é a fonte única da escala** (Opção A); no domingo a escala dos
    fiscais vem do rodízio de grupos.
