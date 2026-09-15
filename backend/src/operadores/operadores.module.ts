@@ -3,6 +3,7 @@ import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
 import { CicloFolhaModule } from '../ciclo-folha/ciclo-folha.module';
+import { FeriasModule } from '../ferias/ferias.module';
 import { OperadoresController } from './operadores.controller';
 import { OperadoresService } from './operadores.service';
 import { OperadorTurnoController } from './operador-turno.controller';
@@ -24,6 +25,10 @@ import { OperadorTurnoService } from './operador-turno.service';
     DataInicialModule,
     EscalaDomingoModule,
     CicloFolhaModule,
+    // Férias (inativação não rígida): quem está de férias sai do quadro do dia.
+    // Sem este import o quadro mostrava a pessoa como "Trabalha" durante as
+    // férias, discordando da escala de fiscais e da escala publicada.
+    FeriasModule,
   ],
   providers: [OperadoresService, OperadorTurnoService],
   controllers: [OperadoresController, OperadorTurnoController],

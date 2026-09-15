@@ -11,6 +11,18 @@
   ausência esperada e planejada. As opções consideradas foram: (a) reaproveitar
   `ativo=false` durante as férias; (b) gravar as férias como faltas justificadas
   a prazo em cada dia; (c) modelar um período de férias próprio.
+- **Correção posterior (2026-09-15):** a premissa da "fonte única" estava
+  **errada**. `FiscaisService.escaladosDoDia` alimenta a equipe do dia e o cron de
+  falta, mas **não** é a única a montar "quem trabalha hoje": o **Quadro de
+  Operadores** (`OperadorTurnoService`, que serve `GET /quadro-operadores/*`)
+  monta a sua própria lista a partir de `Colaborador`, e nunca consultou férias.
+  Como as férias não tocam `ativo` nem criam `Ausencia`, a pessoa caía no caminho
+  de quem trabalha e aparecia como **"Trabalha"** durante todo o período — no
+  mesmo dia em que a escala publicada já a mostrava de férias. Hoje o Quadro
+  também aplica a exclusão (removendo a pessoa no roster do dia e marcando
+  `FERIAS` na grade semanal), mas a lição fica: **a exclusão não é central**, e
+  cada construtor de escala precisa aplicá-la — ver os riscos em
+  [`ferias`](../../03-atlas-backend/ferias.md) e [`operadores`](../../03-atlas-backend/operadores.md).
 - **Decisão:**
   1. **Modelo dedicado `FeriasColaborador`** (`id`, `colaboradorId`, `inicio`,
      `fim` inclusivos em 00:00 UTC, `observacao?`, auditoria e `criadaEm`), com
