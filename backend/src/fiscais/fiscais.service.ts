@@ -48,6 +48,7 @@ import { FeriasService } from '../ferias/ferias.service';
 import { FolgaService } from '../escala-domingo/folga.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
+import { entradaEsperadaConservadora } from './hora-esperada-fiscal';
 import {
   agoraNaBrasilia,
   diaCivilBrasilia,
@@ -106,6 +107,18 @@ export interface ItemJornada extends Jornada {
   faltando: string[];
   /** Marcações (batidas) do dia, em ordem: entrada, saída, volta, encerramento. */
   marcacoes: MarcacaoDia[];
+}
+
+/**
+ * Campos da ficha que decidem o turno do dia. Usados para comparar a ficha (a
+ * fonte) com a escala semanal (o derivado, que pode estar velho).
+ */
+interface FichaTurnoFiscal {
+  folgaDiaSemana: number | null;
+  grupoDomingo: string | null;
+  entradaSemana: string | null;
+  entradaFds: string | null;
+  entradaDom: string | null;
 }
 
 /** Um colaborador escalado para trabalhar num dia (fonte da "equipe do dia"). */
@@ -275,20 +288,23 @@ export class FiscaisService {
    * horário está na ficha de colaborador, e não na escala semanal. Fichas sem
    * `entradaDom` ficam fora do mapa (o chamador mantém o horário da escala).
    */
-  private async entradaDomDasFichas(
+  private async fichasDosFiscais(
     ids: readonly (string | null)[],
-  ): Promise<Map<string, string>> {
+  ): Promise<Map<string, FichaTurnoFiscal>> {
     const validos = [...new Set(ids.filter((id): id is string => !!id))];
     if (validos.length === 0) return new Map();
     const fichas = await this.prisma.colaborador.findMany({
       where: { id: { in: validos } },
-      select: { id: true, entradaDom: true },
+      select: {
+        id: true,
+        folgaDiaSemana: true,
+        grupoDomingo: true,
+        entradaSemana: true,
+        entradaFds: true,
+        entradaDom: true,
+      },
     });
-    return new Map(
-      fichas
-        .filter((f): f is { id: string; entradaDom: string } => !!f.entradaDom)
-        .map((f) => [f.id, f.entradaDom]),
-    );
+    return new Map(fichas.map((f) => [f.id, f]));
   }
 
   /** Fiscal vinculado ao usuário autenticado (erro se não houver). */
@@ -830,28 +846,60 @@ export class FiscaisService {
       ? await this.feriados.ehFeriado(inicio)
       : false;
 
+    // Âncora do rodízio de domingo: só importa no domingo, e serve aos dois
+    // ramos (a ficha do fiscal também precisa dela para resolver o domingo).
+    const ancora =
+      diaSemana === 0 && this.escalaDomingo
+        ? await this.escalaDomingo.obterAncora()
+        : null;
+    const ancoraDomingo = ancora
+      ? { data: ancora.data, ordem: ancora.ordem }
+      : null;
+
     // Fiscais: a escala consolidada já resolve folga, horário especial e o
     // rodízio de domingo, além do nome/ficha canônica.
     const consolidada = this.escala
       ? await this.escala.escalaConsolidada(diaSemana, dataISO)
       : [];
-    // Em feriado, o horário de domingo dos fiscais vive na FICHA (`entradaDom`),
-    // não na escala semanal — então buscamos só as fichas dos consolidados. A
-    // folga continua vindo da escala consolidada do dia real.
-    const entradaDomPorFicha = ehFeriado
-      ? await this.entradaDomDasFichas(
-          consolidada.map((i) => i.colaboradorId ?? null),
-        )
-      : new Map<string, string>();
+    // Fichas dos fiscais consolidados: a escala semanal é um DERIVADO da ficha e
+    // pode estar velha, então as duas são comparadas antes de cobrar o ponto de
+    // alguém (ver `entradaEsperadaConservadora`).
+    const fichaPorId = await this.fichasDosFiscais(
+      consolidada.map((i) => i.colaboradorId ?? null),
+    );
     const dosFiscais: EscaladoDia[] = consolidada.flatMap((item) => {
       if (item.efetiva === 'FOLGA') return [];
       const entradaDaEscala = item.efetiva.entrada ?? null;
-      // Feriado: horário de domingo da ficha; sem ele, mantém o da escala (não
-      // deixamos ninguém sem turno, senão sumiria da equipe do dia).
-      const entrada =
-        ehFeriado && item.colaboradorId
-          ? (entradaDomPorFicha.get(item.colaboradorId) ?? entradaDaEscala)
-          : entradaDaEscala;
+      const ficha = item.colaboradorId
+        ? (fichaPorId.get(item.colaboradorId) ?? null)
+        : null;
+      // A hora que a FICHA prevê para o dia, pelas mesmas regras da escala
+      // publicada (dia útil / fim de semana / domingo com rodízio / feriado, que
+      // segue o horário de domingo).
+      const daFicha = ficha
+        ? entradaEsperadaNoDia(
+            {
+              folgaDiaSemana: ficha.folgaDiaSemana,
+              grupoDomingo: ficha.grupoDomingo,
+              entradaSemana: ficha.entradaSemana,
+              entradaFds: ficha.entradaFds,
+              entradaDom: ficha.entradaDom,
+            },
+            inicio,
+            ancoraDomingo,
+            ehFeriado,
+          )
+        : null;
+      // Quando as duas discordam vale a mais TARDIA: assim a correção do
+      // desencontro nunca cria uma falta que antes não existia. A exceção do
+      // gestor vence a comparação; ficha sem turno no dia não é cobrada.
+      const entrada = entradaEsperadaConservadora({
+        daEscala: entradaDaEscala,
+        daFicha,
+        temFicha: ficha != null,
+        especial: item.efetiva.especial,
+        ehFeriado,
+      });
       if (!entrada) return [];
       return [
         {
@@ -866,11 +914,7 @@ export class FiscaisService {
     });
 
     // Operadores/supervisores: entrada prevista derivada do cadastro (folga
-    // fixa da semana / rodízio de domingo). No domingo precisa da âncora.
-    const ancora =
-      diaSemana === 0 && this.escalaDomingo
-        ? await this.escalaDomingo.obterAncora()
-        : null;
+    // fixa da semana / rodízio de domingo).
     const colaboradores = await this.prisma.colaborador.findMany({
       where: { ativo: true, funcao: { in: FUNCOES_PONTO_NAO_FISCAL } },
       orderBy: { nome: 'asc' },
@@ -900,7 +944,7 @@ export class FiscaisService {
               entradaDom: c.entradaDom,
             },
             inicio,
-            ancora ? { data: ancora.data, ordem: ancora.ordem } : null,
+            ancoraDomingo,
             ehFeriado,
           );
       if (!entrada) return [];
