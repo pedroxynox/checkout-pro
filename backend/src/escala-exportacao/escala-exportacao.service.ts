@@ -7,10 +7,15 @@
  * pronta para virar PDF/imagem e ser enviada à equipe.
  *
  * Por que um módulo novo e não uma extensão do Quadro de Operadores: o quadro é
- * uma tela de **gestão** (só operadores, sem regra de feriado, com ações de
- * falta/justificativa). A escala publicada é um **documento** — cobre todas as
- * funções, aplica feriado, mostra férias e não edita nada. Misturar os dois
- * faria um deles mentir.
+ * uma tela de **gestão** (só operadores, com ações de falta/justificativa). A
+ * escala publicada é um **documento** — cobre todas as funções e não edita nada.
+ * Misturar os dois faria um deles mentir.
+ *
+ * O que os dois **não** podem fazer é discordar sobre o que uma pessoa faz num
+ * dia. A decisão é de `montarLinhaEscala`, e agora as duas telas a chamam: o
+ * quadro tinha uma cópia própria da regra, que não conhecia feriado nem exceção
+ * de horário e mostrava 08:00 onde a escala publicada mostrava 07:00. A
+ * coerência entre as duas é verificada em `coerencia-quadro-escala.spec.ts`.
  */
 import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';

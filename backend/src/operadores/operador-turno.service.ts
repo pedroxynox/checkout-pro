@@ -12,11 +12,17 @@ import { StatusJustificativa } from '../common/justificativas';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { FolgaService } from '../escala-domingo/folga.service';
 import { FeriasService } from '../ferias/ferias.service';
+import { FeriadosService } from '../feriados/feriados.service';
 import {
   GrupoDomingo,
   grupoFolgaNoDomingo,
-  trabalhaNoDomingo,
 } from '../escala-domingo/escala-domingo.domain';
+import {
+  FichaColaboradorEscala,
+  HorarioEspecialDia,
+  LinhaEscala,
+  montarLinhaEscala,
+} from '../escala-exportacao/escala-publicada.domain';
 
 /**
  * Estado de uma célula da grade semanal. `FERIAS` existe porque a grade é um
@@ -218,6 +224,12 @@ function iso(data: Date): string {
  */
 type OperadorEscala = OperadorTurno & { turno: TurnoColaborador | null };
 
+/**
+ * Ficha do operador como `montarLinhaEscala` a consome, mais o `genero` — que a
+ * escala publicada não usa, mas o quadro mostra (tratamento por nome na tela).
+ */
+type FichaOperador = FichaColaboradorEscala & { genero: string | null };
+
 function comoOperadorTurno(c: Colaborador): OperadorEscala {
   return {
     id: c.id,
@@ -235,10 +247,22 @@ function comoOperadorTurno(c: Colaborador): OperadorEscala {
 }
 
 /**
- * Quadro de Operadores: turno fixo (horário Seg–Qui x Sex–Sáb) e folga fixa por
- * operador. Monta a grade semanal visual (trabalha/folga/falta) cruzando com as
- * ausências pontuais (`Ausencia`, pessoaId = id do OperadorTurno) e calcula a
- * cobertura por dia. Domingo ainda não é considerado (operação Seg–Sáb).
+ * Quadro de Operadores: a tela de GESTÃO da escala dos operadores — grade
+ * semanal, roster de um dia, tablero "ao vivo" e cobertura, com as ações de
+ * falta/justificativa que a escala publicada (um documento) não tem.
+ *
+ * **Quem decide o que a pessoa faz no dia não é este serviço.** Isso é de
+ * `montarLinhaEscala`, a mesma função que monta a escala publicada. Este
+ * arquivo já teve a sua própria cópia da regra (um `fds ? entradaFds :
+ * entradaSemana` local) e o preço apareceu três vezes: as férias não saíam do
+ * quadro, a folga marcada só na escala semanal virava falta, e no feriado o
+ * horário mostrado era o de dia útil em vez do de domingo. Cada divergência foi
+ * um caso em que duas telas do mesmo app respondiam diferente à mesma pergunta.
+ *
+ * O que continua sendo daqui: recortar só `funcao: 'OPERADOR'`, enriquecer as
+ * linhas com o que a gestão precisa (id da ausência, CID, período do atestado,
+ * estado da justificativa) e as contagens/avisos. Ver
+ * `coerencia-quadro-escala.spec.ts`, que prende as duas vistas juntas.
  */
 @Injectable()
 export class OperadorTurnoService {
@@ -257,6 +281,10 @@ export class OperadorTurnoService {
     // quebrar. Fica no FIM da lista para não deslocar os parâmetros posicionais
     // usados pelos specs que constroem o serviço à mão.
     @Optional() private readonly ferias?: FeriasService,
+    // Feriados: sem eles o quadro mostrava o horário de dia útil num feriado,
+    // enquanto a escala publicada mostrava o de domingo (a regra correta). Como
+    // os demais, entra no fim da lista de parâmetros.
+    @Optional() private readonly feriados?: FeriadosService,
   ) {}
 
   /**
@@ -272,59 +300,131 @@ export class OperadorTurnoService {
   }
 
   /**
-   * Resolve, para um domingo, quem trabalha e quem folga pelo rodízio de grupos
-   * (G1/G2/G3). Usa a âncora configurada; se não houver âncora, ninguém entra
-   * (todos folgam) e `grupoFolga` fica null. Horário do domingo é o `entradaDom`
-   * /`saidaDom` de cada colaborador (Fase 1).
+   * Fichas dos operadores ATIVOS no formato que `montarLinhaEscala` consome.
+   *
+   * É a mesma forma usada pela escala publicada, com uma diferença deliberada:
+   * aqui o filtro é `funcao: 'OPERADOR'`. Este quadro é a tela de gestão dos
+   * operadores; fiscais e supervisores continuam fora dele.
    */
-  private async operadoresNoDomingo(dataISO: string): Promise<{
-    grupoFolga: GrupoDomingo | null;
-    itens: {
-      id: string;
-      nome: string;
-      genero: string | null;
-      turno: TurnoColaborador | null;
-      trabalha: boolean;
-      entrada: string | null;
-      saida: string | null;
-    }[];
-  }> {
-    const dataDomingo = new Date(`${dataISO}T00:00:00.000Z`);
-    const ancora = this.escalaDomingo
-      ? await this.escalaDomingo.obterAncora()
-      : null;
+  private async fichasOperadores(): Promise<FichaOperador[]> {
     const cols = await this.prisma.colaborador.findMany({
       where: { funcao: 'OPERADOR', ativo: true },
-      orderBy: [{ entradaDom: 'asc' }, { nome: 'asc' }],
+      orderBy: [
+        { folgaDiaSemana: 'asc' },
+        { entradaSemana: 'asc' },
+        { nome: 'asc' },
+      ],
     });
+    return cols.map((c) => ({
+      colaboradorId: c.id,
+      nome: c.nome,
+      funcao: 'OPERADOR' as const,
+      turno: c.turno ?? null,
+      genero: c.genero ?? null,
+      folgaDiaSemana: c.folgaDiaSemana ?? null,
+      grupoDomingo: c.grupoDomingo ?? null,
+      entradaSemana: c.entradaSemana ?? null,
+      saidaSemana: c.saidaSemana ?? null,
+      entradaFds: c.entradaFds ?? null,
+      saidaFds: c.saidaFds ?? null,
+      entradaDom: c.entradaDom ?? null,
+      saidaDom: c.saidaDom ?? null,
+    }));
+  }
 
-    const itens = cols.map((c) => {
-      const trabalha =
-        !!ancora &&
-        trabalhaNoDomingo(
-          c.grupoDomingo,
-          dataDomingo,
-          ancora.data,
-          ancora.ordem,
-        );
-      return {
-        id: c.id,
-        nome: c.nome,
-        genero: c.genero ?? null,
-        turno: c.turno ?? null,
-        trabalha,
-        entrada: trabalha ? (c.entradaDom ?? null) : null,
-        saida: trabalha ? (c.saidaDom ?? null) : null,
-      };
+  /**
+   * Exceções de horário por `colaboradorId|diaSemana`, só as marcadas como
+   * `especial` — são as que existem justamente para prevalecer sobre o turno do
+   * cadastro. Entradas sem `colaboradorId` são ignoradas: sem a ficha não há
+   * como saber de quem é a exceção, e aplicá-la no palpite seria pior.
+   */
+  private async especiais(): Promise<Map<string, HorarioEspecialDia>> {
+    const entries = await this.prisma.escalaEntry.findMany({
+      where: { especial: true, colaboradorId: { not: null } },
+      select: {
+        colaboradorId: true,
+        diaSemana: true,
+        entrada: true,
+        saida: true,
+        folga: true,
+      },
     });
+    const mapa = new Map<string, HorarioEspecialDia>();
+    for (const e of entries) {
+      mapa.set(`${e.colaboradorId}|${e.diaSemana}`, {
+        entrada: e.entrada ?? null,
+        saida: e.saida ?? null,
+        folga: e.folga,
+      });
+    }
+    return mapa;
+  }
+
+  /**
+   * Tudo o que decidir "o que esta pessoa faz neste dia" precisa saber, carregado
+   * UMA vez para um intervalo de dias.
+   *
+   * Existe para que o quadro pare de montar a sua própria resposta. Antes ele
+   * decidia horário com um `fds ? entradaFds : entradaSemana` local, que não
+   * conhecia feriado nem exceção de horário: o mesmo dia saía 08:00 aqui e
+   * 07:00 na escala publicada. Agora as duas telas chamam
+   * `montarLinhaEscala` com os mesmos ingredientes.
+   */
+  private async contextoEscala(dias: Date[]): Promise<{
+    linha: (
+      ficha: FichaColaboradorEscala,
+      dia: Date,
+      ehAtestado?: boolean | null,
+    ) => LinhaEscala;
+    grupoFolgaDomingo: (dia: Date) => GrupoDomingo | null;
+  }> {
+    const inicio = dias[0];
+    const fimExclusivo = addDias(dias[dias.length - 1], 1);
+    const [ancoraDomingo, especiais, consultorFolga, mapaFeriados] =
+      await Promise.all([
+        this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
+        this.especiais(),
+        this.folga ? this.folga.consultor(dias) : null,
+        this.feriados
+          ? this.feriados.mapaNoPeriodo(inicio, fimExclusivo)
+          : new Map<number, string>(),
+      ]);
+    // Férias por dia: um período pode cobrir só parte do intervalo, então a
+    // pergunta é feita dia a dia (como já fazia a escala publicada).
+    const feriasPorDia = new Map<number, Set<string>>();
+    for (const dia of dias) {
+      feriasPorDia.set(dia.getTime(), await this.fichasDeFerias(dia));
+    }
 
     return {
-      grupoFolga: ancora
-        ? grupoFolgaNoDomingo(dataDomingo, ancora.data, ancora.ordem)
-        : null,
-      itens,
+      // `ehAtestado`: null/undefined = sem ausência no dia. O chamador carrega a
+      // ausência (com justificativa, CID e período do atestado) e passa só o que
+      // muda o STATUS; quem decide se a falta se aplica é `montarLinhaEscala` —
+      // falta em dia de folga não existe.
+      linha: (ficha, dia, ehAtestado) =>
+        montarLinhaEscala({
+          ficha,
+          dia,
+          ancoraDomingo,
+          ehFeriado: mapaFeriados.has(dia.getTime()),
+          deFerias:
+            feriasPorDia.get(dia.getTime())?.has(ficha.colaboradorId) ?? false,
+          deFolga: consultorFolga?.ehFolga(dia, [ficha.colaboradorId]) ?? false,
+          especial:
+            especiais.get(`${ficha.colaboradorId}|${dia.getUTCDay()}`) ?? null,
+          ocorrencia: ehAtestado == null ? null : { ehAtestado },
+        }),
+      grupoFolgaDomingo: (dia) =>
+        dia.getUTCDay() === 0 && ancoraDomingo
+          ? grupoFolgaNoDomingo(dia, ancoraDomingo.data, ancoraDomingo.ordem)
+          : null,
     };
   }
+
+  // O antigo `operadoresNoDomingo` foi removido: ele resolvia o rodízio de
+  // domingo à mão (e só o domingo). `montarLinhaEscala` já o resolve para
+  // qualquer dia, via `entradaEsperadaNoDia`, então mantê-lo era manter uma
+  // segunda regra que podia divergir da primeira.
 
   /**
    * Lista os operadores ATIVOS para a escala. Fonte: Cadastro Unificado de
@@ -362,8 +462,8 @@ export class OperadorTurnoService {
       return { diaSemana: d.getUTCDay(), data: iso(d) };
     });
 
-    const operadores = await this.listar();
-    const ids = operadores.map((o) => o.id);
+    const fichas = await this.fichasOperadores();
+    const ids = fichas.map((f) => f.colaboradorId);
     const ausencias =
       ids.length > 0
         ? await this.prisma.ausencia.findMany({
@@ -391,85 +491,37 @@ export class OperadorTurnoService {
       });
     }
 
-    const ehFimDeSemana = (diaSemana: number): boolean =>
-      diaSemana === 5 || diaSemana === 6;
+    // Uma única fonte para "o que esta pessoa faz neste dia" — a mesma que a
+    // escala publicada usa. Cobre folga (ficha + escala semanal), férias,
+    // feriado e exceção de horário, que a lógica local daqui não conhecia.
+    const ctx = await this.contextoEscala(
+      dias.map((d) => new Date(`${d.data}T00:00:00.000Z`)),
+    );
 
-    // Folga pela regra única, carregada uma vez para os seis dias da grade.
-    const consultorFolga = this.folga
-      ? await this.folga.consultor(
-          dias.map((d) => new Date(`${d.data}T00:00:00.000Z`)),
-        )
-      : null;
-
-    // Férias POR DIA: a grade é um calendário, e um período de férias pode
-    // cobrir só parte da semana — então a célula é marcada, em vez de a linha
-    // desaparecer. Uma consulta por dia, como já faz a escala publicada.
-    const feriasPorDia = new Map<string, Set<string>>();
-    for (const dia of dias) {
-      feriasPorDia.set(
-        dia.data,
-        await this.fichasDeFerias(new Date(`${dia.data}T00:00:00.000Z`)),
-      );
-    }
-
-    const gradeOperadores: GradeOperador[] = operadores.map((op) => {
+    const gradeOperadores: GradeOperador[] = fichas.map((ficha) => {
       const celulas: GradeCelula[] = dias.map((dia) => {
-        // Férias vêm PRIMEIRO, antes de folga e de falta: no dia de férias a
-        // pessoa não é escalada, então nada mais sobre aquele dia importa. É a
-        // mesma precedência da escala publicada.
-        if (feriasPorDia.get(dia.data)?.has(op.id)) {
-          return {
-            diaSemana: dia.diaSemana,
-            data: dia.data,
-            status: 'FERIAS',
-            entrada: null,
-            saida: null,
-            ausenciaId: null,
-          };
-        }
-        // Folga pela regra única: a ficha OU a escala semanal. Antes só a ficha
-        // valia aqui, então um dia marcado como folga na escala aparecia como
-        // FALTA neste quadro e como FOLGA na escala publicada.
-        if (
-          dia.diaSemana === op.folgaDiaSemana ||
-          consultorFolga?.ehFolga(new Date(`${dia.data}T00:00:00.000Z`), [
-            op.id,
-          ])
-        ) {
-          return {
-            diaSemana: dia.diaSemana,
-            data: dia.data,
-            status: 'FOLGA',
-            entrada: null,
-            saida: null,
-            ausenciaId: null,
-          };
-        }
-        const ausencia = mapaAusencia.get(`${op.id}|${dia.data}`) ?? null;
-        if (ausencia) {
-          return {
-            diaSemana: dia.diaSemana,
-            data: dia.data,
-            status: ausencia.atestado ? 'ATESTADO' : 'FALTA',
-            entrada: null,
-            saida: null,
-            ausenciaId: ausencia.id,
-          };
-        }
-        const fds = ehFimDeSemana(dia.diaSemana);
+        const ausencia = mapaAusencia.get(`${ficha.colaboradorId}|${dia.data}`);
+        const l = ctx.linha(
+          ficha,
+          new Date(`${dia.data}T00:00:00.000Z`),
+          ausencia ? ausencia.atestado : null,
+        );
+        // A grade é um CALENDÁRIO: quem falta mantém a célula sem horário, para
+        // a leitura da semana não confundir "faltou" com "trabalhou até tarde".
+        const ausente = l.status === 'FALTA' || l.status === 'ATESTADO';
         return {
           diaSemana: dia.diaSemana,
           data: dia.data,
-          status: 'TRABALHA',
-          entrada: fds ? op.entradaFds : op.entradaSemana,
-          saida: fds ? op.saidaFds : op.saidaSemana,
-          ausenciaId: null,
+          status: l.status,
+          entrada: ausente ? null : l.entrada,
+          saida: ausente ? null : l.saida,
+          ausenciaId: ausente ? (ausencia?.id ?? null) : null,
         };
       });
       return {
-        id: op.id,
-        nome: op.nome,
-        folgaDiaSemana: op.folgaDiaSemana,
+        id: ficha.colaboradorId,
+        nome: ficha.nome,
+        folgaDiaSemana: ficha.folgaDiaSemana ?? -1,
         celulas,
       };
     });
@@ -518,23 +570,8 @@ export class OperadorTurnoService {
     const diaSemana = diaInicio.getUTCDay();
     const diaFim = addDias(diaInicio, 1);
 
-    // No domingo o roster vem do rodízio de grupos (com o horário de domingo);
-    // nos demais dias, do turno fixo (Seg–Qui x Sex–Sáb) + folga fixa.
-    const ehDom = diaSemana === 0;
-    const domingo = ehDom ? await this.operadoresNoDomingo(dataISO) : null;
-    // Férias: quem está de férias no dia SAI do quadro, igual à escala de
-    // fiscais. Antes seguia aqui como "Trabalha" — as férias não criam falta
-    // (não há `Ausencia`), então a linha caía no caminho de quem trabalha.
-    const deFerias = await this.fichasDeFerias(diaInicio);
-    const itensDomingo = (domingo?.itens ?? []).filter(
-      (i) => !deFerias.has(i.id),
-    );
-    const operadores = ehDom
-      ? []
-      : (await this.listar()).filter((o) => !deFerias.has(o.id));
-    const ids = ehDom
-      ? itensDomingo.map((i) => i.id)
-      : operadores.map((o) => o.id);
+    const fichas = await this.fichasOperadores();
+    const ids = fichas.map((f) => f.colaboradorId);
 
     const ausencias =
       ids.length > 0
@@ -580,113 +617,55 @@ export class OperadorTurnoService {
         },
       ]),
     );
-    const fds = diaSemana === 5 || diaSemana === 6;
+    // Mesma fonte da escala publicada. Ela já resolve folga (ficha + escala
+    // semanal), férias, rodízio de domingo, feriado (que segue o horário de
+    // domingo) e exceção de horário — tudo o que este método decidia sozinho.
+    const ctx = await this.contextoEscala([diaInicio]);
 
-    const linhaComFalta = (base: {
-      id: string;
-      nome: string;
-      genero: string | null;
-      turno: TurnoColaborador | null;
-      entrada: string | null;
-      saida: string | null;
-    }): ColaboradorDia => {
-      const aus = mapaAus.get(base.id) ?? null;
+    const colaboradores: ColaboradorDia[] = [];
+    for (const ficha of fichas) {
+      const aus = mapaAus.get(ficha.colaboradorId) ?? null;
       // Atestado = falta vinculada a um atestado (ou motivo ATESTADO_MEDICO,
       // cobrindo também a ausência a prazo lançada como atestado).
       const ehAtestado =
         !!aus &&
         (aus.atestadoId != null ||
           aus.motivoJustificativa === 'ATESTADO_MEDICO');
+      const l = ctx.linha(ficha, diaInicio, aus ? ehAtestado : null);
+
+      // Roster de UM dia: quem está de férias SAI da lista, como já acontecia na
+      // escala de fiscais. (Na grade semanal a célula é marcada `FERIAS`, porque
+      // lá o formato é calendário e a linha não pode desaparecer.)
+      if (l.status === 'FERIAS') continue;
+
+      const ausenteDeVerdade = l.status === 'FALTA' || l.status === 'ATESTADO';
       const atestado = aus?.atestadoId
         ? (mapaAtestado.get(aus.atestadoId) ?? null)
         : null;
-      return {
-        id: base.id,
-        nome: base.nome,
-        genero: base.genero,
-        turno: base.turno,
-        status: aus ? (ehAtestado ? 'ATESTADO' : 'FALTA') : 'TRABALHA',
-        entrada: base.entrada,
-        saida: base.saida,
-        ausenciaId: aus?.id ?? null,
-        cid: aus?.cid ?? null,
-        atestadoInicio: atestado?.inicio ?? null,
-        atestadoFim: atestado?.fim ?? null,
-        statusJustificativa: aus
-          ? (aus.statusJustificativa as StatusJustificativa)
+      colaboradores.push({
+        id: ficha.colaboradorId,
+        nome: ficha.nome,
+        genero: ficha.genero,
+        turno: ficha.turno as TurnoColaborador | null,
+        status: l.status,
+        entrada: l.entrada,
+        saida: l.saida,
+        // Os campos de ausência só aparecem quando a falta REALMENTE se aplica:
+        // `montarLinhaEscala` descarta falta em dia de folga/férias, e mostrar a
+        // justificativa de uma falta que não existe convidaria a agir sobre ela.
+        ausenciaId: ausenteDeVerdade ? (aus?.id ?? null) : null,
+        cid: ausenteDeVerdade ? (aus?.cid ?? null) : null,
+        atestadoInicio: ausenteDeVerdade ? (atestado?.inicio ?? null) : null,
+        atestadoFim: ausenteDeVerdade ? (atestado?.fim ?? null) : null,
+        statusJustificativa: ausenteDeVerdade
+          ? ((aus?.statusJustificativa as StatusJustificativa) ?? null)
           : null,
-        justificadaPorNome: aus?.justificadaPorNome ?? null,
-        aPrazo: aus?.aPrazo ?? false,
-      };
-    };
-
-    const folga = (base: {
-      id: string;
-      nome: string;
-      genero: string | null;
-      turno: TurnoColaborador | null;
-    }): ColaboradorDia => ({
-      id: base.id,
-      nome: base.nome,
-      genero: base.genero,
-      turno: base.turno,
-      status: 'FOLGA',
-      entrada: null,
-      saida: null,
-      ausenciaId: null,
-      cid: null,
-      atestadoInicio: null,
-      atestadoFim: null,
-      statusJustificativa: null,
-      justificadaPorNome: null,
-      aPrazo: false,
-    });
-
-    // Folga pela regra única (ficha + escala semanal). É o que faz este quadro
-    // concordar com a escala publicada: antes, um dia de folga registrado apenas
-    // na escala semanal aparecia aqui como FALTA — foi assim que uma falta
-    // indevida ficou visível no dia de descanso de um colaborador.
-    const consultorFolga = this.folga
-      ? await this.folga.consultor([diaInicio])
-      : null;
-    const deFolgaPelaRegra = (id: string): boolean =>
-      consultorFolga?.ehFolga(diaInicio, [id]) ?? false;
-
-    const colaboradores: ColaboradorDia[] = ehDom
-      ? itensDomingo.map((it) =>
-          it.trabalha && !deFolgaPelaRegra(it.id)
-            ? linhaComFalta({
-                id: it.id,
-                nome: it.nome,
-                genero: it.genero,
-                turno: it.turno,
-                entrada: it.entrada,
-                saida: it.saida,
-              })
-            : folga({
-                id: it.id,
-                nome: it.nome,
-                genero: it.genero,
-                turno: it.turno,
-              }),
-        )
-      : operadores.map((op) =>
-          op.folgaDiaSemana === diaSemana || deFolgaPelaRegra(op.id)
-            ? folga({
-                id: op.id,
-                nome: op.nome,
-                genero: op.genero ?? null,
-                turno: op.turno,
-              })
-            : linhaComFalta({
-                id: op.id,
-                nome: op.nome,
-                genero: op.genero ?? null,
-                turno: op.turno,
-                entrada: fds ? op.entradaFds : op.entradaSemana,
-                saida: fds ? op.saidaFds : op.saidaSemana,
-              }),
-        );
+        justificadaPorNome: ausenteDeVerdade
+          ? (aus?.justificadaPorNome ?? null)
+          : null,
+        aPrazo: ausenteDeVerdade ? (aus?.aPrazo ?? false) : false,
+      });
+    }
 
     // Trabalha/falta primeiro, por hora de entrada; folga ao fim (por nome).
     colaboradores.sort((a, b) => {
@@ -707,7 +686,7 @@ export class OperadorTurnoService {
       faltas: colaboradores.filter((c) => c.status === 'FALTA').length,
       atestados: colaboradores.filter((c) => c.status === 'ATESTADO').length,
       colaboradores,
-      grupoFolgaDomingo: domingo?.grupoFolga ?? null,
+      grupoFolgaDomingo: ctx.grupoFolgaDomingo(diaInicio),
     };
   }
 
@@ -719,45 +698,23 @@ export class OperadorTurnoService {
   async aoVivo(): Promise<AoVivoOperadores> {
     const { dataISO, hora, minuto, diaSemana } = agoraBrasilia();
     const nowMin = hora * 60 + minuto;
-    const ehDom = diaSemana === 0;
-    const fds = diaSemana === 5 || diaSemana === 6;
-
-    // Candidatos do dia (com o horário do dia): no domingo, quem trabalha pelo
-    // rodízio de grupos; nos demais dias, quem não está de folga fixa.
-    let candidatos: {
-      id: string;
-      nome: string;
-      entrada: string | null;
-      saida: string | null;
-    }[];
-    if (ehDom) {
-      const { itens } = await this.operadoresNoDomingo(dataISO);
-      candidatos = itens
-        .filter((i) => i.trabalha)
-        .map((i) => ({
-          id: i.id,
-          nome: i.nome,
-          entrada: i.entrada,
-          saida: i.saida,
-        }));
-    } else {
-      const operadores = await this.listar();
-      candidatos = operadores
-        .filter((op) => op.folgaDiaSemana !== diaSemana)
-        .map((op) => ({
-          id: op.id,
-          nome: op.nome,
-          entrada: fds ? op.entradaFds : op.entradaSemana,
-          saida: fds ? op.saidaFds : op.saidaSemana,
-        }));
-    }
-
     const diaInicio = new Date(`${dataISO}T00:00:00.000Z`);
     const diaFim = addDias(diaInicio, 1);
-    // Quem está de férias não deveria estar no caixa: sai dos candidatos, senão
-    // entraria em `disponiveis` (ou, sem batida, em `faltas`).
-    const deFeriasHoje = await this.fichasDeFerias(diaInicio);
-    candidatos = candidatos.filter((c) => !deFeriasHoje.has(c.id));
+
+    // Candidatos do dia, pela MESMA regra da escala publicada: quem tem turno
+    // hoje. Isso cobre folga (ficha + escala semanal), férias, rodízio de
+    // domingo, feriado e exceção de horário — antes, um feriado punha aqui o
+    // horário de dia útil e a franja "agora" ficava errada.
+    const ctx = await this.contextoEscala([diaInicio]);
+    const candidatos = (await this.fichasOperadores())
+      .map((ficha) => ({ ficha, linha: ctx.linha(ficha, diaInicio) }))
+      .filter(({ linha }) => linha.status === 'TRABALHA')
+      .map(({ ficha, linha }) => ({
+        id: ficha.colaboradorId,
+        nome: ficha.nome,
+        entrada: linha.entrada,
+        saida: linha.saida,
+      }));
     const ids = candidatos.map((c) => c.id);
     const ausencias =
       ids.length > 0

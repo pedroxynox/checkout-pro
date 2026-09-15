@@ -169,18 +169,43 @@ Delegam às funções puras homônimas do domínio.
 
 ### `OperadorTurnoService`
 - `listar()` — operadores (turno fixo) a partir do Cadastro Unificado (função
-  `OPERADOR` ativa).
+  `OPERADOR` ativa). Serve à tela de cadastro; a escala não passa mais por aqui.
+- **Quem decide o estado e o horário do dia é `montarLinhaEscala`** — a mesma
+  função que monta a [escala publicada](escala-exportacao.md). O quadro carrega
+  os ingredientes (ficha, âncora do rodízio, feriados, férias, folga pela regra
+  única, exceções de horário) em `contextoEscala(dias)` e chama a função; o que
+  continua sendo dele é o recorte (`funcao: 'OPERADOR'`), o enriquecimento das
+  linhas e as contagens. Antes o quadro tinha uma **cópia** da regra (um
+  `fds ? entradaFds : entradaSemana` local) e a cópia divergia em três pontos:
+  férias não saíam da lista, folga marcada só na escala semanal virava falta, e
+  **no feriado o horário era o de dia útil** em vez do de domingo.
 - `grade(dataRef?)` — grade semanal (Seg–Sáb) com trabalha/folga/**falta ou
-  atestado**/cobertura por dia. O dia vinculado a um atestado aparece como
-  `ATESTADO` (mesma regra do roster diário), não como `FALTA`.
+  atestado**/férias/cobertura por dia. O dia vinculado a um atestado aparece como
+  `ATESTADO` (mesma regra do roster diário), não como `FALTA`. Sendo um
+  calendário, quem falta mantém a célula **sem horário** — para a leitura da
+  semana não confundir "faltou" com "trabalhou".
 - **FOLGA no quadro segue a regra única** (`FolgaService`): a ficha **ou** a escala
   semanal. Antes o quadro olhava só `folgaDiaSemana`, enquanto a escala publicada
   também respeitava a escala semanal — com as duas fontes em desacordo, o mesmo
   dia saía FOLGA num lugar e FALTA no outro. A folga **vence** uma falta já
   gravada no dia (a auto-cura do Relógio Ponto a remove em seguida).
+- **FERIADO segue o horário de DOMINGO** da pessoa (`FeriadosService`, opcional):
+  é a regra que a jornada já aplicava ao pagamento e que a escala publicada já
+  aplicava ao turno. O quadro não a conhecia — num feriado ele mostrava o horário
+  de dia útil, e o operador que lesse a tela de gestão veria uma hora de entrada
+  diferente da que estava na escala que ele recebeu.
+- **EXCEÇÃO DE HORÁRIO** (`EscalaEntry.especial`) prevalece sobre o turno do
+  cadastro, inclusive sobre a folga da ficha — é assim que se convoca alguém no
+  seu dia de descanso. O quadro ignorava as exceções por completo.
 - `diaOperadores(dataRef?)` — roster de um dia, ordenado por entrada (folga ao
-  fim); propaga o turno do cadastro.
-- `aoVivo()` — quem deveria estar no caixa agora (fuso de Brasília).
+  fim); propaga o turno do cadastro. Os campos de ausência (`ausenciaId`, `cid`,
+  período do atestado, estado da justificativa) só aparecem quando a falta
+  **realmente se aplica**: `montarLinhaEscala` descarta falta em dia de
+  folga/férias, e mostrar a justificativa de uma falta inexistente convidaria o
+  gestor a agir sobre ela.
+- `aoVivo()` — quem deveria estar no caixa agora (fuso de Brasília). Os candidatos
+  saem da mesma regra (`status === 'TRABALHA'`), então a franja "agora" passou a
+  acertar também em feriado e com horário de exceção.
 - `analiticaFaltas(inicio, fim)` / `analiticaNaoRetornos(inicio, fim)` —
   analítica inteligente (taxa, padrões, tendência e risco) via `analisarFaltas`.
   Analisam ausências **já registradas**, então férias não entram na conta (quem
@@ -293,7 +318,7 @@ Delegam às funções puras homônimas do domínio.
 | `falta-em-folga.spec.ts` | Recusa falta em dia de folga; marca normalmente em dia de trabalho; e o contrapeso: **ausência a prazo segue cobrindo a folga** | 3 |
 | `quadro-folga-escala.spec.ts` | O quadro mostra FOLGA quando só a escala semanal marca folga; a folga vence uma falta já gravada; TRABALHA quando nenhuma fonte diz folga; e a grade usa a mesma regra | 4 |
 | `quadro-ferias-escala.spec.ts` | Quem está de férias sai do roster do dia (inclusive no domingo) e dos totais; as férias vencem uma falta gravada; fora do período segue normal; sem o serviço de férias nada é excluído; a grade marca **FERIAS** só no dia coberto (sem apagar a linha da semana) e não conta férias na cobertura; o tablero ao vivo não espera quem está de férias; e o **aviso de cobertura** não conta quem está de férias nem grita quando ninguém era esperado | 14 |
-| `coerencia-quadro-escala.spec.ts` | **Coerência entre telas:** para o mesmo dia e pessoa, o Quadro e a [escala publicada](escala-exportacao.md) dizem o mesmo (trabalho, folga da ficha, folga da escala semanal com e sem exceção, férias, falta, atestado). É o teste que faltava — foi ele que achou a divergência de folga | 7 |
+| `coerencia-quadro-escala.spec.ts` | **Coerência entre telas:** para o mesmo dia e pessoa, o Quadro e a [escala publicada](escala-exportacao.md) dizem o mesmo — e desde a extensão comparam também o **horário**, não só o estado (trabalho, folga da ficha, folga da escala semanal com e sem exceção, férias, falta, atestado, **feriado** e **horário de exceção**). É o teste que faltava: achou a divergência de folga e, quando passou a comparar horários, os desvios de feriado e de exceção | 9 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
@@ -301,27 +326,37 @@ Delegam às funções puras homônimas do domínio.
 - 🔧 **Modelo legado em transição:** o `Operador` simples foi removido e os
   operadores agora vêm do Cadastro Unificado (função `OPERADOR`); o
   `OperadorTurno` antigo coexiste — ver [ADR 0004](../02-arquitetura/decisoes/0004-cadastro-unificado-e-escala-opcao-a.md).
-- 🔧 `operador-turno.service.ts` (1056 linhas) concentra grade, roster, ao vivo e
-  analítica; candidato a extrair sub-serviços.
+- 🔧 `operador-turno.service.ts` concentra grade, roster, ao vivo e analítica;
+  candidato a extrair sub-serviços. (Tamanho atual em
+  [estado-e-métricas](../08-gestao/estado-e-metricas.md).)
+- ✅ **O Quadro não decide mais sozinho o que a pessoa faz no dia.** Ele e a
+  escala publicada chamam `montarLinhaEscala`; o quadro só recorta os operadores
+  e enriquece as linhas. A regra local que existia aqui divergiu três vezes
+  (férias, folga da escala semanal, feriado/exceção de horário) e cada vez foi um
+  caso em que duas telas do mesmo app respondiam diferente à mesma pergunta.
 - ✅ **Existe um teste de coerência entre as telas**
   (`coerencia-quadro-escala.spec.ts`): para o mesmo dia e a mesma pessoa, o Quadro
-  e a escala publicada têm de dizer o mesmo. Foi ele que revelou a divergência de
-  folga, e é a rede que faltava — antes cada tela provava só o seu lado, e a
-  incoerência vivia no vão entre elas. **Um caso novo de escala deve ganhar uma
-  linha lá.**
-- ⚠️ **O Quadro é uma segunda fonte de "quem trabalha hoje".** A
+  e a escala publicada têm de dizer o mesmo — estado **e horário**. Foi ele que
+  revelou a divergência de folga e, ao passar a comparar horários, os desvios de
+  feriado e de exceção. **Um caso novo de escala deve ganhar uma linha lá.**
+- ⚠️ **Ainda há uma terceira fonte de "quem trabalha hoje":**
+  `FiscaisService.escaladosDoDia`. A
   [ADR 0015](../02-arquitetura/decisoes/0015-ferias-inativacao-nao-rigida.md)
-  assumiu que `FiscaisService.escaladosDoDia` era a **fonte única**, e por isso
-  bastava excluir as férias ali. Não era: este quadro monta a sua própria lista
-  (a partir de `Colaborador`), e por isso ficou anos mostrando quem estava de
-  férias como "Trabalha". A exclusão agora está aqui também, mas **a duplicação
-  de fontes continua** — qualquer regra nova de "quem é escalado" precisa ser
-  aplicada nos dois lugares (e na escala publicada).
+  a tratou como **fonte única** e por isso bastava excluir as férias ali — não
+  era, e este quadro ficou anos mostrando quem estava de férias como "Trabalha".
+  O quadro e a escala publicada já convergiram em `montarLinhaEscala`;
+  `escaladosDoDia` **não**. Enquanto isso, qualquer regra nova de "quem é
+  escalado" ainda precisa ser aplicada nos dois lugares.
+- ⚠️ **Feriado e exceção de horário dependem de serviços opcionais.**
+  `FeriadosService` e `FolgaService` entram por `@Optional()`: sem eles o quadro
+  degrada (volta a ignorar feriado / a regra única de folga) em vez de quebrar.
+  Um spec que construa o serviço à mão sem passá-los **não** cobre essas regras —
+  é o que os torna fáceis de perder de vista de novo.
 - ⚠️ **A grade consulta férias um dia por vez** (seis consultas por semana),
   mesmo padrão já registrado como dívida em
   [`escala-exportacao`](escala-exportacao.md). Uma consulta por intervalo
   resolveria os dois.
-- ⚠️ **O Quadro não inclui SUPERVISOR:** `listar()` e `operadoresNoDomingo()`
+- ⚠️ **O Quadro não inclui SUPERVISOR:** `listar()` e `fichasOperadores()`
   filtram `funcao: 'OPERADOR'`. O supervisor aparece na equipe do dia
   (`escaladosDoDia`, via `FUNCOES_PONTO_NAO_FISCAL`) e na escala publicada
   (`FUNCOES_ESCALA`), onde as férias **já** eram respeitadas — mas não neste

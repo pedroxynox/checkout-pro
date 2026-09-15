@@ -35,6 +35,9 @@ describe('OperadorTurnoService.diaOperadores — turno do cadastro', () => {
       ausencia: {
         findMany: () => Promise.resolve([]),
       },
+      // Exceções de horário: o roster agora consulta a mesma fonte que a escala
+      // publicada. Nenhuma exceção nestes cenários.
+      escalaEntry: { findMany: () => Promise.resolve([]) },
     };
     return new OperadorTurnoService(prismaFake as never);
   }
@@ -84,6 +87,7 @@ describe('OperadorTurnoService.grade — status ATESTADO vs FALTA', () => {
     const prismaFake = {
       colaborador: { findMany: () => Promise.resolve([colaborador]) },
       ausencia: { findMany: () => Promise.resolve(ausencias) },
+      escalaEntry: { findMany: () => Promise.resolve([]) },
     };
     return new OperadorTurnoService(prismaFake as never);
   }
@@ -142,6 +146,7 @@ describe('OperadorTurnoService.diaOperadores — período do atestado', () => {
       atestado: {
         findMany: () => Promise.resolve(atestados),
       },
+      escalaEntry: { findMany: () => Promise.resolve([]) },
     };
     return new OperadorTurnoService(prismaFake as never);
   }

@@ -1,5 +1,6 @@
 import { EscalaExportacaoService } from '../escala-exportacao/escala-exportacao.service';
 import { FolgaService } from '../escala-domingo/folga.service';
+import { FeriadosService } from '../feriados/feriados.service';
 import { OperadorTurnoService } from './operador-turno.service';
 
 /**
@@ -27,6 +28,9 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
   // Quarta-feira, 22/07/2026 (diaSemana 3). Não é feriado nacional.
   const QUARTA = new Date('2026-07-22T12:00:00Z');
   const QUARTA_ISO = '2026-07-22';
+  // Terça, 21/04/2026 — Tiradentes (feriado nacional, resolvido pela regra).
+  const FERIADO = new Date('2026-04-21T12:00:00Z');
+  const FERIADO_ISO = '2026-04-21';
 
   interface Cenario {
     /** Dia da semana da folga na ficha (1 = segunda). */
@@ -35,6 +39,8 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
     folgaNaEscalaEm?: number;
     /** A entrada da escala semanal é uma exceção ("especial")? */
     escalaEspecial?: boolean;
+    /** Horário de exceção para o dia da semana (implica `especial`). */
+    horarioEspecialEm?: { diaSemana: number; entrada: string; saida: string };
     deFerias?: boolean;
     ausencia?: 'FALTA' | 'ATESTADO';
   }
@@ -47,32 +53,51 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
       genero: 'M',
       funcao: 'OPERADOR',
       turno: 'ABERTURA',
+      // Horários DIFERENTES de propósito: se semana/fds/domingo fossem iguais,
+      // o teste não perceberia quando as duas telas escolhem regras distintas.
       entradaSemana: '08:00',
       saidaSemana: '16:00',
-      entradaFds: '08:00',
-      saidaFds: '16:00',
-      entradaDom: '08:00',
-      saidaDom: '16:00',
+      entradaFds: '09:00',
+      saidaFds: '17:00',
+      entradaDom: '07:00',
+      saidaDom: '13:00',
       folgaDiaSemana: cenario.folgaNaFicha ?? 1,
       grupoDomingo: null,
       ativo: true,
       criadoEm: new Date(),
     };
 
-    const entradasEscala =
-      cenario.folgaNaEscalaEm !== undefined
-        ? [
-            {
-              funcionarioId: 'c1',
-              colaboradorId: 'c1',
-              diaSemana: cenario.folgaNaEscalaEm,
-              folga: true,
-              especial: cenario.escalaEspecial ?? false,
-              entrada: null,
-              saida: null,
-            },
-          ]
-        : [];
+    const entradasEscala: {
+      funcionarioId: string;
+      colaboradorId: string;
+      diaSemana: number;
+      folga: boolean;
+      especial: boolean;
+      entrada: string | null;
+      saida: string | null;
+    }[] = [];
+    if (cenario.folgaNaEscalaEm !== undefined) {
+      entradasEscala.push({
+        funcionarioId: 'c1',
+        colaboradorId: 'c1',
+        diaSemana: cenario.folgaNaEscalaEm,
+        folga: true,
+        especial: cenario.escalaEspecial ?? false,
+        entrada: null,
+        saida: null,
+      });
+    }
+    if (cenario.horarioEspecialEm) {
+      entradasEscala.push({
+        funcionarioId: 'c1',
+        colaboradorId: 'c1',
+        diaSemana: cenario.horarioEspecialEm.diaSemana,
+        folga: false,
+        especial: true,
+        entrada: cenario.horarioEspecialEm.entrada,
+        saida: cenario.horarioEspecialEm.saida,
+      });
+    }
 
     const ausencias = cenario.ausencia
       ? [
@@ -158,12 +183,17 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
     };
 
     const folga = new FolgaService(prismaFake as never, undefined);
+    // Feriados reais (Tiradentes e cia. vêm da regra, não do banco) — é o que
+    // faz o cenário de feriado valer: as duas vistas têm de aplicar a MESMA
+    // regra de "feriado segue o horário de domingo".
+    const feriados = new FeriadosService(prismaFake as never);
     const quadro = new OperadorTurnoService(
       prismaFake as never,
       undefined,
       undefined,
       folga,
       feriasFake as never,
+      feriados,
     );
     // Ordem: prisma, escalaDomingo, ferias, folga. As duas vistas recebem a
     // MESMA instância da regra de folga — é o ponto do teste.
@@ -176,68 +206,96 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
     return { quadro, publicada };
   }
 
+  /**
+   * O que cada vista diz de uma pessoa: `STATUS entrada-saida`.
+   *
+   * Compara o **horário** também, não só o estado: uma tela dizer "trabalha
+   * 08:00" e a outra "trabalha 07:00" é tão incoerente quanto discordar do
+   * estado — e é o que acontece em feriado e com horário de exceção.
+   */
+  const descrever = (
+    status: string,
+    entrada: string | null,
+    saida: string | null,
+  ): string => `${status} ${entrada ?? '--'}-${saida ?? '--'}`;
+
   /** Estado que o QUADRO atribui a cada pessoa (ausente ⇒ de férias). */
   async function estadoNoQuadro(
     quadro: OperadorTurnoService,
+    dataRef: Date,
   ): Promise<Map<string, string>> {
-    const dia = await quadro.diaOperadores(QUARTA);
-    const mapa = new Map(dia.colaboradores.map((c) => [c.id, c.status]));
-    if (!mapa.has('c1')) mapa.set('c1', 'FERIAS');
+    const dia = await quadro.diaOperadores(dataRef);
+    const mapa = new Map(
+      dia.colaboradores.map((c) => [
+        c.id,
+        descrever(c.status, c.entrada, c.saida),
+      ]),
+    );
+    if (!mapa.has('c1')) mapa.set('c1', descrever('FERIAS', null, null));
     return mapa;
   }
 
   /** Estado que a ESCALA PUBLICADA atribui, só das linhas de OPERADOR. */
   async function estadoNaPublicada(
     publicada: EscalaExportacaoService,
+    dataISO: string,
   ): Promise<Map<string, string>> {
-    const escala = await publicada.escalaDoDia(QUARTA_ISO);
+    const escala = await publicada.escalaDoDia(dataISO);
     const linhas = escala.secoes
       .filter((s) => s.funcao === 'OPERADOR')
       .flatMap((s) => s.linhas);
-    return new Map(linhas.map((l) => [l.colaboradorId, l.status]));
+    return new Map(
+      linhas.map((l) => [
+        l.colaboradorId,
+        descrever(l.status, l.entrada, l.saida),
+      ]),
+    );
   }
 
-  /** Roda as duas vistas e devolve o que cada uma diz. */
-  async function comparar(cenario: Cenario) {
+  /** Roda as duas vistas no mesmo dia e devolve o que cada uma diz. */
+  async function comparar(
+    cenario: Cenario,
+    dia: { data: Date; iso: string } = { data: QUARTA, iso: QUARTA_ISO },
+  ) {
     const { quadro, publicada } = montar(cenario);
     return {
-      quadro: await estadoNoQuadro(quadro),
-      publicada: await estadoNaPublicada(publicada),
+      quadro: await estadoNoQuadro(quadro, dia.data),
+      publicada: await estadoNaPublicada(publicada, dia.iso),
     };
   }
 
   it('dia normal de trabalho: as duas dizem TRABALHA', async () => {
     const { quadro, publicada } = await comparar({});
 
-    expect(quadro.get('c1')).toBe('TRABALHA');
+    expect(quadro.get('c1')).toBe('TRABALHA 08:00-16:00');
     expect(publicada).toEqual(quadro);
   });
 
   it('folga da FICHA: as duas dizem FOLGA', async () => {
     const { quadro, publicada } = await comparar({ folgaNaFicha: 3 });
 
-    expect(quadro.get('c1')).toBe('FOLGA');
+    expect(quadro.get('c1')).toBe('FOLGA -----');
     expect(publicada).toEqual(quadro);
   });
 
   it('férias: o Quadro omite e a Escala marca FERIAS (equivalentes)', async () => {
     const { quadro, publicada } = await comparar({ deFerias: true });
 
-    expect(publicada.get('c1')).toBe('FERIAS');
+    expect(publicada.get('c1')).toBe('FERIAS -----');
     expect(publicada).toEqual(quadro);
   });
 
   it('falta registrada: as duas dizem FALTA', async () => {
     const { quadro, publicada } = await comparar({ ausencia: 'FALTA' });
 
-    expect(quadro.get('c1')).toBe('FALTA');
+    expect(quadro.get('c1')).toBe('FALTA 08:00-16:00');
     expect(publicada).toEqual(quadro);
   });
 
   it('atestado: as duas dizem ATESTADO', async () => {
     const { quadro, publicada } = await comparar({ ausencia: 'ATESTADO' });
 
-    expect(quadro.get('c1')).toBe('ATESTADO');
+    expect(quadro.get('c1')).toBe('ATESTADO 08:00-16:00');
     expect(publicada).toEqual(quadro);
   });
 
@@ -247,7 +305,7 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
       escalaEspecial: true,
     });
 
-    expect(quadro.get('c1')).toBe('FOLGA');
+    expect(quadro.get('c1')).toBe('FOLGA -----');
     expect(publicada).toEqual(quadro);
   });
 
@@ -258,7 +316,33 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
     // sai FOLGA numa tela e TRABALHA na outra.
     const { quadro, publicada } = await comparar({ folgaNaEscalaEm: 3 });
 
-    expect(quadro.get('c1')).toBe('FOLGA');
+    expect(quadro.get('c1')).toBe('FOLGA -----');
     expect(publicada).toEqual(quadro);
+  });
+
+  // Os cenários abaixo comparam o HORÁRIO, não o estado. As duas telas
+  // concordam que a pessoa trabalha — mas divergiam sobre a que horas, o que é
+  // igualmente errado para quem lê a escala só para saber quando entrar.
+
+  it('em FERIADO as duas usam o mesmo horário', async () => {
+    // Feriado funciona como domingo: vale o horário de domingo da pessoa
+    // (07:00–13:00 na ficha), não o de dia útil (08:00–16:00).
+    const { quadro, publicada } = await comparar(
+      {},
+      { data: FERIADO, iso: FERIADO_ISO },
+    );
+
+    expect(publicada.get('c1')).toBe('TRABALHA 07:00-13:00');
+    expect(quadro).toEqual(publicada);
+  });
+
+  it('com HORÁRIO DE EXCEÇÃO as duas usam o mesmo horário', async () => {
+    // A exceção do gestor para a quarta (10:00–18:00) prevalece sobre o turno.
+    const { quadro, publicada } = await comparar({
+      horarioEspecialEm: { diaSemana: 3, entrada: '10:00', saida: '18:00' },
+    });
+
+    expect(publicada.get('c1')).toBe('TRABALHA 10:00-18:00');
+    expect(quadro).toEqual(publicada);
   });
 });
