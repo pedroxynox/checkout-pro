@@ -106,7 +106,7 @@ export const REGRAS_PADRAO: RegrasContrato = REGRAS_SEIS_X_UM_DOIS_X_UM;
 
 /**
  * true quando o dia é pago com adicional de 100%: domingo (no 6x1) e TODO
- * feriado, que segue a mesma regra do domingo.
+ * feriado.
  *
  * Este predicado responde a duas perguntas de uma vez, porque são a mesma
  * regra vista de dois lados:
@@ -115,6 +115,12 @@ export const REGRAS_PADRAO: RegrasContrato = REGRAS_SEIS_X_UM_DOIS_X_UM;
  *   pagam a carga efetivamente cumprida: quem trabalha menos que a base não
  *   fica devendo, quem trabalha mais recebe 100%. Só os demais dias geram
  *   débito por déficit.
+ *
+ * **A isenção de débito no feriado é deliberada:** as horas do feriado são
+ * pagas a 100% e o trabalhador as cobra, então debitá-las seria cobrar duas
+ * vezes o mesmo dia. Note que isto é sobre o ADICIONAL e o DÉBITO — a
+ * carga-base do dia é outra pergunta, e a resposta dela é
+ * `cargaBaseDoDia`, que usa o dia REAL.
  */
 export function diaPagaAdicional100(
   diaSemana: number,
@@ -122,6 +128,35 @@ export function diaPagaAdicional100(
   regras: RegrasContrato = REGRAS_PADRAO,
 ): boolean {
   return regras.temAdicional100(diaSemana) || ehFeriado;
+}
+
+/**
+ * Carga-base (jornada esperada) de um dia, em ms.
+ *
+ * **O feriado usa a carga do seu PRÓPRIO dia da semana.** Uma segunda feriada
+ * espera a jornada de uma segunda. Antes o feriado era remapeado para domingo
+ * (`cargaBaseMs(ehFeriado ? 0 : diaSemana)`), e o efeito não era teórico: para
+ * quem folga fixo no domingo, o contrato costuma ter a carga de domingo em
+ * **zero** — então todo feriado passava a esperar zero hora, e a jornada
+ * inteira virava extra a 100%, com TAC por exceder o limite de extras. Uma
+ * pessoa escalada num feriado não estava de folga: era o dia dela de trabalho,
+ * com a jornada normal do dia.
+ *
+ * O que o feriado **continua** herdando do domingo é só o **horário** de
+ * entrada/saída (`entradaEsperadaNoDia`/`saidaEsperadaNoDia`) e o **adicional
+ * de 100%** (`diaPagaAdicional100`) com a sua isenção de débito. Três perguntas
+ * distintas sobre o mesmo dia, e só duas delas seguem o domingo.
+ *
+ * Existe como função (e não como uma linha em cada chamador) porque a regra
+ * estava duplicada em dois lugares — o cálculo do dia e a base dos dias de
+ * ausência/atestado —, e uma regra de dinheiro escrita duas vezes é uma regra
+ * que vai divergir.
+ */
+export function cargaBaseDoDia(
+  diaSemana: number,
+  regras: RegrasContrato = REGRAS_PADRAO,
+): number {
+  return regras.cargaBaseMs(diaSemana);
 }
 
 /**
@@ -309,10 +344,11 @@ export function calcularJornadaDia(
     regras.maxTrabalhoSemIntervaloMs,
     regras.intervaloObrigatorio,
   );
-  // Feriado segue a MESMA regra do domingo: carga-base de domingo e extras a
-  // 100% (o rodízio por grupos, esse sim, é exclusivo do domingo).
+  // Do domingo, o feriado herda o adicional de 100% (e a isenção de débito que
+  // vem com ele) — mas NÃO a carga-base: a jornada esperada é a do próprio dia
+  // da semana. Ver `cargaBaseDoDia`.
   const contaComo100 = diaPagaAdicional100(diaSemana, ehFeriado, regras);
-  const baseMs = regras.cargaBaseMs(ehFeriado ? 0 : diaSemana);
+  const baseMs = cargaBaseDoDia(diaSemana, regras);
 
   if (classificadas.length === 0) {
     return {

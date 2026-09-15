@@ -206,8 +206,16 @@ da remoção imediata que o `PontoService` já faz na batida normal.
   contrato) e em **todo feriado**. Responde a duas perguntas com a mesma regra:
   o que passa da carga-base é extra de **100%** (não de 50%) e o que falta para
   a carga-base **não vira hora devida** — domingo e feriado pagam a carga
-  cumprida. Usado por `calcularJornadaDia` (adicional) e pela
+  cumprida. A isenção no feriado é deliberada: as horas são pagas a 100% e o
+  trabalhador as cobra, então debitá-las seria cobrar o mesmo dia duas vezes.
+  Usado por `calcularJornadaDia` (adicional) e pela
   [`central-jornada`](central-jornada.md) (isenção de débito).
+- `cargaBaseDoDia(diaSemana, regras)` → a **jornada esperada** do dia. Não
+  recebe `ehFeriado` **de propósito**: a carga de um feriado é a do seu próprio
+  dia da semana, e a ausência do parâmetro é o que impede o remapeamento para
+  domingo voltar por descuido. Fonte única dos dois chamadores (o cálculo do dia
+  e a base dos dias de ausência/atestado), que antes tinham cópias da regra.
+  Ver [ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md).
 - `batidaDuplicada(horaMs, existentes, minimo)` → detecta batidas próximas demais.
 - `etapaAlertaTac(extrasMs, tac)` → devolve só a etapa mais grave (`RISCO_1H30`,
   `RISCO_1H40`, `TAC`).
@@ -355,12 +363,17 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
    reinícios e coordena instâncias).
 11. **O adicional é decidido pelo dia, tudo ou nada:** domingo e feriado pagam
    100% sobre o que passa da carga-base; todos os demais dias (inclusive
-   **sábado**) pagam 50%. A carga-base varia por dia da semana
-   (dom 7h20 · seg-qui 7h · sex-sáb 8h no 6x1) e o feriado usa a base de
-   domingo, mesmo caindo numa segunda. Nos dias de 100% não há hora devida —
-   ver `diaPagaAdicional100` e a regra 4 da
+   **sábado**) pagam 50%. Nos dias de 100% não há hora devida — ver
+   `diaPagaAdicional100` e a regra 4 da
    [`central-jornada`](central-jornada.md).
-12. **Para AJUSTAR o ponto, a marcação faltante é identificada pelo turno — não
+12. **A carga-base do feriado é a do seu PRÓPRIO dia da semana**, não a de
+   domingo (`cargaBaseDoDia`; dom 7h20 · seg-qui 7h · sex-sáb 8h no 6x1). Só o
+   **horário** e o **adicional de 100%** seguem o domingo — a jornada esperada,
+   não. Ver [ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md):
+   o remapeamento anterior fazia todo feriado esperar **zero hora** para quem tem
+   o domingo zerado no contrato (o normal de quem folga fixo no domingo), e a
+   jornada inteira virava extra a 100% com TAC por exceder o limite.
+13. **Para AJUSTAR o ponto, a marcação faltante é identificada pelo turno — não
    pela ordem.** O tipo de cada batida é derivado da posição cronológica, o que
    basta para calcular as horas mas encobre a **entrada** esquecida (ela desloca
    todos os tipos). `analisarMarcacoesDoDia` confronta a 1ª batida com o horário
@@ -369,7 +382,7 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
    resposta inventada. O cálculo da jornada **não muda** por isso — a análise é
    um segundo olhar, consumido pelo relatório da
    [`central-jornada`](central-jornada.md).
-13. **Uma ocorrência automática só sobrevive enquanto for verdade.** A detecção
+14. **Uma ocorrência automática só sobrevive enquanto for verdade.** A detecção
    escreve um fato; a **revalidação** (a cada 5 min, no ciclo de folha aberto)
    pergunta se ele ainda se sustenta e apaga o que não. Motivos: apareceu batida
    (para a falta), o intervalo foi fechado (para o não retorno), ou o dia passou a
@@ -380,7 +393,7 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
    Duas fronteiras: **nada registrado por uma pessoa é apagado** por este caminho,
    e um dia já **convertido** em atestado/ausência a prazo não é tocado, mesmo
    tendo nascido automático.
-14. **A exclusão do gestor é definitiva para aquele dia.** Excluir uma falta ou um
+15. **A exclusão do gestor é definitiva para aquele dia.** Excluir uma falta ou um
    não-retorno automático grava a decisão (`ExclusaoOcorrenciaAutomatica`) e a
    detecção **não insiste**, ainda que a condição siga verdadeira. Antes era
    preciso corrigir a escala antes de excluir, senão a card voltava em 5 minutos.
