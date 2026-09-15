@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/hooks/`, `mobile/src/utils/`, `mobile/src/api/`, `mobile/src/auth/`, `mobile/src/theme/`, `mobile/src/offline/`, `mobile/src/push/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `mobile/src/hooks/`, `mobile/src/utils/`, `mobile/src/api/`, `mobile/src/auth/`, `mobile/src/theme/`, `mobile/src/offline/`, `mobile/src/push/`
 
 # Hooks e utilidades
 
@@ -25,7 +25,7 @@ o acesso a dados, permissões, persistência e formatação em pt-BR.
 | `offline/*` | `OfflineProvider`, `useOfflineContexto`, `OfflineStore`, fila, sincronização | Cache de leitura + fila de ações offline. |
 | `push/push.ts` | `registrarPush`, `removerPushRegistrado` | Registro de token de push (Expo). |
 | `theme/index.ts` | `cores`, `espacamento`, `tipografia`, `raio`, `sombra`, `coresParaStatus`, ... | Tema visual centralizado. |
-| `utils/formato.ts` | `formatarMoeda`, `formatarData`, `hojeISO`, `mascaraDataBR`, ... | Formatação e datas em pt-BR. |
+| `utils/formato.ts` | `formatarMoeda`, `formatarData`, `hojeISO`, `mascaraDataBR`, `contarDiasCorridos`, `deslocarDiasISO`, `isoParaDiaMes`, ... | Formatação e datas em pt-BR + aritmética de períodos. |
 | `utils/periodoMensal.ts` | `mesAtual`, `deslocarMes`, `rotuloMes`, `ultimoDiaDoMesISO`, `mesesAtras`, `MESES_HISTORICO_INDICADORES` | Período mensal ("AAAA-MM") no fuso de Brasília — fonte única usada por Metas e pelo histórico de Indicadores. |
 | `utils/rotulos.ts` | `ROTULO_TIPO_ARRECADACAO`, `ARRECADACAO`, `ROTULO_STATUS_FISCAL` | Rótulos legíveis de enums do domínio. |
 | `utils/dialogos.ts` | `confirmar`, `notificar`, `registrarOuvinteDialogo` | API de diálogos consumida pelo `DialogHost`. |
@@ -83,7 +83,24 @@ Formatação pt-BR: `formatarMoeda`, `formatarNumero`, `formatarPercentual`,
 "hoje"/dia da semana usam **fuso fixo de Brasília (UTC−3)** (`hojeISO`,
 `diaSemanaHoje`) para não "virar o dia" em servidores UTC. Também traz máscaras
 enquanto se digita (`mascaraDataBR`, `mascaraMilhar`) e conversões
-(`dataBRParaISO`, `isoParaDataBR`, `parseNumeroBR`), além de `DIAS_SEMANA`.
+(`dataBRParaISO`, `isoParaDataBR`, `isoParaDiaMes`, `parseNumeroBR`), além de
+`DIAS_SEMANA`.
+
+**Aritmética de períodos** (usada pelo
+[`SeletorPeriodo`](componentes-compartilhados.md#2-inventário) e pelos fluxos de
+atestado, férias e ausência a prazo):
+
+- `contarDiasCorridos(inicioISO, fimISO)` — dias corridos **contando os dois
+  extremos** (10/10 a 14/10 = 5); `0` quando o período está invertido ou a data é
+  inválida. Espelha `contarDiasCorridos` de `atestados.domain.ts` no backend, que
+  é quem conta de verdade: **domingos, feriados e folga contam**, porque o sistema
+  grava um dia de ausência por cada dia corrido. Por isso o número mostrado na
+  tela é o que será registrado.
+- `deslocarDiasISO(iso, dias)` — data ISO deslocada em UTC (aceita negativos);
+  string vazia se a entrada for inválida. É a operação inversa da anterior:
+  `fim = deslocarDiasISO(inicio, duracao - 1)`.
+- `isoParaDiaMes(iso)` — forma curta "dd/mm" para quando o ano é óbvio pelo
+  contexto (antes duplicada como `ddmm` local em dois cards de operadores).
 
 ### 4.2 Diálogos (`dialogos.ts`)
 Substitui `Alert`/`window.confirm` por uma API baseada em Promise:
@@ -167,13 +184,13 @@ credencial, o app segue normal (o aviso ainda chega in-app/WebSocket).
 ## 9. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `utils/formato.test.ts` | Formatação/máscaras/conversões pt-BR | 7 |
+| `utils/formato.test.ts` | Formatação/máscaras/conversões pt-BR, "hoje" no fuso de Brasília e a aritmética de períodos (`contarDiasCorridos`, `deslocarDiasISO`, `isoParaDiaMes`) | 25 |
 | `utils/periodoMensal.test.ts` | Mês de Brasília, deslocamento, rótulo, último dia e distância em meses | 9 |
 | `utils/relatorioPerfil.test.ts` | HTML/SVG do relatório de perfil | 12 |
 | `offline/fila.test.ts` | Ordenação e last-write-wins | 6 |
 | `offline/sincronizacao.test.tsx` | Drenagem da fila, conflitos e rejeições | 7 |
 
-Total: **32 casos** em 4 arquivos. Os hooks (`useRequisicao`, `useAuth`,
+Total: **59 casos** em 5 arquivos. Os hooks (`useRequisicao`, `useAuth`,
 `usePulsoDoDia`) e o `apiClient` não têm teste unitário dedicado — são exercidos
 indiretamente pelos testes de tela e pela lógica pura acima.
 

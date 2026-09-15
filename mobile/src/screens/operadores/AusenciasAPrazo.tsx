@@ -5,6 +5,10 @@
  * escolhendo início, fim e o mesmo motivo de justificativa das faltas. O
  * backend cria uma **falta justificada** em cada dia corrido do período,
  * inclusive a folga (a folga também conta). Uso típico: gerente/supervisor.
+ *
+ * O período usa o `SeletorPeriodo`, que mostra a duração ao vivo e permite
+ * digitar os dias direto — o número exibido é exatamente quantas faltas
+ * justificadas serão criadas.
  */
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
@@ -20,7 +24,7 @@ import {
 import { ApiError } from '../../api/client';
 import { colaboradoresService, operadoresService } from '../../api/services';
 import { Colaborador, MotivoJustificativa } from '../../api/types';
-import { Botao, CampoTexto, Carregando, SeletorData } from '../../components';
+import { Botao, CampoTexto, Carregando, SeletorPeriodo } from '../../components';
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
@@ -97,12 +101,6 @@ export function AusenciasAPrazoCard({
   };
 
   const fechar = (): void => setAberto(false);
-
-  // Ao mudar o início, empurra o fim junto se ele ficaria antes do início.
-  const mudarInicio = (iso: string): void => {
-    setInicio(iso);
-    if (iso > fim) setFim(iso);
-  };
 
   const podeConfirmar =
     !!selId &&
@@ -285,19 +283,14 @@ export function AusenciasAPrazoCard({
                 </>
               )}
 
-              {/* 2) Período */}
+              {/* 2) Período — com contador de dias e duração editável. */}
               <View style={{ marginTop: espacamento.sm }}>
-                <SeletorData
-                  rotulo="Início"
-                  valor={inicio}
-                  aoMudar={mudarInicio}
+                <SeletorPeriodo
+                  inicio={inicio}
+                  fim={fim}
+                  aoMudarInicio={setInicio}
+                  aoMudarFim={setFim}
                   dataMinima={dataInicial}
-                />
-                <SeletorData
-                  rotulo="Fim"
-                  valor={fim}
-                  aoMudar={setFim}
-                  dataMinima={inicio}
                 />
               </View>
 
@@ -325,7 +318,7 @@ export function AusenciasAPrazoCard({
                     rotulo="Observação (opcional)"
                     value={obs}
                     onChangeText={setObs}
-                    placeholder="Ex.: férias / licença de 15 dias"
+                    placeholder="Ex.: licença INSS"
                   />
                 </>
               ) : (
