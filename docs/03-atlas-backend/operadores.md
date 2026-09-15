@@ -183,6 +183,18 @@ Delegam às funções puras homônimas do domínio.
 - `aoVivo()` — quem deveria estar no caixa agora (fuso de Brasília).
 - `analiticaFaltas(inicio, fim)` / `analiticaNaoRetornos(inicio, fim)` —
   analítica inteligente (taxa, padrões, tendência e risco) via `analisarFaltas`.
+  Analisam ausências **já registradas**, então férias não entram na conta (quem
+  está de férias não gera ausência).
+- **FÉRIAS no quadro** (`FeriasService`, opcional): no roster do dia e no
+  `aoVivo()` a pessoa **sai da lista**; na grade a célula vira `FERIAS`. Ver a
+  regra 4 e os riscos.
+- **Crons:** `alertaFaltasSemanal()` (segunda 08:00) resume as faltas dos últimos
+  7 dias; `avisoCoberturaCritica()` (diário 07:00) avisa quando a cobertura de
+  hoje fica abaixo de `COBERTURA_MINIMA`. O de cobertura **reaproveita
+  `diaOperadores()`** em vez de recontar: a contagem própria que existia antes (a
+  ficha, menos a folga da ficha, menos as faltas) ignorava férias, a regra única
+  de folga e o rodízio de domingo, superestimando a cobertura — num alerta, o
+  pior erro possível, porque ele deixava de disparar quando devia.
 
 ## 6. Lógica de domínio (funções puras)
 - `nomeDuplicado(...)` → unicidade de nome de operador (Req 6.1.3).
@@ -253,7 +265,10 @@ Delegam às funções puras homônimas do domínio.
    dia era verificado, e o resto do período entrava sem controle. Ver
    `exigirCiclosAbertos` em [`ciclo-folha`](ciclo-folha.md).
 8. **Turno pela hora de entrada** (10:00 e 13:00 como fronteiras).
-9. **Avisos são best-effort:** nunca impedem o registro da falta.
+9. **Avisos são best-effort:** nunca impedem o registro da falta. O aviso diário
+   de **cobertura crítica** deriva do roster do dia (`diaOperadores`), então
+   herda a regra única de folga, o rodízio de domingo e as férias — e **não
+   avisa** quando ninguém era esperado (não há operação a cobrir).
 10. **Excluir ≠ justificar:** justificar/abonar mantém a falta com peso reduzido
    (2%/10%); **excluir** apaga a falta lançada por engano (peso zero, some do
    histórico) e é restrito a gerente/supervisor/administrador.
@@ -277,7 +292,7 @@ Delegam às funções puras homônimas do domínio.
 | `listar-ausencias-ficha.spec.ts` | Nome da falta resolvido pela ficha canônica (A.3) | 1 |
 | `falta-em-folga.spec.ts` | Recusa falta em dia de folga; marca normalmente em dia de trabalho; e o contrapeso: **ausência a prazo segue cobrindo a folga** | 3 |
 | `quadro-folga-escala.spec.ts` | O quadro mostra FOLGA quando só a escala semanal marca folga; a folga vence uma falta já gravada; TRABALHA quando nenhuma fonte diz folga; e a grade usa a mesma regra | 4 |
-| `quadro-ferias-escala.spec.ts` | Quem está de férias sai do roster do dia (inclusive no domingo) e dos totais; as férias vencem uma falta gravada; fora do período segue normal; sem o serviço de férias nada é excluído; a grade marca **FERIAS** só no dia coberto (sem apagar a linha da semana) e não conta férias na cobertura; o tablero ao vivo não espera quem está de férias | 11 |
+| `quadro-ferias-escala.spec.ts` | Quem está de férias sai do roster do dia (inclusive no domingo) e dos totais; as férias vencem uma falta gravada; fora do período segue normal; sem o serviço de férias nada é excluído; a grade marca **FERIAS** só no dia coberto (sem apagar a linha da semana) e não conta férias na cobertura; o tablero ao vivo não espera quem está de férias; e o **aviso de cobertura** não conta quem está de férias nem grita quando ninguém era esperado | 14 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
@@ -285,7 +300,7 @@ Delegam às funções puras homônimas do domínio.
 - 🔧 **Modelo legado em transição:** o `Operador` simples foi removido e os
   operadores agora vêm do Cadastro Unificado (função `OPERADOR`); o
   `OperadorTurno` antigo coexiste — ver [ADR 0004](../02-arquitetura/decisoes/0004-cadastro-unificado-e-escala-opcao-a.md).
-- 🔧 `operador-turno.service.ts` (1057 linhas) concentra grade, roster, ao vivo e
+- 🔧 `operador-turno.service.ts` (1056 linhas) concentra grade, roster, ao vivo e
   analítica; candidato a extrair sub-serviços.
 - ⚠️ **O Quadro é uma segunda fonte de "quem trabalha hoje".** A
   [ADR 0015](../02-arquitetura/decisoes/0015-ferias-inativacao-nao-rigida.md)

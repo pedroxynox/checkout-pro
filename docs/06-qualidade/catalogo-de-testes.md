@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 122 arquivos, 959 casos. **Mobile:** 33 arquivos, 222 casos. **Total: 1181 casos.**
+> **Backend:** 122 arquivos, 962 casos. **Mobile:** 33 arquivos, 222 casos. **Total: 1184 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -109,7 +109,7 @@
 | `src/operadores/operadores.justificativa.spec.ts` | 8 | 1 |
 | `src/operadores/operadores.properties.spec.ts` | 5 | 1 |
 | `src/operadores/operadores.service.spec.ts` | 12 | 4 |
-| `src/operadores/quadro-ferias-escala.spec.ts` | 11 | 4 |
+| `src/operadores/quadro-ferias-escala.spec.ts` | 14 | 5 |
 | `src/operadores/quadro-folga-escala.spec.ts` | 4 | 1 |
 | `src/operadores/remover-ausencia-periodo.spec.ts` | 4 | 1 |
 | `src/ponto/contrato-6x1-congelado.spec.ts` | 5 | 1 |
