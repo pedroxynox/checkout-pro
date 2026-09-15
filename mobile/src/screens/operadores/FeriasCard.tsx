@@ -7,9 +7,11 @@
  * também lista as férias **em curso e futuras** e permite cancelá-las. Uso
  * típico: gerente/supervisor.
  *
- * Períodos já ENCERRADOS não aparecem na lista (o backend não os devolve): é uma
- * tela de operação, não um arquivo histórico. O registro continua guardado — é
- * ele que faz os dias passados seguirem aparecendo como férias na escala.
+ * Períodos já ENCERRADOS não aparecem por padrão: é uma tela de operação, não um
+ * arquivo histórico. O filtro "mostrar encerradas" os traz de volta, que é o
+ * caminho para cancelar umas férias lançadas por engano num período passado. O
+ * registro continua guardado — é ele que faz os dias passados seguirem
+ * aparecendo como férias na escala.
  *
  * O período usa o `SeletorPeriodo`, que mostra a duração ao vivo e permite
  * digitar os dias direto, com aviso acima de 30 dias corridos. A duração é
@@ -59,9 +61,15 @@ export function FeriasCard({
     () => colaboradoresService.listar({ ativo: true }),
     [],
   );
+  // Por padrão só as em curso e futuras. O filtro traz as encerradas de volta —
+  // sem elas não há como CANCELAR umas férias lançadas por engano no passado.
+  const [mostrarEncerradas, setMostrarEncerradas] = useState(false);
   const ferias = useRequisicao<FeriasDetalhada[]>(
-    () => feriasService.listar(),
-    [],
+    () =>
+      feriasService.listar(
+        mostrarEncerradas ? { incluirEncerradas: true } : {},
+      ),
+    [mostrarEncerradas],
   );
 
   const [busca, setBusca] = useState('');
@@ -281,13 +289,45 @@ export function FeriasCard({
                 desabilitado={!podeConfirmar}
               />
 
-              {/* Férias em curso e futuras. As encerradas saem da lista. */}
-              <Text style={styles.secao}>Férias em curso e futuras</Text>
+              {/* Férias em curso e futuras. As encerradas só com o filtro. */}
+              <View style={styles.secaoCabecalho}>
+                <Text style={styles.secao}>
+                  {mostrarEncerradas
+                    ? 'Férias (com encerradas)'
+                    : 'Férias em curso e futuras'}
+                </Text>
+                <Pressable
+                  onPress={() => setMostrarEncerradas((v) => !v)}
+                  style={styles.filtroToggle}
+                  hitSlop={6}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: mostrarEncerradas }}
+                  accessibilityLabel="Mostrar encerradas"
+                >
+                  <Ionicons
+                    name={mostrarEncerradas ? 'checkbox' : 'square-outline'}
+                    size={18}
+                    color={
+                      mostrarEncerradas ? cores.primaria : cores.textoSecundario
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.filtroTexto,
+                      mostrarEncerradas && { color: cores.primaria },
+                    ]}
+                  >
+                    Mostrar encerradas
+                  </Text>
+                </Pressable>
+              </View>
               {ferias.carregando ? (
                 <Carregando />
               ) : lista.length === 0 ? (
                 <Text style={styles.vazio}>
-                  Nenhuma férias em curso ou programada.
+                  {mostrarEncerradas
+                    ? 'Nenhuma férias registrada.'
+                    : 'Nenhuma férias em curso ou programada.'}
                 </Text>
               ) : (
                 lista.map((f) => (
@@ -296,6 +336,7 @@ export function FeriasCard({
                       <Text style={styles.itemNome} numberOfLines={1}>
                         {f.nome}
                         {f.vigente ? '  •  em férias' : ''}
+                        {f.encerrada ? '  •  encerrada' : ''}
                       </Text>
                       <Text style={styles.itemMeta}>
                         {isoParaDiaMes(f.inicio)} a {isoParaDiaMes(f.fim)} ·{' '}
@@ -400,6 +441,20 @@ const styles = StyleSheet.create({
     marginTop: espacamento.md,
     marginBottom: espacamento.xs,
   },
+  secaoCabecalho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: espacamento.sm,
+  },
+  filtroToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: espacamento.md,
+    marginBottom: espacamento.xs,
+  },
+  filtroTexto: { ...tipografia.legenda, color: cores.textoSecundario },
   itemFerias: {
     flexDirection: 'row',
     alignItems: 'center',

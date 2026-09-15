@@ -1245,6 +1245,11 @@ export interface FeriasDetalhada {
   criadaEm: string;
   /** true quando o período engloba a data de referência (hoje por padrão). */
   vigente: boolean;
+  /**
+   * true quando o período já terminou. Com `vigente`, dá os três estados sem
+   * comparar datas no app: em curso, encerrada, ou (nenhuma) programada.
+   */
+  encerrada: boolean;
 }
 
 export interface ItemRelatorioAusencia {

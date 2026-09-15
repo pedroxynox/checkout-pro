@@ -181,10 +181,44 @@ describe('FeriasService', () => {
       incluirEncerradas: true,
     });
     expect(tudo).toHaveLength(1);
-    expect(tudo[0].vigente).toBe(false);
+    expect(tudo[0]).toMatchObject({ vigente: false, encerrada: true });
     // O registro nunca é apagado: é ele que faz os dias passados aparecerem
     // como férias na escala.
     expect(ferias).toHaveLength(1);
+  });
+
+  it('os três estados são distinguíveis por vigente/encerrada', async () => {
+    const { service } = criarServico();
+    await service.registrarFerias('col-1', dia(10), dia(20));
+
+    // Em curso: a referência cai dentro do período.
+    const emCurso = await service.listarFerias({ referencia: dia(15) });
+    expect(emCurso[0]).toMatchObject({ vigente: true, encerrada: false });
+
+    // Programada: ainda não começou.
+    const programada = await service.listarFerias({ referencia: dia(5) });
+    expect(programada[0]).toMatchObject({ vigente: false, encerrada: false });
+
+    // Encerrada: só aparece pedindo o histórico.
+    const encerrada = await service.listarFerias({
+      referencia: dia(21),
+      incluirEncerradas: true,
+    });
+    expect(encerrada[0]).toMatchObject({ vigente: false, encerrada: true });
+  });
+
+  it('o último dia das férias ainda NÃO está encerrado', async () => {
+    const { service } = criarServico();
+    await service.registrarFerias('col-1', dia(10), dia(20));
+
+    const noUltimoDia = await service.listarFerias({ referencia: dia(20) });
+    expect(noUltimoDia[0]).toMatchObject({ vigente: true, encerrada: false });
+
+    const noDiaSeguinte = await service.listarFerias({
+      referencia: dia(21),
+      incluirEncerradas: true,
+    });
+    expect(noDiaSeguinte[0]).toMatchObject({ vigente: false, encerrada: true });
   });
 
   it('remover inexistente lança 404', async () => {

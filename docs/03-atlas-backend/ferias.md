@@ -24,7 +24,7 @@ gera falta automática — mas continua `ativo` (não é desligamento).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `ferias.controller.ts` | Rotas HTTP (registrar/listar/remover) | 77 |
-| `ferias.service.ts` | Regras de aplicação: período, sobreposição, duração, avisos | 226 |
+| `ferias.service.ts` | Regras de aplicação: período, sobreposição, duração, avisos | 235 |
 | `ferias.domain.ts` | Regras puras: está de férias, sobreposição, validação, duração, encerrada | 117 |
 | `ferias.errors.ts` | Erros de domínio (mapeados para HTTP) | 49 |
 | `ferias.module.ts` | Ligações (DI); exporta o `FeriasService` | 20 |
@@ -59,6 +59,11 @@ gera falta automática — mas continua `ativo` (não é desligamento).
 Lista as férias **em curso e futuras**, com o nome/matrícula resolvidos e a marca
 `vigente` (o período engloba a `referencia`, hoje por padrão). Mais recentes
 primeiro.
+
+Cada item traz também `encerrada` (o período já terminou na referência). Junto com
+`vigente`, dá os três estados sem o app comparar datas: `vigente` → em curso;
+`encerrada` → passada; nenhuma das duas → programada. `encerrada` só pode vir
+verdadeira com `incluirEncerradas`, já que sem ele os encerrados não entram.
 
 Períodos **já encerrados** (`fim` anterior à referência) ficam **fora** da lista:
 ela é uma ferramenta de operação — "quem está de férias e quem vai entrar" — e
@@ -133,7 +138,7 @@ função pura `estaDeFerias`, nunca persistido como flag.
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `ferias.domain.spec.ts` | Está de férias, sobreposição, validação e período encerrado (inclui property-based) | 13 |
-| `ferias.service.spec.ts` | Registro, sobreposição, quem está de férias no dia, vigência, corte das encerradas, remoção e a **duração em dias** (ao registrar, ao listar e num único dia) | 12 |
+| `ferias.service.spec.ts` | Registro, sobreposição, quem está de férias no dia, vigência, corte das encerradas, remoção, a **duração em dias** (ao registrar, ao listar e num único dia) e as marcas `vigente`/`encerrada` (os três estados e o último dia ainda não encerrado) | 14 |
 | `../fiscais/escalados-ferias.spec.ts` | `escaladosDoDia` exclui quem está de férias | 2 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
