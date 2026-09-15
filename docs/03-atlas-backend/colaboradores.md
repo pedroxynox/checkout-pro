@@ -90,7 +90,12 @@ colaborador, atribuindo retroativamente o histórico. Idempotente.
   entre **criar** (promoção), **atualizar** (conta existente) ou **nada**.
 - `garantirFiscal(usuarioId, nome, turno)` — cria/vincula o registro de `Fiscal`.
 - `sincronizarEscalaFiscal(colaborador)` — regenera a escala semanal geral
-  preservando exceções (Opção A: o cadastro é a fonte única).
+  preservando exceções (Opção A: o cadastro é a fonte única). Chamada no
+  cadastrar, no editar e no ativar/desativar. **Tem saídas antecipadas** (ficha
+  sem horários, fiscal sem conta ou sem registro `Fiscal`, horário pela metade)
+  em que a escala anterior **sobrevive** — e é ela que a detecção automática de
+  falta lê. `npm run integridade` aponta essas divergências; ver
+  [`fiscais`](fiscais.md#coerência-ficha--escala-semanal-npm-run-integridade).
 - `grupoDomingoEfetivo(...)` — remove do rodízio de domingo quem tem contrato que
   não trabalha domingo.
 - `garantirUsuarioVinculavel(...)` / `definirAtivo(...)`.
@@ -171,7 +176,16 @@ totais de arrecadação. Roda no cron mensal (dia 1º) e sob demanda.
 - ⚠️ **Despromoção não desativa o login:** ao rebaixar um fiscal/supervisor para
   operador, a conta de acesso continua ativa. Falta decidir (produto) se o acesso
   deve ser desativado/removido nesse caso.
-- 🔧 `colaboradores.service.ts` (840 linhas) concentra muitas responsabilidades
-  (conta, escala, contrato). Candidato a extrair sub-serviços conforme crescer.
+- 🔧 `colaboradores.service.ts` concentra muitas responsabilidades (conta, escala,
+  contrato). Candidato a extrair sub-serviços conforme crescer. (Tamanho atual em
+  [estado-e-métricas](../08-gestao/estado-e-metricas.md).)
+- ⚠️ **A escala semanal do fiscal é um derivado que pode ficar velho.** Quando
+  `sincronizarEscalaFiscal` sai por uma das suas guardas, a ficha muda e a escala
+  **não** — e as duas têm consumidores diferentes (a escala publicada lê a ficha,
+  a detecção de falta lê a escala). A guarda mais delicada é a da **ficha sem
+  horários**: ela existe para não apagar a escala do seed antes de o gestor
+  preencher o cadastro, mas o efeito é que a escala do seed segue cobrando o
+  ponto. Diagnosticado por `npm run integridade`, sem correção automática — quem
+  decide é o gestor, reabrindo e salvando o cadastro.
 - 🔧 Coexistência dos modelos antigos (`Operador`/`OperadorTurno`/`Fiscal`) com o
   cadastro unificado durante a transição — ver [ADR 0004](../02-arquitetura/decisoes/0004-cadastro-unificado-e-escala-opcao-a.md).

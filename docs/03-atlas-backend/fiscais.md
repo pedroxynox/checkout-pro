@@ -166,6 +166,49 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
   quem está de férias nesse dia é excluído (via `FeriasService`); a grade
   semanal sem data não aplica férias (elas são por dia).
 
+### Coerência ficha ↔ escala semanal (`npm run integridade`)
+
+A ficha é a fonte da escala (Opção A): `sincronizarEscalaFiscal` regenera as
+entradas **gerais** de `EscalaEntry` ao cadastrar, editar ou reativar um fiscal, e
+a escala semanal **não tem tela que a edite**. Na prática ela é um derivado.
+
+O risco não é "qual das duas é a verdade" — é que o derivado fica **velho em
+silêncio**. A sincronização tem quatro saídas antecipadas:
+
+| Situação | Efeito |
+|---|---|
+| Ficha **sem horários** (`temEscalaDefinida` falso) | Não apaga a escala existente, de propósito ("não apagar a escala vinda do seed enquanto o gestor não a preenche"). A escala antiga continua valendo. |
+| Fiscal **sem conta de acesso** ou **sem registro `Fiscal`** | Não há onde escrever; nada é sincronizado. |
+| Dia com **horário pela metade** (entrada sem saída) | `gerarEscalaSemanalFiscal` omite o dia. A pessoa desaparece da detecção e **nunca recebe falta automática**. |
+
+Isso importa porque as duas pontas têm consumidores diferentes: a **detecção
+automática de falta** lê a escala semanal e a **escala publicada** (o PDF que a
+equipe recebe) lê a ficha. Onde discordam, o time lê uma hora e o sistema cobra
+outra — e duas horas depois da hora que o sistema acha certa, nasce uma falta.
+
+`detectarEscalasIncoerentes` (`integridade-escala.ts`, lógica pura) **só
+diagnostica**: não escolhe um lado nem corrige nada. Compara o que a ficha
+geraria com o que está gravado e reporta:
+
+- **escala diferente da ficha**, dia a dia, marcando os casos de **ficha vazia**
+  (os mais perigosos: a escala sobrevivente do seed segue cobrando o ponto);
+- **ficha preenchida e sem escala** — quem nunca recebe falta automática;
+- **horário pela metade** na ficha;
+- **entradas gerais duplicadas** (ver abaixo).
+
+Como corrigir uma divergência: reabrir e salvar o cadastro regenera a escala. Nos
+casos de ficha vazia, preencher os horários **primeiro**.
+
+> **Duplicadas e desempate.** `EscalaEntry` não tem índice único em
+> (`funcionarioId`, `diaSemana`, `especial`), e `cadastrarEscala` fazia `create`
+> cego — criando uma segunda entrada geral para o mesmo dia. O problema não eram
+> as duplicadas: era que os dois leitores desempatavam **ao contrário**
+> (`resolverEscalaEfetiva` pegava a primeira, `escalaConsolidada` a última), então
+> a escala efetiva de uma pessoa dependia de quem perguntava. Hoje a escrita
+> **substitui** a geral do dia e os dois leitores usam a **primeira**. As
+> duplicadas remanescentes aparecem no `npm run integridade`; um índice único
+> resolveria de vez, mas exige limpar a base antes.
+
 ### Serviços de infraestrutura
 - `FiscalStatusEventos` — barramento (RxJS) que desacopla o serviço do gateway.
 - `FiscaisGateway` — WebSocket autenticado por JWT; faz broadcast das transições.
@@ -250,12 +293,14 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 | `fiscais.painel-status.spec.ts` | Status do painel a partir das batidas | 2 |
 | `fiscais-alertas.intervalo.spec.ts` | Alerta de intervalo longo | 2 |
 | `jornada-marcacoes.spec.ts` | Jornada a partir das marcações do dia | 2 |
-| `escala-colaborador.spec.ts` | Geração da escala semanal a partir do cadastro | 4 |
+| `integridade-vinculo.ts` + `integridade-escala.ts` | Regras puras dos dois diagnósticos de `npm run integridade` (vínculos e coerência de escala) | — |
 | `escala-inativo.spec.ts` | Escala de colaborador inativo | 1 |
 | `escalados-ferias.spec.ts` | `escaladosDoDia` exclui quem está de férias | 2 |
 | `escalados-folga.spec.ts` | **Regressão:** `escaladosDoDia` respeita a folga das duas fontes — não escala o fiscal com folga na ficha mesmo com a escala semanal escalando (o caso real), nem quem tem folga na escala | 3 |
 | `escalados-feriado.spec.ts` | `escaladosDoDia` em feriado: horário de domingo (operador e fiscal), folga inalterada, fallback sem `entradaDom` e sem `FeriadosService` | 8 |
 | `coerencia-escalados-escala.spec.ts` | **Coerência entre `escaladosDoDia` e a [escala publicada](escala-exportacao.md):** dia normal, folga, falta do operador, **falta do fiscal** (a que a publicada não via, por causa da tradução de ids), exceção de horário, convocação em dia de folga — e os dois casos que impedem o laço da revalidação (a convocação vence a folga; a dispensa não) | 8 |
+| `integridade-escala.spec.ts` | **Diagnóstico ficha ↔ escala semanal** (`npm run integridade`): horário divergente, folga divergente, **ficha vazia com escala sobrevivente**, ficha sem escala, horário pela metade, entradas duplicadas, inativos ignorados e escala antiga ligada só pelo `funcionarioId` | 9 |
+| `escala-colaborador.spec.ts` | Geração da escala semanal a partir da ficha (Seg–Qui, Sex–Sáb, folga, domingo) + o **desempate de duplicadas**: os dois leitores usam a primeira entrada, e a exceção segue prevalecendo | 6 |
 | `integridade-vinculo.spec.ts` | Detecção de vínculos órfãos fiscal ↔ ficha (Fase 4) | 6 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
@@ -268,11 +313,15 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
   Quadro de Operadores e a escala publicada já convergiram em
   `montarLinhaEscala`; esta não. O que ainda a separa:
   1. **A fonte do horário do fiscal.** Aqui a hora vem da **escala semanal**
-     (`EscalaEntry.entrada`); em `montarLinhaEscala` vem sempre da **ficha**. Se as
-     duas divergirem para um fiscal, a detecção o espera num horário e a escala
-     publicada mostra outro. Qual das duas é a verdade para um fiscal é uma
-     **decisão de produto**, não um bug a corrigir sozinho — por isso não foi
-     unificada.
+     (`EscalaEntry.entrada`); em `montarLinhaEscala` vem sempre da **ficha**.
+     Isto **não é uma decisão de produto pendente** — a ficha já é a fonte
+     (Opção A) e a escala semanal é um **derivado** dela, regenerado por
+     `sincronizarEscalaFiscal` e sem tela que o edite. O problema é que a
+     sincronização tem **saídas antecipadas** e o derivado fica velho sem que
+     ninguém perceba; `npm run integridade` agora aponta essas divergências (ver
+     a seção da verificação abaixo). Unificar a leitura continua sendo o destino,
+     mas primeiro os dados têm de estar coerentes: fazê-lo com escalas velhas em
+     circulação mudaria em silêncio a hora cobrada de gente real.
   2. **A forma.** Whitelist sem estado nem saída, contra uma tabela de estados.
      Um fiscal **sem `EscalaEntry`** para o dia simplesmente não existe aqui (não
      sai como folga: não sai), então nunca recebe falta automática.
