@@ -25,3 +25,4 @@ numerado (`NNNN-titulo-curto.md`).
 | 0014 | [Produtos pesados: catálogo por arquivo único e busca em memória](0014-produtos-pesados-catalogo-e-busca.md) |
 | 0015 | [Férias como inativação não rígida](0015-ferias-inativacao-nao-rigida.md) |
 | 0016 | [Atestados médicos: documento com CID e regra do INSS](0016-atestados-cid-e-regra-inss.md) |
+| 0017 | [Meta de vendas derivada das estimativas diárias](0017-meta-de-vendas-derivada-das-estimativas.md) |

@@ -19,7 +19,6 @@ import {
   UsuarioAutenticado,
 } from '../common/decorators/usuario-atual.decorator';
 import {
-  ConfigVendasDto,
   DataVendasDto,
   DefinirEstimativasDto,
   IntervaloVendasDto,
@@ -29,7 +28,6 @@ import {
 } from './dto/vendas.dto';
 import { parseVendasHora } from './vendas.parser';
 import {
-  ConfigVendasResultado,
   EstimativasMes,
   PainelVendas,
   PainelVendasResumo,
@@ -43,6 +41,10 @@ import {
  * Controller de Vendas por hora (Painel de Vendas). O envio do arquivo é
  * liberado a quem pode editar o painel (todos os perfis); a visualização, a
  * quem pode ver o painel. Não há ajuste manual — só pelo arquivo .txt.
+ *
+ * A meta mensal não tem endpoint próprio: ela é a soma das estimativas diárias,
+ * definidas em `PUT /vendas/estimativas`. As rotas `GET/PUT /vendas/config`
+ * foram removidas junto com a meta digitada (ADR 0017).
  */
 @Controller('vendas')
 @Funcionalidade('PAINEL_VENDAS_VISUALIZAR')
@@ -127,13 +129,9 @@ export class VendasController {
     );
   }
 
-  /** Configuração do painel (meta mensal). Visível a quem vê o painel. */
-  @Get('config')
-  config(): Promise<ConfigVendasResultado> {
-    return this.vendasService.obterConfig();
-  }
-
-  /** Estimativas de venda por dia de um mês (+ total do mês). */
+  /**
+   * Estimativas de venda por dia de um mês (+ total do mês, que é a meta).
+   */
   @Get('estimativas')
   listarEstimativas(
     @Query() dto: ListarEstimativasDto,
@@ -141,23 +139,16 @@ export class VendasController {
     return this.vendasService.listarEstimativas(dto.anoMes);
   }
 
-  /** Define as estimativas de venda por dia de um mês (Central de Vendas). */
+  /**
+   * Define as estimativas de venda por dia de um mês (Central de Vendas).
+   * Como a meta do mês é a soma delas, este é o único caminho para alterá-la.
+   */
   @Put('estimativas')
   @Funcionalidade('PAINEL_VENDAS_EDITAR')
   definirEstimativas(
     @Body() dto: DefinirEstimativasDto,
   ): Promise<EstimativasMes> {
     return this.vendasService.definirEstimativas(dto.anoMes, dto.dias);
-  }
-
-  /** Atualiza a meta mensal de faturamento. */
-  @Put('config')
-  @Funcionalidade('PAINEL_VENDAS_EDITAR')
-  definirConfig(
-    @Body() dto: ConfigVendasDto,
-    @UsuarioAtual() usuario: UsuarioAutenticado,
-  ): Promise<ConfigVendasResultado> {
-    return this.vendasService.definirConfig(dto, usuario?.sub);
   }
 
   /**

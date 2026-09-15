@@ -207,7 +207,7 @@ O mês CORRENTE nunca é congelado: é sempre calculado ao vivo (parcial).
 
 ## `ConfigVendas`
 
-"sem meta definida" (a projeção é exibida sem comparação).
+OBSOLETA (ADR 0017): nenhum código lê ou escreve esta tabela.
 
 | Campo | Tipo | Chave | Descrição |
 |---|---|---|---|

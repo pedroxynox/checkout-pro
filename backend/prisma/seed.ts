@@ -598,17 +598,6 @@ async function seedMetasIndicador(): Promise<void> {
   }
 }
 
-async function seedConfigVendas(): Promise<void> {
-  const existente = await prisma.configVendas.findUnique({
-    where: { id: 'vendas' },
-  });
-  if (!existente) {
-    await prisma.configVendas.create({
-      data: { id: 'vendas', metaMensal: 0 },
-    });
-  }
-}
-
 async function main(): Promise<void> {
   // Gera o hash da senha inicial uma única vez antes de criar os usuários.
   senhaHashInicial = await bcrypt.hash(SENHA_INICIAL, 10);
@@ -621,7 +610,8 @@ async function main(): Promise<void> {
   await seedEscalas();
   await seedPedidosRecorrentes();
   await seedMetasIndicador();
-  await seedConfigVendas();
+  // ConfigVendas não é mais semeada: a meta de vendas é a soma das estimativas
+  // diárias (Central de Vendas), e a tabela ficou obsoleta (ADR 0017).
 
   const totalUsuarios = await prisma.usuario.count();
   const totalFiscais = await prisma.fiscal.count();

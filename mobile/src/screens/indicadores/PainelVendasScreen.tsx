@@ -365,7 +365,7 @@ export function PainelVendasScreen(): React.ReactElement {
                 <Text style={styles.metaProj}>
                   Projeção de fechamento: {formatarMoeda(painel.projecaoFechamento)}
                 </Text>
-                <Aviso texto="A meta do mês ainda não foi definida. O gestor pode defini-la em Centro de Controle ▸ Metas." />
+                <Aviso texto="A meta do mês ainda não foi definida: ela é a soma das estimativas diárias. O gestor pode cadastrá-las em Centro de Controle ▸ Central de Vendas." />
               </>
             )}
             <Text style={styles.metaNota}>

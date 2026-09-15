@@ -13,7 +13,6 @@ jest.mock('../../api/services', () => ({
   vendasService: {
     painel: jest.fn(),
     porHora: jest.fn(),
-    definirConfig: jest.fn(),
   },
 }));
 
@@ -23,7 +22,8 @@ jest.mock('../../utils/formato', () => {
   return { ...real, hojeISO: () => '2026-06-19' };
 });
 
-// Perfil com permissão de edição, para exercitar a configuração de meta.
+// Perfil com permissão de edição (o painel é só leitura desde que a meta
+// passou a vir das estimativas, mas o hook segue sendo consultado).
 jest.mock('../../auth/AuthContext', () => ({
   useAuth: () => ({ podeAcessar: () => true }),
 }));

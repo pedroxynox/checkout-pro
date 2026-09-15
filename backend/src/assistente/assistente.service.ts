@@ -19,6 +19,8 @@ import {
   TIPOS_ARRECADACAO,
 } from '../arrecadacao/arrecadacao.domain';
 import { arredondar } from '../common/numeros';
+import { MetasService } from '../metas/metas.service';
+import { anoMesDe } from '../metas/metas.domain';
 
 /** Uma mensagem da conversa exposta ao app. */
 export interface MensagemConversa {
@@ -60,6 +62,7 @@ export class AssistenteService {
     private readonly prisma: PrismaService,
     private readonly gemini: GeminiClient,
     private readonly procedimentos: ProcedimentosService,
+    private readonly metas: MetasService,
   ) {}
 
   /** Data-limite de retenção (mensagens anteriores não são consideradas). */
@@ -398,10 +401,9 @@ export class AssistenteService {
       const spFim = new Date(Date.UTC(ano, mes, agora.getUTCDate() - 7));
       const diasDoMes = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate();
 
-      const cfg = await this.prisma.configVendas.findUnique({
-        where: { id: 'vendas' },
-      });
-      const meta = cfg ? Number(cfg.metaMensal) : 0;
+      // Meta do mês pela fonte única (soma das estimativas diárias). Antes lia
+      // config_vendas direto, o que deixava o assistente com meta 0.
+      const meta = await this.metas.resolver('VENDAS', anoMesDe(agora));
 
       const [aggMes, diasComVenda, aggHoje, horas, aggOntem, aggOntemSP] =
         await Promise.all([

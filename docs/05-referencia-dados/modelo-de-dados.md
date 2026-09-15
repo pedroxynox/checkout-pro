@@ -25,7 +25,7 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `RegistroArrecadacao` | 12 | fechamento). Alimenta os indicadores (total dia/semana/mes e ranking). |
 | `ArrecadacaoSemMovimento` | 5 | "pendente/não enviado". Único por (tipo, data). |
 | `FotoMesIndicador` | 11 | O mês CORRENTE nunca é congelado: é sempre calculado ao vivo (parcial). |
-| `ConfigVendas` | 4 | "sem meta definida" (a projeção é exibida sem comparação). |
+| `ConfigVendas` | 4 | OBSOLETA (ADR 0017): nenhum código lê ou escreve esta tabela. |
 | `ConfigSistema` | 8 | qual começam os calendários do app. Editável pelo gestor sem redeploy. |
 | `CheckoutReporte` | 12 | histórico, sem depender de joins. |
 | `Feriado` | 8 | — |

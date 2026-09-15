@@ -332,8 +332,19 @@ export interface MetaMensal {
   unidade: UnidadeMeta;
   sentido: 'MAIOR_MELHOR' | 'MENOR_MELHOR';
   meta: number;
-  /** Verdadeiro se há um valor salvo para o mês (não é apenas o padrão). */
+  /**
+   * Verdadeiro se o mês tem valor próprio (não é apenas o padrão). Nas metas
+   * digitadas: há registro salvo. Na derivada (VENDAS): há estimativas no mês.
+   */
   definida: boolean;
+  /**
+   * Verdadeiro quando a meta é calculada a partir de outro dado em vez de
+   * digitada. Hoje só VENDAS (soma das estimativas diárias): a tela deve
+   * exibi-la como somente leitura.
+   */
+  derivada: boolean;
+  /** Explicação curta de onde vem o valor, para mostrar ao gestor. */
+  origem: string;
 }
 
 /** Um destaque (top operador) de uma categoria. */
@@ -456,11 +467,6 @@ export interface StatusVendas {
 }
 
 // ----- Painel de Vendas inteligente -----
-
-/** Configuração do Painel de Vendas (meta mensal de faturamento). */
-export interface ConfigVendas {
-  metaMensal: number;
-}
 
 /** Estimativa de venda de um dia (ISO yyyy-mm-dd + valor R$). */
 export interface EstimativaDia {

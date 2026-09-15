@@ -362,9 +362,11 @@ model FotoMesIndicador {
   @@map("fotos_mes_indicador")
 }
 
-// Configuração (singleton) do Painel de Vendas: meta mensal de faturamento.
-// Editável pelo gestor sem redeploy. Quando metaMensal = 0, considera-se
-// "sem meta definida" (a projeção é exibida sem comparação).
+// Guardava a meta mensal digitada do Painel de Vendas. A meta de vendas passou a
+// ser derivada (soma das estimativas diárias, resolvida pelo MetasService), e a
+// tabela segue aqui só para evitar uma migração destrutiva; pode ser removida
+// numa migração dedicada.
+// OBSOLETA (ADR 0017): nenhum código lê ou escreve esta tabela.
 model ConfigVendas {
   id            String   @id @default("vendas")
   metaMensal    Float    @default(0)
