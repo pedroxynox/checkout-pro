@@ -33,6 +33,7 @@ import {
   descreverFaltantes,
   horaMarcacaoHHmm,
 } from '../ponto/marcacoes-invalidas.domain';
+import { ConsultorFolga, FolgaService } from '../escala-domingo/folga.service';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
@@ -122,12 +123,24 @@ export interface CentralDiaDetalhe {
   diaSemana: number;
   ehFeriado: boolean;
   feriadoNome?: string;
-  /** Tipo do dia: TRABALHO | INCOMPLETO | FALTA | FALTA_DEBITO | ATESTADO | SEM_REGISTRO. */
+  /**
+   * Tipo do dia.
+   *
+   * `FALTA_NAO_REGISTRADA` é o dia em que a pessoa **estava escalada**, o dia já
+   * terminou, ela não bateu ponto e **ninguém registrou a falta**. Antes esse dia
+   * saía como `SEM_REGISTRO` e a tela o escondia, então um domingo escalado que a
+   * pessoa não cumpriu simplesmente não existia na card — nem como problema.
+   *
+   * É diferente de `FALTA`: aquela tem uma `Ausencia` gravada e entra nos
+   * contadores. Esta é um **apontamento visual** para o gestor registrar (ou não)
+   * a falta; não soma em `faltas`, não gera hora devida e não move nenhum valor.
+   */
   tipo:
     | 'TRABALHO'
     | 'INCOMPLETO'
     | 'FALTA'
     | 'FALTA_DEBITO'
+    | 'FALTA_NAO_REGISTRADA'
     | 'ATESTADO'
     | 'SEM_REGISTRO';
   /** Estado canônico calculado para dias com batidas. */
@@ -545,6 +558,22 @@ export interface CentralExportacao {
   linhas: LinhaExportacaoCiclo[];
 }
 
+/**
+ * Todos os dias (00:00 UTC) de `[inicio, fimExclusivo)`. Serve para carregar a
+ * regra de folga do ciclo inteiro numa consulta só, em vez de uma por dia.
+ */
+function diasDoPeriodo(inicio: Date, fimExclusivo: Date): Date[] {
+  const dias: Date[] = [];
+  for (
+    let t = inicio.getTime();
+    t < fimExclusivo.getTime();
+    t += 24 * 60 * 60 * 1000
+  ) {
+    dias.push(new Date(t));
+  }
+  return dias;
+}
+
 function primeiroNome(nome: string): string {
   return nome.trim().split(/\s+/)[0] ?? nome;
 }
@@ -591,6 +620,10 @@ export class CentralJornadaService {
     // Rodízio de domingo, para resolver o turno esperado aos domingos.
     // Opcional: sem ele, o atraso de domingo simplesmente não é calculado.
     @Optional() private readonly escalaDomingo?: EscalaDomingoService,
+    // Regra única de folga (ficha + escala semanal). Serve para distinguir um dia
+    // de descanso de um dia escalado que a pessoa não cumpriu — sem ela, uma
+    // folga marcada apenas na escala semanal seria apontada como falta.
+    @Optional() private readonly folga?: FolgaService,
     // Fechamento do ciclo. Opcional: sem ele, não há bloqueio por ciclo fechado
     // (os testes unitários de cálculo não precisam dele).
     @Optional() private readonly cicloFolha?: CicloFolhaService,
@@ -629,53 +662,65 @@ export class CentralJornadaService {
     const agora = agoraNaBrasilia();
     const limite = agora < fimExclusivo ? agora : fimExclusivo;
 
-    const [pessoas, batidas, ausencias, feriadoMap, fiscais, usuarios, ancora] =
-      await Promise.all([
-        this.prisma.colaborador.findMany({
-          where: {
-            ativo: true,
-            funcao: { in: FUNCOES_PONTO },
-            // Inclui TODOS os tipos de contrato; as regras de cada pessoa são
-            // resolvidas por `regrasDe(tipoContratoJornadaId)` (Fase 2 do spec).
-          },
-          orderBy: { nome: 'asc' },
-          select: {
-            id: true,
-            nome: true,
-            funcao: true,
-            matricula: true,
-            usuarioId: true,
-            // Escala (turno) para comparar a marcação com o horário esperado.
-            folgaDiaSemana: true,
-            grupoDomingo: true,
-            entradaSemana: true,
-            entradaFds: true,
-            entradaDom: true,
-            // Contrato de jornada (data-driven) para resolver as regras da pessoa.
-            tipoContratoJornadaId: true,
-          },
-        }),
-        this.prisma.batidaPonto.findMany({
-          where: { data: { gte: inicio, lt: fimExclusivo } },
-          orderBy: { hora: 'asc' },
-          select: {
-            id: true,
-            hora: true,
-            data: true,
-            pessoaId: true,
-            colaboradorId: true,
-          },
-        }),
-        this.prisma.ausencia.findMany({
-          where: { data: { gte: inicio, lt: fimExclusivo } },
-        }),
-        this.feriados.mapaNoPeriodo(inicio, fimExclusivo),
-        this.prisma.fiscal.findMany({
-          select: { id: true, nome: true, usuarioId: true },
-        }),
-        this.prisma.usuario.findMany({ select: { id: true, login: true } }),
-        this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
-      ]);
+    const [
+      pessoas,
+      batidas,
+      ausencias,
+      feriadoMap,
+      fiscais,
+      usuarios,
+      ancora,
+      consultorFolga,
+    ] = await Promise.all([
+      this.prisma.colaborador.findMany({
+        where: {
+          ativo: true,
+          funcao: { in: FUNCOES_PONTO },
+          // Inclui TODOS os tipos de contrato; as regras de cada pessoa são
+          // resolvidas por `regrasDe(tipoContratoJornadaId)` (Fase 2 do spec).
+        },
+        orderBy: { nome: 'asc' },
+        select: {
+          id: true,
+          nome: true,
+          funcao: true,
+          matricula: true,
+          usuarioId: true,
+          // Escala (turno) para comparar a marcação com o horário esperado.
+          folgaDiaSemana: true,
+          grupoDomingo: true,
+          entradaSemana: true,
+          entradaFds: true,
+          entradaDom: true,
+          // Contrato de jornada (data-driven) para resolver as regras da pessoa.
+          tipoContratoJornadaId: true,
+        },
+      }),
+      this.prisma.batidaPonto.findMany({
+        where: { data: { gte: inicio, lt: fimExclusivo } },
+        orderBy: { hora: 'asc' },
+        select: {
+          id: true,
+          hora: true,
+          data: true,
+          pessoaId: true,
+          colaboradorId: true,
+        },
+      }),
+      this.prisma.ausencia.findMany({
+        where: { data: { gte: inicio, lt: fimExclusivo } },
+      }),
+      this.feriados.mapaNoPeriodo(inicio, fimExclusivo),
+      this.prisma.fiscal.findMany({
+        select: { id: true, nome: true, usuarioId: true },
+      }),
+      this.prisma.usuario.findMany({ select: { id: true, login: true } }),
+      this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
+      // Regra única de folga do ciclo inteiro, numa consulta só.
+      this.folga
+        ? this.folga.consultor(diasDoPeriodo(inicio, fimExclusivo))
+        : null,
+    ]);
 
     // Um fiscal bate ponto pela sua identidade de Fiscal (batida.pessoaId =
     // Fiscal.id), que é DIFERENTE do id da sua ficha de Colaborador. Sem este
@@ -705,6 +750,7 @@ export class CentralJornadaService {
       feriadoMap,
       fiscalIdsPorColaborador,
       ancora,
+      consultorFolga,
     };
   }
 
@@ -758,6 +804,7 @@ export class CentralJornadaService {
         ausencias: [] as Ausencia[],
         feriadoMap: new Map<number, string>(),
         ancora: null as AncoraDomingo | null,
+        consultorFolga: null as ConsultorFolga | null,
       };
     }
 
@@ -779,30 +826,35 @@ export class CentralJornadaService {
     const idList = [...ids];
 
     // Só as batidas/ausências DESTA pessoa no ciclo (por ficha ou por fiscalId).
-    const [batidas, ausencias, feriadoMap, ancora] = await Promise.all([
-      this.prisma.batidaPonto.findMany({
-        where: {
-          data: { gte: inicio, lt: fimExclusivo },
-          OR: [{ colaboradorId }, { pessoaId: { in: idList } }],
-        },
-        orderBy: { hora: 'asc' },
-        select: {
-          id: true,
-          hora: true,
-          data: true,
-          pessoaId: true,
-          colaboradorId: true,
-        },
-      }),
-      this.prisma.ausencia.findMany({
-        where: {
-          data: { gte: inicio, lt: fimExclusivo },
-          OR: [{ colaboradorId }, { pessoaId: { in: idList } }],
-        },
-      }),
-      this.feriados.mapaNoPeriodo(inicio, fimExclusivo),
-      this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
-    ]);
+    const [batidas, ausencias, feriadoMap, ancora, consultorFolga] =
+      await Promise.all([
+        this.prisma.batidaPonto.findMany({
+          where: {
+            data: { gte: inicio, lt: fimExclusivo },
+            OR: [{ colaboradorId }, { pessoaId: { in: idList } }],
+          },
+          orderBy: { hora: 'asc' },
+          select: {
+            id: true,
+            hora: true,
+            data: true,
+            pessoaId: true,
+            colaboradorId: true,
+          },
+        }),
+        this.prisma.ausencia.findMany({
+          where: {
+            data: { gte: inicio, lt: fimExclusivo },
+            OR: [{ colaboradorId }, { pessoaId: { in: idList } }],
+          },
+        }),
+        this.feriados.mapaNoPeriodo(inicio, fimExclusivo),
+        this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
+        // Regra única de folga do ciclo inteiro, numa consulta só.
+        this.folga
+          ? this.folga.consultor(diasDoPeriodo(inicio, fimExclusivo))
+          : null,
+      ]);
 
     return {
       periodo,
@@ -815,6 +867,7 @@ export class CentralJornadaService {
       ausencias,
       feriadoMap,
       ancora,
+      consultorFolga,
     };
   }
 
@@ -851,6 +904,11 @@ export class CentralJornadaService {
     limite: Date,
     ficha: FichaEscala,
     ancora: AncoraDomingo | null,
+    /**
+     * Regra única de folga do período, já carregada. `null` quando o serviço não
+     * está disponível — aí a folga vale só pela ficha.
+     */
+    consultorFolga: ConsultorFolga | null,
     regras: RegrasContrato,
     // Quando false, calcula só os TOTAIS (não monta o array `dias`). O resumo
     // do ciclo usa isso para não construir o detalhe diário de todo mundo —
@@ -896,6 +954,24 @@ export class CentralJornadaService {
     let conflitos = 0;
     let atrasos = 0;
     const dias: CentralDiaDetalhe[] = [];
+
+    /**
+     * A pessoa estava ESCALADA neste dia?
+     *
+     * Duas condições, e as duas importam:
+     *  - tem turno previsto (`entradaEsperadaNoDia`: ficha, rodízio de domingo,
+     *    feriado — a mesma regra da escala publicada);
+     *  - não está de folga pela **regra única** (`FolgaService`), que também lê a
+     *    folga marcada apenas na escala semanal.
+     *
+     * Sem a segunda, um dia de descanso registrado só na escala semanal viraria
+     * uma falta apontada na card. Sem o serviço de folga (é `@Optional()`), vale
+     * só a ficha — o comportamento degrada, não quebra.
+     */
+    const escaladoNoDia = (dia: Date, ehFeriado: boolean): boolean => {
+      if (!entradaEsperadaNoDia(ficha, dia, ancora, ehFeriado)) return false;
+      return !(consultorFolga?.ehFolga(dia, [...ids]) ?? false);
+    };
 
     for (
       let t = inicio.getTime();
@@ -1042,21 +1118,44 @@ export class CentralJornadaService {
             debito: debitoValido,
           });
       } else if (coletarDias) {
+        // Dia sem batidas e sem ausência. Ele é um BURACO ou uma FALTA que
+        // ninguém registrou, e a diferença é se a pessoa estava escalada.
+        //
+        // Antes não se perguntava: todo dia vazio saía `SEM_REGISTRO` e a tela o
+        // escondia. O efeito era mais visível no domingo, o dia em que a escala
+        // vem do rodízio de grupos: quem estava escalado e não apareceu não
+        // deixava rastro nenhum na card — o dia simplesmente não existia.
+        //
+        // `entradaEsperadaNoDia` é a mesma regra que a escala publicada usa
+        // (turno da ficha, rodízio de domingo, feriado), e a regra única de folga
+        // cobre a folga marcada só na escala semanal. Sem as duas, um dia de
+        // descanso viraria uma falta apontada — o erro mais grave possível aqui.
+        const semRegistro = !escaladoNoDia(dia, ehFeriado);
         dias.push({
           data: k,
           diaSemana,
           ehFeriado,
           feriadoNome,
-          tipo: 'SEM_REGISTRO',
+          // Só aponta quando o dia JÁ TERMINOU: um dia em curso (ou futuro) sem
+          // batidas não é falta — a pessoa ainda pode entrar.
+          tipo:
+            semRegistro || !diaCompleto
+              ? 'SEM_REGISTRO'
+              : 'FALTA_NAO_REGISTRADA',
           status: 'SEM_REGISTRO',
           faltando: [],
           trabalhadoMs: 0,
           baseMs,
           extras50Ms: 0,
           extras100Ms: 0,
+          // Zero por definição: sem `Ausencia` não há o que debitar, e num
+          // domingo/feriado não haveria nem com ela (`diaGeraDebito`).
           devidasMs: 0,
           tac: false,
           motivosTac: [],
+          entradaPrevista: semRegistro
+            ? null
+            : entradaEsperadaNoDia(ficha, dia, ancora, ehFeriado),
         });
       }
     }
@@ -1113,6 +1212,7 @@ export class CentralJornadaService {
           dados.limite,
           c,
           dados.ancora,
+          dados.consultorFolga,
           regras,
           // Só totais: o resumo não precisa do detalhe diário de cada pessoa.
           false,
@@ -1186,6 +1286,7 @@ export class CentralJornadaService {
       dados.limite,
       dados.pessoa ?? FICHA_ESCALA_VAZIA,
       dados.ancora,
+      dados.consultorFolga,
       regras,
     );
     return { periodo: this.montarPeriodo(dados.periodo, deslocamento), dias };
@@ -1227,6 +1328,7 @@ export class CentralJornadaService {
         dados.limite,
         c,
         dados.ancora,
+        dados.consultorFolga,
         regras,
       );
 
@@ -1357,6 +1459,7 @@ export class CentralJornadaService {
           dados.limite,
           c,
           dados.ancora,
+          dados.consultorFolga,
           regras,
         );
 
@@ -1478,6 +1581,7 @@ export class CentralJornadaService {
         dados.limite,
         c,
         dados.ancora,
+        dados.consultorFolga,
         regras,
       );
 
@@ -1626,6 +1730,7 @@ export class CentralJornadaService {
         dados.limite,
         c,
         dados.ancora,
+        dados.consultorFolga,
         regras,
       );
       pessoas.push({

@@ -1,4 +1,8 @@
-import { CentralJornadaService } from './central-jornada.service';
+import { FolgaService } from '../escala-domingo/folga.service';
+import {
+  CentralDiaDetalhe,
+  CentralJornadaService,
+} from './central-jornada.service';
 
 /**
  * Teste do resumo do ciclo (26→25) da Central de Jornada, cobrindo: dia normal,
@@ -931,10 +935,12 @@ describe('CentralJornadaService.resumoCiclo', () => {
         ]),
       },
       batidaPonto: {
-        findMany: jest.fn().mockResolvedValue([
-          batida('e1', '2026-06-30', '09:40'),
-          batida('e2', '2026-06-30', '13:00'),
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            batida('e1', '2026-06-30', '09:40'),
+            batida('e2', '2026-06-30', '13:00'),
+          ]),
       },
       ausencia: { findMany: jest.fn().mockResolvedValue([]) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
@@ -1143,5 +1149,205 @@ describe('CentralJornadaService.exportarCiclo', () => {
     expect(exp.linhas.some((l) => l.problemas.includes('Incompleta'))).toBe(
       true,
     );
+  });
+});
+
+/**
+ * DIA ESCALADO SEM PONTO E SEM FALTA LANÇADA → `FALTA_NAO_REGISTRADA`.
+ *
+ * O caso que motivou isto: um domingo em que a pessoa estava escalada pelo
+ * rodízio, não bateu ponto e ninguém lançou a falta. O dia saía como
+ * `SEM_REGISTRO` e a tela o escondia — não aparecia nem como problema. Quem
+ * olhasse a card não tinha como saber que aquele domingo ficou descoberto.
+ *
+ * O apontamento é VISUAL: não existe `Ausencia`, então não soma em `faltas`, não
+ * gera hora devida e não move nenhum valor. É um pedido de decisão ao gestor.
+ *
+ * As duas guardas que impedem falso positivo — e que são o mais importante aqui,
+ * porque apontar falta em quem estava de descanso é o erro grave:
+ *  - não estava escalado (folga da ficha, ou domingo fora do rodízio) → nada;
+ *  - folga marcada só na escala semanal (regra única de folga) → nada.
+ */
+describe('CentralJornadaService — dia escalado sem registro', () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+    // 10/07/2026: os domingos 28/06 e 05/07 do ciclo já terminaram.
+    jest.setSystemTime(new Date('2026-07-10T12:00:00.000Z'));
+  });
+  afterAll(() => jest.useRealTimers());
+
+  const ANCORA = {
+    // Âncora 05/07 folga G1 → no domingo anterior (28/06) G1 TRABALHA.
+    obterAncora: jest.fn().mockResolvedValue({
+      data: new Date('2026-07-05T00:00:00.000Z'),
+      ordem: ['G1', 'G3', 'G2'],
+    }),
+  };
+
+  /**
+   * @param grupoDomingo grupo do rodízio (null = não trabalha domingo)
+   * @param folgaNaEscalaSemanal dia da semana marcado como folga na EscalaEntry
+   */
+  function montar(opcoes: {
+    grupoDomingo?: string | null;
+    entradaDom?: string | null;
+    folgaDiaSemana?: number | null;
+    folgaNaEscalaSemanal?: number;
+    comFolgaService?: boolean;
+  }) {
+    const ficha = {
+      id: 'c1',
+      nome: 'Ana',
+      funcao: 'OPERADOR',
+      matricula: 'A',
+      usuarioId: null,
+      folgaDiaSemana: 'folgaDiaSemana' in opcoes ? opcoes.folgaDiaSemana : 1,
+      grupoDomingo: opcoes.grupoDomingo ?? null,
+      entradaSemana: '07:00',
+      entradaFds: '08:00',
+      // `in` e não `??`: passar `null` explicitamente tem de significar "sem
+      // horário de domingo", e `null ?? '09:00'` devolveria o padrão.
+      entradaDom: 'entradaDom' in opcoes ? opcoes.entradaDom : '09:00',
+    };
+    const entradasEscala =
+      opcoes.folgaNaEscalaSemanal !== undefined
+        ? [
+            {
+              funcionarioId: 'c1',
+              colaboradorId: 'c1',
+              diaSemana: opcoes.folgaNaEscalaSemanal,
+              folga: true,
+              especial: false,
+            },
+          ]
+        : [];
+    const prismaFake = {
+      colaborador: { findMany: jest.fn().mockResolvedValue([ficha]) },
+      batidaPonto: { findMany: jest.fn().mockResolvedValue([]) },
+      ausencia: { findMany: jest.fn().mockResolvedValue([]) },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      escalaEntry: { findMany: jest.fn().mockResolvedValue(entradasEscala) },
+    };
+    const feriadosFake = {
+      mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
+    };
+    // A regra única de folga real, sobre o mesmo Prisma falso.
+    const folga =
+      opcoes.comFolgaService === false
+        ? undefined
+        : new FolgaService(prismaFake as never, undefined);
+    return new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+      ANCORA as never,
+      folga as never,
+    );
+  }
+
+  const doDia = async (
+    service: CentralJornadaService,
+    iso: string,
+  ): Promise<CentralDiaDetalhe | undefined> => {
+    const det = await service.detalhePessoa('c1', 0);
+    return det.dias.find((d) => d.data.startsWith(iso));
+  };
+
+  it('domingo ESCALADO pelo rodízio e sem ponto: aponta FALTA_NAO_REGISTRADA', async () => {
+    // G1 trabalha em 28/06 e a ficha tem horário de domingo (09:00). Sem batidas
+    // e sem ausência, o dia era invisível.
+    const d = await doDia(montar({ grupoDomingo: 'G1' }), '2026-06-28');
+
+    expect(d?.tipo).toBe('FALTA_NAO_REGISTRADA');
+    expect(d?.entradaPrevista).toBe('09:00');
+    // Nenhum valor se move: sem `Ausencia` não há o que debitar, e num domingo
+    // não haveria nem com ela.
+    expect(d?.devidasMs).toBe(0);
+    expect(d?.extras50Ms).toBe(0);
+    expect(d?.extras100Ms).toBe(0);
+  });
+
+  it('não mexe nos totais do ciclo (não é uma falta oficial)', async () => {
+    // O invariante que isto protege: o número de faltas da card vem das
+    // `Ausencia` gravadas. Um apontamento visual não pode inflá-lo, senão o
+    // detalhe do ranking e o contador divergem.
+    const service = montar({ grupoDomingo: 'G1' });
+    const resumo = await service.resumoCiclo(0);
+
+    expect(resumo.pessoas[0].faltas).toBe(0);
+    expect(resumo.pessoas[0].horasDevidasMs).toBe(0);
+  });
+
+  it('domingo de FOLGA pelo rodízio: segue SEM_REGISTRO', async () => {
+    // 05/07 é o domingo em que G1 folga pela âncora. Não estava escalado, então
+    // não há falta a apontar.
+    const d = await doDia(montar({ grupoDomingo: 'G1' }), '2026-07-05');
+
+    expect(d?.tipo).toBe('SEM_REGISTRO');
+  });
+
+  it('sem grupo no rodízio: nenhum domingo é apontado', async () => {
+    // Quem não tem `grupoDomingo` não é escalado em domingo nenhum.
+    const d = await doDia(montar({ grupoDomingo: null }), '2026-06-28');
+
+    expect(d?.tipo).toBe('SEM_REGISTRO');
+  });
+
+  it('sem horário de domingo na ficha: nenhum domingo é apontado', async () => {
+    // Sem `entradaDom` não há turno previsto, então não se afirma que faltou.
+    const d = await doDia(
+      montar({ grupoDomingo: 'G1', entradaDom: null }),
+      '2026-06-28',
+    );
+
+    expect(d?.tipo).toBe('SEM_REGISTRO');
+  });
+
+  it('folga da FICHA num dia útil: segue SEM_REGISTRO', async () => {
+    // 29/06 é uma segunda, e a ficha folga na segunda (`folgaDiaSemana: 1`).
+    const d = await doDia(montar({ folgaDiaSemana: 1 }), '2026-06-29');
+
+    expect(d?.tipo).toBe('SEM_REGISTRO');
+  });
+
+  it('folga marcada só na ESCALA SEMANAL: segue SEM_REGISTRO', async () => {
+    // A guarda que mais importa. A ficha diz que a terça é dia de trabalho, mas a
+    // escala semanal marca folga. Sem a regra única, o dia seria apontado como
+    // falta — e apontar falta em quem estava descansando é o erro grave aqui.
+    // 30/06 é uma terça (diaSemana 2).
+    const d = await doDia(
+      montar({ folgaDiaSemana: 1, folgaNaEscalaSemanal: 2 }),
+      '2026-06-30',
+    );
+
+    expect(d?.tipo).toBe('SEM_REGISTRO');
+  });
+
+  it('dia útil escalado e sem ponto também é apontado', async () => {
+    // A regra não é só de domingo: qualquer dia escalado que terminou sem ponto e
+    // sem falta lançada é um buraco. 30/06 é terça, a ficha folga na segunda.
+    const d = await doDia(montar({ folgaDiaSemana: 1 }), '2026-06-30');
+
+    expect(d?.tipo).toBe('FALTA_NAO_REGISTRADA');
+    expect(d?.entradaPrevista).toBe('07:00');
+  });
+
+  it('dia que ainda NÃO terminou não é apontado', async () => {
+    // Hoje é 10/07 ao meio-dia; o dia não fechou, e quem entra à tarde ainda pode
+    // bater ponto. Afirmar falta aqui seria acusar antes da hora.
+    const d = await doDia(montar({ folgaDiaSemana: 1 }), '2026-07-10');
+
+    expect(d?.tipo).toBe('SEM_REGISTRO');
+  });
+
+  it('sem o serviço de folga, degrada para a regra da ficha (não quebra)', async () => {
+    // `FolgaService` é `@Optional()`. Sem ele vale só a folga da ficha — o
+    // comportamento piora um pouco, mas não deixa de funcionar.
+    const d = await doDia(
+      montar({ grupoDomingo: 'G1', comFolgaService: false }),
+      '2026-06-28',
+    );
+
+    expect(d?.tipo).toBe('FALTA_NAO_REGISTRADA');
   });
 });

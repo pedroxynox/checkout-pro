@@ -1,7 +1,7 @@
 /** Serviço da Central de Jornada (ciclo de folha 26→25). */
-import { apiClient } from '../client';
+import { apiClient } from "../client";
 
-export type FuncaoPessoa = 'OPERADOR' | 'FISCAL' | 'SUPERVISOR' | 'GESTOR';
+export type FuncaoPessoa = "OPERADOR" | "FISCAL" | "SUPERVISOR" | "GESTOR";
 
 export interface CentralPeriodo {
   inicio: string;
@@ -55,12 +55,19 @@ export interface CentralResumo {
 }
 
 export type TipoDiaJornada =
-  | 'TRABALHO'
-  | 'INCOMPLETO'
-  | 'FALTA'
-  | 'FALTA_DEBITO'
-  | 'ATESTADO'
-  | 'SEM_REGISTRO';
+  | "TRABALHO"
+  | "INCOMPLETO"
+  | "FALTA"
+  | "FALTA_DEBITO"
+  /**
+   * Estava escalado, o dia terminou, não bateu ponto e **ninguém lançou a
+   * falta**. Não é uma falta oficial (não há `Ausencia`, não entra nos totais):
+   * é um dia que pede decisão do gestor. Antes vinha como `SEM_REGISTRO` e a
+   * tela o escondia — um domingo escalado e não cumprido não aparecia.
+   */
+  | "FALTA_NAO_REGISTRADA"
+  | "ATESTADO"
+  | "SEM_REGISTRO";
 
 export interface CentralDiaDetalhe {
   data: string;
@@ -69,11 +76,11 @@ export interface CentralDiaDetalhe {
   feriadoNome?: string;
   tipo: TipoDiaJornada;
   status:
-    | 'SEM_REGISTRO'
-    | 'TRABALHANDO'
-    | 'EM_INTERVALO'
-    | 'ENCERRADO'
-    | 'INCOMPLETO';
+    | "SEM_REGISTRO"
+    | "TRABALHANDO"
+    | "EM_INTERVALO"
+    | "ENCERRADO"
+    | "INCOMPLETO";
   faltando: string[];
   trabalhadoMs: number;
   baseMs: number;
@@ -106,11 +113,7 @@ export interface CentralComparativo {
 
 /** Tipo de problema no painel de inconsistências. */
 export type TipoInconsistencia =
-  | 'INCOMPLETA'
-  | 'DUPLICADA'
-  | 'CONFLITO_AUSENCIA'
-  | 'ATRASO'
-  | 'TAC';
+  "INCOMPLETA" | "DUPLICADA" | "CONFLITO_AUSENCIA" | "ATRASO" | "TAC";
 
 /** Um problema detectado num dia de um colaborador. */
 export interface InconsistenciaItem {
@@ -143,13 +146,13 @@ export interface CentralInconsistencias {
  * abre a mesma tela com uma destas.
  */
 export type MetricaRanking =
-  | 'EXTRAS_50'
-  | 'EXTRAS_100'
-  | 'FALTAS'
-  | 'ATESTADOS'
-  | 'ATRASOS'
-  | 'TAC'
-  | 'CONFLITOS';
+  | "EXTRAS_50"
+  | "EXTRAS_100"
+  | "FALTAS"
+  | "ATESTADOS"
+  | "ATRASOS"
+  | "TAC"
+  | "CONFLITOS";
 
 /**
  * Um dia de ausência (detalhe do ranking de faltas). Atestado não entra aqui:
@@ -160,7 +163,7 @@ export interface DiaFaltaRanking {
   diaSemana: number;
   ehFeriado: boolean;
   /** `FALTA` (simples) · `FALTA_DEBITO` (marcada como débito de horas). */
-  tipo: 'FALTA' | 'FALTA_DEBITO';
+  tipo: "FALTA" | "FALTA_DEBITO";
   debito: boolean;
   /** Horas lançadas como devidas por esta falta. */
   devidasMs: number;
@@ -229,13 +232,10 @@ export interface CentralRankings {
 
 /** Uma das quatro marcações canônicas do dia, na ordem em que acontecem. */
 export type MarcacaoCanonica =
-  | 'ENTRADA'
-  | 'SAIDA_INTERVALO'
-  | 'RETORNO_INTERVALO'
-  | 'ENCERRAMENTO';
+  "ENTRADA" | "SAIDA_INTERVALO" | "RETORNO_INTERVALO" | "ENCERRAMENTO";
 
 /** Grau de certeza da análise: `BAIXA` pede conferência humana. */
-export type ConfiancaAnalise = 'ALTA' | 'BAIXA';
+export type ConfiancaAnalise = "ALTA" | "BAIXA";
 
 /** Um dia com marcações faltando (relatório de ajuste do ponto). */
 export interface MarcacaoInvalidaItem {
@@ -332,22 +332,25 @@ export interface CentralExportacao {
 export const centralJornadaService = {
   /** Resumo do ciclo (por pessoa + totais). `ciclo` 0 = atual, -1 = anterior. */
   resumo(ciclo = 0): Promise<CentralResumo> {
-    return apiClient.get<CentralResumo>('/central-jornada', {
+    return apiClient.get<CentralResumo>("/central-jornada", {
       ciclo: String(ciclo),
     });
   },
 
   /** Comparativo dos últimos ciclos. */
   comparativos(qtd = 6): Promise<CentralComparativo[]> {
-    return apiClient.get<CentralComparativo[]>('/central-jornada/comparativos', {
-      qtd: String(qtd),
-    });
+    return apiClient.get<CentralComparativo[]>(
+      "/central-jornada/comparativos",
+      {
+        qtd: String(qtd),
+      },
+    );
   },
 
   /** Painel de inconsistências do ciclo. `ciclo` 0 = atual, -1 = anterior. */
   inconsistencias(ciclo = 0): Promise<CentralInconsistencias> {
     return apiClient.get<CentralInconsistencias>(
-      '/central-jornada/inconsistencias',
+      "/central-jornada/inconsistencias",
       { ciclo: String(ciclo) },
     );
   },
@@ -357,7 +360,7 @@ export const centralJornadaService = {
    * falta, atraso, TAC e conflito). A ordenação por métrica é feita na tela.
    */
   rankings(ciclo = 0): Promise<CentralRankings> {
-    return apiClient.get<CentralRankings>('/central-jornada/rankings', {
+    return apiClient.get<CentralRankings>("/central-jornada/rankings", {
       ciclo: String(ciclo),
     });
   },
@@ -368,14 +371,14 @@ export const centralJornadaService = {
    */
   marcacoesInvalidas(ciclo = 0): Promise<CentralMarcacoesInvalidas> {
     return apiClient.get<CentralMarcacoesInvalidas>(
-      '/central-jornada/marcacoes-invalidas',
+      "/central-jornada/marcacoes-invalidas",
       { ciclo: String(ciclo) },
     );
   },
 
   /** Exportação do ciclo (revisão antes do fechamento) + CSV. */
   exportacao(ciclo = 0): Promise<CentralExportacao> {
-    return apiClient.get<CentralExportacao>('/central-jornada/exportacao', {
+    return apiClient.get<CentralExportacao>("/central-jornada/exportacao", {
       ciclo: String(ciclo),
     });
   },
@@ -385,10 +388,10 @@ export const centralJornadaService = {
     colaboradorId: string,
     ciclo = 0,
   ): Promise<{ periodo: CentralPeriodo; dias: CentralDiaDetalhe[] }> {
-    return apiClient.get<{ periodo: CentralPeriodo; dias: CentralDiaDetalhe[] }>(
-      `/central-jornada/pessoa/${colaboradorId}`,
-      { ciclo: String(ciclo) },
-    );
+    return apiClient.get<{
+      periodo: CentralPeriodo;
+      dias: CentralDiaDetalhe[];
+    }>(`/central-jornada/pessoa/${colaboradorId}`, { ciclo: String(ciclo) });
   },
 
   /** Marca/desmarca uma falta como débito de horas. */
