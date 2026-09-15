@@ -19,11 +19,16 @@ ou imagem no app e ser enviada aos colaboradores.
 
 ### Por que não é uma extensão de `operadores`
 O [Quadro de Operadores](operadores.md) é uma tela de **gestão**: cobre só
-operadores, não aplica a regra de feriado e existe para agir (lançar falta,
-justificar). A escala publicada é um **documento**: cobre todas as funções,
-aplica feriado, mostra férias e não edita nada. Fazer as duas coisas no mesmo
-serviço obrigaria uma delas a mentir — ou o quadro passaria a mostrar gente que
-não é dele, ou o documento continuaria incompleto.
+operadores e existe para agir (lançar falta, justificar). A escala publicada é um
+**documento**: cobre todas as funções e não edita nada. Fazer as duas coisas no
+mesmo serviço obrigaria uma delas a mentir — ou o quadro passaria a mostrar gente
+que não é dele, ou o documento continuaria incompleto.
+
+O que os dois **não** podem fazer é discordar sobre o que uma pessoa faz num dia.
+Essa decisão é de `montarLinhaEscala`, e as duas telas a chamam. Não foi sempre
+assim: o quadro tinha uma cópia da regra, e a cópia não conhecia feriado nem
+exceção de horário — mostrava `08:00` onde este módulo mostrava `07:00`, para a
+mesma pessoa no mesmo feriado. Módulos separados, **regra única**.
 
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas (aprox.) |
@@ -73,6 +78,10 @@ amanhã justamente no horário em que ela é enviada à equipe.
 Em `escala-publicada.domain.ts`:
 - `montarLinhaEscala({ ficha, dia, ancoraDomingo, ehFeriado, deFerias, deFolga, especial, ocorrencia })`
   → a linha de uma pessoa num dia, aplicando a **precedência** da seção 10.
+  **É a regra única de "o que esta pessoa faz neste dia":** o
+  [Quadro de Operadores](operadores.md) a chama também (grade, roster e tablero ao
+  vivo), então uma mudança aqui muda as duas telas de uma vez — que é
+  exatamente o objetivo.
 - `ordenarLinhas(linhas)` → quem entra mais cedo primeiro (a ordem em que o dia
   acontece na loja); quem não trabalha vai para o fim, por nome.
 - `agruparPorFuncao(linhas)` → seções na ordem fixa `SUPERVISOR → FISCAL →
@@ -149,7 +158,7 @@ que a equipe recebe.
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `escala-publicada.domain.spec.ts` | Precedência (férias, especial, folga, falta, atestado), feriado nas duas pontas, ordem por entrada, agrupamento por função, totais e a semana segunda→domingo | 14 |
-| `../operadores/coerencia-quadro-escala.spec.ts` | **Coerência** com o Quadro de Operadores: para o mesmo dia e pessoa, as duas vistas dizem o mesmo (trabalho, folga da ficha, folga da escala semanal com e sem exceção, férias, falta, atestado) | 7 |
+| `../operadores/coerencia-quadro-escala.spec.ts` | **Coerência** com o Quadro de Operadores: para o mesmo dia e pessoa, as duas vistas dizem o mesmo — estado **e horário** (trabalho, folga da ficha, folga da escala semanal com e sem exceção, férias, falta, atestado, **feriado** e **horário de exceção**) | 9 |
 | `escala-exportacao.service.spec.ts` | Cobertura de todas as funções, feriado com nome, férias, exceção de horário, falta com turno preservado, grupo do domingo, inativos fora, e a grade semanal (sete células, regra por dia, ordem por nome) | 10 |
 
 > Contagem sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
@@ -165,3 +174,14 @@ que a equipe recebe.
 - 🔧 A escala publicada **não tem histórico**: ela é recalculada a cada consulta.
   Se amanhã for preciso provar "o que foi publicado no dia X", será necessário
   guardar o documento gerado.
+- 🔧 **Duas resoluções de feriado convivem:** este módulo tem um
+  `feriadosDoPeriodo` privado (chave `yyyy-mm-dd`) e o [Quadro de
+  Operadores](operadores.md) usa `FeriadosService.mapaNoPeriodo` (chave
+  timestamp). As duas leem as mesmas fontes (`feriadosNacionais` + `Feriado`
+  manual), então o **resultado** não pode divergir — só a forma da chave. Ainda
+  assim é código repetido: unificar em `FeriadosService` é o próximo passo
+  natural, agora que a decisão de escala já é única.
+- 🔧 **A duplicação de `especiais()`** tem a mesma natureza: o quadro repete a
+  consulta a `EscalaEntry.especial` porque não podia depender deste serviço. O
+  candidato é mover a leitura para `escala-domingo` (onde a regra de horário
+  mora) e os dois passarem a consumi-la.

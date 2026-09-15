@@ -33,6 +33,14 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 > que lê a marca de atestado/CID da falta do dia), distinguindo-o da falta comum.
 > No card **"Atestados do dia"**, além do nome e do CID, mostra-se o **período do
 > atestado** ("início até fim", de `atestadoInicio`/`atestadoFim`).
+
+> **Horários vêm da mesma regra da escala publicada.** O roster desta tela e a
+> escala que a equipe recebe passaram a ser montados pela mesma função no backend
+> (`montarLinhaEscala`). Na prática, muda o que se lê aqui em dois casos que antes
+> saíam errados: em **feriado** a hora exibida é a de **domingo** da pessoa (não a
+> de dia útil), e quando existe **exceção de horário** cadastrada para o dia da
+> semana, é ela que aparece. Ver
+> [`operadores` no atlas do backend](../03-atlas-backend/operadores.md).
 | `FeriasCard.tsx` | Card + modal para colocar de férias, listar as em curso/futuras (com filtro para incluir as encerradas) e cancelar | 471 |
 
 ## 4. Fluxo do usuário

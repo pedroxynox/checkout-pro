@@ -4,6 +4,7 @@ import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
 import { CicloFolhaModule } from '../ciclo-folha/ciclo-folha.module';
 import { FeriasModule } from '../ferias/ferias.module';
+import { FeriadosModule } from '../feriados/feriados.module';
 import { OperadoresController } from './operadores.controller';
 import { OperadoresService } from './operadores.service';
 import { OperadorTurnoController } from './operador-turno.controller';
@@ -29,6 +30,9 @@ import { OperadorTurnoService } from './operador-turno.service';
     // Sem este import o quadro mostrava a pessoa como "Trabalha" durante as
     // férias, discordando da escala de fiscais e da escala publicada.
     FeriasModule,
+    // Feriados: no feriado vale o horário de DOMINGO da pessoa. Sem este import
+    // o quadro mostrava o horário de dia útil, divergindo da escala publicada.
+    FeriadosModule,
   ],
   providers: [OperadoresService, OperadorTurnoService],
   controllers: [OperadoresController, OperadorTurnoController],
