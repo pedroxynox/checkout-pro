@@ -74,8 +74,14 @@ continuarem aparecendo como férias na escala e nos relatórios. Passe
 
 #### `colaboradoresDeFeriasNoDia(dia)`
 Devolve o `Set<colaboradorId>` de quem tem período vigente no dia (`inicio <= dia
-<= fim`). **É a fonte única de exclusão** consumida por
-`FiscaisService.escaladosDoDia` e pela escala consolidada.
+<= fim`). **É a fonte única do dado**, consumida por todos os construtores de
+escala (ver §9). Cada consumidor decide o que fazer com ele: a escala de fiscais
+e o Quadro de Operadores **removem** a pessoa do dia; a escala publicada e a
+grade semanal a **marcam** como férias.
+
+⚠️ A chave é o `Colaborador.id`. Quem compara com outro id (o fiscal bate ponto
+com `Fiscal.id`) precisa converter — é por isso que `escaladosDoDia` filtra por
+`colaboradorId` e não por `pessoaId`.
 
 #### `removerFerias(id)`
 Remove um período (404 `FeriasNaoEncontradaError` se não existir).
@@ -115,10 +121,19 @@ função pura `estaDeFerias`, nunca persistido como flag.
 
 ## 9. Dependências
 - **Depende de:** `PrismaService`, `NotificacoesService` (avisos, opcional).
-- **É usado por:** [`fiscais`](fiscais.md) — `escaladosDoDia` e a escala
-  consolidada excluem quem está de férias; por consequência, a detecção
-  automática de falta ([`ponto`](ponto.md)) também não marca falta de quem está
-  de férias, pois ela parte dos escalados.
+- **É usado por** (todos os consumidores de `colaboradoresDeFeriasNoDia`):
+  - [`fiscais`](fiscais.md) — `escaladosDoDia` e a escala consolidada excluem quem
+    está de férias; por consequência, a detecção automática de falta
+    ([`ponto`](ponto.md)) também não marca falta de quem está de férias, pois ela
+    parte dos escalados;
+  - [`operadores`](operadores.md) — o Quadro de Operadores (roster do dia, grade
+    semanal e tablero ao vivo). **Foi o último a entrar:** por anos este quadro
+    montava a sua própria lista sem consultar férias, e mostrava a pessoa como
+    "Trabalha" durante o período;
+  - [`escala-exportacao`](escala-exportacao.md) — a escala publicada, onde as
+    férias viram o status `FERIAS`;
+  - [`ponto`](ponto.md) — a revalidação das ocorrências automáticas usa "de
+    férias no dia" como motivo para remover uma falta já lançada.
 
 ## 10. Regras de negócio-chave
 1. **Inativação NÃO rígida:** férias não alteram `ativo` nem geram falta; apenas
@@ -157,6 +172,12 @@ função pura `estaDeFerias`, nunca persistido como flag.
 - 🔧 As férias não criam linhas em `Ausencia` (não são falta). Se no futuro o
   RH quiser vê-las no painel de faltas como "férias", será preciso uni-las na
   leitura — hoje são fontes separadas de propósito (ausência esperada ≠ falta).
+- ⚠️ **A exclusão não é central: cada construtor de escala precisa lembrar de
+  aplicá-la.** A [ADR 0015](../02-arquitetura/decisoes/0015-ferias-inativacao-nao-rigida.md)
+  apostou numa "fonte única" (`escaladosDoDia`), mas existem quatro construtores
+  de "quem trabalha hoje", e o Quadro de Operadores nunca foi ligado — por anos
+  mostrou quem estava de férias como "Trabalha". Já corrigido, mas o risco
+  estrutural continua: uma tela nova que monte a sua própria lista repetirá o bug.
 - ✅ **Férias atribuídas depois limpam as faltas automáticas daqueles dias.** A
   exclusão de `escaladosDoDia` é *prospectiva* (evita novas faltas), então uma
   falta já lançada antes das férias existirem ficava pendurada na tela. Quem a

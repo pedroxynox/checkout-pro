@@ -77,6 +77,8 @@ function corStatus(status: ColaboradorDia['status']): { fundo: string; texto: st
   if (status === 'TRABALHA') return { fundo: 'rgba(30,158,90,0.14)', texto: cores.verde };
   if (status === 'FALTA') return { fundo: 'rgba(210,59,59,0.16)', texto: cores.vermelho };
   if (status === 'ATESTADO') return { fundo: cores.azulFundo, texto: cores.azul };
+  // Roxo é a cor das férias na escala publicada — mesma leitura visual.
+  if (status === 'FERIAS') return { fundo: cores.roxoFundo, texto: cores.roxo };
   return { fundo: cores.divisor, texto: cores.textoSecundario };
 }
 
@@ -84,6 +86,8 @@ function rotuloStatus(status: ColaboradorDia['status']): string {
   if (status === 'TRABALHA') return 'Trabalha';
   if (status === 'FALTA') return 'Falta';
   if (status === 'ATESTADO') return 'Atestado';
+  // Sem este caso o rótulo cairia no "Folga" do fim — férias não é folga.
+  if (status === 'FERIAS') return 'Férias';
   return 'Folga';
 }
 

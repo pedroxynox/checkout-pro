@@ -1287,7 +1287,17 @@ export interface OperadorTurno {
   ativo: boolean;
 }
 
-export type StatusCelula = 'TRABALHA' | 'FOLGA' | 'FALTA' | 'ATESTADO';
+/**
+ * Estado de uma pessoa num dia. `FERIAS` só aparece nas células da **grade
+ * semanal** (um calendário, onde as férias podem cobrir parte da semana). No
+ * roster de um dia quem está de férias sai da lista, como na escala de fiscais.
+ */
+export type StatusCelula =
+  | 'TRABALHA'
+  | 'FOLGA'
+  | 'FALTA'
+  | 'ATESTADO'
+  | 'FERIAS';
 
 export interface GradeCelula {
   diaSemana: number;

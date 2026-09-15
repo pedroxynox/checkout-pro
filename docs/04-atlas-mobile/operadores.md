@@ -96,7 +96,10 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
    de novo.
 8. **Férias:** o card abre um modal para colocar um colaborador de férias por um
    período (some da escala, sem virar falta), listar as férias **em curso e
-   futuras** e cancelá-las. O período usa o
+   futuras** e cancelá-las. Quem está de férias **sai do roster do dia desta
+   própria tela** — até 09/2026 não saía: o roster montava a sua lista sem
+   consultar férias e mostrava a pessoa como "Trabalha", enquanto a escala
+   publicada já a mostrava de férias. O período usa o
    [`SeletorPeriodo`](componentes-compartilhados.md), com aviso acima de **30
    dias corridos** (duração usual de um ciclo) — é só um alerta, não um bloqueio.
    A duração vem do **backend** (`dias` em `FeriasDetalhada` e na resposta do
@@ -235,6 +238,14 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
   por tempo não geram batida.
 - ⚠️ Faltas de fiscais são alternadas por ausências do dia (eles não estão no
   roster de operadores); depende de `OPERADORES_AUSENCIAS`.
+- ⚠️ **O roster desta tela não inclui SUPERVISOR** (o backend filtra
+  `funcao: 'OPERADOR'`). O supervisor aparece na equipe do dia e na escala
+  publicada, onde as férias já eram respeitadas — mas não aqui. Incluí-lo é
+  decisão de produto pendente.
+- 🔧 O status `FERIAS` existe no contrato (`StatusCelula`) e a tela já sabe
+  colori-lo/rotulá-lo, mas só é emitido nas células da **grade semanal** — que
+  esta tela **não renderiza** hoje (o `operadoresService.grade()` existe e não é
+  consumido). No roster do dia a pessoa de férias simplesmente não vem.
 - ⚠️ A janela da listagem vai só **60 dias à frente**: um atestado programado para
   além disso não aparece. E com "mostrar encerrados" ela alcança **90 dias para
   trás** — um atestado mais antigo que isso continua inalcançável para exclusão.

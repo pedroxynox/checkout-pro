@@ -38,8 +38,8 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 
 | Método + Rota | Permissão | O que faz |
 |---|---|---|
-| `GET /quadro-operadores/grade` | `OPERADORES_AUSENCIAS` | Grade semanal (Seg–Sáb) com status por dia e cobertura. |
-| `GET /quadro-operadores/dia` | `OPERADORES_AUSENCIAS` | Roster de um dia (status TRABALHA/FOLGA/FALTA/**ATESTADO** + contagem de atestados). |
+| `GET /quadro-operadores/grade` | `OPERADORES_AUSENCIAS` | Grade semanal (Seg–Sáb) com status por dia (inclui **FERIAS**) e cobertura. |
+| `GET /quadro-operadores/dia` | `OPERADORES_AUSENCIAS` | Roster de um dia (status TRABALHA/FOLGA/FALTA/**ATESTADO** + contagem de atestados). Quem está de **férias** no dia **não aparece**. |
 | `GET /quadro-operadores/ao-vivo` | `OPERADORES_AUSENCIAS` | Quem deveria estar no caixa agora. |
 | `GET /quadro-operadores/faltas/analitica` | `OPERADORES_AUSENCIAS` | Analítica de faltas do período (ranking, dia recorrente, risco). |
 | `GET /quadro-operadores/nao-retornos/analitica` | `OPERADORES_AUSENCIAS` | Analítica de não-retornos do intervalo (mesma inteligência). |
@@ -208,8 +208,13 @@ Delegam às funções puras homônimas do domínio.
   JUSTIFICADA` (com motivo) ou `→ INJUSTIFICADA`; reabrir volta a `PENDENTE`
   limpando motivo/auditoria.
 - `RiscoFalta`: `BAIXO` · `MEDIO` · `ALTO` (semáforo da analítica).
+- `StatusCelula` (Quadro): `TRABALHA` · `FOLGA` · `FALTA` · `ATESTADO` ·
+  `FERIAS`. O `FERIAS` só aparece nas células da **grade semanal**: no roster de
+  um dia quem está de férias sai da lista, e não há célula para marcar.
 
 ## 8. Dados que o módulo toca
+- **Lê (exclusão):** `FeriasColaborador` via `FeriasService` — quem está de
+  férias no dia sai do Quadro.
 - **Escreve:** `Ausencia` (cria/atualiza/remove; grava `colaboradorId`) e
   `ExclusaoOcorrenciaAutomatica` (a lápide da exclusão de uma falta automática).
 - **Lê:** `Ausencia`, `Colaborador`, `Fiscal` (apenas fallback de nome),
@@ -219,7 +224,8 @@ Delegam às funções puras homônimas do domínio.
 ## 9. Dependências
 - **Depende de:** `PrismaService`, `NotificacoesService` (avisos, opcional),
   `ValidacaoDataService` (data inicial), `CicloFolhaService` (ciclo aberto),
-  `EscalaDomingoModule`, e o domínio de `common/justificativas`.
+  `EscalaDomingoModule`, `FeriasService` (exclusão de quem está de férias,
+  opcional) e o domínio de `common/justificativas`.
 - **É usado por:** o app (Quadro de Operadores, painel de faltas) e indiretamente
   o Perfil Inteligente do colaborador (que consome assiduidade/faltas).
 
@@ -228,24 +234,30 @@ Delegam às funções puras homônimas do domínio.
 2. **Ausência futura só com gerente/supervisor** (programação).
 3. **Ausência a prazo é atômica** e conta todos os dias corridos (inclusive
    folga); só a gestão desmarca esses dias (fiscal não).
-4. **Falta NÃO se marca em dia de folga** (regra única de folga: ficha **ou**
+4. **Quem está de férias não é escalado.** No roster do dia (e no tablero ao
+   vivo) a pessoa **sai da lista**, como na escala de fiscais; na grade semanal a
+   **célula** vira `FERIAS`, porque o período pode cobrir só parte da semana. As
+   férias têm **precedência sobre folga e falta**: não criam `Ausencia`, então
+   antes desta regra a pessoa caía no caminho de quem trabalha. Nos totais do dia
+   e na cobertura da grade ela não conta em nenhum bucket — não era esperada.
+5. **Falta NÃO se marca em dia de folga** (regra única de folga: ficha **ou**
    escala semanal — ver [`escala-domingo`](escala-domingo.md)). Falta é a ausência
    de quem era *esperado*; em dia de descanso não há o que faltar. Vale para a
    falta manual e para a automática, e **não** vale para ausência a prazo /
    atestado, que cobrem períodos e incluem a folga de propósito (regra 3), por
    outro caminho.
-5. **Justificar exige motivo**; reabrir limpa o motivo e a auditoria.
-6. **Ciclo de folha fechado bloqueia** registrar/remover/justificar faltas. Nas
+6. **Justificar exige motivo**; reabrir limpa o motivo e a auditoria.
+7. **Ciclo de folha fechado bloqueia** registrar/remover/justificar faltas. Nas
    operações de **período** (ausência a prazo, registrar e cancelar), basta **um**
    dos ciclos tocados estar fechado para bloquear — antes só o ciclo do primeiro
    dia era verificado, e o resto do período entrava sem controle. Ver
    `exigirCiclosAbertos` em [`ciclo-folha`](ciclo-folha.md).
-7. **Turno pela hora de entrada** (10:00 e 13:00 como fronteiras).
-8. **Avisos são best-effort:** nunca impedem o registro da falta.
-9. **Excluir ≠ justificar:** justificar/abonar mantém a falta com peso reduzido
+8. **Turno pela hora de entrada** (10:00 e 13:00 como fronteiras).
+9. **Avisos são best-effort:** nunca impedem o registro da falta.
+10. **Excluir ≠ justificar:** justificar/abonar mantém a falta com peso reduzido
    (2%/10%); **excluir** apaga a falta lançada por engano (peso zero, some do
    histórico) e é restrito a gerente/supervisor/administrador.
-10. **Médico só por atestado:** a ausência a prazo NÃO aceita motivo
+11. **Médico só por atestado:** a ausência a prazo NÃO aceita motivo
    `ATESTADO_MEDICO` — atestado tem fluxo próprio (com CID e INSS). Abonar uma
    falta avulsa como atestado médico (na tela de Justificativas) continua
    permitido (é abono de uma ocorrência já existente, não um período novo).
@@ -265,6 +277,7 @@ Delegam às funções puras homônimas do domínio.
 | `listar-ausencias-ficha.spec.ts` | Nome da falta resolvido pela ficha canônica (A.3) | 1 |
 | `falta-em-folga.spec.ts` | Recusa falta em dia de folga; marca normalmente em dia de trabalho; e o contrapeso: **ausência a prazo segue cobrindo a folga** | 3 |
 | `quadro-folga-escala.spec.ts` | O quadro mostra FOLGA quando só a escala semanal marca folga; a folga vence uma falta já gravada; TRABALHA quando nenhuma fonte diz folga; e a grade usa a mesma regra | 4 |
+| `quadro-ferias-escala.spec.ts` | Quem está de férias sai do roster do dia (inclusive no domingo) e dos totais; as férias vencem uma falta gravada; fora do período segue normal; sem o serviço de férias nada é excluído; a grade marca **FERIAS** só no dia coberto (sem apagar a linha da semana) e não conta férias na cobertura; o tablero ao vivo não espera quem está de férias | 11 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
@@ -272,8 +285,25 @@ Delegam às funções puras homônimas do domínio.
 - 🔧 **Modelo legado em transição:** o `Operador` simples foi removido e os
   operadores agora vêm do Cadastro Unificado (função `OPERADOR`); o
   `OperadorTurno` antigo coexiste — ver [ADR 0004](../02-arquitetura/decisoes/0004-cadastro-unificado-e-escala-opcao-a.md).
-- 🔧 `operador-turno.service.ts` (892 linhas) concentra grade, roster, ao vivo e
+- 🔧 `operador-turno.service.ts` (1057 linhas) concentra grade, roster, ao vivo e
   analítica; candidato a extrair sub-serviços.
+- ⚠️ **O Quadro é uma segunda fonte de "quem trabalha hoje".** A
+  [ADR 0015](../02-arquitetura/decisoes/0015-ferias-inativacao-nao-rigida.md)
+  assumiu que `FiscaisService.escaladosDoDia` era a **fonte única**, e por isso
+  bastava excluir as férias ali. Não era: este quadro monta a sua própria lista
+  (a partir de `Colaborador`), e por isso ficou anos mostrando quem estava de
+  férias como "Trabalha". A exclusão agora está aqui também, mas **a duplicação
+  de fontes continua** — qualquer regra nova de "quem é escalado" precisa ser
+  aplicada nos dois lugares (e na escala publicada).
+- ⚠️ **A grade consulta férias um dia por vez** (seis consultas por semana),
+  mesmo padrão já registrado como dívida em
+  [`escala-exportacao`](escala-exportacao.md). Uma consulta por intervalo
+  resolveria os dois.
+- ⚠️ **O Quadro não inclui SUPERVISOR:** `listar()` e `operadoresNoDomingo()`
+  filtram `funcao: 'OPERADOR'`. O supervisor aparece na equipe do dia
+  (`escaladosDoDia`, via `FUNCOES_PONTO_NAO_FISCAL`) e na escala publicada
+  (`FUNCOES_ESCALA`), onde as férias **já** eram respeitadas — mas não neste
+  quadro. Incluí-lo aqui é uma decisão de produto pendente, não um bug de férias.
 - ⚠️ **`pessoaId` polimórfico:** uma ausência pode referenciar `Colaborador` ou
   `Fiscal`; a resolução do nome prefere a ficha canônica (`colaboradorId`) e usa
   o `Fiscal` só como fallback (Fase 4 · Opção A).

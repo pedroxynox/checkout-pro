@@ -11,13 +11,21 @@ import {
 import { StatusJustificativa } from '../common/justificativas';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { FolgaService } from '../escala-domingo/folga.service';
+import { FeriasService } from '../ferias/ferias.service';
 import {
   GrupoDomingo,
   grupoFolgaNoDomingo,
   trabalhaNoDomingo,
 } from '../escala-domingo/escala-domingo.domain';
 
-export type StatusCelula = 'TRABALHA' | 'FOLGA' | 'FALTA' | 'ATESTADO';
+/**
+ * Estado de uma célula da grade semanal. `FERIAS` existe porque a grade é um
+ * calendário por pessoa: as férias podem cobrir só parte da semana, então a
+ * linha não pode simplesmente desaparecer — o dia é marcado. No roster de UM
+ * dia a pessoa sai da lista (paridade com a escala de fiscais).
+ */
+export type StatusCelula =
+  'TRABALHA' | 'FOLGA' | 'FALTA' | 'ATESTADO' | 'FERIAS';
 
 export interface GradeCelula {
   diaSemana: number;
@@ -243,7 +251,25 @@ export class OperadorTurnoService {
     // Regra única de folga (ficha + escala semanal). Sem ela o quadro mantém a
     // regra antiga (só a ficha), que discordava da escala publicada.
     @Optional() private readonly folga?: FolgaService,
+    // Férias (inativação não rígida): quem está de férias no dia sai do quadro,
+    // como já acontecia na escala de fiscais. Opcional pelo mesmo motivo dos
+    // anteriores — sem ele o quadro degrada ao comportamento antigo em vez de
+    // quebrar. Fica no FIM da lista para não deslocar os parâmetros posicionais
+    // usados pelos specs que constroem o serviço à mão.
+    @Optional() private readonly ferias?: FeriasService,
   ) {}
+
+  /**
+   * Fichas de férias no dia (`Set<colaboradorId>`). No quadro de operadores o
+   * `id` de cada linha JÁ é o `Colaborador.id`, então a comparação é direta —
+   * diferente da escala de fiscais, onde o fiscal bate ponto com outro id.
+   *
+   * Sem o serviço de férias devolve conjunto vazio (nada é excluído).
+   */
+  private async fichasDeFerias(dia: Date): Promise<Set<string>> {
+    if (!this.ferias) return new Set<string>();
+    return this.ferias.colaboradoresDeFeriasNoDia(dia);
+  }
 
   /**
    * Resolve, para um domingo, quem trabalha e quem folga pelo rodízio de grupos
@@ -375,8 +401,32 @@ export class OperadorTurnoService {
         )
       : null;
 
+    // Férias POR DIA: a grade é um calendário, e um período de férias pode
+    // cobrir só parte da semana — então a célula é marcada, em vez de a linha
+    // desaparecer. Uma consulta por dia, como já faz a escala publicada.
+    const feriasPorDia = new Map<string, Set<string>>();
+    for (const dia of dias) {
+      feriasPorDia.set(
+        dia.data,
+        await this.fichasDeFerias(new Date(`${dia.data}T00:00:00.000Z`)),
+      );
+    }
+
     const gradeOperadores: GradeOperador[] = operadores.map((op) => {
       const celulas: GradeCelula[] = dias.map((dia) => {
+        // Férias vêm PRIMEIRO, antes de folga e de falta: no dia de férias a
+        // pessoa não é escalada, então nada mais sobre aquele dia importa. É a
+        // mesma precedência da escala publicada.
+        if (feriasPorDia.get(dia.data)?.has(op.id)) {
+          return {
+            diaSemana: dia.diaSemana,
+            data: dia.data,
+            status: 'FERIAS',
+            entrada: null,
+            saida: null,
+            ausenciaId: null,
+          };
+        }
         // Folga pela regra única: a ficha OU a escala semanal. Antes só a ficha
         // valia aqui, então um dia marcado como folga na escala aparecia como
         // FALTA neste quadro e como FOLGA na escala publicada.
@@ -432,7 +482,10 @@ export class OperadorTurnoService {
         const c = op.celulas[idx];
         if (c.status === 'TRABALHA') trabalhando += 1;
         else if (c.status === 'FOLGA') folgas += 1;
-        else faltas += 1;
+        // FERIAS não entra em nenhuma conta: a pessoa não era esperada no dia,
+        // então não é cobertura nem ausência. Somá-la a `faltas` (que também
+        // conta ATESTADO) inflaria a leitura de problemas do dia.
+        else if (c.status !== 'FERIAS') faltas += 1;
       }
       return {
         diaSemana: dia.diaSemana,
@@ -469,9 +522,18 @@ export class OperadorTurnoService {
     // nos demais dias, do turno fixo (Seg–Qui x Sex–Sáb) + folga fixa.
     const ehDom = diaSemana === 0;
     const domingo = ehDom ? await this.operadoresNoDomingo(dataISO) : null;
-    const operadores = ehDom ? [] : await this.listar();
+    // Férias: quem está de férias no dia SAI do quadro, igual à escala de
+    // fiscais. Antes seguia aqui como "Trabalha" — as férias não criam falta
+    // (não há `Ausencia`), então a linha caía no caminho de quem trabalha.
+    const deFerias = await this.fichasDeFerias(diaInicio);
+    const itensDomingo = (domingo?.itens ?? []).filter(
+      (i) => !deFerias.has(i.id),
+    );
+    const operadores = ehDom
+      ? []
+      : (await this.listar()).filter((o) => !deFerias.has(o.id));
     const ids = ehDom
-      ? domingo!.itens.map((i) => i.id)
+      ? itensDomingo.map((i) => i.id)
       : operadores.map((o) => o.id);
 
     const ausencias =
@@ -591,7 +653,7 @@ export class OperadorTurnoService {
       consultorFolga?.ehFolga(diaInicio, [id]) ?? false;
 
     const colaboradores: ColaboradorDia[] = ehDom
-      ? domingo!.itens.map((it) =>
+      ? itensDomingo.map((it) =>
           it.trabalha && !deFolgaPelaRegra(it.id)
             ? linhaComFalta({
                 id: it.id,
@@ -689,10 +751,14 @@ export class OperadorTurnoService {
           saida: fds ? op.saidaFds : op.saidaSemana,
         }));
     }
-    const ids = candidatos.map((c) => c.id);
 
     const diaInicio = new Date(`${dataISO}T00:00:00.000Z`);
     const diaFim = addDias(diaInicio, 1);
+    // Quem está de férias não deveria estar no caixa: sai dos candidatos, senão
+    // entraria em `disponiveis` (ou, sem batida, em `faltas`).
+    const deFeriasHoje = await this.fichasDeFerias(diaInicio);
+    candidatos = candidatos.filter((c) => !deFeriasHoje.has(c.id));
+    const ids = candidatos.map((c) => c.id);
     const ausencias =
       ids.length > 0
         ? await this.prisma.ausencia.findMany({
