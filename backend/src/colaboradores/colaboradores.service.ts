@@ -418,9 +418,13 @@ export class ColaboradoresService {
 
     const dias = gerarEscalaSemanalFiscal(escala);
     // Preserva o intervalo já usado nas entradas gerais (ex.: 120 min do seed).
+    // O `orderBy` é o que torna isto determinístico: sem ele, `findMany` não
+    // garante ordem, e duas sincronizações da mesma ficha podiam herdar
+    // intervalos diferentes conforme a linha que o banco devolvesse primeiro.
     const geraisAtuais = await this.prisma.escalaEntry.findMany({
       where: { funcionarioId: fiscal.id, especial: false },
       select: { intervaloMin: true },
+      orderBy: { diaSemana: 'asc' },
     });
     const intervaloMin = geraisAtuais[0]?.intervaloMin ?? 0;
 

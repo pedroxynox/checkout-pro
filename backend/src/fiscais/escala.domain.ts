@@ -79,10 +79,16 @@ export function escalaConsolidada(
       geral: null,
       especial: null,
     };
+    // PRIMEIRA entrada ganha, não a última. Não deveria haver duplicadas (a
+    // escrita agora substitui em vez de acrescentar), mas as antigas existem —
+    // e `resolverEscalaEfetiva`, que lê a mesma tabela, sempre usou
+    // `entries.find(...)`, ou seja a primeira. Com critérios opostos, a escala
+    // efetiva de uma pessoa dependia de qual dos dois leitores perguntava.
+    // `npm run integridade` aponta as duplicadas que ainda existirem.
     if (e.especial) {
-      atual.especial = e;
+      atual.especial ??= e;
     } else {
-      atual.geral = e;
+      atual.geral ??= e;
     }
     porFuncionario.set(e.funcionarioId, atual);
   }

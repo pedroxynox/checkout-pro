@@ -191,19 +191,39 @@ export class EscalaService {
     const colaboradorId = await this.colaboradorIdDoFuncionario(
       entry.funcionarioId,
     );
-    return this.prisma.escalaEntry.create({
-      data: {
+    const dados = {
+      funcionarioId: entry.funcionarioId,
+      // Vínculo com a ficha canônica (Fase 4 · Opção A).
+      colaboradorId,
+      diaSemana: entry.diaSemana,
+      entrada: entry.entrada ?? null,
+      saida: entry.saida ?? null,
+      intervaloMin: entry.intervaloMin ?? 0,
+      folga: entry.folga ?? false,
+      especial: false,
+    };
+    // SUBSTITUI a entrada geral do dia em vez de acrescentar outra. A tabela não
+    // tem índice único em (funcionarioId, diaSemana, especial), então um `create`
+    // cego criava uma SEGUNDA geral para o mesmo dia — e a partir daí a escala
+    // efetiva daquela pessoa passava a depender de quem perguntava: um leitor
+    // pega a primeira linha (`resolverEscalaEfetiva`), outro a última
+    // (`escalaConsolidada`). Duas telas, dois horários, sem nada que avisasse.
+    const existente = await this.prisma.escalaEntry.findFirst({
+      where: {
         funcionarioId: entry.funcionarioId,
-        // Vínculo com a ficha canônica (Fase 4 · Opção A).
-        colaboradorId,
         diaSemana: entry.diaSemana,
-        entrada: entry.entrada ?? null,
-        saida: entry.saida ?? null,
-        intervaloMin: entry.intervaloMin ?? 0,
-        folga: entry.folga ?? false,
         especial: false,
       },
+      orderBy: { id: 'asc' },
+      select: { id: true },
     });
+    if (existente) {
+      return this.prisma.escalaEntry.update({
+        where: { id: existente.id },
+        data: dados,
+      });
+    }
+    return this.prisma.escalaEntry.create({ data: dados });
   }
 
   /**
