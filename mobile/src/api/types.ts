@@ -1223,6 +1223,8 @@ export interface FeriasColaborador {
   colaboradorId: string;
   inicio: string;
   fim: string;
+  /** Duração em dias corridos, contando os dois extremos (vem do backend). */
+  dias: number;
   observacao: string | null;
   registradaPorNome: string | null;
   criadaEm: string;
@@ -1236,6 +1238,8 @@ export interface FeriasDetalhada {
   matricula: string | null;
   inicio: string;
   fim: string;
+  /** Duração em dias corridos, contando os dois extremos (vem do backend). */
+  dias: number;
   observacao: string | null;
   registradaPorNome: string | null;
   criadaEm: string;

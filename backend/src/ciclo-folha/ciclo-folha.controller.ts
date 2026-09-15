@@ -16,8 +16,9 @@ import {
   CicloFolhaService,
   EstadoCicloFolha,
   EventoCicloView,
+  IntervaloCiclosView,
 } from './ciclo-folha.service';
-import { AcaoCicloDto } from './dto/ciclo-folha.dto';
+import { AcaoCicloDto, IntervaloCicloDto } from './dto/ciclo-folha.dto';
 
 /** Converte o parâmetro `ciclo` (query) em deslocamento (0/atual, ≤0). */
 function deslocamentoDe(ciclo?: string): number {
@@ -47,6 +48,25 @@ export class CicloFolhaController {
   @Funcionalidade('CENTRAL_JORNADA')
   eventos(@Query('ciclo') ciclo?: string): Promise<EventoCicloView[]> {
     return this.service.eventos(deslocamentoDe(ciclo));
+  }
+
+  /**
+   * Ciclos tocados por um período, com o estado de cada um e quantos dias lhe
+   * cabem. Consulta apenas informativa, para o app avisar antes de salvar.
+   *
+   * A permissão é mais ampla que o resto do controller de propósito: quem
+   * programa atestado, ausência a prazo ou férias tem `OPERADORES_CRUD`/
+   * `OPERADORES_AUSENCIAS`, não `CENTRAL_JORNADA` — sem isso o aviso daria 403
+   * exatamente para quem precisa dele. Não expõe nada além do rótulo do ciclo e
+   * se está aberto ou fechado.
+   */
+  @Get('intervalo')
+  @Funcionalidade('CENTRAL_JORNADA', 'OPERADORES_CRUD', 'OPERADORES_AUSENCIAS')
+  intervalo(@Query() dto: IntervaloCicloDto): Promise<IntervaloCiclosView> {
+    return this.service.consultarIntervalo(
+      new Date(dto.inicio),
+      new Date(dto.fim),
+    );
   }
 
   /** Fecha o ciclo (após revisão). Bloqueia modificações ordinárias. */

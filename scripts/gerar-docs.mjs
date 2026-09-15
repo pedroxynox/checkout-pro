@@ -100,10 +100,16 @@ function rotasDoController(caminho) {
   const rotas = [];
   let buffer = [];
 
+  // `@Funcionalidade` aceita VÁRIAS funcionalidades, com semântica OR (basta
+  // uma). Antes o padrão exigia um único argumento, então uma rota com duas ou
+  // mais caía no fallback e podia ser documentada como "—" (sem permissão) —
+  // exatamente o oposto da verdade.
   const permissaoDoBuffer = () => {
     for (const b of buffer) {
-      const m = b.match(/@Funcionalidade\('([^']+)'\)/);
-      if (m) return m[1];
+      const m = b.match(/@Funcionalidade\(([^)]*)\)/);
+      if (!m) continue;
+      const nomes = [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]);
+      if (nomes.length > 0) return nomes.join(' ou ');
     }
     return null;
   };

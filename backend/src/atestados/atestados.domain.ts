@@ -71,21 +71,14 @@ export function buscarCid(
   return [...comeca, ...contem].slice(0, limite);
 }
 
-/** Total de dias corridos (inclusive) de um período [inicio, fim]. */
-export function contarDiasCorridos(inicio: Date, fim: Date): number {
-  const d0 = Date.UTC(
-    inicio.getUTCFullYear(),
-    inicio.getUTCMonth(),
-    inicio.getUTCDate(),
-  );
-  const d1 = Date.UTC(
-    fim.getUTCFullYear(),
-    fim.getUTCMonth(),
-    fim.getUTCDate(),
-  );
-  if (d1 < d0) return 0;
-  return Math.round((d1 - d0) / UM_DIA_MS) + 1;
-}
+/**
+ * Total de dias corridos (inclusive) de um período [inicio, fim].
+ *
+ * Reexportado de `common/datas`, que passou a ser a fonte única da fórmula —
+ * ela vivia aqui e estava copiada em `operadores` e em `ferias`. O reexport
+ * mantém os imports existentes (`atestados.domain`) funcionando.
+ */
+export { contarDiasCorridos } from '../common/datas';
 
 /** Episódio de atestado reduzido ao necessário para a regra do INSS. */
 export interface EpisodioAtestado {

@@ -7,6 +7,7 @@
  * cai dentro de algum período de férias, o colaborador é considerado "de
  * férias" naquele dia: some da escala e não gera falta automática.
  */
+import { contarDiasCorridos } from '../common/datas';
 
 /** Um período de férias já persistido (só o que o domínio precisa). */
 export interface PeriodoFerias {
@@ -16,9 +17,6 @@ export interface PeriodoFerias {
 
 /** Máximo de dias que um período de férias pode cobrir (defensivo). */
 export const MAX_DIAS_FERIAS = 366; // um ciclo anual, com folga
-
-/** Um dia (00:00 UTC) em milissegundos. */
-const UM_DIA_MS = 24 * 60 * 60 * 1000;
 
 /** Trunca um instante para o início do dia em UTC (meia-noite). */
 export function inicioDoDiaUtc(data: Date): Date {
@@ -80,10 +78,23 @@ export function validarPeriodoFerias(
   const i = inicioDoDiaUtc(inicio).getTime();
   const f = inicioDoDiaUtc(fim).getTime();
   if (f < i) return { ok: false, motivo: 'INTERVALO_INVERTIDO' };
-  const dias = Math.round((f - i) / UM_DIA_MS) + 1;
+  const dias = diasDeFerias({ inicio, fim });
   if (dias > MAX_DIAS_FERIAS)
     return { ok: false, motivo: 'PERIODO_LONGO_DEMAIS' };
   return { ok: true, dias };
+}
+
+/**
+ * Duração de um período de férias em **dias corridos**, contando os dois
+ * extremos. Domingo, feriado e folga contam: são dias de férias como qualquer
+ * outro.
+ *
+ * Existe para que a escrita (validação ao registrar) e a leitura (a duração
+ * exposta ao app) usem a mesma conta — antes o valor era calculado só na
+ * validação e descartado, e o app terminava contando por conta própria.
+ */
+export function diasDeFerias(periodo: PeriodoFerias): number {
+  return contarDiasCorridos(periodo.inicio, periodo.fim);
 }
 
 /**

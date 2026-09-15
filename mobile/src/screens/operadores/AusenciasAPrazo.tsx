@@ -26,6 +26,7 @@ import { colaboradoresService, operadoresService } from '../../api/services';
 import { Colaborador, MotivoJustificativa } from '../../api/types';
 import { Botao, CampoTexto, Carregando, SeletorPeriodo } from '../../components';
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
+import { useAvisoCicloFolha } from '../../hooks/useAvisoCicloFolha';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 import { notificar } from '../../utils/dialogos';
@@ -101,6 +102,10 @@ export function AusenciasAPrazoCard({
   };
 
   const fechar = (): void => setAberto(false);
+
+  // Avisa se o período atravessa o fechamento da folha ou cai num ciclo
+  // fechado (caso em que o backend recusa a operação).
+  const avisoCiclo = useAvisoCicloFolha({ inicio, fim, ativo: aberto });
 
   const podeConfirmar =
     !!selId &&
@@ -291,6 +296,7 @@ export function AusenciasAPrazoCard({
                   aoMudarInicio={setInicio}
                   aoMudarFim={setFim}
                   dataMinima={dataInicial}
+                  avisoExtra={avisoCiclo}
                 />
               </View>
 

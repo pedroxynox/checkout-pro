@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/ciclo-folha/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `backend/src/ciclo-folha/`
 
 # Módulo: `ciclo-folha`
 
@@ -9,9 +9,10 @@ período; reabrir (com autorização) volta a permitir correções.
 
 ## 2. Responsabilidades e limites
 - **Faz:** informa o estado do ciclo (aberto/fechado, quem fechou/reabriu);
-  fecha e reabre o ciclo; guarda a trilha de fechamentos/reaberturas; e oferece
-  `exigirCicloAberto(data)` para os demais módulos bloquearem alterações em
-  período fechado.
+  fecha e reabre o ciclo; guarda a trilha de fechamentos/reaberturas; oferece
+  `exigirCicloAberto(data)` (um dia) e `exigirCiclosAbertos(inicio, fim)` (um
+  período) para os demais módulos bloquearem alterações em período fechado; e
+  responde que ciclos um período toca, para o app avisar antes de salvar.
 - **Não faz** (fica em outro módulo): registrar/corrigir batidas
   (fica em [`ponto`](ponto.md)); agregar/apurar a jornada do ciclo
   (fica em [`central-jornada`](central-jornada.md)); o cálculo puro do período
@@ -20,14 +21,15 @@ período; reabrir (com autorização) volta a permitir correções.
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `ciclo-folha.controller.ts` | Rotas HTTP (status, eventos, fechar, reabrir) | 73 |
-| `ciclo-folha.service.ts` | Regras de aplicação: estado, fechar/reabrir, guard | 192 |
-| `ciclo-folha.errors.ts` | Erros de domínio (mapeados para HTTP) | 26 |
+| `ciclo-folha.controller.ts` | Rotas HTTP (status, eventos, intervalo, fechar, reabrir) | 93 |
+| `ciclo-folha.service.ts` | Regras de aplicação: estado, fechar/reabrir, guards, consulta de intervalo | 281 |
+| `ciclo-folha.errors.ts` | Erros de domínio (mapeados para HTTP) | 39 |
 | `ciclo-folha.module.ts` | Ligações (DI) do módulo | 17 |
-| `dto/ciclo-folha.dto.ts` | Validação de entrada (deslocamento do ciclo) | 11 |
+| `dto/ciclo-folha.dto.ts` | Validação de entrada (deslocamento do ciclo, intervalo) | 23 |
 
 > Não há `*.domain.ts`: a matemática do período é puramente reutilizada de
-> `common/datas` (`periodoFolha`, `periodoFolhaDeslocado`, `rotuloPeriodoFolha`).
+> `common/datas` (`periodoFolha`, `periodoFolhaDeslocado`, `rotuloPeriodoFolha`,
+> `ciclosDoIntervalo`) — ver [`common`](common.md).
 
 ## 4. Endpoints (rotas HTTP)
 > A lista canônica está na [API HTTP → `ciclo-folha`](../05-referencia-dados/api-http.md#ciclo-folha). Aqui explicamos o que cada rota faz.
@@ -36,8 +38,15 @@ período; reabrir (com autorização) volta a permitir correções.
 |---|---|---|
 | `GET /ciclo-folha/status` | `CENTRAL_JORNADA` | Estado do ciclo (aberto/fechado, quem fechou/reabriu). |
 | `GET /ciclo-folha/eventos` | `CENTRAL_JORNADA` | Trilha de fechamentos/reaberturas (trazabilidade). |
+| `GET /ciclo-folha/intervalo` | `CENTRAL_JORNADA`, `OPERADORES_CRUD` ou `OPERADORES_AUSENCIAS` | Ciclos tocados por um período (`inicio`/`fim`), com o estado de cada um e os dias que lhe cabem. |
 | `POST /ciclo-folha/fechar` | `CENTRAL_JORNADA` | Fecha o ciclo; bloqueia modificações ordinárias. |
 | `POST /ciclo-folha/reabrir` | `ADMIN_DADOS` | Reabre um ciclo fechado (exige administrador). |
+
+> **Por que `/intervalo` tem permissão mais ampla:** quem programa atestado,
+> ausência a prazo ou férias tem `OPERADORES_CRUD`/`OPERADORES_AUSENCIAS`, não
+> `CENTRAL_JORNADA`. Sem essa abertura o aviso daria 403 exatamente para quem
+> precisa dele. A rota é só de leitura e não expõe nada além do rótulo do ciclo,
+> os dias e se está aberto ou fechado.
 
 ## 5. Serviços e funções
 
@@ -65,14 +74,36 @@ Trilha de fechamentos/reaberturas do ciclo, mais recentes por último (desempate
 estável por `id`).
 
 #### `exigirCicloAberto(data)`
-Lança `CicloFechadoError` (409) quando a `data` cai num ciclo `FECHADO`. É o
+Lança `CicloFechadoError` (409) quando **um dia** cai num ciclo `FECHADO`. É o
 ponto de bloqueio usado por [`ponto`](ponto.md) (registrar/corrigir/excluir
-batida) e por [`central-jornada`](central-jornada.md) (marcar débito).
+batida), por [`central-jornada`](central-jornada.md) (marcar débito),
+[`fiscais`](fiscais.md) e pelas operações de **um dia** de
+[`operadores`](operadores.md). A mensagem nomeia o ciclo bloqueado.
+
+#### `exigirCiclosAbertos(inicio, fim)`
+Lança `CicloFechadoError` (409) quando **qualquer** ciclo tocado pelo período
+está `FECHADO`, nomeando os culpados. Resolve todos os ciclos numa **única**
+consulta (`inicio: { in: [...] }`).
+
+Existe porque um período longo pode atravessar o corte 26→25 e gravar um dia de
+ausência por dia corrido: validar só o primeiro dia deixava o resto entrar num
+ciclo já fechado sem controle. Usado por [`atestados`](atestados.md) (lançar e
+excluir) e por [`operadores`](operadores.md) (registrar e cancelar ausência a
+prazo).
+
+#### `consultarIntervalo(inicio, fim)`
+- **Devolve:** `IntervaloCiclosView` — os ciclos tocados (`rotulo`, `status`,
+  `dias` que lhe cabem), `atravessaCiclos` e a lista `fechados`.
+- **Efeitos:** apenas leitura, numa consulta.
+- **Para que serve:** permite ao app avisar **antes** de salvar que o período
+  atravessa o fechamento da folha (ou cai num ciclo fechado), sem duplicar a
+  regra do dia 26 no cliente.
 
 ## 6. Lógica de domínio (funções puras)
 Não se aplica um `*.domain.ts` próprio: o período 26→25 é calculado por funções
-puras de `common/datas` (`periodoFolha`, `periodoFolhaDeslocado`,
-`rotuloPeriodoFolha`), reaproveitadas aqui.
+puras de [`common/datas`](common.md) — `periodoFolha`, `periodoFolhaDeslocado`,
+`rotuloPeriodoFolha` e `ciclosDoIntervalo` (que recorta um intervalo nos ciclos
+que ele toca) —, reaproveitadas aqui.
 
 ## 7. Estados e enums
 - `EstadoCicloFolha.status`: `ABERTO` · `FECHADO`. Transições:
@@ -99,16 +130,32 @@ puras de `common/datas` (`periodoFolha`, `periodoFolhaDeslocado`,
    de administrador).
 4. **Um novo fechamento zera a marca da reabertura anterior**.
 5. **Reabertura não invalida snapshot** — a apuração é sempre sob demanda.
+6. **Um período é bloqueado se QUALQUER ciclo que ele toca está fechado** — não
+   só o do primeiro dia. Um período que começa em ciclo fechado continua sendo
+   recusado por inteiro: gravar apenas a parte aberta deixaria dias faltando em
+   silêncio, o que é pior que uma recusa explícita.
+7. **O erro nomeia o ciclo** que trava a operação, para o gestor saber qual
+   reabrir.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `ciclo-folha.service.spec.ts` | Estado, fechar/reabrir e o guard `exigirCicloAberto` | 4 |
+| `ciclo-folha.service.spec.ts` | Estado, fechar/reabrir, o guard de um dia (com o ciclo nomeado), `exigirCiclosAbertos` (período que começa, termina ou cabe num ciclo fechado; período invertido) e `consultarIntervalo` (travessia, reparto de dias, estado real, invertido) | 14 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- ⚠️ O bloqueio depende de os demais módulos chamarem `exigirCicloAberto`; uma
-  nova rota que altere a jornada precisa lembrar de invocá-lo.
-- 🔧 Não há um `*.controller.spec.ts`; as permissões (fechar × reabrir) são
-  garantidas pelos decorators, mas não há teste dedicado a elas.
+- ⚠️ O bloqueio depende de os demais módulos chamarem o guard; uma nova rota que
+  altere a jornada precisa lembrar de invocá-lo. **E de escolher o guard certo:**
+  `exigirCicloAberto` para um dia, `exigirCiclosAbertos` para um período — usar o
+  primeiro num período volta a deixar o resto do intervalo sem verificação.
+- ⚠️ **Férias não passa por nenhum guard**, de propósito: é um intervalo único e
+  não grava uma linha por dia. Mas a escala **lê** férias ao apurar, então
+  registrar/cancelar férias retroativas muda o que um ciclo fechado mostra. O app
+  avisa (sem bloquear); se algum dia isso precisar travar, o guard é este.
+- 🔧 Não há um `*.controller.spec.ts`; as permissões (fechar × reabrir ×
+  intervalo) são garantidas pelos decorators, mas não há teste dedicado a elas —
+  em especial a semântica OR da rota `/intervalo`.
+- 🔧 A tela do app avisa mas **não desabilita** o botão quando o ciclo está
+  fechado: o backend é quem recusa. Deixar tentar e falhar com uma mensagem clara
+  é aceitável, mas desabilitar seria melhor.

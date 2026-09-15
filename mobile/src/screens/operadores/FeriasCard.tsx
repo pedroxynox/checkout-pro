@@ -31,14 +31,11 @@ import { colaboradoresService, feriasService } from '../../api/services';
 import { Colaborador, FeriasDetalhada } from '../../api/types';
 import { Botao, CampoTexto, Carregando, SeletorPeriodo } from '../../components';
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
+import { useAvisoCicloFolha } from '../../hooks/useAvisoCicloFolha';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
-import {
-  contarDiasCorridos,
-  hojeISO,
-  isoParaDiaMes,
-} from '../../utils/formato';
+import { hojeISO, isoParaDiaMes } from '../../utils/formato';
 
 /** Máximo de colaboradores mostrados na busca (evita listas enormes). */
 const MAX_RESULTADOS = 8;
@@ -104,23 +101,31 @@ export function FeriasCard({
     aoMudar();
   };
 
+  // Avisa se o período atravessa o fechamento da folha. Em férias o backend
+  // NÃO bloqueia um ciclo fechado (é um intervalo único, não grava dia a dia),
+  // então o texto informa em vez de anunciar um impedimento.
+  const avisoCiclo = useAvisoCicloFolha({
+    inicio,
+    fim,
+    ativo: aberto,
+    bloqueiaSeFechado: false,
+  });
+
   const podeConfirmar = !!selId && fim >= inicio && !ocupado;
 
   const registrar = async (): Promise<void> => {
     if (!selId) return;
     setOcupado(true);
     try {
-      await feriasService.registrar({
+      const criada = await feriasService.registrar({
         colaboradorId: selId,
         inicio,
         fim,
         observacao: obs.trim() || undefined,
       });
-      // Os dias são contados aqui: o backend não devolve a duração das férias.
-      const dias = contarDiasCorridos(inicio, fim);
       notificar(
         'Férias registradas',
-        `${selNome}: ${isoParaDiaMes(inicio)} a ${isoParaDiaMes(fim)} · ${dias} dia(s).`,
+        `${selNome}: ${isoParaDiaMes(inicio)} a ${isoParaDiaMes(fim)} · ${criada.dias} dia(s).`,
       );
       resetar();
       recarregar();
@@ -257,6 +262,7 @@ export function FeriasCard({
                   dataMinima={dataInicial}
                   limiteAviso={DIAS_FERIAS_USUAIS}
                   textoAviso={`Este período passa de ${DIAS_FERIAS_USUAIS} dias corridos, o mais comum de um ciclo de férias. Confira se é intencional.`}
+                  avisoExtra={avisoCiclo}
                 />
               </View>
 
@@ -293,7 +299,7 @@ export function FeriasCard({
                       </Text>
                       <Text style={styles.itemMeta}>
                         {isoParaDiaMes(f.inicio)} a {isoParaDiaMes(f.fim)} ·{' '}
-                        {contarDiasCorridos(f.inicio, f.fim)} dia(s)
+                        {f.dias} dia(s)
                         {f.observacao ? ` — ${f.observacao}` : ''}
                       </Text>
                     </View>

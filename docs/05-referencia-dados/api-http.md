@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **205 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **206 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -35,7 +35,7 @@
 |---|---|---|---|
 | POST | `/arrecadacao/upload` | `upload` | `IMPORTACOES` |
 | GET | `/arrecadacao/resumo` | `resumo` | `INDICADORES_VISUALIZAR` |
-| GET | `/arrecadacao/status` | `status` | `INDICADORES_VISUALIZAR` |
+| GET | `/arrecadacao/status` | `status` | `FECHAMENTO ou IMPORTACOES ou CARGA_STATUS_VISUALIZAR` |
 | POST | `/arrecadacao/sem-movimento` | `marcarSemMovimento` | `IMPORTACOES` |
 | DELETE | `/arrecadacao/sem-movimento` | `removerSemMovimento` | `IMPORTACOES` |
 | GET | `/arrecadacao/ranking` | `ranking` | `INDICADORES_VISUALIZAR` |
@@ -115,6 +115,7 @@
 |---|---|---|---|
 | GET | `/ciclo-folha/status` | `status` | `CENTRAL_JORNADA` |
 | GET | `/ciclo-folha/eventos` | `eventos` | `CENTRAL_JORNADA` |
+| GET | `/ciclo-folha/intervalo` | `intervalo` | `CENTRAL_JORNADA ou OPERADORES_CRUD ou OPERADORES_AUSENCIAS` |
 | POST | `/ciclo-folha/fechar` | `fechar` | `CENTRAL_JORNADA` |
 | POST | `/ciclo-folha/reabrir` | `reabrir` | `ADMIN_DADOS` |
 
@@ -323,7 +324,7 @@
 |---|---|---|---|
 | GET | `/produtos-pesados` | `listar` | `PRODUTOS_PESADOS` |
 | GET | `/produtos-pesados/status` | `status` | `PRODUTOS_PESADOS` |
-| POST | `/produtos-pesados/upload` | `upload` | `PRODUTOS_PESADOS` |
+| POST | `/produtos-pesados/upload` | `upload` | `PRODUTOS_PESADOS_GERENCIAR ou IMPORTACOES` |
 
 ## `requisicoes`
 
@@ -368,7 +369,7 @@
 | POST | `/vendas/upload` | `upload` | `IMPORTACOES` |
 | GET | `/vendas/resumo` | `resumo` | `PAINEL_VENDAS_VISUALIZAR` |
 | GET | `/vendas/por-hora` | `porHora` | `PAINEL_VENDAS_VISUALIZAR` |
-| GET | `/vendas/status` | `status` | `PAINEL_VENDAS_VISUALIZAR` |
+| GET | `/vendas/status` | `status` | `FECHAMENTO ou IMPORTACOES ou CARGA_STATUS_VISUALIZAR` |
 | GET | `/vendas/painel` | `painel` | `PAINEL_VENDAS_VISUALIZAR` |
 | GET | `/vendas/painel-resumo` | `painelResumo` | `PAINEL_VENDAS_VISUALIZAR` |
 | GET | `/vendas/estimativas` | `listarEstimativas` | `PAINEL_VENDAS_VISUALIZAR` |

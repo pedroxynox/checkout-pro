@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { inicioDoDia } from '../common/datas';
 import {
+  diasDeFerias,
   estaDeFerias,
   periodosSobrepoem,
   validarPeriodoFerias,
@@ -29,12 +30,25 @@ export interface FeriasDetalhada {
   matricula: string | null;
   inicio: string; // yyyy-mm-dd
   fim: string; // yyyy-mm-dd
+  /**
+   * Duração em dias corridos, contando os dois extremos. Derivada de
+   * `inicio`/`fim` na leitura (não há coluna): é função pura das datas, então
+   * nunca pode divergir, e nada consulta férias por duração.
+   */
+  dias: number;
   observacao: string | null;
   registradaPorNome: string | null;
   criadaEm: string;
   /** true quando o período engloba a data de referência (hoje, por padrão). */
   vigente: boolean;
 }
+
+/**
+ * Férias recém-registradas + a duração em dias corridos. O `dias` vem da
+ * própria validação do domínio, que antes o calculava e descartava — deixando o
+ * app sem alternativa a não ser contar os dias sozinho.
+ */
+export type FeriasRegistrada = FeriasColaborador & { dias: number };
 
 /** Formata uma data (UTC) como "dd/mm" para textos de aviso. */
 function formatarDiaMes(data: Date): string {
@@ -71,7 +85,7 @@ export class FeriasService {
     fim: Date,
     dados: { observacao?: string | null } = {},
     autor: AutorFerias = {},
-  ): Promise<FeriasColaborador> {
+  ): Promise<FeriasRegistrada> {
     const validacao = validarPeriodoFerias(inicio, fim);
     if (!validacao.ok) {
       throw new PeriodoFeriasInvalidoError(
@@ -111,7 +125,9 @@ export class FeriasService {
     });
 
     await this.avisarFeriasRegistradas(colaborador.nome, d0, d1);
-    return criada;
+    // `validacao.dias` já foi calculado na validação acima; devolvê-lo evita
+    // que o app precise recontar a duração.
+    return { ...criada, dias: validacao.dias };
   }
 
   /** Aviso único (a todos) de férias registradas. Best-effort. */
@@ -175,6 +191,7 @@ export class FeriasService {
       matricula: porId.get(f.colaboradorId)?.matricula ?? null,
       inicio: f.inicio.toISOString().slice(0, 10),
       fim: f.fim.toISOString().slice(0, 10),
+      dias: diasDeFerias({ inicio: f.inicio, fim: f.fim }),
       observacao: f.observacao,
       registradaPorNome: f.registradaPorNome,
       criadaEm: f.criadaEm.toISOString(),

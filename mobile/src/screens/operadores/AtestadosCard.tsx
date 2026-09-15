@@ -41,6 +41,7 @@ import { Colaborador } from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import { Botao, CampoTexto, Carregando, SeletorPeriodo } from '../../components';
 import { useConfigSistema } from '../../config/ConfigSistemaContext';
+import { useAvisoCicloFolha } from '../../hooks/useAvisoCicloFolha';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
@@ -173,6 +174,10 @@ export function AtestadosCard({
   };
 
   const fechar = (): void => setAberto(false);
+
+  // Avisa se o período atravessa o fechamento da folha ou cai num ciclo
+  // fechado (caso em que o backend recusa o lançamento).
+  const avisoCiclo = useAvisoCicloFolha({ inicio, fim, ativo: aberto });
 
   const cidInformado = semCid ? '' : (cidSelecionado ?? cidTexto).trim();
   const podeConfirmar =
@@ -341,6 +346,7 @@ export function AtestadosCard({
                   dataMinima={dataInicial}
                   limiteAviso={LIMITE_INSS_DIAS}
                   textoAviso={`Este atestado já passa de ${LIMITE_INSS_DIAS} dias corridos. Pode ser caso de encaminhamento ao INSS — ao lançar, o sistema confirma somando os dias do mesmo CID nos últimos 60 dias.`}
+                  avisoExtra={avisoCiclo}
                 />
               </View>
 

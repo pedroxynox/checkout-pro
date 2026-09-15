@@ -10,6 +10,9 @@
  * domínios (arrecadação, vendas, fiscais, checklist), com risco de divergência.
  */
 
+/** Um dia civil em milissegundos. */
+export const UM_DIA_MS = 24 * 60 * 60 * 1000;
+
 /** Início do dia (00:00 UTC) da data informada. */
 export function inicioDoDia(data: Date): Date {
   return new Date(
@@ -167,6 +170,68 @@ export function chaveDiaUTC(d: Date): number {
 }
 
 /**
+ * Total de **dias corridos** de um período `[inicio, fim]`, contando os dois
+ * extremos (14/07 a 19/07 → 6). Devolve 0 quando o período está invertido.
+ *
+ * É a duração usada por atestado, ausência a prazo e férias: **domingo, feriado
+ * e folga contam**, porque o sistema registra um dia de ausência para cada dia
+ * corrido do intervalo. Fonte única — a fórmula estava repetida em três
+ * domínios, com risco de divergirem.
+ */
+export function contarDiasCorridos(inicio: Date, fim: Date): number {
+  const d0 = chaveDiaUTC(inicio);
+  const d1 = chaveDiaUTC(fim);
+  if (Number.isNaN(d0) || Number.isNaN(d1) || d1 < d0) return 0;
+  return Math.round((d1 - d0) / UM_DIA_MS) + 1;
+}
+
+/** Um ciclo de folha tocado por um intervalo, com quantos dias dele lhe cabem. */
+export interface CicloDoIntervalo {
+  /** Âncora do ciclo (dia 26, 00:00 UTC) — identidade do ciclo. */
+  inicio: Date;
+  fimExclusivo: Date;
+  /** Rótulo curto, ex.: "26/06 – 25/07". */
+  rotulo: string;
+  /** Dias **do intervalo consultado** que caem neste ciclo (não o ciclo todo). */
+  dias: number;
+}
+
+/**
+ * Ciclos de folha (26→25) tocados por um intervalo `[inicio, fim]`, em ordem
+ * cronológica, cada um com quantos dias do intervalo lhe cabem.
+ *
+ * Existe porque um período longo (atestado, ausência a prazo, férias) pode
+ * atravessar o corte do dia 26 e repartir-se entre duas folhas: validar ou
+ * avisar olhando só o primeiro dia deixa o resto do período sem controle.
+ *
+ * Devolve lista vazia quando o intervalo é inválido ou está invertido.
+ */
+export function ciclosDoIntervalo(inicio: Date, fim: Date): CicloDoIntervalo[] {
+  const d0 = inicioDoDia(inicio);
+  const d1 = inicioDoDia(fim);
+  if (Number.isNaN(d0.getTime()) || Number.isNaN(d1.getTime())) return [];
+  if (d1.getTime() < d0.getTime()) return [];
+
+  const ciclos: CicloDoIntervalo[] = [];
+  let periodo = periodoFolha(d0);
+  // A âncora avança um mês por volta, então o laço sempre termina.
+  while (periodo.inicio.getTime() <= d1.getTime()) {
+    const ultimoDoCiclo = new Date(periodo.fimExclusivo.getTime() - UM_DIA_MS);
+    // Recorta o ciclo pelo intervalo pedido nos dois extremos.
+    const de = periodo.inicio.getTime() > d0.getTime() ? periodo.inicio : d0;
+    const ate = ultimoDoCiclo.getTime() < d1.getTime() ? ultimoDoCiclo : d1;
+    ciclos.push({
+      inicio: periodo.inicio,
+      fimExclusivo: periodo.fimExclusivo,
+      rotulo: rotuloPeriodoFolha(periodo),
+      dias: contarDiasCorridos(de, ate),
+    });
+    periodo = periodoFolhaDeslocado(periodo.inicio, 1);
+  }
+  return ciclos;
+}
+
+/**
  * Maior sequência de datas em **dias civis consecutivos** (UTC). Deduplica por
  * dia antes de medir, então múltiplas ocorrências no mesmo dia contam como um.
  * Retorna 0 para lista vazia e 1 quando não há dias colados. Função pura —
@@ -177,11 +242,10 @@ export function maiorSequenciaDias(datas: readonly Date[]): number {
   const dias = Array.from(new Set(datas.map(chaveDiaUTC))).sort(
     (a, b) => a - b,
   );
-  const UM_DIA = 24 * 60 * 60 * 1000;
   let melhor = 1;
   let atual = 1;
   for (let i = 1; i < dias.length; i++) {
-    if (dias[i] - dias[i - 1] === UM_DIA) {
+    if (dias[i] - dias[i - 1] === UM_DIA_MS) {
       atual += 1;
       melhor = Math.max(melhor, atual);
     } else {

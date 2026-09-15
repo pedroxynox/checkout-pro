@@ -13,6 +13,7 @@ o acesso a dados, permissões, persistência e formatação em pt-BR.
 | Arquivo | Símbolo(s) | O que faz |
 |---|---|---|
 | `hooks/useRequisicao.ts` | `useRequisicao` | Carregamento assíncrono genérico com estados. |
+| `hooks/useAvisoCicloFolha.ts` | `useAvisoCicloFolha` | Aviso de ciclo de folha de um período em edição (atravessa o fechamento / cai em ciclo fechado). |
 | `auth/AuthContext.tsx` | `AuthProvider`, `useAuth` | Sessão, login/logout, `podeAcessar`. |
 | `auth/funcionalidades.ts` | `podeAcessar`, catálogos de perfil | Espelho local das permissões por perfil. |
 | `auth/biometria.ts` | `biometriaSuportada`, `ativarBiometria`, `autenticarComBiometria`, ... | Login por Face ID / digital. |
@@ -74,6 +75,31 @@ módulo tem hoje (importações, insumos críticos, checklist, indicadores fora 
 meta, faltas, queda de vendas). Só busca dados das funcionalidades que o usuário
 pode acessar, e cada chamada tem `catch` próprio (um serviço que falha não
 derruba os demais). Alimenta a ordenação da Home e o selo da aba **Tarefas**.
+
+### 3.4 `useAvisoCicloFolha`
+Devolve o aviso de **ciclo de folha** para um período em edição — ou `null`
+quando não há nada a dizer. Consumido pelos três fluxos de período (atestado,
+ausência a prazo e férias), que passam o resultado ao `avisoExtra` do
+[`SeletorPeriodo`](componentes-compartilhados.md).
+
+```ts
+useAvisoCicloFolha({ inicio, fim, ativo?, bloqueiaSeFechado? })
+  → { texto, tom: 'info' | 'alerta' } | null
+```
+
+- **Pergunta ao backend** (`GET /ciclo-folha/intervalo`) em vez de calcular: a
+  regra do corte 26→25 mora em `common/datas`, e duplicá-la aqui repetiria o erro
+  que fez o app contar dias de férias por conta própria.
+- **Debounce de 400 ms:** as datas andam de um em um dia enquanto se toca nas
+  setas; sem espera seria uma consulta por toque.
+- **`ativo`** desliga a consulta quando o formulário está fechado.
+- **`bloqueiaSeFechado`** muda a redação, não o dado: em atestado e ausência a
+  prazo o backend **recusa** o lançamento num ciclo fechado, então o texto anuncia
+  o impedimento; em férias ele **permite**, e o texto apenas informa que o
+  registro muda o que aquele ciclo mostra. Prometer um impedimento inexistente (ou
+  esconder um real) seria pior que não avisar.
+- **Falha em silêncio:** sem rede ou sem permissão, devolve `null`. Um aviso é um
+  extra e nunca deve atrapalhar o lançamento.
 
 ## 4. Utilidades
 
@@ -189,8 +215,9 @@ credencial, o app segue normal (o aviso ainda chega in-app/WebSocket).
 | `utils/relatorioPerfil.test.ts` | HTML/SVG do relatório de perfil | 12 |
 | `offline/fila.test.ts` | Ordenação e last-write-wins | 6 |
 | `offline/sincronizacao.test.tsx` | Drenagem da fila, conflitos e rejeições | 7 |
+| `hooks/useAvisoCicloFolha.test.ts` | Sem aviso num ciclo aberto; travessia com os dias de cada ciclo; a redação distinta quando o backend bloqueia e quando permite; não consulta se inativo ou invertido; falha silenciosa | 7 |
 
-Total: **59 casos** em 5 arquivos. Os hooks (`useRequisicao`, `useAuth`,
+Total: **66 casos** em 6 arquivos. Os demais hooks (`useRequisicao`, `useAuth`,
 `usePulsoDoDia`) e o `apiClient` não têm teste unitário dedicado — são exercidos
 indiretamente pelos testes de tela e pela lógica pura acima.
 

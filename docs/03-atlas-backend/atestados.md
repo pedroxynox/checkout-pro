@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/atestados/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `backend/src/atestados/`
 
 # Módulo: `atestados`
 
@@ -52,7 +52,9 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**. Também
 ## 5. Serviços e funções
 
 ### `AtestadosService`
-- **`lancar(input, autor)`** — valida período/data/ciclo; normaliza o CID
+- **`lancar(input, autor)`** — valida período/data/ciclos (**todos** os ciclos de
+  folha tocados pelo período precisam estar abertos, via
+  `exigirCiclosAbertos` — ver [`ciclo-folha`](ciclo-folha.md)); normaliza o CID
   (exige CID **ou** a marca explícita `semCid`); **rejeita** se houver um
   atestado **sobreposto** do mesmo colaborador (`AtestadoSobrepostoError` — um
   dia só pode pertencer a um atestado); cria o `Atestado` e, na mesma
@@ -69,7 +71,9 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**. Também
 - **`remover(id, perfil, autor)`** — exclui um atestado lançado por engano.
   Confere a **alçada** (`podeExcluirAtestado`: gerente, supervisor ou
   administrador → `ExclusaoAtestadoNaoPermitidaError`, 403) **antes** de qualquer
-  leitura ou efeito; exige **ciclo de folha aberto** no início do atestado; numa
+  leitura ou efeito; exige **todos os ciclos de folha do período abertos** (a
+  exclusão apaga os dias dos dois ciclos quando o atestado cruza o corte 26→25 —
+  antes conferia apenas o ciclo do início); numa
   transação, devolve à condição de **falta PENDENTE** os dias marcados com
   `faltaAnterior`, apaga os dias criados pelo atestado e apaga o documento.
   Devolve `ResultadoExclusaoAtestado` (nome, período, CID, `diasRemovidos`,
@@ -78,7 +82,9 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**. Também
 ## 6. Lógica de domínio (funções puras)
 - `normalizarCid(cid)` — maiúsculas, sem espaços, só letras/dígitos e ponto.
 - `buscarCid(catalogo, termo, limite)` — por código ou descrição (sem acentos).
-- `contarDiasCorridos(inicio, fim)` — dias inclusive.
+- `contarDiasCorridos(inicio, fim)` — dias inclusive. **Reexportado** de
+  [`common/datas`](common.md), que passou a ser a fonte única da fórmula (ela
+  vivia aqui e estava copiada em `operadores` e em `ferias`).
 - `avaliarRegraInss({ episodios, cid, referenciaFim })` — conta os **dias
   distintos** do **mesmo CID** na janela de **60 dias** e sinaliza quando passa
   de **15 dias** (encaminhar ao INSS). Conta dias distintos (não a soma de
@@ -137,7 +143,8 @@ Não define enums próprios. Reutiliza `MotivoJustificativa.ATESTADO_MEDICO` e
 8. **Não existe edição de atestado.** Para corrigir datas ou CID: excluir e
    lançar de novo. Como a sobreposição é proibida, não dá para "lançar corrigido"
    por cima do antigo.
-9. **Ciclo de folha fechado bloqueia a exclusão** (o mês já foi apurado), do
+9. **Ciclo de folha fechado bloqueia a exclusão** (o mês já foi apurado) — e
+   basta **um** dos ciclos tocados estar fechado, não só o do primeiro dia. Do
    mesmo modo que bloqueia o lançamento.
 10. **A exclusão é a sua própria auditoria.** A linha do atestado é apagada
     fisicamente, então o serviço registra no log e **avisa a escala** com o nome

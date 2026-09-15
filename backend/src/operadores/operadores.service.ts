@@ -319,8 +319,10 @@ export class OperadoresService {
     }
     // Rejeita datas anteriores à Data_Inicial_Sistema (valida a mais antiga).
     await this.validacaoData?.exigirDataPermitida(d0);
-    // Bloqueia lançar faltas num ciclo de folha já fechado (âncora no início).
-    await this.cicloFolha?.exigirCicloAberto(d0);
+    // Bloqueia lançar faltas num ciclo de folha já fechado. Confere TODOS os
+    // ciclos tocados: o período pode atravessar o corte 26→25 e antes só o
+    // ciclo do primeiro dia era verificado.
+    await this.cicloFolha?.exigirCiclosAbertos(d0, d1);
 
     const colaborador = await this.prisma.colaborador.findUnique({
       where: { id: pessoaId },
@@ -497,8 +499,10 @@ export class OperadoresService {
         'A data final deve ser igual ou posterior à inicial.',
       );
     }
-    // Bloqueia mexer em faltas de um ciclo de folha já fechado (âncora no início).
-    await this.cicloFolha?.exigirCicloAberto(d0);
+    // Bloqueia mexer em faltas de um ciclo de folha já fechado. Como o
+    // `deleteMany` abaixo cobre o período inteiro, todos os ciclos tocados
+    // precisam estar abertos.
+    await this.cicloFolha?.exigirCiclosAbertos(d0, d1);
 
     const colaborador = await this.prisma.colaborador.findUnique({
       where: { id: pessoaId },

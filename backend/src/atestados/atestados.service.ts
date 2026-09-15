@@ -167,7 +167,9 @@ export class AtestadosService {
     }
 
     await this.validacaoData?.exigirDataPermitida(d0);
-    await this.cicloFolha?.exigirCicloAberto(d0);
+    // O atestado grava uma falta por dia corrido e pode atravessar o corte
+    // 26→25: todos os ciclos tocados precisam estar abertos, não só o do início.
+    await this.cicloFolha?.exigirCiclosAbertos(d0, d1);
 
     // Impede dois atestados SOBREPOSTOS do mesmo colaborador: um dia só pode
     // pertencer a um atestado (senão o vínculo `atestadoId` da falta do dia e a
@@ -481,7 +483,9 @@ export class AtestadosService {
       },
     });
     if (!atestado) throw new AtestadoNaoEncontradoError();
-    await this.cicloFolha?.exigirCicloAberto(atestado.inicio);
+    // A exclusão apaga os dias dos DOIS ciclos quando o atestado cruza o corte,
+    // então exige ambos abertos (antes conferia apenas o ciclo do início).
+    await this.cicloFolha?.exigirCiclosAbertos(atestado.inicio, atestado.fim);
 
     const colaborador = await this.prisma.colaborador.findUnique({
       where: { id: atestado.colaboradorId },

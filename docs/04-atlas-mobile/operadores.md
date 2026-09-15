@@ -25,15 +25,15 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 |---|---|---|
 | `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1937 |
 | `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 458 |
-| `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 474 |
-| `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) **e excluir** um lançado por engano | 552 |
+| `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 480 |
+| `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID) **e excluir** um lançado por engano | 558 |
 
 > **Atestado na escala:** o status **ATESTADO** (azul + CID) aparece tanto no
 > roster de operadores quanto na **linha do fiscal** (via `fiscalComoColaboradorDia`,
 > que lê a marca de atestado/CID da falta do dia), distinguindo-o da falta comum.
 > No card **"Atestados do dia"**, além do nome e do CID, mostra-se o **período do
 > atestado** ("início até fim", de `atestadoInicio`/`atestadoFim`).
-| `FeriasCard.tsx` | Card + modal para colocar de férias, listar as em curso/futuras e cancelar | 410 |
+| `FeriasCard.tsx` | Card + modal para colocar de férias, listar as em curso/futuras e cancelar | 416 |
 
 ## 4. Fluxo do usuário
 0. **Atalhos do topo:** "Ver jornada da equipe" (`FISCAIS_JORNADA`) e **"Publicar
@@ -89,12 +89,28 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
    futuras** e cancelá-las. O período usa o
    [`SeletorPeriodo`](componentes-compartilhados.md), com aviso acima de **30
    dias corridos** (duração usual de um ciclo) — é só um alerta, não um bloqueio.
-   A duração das férias é contada **no app**: o backend a calcula para validar,
-   mas não a devolve, então o card e a lista usam `contarDiasCorridos`.
+   A duração vem do **backend** (`dias` em `FeriasDetalhada` e na resposta do
+   registro), tanto no aviso de confirmação quanto na lista.
    Períodos já encerrados não aparecem (o backend não os devolve) — a tela é
    operacional, e o registro continua guardado para os dias passados seguirem
    corretos na escala. Todos esses cards são de gestão (programar período).
 Trata **carregando / erro / vazio**.
+
+### Aviso de ciclo de folha (nos três fluxos de período)
+Os três modais consultam, enquanto se escolhem as datas, quais **ciclos de folha
+(26→25)** o período toca — via [`useAvisoCicloFolha`](hooks-e-utilidades.md) —, e
+mostram o resultado como aviso, sem bloquear:
+
+- **Atravessa o fechamento:** informa entre que ciclos o período se reparte e
+  quantos dias vão para cada um. Importa porque os dias caem em **duas folhas**.
+- **Alcança um ciclo fechado:** em atestado e ausência a prazo o backend
+  **recusa** o lançamento (409, nomeando o ciclo), então o aviso anuncia o
+  impedimento; em **férias** o backend permite, e o texto apenas avisa que o
+  registro muda o que aquele ciclo mostra.
+
+Antes disso o gestor só descobria o problema ao salvar — e o backend conferia
+apenas o **primeiro** dia do período, deixando o resto entrar num ciclo fechado
+sem controle.
 
 ## 5. Dados e integração com o backend
 | Ação na tela | Chamada | Endpoint |
@@ -113,6 +129,7 @@ Trata **carregando / erro / vazio**.
 | Listar atestados lançados | `atestadosService.listar(inicio, fim)` | `GET /atestados` |
 | Excluir atestado | `atestadosService.remover(id)` | `DELETE /atestados/:id` |
 | Registrar férias | `feriasService.registrar(input)` | `POST /ferias` |
+| Ciclos tocados pelo período | `cicloFolhaService.intervalo(inicio, fim)` | `GET /ciclo-folha/intervalo` |
 | Listar férias | `feriasService.listar(filtro)` | `GET /ferias` |
 | Cancelar férias | `feriasService.remover(id)` | `DELETE /ferias/:id` |
 | Incidências | `escalaService.listarIncidencias(filtros)` | `GET /escala/incidencias` |
@@ -123,6 +140,7 @@ Trata **carregando / erro / vazio**.
 
 Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.md),
 [`ferias`](../03-atlas-backend/ferias.md) (inativação não rígida),
+[`ciclo-folha`](../03-atlas-backend/ciclo-folha.md) (aviso e bloqueio por ciclo),
 [`incidencias`](../03-atlas-backend/incidencias.md),
 [`fiscais`](../03-atlas-backend/fiscais.md) (status ao vivo) e
 [`escala-domingo`](../03-atlas-backend/escala-domingo.md) (rodízio de domingo).
@@ -177,6 +195,8 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
 - `useRequisicao` — ver [Hooks e utilidades](hooks-e-utilidades.md).
 - `SeletorPeriodo` — período com contador de dias e duração editável, usado nos
   três fluxos de período (ausência a prazo, atestado e férias).
+- `useAvisoCicloFolha` — o aviso de ciclo de folha que os três passam ao
+  `avisoExtra` do `SeletorPeriodo`; ver [Hooks e utilidades](hooks-e-utilidades.md).
 - `contarDiasCorridos`, `deslocarDiasISO` e `isoParaDiaMes` de `utils/formato` —
   ver [Hooks e utilidades](hooks-e-utilidades.md).
 - `Tela`, `Cartao`, `Selo`, `SeletorData`, `CampoTexto`, `Botao`, `Aviso`,
@@ -196,15 +216,13 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
   por tempo não geram batida.
 - ⚠️ Faltas de fiscais são alternadas por ausências do dia (eles não estão no
   roster de operadores); depende de `OPERADORES_AUSENCIAS`.
-- ⚠️ **A duração das férias é contada no app.** O backend calcula os dias em
-  `validarPeriodoFerias` mas não os persiste nem os devolve, então o número
-  exibido é recalculado no cliente. Se as duas contas divergirem algum dia, a
-  tela mostrará algo diferente do que o servidor validou — o certo seria o
-  backend expor `dias` em `FeriasDetalhada`.
 - ⚠️ Os limites dos avisos (**15** dias no atestado, **30** nas férias) são
   espelhos escritos à mão. O do atestado acompanha `LIMITE_INSS_DIAS` do
   backend; o das férias **não existe no backend** (lá o único teto é 366 dias),
   então é uma convenção só da tela.
-- 🔧 O período cruzando o fechamento do ciclo de folha não é avisado: o backend
-  valida apenas o **primeiro** dia do intervalo. Agora que a duração fica
-  visível, um aviso de "este período atravessa o fechamento" seria natural.
+- 🔧 O aviso de ciclo de folha **não desabilita** o botão de lançar quando o
+  ciclo está fechado: quem recusa é o servidor (409, com o ciclo nomeado).
+  Deixar tentar e falhar com uma mensagem clara é aceitável, mas desabilitar
+  seria melhor.
+- ⚠️ O aviso de ciclo é **best-effort**: se a consulta falhar (sem rede ou sem
+  permissão), o modal segue sem aviso e a recusa só aparece ao salvar.

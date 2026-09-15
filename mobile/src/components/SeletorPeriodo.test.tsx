@@ -145,3 +145,32 @@ describe('SeletorPeriodo — aviso por duração', () => {
     expect(screen.queryByText(TEXTO)).toBeNull();
   });
 });
+
+
+describe('SeletorPeriodo — aviso extra (ciclo de folha)', () => {
+  it('exibe o aviso extra quando fornecido', () => {
+    montar({
+      avisoExtra: { texto: 'Atravessa o fechamento da folha.', tom: 'info' },
+    });
+
+    expect(screen.getByText('Atravessa o fechamento da folha.')).toBeTruthy();
+  });
+
+  it('não exibe nada quando o aviso extra é nulo', () => {
+    montar({ avisoExtra: null });
+
+    expect(screen.queryByText(/fechamento/)).toBeNull();
+  });
+
+  it('convive com o aviso de duração (os dois aparecem)', () => {
+    montar({
+      fim: '2026-10-25', // 16 dias
+      limiteAviso: 15,
+      textoAviso: 'Passa de 15 dias.',
+      avisoExtra: { texto: 'Ciclo fechado.', tom: 'alerta' },
+    });
+
+    expect(screen.getByText('Passa de 15 dias.')).toBeTruthy();
+    expect(screen.getByText('Ciclo fechado.')).toBeTruthy();
+  });
+});
