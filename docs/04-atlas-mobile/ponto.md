@@ -140,6 +140,15 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   **não aparece em domingo nem em feriado**: faltar nesses dias fica apenas como
   ausência e o servidor recusaria a marcação. O botão segue disponível nos
   demais dias para quem tem `OPERADORES_AUSENCIAS`.
+- **Bater ponto em dia de folga é permitido**, e a tela não pede confirmação nem
+  avisa a pessoa: quem tem de agir é o gestor. O dia aparece com a marca
+  📅 **"Trabalhou num dia marcado como FOLGA"** em **azul** — informativo, não de
+  alerta —, porque a pessoa não fez nada de errado: quase sempre a folga dela
+  mudou e o cadastro não foi atualizado. No **painel de inconsistências** o item
+  tem o rótulo **"Escala"** (também azul), separando "corrigir o cadastro" de
+  "cobrar alguém", e traz a **sugestão do novo dia de folga** quando os dados a
+  sustentam. Regra 6 de [`ponto`](../03-atlas-backend/ponto.md) e regra 15 da
+  [`central-jornada`](../03-atlas-backend/central-jornada.md).
 - **"Faltou (não registrada)"** (`FALTA_NAO_REGISTRADA`, em laranja) é o dia em que
   a pessoa **estava escalada**, o dia terminou, não bateu ponto e ninguém lançou a
   falta. Antes esse dia vinha como `SEM_REGISTRO` e a lista o **esconde**

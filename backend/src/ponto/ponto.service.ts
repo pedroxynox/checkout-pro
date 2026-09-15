@@ -1,11 +1,7 @@
 import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { BatidaPonto, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-
-  diaEncerradoEmBrasilia,
-  inicioDoDia,
-} from '../common/datas';
+import { diaEncerradoEmBrasilia, inicioDoDia } from '../common/datas';
 import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
 import {
   type EtapaAlertaTac,
@@ -30,6 +26,12 @@ import { FeriadosService } from '../feriados/feriados.service';
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { ehDiaDeFolga } from '../escala-domingo/escala-domingo.domain';
+import { FolgaService } from '../escala-domingo/folga.service';
+import {
+  nomeDiaSemana,
+  sugerirFolgaPorBatidas,
+  textoSugestaoFolga,
+} from './sugestao-folga.domain';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
@@ -41,7 +43,6 @@ import {
   LimiteBatidasDiaError,
   PessoaPontoInativaError,
   PessoaPontoNaoEncontradaError,
-  PontoEmFolgaError,
   RetornoAposLimiteIntervaloError,
 } from './ponto.errors';
 
@@ -180,8 +181,8 @@ export class PontoService {
     // persistência das batidas não precisam deles.
     @Optional() private readonly notificacoes?: NotificacoesService,
     @Optional() private readonly feriados?: FeriadosService,
-    // Rodízio de domingo (âncora do ciclo G1/G2/G3). Opcional: sem ele, o
-    // bloqueio de folga em domingo só vale para quem está fora do rodízio.
+    // Rodízio de domingo (âncora do ciclo G1/G2/G3). Opcional: sem ele, a
+    // detecção de folga em domingo só vale para quem está fora do rodízio.
     @Optional() private readonly escalaDomingo?: EscalaDomingoService,
     // Fechamento do ciclo de folha. Opcional: sem ele, não há bloqueio por
     // ciclo fechado (testes unitários de persistência não precisam dele).
@@ -189,6 +190,11 @@ export class PontoService {
     // Regras por tipo de contrato (data-driven). Opcional: sem ele, o cálculo
     // usa o contrato padrão (6x1), preservando o comportamento vigente.
     @Optional() private readonly tiposContrato?: TiposContratoService,
+    // Regra única de folga (ficha + escala semanal). Detecta o registro em dia de
+    // folga para AVISAR o gestor — não para bloquear. Sem ela, a detecção usa só
+    // a ficha. Fica no FIM da lista para não deslocar os parâmetros posicionais
+    // dos specs que constroem o serviço à mão.
+    @Optional() private readonly folga?: FolgaService,
   ) {}
 
   /** Bloqueia a modificação quando o ciclo de folha da data está fechado. */
@@ -349,28 +355,45 @@ export class PontoService {
   }
 
   /**
-   * Rejeita o registro de ponto quando o dia é FOLGA (descanso) da pessoa: dia
-   * de folga fixo da semana (`folgaDiaSemana`) ou domingo de folga pelo rodízio
-   * (`grupoDomingo` + âncora). Sem a ficha, não bloqueia (defensivo).
+   * O dia é FOLGA (descanso) para esta pessoa, segundo o sistema?
+   *
+   * **Antes isto BLOQUEAVA o registro** (`PontoEmFolgaError`, 409). O bloqueio
+   * partia de uma premissa errada sobre a operação: que uma batida em dia de
+   * folga significa alguém trabalhando no seu descanso. Na prática significa
+   * quase sempre o contrário — **a folga da pessoa mudou e o cadastro não foi
+   * atualizado**. Ela chega para o turno normal dela e o relógio a recusa.
+   *
+   * Recusar era o pior desfecho possível: a pessoa trabalha o dia inteiro sem
+   * registro nenhum, e o erro de cadastro que causou tudo continua invisível.
+   * Agora o registro passa, o dia é calculado como **qualquer dia de trabalho**
+   * (jornada normal, extras de 50%) e a divergência é **apontada** para o gestor
+   * corrigir a escala — ver `PONTO_EM_FOLGA` na
+   * [`central-jornada`](central-jornada.md).
+   *
+   * Usa a **regra única de folga** (ficha + escala semanal) quando disponível; o
+   * bloqueio antigo olhava só a ficha, então uma folga marcada apenas na escala
+   * semanal nem era detectada. Sem o serviço, degrada para a ficha.
    */
-  private async exigirDiaSemFolga(
+  private async ehPontoEmFolga(
     colaboradorId: string,
+    pessoaId: string,
     dia: Date,
-  ): Promise<void> {
+  ): Promise<boolean> {
+    if (this.folga) {
+      return this.folga.ehFolga(dia, [colaboradorId, pessoaId]);
+    }
     const ficha = await this.prisma.colaborador.findUnique({
       where: { id: colaboradorId },
       select: { folgaDiaSemana: true, grupoDomingo: true },
     });
-    if (!ficha) return;
+    if (!ficha) return false;
     // A âncora do rodízio só é necessária aos domingos; nos demais dias a folga
     // depende apenas de `folgaDiaSemana` (evita uma consulta desnecessária).
     const ancora =
       dia.getUTCDay() === 0 && this.escalaDomingo
         ? await this.escalaDomingo.obterAncora()
         : null;
-    if (ehDiaDeFolga(ficha, dia, ancora)) {
-      throw new PontoEmFolgaError();
-    }
+    return ehDiaDeFolga(ficha, dia, ancora);
   }
 
   /** Converte uma data recebida internamente, protegendo chamadas sem DTO. */
@@ -440,9 +463,11 @@ export class PontoService {
       dto.pessoaId,
       tipoPessoa,
     );
-    // Bloqueia o fichaje em dia de folga (descanso) — folga fixa da semana ou
-    // domingo de folga pelo rodízio. Fiscais e operadores usam o mesmo cadastro.
-    await this.exigirDiaSemFolga(colaboradorId, dia);
+    // O registro em dia de folga é PERMITIDO (antes era recusado com 409). O que
+    // se faz com ele é avisar: quase sempre é a folga que mudou sem alguém ter
+    // atualizado o cadastro, e recusar deixava a pessoa trabalhar sem registro
+    // enquanto o erro de cadastro seguia invisível. O aviso sai depois do commit.
+    const emFolga = await this.ehPontoEmFolga(colaboradorId, dto.pessoaId, dia);
 
     // Regras do contrato (para o limite de intervalo). Sem serviço, usa o padrão.
     const regras = this.tiposContrato
@@ -613,6 +638,18 @@ export class PontoService {
       dia,
       resposta,
     );
+    // O dia está marcado como FOLGA no cadastro e a pessoa bateu ponto: avisa a
+    // supervisão de que a escala provavelmente está desatualizada. Uma vez por
+    // pessoa/dia, e com a sugestão do novo dia de folga quando os dados a
+    // sustentam. Sai por último, depois de tudo o que afeta a resposta.
+    if (emFolga) {
+      await this.avisarPontoEmFolga(
+        dto.pessoaId,
+        colaboradorId,
+        tipoPessoa,
+        dia,
+      );
+    }
     return resposta;
   }
 
@@ -708,6 +745,110 @@ export class PontoService {
       for (const chave of chavesConsumidas) {
         this.alertasTacEmEnvio.delete(chave);
       }
+    }
+  }
+
+  /**
+   * Frase de sugestão do novo dia de folga, quando os dados a sustentam.
+   *
+   * Olha as **quatro semanas** anteriores ao dia da batida. A regra de decisão é
+   * pura (`sugerirFolgaPorBatidas`) e conservadora: só sugere quando a folga do
+   * cadastro foi trabalhada em todas as semanas observadas E existe exatamente um
+   * dia em que a pessoa nunca apareceu. Devolve `''` quando não há conclusão
+   * segura — um palpite errado sobre a folga de alguém é pior do que não
+   * palpitar, porque o gestor pode aplicá-lo sem verificar.
+   */
+  private async sugerirNovaFolga(
+    colaboradorId: string,
+    pessoaId: string,
+    dia: Date,
+  ): Promise<string> {
+    try {
+      const ficha = await this.prisma.colaborador.findUnique({
+        where: { id: colaboradorId },
+        select: { folgaDiaSemana: true },
+      });
+      if (ficha?.folgaDiaSemana == null) return '';
+      const inicio = new Date(dia);
+      inicio.setUTCDate(inicio.getUTCDate() - 28);
+      const batidas = await this.prisma.batidaPonto.findMany({
+        where: {
+          OR: [{ colaboradorId }, { pessoaId }],
+          data: { gte: inicio, lte: dia },
+        },
+        select: { data: true },
+        distinct: ['data'],
+      });
+      return textoSugestaoFolga(
+        sugerirFolgaPorBatidas(
+          ficha.folgaDiaSemana,
+          batidas.map((b) => ({ data: b.data })),
+        ),
+      );
+    } catch {
+      // A sugestão é um extra: se falhar, o aviso principal sai sem ela.
+      return '';
+    }
+  }
+
+  /**
+   * Avisa a supervisão de que alguém bateu ponto num dia marcado como FOLGA.
+   *
+   * O aviso não é sobre a pessoa — é sobre o **cadastro**. Uma batida em dia de
+   * folga quase sempre significa que a folga dela mudou e ninguém atualizou o
+   * sistema; a pessoa veio para o turno normal e o relógio antes a recusava.
+   * Aqui o ponto já entrou; o que falta é alguém corrigir a escala.
+   *
+   * **Uma vez por pessoa e dia**, garantido pelo índice único de
+   * `AvisoPontoEmFolga` (mesmo padrão do alerta de atraso): quatro batidas no
+   * mesmo dia geram um aviso, não quatro. Se o envio falhar, a reserva é
+   * liberada para a próxima batida tentar de novo.
+   *
+   * Best-effort: uma falha aqui **não** desfaz o ponto que acabou de ser gravado.
+   */
+  private async avisarPontoEmFolga(
+    pessoaId: string,
+    colaboradorId: string,
+    tipoPessoa: 'FISCAL' | 'OPERADOR',
+    dia: Date,
+  ): Promise<void> {
+    if (!this.notificacoes) return;
+    try {
+      await this.prisma.avisoPontoEmFolga.create({
+        data: { pessoaId, colaboradorId, dia },
+      });
+    } catch (erro) {
+      // P2002: já existe aviso desta pessoa neste dia — outra batida cuidou.
+      if (
+        erro instanceof Prisma.PrismaClientKnownRequestError &&
+        erro.code === 'P2002'
+      ) {
+        return;
+      }
+      // Falha de banco: segue sem a trava (melhor avisar duas vezes do que
+      // deixar de avisar que a escala está errada).
+    }
+
+    try {
+      const nome = await this.nomeDaPessoa(pessoaId, tipoPessoa);
+      const sugestao = await this.sugerirNovaFolga(
+        colaboradorId,
+        pessoaId,
+        dia,
+      );
+      const iso = dia.toISOString().slice(0, 10);
+      await this.notificacoes.notificarSupervisaoEGerencia({
+        titulo: '📅 Ponto em dia de folga',
+        mensagem:
+          `${nome} registrou ponto em ${iso} (${nomeDiaSemana(dia.getUTCDay())}), ` +
+          `que está como FOLGA no cadastro. O ponto foi aceito normalmente — o que ` +
+          `provavelmente está desatualizado é a escala.${sugestao ? ` ${sugestao}` : ''}`,
+      });
+    } catch {
+      // Envio falhou: libera a reserva para a próxima batida tentar de novo.
+      await this.prisma.avisoPontoEmFolga
+        .deleteMany({ where: { pessoaId, dia } })
+        .catch(() => undefined);
     }
   }
 

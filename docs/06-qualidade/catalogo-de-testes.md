@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 126 arquivos, 1023 casos. **Mobile:** 33 arquivos, 222 casos. **Total: 1245 casos.**
+> **Backend:** 127 arquivos, 1039 casos. **Mobile:** 33 arquivos, 223 casos. **Total: 1262 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -32,7 +32,7 @@
 | `src/atestados/atestados.service.spec.ts` | 10 | 2 |
 | `src/central-jornada/agrupar-atestados.spec.ts` | 12 | 3 |
 | `src/central-jornada/central-jornada.controller.spec.ts` | 2 | 2 |
-| `src/central-jornada/central-jornada.service.spec.ts` | 33 | 4 |
+| `src/central-jornada/central-jornada.service.spec.ts` | 39 | 5 |
 | `src/central-jornada/marcacoes-invalidas.service.spec.ts` | 12 | 1 |
 | `src/central-jornada/rankings.service.spec.ts` | 10 | 1 |
 | `src/central-jornada/saldo-time.spec.ts` | 4 | 1 |
@@ -130,8 +130,9 @@
 | `src/ponto/ponto-ocr.service.spec.ts` | 7 | 2 |
 | `src/ponto/ponto-remover-nao-retorno.spec.ts` | 3 | 1 |
 | `src/ponto/ponto.domain.spec.ts` | 45 | 8 |
-| `src/ponto/ponto.service.spec.ts` | 42 | 4 |
+| `src/ponto/ponto.service.spec.ts` | 44 | 4 |
 | `src/ponto/revalidacao-automatica.domain.spec.ts` | 16 | 4 |
+| `src/ponto/sugestao-folga.domain.spec.ts` | 8 | 1 |
 | `src/produtos-pesados/produtos-pesados.parser.spec.ts` | 7 | 2 |
 | `src/requisicoes/requisicoes.controller.spec.ts` | 4 | 1 |
 | `src/requisicoes/requisicoes.service.spec.ts` | 3 | 1 |
@@ -166,7 +167,7 @@
 | `src/screens/notificacoes/NotificacoesScreen.test.tsx` | 5 | 1 |
 | `src/screens/operadores/JustificativasScreen.test.tsx` | 5 | 1 |
 | `src/screens/ponto/ExportarCicloScreen.test.tsx` | 2 | 1 |
-| `src/screens/ponto/InconsistenciasScreen.test.tsx` | 2 | 1 |
+| `src/screens/ponto/InconsistenciasScreen.test.tsx` | 3 | 1 |
 | `src/screens/ponto/MarcacoesInvalidasScreen.test.tsx` | 13 | 1 |
 | `src/screens/ponto/RankingTimeScreen.test.tsx` | 9 | 1 |
 | `src/screens/ponto/RegistroPontoScreen.test.tsx` | 13 | 2 |

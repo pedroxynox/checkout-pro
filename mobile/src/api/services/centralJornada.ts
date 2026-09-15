@@ -104,6 +104,16 @@ export interface CentralDiaDetalhe {
   entradaPrevista?: string | null;
   /** Minutos de atraso na entrada além da tolerância (só quando houve atraso). */
   atrasoMinutos?: number;
+  /**
+   * A pessoa trabalhou num dia que o cadastro diz ser **folga** dela.
+   *
+   * Registrar ponto em dia de folga era recusado, até se perceber que a premissa
+   * estava errada: isso quase nunca é alguém trabalhando no descanso — é a folga
+   * que mudou sem o cadastro ser atualizado, e recusar fazia a pessoa trabalhar o
+   * dia inteiro sem registro. O dia conta como qualquer dia de trabalho; a marca
+   * serve para o gestor corrigir a escala. **Não** é TAC.
+   */
+  pontoEmFolga?: boolean;
 }
 
 export interface CentralComparativo {
@@ -111,9 +121,21 @@ export interface CentralComparativo {
   totais: CentralTotais;
 }
 
-/** Tipo de problema no painel de inconsistências. */
+/**
+ * Tipo de problema no painel de inconsistências.
+ *
+ * `PONTO_EM_FOLGA` é o único que NÃO é sobre a pessoa: ela trabalhou num dia que
+ * o cadastro diz ser folga dela, o que quase sempre significa que a folga mudou e
+ * ninguém atualizou o sistema. O ponto está correto; o que precisa de correção é
+ * a escala. Por isso não conta como TAC nem entra em nenhum indicador dela.
+ */
 export type TipoInconsistencia =
-  "INCOMPLETA" | "DUPLICADA" | "CONFLITO_AUSENCIA" | "ATRASO" | "TAC";
+  | "INCOMPLETA"
+  | "DUPLICADA"
+  | "CONFLITO_AUSENCIA"
+  | "ATRASO"
+  | "TAC"
+  | "PONTO_EM_FOLGA";
 
 /** Um problema detectado num dia de um colaborador. */
 export interface InconsistenciaItem {
@@ -136,6 +158,8 @@ export interface CentralInconsistencias {
     conflitos: number;
     atrasos: number;
     tac: number;
+    /** Dias trabalhados que o cadastro diz serem folga (escala desatualizada). */
+    pontoEmFolga: number;
     total: number;
   };
   itens: InconsistenciaItem[];

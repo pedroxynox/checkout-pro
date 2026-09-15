@@ -1351,3 +1351,152 @@ describe('CentralJornadaService — dia escalado sem registro', () => {
     expect(d?.tipo).toBe('FALTA_NAO_REGISTRADA');
   });
 });
+
+/**
+ * PONTO EM DIA DE FOLGA → inconsistência, não TAC.
+ *
+ * Registrar ponto em dia de folga era recusado (409). A premissa estava errada:
+ * isso quase nunca é alguém trabalhando no descanso — é a folga que mudou sem o
+ * cadastro ser atualizado. Recusar fazia a pessoa trabalhar o dia inteiro SEM
+ * REGISTRO, e o erro de cadastro seguia invisível.
+ *
+ * Agora o ponto entra, o dia conta como **qualquer dia de trabalho** e a
+ * divergência é apontada ao gestor. O que estes testes prendem é a fronteira: o
+ * apontamento **não** é TAC e **não** mexe em nenhum contador da pessoa. Ela
+ * trabalhou normalmente; o que está errado é o cadastro.
+ */
+describe('CentralJornadaService — ponto em dia de folga', () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-07-24T12:00:00.000Z'));
+  });
+  afterAll(() => jest.useRealTimers());
+
+  /** Uma colaboradora que folga na SEGUNDA e trabalhou numa segunda. */
+  function montar(opcoes: {
+    folgaDiaSemana: number;
+    comFolgaService?: boolean;
+  }) {
+    const ficha = {
+      id: 'c1',
+      nome: 'Ana Souza',
+      funcao: 'OPERADOR',
+      matricula: 'A',
+      usuarioId: null,
+      folgaDiaSemana: opcoes.folgaDiaSemana,
+      grupoDomingo: null,
+      entradaSemana: '07:00',
+      entradaFds: '08:00',
+      entradaDom: null,
+    };
+    // Seg 06/07 e seg 13/07: 07-12 (5h) + 13-15 (2h) = 7h em cada — a jornada
+    // cheia de uma segunda, sem extra e sem débito. É o cenário realista: ela
+    // veio trabalhar o turno normal dela, só o cadastro está desatualizado.
+    const batidas = [
+      batida('a1', '2026-07-06', '07:00'),
+      batida('a2', '2026-07-06', '12:00'),
+      batida('a3', '2026-07-06', '13:00'),
+      batida('a4', '2026-07-06', '15:00'),
+      batida('b1', '2026-07-13', '07:00'),
+      batida('b2', '2026-07-13', '12:00'),
+      batida('b3', '2026-07-13', '13:00'),
+      batida('b4', '2026-07-13', '15:00'),
+    ];
+    const prismaFake = {
+      colaborador: { findMany: jest.fn().mockResolvedValue([ficha]) },
+      batidaPonto: { findMany: jest.fn().mockResolvedValue(batidas) },
+      ausencia: { findMany: jest.fn().mockResolvedValue([]) },
+      fiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      escalaEntry: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const feriadosFake = {
+      mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
+    };
+    const folga =
+      opcoes.comFolgaService === false
+        ? undefined
+        : new FolgaService(prismaFake as never, undefined);
+    return new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+      undefined,
+      folga as never,
+    );
+  }
+
+  it('marca o dia como pontoEmFolga quando o cadastro diz folga', async () => {
+    const service = montar({ folgaDiaSemana: 1 }); // folga na segunda
+    const det = await service.detalhePessoa('c1', 0);
+    const seg = det.dias.find((d) => d.data.startsWith('2026-07-06'));
+
+    expect(seg?.pontoEmFolga).toBe(true);
+    // O dia conta como trabalho NORMAL: 7h trabalhadas contra a base de 7h da
+    // segunda. Sem extra de 100%, sem débito, sem tratamento especial — é um dia
+    // de trabalho comum cujo cadastro está errado.
+    expect(seg?.tipo).toBe('TRABALHO');
+    expect(seg?.trabalhadoMs).toBe(H7);
+    expect(seg?.baseMs).toBe(H7);
+    expect(seg?.extras100Ms).toBe(0);
+    expect(seg?.devidasMs).toBe(0);
+  });
+
+  it('NÃO vira TAC nem mexe nos contadores da pessoa', async () => {
+    // A fronteira que importa: o problema é do cadastro, não da pessoa. Um TAC
+    // aqui entraria no ranking dela e na planilha da folha por um esquecimento
+    // administrativo.
+    const service = montar({ folgaDiaSemana: 1 });
+    const det = await service.detalhePessoa('c1', 0);
+    const seg = det.dias.find((d) => d.data.startsWith('2026-07-06'));
+    const resumo = await service.resumoCiclo(0);
+
+    expect(seg?.tac).toBe(false);
+    expect(seg?.motivosTac).toEqual([]);
+    expect(resumo.pessoas[0].diasTac).toBe(0);
+    expect(resumo.pessoas[0].faltas).toBe(0);
+  });
+
+  it('aparece no painel de inconsistências, com o tipo próprio', async () => {
+    const service = montar({ folgaDiaSemana: 1 });
+    const r = await service.inconsistenciasCiclo(0);
+    const itens = r.itens.filter((i) => i.tipo === 'PONTO_EM_FOLGA');
+
+    expect(itens.length).toBeGreaterThan(0);
+    expect(r.totais.pontoEmFolga).toBe(itens.length);
+    expect(itens[0].detalhe).toContain('FOLGA');
+    expect(itens[0].detalhe).toContain('confira a escala');
+  });
+
+  it('inclui a sugestão do novo dia de folga quando os dados a sustentam', async () => {
+    // Ela trabalhou as duas segundas (a folga do cadastro) e não apareceu em
+    // nenhuma terça/quarta/... — mas há vários candidatos, então NÃO sugere.
+    // Este teste prende justamente a ausência de palpite: as batidas do cenário
+    // não bastam para concluir qual é o novo dia.
+    const service = montar({ folgaDiaSemana: 1 });
+    const r = await service.inconsistenciasCiclo(0);
+    const item = r.itens.find((i) => i.tipo === 'PONTO_EM_FOLGA');
+
+    expect(item?.detalhe).not.toContain('parece ter mudado');
+  });
+
+  it('dia normal de trabalho NÃO é apontado', async () => {
+    // A mesma pessoa, mas o cadastro diz que ela folga na QUARTA. As segundas
+    // trabalhadas passam a ser dias normais e nada é apontado.
+    const service = montar({ folgaDiaSemana: 3 });
+    const det = await service.detalhePessoa('c1', 0);
+    const seg = det.dias.find((d) => d.data.startsWith('2026-07-06'));
+    const r = await service.inconsistenciasCiclo(0);
+
+    expect(seg?.pontoEmFolga).toBeUndefined();
+    expect(r.itens.filter((i) => i.tipo === 'PONTO_EM_FOLGA')).toEqual([]);
+    expect(r.totais.pontoEmFolga).toBe(0);
+  });
+
+  it('sem o serviço de folga, nada é apontado (degrada, não quebra)', async () => {
+    const service = montar({ folgaDiaSemana: 1, comFolgaService: false });
+    const det = await service.detalhePessoa('c1', 0);
+    const seg = det.dias.find((d) => d.data.startsWith('2026-07-06'));
+
+    expect(seg?.pontoEmFolga).toBeUndefined();
+  });
+});

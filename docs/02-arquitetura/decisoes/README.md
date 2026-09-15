@@ -28,3 +28,5 @@ numerado (`NNNN-titulo-curto.md`).
 | 0017 | [Meta de vendas derivada das estimativas diárias](0017-meta-de-vendas-derivada-das-estimativas.md) |
 
 | 0018 | [Feriado: jornada do dia real, adicional de domingo](0018-feriado-jornada-do-dia-real.md) |
+
+| 0019 | [Ponto em dia de folga: aceitar e apontar, em vez de recusar](0019-ponto-em-dia-de-folga.md) |

@@ -3,7 +3,7 @@
 
 # Dicionário de Dados
 
-> Detalhe campo a campo das **54 tabelas**. Fonte: `backend/prisma/schema.prisma`.
+> Detalhe campo a campo das **55 tabelas**. Fonte: `backend/prisma/schema.prisma`.
 
 ## `Usuario`
 
@@ -435,6 +435,19 @@ não lança nada, apenas notifica a supervisão/gerência.
 | `pessoaId` | `String` |  |  |
 | `dia` | `DateTime` |  |  |
 | `enviadoEm` | `DateTime` |  |  |
+
+## `AvisoPontoEmFolga`
+
+"resolvido" uma única vez e deixa rastro da correção.
+
+| Campo | Tipo | Chave | Descrição |
+|---|---|---|---|
+| `id` | `String` | PK |  |
+| `pessoaId` | `String` |  |  |
+| `colaboradorId` | `String?` |  |  |
+| `dia` | `DateTime` |  |  |
+| `enviadoEm` | `DateTime` |  |  |
+| `resolvidoEm` | `DateTime?` |  |  |
 
 ## `EventoAlertaTac`
 
