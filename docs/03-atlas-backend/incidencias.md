@@ -69,7 +69,7 @@ Exclui a incidência (404 se não existir). Quando o que se remove é um **não
 retorno AUTO-DETECTADO**, grava a decisão do gestor em
 `ExclusaoOcorrenciaAutomatica` para a detecção **não recriá-la** naquele dia — a
 condição na jornada continua verdadeira e, sem a lápide, a card voltava sozinha no
-ciclo seguinte (ver regra 14 de [`ponto`](ponto.md)). Incidências **manuais** não
+ciclo seguinte (ver regra 15 de [`ponto`](ponto.md)). Incidências **manuais** não
 geram lápide: não há detecção que as recrie. A gravação é best-effort — se falhar,
 o pior é a detecção insistir, como antes.
 

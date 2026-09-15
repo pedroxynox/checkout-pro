@@ -617,7 +617,9 @@ describe('FiscaisService e EscalaService', () => {
     prisma.colaborador.findMany = jest
       .fn()
       .mockResolvedValue([{ id: 'op1', nome: 'Op Um', funcao: 'OPERADOR' }]);
-    // 06:00→12:00 (6h) + 14:00→16:20 (2h20) = 8h20; base domingo 7h20 → 1h.
+    // 11/03/2024 é uma SEGUNDA feriada. 06:00→12:00 (6h) + 14:00→16:20 (2h20)
+    // = 8h20. A base é a da SEGUNDA (7h), não a de domingo: o feriado herda do
+    // domingo o adicional de 100%, não a jornada esperada. → 1h20 a 100%.
     prisma.batidaPonto.findMany = jest.fn().mockResolvedValue([
       {
         id: 'a',
@@ -656,7 +658,7 @@ describe('FiscaisService e EscalaService', () => {
       new Date('2024-03-15T00:00:00Z'),
     );
     const op = extras.find((e) => e.pessoaId === 'op1');
-    expect(op?.horasExtras100Ms).toBe(3_600_000); // 1h a 100%
+    expect(op?.horasExtras100Ms).toBe(4_800_000); // 1h20 a 100%
     expect(op?.horasExtras50Ms).toBe(0);
   });
 

@@ -132,7 +132,7 @@ ainda bloqueia o **fiscal** de desmarcar um dia `aPrazo`
 - ✅ Se a falta era **automática**, a exclusão é **definitiva** para aquele dia: o
   serviço grava a decisão do gestor em `ExclusaoOcorrenciaAutomatica` (com o
   autor) e a detecção **não a remarca**, mesmo que a pessoa siga escalada e sem
-  bater ponto — ver regra 14 de [`ponto`](ponto.md). Antes era preciso corrigir a
+  bater ponto — ver regra 15 de [`ponto`](ponto.md). Antes era preciso corrigir a
   escala **antes** de excluir, senão a card voltava em 5 minutos. A lápide vale
   para pessoa + dia: cada novo dia recomeça do zero. Faltas **manuais** não geram
   lápide (não há detecção que as recrie).

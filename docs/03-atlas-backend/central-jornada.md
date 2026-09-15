@@ -217,7 +217,13 @@ faltas, TAC, conflitos e atrasos.
    por conta/matrícula atribui a jornada à ficha, senão o fiscal sumiria.
 3. **Horas devidas só contam em dias completos** (o dia em andamento não gera
    déficit).
-4. **Domingo e feriado NUNCA geram hora devida** — por nenhum caminho. Esses
+4. **Domingo e feriado NUNCA geram hora devida** — por nenhum caminho. No feriado
+   a isenção é deliberada: as horas são pagas a **100%** e o trabalhador as cobra,
+   então debitá-las seria cobrar o mesmo dia duas vezes. Note a assimetria com a
+   **carga-base**, que no feriado é a do dia real e não a de domingo
+   ([ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md)):
+   são perguntas diferentes, e `baseDoDia` delega à regra única `cargaBaseDoDia`
+   em vez de repeti-la. Esses
    dias pagam a carga efetivamente cumprida: o que passa da carga-base rende
    extra de **100%**, o que fica abaixo dela **não vira débito**. Vale para as
    duas origens de hora devida:

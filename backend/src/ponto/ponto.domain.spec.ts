@@ -8,8 +8,11 @@ import {
   RISCO_TAC_1H40_MS,
   REGRAS_PADRAO,
   BatidaEntrada,
+  RegrasContrato,
   batidaDuplicada,
   calcularJornadaDia,
+  cargaBaseDoDia,
+  diaPagaAdicional100,
   classificarBatidas,
   etapaAlertaTac,
   statusFiscalDeJornada,
@@ -114,9 +117,13 @@ describe('calcularJornadaDia', () => {
     expect(j.tac).toBe(false); // 1h40 < 1h50
   });
 
-  it('feriado (mesmo numa segunda): base de domingo e extras a 100%', () => {
-    // ehFeriado=true numa SEGUNDA → base vira 7h20 (domingo) e extras a 100%.
-    // 06:00→12:00 (6h) + int 2h + 14:00→17:00 (3h) = 9h → 1h40 extra.
+  it('feriado numa segunda: base da SEGUNDA (não de domingo) e extras a 100%', () => {
+    // O feriado herda do domingo o ADICIONAL de 100%, não a jornada esperada:
+    // uma segunda feriada espera a jornada de uma segunda (7h). Antes a base era
+    // remapeada para domingo (7h20), e quem folga fixo no domingo — cujo contrato
+    // costuma ter a carga de domingo em ZERO — via a jornada inteira virar extra
+    // a 100%, com TAC por exceder o limite.
+    // 06:00→12:00 (6h) + int 2h + 14:00→17:00 (3h) = 9h → 2h extra sobre 7h.
     const j = calcularJornadaDia(
       [
         batida('1', '06:00'),
@@ -128,10 +135,45 @@ describe('calcularJornadaDia', () => {
       SEGUNDA,
       true,
     );
-    expect(j.baseMs).toBe(26_400_000); // 7h20 (regra de domingo)
-    expect(j.horasExtrasMs).toBe(100 * 60_000); // 1h40
-    expect(j.horasExtras100Ms).toBe(100 * 60_000);
+    expect(j.baseMs).toBe(25_200_000); // 7h — a jornada da SEGUNDA
+    expect(j.horasExtrasMs).toBe(120 * 60_000); // 2h
+    expect(j.horasExtras100Ms).toBe(120 * 60_000); // ...a 100%, por ser feriado
     expect(j.horasExtras50Ms).toBe(0);
+  });
+
+  it('feriado com carga de domingo ZERO: a jornada NÃO vira extra inteira', () => {
+    // O caso que motivou a correção. Uma pessoa que folga fixo no domingo tem o
+    // contrato com a carga de domingo em zero. Enquanto o feriado era remapeado
+    // para domingo, a base do feriado virava ZERO: as 8h trabalhadas contavam
+    // inteiras como extra a 100% e o dia caía em TAC por exceder 1h50 — como se
+    // ela tivesse trabalhado num dia em que não devia nada. Mas ela não estava
+    // de folga: era o dia dela, com a jornada normal de uma segunda.
+    const regras: RegrasContrato = {
+      ...REGRAS_PADRAO,
+      // Domingo 0, Seg–Qui 7h, Sex–Sáb 8h.
+      cargaBaseMs: (diaSemana) => {
+        if (diaSemana === 0) return 0;
+        return diaSemana >= 1 && diaSemana <= 4 ? 25_200_000 : 28_800_000;
+      },
+    };
+    const j = calcularJornadaDia(
+      [
+        batida('1', '06:00'),
+        batida('2', '12:00'),
+        batida('3', '13:00'),
+        batida('4', '15:00'),
+      ],
+      H('15:00'),
+      SEGUNDA,
+      true,
+      false,
+      regras,
+    );
+
+    expect(j.baseMs).toBe(25_200_000); // 7h, não 0
+    expect(j.horasExtrasMs).toBe(60 * 60_000); // 8h − 7h = 1h
+    expect(j.horasExtras100Ms).toBe(60 * 60_000); // a 100%, por ser feriado
+    expect(j.tac).toBe(false); // 1h < 1h50 — sem TAC falso
   });
 
   it('intervalo abaixo de 1h → TAC', () => {
@@ -464,5 +506,52 @@ describe('calcularJornadaDia · intervalo obrigatório (contratos data-driven)',
     );
     expect(j.status).toBe('ENCERRADO');
     expect(j.tac).toBe(false);
+  });
+});
+
+/**
+ * As TRÊS perguntas que se fazem sobre um feriado, e por que só duas seguem o
+ * domingo. Elas viviam misturadas: o feriado era remapeado para domingo e as
+ * três respostas vinham juntas, o que fazia a jornada esperada de uma segunda
+ * feriada ser a de um domingo.
+ *
+ *  1. Que HORÁRIO a pessoa cumpre?      → o de domingo   (segue)
+ *  2. As extras são 50% ou 100%?         → 100%, como domingo (segue)
+ *  3. Qual a JORNADA esperada do dia?    → a do dia real  (NÃO segue)
+ *
+ * A isenção de débito viaja com a pergunta 2, e é deliberada: as horas do
+ * feriado são pagas a 100% e o trabalhador as cobra, então debitá-las seria
+ * cobrar duas vezes o mesmo dia.
+ */
+describe('feriado: o que segue o domingo e o que não segue', () => {
+  it('a JORNADA esperada é a do dia real, não a de domingo', () => {
+    // Domingo tem 7h20 no 6x1; segunda a quinta, 7h.
+    expect(cargaBaseDoDia(0)).toBe(26_400_000); // domingo: 7h20
+    expect(cargaBaseDoDia(1)).toBe(25_200_000); // segunda: 7h
+    // `cargaBaseDoDia` não recebe `ehFeriado` de propósito: é o que impede o
+    // remapeamento voltar por descuido. Uma segunda feriada é uma segunda.
+    expect(cargaBaseDoDia(1)).not.toBe(cargaBaseDoDia(0));
+  });
+
+  it('o ADICIONAL de 100% segue o domingo (todo feriado paga 100%)', () => {
+    expect(diaPagaAdicional100(1, false)).toBe(false); // segunda comum: 50%
+    expect(diaPagaAdicional100(1, true)).toBe(true); // segunda feriada: 100%
+    expect(diaPagaAdicional100(0, false)).toBe(true); // domingo: 100%
+  });
+
+  it('o feriado continua ISENTO de hora devida (as horas são pagas a 100%)', () => {
+    // `diaPagaAdicional100` responde também por esta isenção — quem trabalha
+    // menos que a base num feriado NÃO fica devendo. Debitar horas de um dia
+    // pago a 100% seria cobrar o mesmo dia duas vezes. Este teste existe para
+    // que a correção da jornada não arraste a isenção junto.
+    expect(diaPagaAdicional100(1, true)).toBe(true);
+  });
+
+  it('a isenção NÃO se estende a um dia útil comum', () => {
+    // O contrapeso: só domingo e feriado são isentos. Um dia comum trabalhado
+    // abaixo da jornada segue gerando hora devida.
+    const regras: RegrasContrato = REGRAS_PADRAO;
+    expect(diaPagaAdicional100(2, false, regras)).toBe(false);
+    expect(diaPagaAdicional100(5, false, regras)).toBe(false);
   });
 });

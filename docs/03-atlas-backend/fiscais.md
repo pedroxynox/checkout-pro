@@ -237,7 +237,10 @@ casos de ficha vazia, preencher os horários **primeiro**.
   se não muda).
 - `calcularJornada(registros, agora, diaEncerrado?)` → tempo trabalhando/
   intervalo e carga horária; num dia encerrado, não estende o último segmento.
-- `jornadaEsperadaMs(diaSemana)` / `isDomingo(diaSemana)` → base de horas extras.
+- `jornadaEsperadaMs(diaSemana)` → carga do dia no 6x1 (dom 7h20 · seg-qui 7h ·
+  sex-sáb 8h); envolvida por `cargaBaseDoDia` em [`ponto`](ponto.md), que é quem
+  os cálculos usam. `isDomingo(diaSemana)` é legado: **não** decide o adicional
+  (quem decide é `diaPagaAdicional100`).
 - Escala: `resolverEscalaEfetiva`, `escalaConsolidada`, `gerarEscalaSemanalFiscal`,
   `temEscalaDefinida` (o cadastro é a fonte única — Opção A).
 - `mapearFiscalColaborador(...)` → une o fiscal à ficha do colaborador por conta
@@ -275,8 +278,11 @@ casos de ficha vazia, preencher os horários **primeiro**.
 3. **Dia civil de Brasília (UTC-3)** para não gravar/ler no dia UTC seguinte à
    noite.
 4. **Toda transição notifica os gestores** e é propagada em tempo real.
-5. **Horas extras:** 50% em dias comuns, 100% aos domingos, sobre a jornada
-   esperada do dia.
+5. **Horas extras:** 50% em dias comuns, 100% aos domingos **e em todo feriado**,
+   sobre a jornada esperada do dia. No feriado a jornada esperada é a do **dia
+   real** (uma segunda feriada espera a jornada de uma segunda), não a de domingo —
+   ver [ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md).
+   Do domingo, o feriado herda só o horário e o adicional de 100%.
 6. **Horário especial prevalece** sobre a escala geral (escala efetiva).
 7. **O cadastro é a fonte única da escala** (Opção A); no domingo a escala dos
    fiscais vem do rodízio de grupos.
