@@ -210,12 +210,17 @@ da remoção imediata que o `PontoService` já faz na batida normal.
   trabalhador as cobra, então debitá-las seria cobrar o mesmo dia duas vezes.
   Usado por `calcularJornadaDia` (adicional) e pela
   [`central-jornada`](central-jornada.md) (isenção de débito).
-- `cargaBaseDoDia(diaSemana, regras)` → a **jornada esperada** do dia. Não
-  recebe `ehFeriado` **de propósito**: a carga de um feriado é a do seu próprio
-  dia da semana, e a ausência do parâmetro é o que impede o remapeamento para
-  domingo voltar por descuido. Fonte única dos dois chamadores (o cálculo do dia
-  e a base dos dias de ausência/atestado), que antes tinham cópias da regra.
+- `cargaBaseDoDia(diaSemana, ehFeriado, regras)` → a **jornada esperada** do dia.
+  Num feriado devolve `regras.cargaFeriadoMs` (**7h20**, a jornada de um domingo),
+  caia o feriado em que dia da semana cair; nos demais dias, a carga do próprio
+  dia. Fonte única dos dois chamadores (o cálculo do dia e a base dos dias de
+  ausência/atestado), que antes tinham cópias da regra.
   Ver [ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md).
+- **`cargaFeriadoMs` é um valor PRÓPRIO, não `cargaBaseMs(0)`.** É a distinção que
+  fecha um bug de folha: quem folga fixo no domingo tem a carga de domingo do seu
+  contrato em **zero**, e ler a jornada do feriado dali fazia o dia esperar zero
+  hora — a jornada inteira virava extra a 100% e o dia caía em TAC. A jornada de um
+  feriado é 7h20 para todos, inclusive para quem nunca trabalha domingo.
 - `batidaDuplicada(horaMs, existentes, minimo)` → detecta batidas próximas demais.
 - `etapaAlertaTac(extrasMs, tac)` → devolve só a etapa mais grave (`RISCO_1H30`,
   `RISCO_1H40`, `TAC`).
@@ -366,13 +371,14 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
    **sábado**) pagam 50%. Nos dias de 100% não há hora devida — ver
    `diaPagaAdicional100` e a regra 4 da
    [`central-jornada`](central-jornada.md).
-12. **A carga-base do feriado é a do seu PRÓPRIO dia da semana**, não a de
-   domingo (`cargaBaseDoDia`; dom 7h20 · seg-qui 7h · sex-sáb 8h no 6x1). Só o
-   **horário** e o **adicional de 100%** seguem o domingo — a jornada esperada,
-   não. Ver [ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md):
-   o remapeamento anterior fazia todo feriado esperar **zero hora** para quem tem
-   o domingo zerado no contrato (o normal de quem folga fixo no domingo), e a
-   jornada inteira virava extra a 100% com TAC por exceder o limite.
+12. **A jornada de um feriado é 7h20** — a de um domingo —, em qualquer dia da
+   semana em que ele caia (`cargaBaseDoDia`). Nos demais dias vale a carga do
+   próprio dia: dom 7h20 · seg-qui 7h · sex-sáb 8h no 6x1. O teto de extras é
+   **1h50 em todos os dias**, então num feriado o TAC começa em 9h10 trabalhadas.
+   Ela vem de um **valor próprio** (`cargaFeriadoMs`) e **não** da carga de
+   domingo do contrato: quem folga fixo no domingo tem esse dia zerado, e ler dali
+   fazia o feriado esperar zero hora — jornada inteira como extra a 100%, com TAC.
+   Ver [ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md).
 13. **Para AJUSTAR o ponto, a marcação faltante é identificada pelo turno — não
    pela ordem.** O tipo de cada batida é derivado da posição cronológica, o que
    basta para calcular as horas mas encobre a **entrada** esquecida (ela desloca

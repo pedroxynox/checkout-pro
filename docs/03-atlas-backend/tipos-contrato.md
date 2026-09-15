@@ -80,6 +80,13 @@ Garante: carga base com 7 valores; dias com 100% entre 0 e 6; intervalo mínimo
 - `regrasContratoDeModelo(modelo)` (`tipos-contrato.adapter.ts`) → converte uma
   linha `TipoContratoJornada` (minutos) em `RegrasContrato` (ms); as "funções"
   `cargaBaseMs`/`temAdicional100` viram lookups sobre os arranjos guardados.
+- **A jornada do FERIADO não sai da tabela:** `cargaFeriadoMs` é fixa em **7h20**
+  para todos os contratos. Não é `cargaBaseMinPorDia[0]` de propósito — um
+  contrato de quem folga fixo no domingo tem esse dia em **zero**, e ler dali
+  fazia todo feriado esperar zero hora (jornada inteira como extra a 100%, com
+  TAC). Se algum dia a jornada do feriado precisar variar por contrato, o ponto de
+  entrada já existe no adaptador e basta uma coluna nova. Ver
+  [ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md).
 - `diaNaFaixa(diaSemana)` → normaliza o dia para 0..6.
 
 ## 7. Estados e enums
@@ -108,6 +115,10 @@ Garante: carga base com 7 valores; dias com 100% entre 0 e 6; intervalo mínimo
    ele não pode ser desativado nem removido.
 3. **Contrato em uso não é removido** (reatribua ou apenas desative).
 4. **Coerência dos limites** validada no servidor (crescentes; mínimo < máximo).
+   A carga base **pode ser zero** num dia, e é o correto para um contrato que não
+   trabalha aquele dia — num domingo REAL trabalhado, tudo conta como extra. O que
+   um zero ali **não** afeta é o feriado: a jornada do feriado é 7h20 fixa (ver
+   seção 6).
 5. **Parâmetros em minutos na UI**, convertidos para ms no cálculo.
 6. **Só administrador** (`ADMIN_DADOS`) mexe no catálogo — afeta horas/folha.
 7. **Cache invalidado em qualquer mutação** (as regras mudam pouco).

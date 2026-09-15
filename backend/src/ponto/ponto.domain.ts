@@ -32,6 +32,15 @@ export const RISCO_TAC_1H30_MS = 90 * 60_000;
 export const RISCO_TAC_1H40_MS = 100 * 60_000;
 export const ALERTA_EXTRAS_MS = RISCO_TAC_1H30_MS;
 export const LIMITE_EXTRAS_MS = 110 * 60_000; // 1h50 — acima disso é TAC
+
+/**
+ * Jornada de um FERIADO: 7h20, a mesma de um domingo, em qualquer dia da semana.
+ *
+ * Constante própria (e não `jornadaEsperadaMs(0)`) porque a jornada do feriado
+ * não depende do domingo DA PESSOA: quem folga fixo no domingo tem a carga de
+ * domingo do contrato em zero, e derivar dali fazia o feriado esperar zero hora.
+ */
+export const CARGA_FERIADO_MS = 440 * 60_000; // 7h20
 export const INTERVALO_ESPERADO_MS = 7_200_000; // 2h
 export const INTERVALO_MINIMO_MS = 3_600_000; // 1h — abaixo disso é TAC
 export const INTERVALO_MAXIMO_MS = 10_800_000; // 3h — acima disso é TAC
@@ -56,6 +65,17 @@ export const INTERVALO_MINIMO_ENTRE_BATIDAS_MS = 2 * 60_000; // 2 min
 export interface RegrasContrato {
   /** Carga horária base do dia (ms), por dia da semana (0=domingo). */
   cargaBaseMs(diaSemana: number): number;
+  /**
+   * Carga horária de um FERIADO (ms), qualquer que seja o dia da semana em que
+   * ele caia: 7h20 no 6x1, a mesma jornada de um domingo.
+   *
+   * É um valor próprio, e **não** `cargaBaseMs(0)`, por um motivo concreto: quem
+   * folga fixo no domingo tem a carga de domingo do seu contrato em **zero**, e
+   * derivar dali fazia todo feriado esperar zero hora — a jornada inteira virava
+   * extra e o dia caía em TAC. A jornada do feriado é 7h20 para todos, inclusive
+   * para quem nunca trabalha domingo.
+   */
+  cargaFeriadoMs: number;
   /** true quando o dia tem adicional de 100% (domingo, no 6x1). O feriado é
    *  tratado como domingo à parte, no próprio cálculo. */
   temAdicional100(diaSemana: number): boolean;
@@ -88,6 +108,9 @@ export interface RegrasContrato {
  */
 export const REGRAS_SEIS_X_UM_DOIS_X_UM: RegrasContrato = {
   cargaBaseMs: (diaSemana) => jornadaEsperadaMs(diaSemana),
+  // Feriado: 7h20, a jornada de domingo — independente do dia em que caia e de
+  // a pessoa trabalhar domingo ou não.
+  cargaFeriadoMs: CARGA_FERIADO_MS,
   temAdicional100: (diaSemana) => diaSemana === 0,
   maxTrabalhoSemIntervaloMs: MAX_TRABALHO_SEM_INTERVALO_MS,
   intervaloMinimoMs: INTERVALO_MINIMO_MS,
@@ -133,19 +156,23 @@ export function diaPagaAdicional100(
 /**
  * Carga-base (jornada esperada) de um dia, em ms.
  *
- * **O feriado usa a carga do seu PRÓPRIO dia da semana.** Uma segunda feriada
- * espera a jornada de uma segunda. Antes o feriado era remapeado para domingo
- * (`cargaBaseMs(ehFeriado ? 0 : diaSemana)`), e o efeito não era teórico: para
- * quem folga fixo no domingo, o contrato costuma ter a carga de domingo em
- * **zero** — então todo feriado passava a esperar zero hora, e a jornada
- * inteira virava extra a 100%, com TAC por exceder o limite de extras. Uma
- * pessoa escalada num feriado não estava de folga: era o dia dela de trabalho,
- * com a jornada normal do dia.
+ * **O feriado tem jornada de 7h20** — a de um domingo —, caia em que dia da
+ * semana cair. Nos demais dias vale a carga do próprio dia (7h de segunda a
+ * quinta, 8h sexta e sábado, no 6x1).
  *
- * O que o feriado **continua** herdando do domingo é só o **horário** de
- * entrada/saída (`entradaEsperadaNoDia`/`saidaEsperadaNoDia`) e o **adicional
- * de 100%** (`diaPagaAdicional100`) com a sua isenção de débito. Três perguntas
- * distintas sobre o mesmo dia, e só duas delas seguem o domingo.
+ * A jornada do feriado vem de `regras.cargaFeriadoMs`, um valor próprio, e
+ * **não** de `cargaBaseMs(0)`. A diferença é o bug que esta função existe para
+ * fechar: quem folga fixo no domingo tem a carga de domingo do seu contrato em
+ * **zero**, e derivar dali fazia todo feriado esperar zero hora — a jornada
+ * inteira virava extra a 100% e o dia caía em TAC por exceder o limite. A
+ * jornada de um feriado é 7h20 para todos, inclusive para quem nunca trabalha
+ * domingo.
+ *
+ * Do domingo, o feriado herda: a **jornada** (7h20), o **horário** de
+ * entrada/saída (`entradaEsperadaNoDia`/`saidaEsperadaNoDia`) e o **adicional de
+ * 100%** (`diaPagaAdicional100`) com a sua isenção de débito. O que ele **não**
+ * herda é o rodízio de grupos e a **folga**: quem folga no domingo e está
+ * escalado numa segunda feriada trabalha nessa segunda.
  *
  * Existe como função (e não como uma linha em cada chamador) porque a regra
  * estava duplicada em dois lugares — o cálculo do dia e a base dos dias de
@@ -154,9 +181,10 @@ export function diaPagaAdicional100(
  */
 export function cargaBaseDoDia(
   diaSemana: number,
+  ehFeriado: boolean,
   regras: RegrasContrato = REGRAS_PADRAO,
 ): number {
-  return regras.cargaBaseMs(diaSemana);
+  return ehFeriado ? regras.cargaFeriadoMs : regras.cargaBaseMs(diaSemana);
 }
 
 /**
@@ -344,11 +372,10 @@ export function calcularJornadaDia(
     regras.maxTrabalhoSemIntervaloMs,
     regras.intervaloObrigatorio,
   );
-  // Do domingo, o feriado herda o adicional de 100% (e a isenção de débito que
-  // vem com ele) — mas NÃO a carga-base: a jornada esperada é a do próprio dia
-  // da semana. Ver `cargaBaseDoDia`.
+  // Feriado: jornada de 7h20 (a de domingo) e extras a 100%. O que o feriado não
+  // herda do domingo é o rodízio de grupos e a folga. Ver `cargaBaseDoDia`.
   const contaComo100 = diaPagaAdicional100(diaSemana, ehFeriado, regras);
-  const baseMs = cargaBaseDoDia(diaSemana, regras);
+  const baseMs = cargaBaseDoDia(diaSemana, ehFeriado, regras);
 
   if (classificadas.length === 0) {
     return {
