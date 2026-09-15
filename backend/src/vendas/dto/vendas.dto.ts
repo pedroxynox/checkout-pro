@@ -36,14 +36,6 @@ export class PainelVendasDto {
   data?: string;
 }
 
-export class ConfigVendasDto {
-  /** Meta mensal de faturamento (R$). */
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  metaMensal?: number;
-}
-
 const ANO_MES = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export class ListarEstimativasDto {

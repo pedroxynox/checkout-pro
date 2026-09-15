@@ -4,7 +4,11 @@ import { FechamentoService } from '../fechamento/fechamento.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { MetasService } from '../metas/metas.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
-import { anoMesDe } from '../metas/metas.domain';
+import {
+  anoMesDe,
+  intervaloDoMes,
+  metaDeEstimativas,
+} from '../metas/metas.domain';
 import { LinhaVendaHora } from './vendas.parser';
 import { arredondar } from '../common/numeros';
 import {
@@ -54,11 +58,6 @@ export interface EstimativasMes {
   anoMes: string;
   dias: EstimativaDia[];
   totalMes: number;
-}
-
-/** Configuração do Painel de Vendas. */
-export interface ConfigVendasResultado {
-  metaMensal: number;
 }
 
 /** Comparativo entre o período atual e o equivalente anterior. */
@@ -262,44 +261,17 @@ export class VendasService {
     return { enviado: qtd > 0 };
   }
 
-  // --------------------------- Configuração -------------------------------
-
-  /** Configuração (singleton id 'vendas'); cria com defaults se não existir. */
-  async obterConfig(): Promise<ConfigVendasResultado> {
-    const cfg = await this.prisma.configVendas.upsert({
-      where: { id: 'vendas' },
-      update: {},
-      create: { id: 'vendas', metaMensal: 0 },
-    });
-    return { metaMensal: Number(cfg.metaMensal) };
-  }
-
-  /** Atualiza a meta mensal (gestor). */
-  async definirConfig(
-    dados: { metaMensal?: number },
-    atualizadoPor?: string,
-  ): Promise<ConfigVendasResultado> {
-    const data: { metaMensal?: number; atualizadoPor?: string } = {
-      atualizadoPor,
-    };
-    if (typeof dados.metaMensal === 'number' && dados.metaMensal >= 0) {
-      data.metaMensal = dados.metaMensal;
-    }
-    const cfg = await this.prisma.configVendas.upsert({
-      where: { id: 'vendas' },
-      update: data,
-      create: { id: 'vendas', metaMensal: data.metaMensal ?? 0, atualizadoPor },
-    });
-    return { metaMensal: Number(cfg.metaMensal) };
-  }
-
   // -------------------------- Estimativas ---------------------------------
 
-  /** Estimativas de venda de um mês (por dia) + total (soma) do mês. */
+  /**
+   * Estimativas de venda de um mês (por dia) + total (soma) do mês.
+   *
+   * `totalMes` é a **meta do mês**: usa a mesma função de domínio
+   * (`metaDeEstimativas`) que o MetasService, para que a Central de Vendas e o
+   * Painel de Vendas nunca mostrem números diferentes.
+   */
   async listarEstimativas(anoMes: string): Promise<EstimativasMes> {
-    const [ano, mes] = anoMes.split('-').map(Number);
-    const inicio = new Date(Date.UTC(ano, mes - 1, 1));
-    const fim = new Date(Date.UTC(ano, mes, 1));
+    const { inicio, fim } = intervaloDoMes(anoMes);
     const regs = await this.prisma.estimativaVendaDia.findMany({
       where: { data: { gte: inicio, lt: fim } },
       orderBy: { data: 'asc' },
@@ -308,13 +280,16 @@ export class VendasService {
       data: r.data.toISOString().slice(0, 10),
       valor: arredondar(Number(r.valor)),
     }));
-    const totalMes = arredondar(dias.reduce((s, d) => s + d.valor, 0));
+    const totalMes = metaDeEstimativas(dias.map((d) => d.valor));
     return { anoMes, dias, totalMes };
   }
 
   /**
    * Define (upsert em lote) as estimativas por dia de um mês. Valor 0 remove a
    * estimativa daquele dia. Retorna as estimativas atualizadas do mês.
+   *
+   * Como a meta do mês é a soma das estimativas, mexer aqui muda a meta —
+   * inclusive o aviso de "meta em risco" e o Resumo do Dia.
    */
   async definirEstimativas(
     anoMes: string,
@@ -356,8 +331,9 @@ export class VendasService {
    */
   async painelResumo(dataRef: Date = new Date()): Promise<PainelVendasResumo> {
     const ref = inicioDoDia(dataRef);
-    // Meta do mês de referência (Centro de Controle ▸ Metas), por período
-    // mensal. Substitui a antiga meta única do Painel de Vendas.
+    // Meta do mês de referência: a soma das estimativas diárias cadastradas na
+    // Central de Vendas (fonte única, via MetasService). 0 = mês sem
+    // estimativas, tratado como "meta ainda não definida".
     const metaMensal = await this.metas.resolver('VENDAS', anoMesDe(ref));
 
     // --- Mês atual (até a data de referência) e projeção (run-rate) ---

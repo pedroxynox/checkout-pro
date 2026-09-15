@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **207 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **205 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -371,9 +371,7 @@
 | GET | `/vendas/status` | `status` | `PAINEL_VENDAS_VISUALIZAR` |
 | GET | `/vendas/painel` | `painel` | `PAINEL_VENDAS_VISUALIZAR` |
 | GET | `/vendas/painel-resumo` | `painelResumo` | `PAINEL_VENDAS_VISUALIZAR` |
-| GET | `/vendas/config` | `config` | `PAINEL_VENDAS_VISUALIZAR` |
 | GET | `/vendas/estimativas` | `listarEstimativas` | `PAINEL_VENDAS_VISUALIZAR` |
 | PUT | `/vendas/estimativas` | `definirEstimativas` | `PAINEL_VENDAS_EDITAR` |
-| PUT | `/vendas/config` | `definirConfig` | `PAINEL_VENDAS_EDITAR` |
 | POST | `/vendas/limpar-sem-hora` | `limparSemHora` | `USUARIOS_CRUD` |
 

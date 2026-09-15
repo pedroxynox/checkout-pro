@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/assistente/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `backend/src/assistente/`
 
 # Módulo: `assistente`
 
@@ -94,7 +94,11 @@ usuário só acessa a **própria** conversa, isolada por `usuario.sub`.
   semáforo (🟢/🟡/🔴), além dos destaques do mês (top por categoria, **excluindo
   fiscais**).
 - `montarContextoVendas()` — vendas de hoje/ontem, comparação com a semana
-  anterior, faturamento do mês, projeção e hora de pico.
+  anterior, faturamento do mês, projeção e hora de pico. A **meta do mês** vem do
+  `MetasService` (soma das estimativas diárias). Antes era lida direto de
+  `ConfigVendas`, o que fazia o assistente relatar meta `0` desde que a meta
+  saiu dessa tabela — corrigido pela
+  [ADR 0017](../02-arquitetura/decisoes/0017-meta-de-vendas-derivada-das-estimativas.md).
 - `responderProcedimento(...)` / `montarBlocos(...)` — resumo do procedimento
   mantendo os marcadores `[FOTO:k]` e reconstrução dos blocos (texto + fotos).
 
@@ -131,17 +135,21 @@ e monta o "documento" com marcadores de foto. **Atualmente desativado** — ver 
 ## 8. Dados que o módulo toca
 - **Escreve:** `MensagemAssistente` (pergunta + resposta; efêmeras 24h).
 - **Lê (apenas contexto):** `Fiscal`, `EscalaEntry`, `MetaIndicador`,
-  `RegistroArrecadacao`, `VendaDiaria`, `VendaHora`, `ConfigVendas`.
+  `RegistroArrecadacao`, `VendaDiaria`, `VendaHora`. A meta mensal de vendas vem
+  do `MetasService`, não mais de `ConfigVendas`.
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
 
 ## 9. Dependências
 - **Depende de:** `PrismaService` (global), `GeminiClient`, `ProcedimentosService`,
-  `ScheduleModule` (cron, registrado no `AppModule`), config pura de
+  `MetasService` (via `MetasModule`, para a meta do mês), `ScheduleModule` (cron,
+  registrado no `AppModule`), config pura de
   [`arrecadacao`](arrecadacao.md) (`CONFIG_ARRECADACAO`, `TIPOS_ARRECADACAO`) e
   `arredondar` de [`common`](common.md).
 - **É usado por:** o app (chat flutuante). Exporta o `AssistenteService`.
 - **Desacoplamento proposital:** lê o contexto **direto via Prisma** para evitar
-  dependência circular com os módulos de fiscais/arrecadação/vendas.
+  dependência circular com os módulos de fiscais/arrecadação/vendas. A exceção é
+  a meta do mês, que passa pelo [`metas`](metas.md) de propósito — é a fonte
+  única e não gera ciclo (o `metas` não depende do assistente).
 
 ## 10. Regras de negócio-chave
 1. **Conversa efêmera (24h):** só as últimas 24h aparecem e são enviadas ao

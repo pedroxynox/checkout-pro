@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/indicadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `mobile/src/screens/indicadores/`
 
 # Área: `indicadores`
 
@@ -19,8 +19,10 @@ janela de retenção (padrão 24 meses), sempre com a meta que valia nele.
   detalhe, ranking e o Painel de Vendas.
 - **Gestão** (`OPERADORES_CRUD`): abre "Não reconhecidos" para associar um
   código a um colaborador ou criar cadastro.
-- Edição da meta de vendas fica em Centro de Controle ▸ Metas
-  (`PAINEL_VENDAS_EDITAR`).
+- A meta de vendas **não é editada em lugar nenhum**: é a soma das estimativas
+  diárias, cadastradas em Centro de Controle ▸ Central de Vendas
+  (`PAINEL_VENDAS_EDITAR`). Ver
+  [ADR 0017](../02-arquitetura/decisoes/0017-meta-de-vendas-derivada-das-estimativas.md).
 - Ver [Perfis e permissões](../01-produto/perfis-e-permissoes.md).
 
 ## 3. Telas e arquivos
@@ -95,6 +97,11 @@ e [`vendas`](../03-atlas-backend/vendas.md); associação de códigos usa
 - Painel de Vendas: a estimativa do dia funciona como "meta do dia" (marca
   quando atingida); horas sem venda são filtradas dos gráficos; o período
   personalizado normaliza início/fim invertidos.
+- **Dia e mês vêm do mesmo cadastro:** a "meta do dia" é a estimativa daquele
+  dia e a meta do mês é a soma das estimativas — por construção, coerentes.
+- Quando o mês não tem estimativas, `metaMensal` chega **0** e o cartão "Meta do
+  mês" cai na variante sem comparação: mostra faturamento e projeção, com um
+  aviso que encaminha para a **Central de Vendas** (antes apontava para Metas).
 - "Não reconhecidos" agrega por mês; a busca de colaborador limita a 8
   resultados e a associação pede confirmação (afeta o histórico).
 
@@ -130,6 +137,12 @@ e [`vendas`](../03-atlas-backend/vendas.md); associação de códigos usa
   fora conta); a associação corrige o histórico retroativamente.
 - ⚠️ Vários cálculos de janela (dia/semana/mês) ficam no cliente e usam UTC;
   divergências de fuso devem ser conferidas com o backend.
+- ⚠️ O **semáforo da meta** (verde ≥ 100%, amarelo ≥ 60%, vermelho abaixo) e o
+  percentual de cumprimento são recalculados **no cliente**, duplicando a
+  matemática que o backend já faz. Candidatos a virar campo da resposta.
+- ⚠️ **A meta do mês agora muda quando as estimativas mudam.** Editar um dia na
+  Central de Vendas altera o cartão "Meta do mês" — é o comportamento desejado,
+  mas surpreende quem esperava uma meta fixa.
 - ⚠️ O limite da navegação de meses é um espelho do padrão do backend (24). Se a
   retenção do servidor for alterada por variável de ambiente, o app só saberá
   disso pelo campo `mesesRetencao` do histórico — a seta continuará limitada a

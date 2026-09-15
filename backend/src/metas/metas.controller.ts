@@ -19,6 +19,10 @@ import { MetaMensalView, MetasService } from './metas.service';
  * Controller das Metas mensais (Centro de Controle ▸ Metas). Restrito ao gestor
  * (OPERADORES_CRUD), igual ao restante do Centro de Controle: lista as metas de
  * um mês e permite defini-las uma a uma.
+ *
+ * A meta de VENDAS é derivada das estimativas diárias e vem marcada com
+ * `derivada: true`: o POST a recusa (409) e a tela a exibe como somente
+ * leitura. Para mudá-la, alteram-se as estimativas na Central de Vendas.
  */
 @Controller('metas')
 @Funcionalidade('OPERADORES_CRUD')
@@ -31,7 +35,10 @@ export class MetasController {
     return this.metasService.listar(dto.anoMes);
   }
 
-  /** Define (cria/atualiza) a meta de um indicador no mês. */
+  /**
+   * Define (cria/atualiza) a meta de um indicador no mês. Recusa VENDAS com
+   * 409: essa meta é a soma das estimativas diárias, não um valor digitado.
+   */
   @Post()
   @HttpCode(HttpStatus.OK)
   definir(

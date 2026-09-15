@@ -5,7 +5,11 @@ import {
   TIPOS_META,
   TipoMeta,
   UnidadeMeta,
+  ehMetaDerivada,
+  intervaloDoMes,
+  metaDeEstimativas,
 } from './metas.domain';
+import { MetaDerivadaNaoEditavelError } from './metas.errors';
 
 /** Uma meta mensal resolvida (valor + metadados de exibição). */
 export interface MetaMensalView {
@@ -14,28 +18,49 @@ export interface MetaMensalView {
   titulo: string;
   unidade: UnidadeMeta;
   sentido: 'MAIOR_MELHOR' | 'MENOR_MELHOR';
-  /** Valor da meta para o mês (com fallback ao padrão). */
+  /** Valor da meta para o mês. */
   meta: number;
-  /** Verdadeiro se há um registro salvo para este tipo+mês (não é só padrão). */
+  /**
+   * Verdadeiro quando o mês tem um valor próprio (não é só o padrão). Nas metas
+   * digitadas, significa "há registro salvo"; nas derivadas (VENDAS), significa
+   * "há estimativas cadastradas no mês".
+   */
   definida: boolean;
+  /**
+   * Verdadeiro quando a meta é **calculada** a partir de outro dado do sistema
+   * em vez de digitada. Em VENDAS, é a soma das estimativas diárias.
+   */
+  derivada: boolean;
+  /** De onde vem o valor, para explicar ao gestor na tela de Metas. */
+  origem: string;
 }
 
 /**
  * Serviço das Metas mensais. Fonte única de verdade das metas por período
- * mensal. Resolve o valor de cada indicador com fallback:
- *  1) registro salvo em `metas_mensais` (tipo + anoMes);
- *  2) para VENDAS, a meta legada de `config_vendas` (compatibilidade);
- *  3) o valor padrão de CONFIG_METAS.
+ * mensal. Há dois regimes:
+ *
+ *  - **VENDAS (derivada):** a meta do mês é a soma das estimativas diárias
+ *    (`estimativas_venda_dia`, Central de Vendas). Não se digita e não aceita
+ *    registro em `metas_mensais`; um mês sem estimativas resolve 0, que o
+ *    sistema lê como "meta ainda não definida". Ver ADR 0017.
+ *  - **Demais tipos (digitadas):** registro salvo em `metas_mensais`
+ *    (tipo + anoMes) e, na falta dele, o valor padrão de CONFIG_METAS.
+ *
+ * A meta legada de `config_vendas.metaMensal` deixou de ser consultada: a
+ * consolidação numa fonte única era a dívida registrada no atlas de Metas.
  */
 @Injectable()
 export class MetasService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Resolve o valor da meta de um tipo no mês (com fallback). Usado pelos
-   * serviços de Vendas e Arrecadação para colorir/projetar os indicadores.
+   * Resolve o valor da meta de um tipo no mês. Usado pelos serviços de Vendas
+   * e Arrecadação para colorir/projetar os indicadores.
    */
   async resolver(tipo: TipoMeta, anoMes: string): Promise<number> {
+    if (ehMetaDerivada(tipo)) {
+      return this.somarEstimativas(anoMes);
+    }
     try {
       const registro = await this.prisma.metaMensal.findUnique({
         where: { tipo_anoMes: { tipo, anoMes } },
@@ -44,26 +69,28 @@ export class MetasService {
         return Number(registro.meta);
       }
     } catch {
-      // Tabela ainda não migrada: cai no fallback abaixo.
-    }
-    return this.valorPadrao(tipo);
-  }
-
-  /** Valor padrão de um tipo (VENDAS herda a meta legada do Painel de Vendas). */
-  private async valorPadrao(tipo: TipoMeta): Promise<number> {
-    if (tipo === 'VENDAS') {
-      try {
-        const cfg = await this.prisma.configVendas.findUnique({
-          where: { id: 'vendas' },
-        });
-        if (cfg && Number(cfg.metaMensal) > 0) {
-          return Number(cfg.metaMensal);
-        }
-      } catch {
-        // Sem config legada: usa o padrão.
-      }
+      // Tabela ainda não migrada: cai no valor padrão.
     }
     return CONFIG_METAS[tipo].valorPadrao;
+  }
+
+  /**
+   * Soma as estimativas diárias do mês (meta de VENDAS). Lê `EstimativaVendaDia`
+   * direto pelo Prisma de propósito: `VendasService` já depende deste serviço,
+   * então injetá-lo aqui criaria dependência circular.
+   */
+  private async somarEstimativas(anoMes: string): Promise<number> {
+    try {
+      const { inicio, fim } = intervaloDoMes(anoMes);
+      const regs = await this.prisma.estimativaVendaDia.findMany({
+        where: { data: { gte: inicio, lt: fim } },
+        select: { valor: true },
+      });
+      return metaDeEstimativas(regs.map((r) => Number(r.valor)));
+    } catch {
+      // Período inválido ou tabela ausente: sem meta para o mês.
+      return 0;
+    }
   }
 
   /** Lista as metas dos 5 tipos para o mês (valor resolvido + metadados). */
@@ -81,37 +108,49 @@ export class MetasService {
 
     return Promise.all(
       TIPOS_META.map(async (tipo) => {
-        const config = CONFIG_METAS[tipo];
+        if (ehMetaDerivada(tipo)) {
+          const meta = await this.somarEstimativas(anoMes);
+          return this.montarView(tipo, anoMes, meta, meta > 0);
+        }
         const definida = porTipo.has(tipo);
         const meta = definida
           ? (porTipo.get(tipo) as number)
-          : await this.valorPadrao(tipo);
-        return {
-          tipo,
-          anoMes,
-          titulo: config.titulo,
-          unidade: config.unidade,
-          sentido: config.sentido,
-          meta,
-          definida,
-        };
+          : CONFIG_METAS[tipo].valorPadrao;
+        return this.montarView(tipo, anoMes, meta, definida);
       }),
     );
   }
 
-  /** Define (cria/atualiza) a meta de um tipo no mês. */
+  /**
+   * Define (cria/atualiza) a meta de um tipo no mês. Recusa os tipos derivados:
+   * a meta de VENDAS só muda mexendo nas estimativas diárias.
+   */
   async definir(
     tipo: TipoMeta,
     anoMes: string,
     meta: number,
     atualizadoPor?: string,
   ): Promise<MetaMensalView> {
+    if (ehMetaDerivada(tipo)) {
+      throw new MetaDerivadaNaoEditavelError(tipo);
+    }
     await this.prisma.metaMensal.upsert({
       where: { tipo_anoMes: { tipo, anoMes } },
       update: { meta, atualizadoPor },
       create: { tipo, anoMes, meta, atualizadoPor },
     });
+    return this.montarView(tipo, anoMes, meta, true);
+  }
+
+  /** Monta a view de uma meta (rótulos + origem do valor). */
+  private montarView(
+    tipo: TipoMeta,
+    anoMes: string,
+    meta: number,
+    definida: boolean,
+  ): MetaMensalView {
     const config = CONFIG_METAS[tipo];
+    const derivada = ehMetaDerivada(tipo);
     return {
       tipo,
       anoMes,
@@ -119,7 +158,11 @@ export class MetasService {
       unidade: config.unidade,
       sentido: config.sentido,
       meta,
-      definida: true,
+      definida,
+      derivada,
+      origem: derivada
+        ? 'Soma das estimativas diárias do mês (Central de Vendas).'
+        : 'Valor definido pelo gestor em Centro de Controle ▸ Metas.',
     };
   }
 }

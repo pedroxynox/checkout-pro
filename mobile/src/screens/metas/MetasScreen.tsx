@@ -3,10 +3,12 @@
  *
  * Mostra um seletor de mês no topo e, abaixo, uma card por indicador
  * (Vendas, Cancelamento de Itens, Recarga de Celular, Cancelamento de Cupom,
- * Devoluções). Cada card exibe a meta do mês selecionado e permite editá-la.
+ * Devoluções). Cada card exibe a meta do mês selecionado.
  *
- * A meta de Vendas, antes definida no Painel de Vendas, agora é definida aqui
- * (por mês). As demais alimentam as cores/projeções dos Indicadores.
+ * As quatro metas digitadas (recargas, cancelamentos e devoluções) são
+ * editadas aqui. A de **Vendas é derivada** (`derivada: true`): é a soma das
+ * estimativas diárias e aparece como somente leitura, com atalho para a
+ * Central de Vendas, onde essas estimativas são cadastradas.
  *
  * Apenas o gestor (funcionalidade OPERADORES_CRUD).
  */
@@ -25,6 +27,7 @@ import {
   Tela,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
+import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { notificar } from '../../utils/dialogos';
 import {
@@ -58,7 +61,9 @@ function ajudaUnidade(item: MetaMensal): string {
     : 'Percentual (%) sobre as vendas — quanto menor, melhor.';
 }
 
-export function MetasScreen(): React.ReactElement {
+export function MetasScreen({
+  navigation,
+}: PropsTela<'Metas'>): React.ReactElement {
 
   const [anoMes, setAnoMes] = useState(mesAtual());
   const [editTipo, setEditTipo] = useState<TipoMeta | null>(null);
@@ -108,8 +113,9 @@ export function MetasScreen(): React.ReactElement {
   return (
     <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
       <Text style={styles.intro}>
-        Defina as metas de cada indicador para o mês escolhido. Apenas o gestor
-        tem acesso a esta área.
+        Defina as metas de cada indicador para o mês escolhido. A meta de Vendas
+        não é digitada: ela é a soma das estimativas diárias cadastradas na
+        Central de Vendas. Apenas o gestor tem acesso a esta área.
       </Text>
 
       {/* Seletor de mês (período mensal) */}
@@ -147,12 +153,27 @@ export function MetasScreen(): React.ReactElement {
               <View style={styles.valorInfo}>
                 <Text style={styles.valor}>{formatarValor(item)}</Text>
                 {!item.definida && (
-                  <Text style={styles.padrao}>valor padrão (ainda não definida)</Text>
+                  <Text style={styles.padrao}>
+                    {item.derivada
+                      ? 'sem estimativas cadastradas neste mês'
+                      : 'valor padrão (ainda não definida)'}
+                  </Text>
                 )}
               </View>
             </View>
 
-            {editTipo === item.tipo ? (
+            {/* Meta derivada (Vendas): somente leitura, com atalho para a
+                Central de Vendas, onde as estimativas diárias são definidas. */}
+            {item.derivada ? (
+              <>
+                <Text style={styles.ajuda}>{item.origem}</Text>
+                <Botao
+                  titulo="Abrir Central de Vendas"
+                  variante="secundario"
+                  aoPressionar={() => navigation.navigate('CentralVendas')}
+                />
+              </>
+            ) : editTipo === item.tipo ? (
               <>
                 <CampoTexto
                   rotulo={

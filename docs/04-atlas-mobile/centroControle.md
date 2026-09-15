@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/centroControle/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `mobile/src/screens/centroControle/`
 
 # Área: `centroControle`
 
@@ -28,7 +28,7 @@ operacionais).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `CentroControleScreen.tsx` | Hub/índice de atalhos de gestão | 179 |
-| `CentralVendasScreen.tsx` | Estimativas de venda por dia do mês | 237 |
+| `CentralVendasScreen.tsx` | Estimativas de venda por dia do mês (a soma é a meta do mês) | 237 |
 | `ConfigEscalaDomingoScreen.tsx` | Configuração do rodízio de domingo (G1/G2/G3) | 268 |
 | `TiposContratoScreen.tsx` | CRUD dos tipos de contrato de jornada | 569 |
 | `InsumosDadosScreen.tsx` | Zerar estoque de insumos e limpar requisições | 214 |
@@ -44,7 +44,9 @@ operacionais).
    arquivo `.txt` é feita pela tela `ProdutosPesadosCarga`, ver
    [`produtosPesados`](produtosPesados.md)).
 2. **Central de Vendas:** escolhe o mês, digita a estimativa por dia e salva; o
-   topo mostra a estimativa do mês (soma ao vivo das diárias).
+   topo mostra a estimativa do mês (soma ao vivo das diárias). **Esse total é a
+   meta do mês** — esta tela é o único lugar que a define (ver
+   [ADR 0017](../02-arquitetura/decisoes/0017-meta-de-vendas-derivada-das-estimativas.md)).
 3. **Rodízio de domingo:** define o 1º domingo do ciclo e quem folga em cada um
    dos 3 domingos (G1/G2/G3); vê a prévia dos próximos domingos.
 4. **Tipos de contrato:** cria/edita/ativa/desativa/remove contratos de jornada
@@ -85,7 +87,10 @@ Módulos do backend relacionados:
 ## 6. Estado local e regras de UI
 - O hub monta os cards de uma lista fixa e só exibe os que `podeAcessar` libera.
 - **Central de Vendas:** guarda os valores digitados por data (mapa iso→texto),
-  com máscara de milhar; a estimativa do mês é a soma ao vivo das diárias.
+  com máscara de milhar; a estimativa do mês é a soma ao vivo das diárias e
+  equivale à meta do mês (o backend calcula o mesmo total com a função pura
+  `metaDeEstimativas`). Salvar aqui **altera a meta** do Painel de Vendas, o
+  Resumo do Dia e o aviso de "meta em risco".
 - **Rodízio de domingo:** valida que a data de referência é um domingo e que os
   3 grupos (G1/G2/G3) foram escolhidos sem repetição antes de salvar.
 - **Tipos de contrato:** valida nome obrigatório, `intervalo mínimo < máximo` e
