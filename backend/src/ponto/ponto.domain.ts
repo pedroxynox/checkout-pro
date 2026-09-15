@@ -201,6 +201,74 @@ export function batidaDuplicada(
   );
 }
 
+/**
+ * Descarta as batidas REPETIDAS de um dia, mantendo a primeira de cada grupo.
+ *
+ * ## Por que o cálculo precisa se defender disto
+ *
+ * Registrar uma batida próxima demais de outra é recusado (`batidaDuplicada`,
+ * mesmo critério e mesmo limite usados aqui). Mas essa guarda é aplicada **por
+ * identidade** — `pessoaId` + `tipoPessoa` —, e uma pessoa pode ter duas: quem
+ * muda de função para FISCAL passa a bater ponto com um `Fiscal.id` novo,
+ * enquanto o histórico dela ficou gravado com o `Colaborador.id`.
+ *
+ * O resultado real: um gestor que reanota as horas de um dia após a mudança de
+ * função cria uma segunda série de marcações, e o dia fica com oito batidas em
+ * vez de quatro. Nenhuma foi gravada por engano — cada uma passou pela validação
+ * da sua identidade —, mas juntas descrevem um dia que não existiu.
+ *
+ * E o dano não é só somar horas a mais: **a ordem posicional é o que dá sentido
+ * a cada batida** (1ª = entrada, 2ª = saída para o intervalo, 3ª = retorno, 4ª =
+ * encerramento). Uma cópia da entrada intercalada empurra tudo uma casa, e a
+ * jornada calculada passa a medir intervalos entre marcações que nada têm a ver
+ * uma com a outra — normalmente resultando em muito menos horas do que a pessoa
+ * trabalhou, o que virava **hora devida** contra ela.
+ *
+ * ## O que esta função faz, e o que deliberadamente NÃO faz
+ *
+ * Ela é a defesa no **cálculo**, não uma limpeza de dados: nenhuma batida é
+ * apagada. As duas séries continuam no banco, visíveis na auditoria e no painel
+ * de inconsistências (que segue apontando `DUPLICADA` para o dia, e é assim que
+ * o gestor descobre que precisa revisar). O que muda é que a jornada volta a ser
+ * calculada sobre um dia coerente.
+ *
+ * Mantém a **primeira** de cada grupo, e não a última, por dois motivos: é a que
+ * já existia (a que o relógio aceitou primeiro) e a escolha tem de ser
+ * determinística — o desempate por `id` garante o mesmo resultado a cada
+ * consulta, senão o total de horas de uma pessoa mudaria entre dois carregamentos
+ * da mesma tela.
+ *
+ * Sem efeitos colaterais — testável sem banco.
+ */
+export function descartarBatidasRepetidas(
+  batidas: readonly BatidaEntrada[],
+  intervaloMinimoMs: number = INTERVALO_MINIMO_ENTRE_BATIDAS_MS,
+): BatidaEntrada[] {
+  const ordenadas = [...batidas].sort((a, b) => {
+    const d = a.hora.getTime() - b.hora.getTime();
+    // Desempate por id: duas batidas na MESMA hora exata (o caso mais comum de
+    // reanotação) precisam de uma ordem estável, senão a que sobrevive depende
+    // da ordem em que o banco devolveu as linhas.
+    return d !== 0 ? d : a.id.localeCompare(b.id);
+  });
+
+  const mantidas: BatidaEntrada[] = [];
+  for (const b of ordenadas) {
+    const ultima = mantidas[mantidas.length - 1];
+    // Compara só com a última mantida: as anteriores estão ainda mais longe, e
+    // encadear assim evita que um grupo de três marcações próximas sobreviva
+    // pela metade.
+    if (
+      ultima &&
+      Math.abs(b.hora.getTime() - ultima.hora.getTime()) < intervaloMinimoMs
+    ) {
+      continue;
+    }
+    mantidas.push(b);
+  }
+  return mantidas;
+}
+
 /** Etapas crescentes dos avisos preventivos/de TAC. */
 export type EtapaAlertaTac = 'RISCO_1H30' | 'RISCO_1H40' | 'TAC';
 
@@ -258,9 +326,11 @@ export function classificarBatidas(
   maxSemIntervaloMs: number = REGRAS_PADRAO.maxTrabalhoSemIntervaloMs,
   intervaloObrigatorio = false,
 ): BatidaClassificada[] {
-  const ordenadas = [...batidas].sort(
-    (a, b) => a.hora.getTime() - b.hora.getTime(),
-  );
+  // Descarta as REPETIÇÕES antes de classificar. A ordem posicional é o que dá
+  // sentido a cada batida (1ª = entrada, 2ª = saída para o intervalo...), então
+  // uma marcação gravada duas vezes desloca todas as seguintes e produz uma
+  // jornada sem relação com o dia real. Ver `descartarBatidasRepetidas`.
+  const ordenadas = descartarBatidasRepetidas(batidas);
   // Duas batidas próximas encerram a jornada SEM intervalo apenas quando o
   // contrato NÃO exige intervalo (ex.: 4h corridas). Se o intervalo é
   // obrigatório (6x1, 6h), a 2ª batida é sempre "saída para intervalo" — nunca

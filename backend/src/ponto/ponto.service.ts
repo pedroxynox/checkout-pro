@@ -355,6 +355,48 @@ export class PontoService {
   }
 
   /**
+   * Filtro das batidas de um dia **DA PESSOA**, não de uma identidade só.
+   *
+   * Uma pessoa pode ter duas identidades de ponto: quem muda de função para
+   * FISCAL passa a bater com um `Fiscal.id` novo, enquanto o histórico dela ficou
+   * gravado com o `Colaborador.id` e `tipoPessoa: 'OPERADOR'`. Um filtro estrito
+   * por `pessoaId + tipoPessoa` faz esse histórico **desaparecer** da tela — foi
+   * exatamente o que aconteceu na operação, e o gestor reanotou o dia à mão
+   * pensando que as horas tinham sido perdidas.
+   *
+   * As três condições cobrem, em ordem: a identidade consultada; qualquer
+   * identidade já vinculada à ficha; e as batidas antigas sem vínculo gravado
+   * (num operador o `pessoaId` É a ficha).
+   *
+   * Diferente de `colaboradorAtivoDaPessoa`, **não lança**: é caminho de leitura,
+   * e uma ficha inativa ou não resolvida não deve esconder o histórico nem
+   * quebrar a tela — nesse caso cai no filtro antigo.
+   */
+  private async filtroBatidasDaPessoa(
+    pessoaId: string,
+    tipoPessoa: 'FISCAL' | 'OPERADOR',
+    dia: Date,
+  ): Promise<Prisma.BatidaPontoWhereInput> {
+    let fichaId: string | null = null;
+    try {
+      fichaId = await this.colaboradorAtivoDaPessoa(pessoaId, tipoPessoa);
+    } catch {
+      fichaId = null;
+    }
+    if (!fichaId) {
+      return { pessoaId, tipoPessoa, data: dia };
+    }
+    return {
+      data: dia,
+      OR: [
+        { pessoaId, tipoPessoa },
+        { colaboradorId: fichaId },
+        { pessoaId: fichaId },
+      ],
+    };
+  }
+
+  /**
    * O dia é FOLGA (descanso) para esta pessoa, segundo o sistema?
    *
    * **Antes isto BLOQUEAVA o registro** (`PontoEmFolgaError`, 409). O bloqueio
@@ -501,9 +543,31 @@ export class PontoService {
     try {
       ({ transicoes, eraPrimeira } = await this.transacaoSerializavel(
         async (tx) => {
+          // As batidas do dia DA PESSOA, não da identidade. Uma pessoa pode ter
+          // duas: quem muda de função para FISCAL passa a bater ponto com um
+          // `Fiscal.id` novo, e o histórico dela ficou com o `Colaborador.id`.
+          //
+          // Antes o filtro era só `pessoaId + tipoPessoa`, e o efeito apareceu na
+          // operação: um gestor reanotou o dia de alguém depois da mudança de
+          // função e o dia terminou com OITO batidas — as quatro antigas não
+          // contavam para o limite da identidade nova, e a validação de
+          // duplicidade também não as via. Cobrindo as duas identidades, o limite
+          // de 4 volta a ser por pessoa e a reanotação é recusada como repetida.
+          //
+          // As três condições cobrem, em ordem: a identidade atual; qualquer
+          // identidade já vinculada à ficha; e as batidas antigas sem vínculo
+          // gravado (num operador o `pessoaId` É a ficha).
           const batidasDoDia = await tx.batidaPonto.findMany({
-            where: { pessoaId: dto.pessoaId, tipoPessoa, data: dia },
-            select: { hora: true },
+            where: {
+              data: dia,
+              OR: [
+                { pessoaId: dto.pessoaId, tipoPessoa },
+                { colaboradorId },
+                { pessoaId: colaboradorId },
+              ],
+            },
+            select: { id: true, hora: true },
+            orderBy: { hora: 'asc' },
           });
           if (batidasDoDia.length >= 4) throw new LimiteBatidasDiaError();
           if (
@@ -519,11 +583,11 @@ export class PontoService {
           // esta batida, uma vez ordenada no dia, vira o retorno do intervalo e
           // o intervalo já ultrapassou o limite, a pessoa é tratada como
           // "não retorno" — o retorno é recusado (o dia fica como não retorno).
+          // Ids REAIS (e a nova como `nova`): `classificarBatidas` desempata as
+          // repetições por id, então ids posicionais tornariam o resultado
+          // dependente da ordem em que o banco devolvesse as linhas.
           const classificadasComNova = classificarBatidas(
-            [...batidasDoDia, { hora }].map((b, i) => ({
-              id: String(i),
-              hora: b.hora,
-            })),
+            [...batidasDoDia, { id: 'nova', hora }],
             regras?.maxTrabalhoSemIntervaloMs,
             regras?.intervaloObrigatorio ?? false,
           );
@@ -1384,12 +1448,14 @@ export class PontoService {
     data: Date,
   ): Promise<JornadaDiaResposta> {
     const dia = inicioDoDia(data);
+    // Cobre as DUAS identidades da pessoa: sem isso, o histórico de quem mudou
+    // de função desaparece desta tela (ver `filtroBatidasDaPessoa`).
     const batidas = await this.prisma.batidaPonto.findMany({
-      where: {
+      where: await this.filtroBatidasDaPessoa(
         pessoaId,
-        tipoPessoa: tipoPessoa as 'FISCAL' | 'OPERADOR',
-        data: dia,
-      },
+        tipoPessoa as 'FISCAL' | 'OPERADOR',
+        dia,
+      ),
       orderBy: { hora: 'asc' },
     });
     // Feriado segue a regra do domingo (base 7h20 + 100%). Best-effort: sem o

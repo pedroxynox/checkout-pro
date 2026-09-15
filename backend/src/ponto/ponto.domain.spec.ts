@@ -12,6 +12,7 @@ import {
   batidaDuplicada,
   calcularJornadaDia,
   cargaBaseDoDia,
+  descartarBatidasRepetidas,
   diaPagaAdicional100,
   classificarBatidas,
   etapaAlertaTac,
@@ -592,5 +593,174 @@ describe('feriado: o que segue o domingo e o que não segue', () => {
     const regras: RegrasContrato = REGRAS_PADRAO;
     expect(diaPagaAdicional100(2, false, regras)).toBe(false);
     expect(diaPagaAdicional100(5, false, regras)).toBe(false);
+  });
+});
+
+/**
+ * BATIDAS REPETIDAS: a defesa do cálculo contra o dia gravado duas vezes.
+ *
+ * O caso real que motivou isto: um colaborador mudou de função para FISCAL. A
+ * partir daí ele bate ponto com um `Fiscal.id` novo, mas o histórico dele ficou
+ * gravado com o `Colaborador.id`. O gestor, vendo as horas "desaparecerem" das
+ * telas de fiscal, reanotou o dia à mão — e como o limite de 4 batidas é validado
+ * POR IDENTIDADE, o dia terminou com oito marcações. Nenhuma foi gravada por
+ * engano; juntas descrevem um dia que não existiu.
+ *
+ * O pior não era somar horas a mais: a ordem posicional é o que dá sentido a cada
+ * batida, então uma cópia da entrada empurra tudo uma casa e a jornada passa a
+ * medir intervalos entre marcações sem relação — quase sempre resultando em MENOS
+ * horas do que a pessoa trabalhou, o que virava hora devida contra ela.
+ *
+ * Nada é apagado: a defesa é no cálculo. As duas séries seguem no banco e o
+ * painel de inconsistências continua apontando `DUPLICADA` para o dia.
+ */
+describe('descartarBatidasRepetidas', () => {
+  it('descarta a cópia exata e mantém a primeira', () => {
+    // A reanotação mais comum: a mesma hora, gravada de novo.
+    const r = descartarBatidasRepetidas([
+      batida('a', '07:00'),
+      batida('b', '07:00'),
+      batida('c', '12:00'),
+    ]);
+
+    expect(r.map((b) => b.id)).toEqual(['a', 'c']);
+  });
+
+  it('descarta o que está mais próximo que o limite de duplicidade', () => {
+    // Mesmo critério e mesmo limite de `batidaDuplicada`, que é o que o relógio
+    // usa para RECUSAR uma batida próxima demais. Aqui só reaproveitamos a regra.
+    const limiteMin = INTERVALO_MINIMO_ENTRE_BATIDAS_MS / 60_000;
+    expect(limiteMin).toBeGreaterThan(0);
+
+    const r = descartarBatidasRepetidas([
+      batida('a', '07:00'),
+      batida('b', '07:01'), // dentro do limite → repetição
+      batida('c', '12:00'),
+    ]);
+
+    expect(r.map((b) => b.id)).toEqual(['a', 'c']);
+  });
+
+  it('NÃO descarta marcações legítimas distantes', () => {
+    // O contrapeso que importa: um dia normal de quatro marcações não pode
+    // perder nenhuma.
+    const dia = [
+      batida('a', '07:00'),
+      batida('b', '12:00'),
+      batida('c', '13:00'),
+      batida('d', '16:00'),
+    ];
+
+    expect(descartarBatidasRepetidas(dia).map((b) => b.id)).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+    ]);
+  });
+
+  it('o dia inteiro duplicado volta a ser um dia de quatro marcações', () => {
+    // As oito batidas do caso real, intercaladas como o banco as devolveria.
+    const r = descartarBatidasRepetidas([
+      batida('v1', '07:00'),
+      batida('n1', '07:00'),
+      batida('v2', '12:00'),
+      batida('n2', '12:00'),
+      batida('v3', '13:00'),
+      batida('n3', '13:00'),
+      batida('v4', '16:00'),
+      batida('n4', '16:00'),
+    ]);
+
+    expect(r).toHaveLength(4);
+    expect(r.map((b) => b.hora.toISOString().slice(11, 16))).toEqual([
+      '07:00',
+      '12:00',
+      '13:00',
+      '16:00',
+    ]);
+  });
+
+  it('é determinística: a mesma entrada dá sempre o mesmo resultado', () => {
+    // Sem isto, o total de horas de uma pessoa mudaria entre dois carregamentos
+    // da mesma tela, conforme a ordem em que o banco devolvesse as linhas.
+    const embaralhada = [
+      batida('n1', '07:00'),
+      batida('v1', '07:00'),
+      batida('v2', '12:00'),
+      batida('n2', '12:00'),
+    ];
+    const inversa = [...embaralhada].reverse();
+
+    expect(descartarBatidasRepetidas(embaralhada).map((b) => b.id)).toEqual(
+      descartarBatidasRepetidas(inversa).map((b) => b.id),
+    );
+  });
+
+  it('compara com a última MANTIDA, não com a anterior descartada', () => {
+    // A janela é de 2 min (`INTERVALO_MINIMO_ENTRE_BATIDAS_MS`) e a comparação é
+    // sempre contra a última batida MANTIDA. A consequência é deliberada e
+    // conservadora: 07:01 é descartada (1 min de 07:00), mas 07:02 sobrevive,
+    // porque está a exatamente 2 min da mantida — fora da janela.
+    //
+    // Comparar contra a anterior ORIGINAL faria uma sequência de marcações
+    // espaçadas de 1 min colapsar toda numa só, apagando marcações legítimas em
+    // cascata. Entre descartar de menos e descartar de mais, aqui vale o de
+    // menos: uma marcação a mais aparece no painel como `DUPLICADA` e o gestor
+    // decide; uma marcação a menos apaga trabalho real da conta de alguém.
+    const r = descartarBatidasRepetidas([
+      batida('a', '07:00'),
+      batida('b', '07:01'),
+      batida('c', '07:02'),
+      batida('d', '12:00'),
+    ]);
+
+    expect(r.map((b) => b.id)).toEqual(['a', 'c', 'd']);
+  });
+
+  it('colapsa um grupo inteiro quando todas caem dentro da janela', () => {
+    // Três cópias da mesma hora — o caso da reanotação — viram uma só.
+    const r = descartarBatidasRepetidas([
+      batida('a', '07:00'),
+      batida('b', '07:00'),
+      batida('c', '07:00'),
+      batida('d', '12:00'),
+    ]);
+
+    expect(r.map((b) => b.id)).toEqual(['a', 'd']);
+  });
+
+  it('a JORNADA de um dia duplicado é a mesma de um dia normal', () => {
+    // O teste que fecha o caso: 07-12 + 13-16 = 8h, com ou sem a segunda série.
+    // Antes, as oito marcações produziam uma jornada sem relação com o dia real.
+    const normal = calcularJornadaDia(
+      [
+        batida('a', '07:00'),
+        batida('b', '12:00'),
+        batida('c', '13:00'),
+        batida('d', '16:00'),
+      ],
+      H('16:00'),
+      SEGUNDA,
+    );
+    const duplicado = calcularJornadaDia(
+      [
+        batida('v1', '07:00'),
+        batida('n1', '07:00'),
+        batida('v2', '12:00'),
+        batida('n2', '12:00'),
+        batida('v3', '13:00'),
+        batida('n3', '13:00'),
+        batida('v4', '16:00'),
+        batida('n4', '16:00'),
+      ],
+      H('16:00'),
+      SEGUNDA,
+    );
+
+    expect(duplicado.trabalhadoMs).toBe(normal.trabalhadoMs);
+    expect(duplicado.status).toBe(normal.status);
+    expect(duplicado.horasExtrasMs).toBe(normal.horasExtrasMs);
+    expect(duplicado.tac).toBe(normal.tac);
   });
 });

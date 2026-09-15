@@ -127,7 +127,7 @@ export class PontoDeteccaoAutomaticaService {
       await Promise.all([
         this.prisma.batidaPonto.findMany({
           where: { data: dia },
-          select: { pessoaId: true },
+          select: { pessoaId: true, colaboradorId: true },
         }),
         this.prisma.registroPontoFiscal.findMany({
           where: { data: dia },
@@ -142,8 +142,18 @@ export class PontoDeteccaoAutomaticaService {
           select: { colaboradorId: true },
         }),
       ]);
+    // AS DUAS chaves de cada batida. Uma pessoa pode ter duas identidades de
+    // ponto: quem muda de função para FISCAL passa a bater com um `Fiscal.id`
+    // novo, e o escalado é identificado por esse id — mas as batidas do dia da
+    // mudança ainda podem estar gravadas com o `Colaborador.id`. Olhando só
+    // `pessoaId`, a varredura não as via, concluía "não bateu ponto" e marcava
+    // FALTA AUTOMÁTICA em quem estava trabalhando. A revalidação já cruzava as
+    // duas chaves (`carregarFatosDoPeriodo`), então a falta se curava sozinha no
+    // ciclo seguinte — mas depois de notificar o gestor e assustar a pessoa.
     const comAtividade = new Set<string>([
-      ...batidas.map((b) => b.pessoaId),
+      ...batidas.flatMap((b) =>
+        b.colaboradorId ? [b.pessoaId, b.colaboradorId] : [b.pessoaId],
+      ),
       ...registrosFiscais.map((r) => r.fiscalId),
     ]);
     // Ids (pessoaId OU colaboradorId) que já têm falta hoje — a união das duas
@@ -166,7 +176,16 @@ export class PontoDeteccaoAutomaticaService {
 
     for (const escalado of escalados) {
       try {
-        if (comAtividade.has(escalado.pessoaId)) {
+        // As duas chaves nos DOIS lados: o escalado é identificado pelo id da
+        // batida (`Fiscal.id` para fiscais) mas conhece a própria ficha, e as
+        // batidas guardam ambas. Comparar só `pessoaId` deixava passar quem
+        // mudou de função — as batidas do dia estavam sob a ficha, não sob a
+        // identidade nova.
+        if (
+          comAtividade.has(escalado.pessoaId) ||
+          (escalado.colaboradorId != null &&
+            comAtividade.has(escalado.colaboradorId))
+        ) {
           await this.verificarNaoRetorno(
             escalado,
             dia,

@@ -89,6 +89,16 @@ colaborador, atribuindo retroativamente o histórico. Idempotente.
 - `sincronizarContaDeAcesso(atual, atualizado, input, novaMatricula)` — decide
   entre **criar** (promoção), **atualizar** (conta existente) ou **nada**.
 - `garantirFiscal(usuarioId, nome, turno)` — cria/vincula o registro de `Fiscal`.
+
+  > ⚠️ **Promover alguém a FISCAL cria uma segunda identidade de ponto.** O
+  > `Fiscal` nasce com um id novo, e a partir daí a pessoa bate ponto com ele —
+  > enquanto todo o histórico dela continua gravado com o `Colaborador.id` e
+  > `tipoPessoa: 'OPERADOR'`. **Nada migra as batidas, e nada precisa migrar:**
+  > as leituras e validações de ponto cobrem as duas identidades (regra 16 de
+  > [`ponto`](ponto.md)). O que **não** se pode fazer é escrever uma consulta nova
+  > de ponto filtrando só pela identidade atual — foi assim que um caso real
+  > perdeu as horas de vista e acabou com o dia lançado em duplicidade.
+  > Ver [ADR 0020](../02-arquitetura/decisoes/0020-mudanca-de-funcao-preserva-o-ponto.md).
 - `sincronizarEscalaFiscal(colaborador)` — regenera a escala semanal geral
   preservando exceções (Opção A: o cadastro é a fonte única). Chamada no
   cadastrar, no editar e no ativar/desativar. **Tem saídas antecipadas** (ficha

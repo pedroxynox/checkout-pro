@@ -198,8 +198,25 @@ da remoção imediata que o `PontoService` já faz na batida normal.
 
 ## 6. Lógica de domínio (funções puras)
 - `classificarBatidas(batidas, maxSemIntervaloMs, intervaloObrigatorio)` →
-  ordena por hora e atribui o tipo pela ordem; duas batidas próximas encerram
-  jornada sem intervalo apenas quando o contrato não o exige.
+  **descarta as repetições** (ver abaixo), ordena por hora e atribui o tipo pela
+  ordem; duas batidas próximas encerram jornada sem intervalo apenas quando o
+  contrato não o exige.
+- `descartarBatidasRepetidas(batidas, intervaloMinimoMs)` → remove do **cálculo**
+  as marcações repetidas do dia, mantendo a primeira de cada grupo. Mesmo critério
+  e mesmo limite (2 min) que o relógio usa para recusar uma batida próxima demais.
+
+  Existe porque a validação de duplicidade é feita **por identidade**, e uma
+  pessoa pode ter duas: quem muda de função para FISCAL passa a bater com um
+  `Fiscal.id` novo. Um dia reanotado após a mudança ficava com **oito** marcações,
+  e como a ordem posicional é o que dá sentido a cada batida, a jornada passava a
+  medir intervalos entre marcações sem relação — virando **hora devida** contra a
+  pessoa. Ver [ADR 0020](../02-arquitetura/decisoes/0020-mudanca-de-funcao-preserva-o-ponto.md).
+
+  **Nada é apagado:** é defesa no cálculo. As duas séries continuam no banco e o
+  painel de inconsistências segue apontando `DUPLICADA` naquele dia. Mantém a
+  primeira com desempate por `id` (precisa ser determinístico, senão o total de
+  horas mudaria entre dois carregamentos da mesma tela) e compara com a última
+  **mantida** — conservador de propósito: descarta de menos, não de mais.
 - `calcularJornadaDia(batidas, agora, diaSemana, ehFeriado, diaEncerrado, regras)`
   → tempo trabalhado (intervalo não conta), intervalo, extras 50/100, status,
   alerta iminente, TAC e motivos, o que falta para o dia e o sinalizador
@@ -445,11 +462,34 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
    preciso corrigir a escala antes de excluir, senão a card voltava em 5 minutos.
    A lápide é por **pessoa + tipo + dia**: cada novo dia recomeça do zero, e
    excluir uma falta não silencia o não-retorno (nem o contrário).
+16. **Toda leitura e validação de ponto cobre as DUAS identidades da pessoa.** O
+   ponto é keyed por (`pessoaId`, `tipoPessoa`), e o par muda quando alguém muda de
+   função: um operador bate com o `Colaborador.id`, um fiscal com o `Fiscal.id`
+   (criado na promoção). O histórico fica na identidade antiga.
+
+   O padrão é um `OR` de três condições — a identidade consultada, qualquer
+   identidade vinculada à ficha (`colaboradorId`), e o `pessoaId` da ficha (para
+   batidas antigas sem vínculo gravado, onde num operador o `pessoaId` **é** a
+   ficha). Está em `filtroBatidasDaPessoa` (leitura, não lança) e no `findMany` da
+   transação de `registrarBatida` (validação).
+
+   Consequências de cada ponta, e por que as duas importam:
+   - **leitura**: sem isso o Relógio Ponto mostrava zero batidas num dia que a
+     pessoa trabalhou — foi o sintoma que abriu o caso;
+   - **validação**: sem isso o limite de 4 marcações e a detecção de duplicidade
+     eram por identidade, e um dia reanotado após a mudança de função ficava com
+     oito marcações.
+
+   Nos painéis que listavam pessoas por `funcao`, a ordem foi invertida: primeiro
+   as batidas do período, depois as fichas de quem bateu. A função de hoje não
+   decide o que aconteceu num dia passado. Ver
+   [ADR 0020](../02-arquitetura/decisoes/0020-mudanca-de-funcao-preserva-o-ponto.md).
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `ponto.domain.spec.ts` | Classificação e cálculo da jornada/TAC (funções puras) | 38 |
+| `ponto.domain.spec.ts` | Classificação e cálculo da jornada/TAC (funções puras) e o **descarte de marcações repetidas**: cópia exata, dentro da janela, grupo inteiro, determinismo, o contrapeso das marcações legítimas — e que a jornada de um dia duplicado é igual à de um dia normal | 46 |
+| `mudanca-de-funcao.spec.ts` | **O histórico sobrevive à mudança de função:** o Relógio Ponto encontra as batidas da identidade antiga, a reanotação é recusada como duplicada, o limite de 4 conta a pessoa, e a degradação sem ficha resolvível | 6 |
 | `ponto.service.spec.ts` | Alertas de TAC, validações de pessoa/data/hora, transação, ponte de fiscal e o **ponto em dia de folga** (permite, avisa uma vez por pessoa/dia, e não avisa em dia normal) | 44 |
 | `sugestao-folga.domain.spec.ts` | A sugestão do novo dia de folga — e sobretudo os casos em que ela **se cala**: uma semana só, folga cumprida em alguma semana, dois candidatos, domingo (rodízio) | 8 |
 | `ponto-ocr.parser.spec.ts` | Extração de nome/data/hora do comprovante | 17 |
@@ -470,6 +510,14 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 - 🔧 `ponto.service.ts` concentra persistência, classificação, avisos de TAC e
   pontes (fiscal/ausência). Candidato a extrair sub-serviços. (Tamanho atual em
   [estado-e-métricas](../08-gestao/estado-e-metricas.md).)
+- ⚠️ **A identidade dupla continua existindo.** Enquanto o modelo `Fiscal` não for
+  aposentado em favor da ficha única ([ADR 0004](../02-arquitetura/decisoes/0004-cadastro-unificado-e-escala-opcao-a.md)),
+  **qualquer consulta nova** a `batidas_ponto`, `ausencias` ou
+  `registros_ponto_fiscal` precisa cobrir as duas chaves (regra 16). Uma consulta
+  que filtre só por `pessoaId + tipoPessoa` — ou que liste pessoas por `funcao` —
+  volta a esconder o histórico de quem mudou de função. Foi assim que o caso do
+  [ADR 0020](../02-arquitetura/decisoes/0020-mudanca-de-funcao-preserva-o-ponto.md)
+  chegou à produção.
 - ⚠️ **Quem trabalha num dia marcado como folga fica fora da vigilância
   automática.** A varredura de 5 minutos parte de `escaladosDoDia`, e a folga
   exclui a pessoa de lá — então ela **não** recebe alerta de atraso nem detecção
