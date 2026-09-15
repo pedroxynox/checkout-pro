@@ -34,6 +34,10 @@ import {
   horaMarcacaoHHmm,
 } from '../ponto/marcacoes-invalidas.domain';
 import { ConsultorFolga, FolgaService } from '../escala-domingo/folga.service';
+import {
+  sugerirFolgaPorBatidas,
+  textoSugestaoFolga,
+} from '../ponto/sugestao-folga.domain';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
@@ -173,6 +177,21 @@ export interface CentralDiaDetalhe {
   entradaPrevista?: string | null;
   /** Minutos de atraso na entrada além da tolerância (só quando houve atraso). */
   atrasoMinutos?: number;
+  /**
+   * A pessoa BATEU PONTO num dia que o cadastro diz ser **folga** dela.
+   *
+   * Registrar ponto em dia de folga era recusado (409) até se perceber que a
+   * premissa estava errada: isso quase nunca é alguém trabalhando no descanso —
+   * é a folga que mudou sem o cadastro ser atualizado. Recusar fazia a pessoa
+   * trabalhar o dia inteiro **sem registro**, e o erro de cadastro seguia
+   * invisível.
+   *
+   * Hoje o ponto entra, o dia é calculado como **qualquer dia de trabalho**
+   * (jornada normal, extras de 50%, débito se houver) e a divergência é apontada
+   * aqui para o gestor corrigir a escala. **Não** é TAC e **não** entra em
+   * nenhum contador da pessoa: o problema é do cadastro, não dela.
+   */
+  pontoEmFolga?: boolean;
 }
 
 export interface CentralPeriodo {
@@ -219,9 +238,21 @@ export interface InconsistenciaItem {
    * - DUPLICADA: batidas muito próximas no mesmo dia (possível duplicidade);
    * - CONFLITO_AUSENCIA: bateu ponto E tem falta/atestado no mesmo dia;
    * - ATRASO: entrada além da tolerância do turno (fora da escala);
-   * - TAC: dia irregular (excesso de extras ou intervalo fora da faixa).
+   * - TAC: dia irregular (excesso de extras ou intervalo fora da faixa);
+   * - PONTO_EM_FOLGA: trabalhou num dia que o cadastro diz ser folga dela.
+   *
+   * `PONTO_EM_FOLGA` é um problema de **cadastro**, não de conduta: quase sempre
+   * a folga da pessoa mudou e ninguém atualizou o sistema. Por isso ele vive
+   * aqui, no painel do que o gestor precisa resolver, e **não** entra no TAC nem
+   * em nenhum contador da pessoa — ela não fez nada de errado.
    */
-  tipo: 'INCOMPLETA' | 'DUPLICADA' | 'CONFLITO_AUSENCIA' | 'ATRASO' | 'TAC';
+  tipo:
+    | 'INCOMPLETA'
+    | 'DUPLICADA'
+    | 'CONFLITO_AUSENCIA'
+    | 'ATRASO'
+    | 'TAC'
+    | 'PONTO_EM_FOLGA';
   detalhe: string;
 }
 
@@ -233,6 +264,8 @@ export interface CentralInconsistencias {
     conflitos: number;
     atrasos: number;
     tac: number;
+    /** Dias trabalhados que o cadastro diz serem folga (escala desatualizada). */
+    pontoEmFolga: number;
     total: number;
   };
   itens: InconsistenciaItem[];
@@ -968,9 +1001,13 @@ export class CentralJornadaService {
      * uma falta apontada na card. Sem o serviço de folga (é `@Optional()`), vale
      * só a ficha — o comportamento degrada, não quebra.
      */
+    /** O cadastro diz que este dia é FOLGA (descanso) desta pessoa? */
+    const ehFolgaNoDia = (dia: Date): boolean =>
+      consultorFolga?.ehFolga(dia, [...ids]) ?? false;
+
     const escaladoNoDia = (dia: Date, ehFeriado: boolean): boolean => {
       if (!entradaEsperadaNoDia(ficha, dia, ancora, ehFeriado)) return false;
-      return !(consultorFolga?.ehFolga(dia, [...ids]) ?? false);
+      return !ehFolgaNoDia(dia);
     };
 
     for (
@@ -1045,6 +1082,13 @@ export class CentralJornadaService {
         const atrasoMinutos =
           minutosDeAtraso(entradaPrevista, entradaReal) ?? undefined;
         if (atrasoMinutos != null) atrasos += 1;
+        // Bateu ponto num dia que o cadastro diz ser FOLGA dela. O registro é
+        // aceito (era recusado até se perceber que a premissa estava errada: isso
+        // quase nunca é trabalhar no descanso, é a folga que mudou sem alguém
+        // atualizar o sistema). O dia conta como qualquer dia de trabalho; o que
+        // se faz é APONTAR, para o gestor corrigir a escala. Não é TAC, e não
+        // entra em nenhum contador da pessoa — o problema é do cadastro.
+        const pontoEmFolga = ehFolgaNoDia(dia) || undefined;
         if (coletarDias)
           dias.push({
             data: k,
@@ -1064,6 +1108,7 @@ export class CentralJornadaService {
             conflitoAusencia: conflito,
             entradaPrevista,
             atrasoMinutos,
+            pontoEmFolga,
           });
       } else if (ausencia) {
         let tipo: CentralDiaDetalhe['tipo'] = 'FALTA';
@@ -1352,6 +1397,24 @@ export class CentralJornadaService {
         ehFeriado: d.ehFeriado,
       });
 
+      // Sugestão do novo dia de folga, calculada UMA vez por pessoa a partir dos
+      // dias que ela realmente trabalhou no ciclo. A regra é pura e conservadora
+      // (`sugerirFolgaPorBatidas`): só conclui quando a folga do cadastro foi
+      // trabalhada em todas as semanas observadas e existe exatamente um dia em
+      // que a pessoa nunca apareceu. Na dúvida, string vazia.
+      const sugestaoDeFolga = textoSugestaoFolga(
+        sugerirFolgaPorBatidas(
+          c.folgaDiaSemana ?? null,
+          [
+            ...new Set(
+              batidas
+                .filter((b) => this.daPessoa(b, ids))
+                .map((b) => inicioDoDia(b.data).getTime()),
+            ),
+          ].map((t) => ({ data: new Date(t) })),
+        ),
+      );
+
       for (const d of dias) {
         if (d.tipo === 'INCOMPLETO') {
           itens.push({
@@ -1385,6 +1448,20 @@ export class CentralJornadaService {
             detalhe: d.motivosTac.join('; ') || 'Dia em TAC',
           });
         }
+        if (d.pontoEmFolga) {
+          // A frase é dirigida ao gestor e diz o que fazer, porque a ação é dele:
+          // a pessoa trabalhou normalmente, o que está errado é o cadastro. Quando
+          // as batidas das últimas semanas sustentam uma conclusão, a sugestão do
+          // novo dia de folga vem junto — é o passo em que se esquece de novo.
+          itens.push({
+            ...base(d),
+            tipo: 'PONTO_EM_FOLGA',
+            detalhe:
+              'Trabalhou num dia marcado como FOLGA no cadastro. ' +
+              'O ponto está correto — confira a escala.' +
+              (sugestaoDeFolga ? ` ${sugestaoDeFolga}` : ''),
+          });
+        }
         const horas = horasPorDia.get(d.data);
         if (horas && this.temBatidasProximas(horas)) {
           itens.push({
@@ -1415,6 +1492,7 @@ export class CentralJornadaService {
         conflitos: contar('CONFLITO_AUSENCIA'),
         atrasos: contar('ATRASO'),
         tac: contar('TAC'),
+        pontoEmFolga: contar('PONTO_EM_FOLGA'),
         total: itens.length,
       },
       itens,

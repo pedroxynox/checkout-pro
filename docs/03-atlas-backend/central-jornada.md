@@ -186,7 +186,9 @@ faltas, TAC, conflitos e atrasos.
   `FALTA_NAO_REGISTRADA` é o dia em que a pessoa **estava escalada**, o dia já
   terminou, ela não bateu ponto e **ninguém lançou a falta** — ver a regra 15.
 - `InconsistenciaItem.tipo`: `INCOMPLETA` · `DUPLICADA` · `CONFLITO_AUSENCIA` ·
-  `ATRASO` · `TAC`.
+  `ATRASO` · `TAC` · **`PONTO_EM_FOLGA`**. O último é o único que **não** é sobre
+  a pessoa: ela trabalhou num dia que o cadastro diz ser folga dela — quase sempre
+  a folga mudou e ninguém atualizou o sistema. Ver a regra 15.
 - `MarcacaoInvalidaItem.tiposFaltantes[]` / `tiposPresentes[]`:
   `MarcacaoCanonica` (`ENTRADA` · `SAIDA_INTERVALO` · `RETORNO_INTERVALO` ·
   `ENCERRAMENTO`), reusado de [`ponto`](ponto.md).
@@ -331,6 +333,36 @@ faltas, TAC, conflitos e atrasos.
 
    Não é uma regra de domingo: vale para **qualquer** dia escalado. O domingo era
    só onde mais aparecia, por ser o dia cuja escala vem do rodízio.
+15. **Trabalhar num dia marcado como FOLGA é apontado como problema de CADASTRO,
+   não de conduta** (`PONTO_EM_FOLGA` + `CentralDiaDetalhe.pontoEmFolga`).
+
+   Bater ponto em dia de folga era recusado pelo Relógio Ponto (409). A premissa
+   estava errada: isso quase nunca é alguém trabalhando no descanso — é **a folga
+   que mudou sem o cadastro ser atualizado**. Recusar fazia a pessoa trabalhar o
+   dia inteiro sem registro, e o erro de cadastro seguia invisível (ver a regra 6
+   de [`ponto`](ponto.md)).
+
+   O dia conta como **qualquer dia de trabalho**: jornada do dia, extras de 50%,
+   débito se houver. Nenhum tratamento especial — ela veio cumprir o turno normal
+   dela.
+
+   **O que este apontamento deliberadamente NÃO faz:**
+
+   | | |
+   |---|---|
+   | Vira TAC? | **não** |
+   | Entra em `diasTac`, `faltas` ou qualquer contador dela? | **não** |
+   | Aparece no ranking da pessoa? | **não** |
+   | Move algum valor monetário? | **não** |
+
+   A razão é simples: o esquecimento foi administrativo. Um TAC aqui deixaria uma
+   marca no histórico da pessoa — e na planilha da folha — por um erro que não é
+   dela. O lugar certo é o painel de inconsistências, que é a lista do que o
+   **gestor** precisa resolver.
+
+   O item traz, quando os dados a sustentam, a **sugestão do novo dia de folga**
+   (`sugerirFolgaPorBatidas`, em [`ponto`](ponto.md)): o gestor lê o problema e a
+   provável correção na mesma linha.
 10. **Ranking e card mostram o mesmo número, por construção.** `RankingPessoa`
    **estende** `CentralPessoaResumo` em vez de recalcular: os valores vêm da
    mesma `calcularPessoa` que alimenta o resumo, e o detalhe de cada métrica é a
@@ -383,7 +415,7 @@ faltas, TAC, conflitos e atrasos.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito), **atraso em feriado pelo turno de domingo** e o **dia escalado sem registro** (`FALTA_NAO_REGISTRADA`: domingo pelo rodízio, e as guardas que evitam apontar folga — sem grupo, sem `entradaDom`, folga da ficha, folga só na escala semanal, dia não terminado — mais a prova de que não mexe nos totais) | 33 |
+| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito), **atraso em feriado pelo turno de domingo**, o **dia escalado sem registro** (`FALTA_NAO_REGISTRADA`: domingo pelo rodízio, e as guardas que evitam apontar folga — sem grupo, sem `entradaDom`, folga da ficha, folga só na escala semanal, dia não terminado — mais a prova de que não mexe nos totais) e o **ponto em dia de folga** (`PONTO_EM_FOLGA`: conta como trabalho normal, **não** vira TAC nem toca os contadores, aparece no painel, e dia normal não é apontado) | 39 |
 | `marcacoes-invalidas.service.spec.ts` | Relatório de marcações faltantes: entrada esquecida, encerramento, as duas do intervalo, totais, ordenação, sem turno — e os dias que **não** entram (não retorno do intervalo, jornada curta válida, dia completo, dia sem registro) | 12 |
 | `rankings.service.spec.ts` | Base dos rankings: **detalhe do mesmo tamanho que o contador** de cada card, faltas sem atestado, atestados à parte (contados por documento), atrasos com minutos e turno, TAC com motivos, conflitos, pessoas zeradas e igualdade com `resumoCiclo` | 10 |
 | `agrupar-atestados.spec.ts` | Agrupamento por documento e por bloco de dias consecutivos: 3+2 dias = 2 atestados, dias não contíguos, virada de mês e o total de dias preservado | 12 |

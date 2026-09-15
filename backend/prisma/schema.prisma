@@ -714,6 +714,33 @@ model AlertaAtrasoEnviado {
   @@map("alertas_atraso_enviados")
 }
 
+/// Dedup do aviso "bateu ponto em dia marcado como FOLGA".
+///
+/// O registro em dia de folga passou a ser PERMITIDO: na prática ele quase
+/// sempre significa que a folga da pessoa mudou e o cadastro não foi atualizado,
+/// e recusar o ponto deixava a pessoa trabalhar sem registro nenhum enquanto o
+/// erro de cadastro seguia invisível.
+///
+/// Esta tabela é a trava do aviso — UMA notificação por pessoa e dia, mesmo com
+/// quatro batidas no mesmo dia, reinícios ou várias instâncias (o índice único é
+/// a atomicidade: reserva → envia). Mesmo padrão de `AlertaAtrasoEnviado`.
+///
+/// `resolvidoEm` marca quando a divergência deixou de existir (o gestor corrigiu
+/// a escala e o dia não é mais folga). Guardar em vez de apagar permite avisar
+/// "resolvido" uma única vez e deixa rastro da correção.
+model AvisoPontoEmFolga {
+  id            String    @id @default(uuid())
+  pessoaId      String
+  colaboradorId String?
+  dia           DateTime
+  enviadoEm     DateTime  @default(now())
+  resolvidoEm   DateTime?
+
+  @@unique([pessoaId, dia])
+  @@index([resolvidoEm, dia])
+  @@map("avisos_ponto_em_folga")
+}
+
 // Tipo de evento no histórico de alertas de TAC de um dia:
 // - AVISADO: um aviso de risco/TAC foi enviado (a `etapa` diz qual);
 // - CORRIGIDO: após uma correção de batida, a jornada saiu da etapa antes

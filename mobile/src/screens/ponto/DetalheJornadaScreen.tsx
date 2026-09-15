@@ -262,6 +262,12 @@ export function DetalheJornadaScreen(): React.ReactElement {
                     dia se ele realmente não trabalhou.
                   </Text>
                 )}
+                {d.pontoEmFolga && (
+                  <Text style={styles.diaPontoEmFolga}>
+                    📅 Trabalhou num dia marcado como FOLGA no cadastro. O ponto
+                    está correto — a escala é que parece desatualizada.
+                  </Text>
+                )}
               </View>
               {podeMarcarDebito &&
                 (d.tipo === "FALTA" || d.tipo === "FALTA_DEBITO") &&
@@ -357,6 +363,13 @@ const styles = StyleSheet.create({
   diaFaltaNaoRegistrada: {
     ...tipografia.legenda,
     color: cores.laranja,
+    marginTop: 2,
+    fontWeight: "600",
+  },
+  // Azul (informativo): a pessoa não fez nada de errado, o cadastro está errado.
+  diaPontoEmFolga: {
+    ...tipografia.legenda,
+    color: cores.azul,
     marginTop: 2,
     fontWeight: "600",
   },

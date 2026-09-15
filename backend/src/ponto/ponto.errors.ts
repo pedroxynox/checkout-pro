@@ -67,14 +67,21 @@ export class BatidaDuplicadaError extends ErroDominio {
   }
 }
 
-/** A pessoa está de folga (descanso) neste dia — não é possível bater ponto. */
-export class PontoEmFolgaError extends ErroDominio {
-  readonly statusHttp = HttpStatus.CONFLICT;
-
-  constructor() {
-    super('A pessoa está de folga neste dia. Não é possível registrar ponto.');
-  }
-}
+/**
+ * [REMOVIDO] Bater ponto em dia de folga era recusado com 409.
+ *
+ * A premissa estava errada: uma batida em dia de folga quase nunca é alguém
+ * trabalhando no seu descanso — é a folga que mudou sem o cadastro ser
+ * atualizado. A pessoa chegava para o turno normal dela e o relógio a recusava,
+ * então trabalhava o dia inteiro **sem registro nenhum**, e o erro de cadastro
+ * que causou tudo seguia invisível.
+ *
+ * Hoje o registro passa, o dia é calculado como qualquer dia de trabalho e a
+ * divergência é apontada ao gestor (inconsistência `PONTO_EM_FOLGA` na Central de
+ * Jornada + aviso à supervisão com sugestão do novo dia de folga).
+ *
+ * Este comentário fica no lugar da classe para que ninguém a recrie por engano.
+ */
 
 /**
  * O retorno do intervalo foi tentado depois de o intervalo já ter ultrapassado

@@ -43,6 +43,7 @@ automaticamente faltas e não-retornos do intervalo.
 | `revalidacao-automatica.domain.ts` | Regras puras: quando uma ocorrência automática **deixa de ser verdade** | 136 |
 | `marcacoes-invalidas.domain.ts` | Regras puras: quantas marcações faltam no dia e **quais** | 303 |
 | `pessoas-ponto.ts` | Funções (não-fiscais) que batem ponto | 15 |
+| `sugestao-folga.domain.ts` | Regras puras: **sugere o novo dia de folga** a partir do que a pessoa realmente trabalhou | 137 |
 | `dto/ponto.dto.ts` | Validação de entrada das rotas | 88 |
 
 ## 4. Endpoints (rotas HTTP)
@@ -66,7 +67,8 @@ automaticamente faltas e não-retornos do intervalo.
 - **Recebe:** dados da batida (`RegistrarBatidaDto`) e o usuário autenticado.
 - **Devolve:** a jornada do dia recalculada (`JornadaDiaResposta`).
 - **Efeitos:** valida idempotência (`clienteId`), data/hora, data permitida e
-  ciclo aberto; resolve a ficha ativa; bloqueia dia de folga; grava a batida em
+  ciclo aberto; resolve a ficha ativa; **detecta** (não bloqueia) dia de folga;
+  grava a batida em
   transação `SERIALIZABLE` (com retry em conflito P2034), reclassifica o dia e
   reescreve o log do fiscal; fora da transação: aprende o alias do leitor,
   publica o status ao vivo (fiscal via `publicarStatusDoDia`; **operador via
@@ -253,6 +255,21 @@ ainda é verdade?"** — e isso não depende de como ela deixou de ser.
   saída para o intervalo, a pessoa trabalhou naquele dia — mesmo sendo a folga
   dela —, e apagar o registro seria perder informação real. A falta é o oposto:
   ela afirma uma expectativa que não existia.
+Em `sugestao-folga.domain.ts`:
+- `sugerirFolgaPorBatidas(folgaAtual, diasTrabalhados)` → o **novo dia de folga
+  provável**, ou `null`. Existe porque avisar "há uma divergência" resolve metade
+  do problema: o gestor ainda tem de descobrir qual é o novo dia de folga, e é
+  justamente o passo em que se esquece de novo. O ponto batido é a evidência.
+
+  A regra é deliberadamente **conservadora** — só conclui quando a folga do
+  cadastro foi trabalhada em **todas** as semanas observadas (mínimo 2) e existe
+  **exatamente um** dia em que a pessoa nunca apareceu. Domingo nunca é candidato:
+  ali a escala vem do rodízio, e "não trabalhou domingo" é o normal de quem está
+  fora do grupo da semana. Qualquer ambiguidade devolve `null`, porque um palpite
+  errado sobre a folga de alguém é pior do que não palpitar — o gestor pode
+  aplicá-lo sem verificar.
+- `textoSugestaoFolga(sugestao)` → a frase do aviso (vazia sem sugestão).
+
 - **`ehFolga` existe porque a falta em dia de folga não se curava nunca:** a
   auto-cura esperava uma batida, e num dia de descanso ela jamais chega. É este
   motivo que resgata as faltas indevidas **já gravadas** — a guarda na criação
@@ -353,7 +370,30 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 4. **O intervalo não conta como jornada**; TAC quando extras > 1h50, intervalo
    < 1h ou > 3h.
 5. **Retorno após o intervalo máximo é recusado** — o dia vira "não retorno".
-6. **Não bate ponto em dia de folga** (folga fixa ou domingo de folga do rodízio).
+6. **Bater ponto em dia de FOLGA é permitido — e avisa a supervisão.** Era
+   recusado (409 `PontoEmFolgaError`, hoje removido) até se perceber que a
+   premissa estava errada: uma batida em dia de folga quase nunca é alguém
+   trabalhando no descanso, é **a folga que mudou sem o cadastro ser
+   atualizado**. A pessoa chegava para o turno normal dela e o relógio a
+   recusava, então trabalhava o dia inteiro **sem registro nenhum** enquanto o
+   erro de cadastro que causou tudo seguia invisível.
+
+   Hoje: o ponto entra, o dia é calculado como **qualquer dia de trabalho**
+   (jornada do dia, extras de 50%, débito se houver — nenhum tratamento
+   especial), e a divergência é sinalizada em três lugares:
+   - **aviso à supervisão** ao registrar, uma vez por pessoa/dia (dedup em
+     `AvisoPontoEmFolga`), **com sugestão do novo dia de folga** quando as
+     batidas das últimas semanas a sustentam (`sugestao-folga.domain.ts`);
+   - **inconsistência `PONTO_EM_FOLGA`** no painel da
+     [`central-jornada`](central-jornada.md) (regra 15) — e **não** TAC: o
+     problema é do cadastro, não da conduta da pessoa, então nada disso entra
+     nos indicadores dela;
+   - **aviso de resolução** quando o gestor corrige a escala (o cron de 5 min
+     reavalia pela regra única de folga, marca `resolvidoEm` e notifica uma vez).
+
+   A detecção usa a **regra única de folga** (`FolgaService`: ficha + escala
+   semanal); o bloqueio antigo olhava só a ficha, então uma folga marcada apenas
+   na escala semanal nem era percebida.
 7. **Ciclo de folha fechado bloqueia** registrar/corrigir/excluir batida.
 8. **Bater ponto remove a falta automática** do dia (faltas manuais permanecem).
    A remoção usa o **dia da batida**, não o de hoje: uma marcação lançada em
@@ -410,7 +450,8 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `ponto.domain.spec.ts` | Classificação e cálculo da jornada/TAC (funções puras) | 38 |
-| `ponto.service.spec.ts` | Alertas de TAC, validações de pessoa/data/hora, transação e ponte de fiscal | 41 |
+| `ponto.service.spec.ts` | Alertas de TAC, validações de pessoa/data/hora, transação, ponte de fiscal e o **ponto em dia de folga** (permite, avisa uma vez por pessoa/dia, e não avisa em dia normal) | 44 |
+| `sugestao-folga.domain.spec.ts` | A sugestão do novo dia de folga — e sobretudo os casos em que ela **se cala**: uma semana só, folga cumprida em alguma semana, dois candidatos, domingo (rodízio) | 8 |
 | `ponto-ocr.parser.spec.ts` | Extração de nome/data/hora do comprovante | 17 |
 | `ponto-ocr.service.spec.ts` | Só pessoas ativas nas sugestões e memória de aliases | 7 |
 | `ponto-nome-match.spec.ts` | Similaridade de nomes tolerante ao OCR | 6 |
@@ -426,8 +467,17 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `ponto.service.ts` (1437 linhas) concentra persistência, classificação,
-  avisos de TAC e pontes (fiscal/ausência). Candidato a extrair sub-serviços.
+- 🔧 `ponto.service.ts` concentra persistência, classificação, avisos de TAC e
+  pontes (fiscal/ausência). Candidato a extrair sub-serviços. (Tamanho atual em
+  [estado-e-métricas](../08-gestao/estado-e-metricas.md).)
+- ⚠️ **Quem trabalha num dia marcado como folga fica fora da vigilância
+  automática.** A varredura de 5 minutos parte de `escaladosDoDia`, e a folga
+  exclui a pessoa de lá — então ela **não** recebe alerta de atraso nem detecção
+  de não-retorno do intervalo naquele dia, mesmo tendo batido ponto. O registro e
+  o cálculo funcionam; o que falta é a vigilância. A correção é acrescentar "quem
+  tem batida hoje" como segunda fonte da varredura (o `PontoAlertasService` já usa
+  esse padrão com `batidaPonto.groupBy`). Ver
+  [ADR 0019](../02-arquitetura/decisoes/0019-ponto-em-dia-de-folga.md).
 - ⚠️ O deslocamento de Brasília é fixo (UTC−3): correto enquanto o país não
   tiver horário de verão; uma eventual volta exigiria revisão.
 - 🔧 A memória de aliases (`AliasLeituraPonto`) guarda cópia de nome/ficha usada

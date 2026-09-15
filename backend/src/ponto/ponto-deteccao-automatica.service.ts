@@ -95,6 +95,19 @@ export class PontoDeteccaoAutomaticaService {
       );
     }
 
+    // Avisos de "ponto em dia de folga" que já foram resolvidos: o gestor
+    // corrigiu a escala e aquele dia não é mais folga. Fica aqui, junto da
+    // revalidação, porque é a mesma ideia — um apontamento só vive enquanto for
+    // verdade — e porque o gatilho é uma edição de CADASTRO, que não passa pelo
+    // Relógio Ponto e portanto não tem como notificar por si mesma.
+    try {
+      await this.revalidarAvisosPontoEmFolga(agora);
+    } catch (erro) {
+      this.logger.warn(
+        `Falha na revalidação dos avisos de ponto em folga: ${String(erro)}`,
+      );
+    }
+
     let escalados: EscaladoDia[];
     try {
       escalados = await this.fiscais.escaladosDoDia(dia);
@@ -236,6 +249,97 @@ export class PontoDeteccaoAutomaticaService {
    *
    * Best-effort: qualquer falha é registrada e não interrompe o ciclo.
    */
+  /**
+   * Fecha os avisos de "bateu ponto em dia de FOLGA" que já não valem.
+   *
+   * O aviso nasce quando alguém registra ponto num dia que o cadastro diz ser
+   * folga dela — na prática, a folga mudou e ninguém atualizou o sistema. A
+   * correção é o gestor **mudar a folga no cadastro**, e é aí que está o
+   * problema: essa edição não passa pelo Relógio Ponto, então nada lá tem como
+   * perceber que o assunto foi resolvido.
+   *
+   * Esta varredura fecha o ciclo: para cada aviso ainda aberto do período de
+   * folha, pergunta de novo à **regra única de folga** se aquele dia continua
+   * sendo folga. Se não for mais, marca `resolvidoEm` e avisa **uma vez** que
+   * está resolvido — a mesma cortesia que o alerta de TAC já tem ao ser
+   * corrigido.
+   *
+   * `resolvidoEm` é gravado em vez de a linha ser apagada por dois motivos: a
+   * trava de "avisar uma vez" continua valendo (o índice único segue lá), e fica
+   * rastro de que a correção aconteceu.
+   *
+   * Best-effort: qualquer falha é registrada e não interrompe o ciclo.
+   */
+  private async revalidarAvisosPontoEmFolga(agora: Date): Promise<void> {
+    const { inicio, fimExclusivo } = periodoFolhaDeslocado(agora, 0);
+    const abertos = await this.prisma.avisoPontoEmFolga.findMany({
+      where: {
+        resolvidoEm: null,
+        dia: { gte: inicio, lt: fimExclusivo },
+      },
+      select: { id: true, pessoaId: true, colaboradorId: true, dia: true },
+    });
+    if (abertos.length === 0) return;
+
+    // Uma consulta de folga para todos os dias envolvidos.
+    const dias = [...new Set(abertos.map((a) => a.dia.getTime()))].map(
+      (t) => new Date(t),
+    );
+    const consultorFolga = this.folga ? await this.folga.consultor(dias) : null;
+    // Sem o serviço de folga não há como saber se deixou de ser folga: não se
+    // fecha nada (melhor um aviso aberto de mais do que um fechado sem base).
+    if (!consultorFolga) return;
+
+    for (const aviso of abertos) {
+      const aindaEhFolga = consultorFolga.ehFolga(aviso.dia, [
+        aviso.pessoaId,
+        aviso.colaboradorId,
+      ]);
+      if (aindaEhFolga) continue;
+      try {
+        await this.prisma.avisoPontoEmFolga.update({
+          where: { id: aviso.id },
+          data: { resolvidoEm: agora },
+        });
+        this.logger.log(
+          `Aviso de ponto em folga resolvido: ${aviso.pessoaId} em ${aviso.dia.toISOString().slice(0, 10)}.`,
+        );
+        if (this.notificacoes) {
+          const nome = await this.nomePessoaDoAviso(aviso);
+          await this.notificacoes.notificarSupervisaoEGerencia({
+            titulo: '✅ Escala corrigida',
+            mensagem:
+              `${nome} já não está de folga em ${aviso.dia.toISOString().slice(0, 10)} — ` +
+              `a escala foi atualizada e o apontamento daquele dia deixou de existir.`,
+          });
+        }
+      } catch (erro) {
+        this.logger.warn(
+          `Não foi possível fechar o aviso de ponto em folga ${aviso.id}: ${String(erro)}`,
+        );
+      }
+    }
+  }
+
+  /** Nome para o aviso de resolução (ficha primeiro, fiscal como fallback). */
+  private async nomePessoaDoAviso(aviso: {
+    pessoaId: string;
+    colaboradorId: string | null;
+  }): Promise<string> {
+    if (aviso.colaboradorId) {
+      const ficha = await this.prisma.colaborador.findUnique({
+        where: { id: aviso.colaboradorId },
+        select: { nome: true },
+      });
+      if (ficha?.nome) return ficha.nome;
+    }
+    const fiscal = await this.prisma.fiscal.findUnique({
+      where: { id: aviso.pessoaId },
+      select: { nome: true },
+    });
+    return fiscal?.nome ?? 'Colaborador';
+  }
+
   private async revalidarOcorrenciasAutomaticas(agora: Date): Promise<void> {
     const { inicio, fimExclusivo } = periodoFolhaDeslocado(agora, 0);
 

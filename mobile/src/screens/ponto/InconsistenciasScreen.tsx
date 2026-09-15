@@ -7,15 +7,15 @@
  * Para não sobrecarregar a tela, os problemas ficam AGRUPADOS POR DIA em seções
  * recolhíveis (tocar no dia expande/recolhe). A busca é apenas por pessoa.
  */
-import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { centralJornadaService } from '../../api/services';
+import { Ionicons } from "@expo/vector-icons";
+import React, { useMemo, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { centralJornadaService } from "../../api/services";
 import {
   CentralInconsistencias,
   InconsistenciaItem,
   TipoInconsistencia,
-} from '../../api/services/centralJornada';
+} from "../../api/services/centralJornada";
 import {
   Cartao,
   Carregando,
@@ -24,26 +24,26 @@ import {
   MensagemErro,
   Selo,
   Tela,
-} from '../../components';
-import { useRequisicao } from '../../hooks/useRequisicao';
-import { cores, espacamento, raio, tipografia } from '../../theme';
+} from "../../components";
+import { useRequisicao } from "../../hooks/useRequisicao";
+import { cores, espacamento, raio, tipografia } from "../../theme";
 
-const VERMELHO = cores.erro ?? '#DC2626';
-const AMARELO = cores.amarelo ?? '#C99700';
-const NOMES_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const VERMELHO = cores.erro ?? "#DC2626";
+const AMARELO = cores.amarelo ?? "#C99700";
+const NOMES_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 function dataCurta(iso: string): string {
   const d = new Date(iso);
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
   return `${NOMES_SEMANA[d.getUTCDay()]} ${dd}/${mm}`;
 }
 
 function rotuloFuncao(f: string): string {
-  if (f === 'FISCAL') return 'Fiscal';
-  if (f === 'SUPERVISOR') return 'Supervisor';
-  if (f === 'OPERADOR') return 'Operador';
-  return 'Gestor';
+  if (f === "FISCAL") return "Fiscal";
+  if (f === "SUPERVISOR") return "Supervisor";
+  if (f === "OPERADOR") return "Operador";
+  return "Gestor";
 }
 
 /** Rótulo e cores de cada tipo de inconsistência. */
@@ -53,22 +53,27 @@ function estiloTipo(t: TipoInconsistencia): {
   fundo: string;
 } {
   switch (t) {
-    case 'INCOMPLETA':
-      return { rotulo: 'Incompleta', cor: AMARELO, fundo: '#FBF3DA' };
-    case 'DUPLICADA':
-      return { rotulo: 'Duplicada', cor: VERMELHO, fundo: '#FEECEC' };
-    case 'CONFLITO_AUSENCIA':
-      return { rotulo: 'Conflito', cor: VERMELHO, fundo: '#FEECEC' };
-    case 'ATRASO':
-      return { rotulo: 'Atraso', cor: AMARELO, fundo: '#FBF3DA' };
+    case "INCOMPLETA":
+      return { rotulo: "Incompleta", cor: AMARELO, fundo: "#FBF3DA" };
+    case "DUPLICADA":
+      return { rotulo: "Duplicada", cor: VERMELHO, fundo: "#FEECEC" };
+    case "CONFLITO_AUSENCIA":
+      return { rotulo: "Conflito", cor: VERMELHO, fundo: "#FEECEC" };
+    case "ATRASO":
+      return { rotulo: "Atraso", cor: AMARELO, fundo: "#FBF3DA" };
+    // Azul, e não vermelho nem amarelo: este item não é uma irregularidade da
+    // pessoa. Ela trabalhou normalmente; o que está desatualizado é a escala. A
+    // cor separa "corrigir o cadastro" de "cobrar alguém".
+    case "PONTO_EM_FOLGA":
+      return { rotulo: "Escala", cor: cores.azul, fundo: cores.azulFundo };
     default:
-      return { rotulo: 'TAC', cor: VERMELHO, fundo: '#FEECEC' };
+      return { rotulo: "TAC", cor: VERMELHO, fundo: "#FEECEC" };
   }
 }
 
 export function InconsistenciasScreen(): React.ReactElement {
   const [ciclo, setCiclo] = useState(0);
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = useState("");
   const [diasAbertos, setDiasAbertos] = useState<Set<string>>(new Set());
 
   const req = useRequisicao<CentralInconsistencias>(
@@ -117,7 +122,7 @@ export function InconsistenciasScreen(): React.ReactElement {
         <View style={styles.cicloCentro}>
           <Text style={styles.cicloLabel}>Ciclo de folha</Text>
           <Text style={styles.cicloRotulo}>
-            {req.dados?.periodo.rotulo ?? '—'}
+            {req.dados?.periodo.rotulo ?? "—"}
           </Text>
         </View>
         <Pressable
@@ -145,8 +150,8 @@ export function InconsistenciasScreen(): React.ReactElement {
             <Cartao style={styles.cardResumo}>
               <Text style={styles.resumoTexto}>
                 {totais.total === 0
-                  ? 'Nenhuma inconsistência neste ciclo. 🎉'
-                  : `${totais.total} inconsistência(s): ${totais.incompletas} incompleta(s), ${totais.duplicadas} duplicada(s), ${totais.conflitos} conflito(s), ${totais.atrasos} atraso(s), ${totais.tac} TAC.`}
+                  ? "Nenhuma inconsistência neste ciclo. 🎉"
+                  : `${totais.total} inconsistência(s): ${totais.incompletas} incompleta(s), ${totais.duplicadas} duplicada(s), ${totais.conflitos} conflito(s), ${totais.atrasos} atraso(s), ${totais.tac} TAC, ${totais.pontoEmFolga} de escala.`}
               </Text>
             </Cartao>
           )}
@@ -169,8 +174,8 @@ export function InconsistenciasScreen(): React.ReactElement {
               titulo="Nada a revisar"
               descricao={
                 busca.trim()
-                  ? 'Nenhuma inconsistência para essa pessoa.'
-                  : 'Nenhuma inconsistência neste ciclo.'
+                  ? "Nenhuma inconsistência para essa pessoa."
+                  : "Nenhuma inconsistência neste ciclo."
               }
             />
           ) : (
@@ -185,13 +190,13 @@ export function InconsistenciasScreen(): React.ReactElement {
                   >
                     <Text style={styles.diaTitulo}>
                       {dataCurta(data)}
-                      {itens[0]?.ehFeriado ? ' • Feriado' : ''}
+                      {itens[0]?.ehFeriado ? " • Feriado" : ""}
                     </Text>
                     <View style={styles.diaBadge}>
                       <Text style={styles.diaBadgeTexto}>{itens.length}</Text>
                     </View>
                     <Ionicons
-                      name={aberto ? 'chevron-up' : 'chevron-down'}
+                      name={aberto ? "chevron-up" : "chevron-down"}
                       size={20}
                       color={cores.textoSecundario}
                     />
@@ -238,9 +243,9 @@ function ItemInconsistencia({
 
 const styles = StyleSheet.create({
   cardCiclo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   setaBtn: {
     padding: espacamento.xs,
@@ -249,7 +254,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   cicloCentro: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   cicloLabel: {
@@ -259,7 +264,7 @@ const styles = StyleSheet.create({
   cicloRotulo: {
     ...tipografia.rotulo,
     color: cores.texto,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   cardResumo: {
     marginTop: espacamento.md,
@@ -272,14 +277,14 @@ const styles = StyleSheet.create({
     marginTop: espacamento.sm,
   },
   diaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: espacamento.sm,
   },
   diaTitulo: {
     ...tipografia.rotulo,
     color: cores.texto,
-    fontWeight: '700',
+    fontWeight: "700",
     flex: 1,
   },
   diaBadge: {
@@ -287,13 +292,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: raio.lg,
-    backgroundColor: '#FEECEC',
-    alignItems: 'center',
+    backgroundColor: "#FEECEC",
+    alignItems: "center",
   },
   diaBadgeTexto: {
     ...tipografia.legenda,
     color: VERMELHO,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   itemLinha: {
     marginTop: espacamento.sm,
@@ -302,14 +307,14 @@ const styles = StyleSheet.create({
     borderTopColor: cores.divisor,
   },
   itemTopo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: espacamento.sm,
   },
   itemNome: {
     ...tipografia.rotulo,
     color: cores.texto,
-    fontWeight: '700',
+    fontWeight: "700",
     flex: 1,
   },
   itemSub: {
