@@ -35,8 +35,10 @@ import {
   Selo,
   Tela,
 } from '../../components';
+import { useAuth } from '../../auth/AuthContext';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { RootStackParamList } from '../../navigation/types';
+import { CartaoCompensacao } from './CartaoCompensacao';
 import { IDENTIDADE_METRICA, ORDEM_METRICAS } from './metricasResumo';
 import { formatarDuracao, hojeISO } from '../../utils/formato';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
@@ -84,6 +86,10 @@ function progressoCiclo(periodo: CentralPeriodo): {
 export function CentralJornadaScreen(): React.ReactElement {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { podeAcessar } = useAuth();
+  // Mesma permissão do botão "Débito": conceder compensação e marcar débito são
+  // o mesmo poder (ADR 0021 — "débito é compensação").
+  const podeCompensar = podeAcessar('OPERADORES_AUSENCIAS');
   const [ciclo, setCiclo] = useState(0);
   const [verComparativo, setVerComparativo] = useState(false);
 
@@ -259,6 +265,16 @@ export function CentralJornadaScreen(): React.ReactElement {
               </View>
             </Cartao>
           )}
+
+          {/* Compensação de horas: fica ENTRE o resumo do time e a lista por
+              pessoa de propósito. O resumo mostra o problema (o time tem X de
+              50% em aberto); esta seção mostra o que fazer com ele, antes de o
+              gestor descer para as cards individuais e resolver à mão. */}
+          <CartaoCompensacao
+            ciclo={ciclo}
+            podeConceder={podeCompensar}
+            aoMudar={recarregarTudo}
+          />
 
           {/* Lista por pessoa */}
           {pessoas.length === 0 ? (
@@ -500,6 +516,15 @@ function PessoaCartao({
             texto={`Atestado ${formatarDuracao(pessoa.horasAtestadoMs)}`}
             cor={cores.texto}
             fundo={cores.fundo}
+          />
+        )}
+        {/* "Compensou", em verde: ela USOU horas que tinha, não passou a dever.
+            Chip próprio para não se confundir com "Deve", que é o oposto. */}
+        {pessoa.compensadoMs > 0 && (
+          <Selo
+            texto={`Compensou ${formatarDuracao(pessoa.compensadoMs)}`}
+            cor={cores.verde}
+            fundo={cores.verdeFundo}
           />
         )}
         {pessoa.faltas > 0 && (

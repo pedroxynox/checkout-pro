@@ -3,7 +3,7 @@
 
 # Modelo de Dados (Prisma)
 
-> Fonte: `backend/prisma/schema.prisma`. Total: **55 tabelas** e **28 tipos (enums)**.
+> Fonte: `backend/prisma/schema.prisma`. Total: **56 tabelas** e **30 tipos (enums)**.
 
 Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dicionario-de-dados.md).
 
@@ -66,6 +66,7 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `FeedforwardPonto` | 13 | colaborador define; ao vencer sem revisão, avisa supervisores e gerentes. |
 | `IncidenciaEscala` | 25 | pode ser detectado do ponto (RegistroPontoFiscal). |
 | `ProdutoPesado` | 9 | futura (a foto exige um storage de objetos/S3, ainda não disponível). |
+| `CompensacaoHoras` | 22 | converte para ms na fronteira. |
 
 ## Relações (referências entre tabelas)
 
@@ -320,4 +321,19 @@ Estado de um ponto a melhorar (com prazo) de uma rodada de feedforward.
 - `PENDENTE`
 - `ATINGIDO`
 - `NAO_ATINGIDO`
+
+### `StatusCompensacao`
+
+              histórico, em vez de ser apagada).
+
+- `APROVADA`
+- `RECUSADA`
+- `CANCELADA`
+
+### `OrigemCompensacao`
+
+gestor. Guardado para medir, no futuro, se as sugestões são aproveitadas.
+
+- `SUGESTAO`
+- `MANUAL`
 

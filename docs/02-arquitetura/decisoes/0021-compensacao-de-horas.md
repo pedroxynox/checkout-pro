@@ -1,7 +1,8 @@
 # ADR 0021 — Compensação de horas: sugerir a data mais fraca, dentro do ciclo
 
-- **Status:** proposta (aguardando decisão do dono do projeto)
+- **Status:** aceita
 - **Data:** 2026-09-16
+- **Decidido com o dono do projeto em:** 2026-09-16 (respostas na seção final)
 - **Contexto:** Central de Jornada, Vendas, Escala (rodízio de domingos, folga), Ausências
 
 ## Contexto
@@ -87,6 +88,23 @@ não custa nada.
 > hora; não apaga a falta nem o registro para advertência. A seção deve dizer
 > isso na tela, ou o abono passa a ser lido como perdão.
 
+**O dono do projeto foi além e igualou as duas operações:** *"colocar hoje débito
+es lo mismo que una compensación […] así que débito es lo mismo que
+compensación"*. Está correto, e é a definição que o desenho adota: as duas são
+**um único conceito — usar horas de 50% para cobrir tempo não trabalhado** — em
+duas direções no tempo. Daí decorre, sem discussão:
+
+- **A mesma permissão** autoriza as duas (item 12). Quem hoje pode marcar débito
+  pode conceder compensação.
+- **A mesma carteira** alimenta as duas, e por isso a ordem de alocação acima é
+  obrigatória.
+- **A mesma frase** na tela: "usou X h de 50%".
+
+O que continua diferente é só o **suporte de gravação**, e por um motivo técnico
+(item 8): uma cobertura de falta cai sobre um dia inteiro que já tem uma
+`Ausencia`; uma compensação planejada pode ser **parcial**, e um dia em que a
+pessoa trabalhou 2h não é uma ausência.
+
 ### 2. Pontuar **datas**, não dias da semana
 
 O pedido fala em "o dia que menos vende". A leitura literal — ranquear os sete
@@ -168,31 +186,77 @@ saldo da equipe não cabe nos dias fracos que sobraram, a seção deve dizer iss
 com antecedência — "faltam 5 dias de ciclo e 32h para compensar; 11h não caberão"
 — porque essa é exatamente a informação que hoje só aparece na folha, tarde.
 
-### 6. Cobertura mínima é restrição, não conselho
+**Confirmado como regra rígida pelo dono do projeto:** compensar no ciclo
+seguinte é **proibido**. Cada ciclo é independente em horas. As duas únicas
+coisas que atravessam o corte 26→25 são **atestado** e **férias**, porque não são
+controláveis — e ambas já têm tratamento próprio (`exigirCiclosAbertos`). Uma
+compensação é planejada; se ela precisasse atravessar o ciclo, o planejamento
+falhou.
 
-O mínimo operacional é 20 operadores no caixa (`COBERTURA_MINIMA`). Se a seção
-mandar todos os saldos para a data mais fraca do ciclo, ela quebra a loja no dia
-que ela mesma recomendou.
+### 6. Cobertura: piso só para fiscais
 
-Por isso a sugestão não é uma consulta, é uma **alocação**: para cada candidato,
-simular o efeito na cobertura daquela data (partindo de `grade().cobertura`) e
-**distribuir** as pessoas entre as datas fracas, respeitando o mínimo. Fiscais e
-supervisores contam em cobertura própria, não no mínimo dos operadores.
+A proposta inicial tratava os 20 operadores de `COBERTURA_MINIMA` como piso rígido
+para liberar. O dono do projeto corrigiu: **20 não serve como piso** para
+compensação. O piso real é outro:
 
-### 7. O tipo de liberação sai do tamanho do saldo
-
-Não se pergunta ao gestor "dia, meio dia ou faixa?" — isso já está determinado:
-
-| Saldo de 50% da pessoa | Sugestão |
+| Função | Piso para liberar |
 |---|---|
-| ≥ carga do dia | **dia inteiro** |
-| ≥ metade da carga | **meio dia** (na ponta mais fraca do turno) |
-| ≥ mínimo útil (a definir, ~1h) | **faixa de horas** exata, na ponta mais fraca |
-| abaixo do mínimo útil | não sugere (troco de escala não vale a mudança) |
+| Operador | **sem piso** (mostra-se a cobertura, não se bloqueia) |
+| Fiscal | **mínimo de 2 disponíveis** no dia — restrição rígida |
+| Supervisor | sem piso |
 
-Nunca sugerir mais do que a pessoa tem: liberação não pode criar saldo negativo.
+Os 20 operadores continuam valendo como o alerta de cobertura baixa que já
+existe; simplesmente não vetam uma compensação. Ainda assim a alocação
+**distribui** as pessoas entre as datas fracas em vez de empilhar todas na mais
+fraca, e cada linha mostra quantos ficam no dia — o gestor decide com o número na
+frente, em vez de ser impedido por uma regra que ele não pediu.
+
+### 7. Não existem "três tipos": existe uma conta só
+
+A proposta inicial previa três modalidades (dia inteiro / meio dia / faixa de
+horas). O dono do projeto desfez a categoria com um exemplo:
+
+> "Si un operador tiene 5h positivas el app puede sugerir trabajar cierto día 2h
+> y luego irse a casa sin intervalo para compensar 5h y así tener las 7h de la
+> carga horaria del día."
+
+Isso não é "meio dia" — é uma **conta contínua**, e ela dispensa as três
+modalidades:
+
+```
+horas a compensar = saldo de 50% da pessoa   (limitado à carga do dia)
+horas a trabalhar = carga do dia − horas a compensar
+```
+
+Com carga de 7h e saldo de 5h: trabalha 2h, compensa 5h, o dia fecha em 7h. Com
+saldo ≥ carga, trabalha zero — e o "dia inteiro" deixa de ser uma modalidade
+para ser apenas o caso em que a conta dá zero. "Meio dia" nunca precisou existir:
+metade da jornada é um número arbitrário, e a metade só apareceria por
+coincidência.
+
+Duas consequências que vêm de graça:
+
+- **Sem intervalo.** Uma jornada curta encerra com duas batidas, sem intervalo e
+  sem TAC, até 4h50 (`MAX_TRABALHO_SEM_INTERVALO_MS`, e `intervaloObrigatorio:
+  false` no contrato 6x1). Como a carga é de 7h (seg–qui) ou 8h (sex–sáb), todo
+  saldo a partir de ~2h10 já cai nessa faixa. A sugestão diz explicitamente
+  "trabalha 2h, sem intervalo"; quando não couber, diz "com intervalo de 1h".
+- **Nunca cria saldo negativo:** as horas a compensar são limitadas ao saldo e à
+  carga do dia.
+
+**Mínimo para sugerir: 3h de saldo de 50%** (decisão do dono). Abaixo disso a
+mudança de escala não se paga.
+
 Quem está com 50% **negativas** não aparece aqui — precisa trabalhar horas, não
 folgar; é a lista espelho, candidata a uma fase posterior.
+
+### 7.1. Em que ponta do turno liberar — decidido pelo heatmap
+
+Com "trabalha 2h", falta dizer **quais** 2h. Só duas respostas são executáveis:
+as **primeiras** horas do turno (entra na hora e vai embora antes) ou as
+**últimas** (entra mais tarde e sai na hora). O heatmap 7×24 decide: fica-se com
+a ponta que cobre a **maior** venda média, liberando-se a mais vazia. É o mesmo
+princípio do item 3, aplicado dentro do dia.
 
 ### 8. Onde gravar: nova tabela `CompensacaoHoras`
 
@@ -291,12 +355,33 @@ existentes (`Cartao`, `Selo`, `CartaoMetrica`):
 - **Fase 3 (opcional) — a lista espelho.** Quem está com 50% negativas e em que
   dia forte convocar para zerar.
 
-## Pontos a confirmar antes de implementar
+## Decisões do dono do projeto (2026-09-16)
 
-1. **Mínimo útil** para sugerir uma faixa de horas (proposto: 1h).
-2. **Permissões:** ver com `CENTRAL_JORNADA` e aplicar com `OPERADORES_AUSENCIAS`
-   (igual ao botão de débito hoje), ou criar `COMPENSACAO_HORAS` própria?
-3. **Cobertura mínima** de 20 operadores vale como piso para liberar? Há mínimo
-   para fiscais e supervisores?
-4. **Meio dia** é metade da carga, ou existe convenção de horário na loja?
-5. Compensação pode atravessar o ciclo em algum caso excepcional, ou é proibido?
+As cinco perguntas em aberto foram respondidas e já estão incorporadas acima:
+
+| # | Pergunta | Decisão |
+|---|---|---|
+| 1 | Mínimo para sugerir | **3h** de saldo de 50% (a proposta sugeria 1h) |
+| 2 | Permissão | **A mesma do débito** — débito *é* compensação; nada de permissão nova |
+| 3 | Cobertura | **20 operadores não é piso.** Fiscais: **mínimo 2** disponíveis. Supervisores: sem piso |
+| 4 | Meio dia | **Não existe.** Conta contínua: trabalha `carga − saldo`, compensa o saldo, sem intervalo quando couber |
+| 5 | Atravessar ciclo | **Proibido.** Cada ciclo é independente em horas; só atestado e férias atravessam, por serem incontroláveis |
+
+### 12. Permissão
+
+Ver e conceder com **`OPERADORES_AUSENCIAS`** — exatamente quem hoje aperta o
+botão "Débito" na Central de Jornada. Nenhuma funcionalidade nova entra no
+catálogo de permissões: criar uma seria afirmar que compensar é um poder distinto
+de debitar, e a decisão do dono do projeto é que **é o mesmo poder**. A card em si
+aparece dentro da Central, que já exige `CENTRAL_JORNADA`.
+
+## Refinamento futuro registrado
+
+O item 3 previa ajustar a média do dia da semana pelo **efeito do dia do mês**
+(o calendário de pagamento). Fica **fora desta entrega** por falta de história: o
+sistema começou em 2026-07-01, então cada dia do mês tem 2 a 3 observações — não
+sustenta um fator. A implementação usa, nesta ordem: a `EstimativaVendaDia`
+daquela data (previsão da própria gestão, que **já embute** o efeito do
+calendário) e, na falta dela, a média do dia da semana com mínimo de 3 amostras.
+Quando houver mais de um ano de história, o fator pode entrar como terceira
+camada.

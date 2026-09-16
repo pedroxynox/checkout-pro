@@ -21,6 +21,8 @@ import {
   inicioDoMes,
   inicioDoProximoDia,
   inicioDoProximoMes,
+  heatmapDiaSemanaHora,
+  mediaPorDiaSemana,
 } from './vendas.domain';
 
 export interface ResultadoUploadVendas {
@@ -478,23 +480,11 @@ export class VendasService {
   } {
     const somaHora = new Array<number>(24).fill(0);
     const diasComVenda = new Set<string>();
-    // Heatmap: soma por [dia da semana][hora] e dias distintos por dia da semana.
-    const somaHeat: number[][] = Array.from({ length: 7 }, () =>
-      new Array<number>(24).fill(0),
-    );
-    const diasPorSemana: Set<string>[] = Array.from(
-      { length: 7 },
-      () => new Set(),
-    );
 
     for (const r of regs) {
       const v = Number(r.valor);
-      const iso = r.data.toISOString().slice(0, 10);
-      const dow = r.data.getUTCDay();
       somaHora[r.hora] += v;
-      diasComVenda.add(iso);
-      somaHeat[dow][r.hora] += v;
-      diasPorSemana[dow].add(iso);
+      diasComVenda.add(r.data.toISOString().slice(0, 10));
     }
 
     const nDias = diasComVenda.size;
@@ -516,29 +506,31 @@ export class VendasService {
       }
     }
 
-    const heatmap: number[][] = somaHeat.map((linha, dow) => {
-      const n = diasPorSemana[dow].size;
-      return linha.map((s) => arredondar(n > 0 ? s / n : 0));
-    });
+    // O heatmap vem do domínio puro: é a mesma matriz que a Compensação de
+    // horas consulta para decidir em que ponta do turno liberar alguém.
+    const heatmap = heatmapDiaSemanaHora(regs).map((linha) =>
+      linha.map((media) => arredondar(media)),
+    );
 
     return { curvaHoraria, horaPico, heatmap };
   }
 
-  /** Média do total diário por dia da semana (0=Dom..6=Sáb). */
+  /**
+   * Média do total diário por dia da semana (0=Dom..6=Sáb).
+   *
+   * Delega a `mediaPorDiaSemana` (domínio puro), que é a mesma estatística
+   * consumida pela Compensação de horas — uma fonte só, para os dois lados não
+   * divergirem. Aqui a média é **informativa** (aparece no painel), então o piso
+   * de amostras é 1 e feriados entram: quem decide algo com este número é o
+   * gestor olhando o gráfico, não o sistema.
+   */
   private calcularPadraoDiaSemana(
     diarios: { data: Date; valor: unknown }[],
   ): PadraoDiaSemana[] {
-    const soma = new Array<number>(7).fill(0);
-    const cont = new Array<number>(7).fill(0);
-    for (const d of diarios) {
-      const dow = d.data.getUTCDay();
-      soma[dow] += Number(d.valor);
-      cont[dow] += 1;
-    }
-    return soma.map((s, dow) => ({
-      diaSemana: dow,
-      nome: NOMES_DIA_SEMANA[dow],
-      media: arredondar(cont[dow] > 0 ? s / cont[dow] : 0),
+    return mediaPorDiaSemana(diarios, { minAmostras: 1 }).map((m) => ({
+      diaSemana: m.diaSemana,
+      nome: m.nome,
+      media: arredondar(m.media ?? 0),
     }));
   }
 

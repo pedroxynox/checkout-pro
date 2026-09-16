@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **206 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **210 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -133,6 +133,15 @@
 | POST | `/colaboradores/:id/inativar` | `inativar` | `OPERADORES_CRUD` |
 | POST | `/colaboradores/:id/reativar` | `reativar` | `OPERADORES_CRUD` |
 | POST | `/colaboradores/:id/identificadores` | `adicionarIdentificador` | `OPERADORES_CRUD` |
+
+## `compensacao-horas`
+
+| Método | Rota | Handler | Permissão |
+|---|---|---|---|
+| GET | `/compensacao-horas` | `painel` | `OPERADORES_AUSENCIAS` |
+| POST | `/compensacao-horas/aprovar` | `aprovar` | `OPERADORES_AUSENCIAS` |
+| POST | `/compensacao-horas/recusar` | `recusar` | `OPERADORES_AUSENCIAS` |
+| POST | `/compensacao-horas/:id/cancelar` | `cancelar` | `OPERADORES_AUSENCIAS` |
 
 ## `contratos`
 

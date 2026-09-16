@@ -25,7 +25,7 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `central-jornada.controller.ts` | Rotas HTTP do portal | 100 |
-| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 1794 |
+| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 2126 |
 | `central-jornada.module.ts` | Ligações (DI) do módulo | 25 |
 | `dto/central-jornada.dto.ts` | Validação de entrada (marcar débito) | 7 |
 
@@ -139,35 +139,46 @@ ordem cronológica.
 
 #### `calcularPessoa(...)` (privado, coração do módulo)
 Agrupa batidas/ausências por dia e, para cada dia do ciclo, decide o tipo
-(`TRABALHO`/`INCOMPLETO`/`FALTA`/`FALTA_DEBITO`/`FALTA_NAO_REGISTRADA`/`ATESTADO`/`SEM_REGISTRO`),
+(`TRABALHO`/`INCOMPLETO`/`FALTA`/`FALTA_DEBITO`/`FALTA_NAO_REGISTRADA`/`ATESTADO`/`COMPENSACAO`/`SEM_REGISTRO`),
 delega o cálculo a `calcularJornadaDia`, acumula extras, devidas (só em dias
 completos **e que geram débito** — domingo e feriado nunca geram), atestados,
 faltas, TAC, conflitos e atrasos.
+
+Recebe também as **compensações de horas aprovadas** da pessoa no ciclo
+(`Map<diaISO, CompensacaoAplicada>`, recortadas por `compensacoesDe`), carregadas
+uma vez por ciclo pela função livre `carregarCompensacoesAprovadas` — ver a
+regra 16 e [`compensacao-horas`](compensacao-horas.md).
 
 ## 6. Lógica de domínio (funções puras)
 - `agruparAtestados(diasAtestado)` → transforma os DIAS de atestado do ciclo nos
   **atestados** (documentos) que os originaram: por `atestadoId` quando existe, e
   por bloco de dias consecutivos quando o dia foi abonado sem documento. É o que
   faz a card contar 2 atestados onde há 5 dias — ver regra 12.
-- `contribuicaoSaldoTime({extras50Ms, extras100Ms, horasDevidasMs})` →
+- `contribuicaoSaldoTime({extras50Ms, extras100Ms, horasDevidasMs, compensadoMs})` →
   contribuição de uma pessoa ao **saldo do time**: as 50% entram só se
-  positivas após o débito (o débito consome apenas as 50%); as 100% entram
-  sempre.
-- `saldo50Ms = extras50Ms − horasDevidasMs` (por pessoa) → **saldo das horas
+  positivas após o que já saiu da carteira (débito **e** compensação consomem
+  apenas as 50%); as 100% entram sempre. `compensadoMs` é opcional (ausente =
+  zero), para não quebrar chamadas antigas.
+- `usadoDas50Ms = horasDevidasMs + compensadoMs` (por pessoa) → o que **já saiu
+  da carteira de 50%**. Débito e compensação são a mesma moeda (ADR 0021 —
+  "débito é compensação") e por isso entram juntos em todas as fórmulas abaixo;
+  ficam separados apenas no relatório, porque *dever* horas e *usar* horas não se
+  leem igual.
+- `saldo50Ms = extras50Ms − usadoDas50Ms` (por pessoa) → **saldo das horas
   50%, com sinal** (pode ser negativo). É o número exibido como "saldo 50%" na
   card da pessoa e no detalhe. As 100% ficam de fora de propósito: nunca são
   debitadas e já têm o chip `+100%`. Equivale a
   `extras50AtualMs − horasDevidasAtualMs`, mas **sem o piso 0** dos dois — aqui o
   sinal importa, porque é ele que pinta o valor de verde ou vermelho.
-- `saldoMs = extras50Ms + extras100Ms − horasDevidasMs` (por pessoa) → saldo
+- `saldoMs = extras50Ms + extras100Ms − usadoDas50Ms` (por pessoa) → saldo
   geral do banco de horas (as duas moedas somadas). Continua no contrato e na
   exportação, mas **não é mais o número da card**.
-- `extras50AtualMs = max(0, extras50Ms − horasDevidasMs)` (por pessoa) → as
+- `extras50AtualMs = max(0, extras50Ms − usadoDas50Ms)` (por pessoa) → as
   **horas 50% REAIS disponíveis agora**: o bruto acumulado no ciclo menos o que
   a pessoa deve (o débito/déficit consome só as 50%), com piso 0. É o número
   exibido na tela (total do time e chip da pessoa); o `extras50Ms` bruto
   continua disponível para a exportação/folha.
-- `horasDevidasAtualMs = max(0, horasDevidasMs − extras50Ms)` (por pessoa) → o
+- `horasDevidasAtualMs = max(0, usadoDas50Ms − extras50Ms)` (por pessoa) → o
   que a pessoa deve **DE VERDADE** agora, depois de as 50% abaterem o débito. É
   **complementar** a `extras50AtualMs` (no máximo um dos dois é > 0): quem tem
   saldo 50% positivo (mesmo que 9 min) **não deve horas**. É o valor do chip
@@ -182,9 +193,10 @@ faltas, TAC, conflitos e atrasos.
 
 ## 7. Estados e enums
 - `CentralDiaDetalhe.tipo`: `TRABALHO` · `INCOMPLETO` · `FALTA` · `FALTA_DEBITO`
-  · **`FALTA_NAO_REGISTRADA`** · `ATESTADO` · `SEM_REGISTRO`.
+  · **`FALTA_NAO_REGISTRADA`** · `ATESTADO` · **`COMPENSACAO`** · `SEM_REGISTRO`.
   `FALTA_NAO_REGISTRADA` é o dia em que a pessoa **estava escalada**, o dia já
   terminou, ela não bateu ponto e **ninguém lançou a falta** — ver a regra 15.
+  `COMPENSACAO` é o dia com compensação de horas aprovada — ver a regra 16.
 - `InconsistenciaItem.tipo`: `INCOMPLETA` · `DUPLICADA` · `CONFLITO_AUSENCIA` ·
   `ATRASO` · `TAC` · **`PONTO_EM_FOLGA`**. O último é o único que **não** é sobre
   a pessoa: ela trabalhou num dia que o cadastro diz ser folga dela — quase sempre
@@ -206,7 +218,8 @@ faltas, TAC, conflitos e atrasos.
 ## 8. Dados que o módulo toca
 - **Lê:** `Colaborador` (todos os tipos de contrato), `BatidaPonto`,
   `Ausencia`, `Fiscal`, `Usuario`, `IncidenciaEscala` (só os não-retornos do
-  intervalo, no relatório de marcações inválidas), feriados e âncora de domingo
+  intervalo, no relatório de marcações inválidas), `CompensacaoHoras` (só as
+  `APROVADA`, via `carregarCompensacoesAprovadas`), feriados e âncora de domingo
   (via serviços).
 - **Escreve:** `Ausencia.debitoHoras` (marcar débito).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
@@ -215,7 +228,12 @@ faltas, TAC, conflitos e atrasos.
 - **Depende de:** `PrismaService`, `FeriadosService`, e (opcionais)
   `EscalaDomingoService`, `CicloFolhaService`, `TiposContratoService`; reusa o
   domínio de [`ponto`](ponto.md) e o helper `mapearFiscalColaborador`.
-- **É usado por:** o app (portal gerencial da jornada) e a exportação do ciclo.
+- **É usado por:** o app (portal gerencial da jornada), a exportação do ciclo e
+  [`compensacao-horas`](compensacao-horas.md), que consome o saldo de 50% apurado
+  aqui. A dependência é **de mão única**: a Central **não** importa o módulo de
+  compensação — lê as linhas aprovadas por uma função livre. Um ciclo de injeção
+  resolvido por `forwardRef` transformaria qualquer erro de ordem de
+  inicialização num `undefined` silencioso no meio do cálculo de horas.
 
 ## 10. Regras de negócio-chave
 1. **Ciclo de folha 26→25** como janela de apuração (deslocamento 0 = atual).
@@ -412,6 +430,43 @@ faltas, TAC, conflitos e atrasos.
    ser exibidos pela regra nova (a base não é reprocessada: o número é sempre
    recalculado a partir das ausências).
 
+16. **Compensação de horas: as horas saem das 50%, mas o dia não é falta nem
+   dívida.** Uma compensação **aprovada** (ADR 0021) é um dia em que a pessoa
+   trabalha menos — ou nada — para consumir o próprio saldo de 50%. A Central lê
+   essas linhas e as trata em dois caminhos distintos, porque a aritmética antiga
+   já cobria metade do problema:
+
+   | Caso | O que a Central faz |
+   |---|---|
+   | **Dia inteiro** (`trabalharMs = 0`, sem batidas) | Soma `min(compensado, carga)` em `compensadoMs` e emite o dia como `COMPENSACAO`. |
+   | **Dia parcial** (a pessoa bate ponto e trabalha menos) | O déficit do dia é **RECLASSIFICADO** como compensação (até o valor aprovado), em vez de somado. |
+
+   A reclassificação é o ponto delicado. Num dia parcial o cálculo **já** gerava
+   déficit (`horasDevidasMs += base − trabalhado`), e esse déficit **já** consumia
+   as 50%. Somar a compensação em cima contaria as mesmas horas **duas vezes**.
+   Reclassificando, a aritmética fica idêntica — os dois abatem as 50% — e só a
+   leitura muda. O que passar do valor aprovado continua sendo hora devida.
+
+   Três consequências que valem registrar:
+   - **`compensadoMs` é balde próprio, não "horas devidas".** Quem compensou não
+     **deve** horas: ele **usou** horas que já tinha. Jogar as duas coisas no
+     mesmo número faria o gestor ver dívida onde houve boa gestão — no relatório
+     que existe para reconhecer boa gestão.
+   - **Sem o tipo `COMPENSACAO`, um dia inteiro compensado cairia em
+     `FALTA_NAO_REGISTRADA`**: a Central acusaria em laranja exatamente o dia que
+     ela própria sugeriu e o gestor aprovou.
+   - **A entrada prevista do dia passa a ser a da compensação.** Quando a
+     liberação é na ponta inicial do turno, a pessoa entra mais tarde *por
+     autorização*; sem essa troca o sistema apontaria **atraso** em quem seguiu a
+     liberação que ele mesmo concedeu.
+
+   O desconto só vale em dias **já terminados**, pela mesma razão do déficit: um
+   dia futuro ainda não consumiu nada, e antecipá-lo faria o saldo da pessoa
+   despencar no instante em que a compensação é aprovada. E num domingo ou
+   feriado **não desconta nada** — ali o excedente é 100%, que nunca é debitada
+   (regra 6). Detalhe do motor de sugestão em
+   [`compensacao-horas`](compensacao-horas.md).
+
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
@@ -419,13 +474,14 @@ faltas, TAC, conflitos e atrasos.
 | `marcacoes-invalidas.service.spec.ts` | Relatório de marcações faltantes: entrada esquecida, encerramento, as duas do intervalo, totais, ordenação, sem turno — e os dias que **não** entram (não retorno do intervalo, jornada curta válida, dia completo, dia sem registro) | 12 |
 | `rankings.service.spec.ts` | Base dos rankings: **detalhe do mesmo tamanho que o contador** de cada card, faltas sem atestado, atestados à parte (contados por documento), atrasos com minutos e turno, TAC com motivos, conflitos, pessoas zeradas e igualdade com `resumoCiclo` | 10 |
 | `agrupar-atestados.spec.ts` | Agrupamento por documento e por bloco de dias consecutivos: 3+2 dias = 2 atestados, dias não contíguos, virada de mês e o total de dias preservado | 12 |
+| `compensacao-jornada.spec.ts` | Compensação no cálculo da jornada: dia inteiro (consome as 50%, não é falta, sai como `COMPENSACAO`, nada em dia futuro nem em domingo), dia parcial (déficit **reclassificado** e não somado, excesso segue como dívida, sem atraso falso na entrada combinada) e as invariantes (o saldo 50% segue complementar aos chips, as 100% intactas) | 12 |
 | `saldo-time.spec.ts` | Regra do saldo do time (`contribuicaoSaldoTime`) | 4 |
 | `central-jornada.controller.spec.ts` | Permissão do débito de horas e do relatório de marcações inválidas | 2 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `central-jornada.service.ts` (1794 linhas) concentra carga, cálculo e
+- 🔧 `central-jornada.service.ts` (2126 linhas) concentra carga, cálculo e
   agregação; os tipos de resposta (`Central*`) e o cálculo diário podem ser
   extraídos conforme crescer.
 - 🔧 **Duas respostas para "o que falta no dia".** O painel de inconsistências

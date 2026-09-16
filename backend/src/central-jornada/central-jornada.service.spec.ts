@@ -93,6 +93,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue(ausencias) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
@@ -124,6 +126,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue([]) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest.fn().mockResolvedValue(feriadoMap),
@@ -152,6 +156,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue([ausencia]) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
@@ -224,6 +230,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
       usuario: {
         findMany: jest.fn().mockResolvedValue([{ id: 'u1', login: 'JOS' }]),
       },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
@@ -355,6 +363,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue([]) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
@@ -574,6 +584,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue([]) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
@@ -612,6 +624,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue([]) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
@@ -672,6 +686,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
       },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
@@ -732,6 +748,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue([]) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
@@ -790,6 +808,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue([]) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
@@ -838,6 +858,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue([]) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     // 30/06 é feriado e a pessoa não tem horário de domingo cadastrado: o turno
     // do feriado cai de volta no horário normal (07:00), então 07:40 é atraso.
@@ -894,6 +916,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue([]) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest
@@ -945,6 +969,8 @@ describe('CentralJornadaService.resumoCiclo', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue([]) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest
@@ -998,6 +1024,8 @@ describe('CentralJornadaService.inconsistenciasCiclo', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue(ausencias) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
@@ -1093,6 +1121,8 @@ describe('CentralJornadaService.exportarCiclo', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue(ausencias) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
       mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),
@@ -1227,6 +1257,8 @@ describe('CentralJornadaService — dia escalado sem registro', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue([]) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
       escalaEntry: { findMany: jest.fn().mockResolvedValue(entradasEscala) },
     };
     const feriadosFake = {
@@ -1408,6 +1440,8 @@ describe('CentralJornadaService — ponto em dia de folga', () => {
       ausencia: { findMany: jest.fn().mockResolvedValue([]) },
       fiscal: { findMany: jest.fn().mockResolvedValue([]) },
       usuario: { findMany: jest.fn().mockResolvedValue([]) },
+      // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+      compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
       escalaEntry: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const feriadosFake = {
