@@ -1,8 +1,13 @@
 /**
- * Seção "Contratos" — contrato de experiência (45 + 45 dias) dos operadores.
+ * Seção "Contratos" — contrato de experiência (45 + 45 dias) do quadro.
  *
- * Mostra um resumo da carteira, filtros por etiqueta e um card por operador com
- * o tempo de casa, a etiqueta (experiência/efetivado) e o semáforo de urgência.
+ * Cobre **todas as funções contratadas** (caixa, fiscais e supervisão), e não só
+ * os operadores: o contrato é da pessoa, e o prazo corre desde a admissão sem se
+ * interromper por uma promoção (ADR 0024). Antes, promover alguém o fazia
+ * desaparecer desta aba e perder o alerta dos 90 dias.
+ *
+ * Mostra um resumo da carteira, filtros por etiqueta e um card por pessoa com o
+ * cargo, o tempo de casa, a etiqueta (experiência/efetivado) e o semáforo.
  * O ciclo é AUTOMÁTICO: dentro dos 90 dias fica "experiência" e, a partir do dia
  * 91, "efetivado" — não há decisão manual de marcos. Quem tem `CONTRATOS_GERIR`
  * (gerente) apenas define/edita a data de admissão. Tocar no card abre o perfil.
@@ -45,6 +50,14 @@ const ROTULO_ETIQUETA: Record<EtiquetaContrato, string> = {
   efetivado: 'Efetivado',
   encerrado: 'Encerrado',
   sem_admissao: 'Sem admissão',
+};
+
+/** Cargo no card, curto: a lista mistura funções desde o ADR 0024. */
+const ROTULO_FUNCAO: Record<string, string> = {
+  OPERADOR: 'Caixa',
+  FISCAL: 'Fiscal',
+  SUPERVISOR: 'Supervisão',
+  GESTOR: 'Gerência',
 };
 
 /** Cor do selo a partir da urgência (semáforo). */
@@ -273,7 +286,7 @@ export function ContratosScreen({
         <EstadoVazio
           icone="document-text-outline"
           titulo="Sem contratos"
-          descricao="Operadores com data de admissão aparecerão aqui."
+          descricao="Colaboradores com data de admissão aparecerão aqui."
         />
       ) : (
         cardsFiltrados.map((c) => {
@@ -295,9 +308,10 @@ export function ContratosScreen({
                     {c.nome}
                   </Text>
                   <Text style={styles.cardMeta} numberOfLines={1}>
+                    {ROTULO_FUNCAO[c.funcao] ?? c.funcao} ·{' '}
                     {c.dataAdmissao
-                      ? `Desde ${formatarData(c.dataAdmissao)} · ${c.diasDeCasa} dias de casa`
-                      : 'Sem data de admissão'}
+                      ? `desde ${formatarData(c.dataAdmissao)} · ${c.diasDeCasa} dias de casa`
+                      : 'sem data de admissão'}
                   </Text>
                   <Text style={styles.cardStatus} numberOfLines={2}>
                     {statusDoCard(c)}

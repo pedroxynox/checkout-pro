@@ -30,6 +30,7 @@ const CARD_VENCENDO = {
   colaboradorId: 'c1',
   nome: 'Bia Vence',
   matricula: '2',
+  funcao: 'OPERADOR',
   dataAdmissao: '2026-05-20',
   diasDeCasa: 42,
   estado: 'EXPERIENCIA',
@@ -124,5 +125,70 @@ describe('ContratosScreen', () => {
     await waitFor(() =>
       expect(screen.queryByText('Aprovar 45 dias')).toBeNull(),
     );
+  });
+});
+
+
+/**
+ * A carteira deixou de ser só de operadores (ADR 0024): o contrato de
+ * experiência é da pessoa, e uma promoção não interrompe o prazo. Antes, promover
+ * alguém o fazia desaparecer desta aba — e perder o alerta dos 90 dias.
+ */
+describe('ContratosScreen — a carteira cobre todo o quadro', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAuth.permitir = true;
+    contratosService.resumo.mockResolvedValue(RESUMO);
+  });
+
+  it('mostra o cargo de cada pessoa junto do tempo de casa', async () => {
+    contratosService.listar.mockResolvedValue([
+      { ...CARD_VENCENDO, colaboradorId: 'c2', nome: 'Diones', funcao: 'FISCAL' },
+    ]);
+    render_();
+
+    await screen.findByText('Diones');
+    expect(
+      screen.getByText('Fiscal · desde 20/05/2026 · 42 dias de casa'),
+    ).toBeTruthy();
+  });
+
+  it('traduz o cargo para a palavra da loja', async () => {
+    // "Caixa" e "Supervisão" são como a equipe fala; OPERADOR/SUPERVISOR são
+    // nomes de banco de dados.
+    contratosService.listar.mockResolvedValue([
+      { ...CARD_VENCENDO, colaboradorId: 'a', nome: 'Ana', funcao: 'OPERADOR' },
+      {
+        ...CARD_VENCENDO,
+        colaboradorId: 'b',
+        nome: 'Bruno',
+        funcao: 'SUPERVISOR',
+      },
+    ]);
+    render_();
+
+    await screen.findByText('Ana');
+    expect(screen.getByText(/^Caixa · desde/)).toBeTruthy();
+    expect(screen.getByText(/^Supervisão · desde/)).toBeTruthy();
+  });
+
+  it('quem ainda não tem admissão aparece, com o cargo e o aviso', async () => {
+    // Este balde é o que permite ao gestor completar o dado; esconder a pessoa
+    // seria esconder o trabalho.
+    contratosService.listar.mockResolvedValue([
+      {
+        ...CARD_VENCENDO,
+        colaboradorId: 'c3',
+        nome: 'Sem Data',
+        funcao: 'FISCAL',
+        dataAdmissao: null,
+        estado: 'SEM_ADMISSAO',
+        etiqueta: 'sem_admissao',
+      },
+    ]);
+    render_();
+
+    await screen.findByText('Sem Data');
+    expect(screen.getByText('Fiscal · sem data de admissão')).toBeTruthy();
   });
 });

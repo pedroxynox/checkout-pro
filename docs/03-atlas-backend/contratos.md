@@ -3,10 +3,10 @@
 # Módulo: `contratos`
 
 ## 1. Propósito
-Contratos de experiência (45 + 45 dias) dos operadores: deriva o estado do
-contrato (experiência/efetivado/encerrado) de forma determinística a partir da
-data de admissão e das decisões, alimenta os cards e o resumo da carteira, e
-avisa os gestores quando um contrato está prestes a vencer.
+Contratos de experiência (45 + 45 dias) de **todo o quadro contratado**: deriva o
+estado do contrato (experiência/efetivado/encerrado) de forma determinística a
+partir da data de admissão e das decisões, alimenta os cards e o resumo da
+carteira, e avisa os gestores quando um contrato está prestes a vencer.
 
 ## 2. Responsabilidades e limites
 - **Faz:** define/atualiza a data de admissão; registra decisões de marco
@@ -36,7 +36,7 @@ avisa os gestores quando um contrato está prestes a vencer.
 
 | Método + Rota | Permissão | O que faz |
 |---|---|---|
-| `GET /contratos` | `CONTRATOS_VISUALIZAR` | Lista os cards de contrato dos operadores (busca/etiqueta/incluirSemAdmissao). |
+| `GET /contratos` | `CONTRATOS_VISUALIZAR` | Lista os cards de contrato do quadro contratado (busca/etiqueta/incluirSemAdmissao). |
 | `GET /contratos/resumo` | `CONTRATOS_VISUALIZAR` | Contagens agregadas para o topo da seção. |
 | `GET /contratos/:colaboradorId` | `CONTRATOS_VISUALIZAR` | Resumo do contrato de um colaborador (tempo de casa). |
 | `PATCH /contratos/:colaboradorId/admissao` | `CONTRATOS_GERIR` | Define/atualiza a data de admissão. |
@@ -50,7 +50,7 @@ avisa os gestores quando um contrato está prestes a vencer.
 - **Recebe:** filtros (busca, etiqueta, incluirSemAdmissao) e a data de
   referência.
 - **Devolve:** `ContratoCard[]` ordenados por urgência, marco mais próximo e nome.
-- **Efeitos:** lê operadores ativos + decisões e deriva cada card via
+- **Efeitos:** lê as fichas ativas das funções contratadas + decisões e deriva cada card via
   `derivarResumoContrato`.
 
 #### `resumo(hoje?)`
@@ -71,7 +71,7 @@ Reconstrói os resumos a partir dos cards e agrega a carteira (`resumirCarteira`
 Monta a seção "Tempo de casa" do perfil (informativa; não afeta o score).
 
 #### `avaliarAlertasDoDia(hoje?)`
-Avalia os alertas de todos os operadores com admissão definida (consumido pelo
+Avalia os alertas de todo o quadro com admissão definida (consumido pelo
 cron; não envia nada por si).
 
 ### `ContratosAlertasService.verificarContratos()` (cron 08:00 BRT)
@@ -102,7 +102,7 @@ Avalia os alertas do dia e notifica os gestores (`CONTRATOS_VISUALIZAR`), com um
 
 ## 8. Dados que o módulo toca
 - **Escreve:** `Colaborador.dataAdmissao`, `DecisaoContrato` (upsert com autor).
-- **Lê:** `Colaborador` (operadores ativos), `DecisaoContrato`.
+- **Lê:** `Colaborador` (fichas ativas de `OPERADOR`/`FISCAL`/`SUPERVISOR`), `DecisaoContrato`.
 - O estado do contrato **não é persistido** — sempre derivado (ver ADR 0008).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
 
@@ -125,12 +125,36 @@ Avalia os alertas do dia e notifica os gestores (`CONTRATOS_VISUALIZAR`), com um
 5. **Decisão condicionada**: o marco de 90 só após aprovar o de 45; nada após
    reprovação (`podeDecidirMarco`).
 6. **Admissão histórica é permitida** (sem guard de data inicial do sistema).
-7. **Escopo = operadores** (o contrato de experiência aplica-se à frente de caixa).
+7. **Escopo = `OPERADOR`, `FISCAL` e `SUPERVISOR`** (`FUNCOES_COM_EXPERIENCIA`):
+   o contrato de experiência é **da pessoa, não do cargo**, e o prazo corre desde a
+   admissão sem se interromper por uma promoção
+   ([ADR 0024](../02-arquitetura/decisoes/0024-contrato-de-experiencia-e-da-pessoa.md)).
+
+   Era `funcao: 'OPERADOR'`, e o efeito apareceu na operação: um operador
+   promovido a fiscal **desaparecia desta aba** no instante em que a promoção era
+   salva. Nada era apagado — a admissão e as decisões seguiam no banco,
+   inalcançáveis pela tela. Pior, `avaliarAlertasDoDia` carregava o mesmo filtro,
+   então ele parava de receber o **alerta dos 90 dias**: o único aviso de que a
+   efetivação automática estava chegando. É a terceira reincidência do erro do
+   [ADR 0020](../02-arquitetura/decisoes/0020-mudanca-de-funcao-preserva-o-ponto.md)
+   — a função de hoje decidindo o passado de alguém.
+
+   **A lista e os alertas usam a MESMA constante**, e isso é parte da regra: foi a
+   divergência entre as duas consultas que deixou o alerta silencioso enquanto o
+   card já havia sumido.
+
+   `GESTOR` fica fora por um motivo prático, não de mérito: o cadastro não pede
+   data de admissão para a gerência, então um gestor só poderia aparecer no balde
+   "definir admissão" — um pedido de ação que a tela não permite atender. Para
+   incluí-los, o cadastro precisa coletar a data primeiro.
+8. **O card leva a função atual.** Consequência de a carteira deixar de ser
+   homogênea: sem o cargo, duas pessoas de áreas diferentes ficam indistinguíveis
+   numa lista que agora mistura caixa, fiscais e supervisão.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `contratos.service.spec.ts` | `definirAdmissao`, `registrarDecisao` e derivação dos cards | 10 |
+| `contratos.service.spec.ts` | `definirAdmissao`, `registrarDecisao`, derivação dos cards e o **escopo da carteira** (o promovido a fiscal permanece na lista e segue recebendo o alerta de vencimento; o cargo vai no card; gerência e quem saiu do quadro ficam fora) | 15 |
 | `contratos.properties.spec.ts` | Propriedades do ciclo automático (property-based): inclui fronteira 90/91, janela do aviso de 5 dias e condicionamento das decisões | 13 |
 | `contratos-alertas.service.spec.ts` | Cron de alertas e montagem das mensagens | 5 |
 
