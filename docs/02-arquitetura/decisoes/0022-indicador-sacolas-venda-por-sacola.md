@@ -240,12 +240,61 @@ mexer nele. Hoje o resultado é idêntico (existe um item só).
   ("este lote me durou três semanas") e elimina de vez o problema do calendário,
   porque o período passa a ser o ciclo de compra em vez do mês.
 
-## Pontos a confirmar antes de implementar
+## Decisões do dono do projeto (2026-09-16)
 
-1. **Meta é piso?** "Ao menos R$ X de venda por sacola" (`MAIOR_MELHOR`) — é como
-   está desenhado. Confirmar.
-2. **Valor padrão** da meta, para o mês em que ninguém a definiu.
-3. **A referência de 90 dias** serve, ou prefere outra janela (60? 120?)?
-4. **Onde o indicador aparece:** só no Almoxarifado (Insumos), ou também no painel
-   de Indicadores junto aos outros cinco?
-5. **Confirmar a exclusão do estoque inicial** do denominador.
+| # | Pergunta | Decisão |
+|---|---|---|
+| 1 | Meta é piso? | **Não é piso.** Ainda a precisar: ver "Ponto aberto" abaixo |
+| 2 | Valor padrão | **R$ 28,00 por sacola** |
+| 3 | Referência | **Mensal.** A janela de 90 dias foi recusada |
+| 4 | Onde aparece | No Almoxarifado **e** no painel de Indicadores, junto aos outros cinco |
+| 5 | Estoque inicial | **Fora** do denominador, confirmado |
+
+### O que muda por causa da decisão 3 (referência mensal)
+
+A janela estável de 90 dias sai do desenho. Isso **aumenta** a importância das
+outras duas defesas contra a entrada em lote (item 1), que passam a ser as únicas:
+
+- **mês sem entrada de sacola** devolve estado próprio e **não** é comparado com a
+  meta;
+- **o número de entregas do mês** é exibido junto ao indicador, porque é o que
+  explica um mês fora da curva.
+
+Vale notar que o efeito é menor do que o pior caso descrito no item 1: as sacolas
+seguem um **ciclo quinzenal** (existe até uma rota
+`GET /insumos/pedidos-recorrentes/proximo-quinzenal` para elas), então o mês
+típico tem 2 entregas e a variação vem de um mês ocasional com 1 ou 3. O aviso da
+contagem de entregas cobre exatamente esse caso.
+
+### O que muda por causa da decisão 4 (aparecer no painel de Indicadores)
+
+O indicador entra na tela de Indicadores ao lado dos cinco de arrecadação, mas
+**continua sendo calculado em `insumos`** (item 5 desta proposta segue de pé, e o
+dono do projeto reforçou que "este indicador é diferente dos outros"). Na prática:
+
+- a tela de Indicadores passa a compor **duas fontes** — os cinco de arrecadação e
+  este —, em vez de percorrer um catálogo só;
+- o card precisa deixar visível que a base dele é **outra** (sacolas recebidas, e
+  não vendas nem um valor fixo), ou o gestor vai comparar coisas que não se
+  comparam;
+- `TIPOS_ARRECADACAO` **não** é alterado, então `congelarMes` e a purga seguem
+  intactos.
+
+## Ponto aberto (bloqueia a implementação)
+
+**"A meta não é piso" precisa de uma leitura única, porque ela define o sentido do
+semáforo — e um semáforo invertido é o defeito mais grave descrito neste
+documento (item 3).**
+
+Com meta de R$ 28,00 por sacola, as leituras possíveis são:
+
+| Leitura | R$ 34 por sacola | R$ 22 por sacola |
+|---|---|---|
+| **(A) Maior é melhor** — 28 é o mínimo desejado | verde | amarelo/vermelho |
+| **(B) Referência** — 28 é o alvo, desvio para qualquer lado é sinalizado | sinaliza "acima" | sinaliza "abaixo" |
+| **(C) Menor é melhor** — 28 é um teto | amarelo/vermelho | verde |
+
+A economia da operação aponta para **(A)**: vender mais por sacola significa usar
+menos sacolas para o mesmo faturamento. Mas "não é piso" pode indicar **(B)** — o
+número serve para diagnosticar, não para reprovar. A implementação fica esperando
+esta definição, em vez de arriscar a direção.
