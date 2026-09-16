@@ -2,8 +2,9 @@
  * Centro de Controle ▸ Metas — definição das metas por período mensal.
  *
  * Mostra um seletor de mês no topo e, abaixo, uma card por indicador
- * (Vendas, Cancelamento de Itens, Recarga de Celular, Cancelamento de Cupom,
- * Devoluções). Cada card exibe a meta do mês selecionado.
+ * (Vendas, Recarga de Celular, Cancelamento de Itens, Cancelamento de Cupom,
+ * Cancelamentos Totais, Devoluções e Sacolas). Cada card exibe a meta do mês
+ * selecionado.
  *
  * As quatro metas digitadas (recargas, cancelamentos e devoluções) são
  * editadas aqui. A de **Vendas é derivada** (`derivada: true`): é a soma das
@@ -44,8 +45,21 @@ const ICONES: Record<TipoMeta, keyof typeof Ionicons.glyphMap> = {
   RECARGAS_CELULAR: 'phone-portrait-outline',
   CANCELAMENTO_ITENS: 'remove-circle-outline',
   CANCELAMENTO_CUPOM: 'receipt-outline',
+  CANCELAMENTOS_TOTAIS: 'close-circle-outline',
   DEVOLUCOES: 'return-down-back-outline',
   SACOLAS: 'bag-handle-outline',
+};
+
+/**
+ * Aviso extra de um tipo de meta, quando ele precisa de contexto para não ser
+ * mal interpretado. Hoje só o teto do total: sem esta linha, o gestor tende a
+ * esperar que ele seja a soma dos dois tetos das metades (0,75 + 0,5 = 1,25) e a
+ * tratar 0,75 como um erro de digitação.
+ */
+const AVISOS: Partial<Record<TipoMeta, string>> = {
+  CANCELAMENTOS_TOTAIS:
+    'Teto das duas metades de cancelamento somadas. É um limite próprio e mais ' +
+    'exigente — não é a soma dos tetos de Itens e de Cupom.',
 };
 
 /** Valor formatado conforme a unidade (R$, % ou R$ por unidade). */
@@ -178,6 +192,10 @@ export function MetasScreen({
               </View>
             </View>
 
+            {AVISOS[item.tipo] && (
+              <Text style={styles.aviso}>{AVISOS[item.tipo]}</Text>
+            )}
+
             {/* Meta derivada (Vendas): somente leitura, com atalho para a
                 Central de Vendas, onde as estimativas diárias são definidas. */}
             {item.derivada ? (
@@ -281,6 +299,12 @@ const styles = StyleSheet.create({
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginBottom: espacamento.sm,
+  },
+  aviso: {
+    ...tipografia.legenda,
+    color: cores.laranja,
+    marginBottom: espacamento.sm,
+    lineHeight: 16,
   },
 });
 

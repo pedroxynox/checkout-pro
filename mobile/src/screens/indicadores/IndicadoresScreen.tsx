@@ -7,6 +7,11 @@
  * "Precisa de atenção" com o que precisa de revisão. Tocar num indicador abre o
  * detalhe (totais, meta, gráficos, evolução mês a mês e ranking).
  *
+ * Além dos cinco indicadores de arrecadação, a lista traz duas cards de
+ * indicadores **calculados**: `Cancelamentos Totais` (ADR 0025), logo depois das
+ * duas metades que ele soma, e `Sacolas` (ADR 0022), no fim. Nenhum dos dois tem
+ * arquivo de importação — por isso não estão no array `ARRECADACAO`.
+ *
  * Os dados NÃO são reiniciados a cada mês: o dia 1º apenas troca o mês de
  * referência. Basta voltar com a seta para rever qualquer mês da janela, sempre
  * com a meta que valia naquele mês.
@@ -21,6 +26,7 @@ import {
 } from '../../api/services';
 import {
   DestaquesMes,
+  IndicadorCancelamentosTotais,
   IndicadorSacolas,
   PainelAtencao,
   ResumoArrecadacao,
@@ -44,7 +50,11 @@ import {
   rotuloMes,
   ultimoDiaDoMesISO,
 } from '../../utils/periodoMensal';
-import { ARRECADACAO, DefinicaoArrecadacao } from '../../utils/rotulos';
+import {
+  ARRECADACAO,
+  CANCELAMENTOS_TOTAIS_DEF,
+  DefinicaoArrecadacao,
+} from '../../utils/rotulos';
 
 type Nivel = 'OK' | 'ATENCAO' | 'FORA';
 
@@ -129,6 +139,31 @@ function nivelSacolas(ind: IndicadorSacolas): Nivel | null {
   return ind.nivel;
 }
 
+/**
+ * Texto do valor de **Cancelamentos Totais**.
+ *
+ * Segue a forma pedida pelo dono do projeto no indicador de Sacolas: o valor
+ * **nunca aparece sozinho**, vem sempre com a distância até o teto. Ver "1,10%"
+ * é informação; ver "+0,35 p.p. do teto de 0,75%" é conclusão.
+ *
+ * Sem venda registrada não mostra "0,00%": um mês em que o arquivo de vendas
+ * ainda não subiu não é um mês perfeito, é um mês sem denominador.
+ */
+function textoCancelamentosTotais(ind: IndicadorCancelamentosTotais): string {
+  if (ind.percentual == null) {
+    return ind.estado === 'SEM_VENDA'
+      ? 'Sem venda registrada neste mês'
+      : 'Sem movimento neste mês';
+  }
+  const teto = `teto ${formatarPercentual(ind.meta)}`;
+  if (!ind.desvio) return `${formatarPercentual(ind.percentual)} (${teto})`;
+  const sinal = ind.desvio.absoluto >= 0 ? '+' : '−';
+  const distancia = Math.abs(ind.desvio.absoluto)
+    .toFixed(2)
+    .replace('.', ',');
+  return `${formatarPercentual(ind.percentual)} · ${sinal}${distancia} p.p. (${teto})`;
+}
+
 export function IndicadoresScreen({
   navigation,
 }: PropsTela<'Indicadores'>): React.ReactElement {
@@ -154,22 +189,27 @@ export function IndicadoresScreen({
     const resumos = await Promise.all(
       ARRECADACAO.map((def) => arrecadacaoService.resumo(def.tipo, data)),
     );
-    const [vendas, destaques, painel, sacolas] = await Promise.all([
-      vendasService.resumo(data).catch(() => null),
-      arrecadacaoService.destaquesMes(data).catch(() => null),
-      arrecadacaoService.painelAtencao(data).catch(() => null),
-      // Indicador de Sacolas: vive no almoxarifado, não na arrecadação (ADR
-      // 0022). Degrada em silêncio como os demais — uma falha aqui não pode
-      // derrubar o painel inteiro.
-      insumosService.indicadorSacolas(anoMes).catch(() => null),
-    ]);
+    const [vendas, destaques, painel, sacolas, cancelamentosTotais] =
+      await Promise.all([
+        vendasService.resumo(data).catch(() => null),
+        arrecadacaoService.destaquesMes(data).catch(() => null),
+        arrecadacaoService.painelAtencao(data).catch(() => null),
+        // Indicador de Sacolas: vive no almoxarifado, não na arrecadação (ADR
+        // 0022). Degrada em silêncio como os demais — uma falha aqui não pode
+        // derrubar o painel inteiro.
+        insumosService.indicadorSacolas(anoMes).catch(() => null),
+        // Cancelamentos Totais: indicador calculado (ADR 0025), sem arquivo
+        // próprio. Também degrada em silêncio: se falhar, a card não aparece e
+        // os cinco semáforos continuam de pé.
+        arrecadacaoService.cancelamentosTotais(anoMes).catch(() => null),
+      ]);
     const saude: SaudeIndicador[] = ARRECADACAO.map((def, i) => ({
       def,
       resumo: resumos[i],
       nivel: nivelMes(def, resumos[i]),
       valorTexto: valorMesTexto(def, resumos[i]),
     }));
-    return { saude, vendas, destaques, painel, sacolas };
+    return { saude, vendas, destaques, painel, sacolas, cancelamentosTotais };
   }, [data, anoMes]);
 
   const saude = req.dados?.saude ?? [];
@@ -177,6 +217,8 @@ export function IndicadoresScreen({
   const destaques: DestaquesMes | null = req.dados?.destaques ?? null;
   const painel: PainelAtencao | null = req.dados?.painel ?? null;
   const sacolas: IndicadorSacolas | null = req.dados?.sacolas ?? null;
+  const totais: IndicadorCancelamentosTotais | null =
+    req.dados?.cancelamentosTotais ?? null;
 
   const irParaDetalhe = useCallback(
     (tipo: DefinicaoArrecadacao['tipo']) =>
@@ -328,24 +370,113 @@ export function IndicadoresScreen({
               : `Resultado de ${rotuloMes(anoMes)}`}
           </Text>
           {saude.map((s) => (
-            <Pressable key={s.def.tipo} onPress={() => irParaDetalhe(s.def.tipo)}>
-              <View style={[styles.saudeCard, { borderLeftColor: corNivel(s.nivel) }]}>
-                <View style={[styles.saudeIcone, { backgroundColor: fundoNivel(s.nivel) }]}>
-                  <Ionicons
-                    name={s.def.icone as keyof typeof Ionicons.glyphMap}
-                    size={20}
-                    color={corNivel(s.nivel)}
-                  />
+            <React.Fragment key={s.def.tipo}>
+              <Pressable onPress={() => irParaDetalhe(s.def.tipo)}>
+                <View style={[styles.saudeCard, { borderLeftColor: corNivel(s.nivel) }]}>
+                  <View style={[styles.saudeIcone, { backgroundColor: fundoNivel(s.nivel) }]}>
+                    <Ionicons
+                      name={s.def.icone as keyof typeof Ionicons.glyphMap}
+                      size={20}
+                      color={corNivel(s.nivel)}
+                    />
+                  </View>
+                  <View style={styles.flex1}>
+                    <Text style={styles.saudeNome}>{s.def.titulo}</Text>
+                    <Text style={styles.saudeValor}>{s.valorTexto}</Text>
+                  </View>
+                  <View style={[styles.saudeBadge, { backgroundColor: fundoNivel(s.nivel) }]}>
+                    <Ionicons name={iconeNivel(s.nivel)} size={18} color={corNivel(s.nivel)} />
+                  </View>
                 </View>
-                <View style={styles.flex1}>
-                  <Text style={styles.saudeNome}>{s.def.titulo}</Text>
-                  <Text style={styles.saudeValor}>{s.valorTexto}</Text>
-                </View>
-                <View style={[styles.saudeBadge, { backgroundColor: fundoNivel(s.nivel) }]}>
-                  <Ionicons name={iconeNivel(s.nivel)} size={18} color={corNivel(s.nivel)} />
-                </View>
-              </View>
-            </Pressable>
+              </Pressable>
+
+              {/*
+                Cancelamentos Totais (ADR 0025) — entra LOGO DEPOIS das duas
+                metades que ele soma, e não no fim da lista: um total lido antes
+                das partes não se entende, e lido longe delas parece um sexto
+                indicador independente.
+
+                A linha "soma das duas cards acima" existe para o gestor não
+                somar de novo o que já está somado, e a do teto para ele não
+                estranhar as duas partes verdes com o total amarelo — o teto do
+                total é independente, não é a soma dos dois tetos.
+              */}
+              {s.def.tipo === 'CANCELAMENTO_CUPOM' && totais && (
+                <Pressable
+                  onPress={() => navigation.navigate('CancelamentosTotaisDetalhe')}
+                >
+                  <View
+                    style={[
+                      styles.saudeCard,
+                      styles.totaisCard,
+                      {
+                        borderLeftColor: totais.nivel
+                          ? corNivel(totais.nivel)
+                          : cores.divisor,
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.saudeIcone,
+                        {
+                          backgroundColor: totais.nivel
+                            ? fundoNivel(totais.nivel)
+                            : cores.superficieAlternativa,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name={
+                          CANCELAMENTOS_TOTAIS_DEF.icone as keyof typeof Ionicons.glyphMap
+                        }
+                        size={20}
+                        color={
+                          totais.nivel
+                            ? corNivel(totais.nivel)
+                            : cores.textoSecundario
+                        }
+                      />
+                    </View>
+                    <View style={styles.flex1}>
+                      <Text style={styles.saudeNome}>{totais.titulo}</Text>
+                      <Text style={styles.saudeValor}>
+                        {textoCancelamentosTotais(totais)}
+                      </Text>
+                      <Text style={styles.totaisBase}>
+                        Soma das duas cards acima · teto próprio, não a soma dos
+                        dois tetos
+                      </Text>
+                      {totais.excedente != null && totais.excedente > 0 && (
+                        <Text style={styles.totaisExcedente}>
+                          {formatarMoeda(totais.excedente)} acima do que o teto
+                          permitia no mês
+                        </Text>
+                      )}
+                    </View>
+                    {totais.nivel && (
+                      <View
+                        style={[
+                          styles.saudeBadge,
+                          { backgroundColor: fundoNivel(totais.nivel) },
+                        ]}
+                      >
+                        <Ionicons
+                          name={iconeNivel(totais.nivel)}
+                          size={18}
+                          color={corNivel(totais.nivel)}
+                        />
+                      </View>
+                    )}
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color={cores.textoSecundario}
+                    />
+                  </View>
+                </Pressable>
+              )}
+            </React.Fragment>
           ))}
 
           {/*
@@ -728,6 +859,24 @@ const styles = StyleSheet.create({
     color: cores.laranja,
     marginTop: 2,
     lineHeight: 16,
+  },
+  // Cancelamentos Totais: um leve recuo e um fundo diferente deixam claro, sem
+  // texto, que a card é o consolidado das duas de cima e não um sexto indicador.
+  totaisCard: {
+    backgroundColor: cores.superficieAlternativa,
+    marginLeft: espacamento.md,
+  },
+  totaisBase: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  totaisExcedente: {
+    ...tipografia.legenda,
+    color: cores.vermelho,
+    marginTop: 2,
+    fontWeight: '600',
   },
   saudeCard: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `backend/src/metas/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-16 · **Cobre:** `backend/src/metas/`
 
 # Módulo: `metas`
 
@@ -13,8 +13,14 @@ A meta de **`SACOLAS`** (venda em R$ por sacola que entra no estoque) é digitad
 aqui, mas o seu valor **realizado** é apurado por [`insumos`](insumos.md) — ver
 [ADR 0022](../02-arquitetura/decisoes/0022-indicador-sacolas-venda-por-sacola.md).
 
+A meta de **`CANCELAMENTOS_TOTAIS`** segue o mesmo desenho: é digitada aqui
+(padrão **0,75%**) e o valor realizado é calculado por
+[`arrecadacao`](arrecadacao.md), somando as duas metades de cancelamento sobre as
+vendas — ver
+[ADR 0025](../02-arquitetura/decisoes/0025-cancelamentos-totais-indicador-calculado.md).
+
 ## 2. Responsabilidades e limites
-- **Faz:** lista as metas dos 6 tipos para um mês (valor resolvido + metadados);
+- **Faz:** lista as metas dos 7 tipos para um mês (valor resolvido + metadados);
   define (cria/atualiza) as metas digitadas; resolve o valor de qualquer meta,
   calculando a de `VENDAS` a partir das estimativas diárias.
 - **Não faz:** cálculo/coloração dos indicadores em si (fica em
@@ -68,7 +74,7 @@ de Controle.
   resolve `0` em vez de derrubar a chamada.
 
 #### `listar(anoMes)`
-- **Devolve:** os 5 tipos com valor resolvido, título, unidade, sentido e:
+- **Devolve:** os 7 tipos com valor resolvido, título, unidade, sentido e:
   - `definida` — nas digitadas, "há registro salvo"; em `VENDAS`, "há estimativas
     no mês" (meta > 0);
   - `derivada` — `true` só em `VENDAS`; a tela usa isso para exibir a meta como
@@ -83,7 +89,10 @@ de Controle.
 
 ## 6. Lógica de domínio (funções puras)
 - `TIPOS_META` / `ehTipoMeta(v)` — tipos acompanhados por mês (`VENDAS`,
-  `RECARGAS_CELULAR`, `CANCELAMENTO_ITENS`, `CANCELAMENTO_CUPOM`, `DEVOLUCOES`).
+  `RECARGAS_CELULAR`, `CANCELAMENTO_ITENS`, `CANCELAMENTO_CUPOM`,
+  `CANCELAMENTOS_TOTAIS`, `DEVOLUCOES`, `SACOLAS`). A **ordem do array é a ordem
+  da tela** de Metas: o teto do total vem logo depois das duas metades que ele
+  soma.
 - `TIPOS_META_DERIVADA` / `ehMetaDerivada(tipo)` — tipos **calculados** a partir
   de outro dado do sistema, em vez de digitados. Hoje só `VENDAS`.
 - `metaDeEstimativas(valores)` — a meta de `VENDAS`: soma das estimativas
@@ -101,7 +110,8 @@ de Controle.
 
 ## 7. Estados e enums
 - `TipoMeta`: `VENDAS` (derivada) · `RECARGAS_CELULAR` · `CANCELAMENTO_ITENS` ·
-  `CANCELAMENTO_CUPOM` · `DEVOLUCOES` · **`SACOLAS`**.
+  `CANCELAMENTO_CUPOM` · **`CANCELAMENTOS_TOTAIS`** · `DEVOLUCOES` ·
+  **`SACOLAS`**.
 - `UnidadeMeta`: `REAIS` · `PERCENTUAL` · **`REAIS_POR_UNIDADE`**.
   A última é uma **razão** (R$ por sacola) e existe porque as outras duas não a
   descrevem: um valor absoluto responde "quanto arrecadou", um percentual responde
@@ -128,8 +138,8 @@ de Controle.
    sem valor digitado e sem sobreposição manual.
 3. **Tentar digitar a meta de `VENDAS` falha com 409**, apontando para a Central
    de Vendas. Falha explícita em vez de "salvo, mas ignorado".
-4. **As quatro metas digitadas seguem inalteradas:** registro salvo do mês e, na
-   falta dele, o valor padrão de `CONFIG_METAS`.
+4. **As metas digitadas seguem inalteradas:** registro salvo do mês e, na falta
+   dele, o valor padrão de `CONFIG_METAS`.
 5. Mês de `VENDAS` sem estimativas resolve **`0`**, lido como "meta ainda não
    definida" (painel sem comparação).
 6. `TROCO_SOLIDARIO` **não é gerido aqui** (segue a meta global em `arrecadacao`).
@@ -145,12 +155,22 @@ de Controle.
    usar menos sacolas para o mesmo faturamento); o lado ruim é ficar abaixo. Foi
    por causa desta meta que o semáforo passou a decidir pelo **sentido** e não
    pela base — ver [`arrecadacao`](arrecadacao.md), §6 e §10.
+10. **`CANCELAMENTOS_TOTAIS` também é DIGITADA, com valor apurado calculado**
+    (padrão **0,75%**, `PERCENTUAL`, `MENOR_MELHOR`). O valor realizado é a soma
+    das duas metades de cancelamento sobre as vendas, calculada em
+    [`arrecadacao`](arrecadacao.md).
+11. **O padrão do total NÃO é a soma dos padrões das partes.** 0,75 + 0,5 = 1,25%
+    seria mais frouxo do que qualquer uma das duas metades e não apertaria nada;
+    0,75% é um teto global deliberadamente mais exigente, decidido pelo dono do
+    produto. A consequência é intencional: as duas partes podem cumprir as suas
+    metas e o total, não. `metas.domain.spec.ts` trava esse valor justamente para
+    ninguém "corrigi-lo" para a soma.
 
 ## 11. Testes
 | Arquivo | Cobre |
 |---|---|
-| `metas.domain.spec.ts` | Domínio puro: `ehMetaDerivada` (só `VENDAS`; as outras quatro seguem digitadas), `metaDeEstimativas` (soma, arredondamento, mês vazio, valores não finitos, sem negativo) e `intervaloDoMes` (mês em UTC, virada de ano, formato inválido). |
-| `metas.service.spec.ts` | Wiring com Prisma mockado: `resolver('VENDAS')` soma as estimativas, ignora registro em `MetaMensal`, **não** consulta `ConfigVendas`, tolera tabela ausente e consulta só o intervalo do mês; metas digitadas mantêm salvo → padrão; `definir('VENDAS')` lança `MetaDerivadaNaoEditavelError` sem gravar; `listar` marca `derivada`/`definida`/`origem`. |
+| `metas.domain.spec.ts` | Domínio puro: `ehMetaDerivada` (só `VENDAS`; as outras seis seguem digitadas), a config de `SACOLAS` e a de `CANCELAMENTOS_TOTAIS` (percentual, `MENOR_MELHOR`, padrão 0,75 e a garantia de que **não** é a soma das metas das partes), `metaDeEstimativas` (soma, arredondamento, mês vazio, valores não finitos, sem negativo) e `intervaloDoMes` (mês em UTC, virada de ano, formato inválido). |
+| `metas.service.spec.ts` | Wiring com Prisma mockado: `resolver('VENDAS')` soma as estimativas, ignora registro em `MetaMensal`, **não** consulta `ConfigVendas`, tolera tabela ausente e consulta só o intervalo do mês; metas digitadas mantêm salvo → padrão; `definir('VENDAS')` lança `MetaDerivadaNaoEditavelError` sem gravar; `listar` devolve os 7 tipos e marca `derivada`/`definida`/`origem`, incluindo `CANCELAMENTOS_TOTAIS`. |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

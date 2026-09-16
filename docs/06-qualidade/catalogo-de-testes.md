@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 133 arquivos, 1217 casos. **Mobile:** 37 arquivos, 265 casos. **Total: 1482 casos.**
+> **Backend:** 134 arquivos, 1252 casos. **Mobile:** 38 arquivos, 283 casos. **Total: 1535 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -22,6 +22,7 @@
 | `src/alertas/saudacao-diaria.service.spec.ts` | 1 | 1 |
 | `src/app.service.spec.ts` | 5 | 1 |
 | `src/arrecadacao/arrecadacao.nao-reconhecidos.spec.ts` | 2 | 1 |
+| `src/arrecadacao/cancelamentos-totais.domain.spec.ts` | 31 | 12 |
 | `src/arrecadacao/destaque-menos-cancelou.spec.ts` | 1 | 1 |
 | `src/arrecadacao/historico-indicadores.domain.spec.ts` | 25 | 7 |
 | `src/arrecadacao/historico-indicadores.service.spec.ts` | 15 | 4 |
@@ -102,8 +103,8 @@
 | `src/insumos/insumos.resumo.spec.ts` | 2 | 1 |
 | `src/insumos/insumos.service.spec.ts` | 12 | 1 |
 | `src/insumos/sacolas.domain.spec.ts` | 51 | 14 |
-| `src/metas/metas.domain.spec.ts` | 13 | 5 |
-| `src/metas/metas.service.spec.ts` | 15 | 5 |
+| `src/metas/metas.domain.spec.ts` | 16 | 6 |
+| `src/metas/metas.service.spec.ts` | 16 | 5 |
 | `src/notificacoes/notificacoes.properties.spec.ts` | 2 | 1 |
 | `src/notificacoes/notificacoes.service.spec.ts` | 10 | 3 |
 | `src/operadores/ausencia-a-prazo-vinculo.spec.ts` | 1 | 1 |
@@ -167,7 +168,8 @@
 | `src/screens/escala/EscalaScreen.test.tsx` | 10 | 2 |
 | `src/screens/fechamento/FechamentoScreen.test.tsx` | 2 | 1 |
 | `src/screens/importacoes/ImportacoesScreen.test.tsx` | 2 | 1 |
-| `src/screens/indicadores/IndicadoresScreen.test.tsx` | 8 | 1 |
+| `src/screens/indicadores/CancelamentosTotaisDetalheScreen.test.tsx` | 11 | 1 |
+| `src/screens/indicadores/IndicadoresScreen.test.tsx` | 15 | 2 |
 | `src/screens/indicadores/NaoReconhecidosScreen.test.tsx` | 3 | 1 |
 | `src/screens/indicadores/PainelVendasScreen.test.tsx` | 3 | 1 |
 | `src/screens/indicadores/SacolasDetalheScreen.test.tsx` | 8 | 1 |

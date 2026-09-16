@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **212 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **214 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -51,6 +51,8 @@
 | GET | `/arrecadacao/destaques-mes` | `destaquesMes` | `INDICADORES_VISUALIZAR` |
 | GET | `/arrecadacao/anomalias` | `anomalias` | `INDICADORES_VISUALIZAR` |
 | GET | `/arrecadacao/painel-atencao` | `painelAtencao` | `INDICADORES_VISUALIZAR` |
+| GET | `/arrecadacao/cancelamentos-totais` | `cancelamentosTotaisIndicador` | `INDICADORES_VISUALIZAR` |
+| GET | `/arrecadacao/cancelamentos-totais/detalhe` | `cancelamentosTotaisDetalhe` | `INDICADORES_VISUALIZAR` |
 
 ## `assistente`
 

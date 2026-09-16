@@ -8,6 +8,12 @@
  *  - RECARGAS_CELULAR: arrecadação de recargas no mês (R$).
  *  - CANCELAMENTO_ITENS / CANCELAMENTO_CUPOM / DEVOLUCOES: limite em % sobre as
  *    vendas (menor é melhor).
+ *  - CANCELAMENTOS_TOTAIS: teto único das duas metades de cancelamento somadas,
+ *    também em % sobre as vendas. É uma meta **digitada** como as outras (não
+ *    derivada): o valor não é a soma de CANCELAMENTO_ITENS + CANCELAMENTO_CUPOM,
+ *    e sim um limite global independente. O indicador correspondente é calculado
+ *    em `arrecadacao/cancelamentos-totais.*` e não tem arquivo próprio de
+ *    importação.
  *  - SACOLAS: quanto a loja vende, em R$, por sacola que ENTRA no estoque
  *    (maior é melhor). É a primeira meta de **razão** do sistema — nem um valor
  *    absoluto nem um percentual sobre as vendas. Ver a ADR 0022.
@@ -26,6 +32,7 @@ export const TIPOS_META = [
   'RECARGAS_CELULAR',
   'CANCELAMENTO_ITENS',
   'CANCELAMENTO_CUPOM',
+  'CANCELAMENTOS_TOTAIS',
   'DEVOLUCOES',
   'SACOLAS',
 ] as const;
@@ -84,6 +91,18 @@ export const CONFIG_METAS: Record<TipoMeta, ConfigMeta> = {
     unidade: 'PERCENTUAL',
     sentido: 'MENOR_MELHOR',
     valorPadrao: 0.5,
+  },
+  CANCELAMENTOS_TOTAIS: {
+    tipo: 'CANCELAMENTOS_TOTAIS',
+    titulo: 'Cancelamentos Totais',
+    unidade: 'PERCENTUAL',
+    sentido: 'MENOR_MELHOR',
+    // Teto GLOBAL das duas metades somadas, e de propósito **não** é a soma das
+    // duas metas (0,75 + 0,5 = 1,25): é um limite único e mais exigente, pedido
+    // pelo dono do projeto. A consequência é intencional — as duas partes podem
+    // estar verdes e o total, não —, e por isso o app escreve na tela que o teto
+    // do total é independente.
+    valorPadrao: 0.75,
   },
   DEVOLUCOES: {
     tipo: 'DEVOLUCOES',

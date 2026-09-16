@@ -1,10 +1,11 @@
 /**
- * Painel de Indicadores — foco na card de **Sacolas** (ADR 0022).
+ * Painel de Indicadores — foco nas duas cards de indicadores **calculados**:
+ * Sacolas (ADR 0022) e Cancelamentos Totais (ADR 0025).
  *
- * O que os testes travam: o valor vem sempre acompanhado da distância até a meta
- * (o pedido do dono do projeto), um mês sem entrega NÃO aparece como R$ 0,00, o
- * aviso do efeito de calendário aparece, e uma falha nesse indicador não derruba
- * o painel inteiro.
+ * O que os testes travam, nos dois: o valor vem sempre acompanhado da distância
+ * até a meta (o pedido do dono do projeto), um mês sem o denominador NÃO aparece
+ * como zero, os avisos de contexto aparecem, e uma falha num deles não derruba o
+ * painel inteiro.
  */
 import { render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
@@ -15,6 +16,7 @@ jest.mock("../../api/services", () => ({
     resumo: jest.fn(),
     destaquesMes: jest.fn(),
     painelAtencao: jest.fn(),
+    cancelamentosTotais: jest.fn(),
   },
   vendasService: { resumo: jest.fn() },
   insumosService: { indicadorSacolas: jest.fn() },
@@ -66,10 +68,44 @@ const SACOLAS = {
   avisoEntregas: null,
 };
 
-function preparar(sacolas: unknown = SACOLAS) {
+/**
+ * Indicador Cancelamentos Totais base (ADR 0025): 1,10% das vendas contra um
+ * teto de 0,75%, ou seja R$ 350 acima do que o teto permitia.
+ */
+const TOTAIS = {
+  tipo: "CANCELAMENTOS_TOTAIS" as const,
+  titulo: "Cancelamentos Totais",
+  anoMes: "2026-09",
+  rotulo: "set/26",
+  base: "VENDAS" as const,
+  sentido: "MENOR_MELHOR" as const,
+  total: 1100,
+  totalItens: 800,
+  totalCupom: 300,
+  itens: 40,
+  lancamentos: 30,
+  lancamentosItens: 20,
+  lancamentosCupom: 10,
+  vendas: 100_000,
+  percentual: 1.1,
+  meta: 0.75,
+  nivel: "ATENCAO" as const,
+  cumpriuMeta: false,
+  desvio: { absoluto: 0.35, percentual: 46.67, dentro: false },
+  estado: "OK" as const,
+  limiteReais: 750,
+  excedente: 350,
+  parcial: true,
+  valorAnterior: 0.9,
+  variacao: 22.22,
+  evolucao: "PIOROU" as const,
+};
+
+function preparar(sacolas: unknown = SACOLAS, totais: unknown = TOTAIS) {
   arrecadacaoService.resumo.mockResolvedValue(RESUMO_ARRECADACAO);
   arrecadacaoService.destaquesMes.mockResolvedValue(null);
   arrecadacaoService.painelAtencao.mockResolvedValue({ tudoCerto: true, criticos: 0, emAtencao: 0, alertas: [] });
+  arrecadacaoService.cancelamentosTotais.mockResolvedValue(totais);
   vendasService.resumo.mockResolvedValue({ totalDia: 0, totalSemana: 0, totalMes: 3_000_000 });
   insumosService.indicadorSacolas.mockResolvedValue(sacolas);
 }
@@ -157,10 +193,7 @@ describe("IndicadoresScreen — card de Sacolas", () => {
   });
 
   it("uma falha no indicador de sacolas não derruba o painel", async () => {
-    arrecadacaoService.resumo.mockResolvedValue(RESUMO_ARRECADACAO);
-    arrecadacaoService.destaquesMes.mockResolvedValue(null);
-    arrecadacaoService.painelAtencao.mockResolvedValue({ tudoCerto: true, criticos: 0, emAtencao: 0, alertas: [] });
-    vendasService.resumo.mockResolvedValue({ totalDia: 0, totalSemana: 0, totalMes: 3_000_000 });
+    preparar();
     insumosService.indicadorSacolas.mockRejectedValue(new Error("indisponível"));
 
     render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
@@ -177,6 +210,117 @@ describe("IndicadoresScreen — card de Sacolas", () => {
 
     await screen.findByText("Sacolas");
     expect(insumosService.indicadorSacolas).toHaveBeenCalledWith(
+      expect.stringMatching(/^\d{4}-\d{2}$/),
+    );
+  });
+});
+
+/**
+ * Card de **Cancelamentos Totais** (ADR 0025).
+ *
+ * O que estes testes travam: o valor nunca aparece sozinho (vem com o desvio até
+ * o teto), o excedente em R$ é visível, a card avisa que é a soma das duas de
+ * cima e que o teto é próprio, um mês sem venda não vira "0,00% verde", e uma
+ * falha aqui não derruba o painel.
+ */
+describe("IndicadoresScreen — card de Cancelamentos Totais", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("mostra o percentual com a distância até o teto", async () => {
+    preparar();
+    render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
+
+    await screen.findByText("Cancelamentos Totais");
+    expect(screen.getByText("1,10% · +0,35 p.p. (teto 0,75%)")).toBeTruthy();
+  });
+
+  it("traduz o excesso em dinheiro, que é o número discutível", async () => {
+    preparar();
+    render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
+
+    await screen.findByText("Cancelamentos Totais");
+    expect(
+      screen.getByText(/R\$\s?350,00 acima do que o teto permitia no mês/),
+    ).toBeTruthy();
+  });
+
+  /**
+   * Sem este aviso o gestor somaria de novo o que já está somado, e estranharia
+   * as duas metades verdes com o total amarelo.
+   */
+  it("avisa que é a soma das duas cards acima e que o teto é próprio", async () => {
+    preparar();
+    render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
+
+    await screen.findByText("Cancelamentos Totais");
+    expect(
+      screen.getByText(
+        /Soma das duas cards acima · teto próprio, não a soma dos dois tetos/,
+      ),
+    ).toBeTruthy();
+  });
+
+  it("dentro do teto não mostra linha de excedente", async () => {
+    preparar(SACOLAS, {
+      ...TOTAIS,
+      total: 600,
+      percentual: 0.6,
+      nivel: "OK",
+      cumpriuMeta: true,
+      desvio: { absoluto: -0.15, percentual: -20, dentro: true },
+      excedente: 0,
+    });
+    render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
+
+    await screen.findByText("Cancelamentos Totais");
+    expect(screen.getByText("0,60% · −0,15 p.p. (teto 0,75%)")).toBeTruthy();
+    expect(screen.queryByText(/acima do que o teto permitia/)).toBeNull();
+  });
+
+  /**
+   * O erro que este indicador nasceu corrigindo: os outros devolvem 0% quando as
+   * vendas do mês não foram importadas, e o painel pinta VERDE um mês em que só
+   * falta um arquivo.
+   */
+  it("mês sem venda registrada não vira 0,00% verde — explica", async () => {
+    preparar(SACOLAS, {
+      ...TOTAIS,
+      vendas: 0,
+      percentual: null,
+      nivel: null,
+      cumpriuMeta: null,
+      desvio: null,
+      estado: "SEM_VENDA",
+      limiteReais: null,
+      excedente: null,
+    });
+    render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
+
+    await screen.findByText("Cancelamentos Totais");
+    expect(screen.getByText("Sem venda registrada neste mês")).toBeTruthy();
+    // Sem denominador não há valor nem teto para comparar: a card não escreve
+    // percentual nenhum (é justamente o "0,00% verde" que se quer evitar).
+    expect(screen.queryByText(/\(teto 0,75%\)/)).toBeNull();
+  });
+
+  it("uma falha no indicador não derruba o painel", async () => {
+    preparar();
+    arrecadacaoService.cancelamentosTotais.mockRejectedValue(
+      new Error("indisponível"),
+    );
+
+    render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
+
+    await waitFor(() => expect(screen.getByText("Troco Solidário")).toBeTruthy());
+    expect(screen.queryByText("Cancelamentos Totais")).toBeNull();
+  });
+
+  it("pede o indicador do mês selecionado", async () => {
+    preparar();
+    render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
+
+    await screen.findByText("Cancelamentos Totais");
+    expect(arrecadacaoService.cancelamentosTotais).toHaveBeenCalledWith(
       expect.stringMatching(/^\d{4}-\d{2}$/),
     );
   });
