@@ -20,6 +20,7 @@ import {
   EscalaDiaPublicada,
   EscalaSemanaPublicada,
   LinhaEscala,
+  PessoaSemFolga,
   StatusEscala,
 } from '../../api/services/escalaExportacao';
 import {
@@ -183,6 +184,17 @@ export function EscalaScreen(): React.ReactElement {
         <MensagemErro mensagem={req.erro} aoTentarNovamente={req.recarregar} />
       ) : (
         <>
+          {/* Antes de publicar: quem está sem dia de folga no cadastro. Vem
+              primeiro de propósito — publicar uma escala que escala alguém sete
+              dias é o erro que este aviso existe para impedir. */}
+          <AvisoSemFolga
+            pessoas={
+              (periodo === 'DIA'
+                ? dia.dados?.semFolgaNoCadastro
+                : semana.dados?.semFolgaNoCadastro) ?? []
+            }
+          />
+
           <Cartao>
             <Text style={styles.secaoTitulo}>Enviar para a equipe</Text>
             <Text style={styles.ajuda}>
@@ -238,6 +250,57 @@ export function EscalaScreen(): React.ReactElement {
         </>
       )}
     </Tela>
+  );
+}
+
+/**
+ * Aviso: pessoas **sem dia de folga no cadastro** (ADR 0023).
+ *
+ * Não é um detalhe de cadastro. Sem folga na ficha, a pessoa é escalada os sete
+ * dias da semana e pode receber **falta automática** num dia em que estava
+ * descansando — e nada avisava: a Escala mostrava "trabalha" todos os dias, e não
+ * havia como saber que faltava um dado em vez de a pessoa realmente trabalhar
+ * sempre. Foi assim que um operador promovido a fiscal apareceu escalado no dia
+ * em que folgava.
+ *
+ * O aviso diz o que fazer e onde, porque um aviso que só aponta o problema
+ * transfere ao gestor a tarefa de descobrir a solução.
+ */
+function AvisoSemFolga({
+  pessoas,
+}: {
+  pessoas: PessoaSemFolga[];
+}): React.ReactElement | null {
+  if (pessoas.length === 0) return null;
+  return (
+    <Cartao>
+      <View style={styles.aviso}>
+        <Ionicons name="alert-circle" size={18} color={cores.amarelo} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.avisoTexto}>
+            <Text style={styles.negrito}>
+              {pessoas.length === 1
+                ? '1 pessoa está sem dia de folga no cadastro'
+                : `${pessoas.length} pessoas estão sem dia de folga no cadastro`}
+            </Text>
+            . Enquanto o dia não for preenchido, a escala as coloca para trabalhar
+            todos os dias — e o sistema pode marcar falta num dia em que estavam
+            descansando.
+          </Text>
+          <View style={styles.avisoNomes}>
+            {pessoas.map((p) => (
+              <Text key={p.colaboradorId} style={styles.avisoNome}>
+                {p.nome} · {TITULO_FUNCAO[p.funcao] ?? p.funcao}
+              </Text>
+            ))}
+          </View>
+          <Text style={styles.ajuda}>
+            Para corrigir: Controle → Colaboradores → editar a pessoa → marcar o
+            dia de folga → salvar.
+          </Text>
+        </View>
+      </View>
+    </Cartao>
   );
 }
 
@@ -402,6 +465,8 @@ const styles = StyleSheet.create({
   },
   avisoTexto: { ...tipografia.legenda, color: cores.texto, flex: 1 },
   negrito: { fontWeight: '700' },
+  avisoNomes: { marginTop: espacamento.sm, marginBottom: espacamento.xs },
+  avisoNome: { ...tipografia.legenda, color: cores.texto, fontWeight: '600' },
   diaTitulo: { ...tipografia.subtitulo, color: cores.texto },
   selos: {
     flexDirection: 'row',

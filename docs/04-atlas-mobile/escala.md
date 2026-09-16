@@ -17,7 +17,7 @@ Publicar a escala: gerar a escala do **dia** ou da **semana**, com todo o time, 
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `EscalaScreen.tsx` | Tela: seletor de período/dia, prévia e os dois botões de exportação | 450 |
+| `EscalaScreen.tsx` | Tela: seletor de período/dia, **aviso de ficha sem folga**, prévia e os dois botões de exportação | 515 |
 
 Utilidades que fazem o trabalho pesado (fora da área, porque são puras):
 | Arquivo | Papel | Linhas |
@@ -31,6 +31,9 @@ Utilidades que fazem o trabalho pesado (fora da área, porque são puras):
    Operadores).
 2. Escolhe **Dia** ou **Semana** e a data. O futuro é liberado: publicar a escala
    de amanhã é o caso normal.
+2.1. Se alguém está **sem dia de folga no cadastro**, a tela avisa aqui, com nome
+   e função — antes dos botões de publicar, porque publicar uma escala que coloca
+   alguém para trabalhar sete dias é o erro que o aviso existe para impedir.
 3. Confere a **prévia** — as mesmas seções, nomes e horários que vão sair no
    documento.
 4. **Baixar PDF** (abre a folha de impressão do sistema; funciona no aplicativo e
@@ -147,7 +150,7 @@ perfil). Ver [Componentes compartilhados](componentes-compartilhados.md) e
 ## 9. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `EscalaScreen.test.tsx` | Prévia do dia (nome, horário, quem folga), PDF com o desenho, imagem com nome de arquivo previsível, aviso do WhatsApp, ausência do botão de imagem sem canvas e troca para a semana | 6 |
+| `EscalaScreen.test.tsx` | Prévia do dia (nome, horário, quem folga), PDF com o desenho, imagem com nome de arquivo previsível, aviso do WhatsApp, ausência do botão de imagem sem canvas, troca para a semana e o **aviso de ficha sem folga** (nomes, consequência, silêncio quando está tudo preenchido, e o mesmo aviso na grade semanal) | 10 |
 | `utils/escalaLayout.test.ts` | Dimensões e orientação declarada, **preenchimento exato da folha 4K** (e o encurtar/alongar nos extremos), ausência do turno, dia da semana/data, seções, horários, folga, falta com turno preservado, exceção ao lado do nome, feriado, rodízio do domingo, assinatura do rodapé, logo (com e sem), escape de caracteres, grade dos sete dias e a folha de impressão | 25 |
 
 ## 10. Riscos, dívidas e pendências

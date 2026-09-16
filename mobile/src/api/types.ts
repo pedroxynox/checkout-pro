@@ -1662,7 +1662,15 @@ export interface ColaboradorInput {
   saidaSemana?: string;
   entradaFds?: string;
   saidaFds?: string;
-  folgaDiaSemana?: number;
+  /**
+   * Dia de folga (0=Dom..6=Sáb). **`null` apaga a folga**; ausente = não mexe.
+   *
+   * A distinção existe porque antes o formulário enviava `undefined` no lugar de
+   * `null`, e o servidor só atribui quando o campo vem: a folga podia ser
+   * trocada, nunca esvaziada — quem marcasse um dia por engano não tinha como
+   * desfazer (ADR 0023).
+   */
+  folgaDiaSemana?: number | null;
   /** Grupo do rodízio de domingo ('G1'|'G2'|'G3'); null = não trabalha domingo. */
   grupoDomingo?: string | null;
   /** Horário de domingo ("HH:mm"), por pessoa. */

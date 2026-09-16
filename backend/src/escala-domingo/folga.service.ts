@@ -19,17 +19,42 @@
  *
  * ## A regra
  *
- * **Se QUALQUER uma das fontes diz que a pessoa descansa, é folga.**
+ * A ordem importa, e é esta:
  *
- * O viés é deliberado e conservador: quando as duas fontes discordam, o sistema
- * não sabe a verdade — e entre "deixar de cobrar o ponto de alguém" e "marcar
- * falta em quem estava descansando", o segundo erro é muito mais grave. Um cobra
- * uma conversa; o outro mexe no registro de trabalho de uma pessoa.
+ * 1. **Convocação** (`especial` com `folga = false`) ⇒ **trabalha**. É o registro
+ *    mais específico e mais recente sobre aquele dia — é assim que se chama
+ *    alguém no descanso, e nada vence isso.
+ * 2. **Folga concedida à mão** (`especial` com `folga = true`) ⇒ **folga**. O
+ *    gestor deu o dia; a ficha não desfaz uma decisão individual.
+ * 3. **A ficha afirma um dia de folga** ⇒ **a ficha decide, sozinha.**
+ * 4. **A ficha é omissa** (`folgaDiaSemana` nulo) ⇒ a **escala semanal** geral
+ *    ainda vale.
  *
- * O preço dessa escolha: se a fonte desatualizada for a que diz "folga", quem
- * realmente trabalhou não será cobrado por não bater ponto. É uma omissão
- * visível (a pessoa aparece de folga na escala publicada, onde qualquer um
- * percebe), diferente da falta indevida, que aparecia como fato consumado.
+ * ### Por que o passo 3 existe (ADR 0023)
+ *
+ * A regra era um OU puro: qualquer fonte que dissesse "descansa" bastava. Um OU
+ * trata as duas fontes como **pares**, e elas não são: a ficha é a fonte, a
+ * escala semanal é a **projeção** dela (`sincronizarEscalaFiscal` a regenera a
+ * cada edição do cadastro). Uma projeção velha não pode **somar** um dia de
+ * descanso que a fonte não afirma — e somava: uma fiscal com folga na quinta na
+ * ficha, e uma linha antiga de quarta na escala, aparecia de folga nos **dois**
+ * dias. Foi o caso que abriu o ADR 0023.
+ *
+ * O passo 4 é o que preserva o viés conservador **onde ele ainda protege alguém**:
+ * sem nada na ficha não há fonte que contradiga a escala, então ela vale.
+ *
+ * ### O viés, e o que se paga por ele
+ *
+ * Entre "deixar de cobrar o ponto de alguém" e "marcar falta em quem estava
+ * descansando", o segundo erro é muito mais grave: um custa uma conversa, o outro
+ * mexe no registro de trabalho de uma pessoa. É por isso que a convocação e a
+ * folga concedida vencem a ficha, e que a escala vale quando a ficha se cala.
+ *
+ * O preço do passo 3, dito com clareza: quem era dispensado de bater ponto pelo
+ * dia **velho** da escala passa a ser cobrado nesse dia. A conta fecha porque a
+ * escala publicada — o documento que a equipe recebe — sempre mostrou a folga da
+ * **ficha**: depois desta regra o sistema cobra exatamente o dia que a equipe lê.
+ * Antes havia um dia em que ninguém era cobrado e ninguém sabia.
  */
 import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -39,7 +64,7 @@ import { GrupoDomingo, ehDiaDeFolga } from './escala-domingo.domain';
 /** Responde sobre folga nos dias que foram carregados. */
 export interface ConsultorFolga {
   /**
-   * `true` quando qualquer fonte diz que a pessoa descansa nesse dia.
+   * `true` quando a pessoa descansa nesse dia, pela ordem do cabeçalho.
    *
    * `ids` aceita a pessoa em **todas** as suas identidades (`Fiscal.id`,
    * `Colaborador.id`): um fiscal bate ponto por uma e tem ficha na outra, e
@@ -47,6 +72,18 @@ export interface ConsultorFolga {
    * pegava.
    */
   ehFolga(dia: Date, ids: readonly (string | null | undefined)[]): boolean;
+
+  /**
+   * Quem, entre os `ids`, **não tem dia de folga na ficha**.
+   *
+   * Uma ficha sem folga é uma pessoa escalada os sete dias da semana aos olhos do
+   * sistema — e nada avisava. Quem expõe isso na tela é a Escala; aqui devolvemos
+   * só o fato, para a regra e o aviso não poderem discordar.
+   *
+   * Pessoas sem ficha nenhuma entre os `ids` ficam de fora: não se afirma falta
+   * de dado sobre quem não se conhece.
+   */
+  semFolgaNaFicha(ids: readonly (string | null | undefined)[]): boolean;
 }
 
 /** Ficha reduzida ao que decide folga. */
@@ -107,48 +144,86 @@ export class FolgaService {
     );
     // Chave `diaSemana|id`, com as duas identidades da escala (o vínculo com a
     // ficha pode estar vazio em escalas antigas).
-    const folgaNaEscala = new Set<string>();
+    //
+    // As folgas da escala vão para DOIS conjuntos, e a separação é o coração do
+    // ADR 0023: a folga GERAL é derivada da ficha (e por isso não vota contra
+    // ela), enquanto a folga ESPECIAL é uma decisão individual do gestor (e por
+    // isso vence). Um conjunto só não sabia distinguir as duas.
+    const folgaGeralNaEscala = new Set<string>();
+    const folgaConcedidaNaEscala = new Set<string>();
     // Convocações: exceções individuais que mandam a pessoa TRABALHAR nesse dia.
     const convocadoNaEscala = new Set<string>();
     for (const e of entradasDeFolga) {
       for (const id of [e.funcionarioId, e.colaboradorId]) {
         if (!id) continue;
-        if (e.folga) folgaNaEscala.add(`${e.diaSemana}|${id}`);
-        else if (e.especial) convocadoNaEscala.add(`${e.diaSemana}|${id}`);
+        const chave = `${e.diaSemana}|${id}`;
+        if (e.folga) {
+          if (e.especial) folgaConcedidaNaEscala.add(chave);
+          else folgaGeralNaEscala.add(chave);
+        } else if (e.especial) {
+          convocadoNaEscala.add(chave);
+        }
       }
     }
 
     const ancoraDomingo: { data: Date; ordem: readonly GrupoDomingo[] } | null =
       ancora ? { data: ancora.data, ordem: ancora.ordem } : null;
 
+    /** A ficha da pessoa, pela primeira identidade que tiver uma. */
+    const fichaDe = (
+      ids: readonly (string | null | undefined)[],
+    ): FichaFolga | null => {
+      for (const id of ids) {
+        if (!id) continue;
+        const ficha = fichas.get(id);
+        if (ficha) return ficha;
+      }
+      return null;
+    };
+
     return {
       ehFolga: (dia, ids) => {
         const diaSemana = dia.getUTCDay();
         const conhecidos = ids.filter((id): id is string => !!id);
 
-        // CONVOCAÇÃO primeiro: uma exceção individual que manda trabalhar vence
-        // a folga. É a única coisa que vence, e vence porque é o registro mais
-        // específico e mais recente que existe sobre aquele dia — é assim que se
-        // chama alguém no descanso. Sem este passo a convocação se perdia: a
-        // pessoa era chamada, não aparecia na lista de esperados, e ninguém
-        // cobrava o ponto dela; ou pior, a falta nascia e a revalidação a
-        // apagava cinco minutos depois, em laço.
+        // 1. CONVOCAÇÃO: uma exceção individual que manda trabalhar vence tudo,
+        // porque é o registro mais específico e mais recente que existe sobre
+        // aquele dia — é assim que se chama alguém no descanso. Sem este passo a
+        // convocação se perdia: a pessoa era chamada, não aparecia na lista de
+        // esperados, e ninguém cobrava o ponto dela; ou pior, a falta nascia e a
+        // revalidação a apagava cinco minutos depois, em laço.
         for (const id of conhecidos) {
           if (convocadoNaEscala.has(`${diaSemana}|${id}`)) return false;
         }
 
-        // Fonte 1: a escala semanal marca folga nesse dia.
+        // 2. FOLGA CONCEDIDA à mão (exceção): o gestor deu o dia. A ficha não
+        // desfaz uma decisão individual — é a contrapartida da convocação.
         for (const id of conhecidos) {
-          if (folgaNaEscala.has(`${diaSemana}|${id}`)) return true;
+          if (folgaConcedidaNaEscala.has(`${diaSemana}|${id}`)) return true;
         }
 
-        // Fonte 2: a ficha do colaborador (folga fixa + rodízio de domingo).
-        for (const id of conhecidos) {
-          const ficha = fichas.get(id);
-          if (ficha && ehDiaDeFolga(ficha, dia, ancoraDomingo)) return true;
+        // 3. A FICHA, quando afirma um dia de folga, decide SOZINHA (ADR 0023).
+        // A escala semanal geral é derivada dela, e um derivado velho não soma um
+        // dia de descanso que a fonte não afirma. Inclui o domingo: lá a ficha
+        // decide pelo rodízio, que também é dela.
+        const ficha = fichaDe(conhecidos);
+        if (ficha && ficha.folgaDiaSemana != null) {
+          return ehDiaDeFolga(ficha, dia, ancoraDomingo);
         }
 
-        return false;
+        // 4. Ficha OMISSA: aí a escala semanal geral ainda vale. Não há fonte que
+        // a contradiga, e o viés conservador continua protegendo a pessoa.
+        for (const id of conhecidos) {
+          if (folgaGeralNaEscala.has(`${diaSemana}|${id}`)) return true;
+        }
+
+        // 5. Ficha omissa no dia da semana, mas o rodízio de domingo é dela.
+        return ficha ? ehDiaDeFolga(ficha, dia, ancoraDomingo) : false;
+      },
+
+      semFolgaNaFicha: (ids) => {
+        const ficha = fichaDe(ids);
+        return ficha != null && ficha.folgaDiaSemana == null;
       },
     };
   }

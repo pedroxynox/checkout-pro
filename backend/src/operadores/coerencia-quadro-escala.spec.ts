@@ -33,8 +33,11 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
   const FERIADO_ISO = '2026-04-21';
 
   interface Cenario {
-    /** Dia da semana da folga na ficha (1 = segunda). */
-    folgaNaFicha?: number;
+    /**
+     * Dia da semana da folga na ficha (1 = segunda). **`null` = ficha omissa**,
+     * que é o único caso em que a escala semanal geral decide a folga (ADR 0023).
+     */
+    folgaNaFicha?: number | null;
     /** Marca folga na escala SEMANAL nesse dia da semana. */
     folgaNaEscalaEm?: number;
     /** A entrada da escala semanal é uma exceção ("especial")? */
@@ -61,7 +64,8 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
       saidaFds: '17:00',
       entradaDom: '07:00',
       saidaDom: '13:00',
-      folgaDiaSemana: cenario.folgaNaFicha ?? 1,
+      folgaDiaSemana:
+        cenario.folgaNaFicha === undefined ? 1 : cenario.folgaNaFicha,
       grupoDomingo: null,
       ativo: true,
       criadoEm: new Date(),
@@ -159,6 +163,10 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
         },
       },
       ausencia: { findMany: () => Promise.resolve(ausencias) },
+      // Identidades da pessoa: aqui o colaborador é um operador, então não há
+      // registro de fiscal nenhum. As consultas existem para a carga não quebrar.
+      fiscal: { findMany: () => Promise.resolve([]) },
+      usuario: { findMany: () => Promise.resolve([]) },
       atestado: {
         findMany: () =>
           Promise.resolve(
@@ -309,14 +317,31 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
     expect(publicada).toEqual(quadro);
   });
 
-  it('folga marcada na escala semanal SEM ser exceção: as duas dizem FOLGA', async () => {
+  it('folga na escala semanal SEM ser exceção, ficha OMISSA: as duas dizem FOLGA', async () => {
     // Este é o caso suspeito. A regra única de folga (Quadro, equipe do dia,
-    // detecção de falta) considera QUALQUER `EscalaEntry.folga`; a Escala
-    // publicada só olha as marcadas como `especial`. Se divergirem, o mesmo dia
-    // sai FOLGA numa tela e TRABALHA na outra.
-    const { quadro, publicada } = await comparar({ folgaNaEscalaEm: 3 });
+    // detecção de falta) considera a `EscalaEntry.folga` geral quando a ficha se
+    // cala; a Escala publicada só olha as marcadas como `especial`. Se
+    // divergirem, o mesmo dia sai FOLGA numa tela e TRABALHA na outra.
+    const { quadro, publicada } = await comparar({
+      folgaNaFicha: null,
+      folgaNaEscalaEm: 3,
+    });
 
     expect(quadro.get('c1')).toBe('FOLGA -----');
+    expect(publicada).toEqual(quadro);
+  });
+
+  it('ficha afirma OUTRO dia: as duas dizem TRABALHA (a escala velha não dispensa)', async () => {
+    // ADR 0023: a escala semanal geral é derivada da ficha, e um derivado velho
+    // não soma um dia de descanso. O que este teste protege é a COERÊNCIA — as
+    // duas telas têm de mudar juntas, ou o mesmo dia volta a sair diferente em
+    // cada uma.
+    const { quadro, publicada } = await comparar({
+      folgaNaFicha: 1,
+      folgaNaEscalaEm: 3,
+    });
+
+    expect(quadro.get('c1')).toBe('TRABALHA 08:00-16:00');
     expect(publicada).toEqual(quadro);
   });
 

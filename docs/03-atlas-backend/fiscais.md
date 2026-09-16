@@ -35,6 +35,7 @@ os alertas automáticos e a **escala de trabalho** (geral e horário especial).
 | `escala.service.ts` | Regras da escala (geral, especial, consolidada) | 355 |
 | `escala.domain.ts` | Regras puras: escala efetiva, consolidada, semanal | 166 |
 | `colaborador-vinculo.ts` | Regra pura: mapeia fiscal → colaborador (ficha) | 84 |
+| `identidades.consulta.ts` | **A única** carga das identidades de uma pessoa (ficha + ids de fiscal), nos dois sentidos | 85 |
 | `integridade-vinculo.ts` | Regra pura: detecta vínculos órfãos fiscal ↔ ficha | 96 |
 | `dto/fiscais.dto.ts` | Validação de entrada (status e escala) | 59 |
 
@@ -188,13 +189,29 @@ entradas **gerais** de `EscalaEntry` ao cadastrar, editar ou reativar um fiscal,
 a escala semanal **não tem tela que a edite**. Na prática ela é um derivado.
 
 O risco não é "qual das duas é a verdade" — é que o derivado fica **velho em
-silêncio**. A sincronização tem quatro saídas antecipadas:
+silêncio**. A sincronização tem três saídas antecipadas:
 
 | Situação | Efeito |
 |---|---|
 | Ficha **sem horários** (`temEscalaDefinida` falso) | Não apaga a escala existente, de propósito ("não apagar a escala vinda do seed enquanto o gestor não a preenche"). A escala antiga continua valendo. |
 | Fiscal **sem conta de acesso** ou **sem registro `Fiscal`** | Não há onde escrever; nada é sincronizado. |
 | Dia com **horário pela metade** (entrada sem saída) | `gerarEscalaSemanalFiscal` omite o dia. A pessoa desaparece da detecção e **nunca recebe falta automática**. |
+
+Duas saídas que **deixaram de existir** (ADR 0023), porque não eram saídas: eram
+vazamentos.
+
+- **A limpeza cobria uma identidade só.** O `deleteMany` filtrava por
+  `funcionarioId: fiscal.id`, então qualquer linha gravada sob outro id — o
+  `Colaborador.id` da era-operador, ou um segundo registro `Fiscal` homônimo criado
+  por `garantirFiscal` — sobrevivia a todas as edições seguintes. E uma linha velha
+  de folga não é inerte: a regra de folga a encontra pelas duas chaves. Hoje a
+  limpeza cobre **todas** as identidades da pessoa.
+- **Deixar de ser fiscal não apagava nada.** A função saía pela porta
+  (`if (funcao !== 'FISCAL') return`) **antes** de qualquer limpeza, e a escala
+  seguia alimentando a folga e a detecção automática de falta de alguém que já não
+  era fiscal — para sempre. Hoje o rebaixamento (e o desligamento) apaga as
+  entradas gerais. As **exceções** (`especial`) continuam intocadas: são decisões
+  humanas por dia, não derivadas da ficha.
 
 Isso importa porque as duas pontas têm consumidores diferentes: a **detecção
 automática de falta** lê a escala semanal e a **escala publicada** (o PDF que a
@@ -319,7 +336,7 @@ casos de ficha vazia, preencher os horários **primeiro**.
 | `hora-esperada-fiscal.ts` | Regra pura: a hora que pode ser cobrada de um fiscal (a mais tardia entre ficha e escala) | — |
 | `escala-inativo.spec.ts` | Escala de colaborador inativo | 1 |
 | `escalados-ferias.spec.ts` | `escaladosDoDia` exclui quem está de férias | 2 |
-| `escalados-folga.spec.ts` | **Regressão:** `escaladosDoDia` respeita a folga das duas fontes — não escala o fiscal com folga na ficha mesmo com a escala semanal escalando (o caso real), nem quem tem folga na escala | 3 |
+| `escalados-folga.spec.ts` | **Regressão:** `escaladosDoDia` respeita a folga pela regra única e na ordem certa — não escala o fiscal com folga na ficha mesmo com a escala semanal escalando (o caso real), nem quem tem folga na escala **com a ficha omissa**; e **escala** quando a ficha afirma outro dia e só a escala velha diz folga (ADR 0023) | 4 |
 | `escalados-feriado.spec.ts` | `escaladosDoDia` em feriado: horário de domingo (operador e fiscal), folga inalterada, fallback sem `entradaDom` e sem `FeriadosService` | 8 |
 | `coerencia-escalados-escala.spec.ts` | **Coerência entre `escaladosDoDia` e a [escala publicada](escala-exportacao.md):** dia normal, folga, falta do operador, **falta do fiscal** (a que a publicada não via, por causa da tradução de ids), exceção de horário, convocação em dia de folga, os dois casos que impedem o laço da revalidação, e a **escala semanal velha** nas duas direções (mais cedo → passa a usar a ficha; mais tarde → não adianta a cobrança) | 10 |
 | `integridade-escala.spec.ts` | **Diagnóstico ficha ↔ escala semanal** (`npm run integridade`): horário divergente, folga divergente, **ficha vazia com escala sobrevivente**, ficha sem escala, horário pela metade, entradas duplicadas, inativos ignorados e escala antiga ligada só pelo `funcionarioId` | 9 |

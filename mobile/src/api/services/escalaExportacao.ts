@@ -42,6 +42,20 @@ export interface TotaisEscala {
   ferias: number;
 }
 
+/**
+ * Uma pessoa **sem dia de folga no cadastro** (ADR 0023).
+ *
+ * Sem folga na ficha ela é escalada os sete dias da semana, e pode receber falta
+ * automática num dia em que estava descansando. Era o defeito mais silencioso do
+ * conjunto: a Escala mostrava "trabalha" e não havia como saber que faltava um
+ * dado.
+ */
+export interface PessoaSemFolga {
+  colaboradorId: string;
+  nome: string;
+  funcao: FuncaoEscala;
+}
+
 /** Escala publicada de um dia. */
 export interface EscalaDiaPublicada {
   dataISO: string;
@@ -52,6 +66,8 @@ export interface EscalaDiaPublicada {
   grupoFolgaDomingo: 'G1' | 'G2' | 'G3' | null;
   totais: TotaisEscala;
   secoes: SecaoEscala[];
+  /** Quem está sem dia de folga no cadastro — um aviso, não uma seção. */
+  semFolgaNoCadastro: PessoaSemFolga[];
 }
 
 /** Um dia no cabeçalho da grade semanal. */
@@ -84,6 +100,8 @@ export interface EscalaSemanaPublicada {
   fimISO: string;
   dias: DiaSemanaEscala[];
   secoes: { funcao: FuncaoEscala; pessoas: PessoaSemanaEscala[] }[];
+  /** Quem está sem dia de folga no cadastro — um aviso, não uma seção. */
+  semFolgaNoCadastro: PessoaSemFolga[];
 }
 
 export const escalaExportacaoService = {

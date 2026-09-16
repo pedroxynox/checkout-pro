@@ -41,3 +41,25 @@ export class PermissaoInsuficienteError extends AcessosError {
     super(mensagem);
   }
 }
+
+
+/**
+ * Lançado quando o login existe e a senha está certa, mas a **ficha** ligada a
+ * ele já não dá acesso ao app: a pessoa foi desligada (`ativo = false`) ou passou
+ * a uma função sem acesso (operador) — ADR 0023.
+ *
+ * É um erro à parte, e não `CredenciaisInvalidasError`, de propósito. "Credenciais
+ * inválidas" mandaria a pessoa tentar a senha de novo e mandaria o gestor procurar
+ * um problema que não existe; o que aconteceu foi uma decisão de cadastro, e a
+ * mensagem tem de dizer isso. Vale a contrapartida de revelar que o login existe:
+ * quem tenta entrar é alguém que já teve acesso e sabe disso, e o gestor que
+ * investiga "por que ele não entra?" precisa da resposta.
+ */
+export class AcessoRevogadoError extends AcessosError {
+  readonly statusHttp = HttpStatus.UNAUTHORIZED;
+  constructor(
+    mensagem = 'Este acesso foi encerrado. Fale com a gerência: a função ou a situação do cadastro não dá mais entrada no app.',
+  ) {
+    super(mensagem);
+  }
+}

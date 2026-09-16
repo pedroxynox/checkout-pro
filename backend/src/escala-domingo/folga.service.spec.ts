@@ -1,10 +1,15 @@
 /**
- * Regra ÚNICA de folga: se QUALQUER fonte (ficha ou escala semanal) diz que a
- * pessoa descansa, é folga.
+ * Regra ÚNICA de folga, na ordem que importa: convocação → folga concedida à mão
+ * → **a ficha, quando afirma um dia** → a escala semanal, quando a ficha se cala.
  *
- * O caso que originou esta regra está no primeiro teste: um fiscal com folga na
- * terça **na ficha**, cuja escala semanal não tinha sido atualizada, era escalado
- * pelo sistema e recebia falta automática no próprio dia de descanso.
+ * Dois casos reais sustentam a regra, um em cada ponta, e os dois estão aqui:
+ *
+ * - um fiscal com folga na terça **na ficha**, cuja escala semanal não tinha sido
+ *   atualizada, era escalado pelo sistema e recebia falta automática no próprio
+ *   dia de descanso (primeiro teste);
+ * - uma fiscal com folga na **quinta** na ficha aparecia de folga **também na
+ *   quarta**, por uma linha antiga da escala que ninguém apagou — o caso que fez
+ *   a ficha passar a decidir sozinha (ADR 0023).
  */
 import { PrismaService } from '../prisma/prisma.service';
 import { EscalaDomingoService } from './escala-domingo.service';
@@ -12,6 +17,7 @@ import { FolgaService } from './folga.service';
 
 const TERCA = new Date('2026-07-21T00:00:00.000Z'); // diaSemana 2
 const QUARTA = new Date('2026-07-22T00:00:00.000Z'); // diaSemana 3
+const QUINTA = new Date('2026-07-23T00:00:00.000Z'); // diaSemana 4
 const DOMINGO = new Date('2026-07-19T00:00:00.000Z'); // diaSemana 0
 
 interface Cenario {
@@ -179,6 +185,108 @@ describe('FolgaService', () => {
     });
 
     expect(await service.ehFolga(TERCA, ['col-5'])).toBe(true);
+  });
+
+  describe('a ficha, quando afirma um dia, decide sozinha (ADR 0023)', () => {
+    /**
+     * O caso da Yannelyt: ficha na QUINTA, e uma linha GERAL antiga da escala
+     * dizendo folga na QUARTA que a sincronização nunca apagou (ela apagava só
+     * as linhas do `Fiscal.id` corrente). Pelo OU antigo, as duas valiam e ela
+     * aparecia de folga nos dois dias.
+     */
+    const cenarioYannelyt = {
+      colaboradores: [
+        { id: 'col-yan', folgaDiaSemana: 4, grupoDomingo: null },
+      ],
+      escala: [
+        {
+          funcionarioId: 'fiscal-antigo-yan',
+          colaboradorId: 'col-yan',
+          diaSemana: 3,
+          folga: true,
+          especial: false,
+        },
+      ],
+    };
+
+    it('a folga GERAL velha da escala não soma um segundo dia de descanso', async () => {
+      const service = criarServico(cenarioYannelyt);
+
+      expect(await service.ehFolga(QUARTA, ['col-yan'])).toBe(false);
+    });
+
+    it('e o dia que a ficha afirma continua sendo folga', async () => {
+      const service = criarServico(cenarioYannelyt);
+
+      expect(await service.ehFolga(QUINTA, ['col-yan'])).toBe(true);
+    });
+
+    it('mas uma folga CONCEDIDA à mão ainda vence a ficha', async () => {
+      // A separação que a regra faz: a folga geral é derivada da ficha (não
+      // vota contra ela), a especial é uma decisão individual do gestor (vence).
+      const service = criarServico({
+        colaboradores: [
+          { id: 'col-yan', folgaDiaSemana: 4, grupoDomingo: null },
+        ],
+        escala: [
+          {
+            funcionarioId: 'col-yan',
+            colaboradorId: 'col-yan',
+            diaSemana: 3,
+            folga: true,
+            especial: true,
+          },
+        ],
+      });
+
+      expect(await service.ehFolga(QUARTA, ['col-yan'])).toBe(true);
+    });
+
+    it('reconhece a ficha mesmo quando só a identidade de fiscal é conhecida na escala', async () => {
+      // A linha velha está sob outro `funcionarioId`; a ficha é encontrada pela
+      // identidade de colaborador, e é ela que decide.
+      const service = criarServico(cenarioYannelyt);
+
+      expect(
+        await service.ehFolga(QUARTA, ['fiscal-antigo-yan', 'col-yan']),
+      ).toBe(false);
+    });
+  });
+
+  describe('semFolgaNaFicha', () => {
+    /**
+     * O caso do Diones: ficha sem dia de folga. Enquanto era operador a ficha era
+     * a ÚNICA fonte, então ele aparecia trabalhando todos os dias — inclusive no
+     * dia em que descansava — e nada avisava. Este é o fato que a Escala expõe.
+     */
+    it('aponta quem não tem dia de folga na ficha', async () => {
+      const service = criarServico({
+        colaboradores: [
+          { id: 'col-diones', folgaDiaSemana: null, grupoDomingo: 'G1' },
+        ],
+      });
+      const consultor = await service.consultor([QUARTA]);
+
+      expect(consultor.semFolgaNaFicha(['col-diones'])).toBe(true);
+    });
+
+    it('não aponta quem tem o dia preenchido', async () => {
+      const service = criarServico({
+        colaboradores: [{ id: 'col-ok', folgaDiaSemana: 3, grupoDomingo: null }],
+      });
+      const consultor = await service.consultor([QUARTA]);
+
+      expect(consultor.semFolgaNaFicha(['col-ok'])).toBe(false);
+    });
+
+    it('não afirma falta de dado sobre quem não tem ficha', async () => {
+      // Um fiscal sem ficha vinculada não é um cadastro incompleto: é um vínculo
+      // que falta. Acusá-lo aqui misturaria dois problemas diferentes.
+      const service = criarServico({ colaboradores: [] });
+      const consultor = await service.consultor([QUARTA]);
+
+      expect(consultor.semFolgaNaFicha(['fiscal-sem-ficha'])).toBe(false);
+    });
   });
 
   it('sem nenhuma fonte dizendo folga, é dia de trabalho', async () => {

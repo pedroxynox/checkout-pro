@@ -24,7 +24,7 @@ próprias (ajustáveis na Central de Permissões):
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `ColaboradoresScreen.tsx` | Lista/hub de colaboradores | 345 |
-| `GestaoColaboradoresScreen.tsx` | Formulário de cadastro/edição | 708 |
+| `GestaoColaboradoresScreen.tsx` | Formulário de cadastro/edição | 711 |
 | `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 907 |
 | `SancoesScreen.tsx` | Lista de sanções/advertências | 588 |
 | `RegistrarSancaoModal.tsx` | Modal para registrar sanção | 460 |
@@ -67,6 +67,16 @@ Módulo do backend relacionado: [`colaboradores`](../03-atlas-backend/colaborado
   `solidez-contratos-jornada`.
 - Domingo: o grupo só aparece se o contrato trabalha domingo (o backend também
   normaliza por segurança).
+- **O dia de folga pode ser APAGADO** (ADR 0023). Tocar no dia já marcado o
+  desmarca, e o formulário envia `folgaDiaSemana: null` — antes enviava
+  `undefined`, e o servidor só atribui quando o campo vem: a folga podia ser
+  **trocada**, nunca **esvaziada**, então quem marcasse um dia por engano não tinha
+  como desfazer.
+- **Deixar o dia de folga em branco não é neutro.** Sem folga na ficha a pessoa é
+  escalada os sete dias da semana e pode receber falta automática num dia em que
+  estava descansando. O formulário não bloqueia (há fichas antigas sem o dado, e o
+  padrão da casa é validar só o que mudou), mas a
+  [Escala](escala.md) avisa quem está nessa situação, com nome e função.
 - **Seção "Tempo de casa" (contrato de experiência):** mostra os marcos de 45 e
   90 dias, o próximo marco e, quando aplicável, "Efetivado por decurso". Na
   Fase 3 removeu-se o aviso legado de "decisão em atraso" — o ciclo é automático

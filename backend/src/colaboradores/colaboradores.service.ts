@@ -369,35 +369,74 @@ export class ColaboradoresService {
   }
 
   /**
+   * Todas as identidades sob as quais a escala semanal desta pessoa pode ter sido
+   * gravada (ADR 0023).
+   *
+   * São três origens, e a limpeza precisava das três:
+   *
+   * - o **`Colaborador.id`**: é o `funcionarioId` da era em que a pessoa era
+   *   operador, antes de existir um registro `Fiscal` para ela;
+   * - o **`Fiscal.id` da conta** (`usuarioId`): o vínculo direto de hoje;
+   * - o **`Fiscal.id` de mesmo nome**: `garantirFiscal` casa por nome quando a
+   *   conta ainda não aponta para nenhum registro, então um segundo `Fiscal`
+   *   homônimo pode carregar a escala antiga.
+   */
+  private async identidadesDaEscala(
+    colaborador: Colaborador,
+  ): Promise<string[]> {
+    const fiscais = await this.prisma.fiscal.findMany({
+      where: {
+        OR: [
+          ...(colaborador.usuarioId
+            ? [{ usuarioId: colaborador.usuarioId }]
+            : []),
+          { nome: colaborador.nome },
+        ],
+      },
+      select: { id: true },
+    });
+    return [colaborador.id, ...fiscais.map((f) => f.id)];
+  }
+
+  /**
    * Sincroniza a escala semanal GERAL do fiscal a partir do cadastro (Opção A:
    * o Colaborador é a fonte única). Preserva os horários ESPECIAIS (exceções)
-   * e o intervalo já cadastrado. Não faz nada se: não é fiscal, não tem conta/
-   * registro de fiscal, ou ainda não tem escala definida no cadastro (evita
-   * apagar a escala vinda do seed enquanto o gestor não a preenche aqui).
+   * e o intervalo já cadastrado. Não faz nada se não tem conta/registro de
+   * fiscal, ou se ainda não tem escala definida no cadastro (evita apagar a
+   * escala vinda do seed enquanto o gestor não a preenche aqui).
+   *
+   * ## O que mudou aqui (ADR 0023)
+   *
+   * A limpeza cobre **todas as identidades** da pessoa, e não só o `Fiscal.id`
+   * corrente. Apagar apenas por `funcionarioId: fiscal.id` deixava viva qualquer
+   * linha gravada sob outro id — e uma linha velha de folga não é inerte: a regra
+   * de folga a encontra pelas duas chaves, e a pessoa passava a descansar **dois**
+   * dias, o da ficha e o da linha esquecida. Foi o caso que abriu o ADR 0023.
+   *
+   * E **deixar de ser fiscal apaga a escala de fiscal**. Antes a função saía pela
+   * porta antes de qualquer limpeza (`if (funcao !== 'FISCAL') return`), então a
+   * escala continuava alimentando a folga e a detecção automática de falta de
+   * alguém que já não era fiscal — para sempre, porque nenhuma edição posterior
+   * voltava a mexer nela.
    */
   private async sincronizarEscalaFiscal(
     colaborador: Colaborador,
   ): Promise<void> {
-    if (colaborador.funcao !== 'FISCAL') return;
+    const identidades = await this.identidadesDaEscala(colaborador);
+    // Só as entradas GERAIS; as exceções (`especial`) são decisões humanas por
+    // dia, não derivadas da ficha, e nunca são tocadas aqui.
+    const somenteGerais = {
+      especial: false,
+      OR: [
+        { colaboradorId: colaborador.id },
+        { funcionarioId: { in: identidades } },
+      ],
+    };
 
-    // Inativo/desligado: remove a escala semanal (geral) para não aparecer nem
-    // contar no quadro. Remove pelo vínculo gravado (colaboradorId) e também
-    // pelo fiscal (funcionarioId), cobrindo escalas antigas sem colaboradorId.
-    if (colaborador.ativo === false) {
-      await this.prisma.escalaEntry.deleteMany({
-        where: { colaboradorId: colaborador.id, especial: false },
-      });
-      if (colaborador.usuarioId) {
-        const fiscal = await this.prisma.fiscal.findFirst({
-          where: { usuarioId: colaborador.usuarioId },
-          select: { id: true },
-        });
-        if (fiscal) {
-          await this.prisma.escalaEntry.deleteMany({
-            where: { funcionarioId: fiscal.id, especial: false },
-          });
-        }
-      }
+    // Não é (mais) fiscal, ou foi desligado: a escala semanal de fiscal não lhe
+    // pertence e tem de sair — do quadro e das regras que a leem.
+    if (colaborador.funcao !== 'FISCAL' || colaborador.ativo === false) {
+      await this.prisma.escalaEntry.deleteMany({ where: somenteGerais });
       return;
     }
 
@@ -429,10 +468,10 @@ export class ColaboradoresService {
     const intervaloMin = geraisAtuais[0]?.intervaloMin ?? 0;
 
     await this.prisma.$transaction([
-      // Remove apenas as entradas GERAIS; as exceções (especial) ficam intactas.
-      this.prisma.escalaEntry.deleteMany({
-        where: { funcionarioId: fiscal.id, especial: false },
-      }),
+      // Remove as entradas GERAIS de TODAS as identidades (as exceções ficam
+      // intactas): é o que impede uma linha velha de sobreviver e somar uma
+      // segunda folga.
+      this.prisma.escalaEntry.deleteMany({ where: somenteGerais }),
       this.prisma.escalaEntry.createMany({
         data: dias.map((d) => ({
           funcionarioId: fiscal.id,
@@ -680,6 +719,15 @@ export class ColaboradoresService {
 
       const upd: Prisma.UsuarioUpdateInput = {};
       if (perfilAcesso) upd.perfil = perfilAcesso;
+      // Mudou de função: encerra as sessões abertas (ADR 0023). O perfil que vale
+      // numa requisição vem do TOKEN, então sem este bump a pessoa seguia com os
+      // poderes da função anterior até o token expirar — inclusive quando a nova
+      // função não dá acesso nenhum (`perfilAcesso` nulo), caso em que o perfil
+      // antigo nem é sobrescrito. É o mesmo tratamento que uma mudança de
+      // permissões já recebia; faltava aqui.
+      if (funcao !== atual.funcao) {
+        upd.tokenVersion = { increment: 1 };
+      }
       if (input.nome !== undefined) upd.nome = input.nome.trim();
       if (novaMatricula) {
         if (!(await this.acessos.loginDisponivel(novaMatricula))) {
@@ -855,6 +903,15 @@ export class ColaboradoresService {
       where: { id },
       data,
     });
+    // Desligar encerra as sessões abertas (ADR 0023). O login em si passa a ser
+    // recusado por `AcessosService.autenticar`, que agora consulta a ficha; sem o
+    // bump, quem já estava dentro do app continuaria dentro.
+    if (ativo === false && atual.usuarioId) {
+      await this.prisma.usuario.update({
+        where: { id: atual.usuarioId },
+        data: { tokenVersion: { increment: 1 } },
+      });
+    }
     // Inativar limpa a escala semanal (sai do quadro); reativar a recria a
     // partir dos horários do cadastro.
     await this.sincronizarEscalaFiscal(atualizado);

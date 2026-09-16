@@ -26,7 +26,11 @@ import {
 } from '../escala-domingo/escala-domingo.domain';
 import { carregarMapaDeFeriados } from '../feriados/feriados.consulta';
 import { FeriasService } from '../ferias/ferias.service';
-import { FolgaService } from '../escala-domingo/folga.service';
+import { ConsultorFolga, FolgaService } from '../escala-domingo/folga.service';
+import {
+  carregarFiscalIdsPorColaborador,
+  identidadesDaFicha,
+} from '../fiscais/identidades.consulta';
 import { carregarHorariosEspeciais } from './escala-especiais.consulta';
 import {
   FichaColaboradorEscala,
@@ -47,6 +51,20 @@ import {
 /** Funções escaladas (a gerência não entra na escala publicada). */
 const FUNCOES_ESCALA: FuncaoEscala[] = ['OPERADOR', 'FISCAL', 'SUPERVISOR'];
 
+/**
+ * Uma pessoa **sem dia de folga no cadastro** (ADR 0023).
+ *
+ * Não é um detalhe de cadastro: sem folga na ficha, a pessoa é escalada os sete
+ * dias da semana, e pode receber falta automática num dia em que estava
+ * descansando. Era o defeito mais silencioso do conjunto — a Escala mostrava
+ * "trabalha" todos os dias e ninguém tinha como saber que faltava um dado.
+ */
+export interface PessoaSemFolga {
+  colaboradorId: string;
+  nome: string;
+  funcao: FuncaoEscala;
+}
+
 /** Escala publicada de um dia. */
 export interface EscalaDiaPublicada {
   dataISO: string;
@@ -59,6 +77,8 @@ export interface EscalaDiaPublicada {
   totais: TotaisEscala;
   /** Pessoas agrupadas por função, na ordem fixa de leitura. */
   secoes: SecaoEscala[];
+  /** Quem está sem dia de folga no cadastro — o aviso, não uma seção. */
+  semFolgaNoCadastro: PessoaSemFolga[];
 }
 
 /** Um dia no cabeçalho da escala semanal. */
@@ -89,6 +109,8 @@ export interface EscalaSemanaPublicada {
   dias: DiaSemanaEscala[];
   /** Pessoas agrupadas por função, cada uma com as 7 células da semana. */
   secoes: { funcao: FuncaoEscala; pessoas: PessoaSemanaEscala[] }[];
+  /** Quem está sem dia de folga no cadastro — o aviso, não uma seção. */
+  semFolgaNoCadastro: PessoaSemFolga[];
 }
 
 @Injectable()
@@ -206,12 +228,14 @@ export class EscalaExportacaoService {
     const fim = new Date(dia);
     fim.setUTCDate(fim.getUTCDate() + 1);
 
-    const [fichas, ancoraDomingo, feriados, especiais] = await Promise.all([
-      this.fichas(),
-      this.ancora(),
-      carregarMapaDeFeriados(this.prisma, dia, fim),
-      carregarHorariosEspeciais(this.prisma),
-    ]);
+    const [fichas, ancoraDomingo, feriados, especiais, fiscalIds] =
+      await Promise.all([
+        this.fichas(),
+        this.ancora(),
+        carregarMapaDeFeriados(this.prisma, dia, fim),
+        carregarHorariosEspeciais(this.prisma),
+        carregarFiscalIdsPorColaborador(this.prisma),
+      ]);
     const ids = fichas.map((f) => f.colaboradorId);
     const [ocorrencias, deFerias] = await Promise.all([
       this.ocorrencias(ids, dia, fim),
@@ -232,7 +256,11 @@ export class EscalaExportacaoService {
         ancoraDomingo,
         ehFeriado: nomeFeriado != null,
         deFerias: deFerias.has(ficha.colaboradorId),
-        deFolga: consultorFolga?.ehFolga(dia, [ficha.colaboradorId]) ?? false,
+        deFolga:
+          consultorFolga?.ehFolga(
+            dia,
+            identidadesDaFicha(ficha.colaboradorId, fiscalIds),
+          ) ?? false,
         especial:
           especiais.get(`${ficha.colaboradorId}|${dia.getUTCDay()}`) ?? null,
         ocorrencia: ocorrencias.get(`${ficha.colaboradorId}|${iso}`) ?? null,
@@ -250,7 +278,34 @@ export class EscalaExportacaoService {
           : null,
       totais: totaisEscala(linhas),
       secoes: agruparPorFuncao(linhas),
+      semFolgaNoCadastro: this.semFolga(fichas, consultorFolga, fiscalIds),
     };
+  }
+
+  /**
+   * Quem está sem dia de folga no cadastro (ADR 0023).
+   *
+   * O fato vem da regra de folga, e não de um `folgaDiaSemana == null` lido aqui:
+   * o aviso e a decisão têm de sair da mesma fonte, ou um dia a tela avisa sobre
+   * alguém que o cálculo já resolveu de outro jeito.
+   */
+  private semFolga(
+    fichas: FichaColaboradorEscala[],
+    consultorFolga: ConsultorFolga | null,
+    fiscalIds: Map<string, string[]>,
+  ): PessoaSemFolga[] {
+    if (!consultorFolga) return [];
+    return fichas
+      .filter((f) =>
+        consultorFolga.semFolgaNaFicha(
+          identidadesDaFicha(f.colaboradorId, fiscalIds),
+        ),
+      )
+      .map((f) => ({
+        colaboradorId: f.colaboradorId,
+        nome: f.nome,
+        funcao: f.funcao,
+      }));
   }
 
   /**
@@ -265,12 +320,14 @@ export class EscalaExportacaoService {
     const fimExclusivo = new Date(diaUTC(diasISO[6]));
     fimExclusivo.setUTCDate(fimExclusivo.getUTCDate() + 1);
 
-    const [fichas, ancoraDomingo, feriados, especiais] = await Promise.all([
-      this.fichas(),
-      this.ancora(),
-      carregarMapaDeFeriados(this.prisma, inicio, fimExclusivo),
-      carregarHorariosEspeciais(this.prisma),
-    ]);
+    const [fichas, ancoraDomingo, feriados, especiais, fiscalIds] =
+      await Promise.all([
+        this.fichas(),
+        this.ancora(),
+        carregarMapaDeFeriados(this.prisma, inicio, fimExclusivo),
+        carregarHorariosEspeciais(this.prisma),
+        carregarFiscalIdsPorColaborador(this.prisma),
+      ]);
     const ids = fichas.map((f) => f.colaboradorId);
     const ocorrencias = await this.ocorrencias(ids, inicio, fimExclusivo);
     // Férias são por dia: um conjunto por dia da semana.
@@ -312,7 +369,11 @@ export class EscalaExportacaoService {
           ehFeriado: d.ehFeriado,
           deFerias:
             feriasPorDia.get(d.dataISO)?.has(ficha.colaboradorId) ?? false,
-          deFolga: consultorFolga?.ehFolga(dia, [ficha.colaboradorId]) ?? false,
+          deFolga:
+            consultorFolga?.ehFolga(
+              dia,
+              identidadesDaFicha(ficha.colaboradorId, fiscalIds),
+            ) ?? false,
           especial:
             especiais.get(`${ficha.colaboradorId}|${dia.getUTCDay()}`) ?? null,
           ocorrencia:
@@ -342,6 +403,7 @@ export class EscalaExportacaoService {
       fimISO: diasISO[6],
       dias,
       secoes,
+      semFolgaNoCadastro: this.semFolga(fichas, consultorFolga, fiscalIds),
     };
   }
 }

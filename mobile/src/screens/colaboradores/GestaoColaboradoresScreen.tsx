@@ -278,7 +278,10 @@ export function GestaoColaboradoresScreen({
             saidaSemana: saiSem.trim() || undefined,
             entradaFds: entFds.trim() || undefined,
             saidaFds: saiFds.trim() || undefined,
-            folgaDiaSemana: folga ?? undefined,
+            // `null` explícito, e não `undefined`: é o que permite APAGAR a
+            // folga. Com `undefined` o servidor não mexia no campo, então um dia
+            // marcado por engano ficava para sempre (ADR 0023).
+            folgaDiaSemana: folga,
             // Domingo: grupo (ou null). Se o contrato não trabalha domingo,
             // nunca envia grupo (o backend também normaliza por segurança).
             grupoDomingo: mostrarDomingo ? grupoDom : null,

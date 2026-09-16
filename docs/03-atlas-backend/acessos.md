@@ -24,9 +24,9 @@ conforme o perfil, aplicando os ajustes por perfil e por login.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `acessos.controller.ts` | Rotas HTTP: login (público) e identidade | 53 |
-| `acessos.service.ts` | Efeitos colaterais: Prisma, bcrypt e JWT | 197 |
+| `acessos.service.ts` | Efeitos colaterais: Prisma, bcrypt e JWT; e a guarda da ficha no login | 230 |
 | `acessos.domain.ts` | Regras puras: catálogo, perfis e decisão de acesso | 542 |
-| `acessos.errors.ts` | Erros de domínio (mapeados para HTTP) | 43 |
+| `acessos.errors.ts` | Erros de domínio (mapeados para HTTP) | 65 |
 | `acessos.module.ts` | Ligações (DI) e configuração do JWT | 38 |
 | `dto/login.dto.ts` | Validação de entrada do login | 12 |
 
@@ -132,6 +132,27 @@ Recompõe a identidade do usuário autenticado, buscando o `nome` atual no banco
 1. **Login individual e exclusivo:** cada pessoa autentica só com o seu login;
    logins são únicos (garantido pelo banco).
 2. **Credenciais inválidas não distinguem** login inexistente de senha errada.
+2.1. **A FICHA manda no acesso** (ADR 0023). Com a senha certa, o login ainda é
+   recusado (`AcessoRevogadoError`) quando a ficha ligada à conta está **inativa**
+   (desligada) ou tem uma **função sem acesso ao app** (operador).
+
+   Até aqui `autenticar` olhava só `usuarios.login` e a senha, e nunca a ficha —
+   então dois estados de cadastro não fechavam a porta: um **desligado** continuava
+   entrando, e quem era **rebaixado** a operador continuava entrando com o perfil de
+   fiscal (`perfilDaFuncao('OPERADOR')` é nulo, então o perfil antigo permanecia no
+   usuário). Ambos eram acessos que ninguém tinha revogado porque todos supunham
+   que o cadastro já os revogava.
+
+   Duas salvaguardas: contas **sem ficha** ligada (o administrador do sistema, o
+   importador) seguem exatamente como antes — exigir ficha delas trancaria o
+   sistema fora de si mesmo; e **nada é apagado** — promover a pessoa de volta, ou
+   reativá-la, devolve o acesso na hora.
+
+   É um erro à parte, e não `CredenciaisInvalidasError`, de propósito: "credenciais
+   inválidas" mandaria a pessoa tentar a senha de novo e o gestor procurar um
+   problema que não existe. O que aconteceu foi uma decisão de cadastro, e a
+   mensagem diz isso. A contrapartida — revelar que o login existe — é aceitável:
+   quem tenta entrar já teve acesso e sabe disso.
 3. **Perfil define o acesso;** `ADMINISTRADOR` enxerga tudo (inclusive
    funcionalidades novas), sem depender de lista.
 4. **Precedência de permissões:** ajuste por login > ajuste por perfil > padrão
@@ -148,7 +169,7 @@ Recompõe a identidade do usuário autenticado, buscando o `nome` atual no banco
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `acessos.service.spec.ts` | Autenticação, autorização por perfil (inclui a confidencialidade de Colaboradores) e disponibilidade de login | 10 |
+| `acessos.service.spec.ts` | Autenticação, **a ficha mandando no acesso** (desligado e rebaixado são recusados; ativo com função de acesso entra; contas sem ficha seguem intactas), autorização por perfil (inclui a confidencialidade de Colaboradores) e disponibilidade de login | 14 |
 | `acessos.controller.spec.ts` | Login (sucesso/erro) e identidade em `/eu` | 3 |
 | `acessos.permissoes.spec.ts` | Invariantes da fonte única (admin vê tudo; sem permissão fantasma) | 3 |
 | `acessos.properties.spec.ts` | Propriedades de autenticação/autorização e unicidade de login (property-based) | 3 |
