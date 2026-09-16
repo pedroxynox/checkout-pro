@@ -18,6 +18,10 @@ describe('ContratosService', () => {
     nome: string;
     matricula: string;
     dataAdmissao: Date | null;
+    /** Função; omitida = OPERADOR (o caso mais comum nos testes). */
+    funcao?: string;
+    /** Ativo; omitido = true. */
+    ativo?: boolean;
   }
   interface Dec {
     colaboradorId: string;
@@ -28,19 +32,30 @@ describe('ContratosService', () => {
   function criar(colaboradores: Colab[], decisoes: Dec[] = []) {
     const upsert = jest.fn(() => Promise.resolve({}));
     const update = jest.fn(() => Promise.resolve({}));
+    // As fichas com os padrões aplicados: o serviço lê `funcao` e `ativo`, e um
+    // mock que os ignorasse não veria o filtro de escopo — que é justamente o
+    // que o ADR 0024 mudou.
+    const fichas = colaboradores.map((c) => ({
+      ...c,
+      funcao: c.funcao ?? 'OPERADOR',
+      ativo: c.ativo ?? true,
+    }));
     const prisma = {
       colaborador: {
         findMany: jest.fn(({ where }: any = {}) =>
           Promise.resolve(
-            colaboradores.filter((c) =>
-              where?.dataAdmissao?.not !== undefined
-                ? c.dataAdmissao !== null
-                : true,
+            fichas.filter(
+              (c) =>
+                (where?.funcao?.in === undefined ||
+                  where.funcao.in.includes(c.funcao)) &&
+                (where?.ativo === undefined || c.ativo === where.ativo) &&
+                (where?.dataAdmissao?.not === undefined ||
+                  c.dataAdmissao !== null),
             ),
           ),
         ),
         findUnique: jest.fn(({ where }: any) =>
-          Promise.resolve(colaboradores.find((c) => c.id === where.id) ?? null),
+          Promise.resolve(fichas.find((c) => c.id === where.id) ?? null),
         ),
         update,
       },
@@ -184,6 +199,120 @@ describe('ContratosService', () => {
       const soExp = await service.listar({ etiqueta: 'experiencia' }, HOJE);
       expect(soExp.every((c) => c.etiqueta === 'experiencia')).toBe(true);
       expect(soExp.map((c) => c.colaboradorId).sort()).toEqual(['exp', 'venc']);
+    });
+  });
+
+  /**
+   * REGRESSÃO (ADR 0024): o contrato de experiência é da PESSOA, não do cargo.
+   *
+   * O caso real: um operador promovido a fiscal **desapareceu da aba Contratos**
+   * no instante em que a promoção foi salva, porque a listagem filtrava
+   * `funcao: 'OPERADOR'`. Nada havia sido apagado — o prazo dele seguia correndo,
+   * inalcançável pela tela. É o mesmo erro do ADR 0020: a função de hoje
+   * decidindo o que aconteceu ontem.
+   */
+  describe('escopo da carteira', () => {
+    const QUADRO: Colab[] = [
+      {
+        id: 'op',
+        nome: 'Ana',
+        matricula: '1',
+        dataAdmissao: admissaoHa(30),
+        funcao: 'OPERADOR',
+      },
+      {
+        id: 'promovido',
+        nome: 'Diones',
+        matricula: '2',
+        dataAdmissao: admissaoHa(30),
+        funcao: 'FISCAL',
+      },
+      {
+        id: 'sup',
+        nome: 'Bruno',
+        matricula: '3',
+        dataAdmissao: admissaoHa(30),
+        funcao: 'SUPERVISOR',
+      },
+    ];
+
+    it('mantém na lista quem foi promovido a fiscal', async () => {
+      const { service } = criar(QUADRO);
+
+      const cards = await service.listar({}, HOJE);
+
+      expect(cards.map((c) => c.colaboradorId).sort()).toEqual([
+        'op',
+        'promovido',
+        'sup',
+      ]);
+    });
+
+    it('leva o cargo no card, para distinguir quem é quem', async () => {
+      // A lista passou a misturar áreas; sem o cargo, duas pessoas de setores
+      // diferentes ficam indistinguíveis.
+      const { service } = criar(QUADRO);
+
+      const cards = await service.listar({}, HOJE);
+
+      expect(
+        cards.find((c) => c.colaboradorId === 'promovido')?.funcao,
+      ).toBe('FISCAL');
+    });
+
+    it('deixa a GERÊNCIA fora: o cadastro não pede admissão para ela', async () => {
+      // Não é uma questão de mérito — é que um gestor só poderia cair no balde
+      // "definir admissão", pedindo uma ação que a tela não permite atender.
+      const { service } = criar([
+        ...QUADRO,
+        {
+          id: 'ger',
+          nome: 'Carla',
+          matricula: '4',
+          dataAdmissao: null,
+          funcao: 'GESTOR',
+        },
+      ]);
+
+      const cards = await service.listar({}, HOJE);
+
+      expect(cards.some((c) => c.colaboradorId === 'ger')).toBe(false);
+    });
+
+    it('não lista quem saiu do quadro', async () => {
+      const { service } = criar([
+        ...QUADRO,
+        {
+          id: 'fora',
+          nome: 'Dora',
+          matricula: '5',
+          dataAdmissao: admissaoHa(30),
+          funcao: 'FISCAL',
+          ativo: false,
+        },
+      ]);
+
+      const cards = await service.listar({}, HOJE);
+
+      expect(cards.some((c) => c.colaboradorId === 'fora')).toBe(false);
+    });
+
+    it('o alerta de vencimento também alcança um promovido', async () => {
+      // É a parte que mais doía: sem o alerta, a efetivação automática acontecia
+      // sem que ninguém decidisse nada.
+      const { service } = criar([
+        {
+          id: 'promovido',
+          nome: 'Diones',
+          matricula: '2',
+          dataAdmissao: admissaoHa(85), // faltam 5 dias para os 90
+          funcao: 'FISCAL',
+        },
+      ]);
+
+      const alertas = await service.avaliarAlertasDoDia(HOJE);
+
+      expect(alertas.map((a) => a.colaboradorId)).toEqual(['promovido']);
     });
   });
 

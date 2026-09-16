@@ -63,3 +63,22 @@
   - ✅ Novas fases/regras futuras entram no domínio puro sem tabela nova.
   - ⚠️ Uma tabela nova (`decisoes_contrato`) — justificada por ser um domínio
     distinto; avaliar consolidação só se surgirem outros "eventos de contrato".
+
+
+## Atualização (2026-09-16) — o escopo deixou de ser "operadores"
+
+Onde este ADR diz **"dos operadores"**, leia **"do quadro contratado"**
+(`OPERADOR`, `FISCAL`, `SUPERVISOR`).
+
+O escopo original virou um defeito na operação: um operador promovido a fiscal
+**desaparecia da aba Contratos** no instante da promoção, e parava de receber o
+alerta dos 90 dias — a caminho da efetivação automática sem que ninguém fosse
+avisado. Nada era apagado; ficava inalcançável.
+
+O contrato de experiência é **da pessoa, não do cargo**: o prazo corre desde a
+admissão e não se interrompe por uma promoção. Ver
+[ADR 0024](0024-contrato-de-experiencia-e-da-pessoa.md).
+
+**Nada da decisão acima mudou** — estado derivado, tabela de decisões, matemática
+pura, os 45+45 dias e a efetivação por decurso seguem exatamente como aqui
+descritos. Só mudou **quem entra na carteira**.

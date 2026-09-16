@@ -39,3 +39,6 @@ numerado (`NNNN-titulo-curto.md`).
 
 
 | 0023 | [A folga é a da ficha; a escala semanal não vota contra ela](0023-folga-a-ficha-manda.md) |
+
+
+| 0024 | [O contrato de experiência é da pessoa, não do cargo](0024-contrato-de-experiencia-e-da-pessoa.md) |

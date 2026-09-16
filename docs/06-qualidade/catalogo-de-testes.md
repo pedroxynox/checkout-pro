@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 133 arquivos, 1212 casos. **Mobile:** 37 arquivos, 262 casos. **Total: 1474 casos.**
+> **Backend:** 133 arquivos, 1217 casos. **Mobile:** 37 arquivos, 265 casos. **Total: 1482 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -61,7 +61,7 @@
 | `src/config/env.validation.spec.ts` | 4 | 1 |
 | `src/contratos/contratos-alertas.service.spec.ts` | 5 | 1 |
 | `src/contratos/contratos.properties.spec.ts` | 13 | 1 |
-| `src/contratos/contratos.service.spec.ts` | 10 | 5 |
+| `src/contratos/contratos.service.spec.ts` | 15 | 6 |
 | `src/data-inicial/data-inicial.domain.spec.ts` | 5 | 2 |
 | `src/data-inicial/data-inicial.properties.spec.ts` | 2 | 1 |
 | `src/data-inicial/validacao-data.service.spec.ts` | 3 | 1 |
@@ -163,7 +163,7 @@
 | `src/screens/colaboradores/ColaboradoresScreen.test.tsx` | 3 | 1 |
 | `src/screens/colaboradores/GestaoColaboradoresScreen.test.tsx` | 2 | 1 |
 | `src/screens/colaboradores/PerfilColaboradorScreen.test.tsx` | 3 | 2 |
-| `src/screens/contratos/ContratosScreen.test.tsx` | 5 | 1 |
+| `src/screens/contratos/ContratosScreen.test.tsx` | 8 | 2 |
 | `src/screens/escala/EscalaScreen.test.tsx` | 10 | 2 |
 | `src/screens/fechamento/FechamentoScreen.test.tsx` | 2 | 1 |
 | `src/screens/importacoes/ImportacoesScreen.test.tsx` | 2 | 1 |
