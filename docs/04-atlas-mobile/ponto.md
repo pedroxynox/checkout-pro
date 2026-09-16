@@ -26,10 +26,11 @@ feriados).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `RegistroPontoScreen.tsx` | Tela principal: busca, jornada do dia, batidas, leitor e **modo correção** | 1704 |
-| `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, **compensação de horas**, lista por pessoa, comparativo) | 719 |
+| `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, **compensação de horas**, lista por pessoa, comparativo) | 715 |
 | `RankingTimeScreen.tsx` | Ranking do time numa métrica do resumo (uma tela para as sete) | 549 |
 | `metricasResumo.ts` | Identidade das sete métricas do resumo (fonte única de card + ranking) | 153 |
-| `CartaoCompensacao.tsx` | Seção "Compensação de horas": carteira de 50%, dias mais fracos, liberações e coberturas sugeridas | 804 |
+| `CartaoCompensacao.tsx` | Card-resumo "Compensação de horas" na Central: 50% em aberto, quanto **não cabe** no ciclo, quantas sugestões — e leva à tela | 178 |
+| `CompensacaoScreen.tsx` | Tela de compensação: carteira de 50%, dias mais fracos, liberações, coberturas de falta e o que já foi concedido | 803 |
 | `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 418 |
 | `InconsistenciasScreen.tsx` | Problemas do ciclo agrupados por dia | 325 |
 | `MarcacoesInvalidasScreen.tsx` | Marcações que faltam registrar: quantas e quais, por dia; cada item abre o ajuste | 644 |
@@ -71,14 +72,20 @@ feriados).
 
    O relatório continua não editando nada: ele aponta, e o ajuste acontece no
    Relógio Ponto (é lá que vivem as permissões e a validação da batida).
-7. **Compensação de horas:** logo abaixo do resumo do time, a seção
-   "Compensação de horas" mostra quanto a equipe tem de 50% em aberto, quanto
-   **não cabe** nos dias que restam do ciclo, os dias mais fracos, e uma linha por
-   sugestão: quem liberar, em que dia, quanto trabalha e quanto compensa — com a
-   frase que justifica cada uma. Duas ações por linha (**Conceder** /
-   **Descartar**), sempre com confirmação. Em bloco próprio, as **coberturas de
-   falta**: usar as mesmas horas de 50% para quitar faltas passadas, pelo botão de
-   débito que já existe.
+7. **Compensação de horas:** logo abaixo do resumo do time, a card
+   "Compensação de horas" mostra de relance quanto a equipe tem de 50% em aberto,
+   quanto **não cabe** nos dias que restam do ciclo e quantas sugestões esperam
+   decisão. **Tocá-la abre a tela de compensação**, onde ficam os dias mais fracos
+   e uma linha por sugestão: quem liberar, em que dia, quanto trabalha e quanto
+   compensa — com a frase que justifica cada uma. Duas ações por linha
+   (**Conceder** / **Descartar**), sempre com confirmação. Em bloco próprio, as
+   **coberturas de falta**: usar as mesmas horas de 50% para quitar faltas
+   passadas, pelo botão de débito que já existe. No fim, **o que já foi
+   concedido** no ciclo, com **Desfazer**.
+   **Conceder** grava a decisão (`POST /compensacao-horas/aprovar`) e, dali em
+   diante, a apuração trata aquele dia como **compensação**: as horas saem do
+   saldo de 50% da pessoa, o dia curto não conta como falta nem como déficit sem
+   explicação, e a entrada combinada passa a ser a esperada (sem atraso falso).
 8. **Ranking do time:** cada card do "Resumo do time" abre o
    `RankingTimeScreen` daquela métrica (extras 50%, extras 100%, faltas,
    atestados, TAC, atrasos ou conflitos), da pessoa que mais tem à que menos tem;
@@ -154,7 +161,7 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   **não aparece em domingo nem em feriado**: faltar nesses dias fica apenas como
   ausência e o servidor recusaria a marcação. O botão segue disponível nos
   demais dias para quem tem `OPERADORES_AUSENCIAS`.
-- **A seção "Compensação de horas" some inteira para quem não pode conceder** —
+- **A card "Compensação de horas" some inteira para quem não pode conceder** —
   e, junto com ela, a consulta ao servidor. A permissão é `OPERADORES_AUSENCIAS`,
   **a mesma do botão "Débito"**, porque conceder compensação e marcar débito são o
   mesmo poder (ADR 0021 — "débito é compensação"). O hook de requisição roda
@@ -162,7 +169,17 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   isso ou pedir um painel caro (apuração do ciclo + escala + férias + 90 dias de
   venda) que o servidor recusaria de todo modo. Mesmo padrão do comparativo por
   ciclo, que só busca quando é aberto.
-- **A seção nunca mostra lista vazia sem explicação.** Quando não há sugestões, o
+- **A compensação é uma tela, e a card só a anuncia — não é um recolhível.**
+  Nasceu recolhível dentro da Central e mudou por dois motivos: a Central já é
+  longa (hero, atalhos, resumo do time, uma card por pessoa, comparativo) e abrir
+  ali uma lista de sugestões com dois botões cada empurrava a lista de pessoas
+  para fora do alcance; e um recolhível **esconde justamente o trabalho que a
+  seção existe para provocar** — quem não abre, não age. Na card ficam só os
+  números que se leem de relance; decidir é um ato deliberado, e ganha tela.
+  A rota `Compensacao` é liberada por `CENTRAL_JORNADA` (é por lá que se entra),
+  mas **conceder continua exigindo `OPERADORES_AUSENCIAS`** — conferido na card,
+  na tela e no servidor.
+- **A tela nunca mostra lista vazia sem explicação.** Quando não há sugestões, o
   backend devolve o motivo (`bloqueio`) e a tela o traduz: ciclo passado, ciclo
   fechado, sem dia disponível ou **sem dado de venda**. "Não sei ainda, e por
   isso" é informação; uma lista vazia é um defeito aparente.
@@ -180,6 +197,14 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
 - **As frases de justificativa vêm do servidor, não da tela.** A mesma frase é
   gravada no banco quando o gestor decide (é o retrato do que se sabia naquele
   momento), então duplicá-la no app garantiria que um dia as duas divergissem.
+- **Plural por palavra inteira, nunca por sufixo colado.** Concatenar o sufixo
+  funciona em "dia/dias" e quebra no resto: `sugestão${n>1?'ões':''}` imprimia
+  **"3 sugestãoões"** e `útil${n>1?'eis':''}` imprimia **"4 dias útileis"** ("úteis"
+  é irregular — perde o `l` e muda o acento). Os contadores da compensação passam
+  por funções que devolvem a frase inteira (`pluralSugestoes`, `pluralDiasUteis`,
+  `pluralPessoas`, `pluralDias`), com um teste para o singular e um para o plural
+  de cada. O caso do singular não é hipotético: no **último dia do ciclo** o
+  cabeçalho dizia "1 dias para compensar".
 - **Bater ponto em dia de folga é permitido**, e a tela não pede confirmação nem
   avisa a pessoa: quem tem de agir é o gestor. O dia aparece com a marca
   📅 **"Trabalhou num dia marcado como FOLGA"** em **azul** — informativo, não de
@@ -346,7 +371,8 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
 | `InconsistenciasScreen.test.tsx` | Agrupamento por dia e filtro por pessoa | 2 |
 | `MarcacoesInvalidasScreen.test.tsx` | O que falta em cada dia (já expandido), horas registradas + turno, motivo da conferência, resumo, filtros por pessoa e por marcação, recolher dia, estado vazio, aviso dos não-retornos deixados fora, abertura do ajuste na pessoa/dia do item, filtros levados para a fila, item não tocável sem acesso ao ponto e guarda do primeiro foco | 13 |
 | `filaCorrecao.test.ts` | Identidade do item, filtros, ordem de trabalho e próxima pendência (mesmo dia ainda incompleto, item seguinte, volta ao topo, respeito aos filtros e fim da fila) | 10 |
-| `CartaoCompensacao.test.tsx` | Seção de compensação: invisível (e sem consultar o servidor) para quem não pode conceder, carteira com o que não cabe no ciclo, o **motivo** de não haver sugestões em vez de lista vazia, a liberação com dia/horas/justificativa/régua de venda, conceder só após confirmar (com os minutos certos), nada gravado ao negar, descarte registrado, cobertura de falta pelo débito existente avisando que a falta permanece, lista do que já foi concedido com desfazer, e o aviso de quem tem menos de 3h | 11 |
+| `CartaoCompensacao.test.tsx` | Card-resumo: invisível (e sem consultar o servidor) para quem não pode conceder, 50% em aberto + o que **não cabe** no ciclo, contagem de sugestões no plural certo ("3 sugestões", nunca "3 sugestãoões") e no singular, a frase de propósito quando não há sugestões, **toque leva à tela** `Compensacao`, e nenhuma lista ou botão de ação na card | 7 |
+| `CompensacaoScreen.test.tsx` | Tela de compensação: ciclo e dias restantes, carteira com o que não cabe (e "4 dias úteis", nunca "útileis"), os singulares no último dia do ciclo ("1 dia", "1 pessoa", "1 dia útil"), o **motivo** de não haver sugestões em vez de lista vazia (sem venda, ciclo passado), a liberação com dia/horas/justificativa/régua de venda, conceder só após confirmar (com os minutos certos), nada gravado ao negar, descarte registrado, cobertura de falta pelo débito existente avisando que a falta permanece, lista do que já foi concedido com desfazer, e o estado vazio de quem tem menos de 3h | 12 |
 | `RankingTimeScreen.test.tsx` | Ordem do maior ao menor, total do time, zerados no rodapé recolhido, detalhe dia a dia, navegação ao detalhe diário, título/formato por métrica, atestados como métrica separada das faltas, estado vazio e ciclo recebido | 9 |
 | `leituraComprovanteUtil.test.ts` | Gatilho `leituraCompleta` e extração `horaLida` (tolerante ao OCR) | 4 |
 | `montarTextoOcr.test.ts` | Reconstrução do texto pela geometria do OCR | 3 |

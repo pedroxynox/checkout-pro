@@ -375,6 +375,33 @@ catálogo de permissões: criar uma seria afirmar que compensar é um poder dist
 de debitar, e a decisão do dono do projeto é que **é o mesmo poder**. A card em si
 aparece dentro da Central, que já exige `CENTRAL_JORNADA`.
 
+### 13. Revisão de UI: a card **leva a uma tela** (2026-09-16)
+
+O item 10 foi entregue como um bloco **recolhível** dentro da Central de Jornada.
+Em uso ficou claro que isso não serve, e o dono do projeto pediu a mudança: a card
+passa a ser um **resumo tocável que abre a tela `Compensacao`**.
+
+Dois motivos, e os dois valem como regra para o resto do app:
+
+1. **A Central já é longa.** Hero, quatro atalhos, resumo do time com sete cards,
+   uma card por pessoa e o comparativo por ciclo. Abrir ali dentro uma lista de
+   sugestões — cada uma com justificativa e dois botões — empurrava a lista de
+   pessoas para fora do alcance do dedo. A tela mais usada do ciclo pagava a conta
+   de uma seção que não é usada todo dia.
+2. **Um recolhível esconde o trabalho que a seção existe para provocar.** A
+   compensação só rende se alguém decidir antes de o ciclo fechar; fechada por
+   padrão, ela não cobra nada de ninguém. Aberta por padrão, atrapalha. Uma card
+   com os números à vista cobra sem atrapalhar, e a decisão ganha tela inteira.
+
+Na card ficam apenas os números que se leem de relance: **50% em aberto** e
+**quanto não cabe no ciclo** (o número que exige ação, porque essas horas serão
+pagas), mais a contagem de sugestões. Dias fracos, liberações, coberturas e o
+histórico do ciclo passam para a tela, junto com todas as ações.
+
+A rota é liberada por `CENTRAL_JORNADA` — é por lá que se entra —, mas **conceder
+continua exigindo `OPERADORES_AUSENCIAS`** (item 12), conferido na card, na tela e
+no servidor. Sem essa permissão a card não aparece e o painel nem é consultado.
+
 ## Refinamento futuro registrado
 
 O item 3 previa ajustar a média do dia da semana pelo **efeito do dia do mês**

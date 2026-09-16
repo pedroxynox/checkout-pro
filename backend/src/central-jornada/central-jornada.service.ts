@@ -191,7 +191,7 @@ export interface CentralDiaDetalhe {
   debito?: boolean;
   /**
    * Conflito: neste dia a pessoa BATEU PONTO e também tem uma ausência marcada
-   * (falta/atestado/permesso). As horas vêm das batidas (a ausência é ignorada
+   * (falta/atestado/licença). As horas vêm das batidas (a ausência é ignorada
    * no cálculo), mas o conflito fica sinalizado para o gestor resolver — apagar
    * a batida indevida ou a falta indevida.
    */

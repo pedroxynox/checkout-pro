@@ -68,6 +68,8 @@ export type RootStackParamList = {
       }
     | undefined;
   CentralJornada: undefined;
+  /** Compensação de horas do ciclo (sugestões de liberação e de cobertura). */
+  Compensacao: undefined;
   /** Detalhe diário da jornada de um colaborador no ciclo (aberto pela Central). */
   DetalheJornada: {
     colaboradorId: string;
