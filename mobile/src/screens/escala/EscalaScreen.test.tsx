@@ -38,6 +38,7 @@ const DIA = {
   ehFeriado: false,
   nomeFeriado: null,
   grupoFolgaDomingo: null,
+  semFolgaNoCadastro: [],
   totais: { trabalhando: 1, folgas: 1, faltas: 0, atestados: 0, ferias: 0 },
   secoes: [
     {
@@ -71,6 +72,7 @@ const DIA = {
 const SEMANA = {
   inicioISO: '2026-07-20',
   fimISO: '2026-07-26',
+  semFolgaNoCadastro: [],
   dias: [1, 2, 3, 4, 5, 6, 0].map((dow, i) => ({
     dataISO: `2026-07-${20 + i}`,
     diaSemana: dow,
@@ -168,5 +170,76 @@ describe('EscalaScreen', () => {
     expect(
       await screen.findByText(/Semana de 20\/07\/2026 a 26\/07\/2026/),
     ).toBeTruthy();
+  });
+});
+
+
+/**
+ * O aviso de ficha sem folga (ADR 0023). Sem dia de folga no cadastro a pessoa é
+ * escalada os sete dias e pode receber falta automática num dia em que estava
+ * descansando — e a tela mostrava "trabalha" sem nenhum sinal de que faltava um
+ * dado. O aviso vem ANTES do cartão de publicar, porque publicar uma escala assim
+ * é justamente o erro que ele existe para impedir.
+ */
+describe('EscalaScreen — aviso de ficha sem folga', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSuportaImagem = true;
+  });
+
+  it('nomeia quem está sem dia de folga e diz o que fazer', async () => {
+    escalaExportacaoService.dia.mockResolvedValue({
+      ...DIA,
+      semFolgaNoCadastro: [
+        { colaboradorId: 'c2', nome: 'Diones Alves', funcao: 'FISCAL' },
+      ],
+    });
+    render(<EscalaScreen />);
+
+    await screen.findByText('1 pessoa está sem dia de folga no cadastro');
+    // O nome é o que torna o aviso acionável.
+    expect(screen.getByText('Diones Alves · Fiscais')).toBeTruthy();
+    expect(
+      screen.getByText(/Controle → Colaboradores → editar a pessoa/),
+    ).toBeTruthy();
+  });
+
+  it('explica a consequência, não só o dado que falta', async () => {
+    escalaExportacaoService.dia.mockResolvedValue({
+      ...DIA,
+      semFolgaNoCadastro: [
+        { colaboradorId: 'c2', nome: 'Diones Alves', funcao: 'FISCAL' },
+        { colaboradorId: 'c3', nome: 'Carla Dias', funcao: 'OPERADOR' },
+      ],
+    });
+    render(<EscalaScreen />);
+
+    await screen.findByText('2 pessoas estão sem dia de folga no cadastro');
+    expect(
+      screen.getByText(/pode marcar falta num dia em que estavam descansando/),
+    ).toBeTruthy();
+  });
+
+  it('não aparece nada quando o time todo tem o dia preenchido', async () => {
+    escalaExportacaoService.dia.mockResolvedValue(DIA);
+    render(<EscalaScreen />);
+
+    await screen.findByText('Enviar para a equipe');
+    expect(screen.queryByText(/sem dia de folga no cadastro/)).toBeNull();
+  });
+
+  it('o mesmo aviso acompanha a grade da semana', async () => {
+    escalaExportacaoService.dia.mockResolvedValue(DIA);
+    escalaExportacaoService.semana.mockResolvedValue({
+      ...SEMANA,
+      semFolgaNoCadastro: [
+        { colaboradorId: 'c2', nome: 'Diones Alves', funcao: 'FISCAL' },
+      ],
+    });
+    render(<EscalaScreen />);
+
+    fireEvent.press(await screen.findByText('Semana'));
+
+    await screen.findByText('1 pessoa está sem dia de folga no cadastro');
   });
 });

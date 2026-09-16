@@ -68,6 +68,15 @@ base do **Perfil Inteligente** do colaborador (score, indicadores e insígnias).
   acesso e ainda não há conta — ex.: operador → fiscal), exige a senha e cria o
   login via `sincronizarContaDeAcesso`; quando já há conta, redefine
   senha/perfil/nome/login; mantém escala e vínculo em sincronia.
+- **Mudar de função encerra as sessões abertas** (`tokenVersion`, ADR 0023). O
+  perfil que vale numa requisição vem do **token**, então sem isso a pessoa seguia
+  com os poderes da função anterior até o token expirar — inclusive quando a nova
+  função não dá acesso nenhum, caso em que o perfil antigo nem chega a ser
+  sobrescrito (`perfilDaFuncao('OPERADOR')` é nulo). O acesso em si passa a ser
+  recusado no login, que agora consulta a ficha: ver [`acessos`](acessos.md).
+- **Apagar a folga é possível.** `folgaDiaSemana: null` esvazia o campo; ausente
+  significa "não mexer". Antes o formulário enviava `undefined` no lugar de `null`,
+  e a folga podia ser trocada mas nunca esvaziada.
 - **Regra-chave:** a senha é exigida **antes** de alterar o cadastro, para nunca
   deixar alguém "fiscal sem login" (ver ADR/《histórico》e §12).
 
@@ -78,6 +87,9 @@ acesso com a indicação de quais já estão vinculadas (alimenta o seletor no a
 #### `inativar(id)` / `reativar(id)`
 Alternam `ativo`, marcam/limpam `desligadoEm` (base da retenção) e sincronizam a
 escala (inativar remove do quadro; reativar recria a partir do cadastro).
+**Inativar encerra as sessões abertas** (`tokenVersion`) — o login em si passa a
+ser recusado por [`acessos`](acessos.md), mas quem já estava dentro do app
+continuaria dentro sem isso.
 
 #### `adicionarIdentificador(colaboradorId, valor)`
 Associa um código bruto (matrícula/login que veio do arquivo e não casava) a um
@@ -99,6 +111,10 @@ colaborador, atribuindo retroativamente o histórico. Idempotente.
   > de ponto filtrando só pela identidade atual — foi assim que um caso real
   > perdeu as horas de vista e acabou com o dia lançado em duplicidade.
   > Ver [ADR 0020](../02-arquitetura/decisoes/0020-mudanca-de-funcao-preserva-o-ponto.md).
+- `identidadesDaEscala(colaborador)` — todas as identidades sob as quais a escala
+  semanal da pessoa pode ter sido gravada: o `Colaborador.id` (o `funcionarioId` da
+  era em que ela era operador), o `Fiscal.id` da conta, e o `Fiscal.id` de mesmo
+  nome (`garantirFiscal` casa por nome). É o que a limpeza usa.
 - `sincronizarEscalaFiscal(colaborador)` — regenera a escala semanal geral
   preservando exceções (Opção A: o cadastro é a fonte única). Chamada no
   cadastrar, no editar e no ativar/desativar. **Tem saídas antecipadas** (ficha
@@ -106,6 +122,15 @@ colaborador, atribuindo retroativamente o histórico. Idempotente.
   em que a escala anterior **sobrevive** — e é ela que a detecção automática de
   falta lê. `npm run integridade` aponta essas divergências; ver
   [`fiscais`](fiscais.md#coerência-ficha--escala-semanal-npm-run-integridade).
+
+  > **A limpeza cobre TODAS as identidades, e o rebaixamento também limpa**
+  > (ADR 0023). Antes o `deleteMany` filtrava só pelo `Fiscal.id` corrente, então
+  > uma linha gravada sob outro id sobrevivia a todas as edições seguintes — e uma
+  > folga velha não é inerte: a regra de folga a encontra pelas duas chaves, e a
+  > pessoa passava a descansar **dois** dias, o da ficha e o da linha esquecida. E
+  > `if (funcao !== 'FISCAL') return` saía antes de qualquer limpeza, deixando a
+  > escala de fiscal viva para sempre em quem já não era fiscal. As **exceções**
+  > (`especial`) continuam intocadas: são decisões por dia, não derivadas da ficha.
 - `grupoDomingoEfetivo(...)` — remove do rodízio de domingo quem tem contrato que
   não trabalha domingo.
 - `garantirUsuarioVinculavel(...)` / `definirAtivo(...)`.

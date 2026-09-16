@@ -8,12 +8,17 @@
  */
 import { PrismaService } from '../prisma/prisma.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
+import { FolgaService } from '../escala-domingo/folga.service';
 import { FeriasService } from '../ferias/ferias.service';
 import { EscalaExportacaoService } from './escala-exportacao.service';
 
 interface ColaboradorFake {
   id: string;
   nome: string;
+  /** Chave do vínculo com o registro de fiscal, em fallback ao `usuarioId`. */
+  matricula: string;
+  /** Conta de acesso: é por ela que ficha e registro de fiscal se reconhecem. */
+  usuarioId: string | null;
   funcao: string;
   turno: string | null;
   folgaDiaSemana: number | null;
@@ -31,6 +36,8 @@ function colaborador(p: Partial<ColaboradorFake> = {}): ColaboradorFake {
   return {
     id: 'c1',
     nome: 'Ana Souza',
+    matricula: '0001',
+    usuarioId: null,
     funcao: 'OPERADOR',
     turno: 'ABERTURA',
     folgaDiaSemana: 1, // segunda
@@ -46,16 +53,29 @@ function colaborador(p: Partial<ColaboradorFake> = {}): ColaboradorFake {
   };
 }
 
+/**
+ * Uma entrada da escala semanal. `funcionarioId` é obrigatório porque é a chave
+ * REAL da tabela: a escala de um fiscal é gravada sob o `Fiscal.id`, e
+ * `colaboradorId` (o vínculo com a ficha) pode estar vazio nas linhas antigas —
+ * era justamente por elas que a escala publicada não enxergava a folga.
+ */
+interface EntradaEscalaFake {
+  funcionarioId: string;
+  colaboradorId: string | null;
+  diaSemana: number;
+  entrada: string | null;
+  saida: string | null;
+  folga: boolean;
+  especial: boolean;
+}
+
 function criarServico(cenario: {
   colaboradores?: ColaboradorFake[];
   feriados?: { data: Date; nome: string }[];
-  especiais?: {
-    colaboradorId: string;
-    diaSemana: number;
-    entrada: string | null;
-    saida: string | null;
-    folga: boolean;
-  }[];
+  escala?: EntradaEscalaFake[];
+  /** Registros `Fiscal` (a segunda identidade de um fiscal). */
+  fiscais?: { id: string; nome: string; usuarioId: string | null }[];
+  usuarios?: { id: string; login: string }[];
   ausencias?: {
     pessoaId: string;
     data: Date;
@@ -64,13 +84,18 @@ function criarServico(cenario: {
   }[];
   ferias?: string[];
   ancora?: { data: Date; ordem: ('G1' | 'G2' | 'G3')[] } | null;
+  folga?: FolgaService;
 }): EscalaExportacaoService {
+  const colaboradores = cenario.colaboradores ?? [colaborador()];
   const prisma = {
     colaborador: {
-      findMany: ({ where }: { where: { funcao: { in: string[] } } }) =>
+      // `where` é opcional de propósito: a carga de identidades lê TODAS as
+      // fichas (uma pessoa rebaixada continua tendo um registro de fiscal, e a
+      // escala velha dele é exatamente o que precisa ser encontrado).
+      findMany: ({ where }: { where?: { funcao: { in: string[] } } } = {}) =>
         Promise.resolve(
-          (cenario.colaboradores ?? [colaborador()]).filter(
-            (c) => c.ativo && where.funcao.in.includes(c.funcao),
+          colaboradores.filter(
+            (c) => !where || (c.ativo && where.funcao.in.includes(c.funcao)),
           ),
         ),
     },
@@ -78,10 +103,21 @@ function criarServico(cenario: {
       findMany: () => Promise.resolve(cenario.feriados ?? []),
     },
     escalaEntry: {
-      findMany: () => Promise.resolve(cenario.especiais ?? []),
+      findMany: ({ where }: { where?: { especial?: boolean } } = {}) =>
+        Promise.resolve(
+          (cenario.escala ?? []).filter(
+            (e) => where?.especial === undefined || e.especial === where.especial,
+          ),
+        ),
     },
     ausencia: {
       findMany: () => Promise.resolve(cenario.ausencias ?? []),
+    },
+    fiscal: {
+      findMany: () => Promise.resolve(cenario.fiscais ?? []),
+    },
+    usuario: {
+      findMany: () => Promise.resolve(cenario.usuarios ?? []),
     },
   } as unknown as PrismaService;
 
@@ -102,7 +138,12 @@ function criarServico(cenario: {
       Promise.resolve(new Set(cenario.ferias ?? [])),
   } as unknown as FeriasService;
 
-  return new EscalaExportacaoService(prisma, escalaDomingo, ferias);
+  return new EscalaExportacaoService(
+    prisma,
+    escalaDomingo,
+    ferias,
+    cenario.folga ?? new FolgaService(prisma, escalaDomingo),
+  );
 }
 
 describe('EscalaExportacaoService.escalaDoDia', () => {
@@ -152,13 +193,15 @@ describe('EscalaExportacaoService.escalaDoDia', () => {
 
   it('a exceção de horário do dia da semana prevalece', async () => {
     const service = criarServico({
-      especiais: [
+      escala: [
         {
+          funcionarioId: 'c1',
           colaboradorId: 'c1',
           diaSemana: 2, // terça
           entrada: '13:00',
           saida: '21:20',
           folga: false,
+          especial: true,
         },
       ],
     });
@@ -238,5 +281,158 @@ describe('EscalaExportacaoService.escalaDaSemana', () => {
     const escala = await service.escalaDaSemana('2026-07-22');
 
     expect(escala.secoes[0].pessoas.map((p) => p.nome)).toEqual(['Ana', 'Zeca']);
+  });
+});
+
+
+/**
+ * Um fiscal tem DUAS identidades: a ficha (`Colaborador.id`) e o registro legado
+ * (`Fiscal.id`), que é a chave sob a qual a escala semanal é gravada. A escala
+ * publicada perguntava à regra de folga por **uma** só, e o que estava escrito sob
+ * a outra ficava invisível justamente no documento que a equipe lê (ADR 0023).
+ */
+describe('EscalaExportacaoService · as duas identidades de um fiscal', () => {
+  /** Fiscal cuja ficha e registro legado se reconhecem pela conta de acesso. */
+  const FISCAL_COM_VINCULO = {
+    colaboradores: [
+      colaborador({
+        id: 'col-f',
+        nome: 'Yara Lima',
+        funcao: 'FISCAL',
+        usuarioId: 'u-f',
+        folgaDiaSemana: null, // a ficha não afirma folga
+      }),
+    ],
+    fiscais: [{ id: 'fiscal-f', nome: 'Yara Lima', usuarioId: 'u-f' }],
+    usuarios: [{ id: 'u-f', login: '0001' }],
+  };
+
+  it('enxerga a folga gravada só sob o id de fiscal, sem vínculo na linha', async () => {
+    const service = criarServico({
+      ...FISCAL_COM_VINCULO,
+      escala: [
+        {
+          funcionarioId: 'fiscal-f',
+          colaboradorId: null, // linha antiga, sem vínculo com a ficha
+          diaSemana: 2,
+          entrada: null,
+          saida: null,
+          folga: true,
+          especial: false,
+        },
+      ],
+    });
+
+    const escala = await service.escalaDoDia('2026-07-21'); // terça
+
+    expect(escala.secoes[0].linhas[0].status).toBe('FOLGA');
+  });
+
+  it('aplica ao dono certo uma exceção de horário sem vínculo na linha', async () => {
+    // Antes, uma exceção sem `colaboradorId` era descartada "para não aplicar no
+    // palpite". Não é palpite: o vínculo Fiscal → ficha diz de quem ela é.
+    const service = criarServico({
+      ...FISCAL_COM_VINCULO,
+      escala: [
+        {
+          funcionarioId: 'fiscal-f',
+          colaboradorId: null,
+          diaSemana: 2,
+          entrada: '13:00',
+          saida: '21:20',
+          folga: false,
+          especial: true,
+        },
+      ],
+    });
+
+    const escala = await service.escalaDoDia('2026-07-21'); // terça
+
+    expect(escala.secoes[0].linhas[0].entrada).toBe('13:00');
+    expect(escala.secoes[0].linhas[0].horarioEspecial).toBe(true);
+  });
+
+  it('a folga da ficha continua valendo, e a linha velha não soma um segundo dia', async () => {
+    // O caso da Yannelyt, visto pela escala publicada: ficha na quinta, linha
+    // geral antiga na quarta. Só a quinta é folga.
+    const service = criarServico({
+      ...FISCAL_COM_VINCULO,
+      colaboradores: [
+        colaborador({
+          id: 'col-f',
+          nome: 'Yara Lima',
+          funcao: 'FISCAL',
+          usuarioId: 'u-f',
+          folgaDiaSemana: 4, // quinta
+        }),
+      ],
+      escala: [
+        {
+          funcionarioId: 'fiscal-f',
+          colaboradorId: null,
+          diaSemana: 3, // quarta
+          entrada: null,
+          saida: null,
+          folga: true,
+          especial: false,
+        },
+      ],
+    });
+
+    const quarta = await service.escalaDoDia('2026-07-22');
+    const quinta = await service.escalaDoDia('2026-07-23');
+
+    expect(quarta.secoes[0].linhas[0].status).toBe('TRABALHA');
+    expect(quinta.secoes[0].linhas[0].status).toBe('FOLGA');
+  });
+});
+
+/**
+ * Sem dia de folga na ficha, a pessoa é escalada os sete dias e pode receber
+ * falta automática num dia em que estava descansando. Era o defeito mais
+ * silencioso do conjunto: a Escala mostrava "trabalha" e ninguém tinha como
+ * saber que faltava um dado (ADR 0023).
+ */
+describe('EscalaExportacaoService · aviso de ficha sem folga', () => {
+  it('lista quem está sem dia de folga no cadastro, com nome e função', async () => {
+    const service = criarServico({
+      colaboradores: [
+        colaborador({ id: 'c1', nome: 'Ana Souza', folgaDiaSemana: 1 }),
+        colaborador({
+          id: 'c2',
+          nome: 'Diones Alves',
+          funcao: 'FISCAL',
+          folgaDiaSemana: null,
+        }),
+      ],
+    });
+
+    const escala = await service.escalaDoDia('2026-07-21');
+
+    expect(escala.semFolgaNoCadastro).toEqual([
+      { colaboradorId: 'c2', nome: 'Diones Alves', funcao: 'FISCAL' },
+    ]);
+  });
+
+  it('não avisa nada quando todo o time tem o dia preenchido', async () => {
+    const escala = await criarServico({}).escalaDoDia('2026-07-21');
+
+    expect(escala.semFolgaNoCadastro).toEqual([]);
+  });
+
+  it('o mesmo aviso acompanha a grade da semana', async () => {
+    // A grade semanal é a tela que o gestor abre para planejar; se o aviso só
+    // existisse no dia, ele o veria justamente quando já não dá para agir.
+    const service = criarServico({
+      colaboradores: [
+        colaborador({ id: 'c2', nome: 'Diones Alves', folgaDiaSemana: null }),
+      ],
+    });
+
+    const escala = await service.escalaDaSemana('2026-07-22');
+
+    expect(escala.semFolgaNoCadastro.map((p) => p.nome)).toEqual([
+      'Diones Alves',
+    ]);
   });
 });

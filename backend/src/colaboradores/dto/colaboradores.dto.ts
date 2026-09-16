@@ -74,7 +74,8 @@ export class CadastrarColaboradorDto {
   @IsInt()
   @Min(0)
   @Max(6)
-  folgaDiaSemana?: number;
+  /** `null` apaga a folga (ADR 0023); ausente = não mexe. */
+  folgaDiaSemana?: number | null;
 
   @IsOptional()
   @IsIn(GRUPOS_DOMINGO, { message: 'grupoDomingo deve ser G1, G2 ou G3.' })
@@ -160,7 +161,8 @@ export class EditarColaboradorDto {
   @IsInt()
   @Min(0)
   @Max(6)
-  folgaDiaSemana?: number;
+  /** `null` apaga a folga (ADR 0023); ausente = não mexe. */
+  folgaDiaSemana?: number | null;
 
   @IsOptional()
   @IsIn(GRUPOS_DOMINGO, { message: 'grupoDomingo deve ser G1, G2 ou G3.' })

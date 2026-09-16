@@ -26,6 +26,9 @@ const DIA: EscalaDiaPublicada = {
   ehFeriado: false,
   nomeFeriado: null,
   grupoFolgaDomingo: null,
+  // O aviso de ficha sem folga é da TELA, não do documento: o PDF que a equipe
+  // recebe não fala de cadastro incompleto.
+  semFolgaNoCadastro: [],
   totais: { trabalhando: 2, folgas: 1, faltas: 1, atestados: 0, ferias: 0 },
   secoes: [
     {
@@ -84,6 +87,7 @@ const DIA: EscalaDiaPublicada = {
 const SEMANA: EscalaSemanaPublicada = {
   inicioISO: '2026-07-20',
   fimISO: '2026-07-26',
+  semFolgaNoCadastro: [],
   dias: [
     { dataISO: '2026-07-20', diaSemana: 1, ehFeriado: false, nomeFeriado: null },
     { dataISO: '2026-07-21', diaSemana: 2, ehFeriado: false, nomeFeriado: null },

@@ -1342,17 +1342,33 @@ describe('CentralJornadaService — dia escalado sem registro', () => {
     expect(d?.tipo).toBe('SEM_REGISTRO');
   });
 
-  it('folga marcada só na ESCALA SEMANAL: segue SEM_REGISTRO', async () => {
-    // A guarda que mais importa. A ficha diz que a terça é dia de trabalho, mas a
-    // escala semanal marca folga. Sem a regra única, o dia seria apontado como
-    // falta — e apontar falta em quem estava descansando é o erro grave aqui.
+  it('folga só na ESCALA SEMANAL, com a ficha OMISSA: segue SEM_REGISTRO', async () => {
+    // A guarda que mais importa. A ficha não diz nada sobre folga, e a escala
+    // semanal marca a terça. Sem a regra única, o dia seria apontado — e apontar
+    // falta em quem estava descansando é o erro grave aqui.
     // 30/06 é uma terça (diaSemana 2).
+    const d = await doDia(
+      montar({ folgaDiaSemana: null, folgaNaEscalaSemanal: 2 }),
+      '2026-06-30',
+    );
+
+    expect(d?.tipo).toBe('SEM_REGISTRO');
+  });
+
+  it('ficha afirma OUTRO dia e só a escala velha diz folga: o dia é apontado', async () => {
+    // O caso da Yannelyt (ADR 0023): a ficha afirma a segunda, e uma linha geral
+    // antiga da escala afirma a terça. A escala semanal é derivada da ficha, e um
+    // derivado velho não dispensa ninguém — então a terça volta a ser cobrada.
+    //
+    // Apontar aqui é o comportamento desejado: este relatório mostra um BURACO
+    // para o gestor resolver, não lança falta em ninguém. Antes havia um dia em
+    // que o furo era engolido em silêncio.
     const d = await doDia(
       montar({ folgaDiaSemana: 1, folgaNaEscalaSemanal: 2 }),
       '2026-06-30',
     );
 
-    expect(d?.tipo).toBe('SEM_REGISTRO');
+    expect(d?.tipo).toBe('FALTA_NAO_REGISTRADA');
   });
 
   it('dia útil escalado e sem ponto também é apontado', async () => {

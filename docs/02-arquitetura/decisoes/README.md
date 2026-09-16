@@ -36,3 +36,6 @@ numerado (`NNNN-titulo-curto.md`).
 | 0021 | [Compensação de horas: sugerir a data mais fraca, dentro do ciclo](0021-compensacao-de-horas.md) |
 
 | 0022 | [Indicador "Sacolas": venda por sacola que entra no estoque](0022-indicador-sacolas-venda-por-sacola.md) |
+
+
+| 0023 | [A folga é a da ficha; a escala semanal não vota contra ela](0023-folga-a-ficha-manda.md) |

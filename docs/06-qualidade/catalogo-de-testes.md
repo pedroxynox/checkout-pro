@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 133 arquivos, 1189 casos. **Mobile:** 37 arquivos, 258 casos. **Total: 1447 casos.**
+> **Backend:** 133 arquivos, 1212 casos. **Mobile:** 37 arquivos, 262 casos. **Total: 1474 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -16,7 +16,7 @@
 | `src/acessos/acessos.controller.spec.ts` | 3 | 1 |
 | `src/acessos/acessos.permissoes.spec.ts` | 3 | 1 |
 | `src/acessos/acessos.properties.spec.ts` | 3 | 1 |
-| `src/acessos/acessos.service.spec.ts` | 10 | 4 |
+| `src/acessos/acessos.service.spec.ts` | 14 | 5 |
 | `src/alertas/alertas.service.spec.ts` | 10 | 5 |
 | `src/alertas/saudacao-diaria.domain.spec.ts` | 6 | 1 |
 | `src/alertas/saudacao-diaria.service.spec.ts` | 1 | 1 |
@@ -32,7 +32,7 @@
 | `src/atestados/atestados.service.spec.ts` | 10 | 2 |
 | `src/central-jornada/agrupar-atestados.spec.ts` | 12 | 3 |
 | `src/central-jornada/central-jornada.controller.spec.ts` | 2 | 2 |
-| `src/central-jornada/central-jornada.service.spec.ts` | 39 | 5 |
+| `src/central-jornada/central-jornada.service.spec.ts` | 40 | 5 |
 | `src/central-jornada/compensacao-jornada.spec.ts` | 12 | 5 |
 | `src/central-jornada/marcacoes-invalidas.service.spec.ts` | 12 | 1 |
 | `src/central-jornada/rankings.service.spec.ts` | 10 | 1 |
@@ -42,7 +42,7 @@
 | `src/checklist/checklist.service.spec.ts` | 8 | 2 |
 | `src/ciclo-folha/ciclo-folha.service.spec.ts` | 14 | 3 |
 | `src/colaboradores/colaboradores.adicionar-identificador.spec.ts` | 4 | 1 |
-| `src/colaboradores/colaboradores.promocao-acesso.spec.ts` | 3 | 1 |
+| `src/colaboradores/colaboradores.promocao-acesso.spec.ts` | 6 | 2 |
 | `src/colaboradores/colaboradores.turno-obrigatorio.spec.ts` | 9 | 5 |
 | `src/colaboradores/perfil-colaborador.medalhas.spec.ts` | 8 | 5 |
 | `src/colaboradores/perfil-colaborador.properties.spec.ts` | 17 | 2 |
@@ -66,8 +66,8 @@
 | `src/data-inicial/data-inicial.properties.spec.ts` | 2 | 1 |
 | `src/data-inicial/validacao-data.service.spec.ts` | 3 | 1 |
 | `src/escala-domingo/escala-domingo.domain.spec.ts` | 37 | 6 |
-| `src/escala-domingo/folga.service.spec.ts` | 13 | 2 |
-| `src/escala-exportacao/escala-exportacao.service.spec.ts` | 10 | 2 |
+| `src/escala-domingo/folga.service.spec.ts` | 20 | 4 |
+| `src/escala-exportacao/escala-exportacao.service.spec.ts` | 16 | 4 |
 | `src/escala-exportacao/escala-publicada.domain.spec.ts` | 14 | 5 |
 | `src/fechamento/fechamento.domain.spec.ts` | 5 | 1 |
 | `src/feedforward/feedforward.domain.spec.ts` | 7 | 2 |
@@ -79,7 +79,7 @@
 | `src/fiscais/escala-inativo.spec.ts` | 1 | 1 |
 | `src/fiscais/escalados-feriado.spec.ts` | 8 | 1 |
 | `src/fiscais/escalados-ferias.spec.ts` | 2 | 1 |
-| `src/fiscais/escalados-folga.spec.ts` | 3 | 1 |
+| `src/fiscais/escalados-folga.spec.ts` | 4 | 1 |
 | `src/fiscais/fiscais-alertas.intervalo.spec.ts` | 2 | 1 |
 | `src/fiscais/fiscais.controller.spec.ts` | 4 | 1 |
 | `src/fiscais/fiscais.gateway.spec.ts` | 3 | 1 |
@@ -108,7 +108,7 @@
 | `src/notificacoes/notificacoes.service.spec.ts` | 10 | 3 |
 | `src/operadores/ausencia-a-prazo-vinculo.spec.ts` | 1 | 1 |
 | `src/operadores/ausencia-a-prazo.spec.ts` | 3 | 1 |
-| `src/operadores/coerencia-quadro-escala.spec.ts` | 9 | 1 |
+| `src/operadores/coerencia-quadro-escala.spec.ts` | 10 | 1 |
 | `src/operadores/falta-em-folga.spec.ts` | 3 | 1 |
 | `src/operadores/listar-ausencias-ficha.spec.ts` | 1 | 1 |
 | `src/operadores/marcar-periodo-justificado.spec.ts` | 1 | 1 |
@@ -164,7 +164,7 @@
 | `src/screens/colaboradores/GestaoColaboradoresScreen.test.tsx` | 2 | 1 |
 | `src/screens/colaboradores/PerfilColaboradorScreen.test.tsx` | 3 | 2 |
 | `src/screens/contratos/ContratosScreen.test.tsx` | 5 | 1 |
-| `src/screens/escala/EscalaScreen.test.tsx` | 6 | 1 |
+| `src/screens/escala/EscalaScreen.test.tsx` | 10 | 2 |
 | `src/screens/fechamento/FechamentoScreen.test.tsx` | 2 | 1 |
 | `src/screens/importacoes/ImportacoesScreen.test.tsx` | 2 | 1 |
 | `src/screens/indicadores/IndicadoresScreen.test.tsx` | 8 | 1 |

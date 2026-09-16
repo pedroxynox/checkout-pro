@@ -184,10 +184,14 @@ Delegam às funções puras homônimas do domínio.
   `ATESTADO` (mesma regra do roster diário), não como `FALTA`. Sendo um
   calendário, quem falta mantém a célula **sem horário** — para a leitura da
   semana não confundir "faltou" com "trabalhou".
-- **FOLGA no quadro segue a regra única** (`FolgaService`): a ficha **ou** a escala
-  semanal. Antes o quadro olhava só `folgaDiaSemana`, enquanto a escala publicada
-  também respeitava a escala semanal — com as duas fontes em desacordo, o mesmo
-  dia saía FOLGA num lugar e FALTA no outro. A folga **vence** uma falta já
+- **FOLGA no quadro segue a regra única** ([`FolgaService`](escala-domingo.md)):
+  a **ficha manda quando afirma um dia**, e a escala semanal decide quando a ficha
+  se cala ([ADR 0023](../02-arquitetura/decisoes/0023-folga-a-ficha-manda.md)).
+  Antes o quadro olhava só `folgaDiaSemana`, enquanto a escala publicada também
+  respeitava a escala semanal — com as duas fontes em desacordo, o mesmo dia saía
+  FOLGA num lugar e FALTA no outro. E depois, com o **OU** puro, uma linha antiga da
+  escala semanal passou a somar um segundo dia de descanso que a ficha não afirmava;
+  hoje o derivado não vota contra a sua fonte. A folga **vence** uma falta já
   gravada no dia (a auto-cura do Relógio Ponto a remove em seguida).
 - **FERIADO segue o horário de DOMINGO** da pessoa (`FeriadosService`, opcional):
   é a regra que a jornada já aplicava ao pagamento e que a escala publicada já
@@ -322,7 +326,7 @@ Delegam às funções puras homônimas do domínio.
 | `falta-em-folga.spec.ts` | Recusa falta em dia de folga; marca normalmente em dia de trabalho; e o contrapeso: **ausência a prazo segue cobrindo a folga** | 3 |
 | `quadro-folga-escala.spec.ts` | O quadro mostra FOLGA quando só a escala semanal marca folga; a folga vence uma falta já gravada; TRABALHA quando nenhuma fonte diz folga; e a grade usa a mesma regra | 4 |
 | `quadro-ferias-escala.spec.ts` | Quem está de férias sai do roster do dia (inclusive no domingo) e dos totais; as férias vencem uma falta gravada; fora do período segue normal; sem o serviço de férias nada é excluído; a grade marca **FERIAS** só no dia coberto (sem apagar a linha da semana) e não conta férias na cobertura; o tablero ao vivo não espera quem está de férias; e o **aviso de cobertura** não conta quem está de férias nem grita quando ninguém era esperado | 14 |
-| `coerencia-quadro-escala.spec.ts` | **Coerência entre telas:** para o mesmo dia e pessoa, o Quadro e a [escala publicada](escala-exportacao.md) dizem o mesmo — e desde a extensão comparam também o **horário**, não só o estado (trabalho, folga da ficha, folga da escala semanal com e sem exceção, férias, falta, atestado, **feriado** e **horário de exceção**). É o teste que faltava: achou a divergência de folga e, quando passou a comparar horários, os desvios de feriado e de exceção | 9 |
+| `coerencia-quadro-escala.spec.ts` | **Coerência entre telas:** para o mesmo dia e pessoa, o Quadro e a [escala publicada](escala-exportacao.md) dizem o mesmo — e desde a extensão comparam também o **horário**, não só o estado (trabalho, folga da ficha, folga da escala semanal com a ficha omissa e como exceção, **ficha afirmando outro dia**, férias, falta, atestado, **feriado** e **horário de exceção**). É o teste que faltava: achou a divergência de folga e, quando passou a comparar horários, os desvios de feriado e de exceção | 10 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

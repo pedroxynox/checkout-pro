@@ -2,6 +2,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AcessosService } from './acessos.service';
 import {
+  AcessoRevogadoError,
   CredenciaisInvalidasError,
   PermissaoInsuficienteError,
 } from './acessos.errors';
@@ -21,13 +22,31 @@ describe('AcessosService', () => {
     perfil: 'GERENTE' | 'FISCAL';
   }
 
-  function criarServico(usuarios: UsuarioFake[]): AcessosService {
+  /** A ficha ligada a uma conta. É ela que manda no acesso (ADR 0023). */
+  interface FichaFake {
+    usuarioId: string;
+    ativo: boolean;
+    funcao: 'OPERADOR' | 'FISCAL' | 'SUPERVISOR' | 'GESTOR';
+  }
+
+  function criarServico(
+    usuarios: UsuarioFake[],
+    fichas: FichaFake[] = [],
+  ): AcessosService {
     const prismaFake = {
       usuario: {
         findUnique: ({ where: { login } }: { where: { login: string } }) =>
           Promise.resolve(usuarios.find((u) => u.login === login) ?? null),
         findMany: () =>
           Promise.resolve(usuarios.map((u) => ({ login: u.login }))),
+      },
+      colaborador: {
+        findUnique: ({
+          where: { usuarioId },
+        }: {
+          where: { usuarioId: string };
+        }) =>
+          Promise.resolve(fichas.find((f) => f.usuarioId === usuarioId) ?? null),
       },
       perfilPermissao: {
         findMany: () => Promise.resolve([]),
@@ -71,6 +90,68 @@ describe('AcessosService', () => {
       await expect(
         service.autenticar('inexistente', 'qualquer'),
       ).rejects.toBeInstanceOf(CredenciaisInvalidasError);
+    });
+  });
+
+  /**
+   * A FICHA manda no acesso (ADR 0023). Antes, `autenticar` olhava só o login e a
+   * senha — nunca a ficha —, e dois estados de cadastro não fechavam a porta:
+   * quem era desligado continuava entrando, e quem era rebaixado a operador
+   * continuava entrando com o perfil de fiscal (o perfil antigo permanecia no
+   * usuário, porque operador não tem perfil para sobrescrevê-lo).
+   */
+  describe('autenticar — a ficha manda no acesso', () => {
+    async function servicoCom(ficha?: FichaFake): Promise<AcessosService> {
+      const senhaHash = await bcrypt.hash('segredo123', 10);
+      return criarServico(
+        [{ id: 'u1', login: 'diones', senhaHash, perfil: 'FISCAL' }],
+        ficha ? [ficha] : [],
+      );
+    }
+
+    it('recusa quem foi DESLIGADO, ainda com a senha certa', async () => {
+      const service = await servicoCom({
+        usuarioId: 'u1',
+        ativo: false,
+        funcao: 'FISCAL',
+      });
+
+      await expect(
+        service.autenticar('diones', 'segredo123'),
+      ).rejects.toBeInstanceOf(AcessoRevogadoError);
+    });
+
+    it('recusa quem foi REBAIXADO a operador (função sem acesso ao app)', async () => {
+      const service = await servicoCom({
+        usuarioId: 'u1',
+        ativo: true,
+        funcao: 'OPERADOR',
+      });
+
+      await expect(
+        service.autenticar('diones', 'segredo123'),
+      ).rejects.toBeInstanceOf(AcessoRevogadoError);
+    });
+
+    it('deixa entrar quem segue ativo numa função com acesso', async () => {
+      const service = await servicoCom({
+        usuarioId: 'u1',
+        ativo: true,
+        funcao: 'FISCAL',
+      });
+
+      await expect(
+        service.autenticar('diones', 'segredo123'),
+      ).resolves.toMatchObject({ perfil: 'FISCAL' });
+    });
+
+    it('não mexe nas contas SEM ficha (administrador do sistema, importador)', async () => {
+      // Exigir ficha destas trancaria o sistema fora de si mesmo.
+      const service = await servicoCom(undefined);
+
+      await expect(
+        service.autenticar('diones', 'segredo123'),
+      ).resolves.toMatchObject({ perfil: 'FISCAL' });
     });
   });
 

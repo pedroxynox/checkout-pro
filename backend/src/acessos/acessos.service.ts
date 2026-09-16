@@ -11,7 +11,9 @@ import {
   permissoesEfetivas,
   Perfil,
 } from './acessos.domain';
+import { funcaoTemAcessoAoApp } from '../colaboradores/colaboradores.domain';
 import {
+  AcessoRevogadoError,
   CredenciaisInvalidasError,
   PermissaoInsuficienteError,
 } from './acessos.errors';
@@ -44,6 +46,18 @@ export class AcessosService {
    * 7.1.2, 7.1.5). Em caso de sucesso, emite um token JWT e retorna o perfil
    * associado; em caso de credenciais inválidas (login inexistente ou senha
    * incorreta), lança `CredenciaisInvalidasError` (Req 7.1.3).
+   *
+   * **A ficha manda no acesso** (ADR 0023). Até aqui esta função olhava só
+   * `usuarios.login` e a senha, e nunca a ficha — então dois estados de cadastro
+   * não fechavam a porta: quem era **desligado** (`ativo = false`) continuava
+   * entrando, e quem era **rebaixado** a operador continuava entrando com o perfil
+   * de fiscal, porque `perfilDaFuncao('OPERADOR')` é nulo e o perfil antigo
+   * permanecia no usuário.
+   *
+   * Contas **sem ficha** ligada (o administrador do sistema, o importador) seguem
+   * exatamente como antes: a regra só se aplica a quem tem cadastro de
+   * colaborador, e inventar uma exigência para as outras trancaria o sistema fora
+   * de si mesmo.
    */
   async autenticar(login: string, senha: string): Promise<ResultadoLogin> {
     const usuario = await this.prisma.usuario.findUnique({
@@ -56,6 +70,8 @@ export class AcessosService {
     if (!usuario || !(await bcrypt.compare(senha, usuario.senhaHash))) {
       throw new CredenciaisInvalidasError();
     }
+
+    await this.exigirFichaComAcesso(usuario.id);
 
     const perfil = usuario.perfil as Perfil;
     const token = await this.jwtService.signAsync({
@@ -80,6 +96,23 @@ export class AcessosService {
         usuario.permissoes ?? [],
       ),
     };
+  }
+
+  /**
+   * Recusa a entrada quando a ficha ligada à conta já não dá acesso ao app
+   * (ADR 0023): desligada, ou numa função sem acesso.
+   *
+   * Silencioso quando não há ficha — ver o cabeçalho de `autenticar`.
+   */
+  private async exigirFichaComAcesso(usuarioId: string): Promise<void> {
+    const ficha = await this.prisma.colaborador.findUnique({
+      where: { usuarioId },
+      select: { ativo: true, funcao: true },
+    });
+    if (!ficha) return;
+    if (!ficha.ativo || !funcaoTemAcessoAoApp(ficha.funcao)) {
+      throw new AcessoRevogadoError();
+    }
   }
 
   /**

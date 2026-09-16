@@ -34,9 +34,9 @@ mesma pessoa no mesmo feriado. Módulos separados, **regra única**.
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
 | `escala-exportacao.controller.ts` | Rotas do dia e da semana | 46 |
-| `escala-exportacao.service.ts` | Junta ficha + rodízio + feriado + férias + ausências | 366 |
+| `escala-exportacao.service.ts` | Junta ficha + rodízio + feriado + férias + ausências, e aponta quem está **sem folga na ficha** | 409 |
 | `escala-publicada.domain.ts` | Regras puras: precedência do estado, ordem, agrupamento, semana | 252 |
-| `escala-especiais.consulta.ts` | **A única** leitura das exceções de horário (compartilhada com o Quadro) | 48 |
+| `escala-especiais.consulta.ts` | **A única** leitura das exceções de horário (compartilhada com o Quadro), resolvendo o dono das linhas sem vínculo | 82 |
 | `escala-exportacao.module.ts` | Ligações (DI) do módulo | 21 |
 | `dto/escala-exportacao.dto.ts` | Validação da data de referência | 13 |
 
@@ -60,8 +60,9 @@ amanhã justamente no horário em que ela é enviada à equipe.
 ### `escalaDoDia(dataISO)`
 - **Recebe:** `yyyy-mm-dd`.
 - **Devolve:** `EscalaDiaPublicada` — `dataISO`, `diaSemana`, `ehFeriado`,
-  `nomeFeriado`, `grupoFolgaDomingo`, `totais` e `secoes` (pessoas agrupadas por
-  função).
+  `nomeFeriado`, `grupoFolgaDomingo`, `totais`, `secoes` (pessoas agrupadas por
+  função) e **`semFolgaNoCadastro`** — quem está sem dia de folga na ficha, com
+  nome e função.
 - **Efeitos:** só leitura — `Colaborador`, `Feriado`, `EscalaEntry`, `Ausencia`,
   `ConfigSistema` (via `EscalaDomingoService`) e `FeriasColaborador` (via
   `FeriasService`).
@@ -70,7 +71,9 @@ amanhã justamente no horário em que ela é enviada à equipe.
 ### `escalaDaSemana(dataISO)`
 - **Recebe:** `yyyy-mm-dd` (qualquer dia da semana desejada).
 - **Devolve:** `EscalaSemanaPublicada` — `inicioISO`/`fimISO`, os sete `dias`
-  (com feriado marcado) e `secoes` com uma pessoa por linha e **sete células**.
+  (com feriado marcado), `secoes` com uma pessoa por linha e **sete células**, e o
+  mesmo **`semFolgaNoCadastro`** do dia — a grade é a tela do planejamento, e um
+  aviso que só existisse no dia apareceria quando já não dá para agir.
 - **Efeitos:** os mesmos, carregados **uma vez** para o intervalo inteiro: sete
   dias não podem custar sete vezes o mesmo trabalho de banco. A exceção são as
   férias, que são por dia e exigem uma consulta por data.
@@ -120,6 +123,18 @@ escala publicada — antes só existia a entrada).
 > casava: este documento, que a equipe inteira lê, dizia "trabalha" sobre quem
 > faltou. Verificado em `fiscais/coerencia-escalados-escala.spec.ts`.
 
+> **A folga e as exceções também.** A lição acima valia para as ausências e não
+> tinha sido aplicada às outras duas leituras (ADR 0023): a folga era consultada
+> passando **só** o `Colaborador.id` — contra o contrato do próprio `FolgaService`,
+> que pede a pessoa em todas as identidades — e as exceções de horário sem
+> `colaboradorId` eram **descartadas**, "para não aplicar no palpite". Não era
+> palpite: o vínculo `Fiscal → Colaborador` diz de quem a linha é. O que se perdia
+> era uma convocação ou uma dispensa desaparecendo justamente do documento que a
+> equipe recebe, enquanto a regra de folga continuava a enxergá-las pelo
+> `funcionarioId` — duas superfícies, duas respostas sobre o mesmo dia. As
+> identidades agora saem de `fiscais/identidades.consulta.ts`, uma carga só para
+> todos os consumidores.
+
 ## 9. Dependências
 - **Depende de:** [`escala-domingo`](escala-domingo.md) (âncora do rodízio e
   regras de horário), [`ferias`](ferias.md) (quem está de férias),
@@ -134,11 +149,13 @@ escala publicada — antes só existia a entrada).
 2. **Horário especial** do dia da semana (`EscalaEntry.especial`) prevalece sobre
    a folga e sobre o turno do cadastro: é a exceção que o gestor cadastrou
    justamente para isso — é assim que se convoca alguém no seu dia de descanso.
-3. **Folga pela regra única** (`FolgaService`: a ficha **ou** a escala semanal).
-   Vem depois do especial e **antes** do turno. Sem este passo, uma folga escrita
-   só na escala semanal e não marcada como exceção saía `FOLGA` no Quadro de
-   Operadores e `TRABALHA` aqui — a mesma classe de incoerência das férias, achada
-   pelo teste de coerência `coerencia-quadro-escala.spec.ts` (em `operadores`).
+3. **Folga pela regra única** ([`FolgaService`](escala-domingo.md): a ficha manda
+   quando afirma um dia; a escala semanal decide quando a ficha se cala — ver
+   [ADR 0023](../02-arquitetura/decisoes/0023-folga-a-ficha-manda.md)). Vem depois
+   do especial e **antes** do turno. Sem este passo, uma folga escrita só na escala
+   semanal e não marcada como exceção saía `FOLGA` no Quadro de Operadores e
+   `TRABALHA` aqui — a mesma classe de incoerência das férias, achada pelo teste de
+   coerência `coerencia-quadro-escala.spec.ts` (em `operadores`).
 4. **Turno do cadastro**, pelas regras de dia útil / fim de semana / domingo com
    rodízio / feriado.
 5. **Sem turno no dia ⇒ folga** (é o que "sem horário" significa aqui).
@@ -167,8 +184,8 @@ que a equipe recebe.
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `escala-publicada.domain.spec.ts` | Precedência (férias, especial, folga, falta, atestado), feriado nas duas pontas, ordem por entrada, agrupamento por função, totais e a semana segunda→domingo | 14 |
-| `../operadores/coerencia-quadro-escala.spec.ts` | **Coerência** com o Quadro de Operadores: para o mesmo dia e pessoa, as duas vistas dizem o mesmo — estado **e horário** (trabalho, folga da ficha, folga da escala semanal com e sem exceção, férias, falta, atestado, **feriado** e **horário de exceção**) | 9 |
-| `escala-exportacao.service.spec.ts` | Cobertura de todas as funções, feriado com nome, férias, exceção de horário, falta com turno preservado, grupo do domingo, inativos fora, e a grade semanal (sete células, regra por dia, ordem por nome) | 10 |
+| `../operadores/coerencia-quadro-escala.spec.ts` | **Coerência** com o Quadro de Operadores: para o mesmo dia e pessoa, as duas vistas dizem o mesmo — estado **e horário** (trabalho, folga da ficha, folga da escala semanal com a ficha omissa e como exceção, **ficha afirmando outro dia**, férias, falta, atestado, **feriado** e **horário de exceção**) | 10 |
+| `escala-exportacao.service.spec.ts` | Cobertura de todas as funções, feriado com nome, férias, exceção de horário, falta com turno preservado, grupo do domingo, inativos fora, a grade semanal (sete células, regra por dia, ordem por nome), as **duas identidades de um fiscal** (folga e exceção gravadas só sob o `Fiscal.id`, e a linha velha que não soma um segundo dia) e o **aviso de ficha sem folga** | 16 |
 
 > Contagem sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

@@ -79,33 +79,71 @@ descansando) e recebia **falta automática** duas horas depois — no próprio d
 descanso. E a falta não se curava: a auto-cura espera uma batida, que num dia de
 folga nunca chega.
 
-**A regra:** se **qualquer** uma das fontes diz que a pessoa descansa, é folga —
-**exceto** quando existe uma **convocação**.
+**A regra**, na ordem que importa (ver
+[ADR 0023](../02-arquitetura/decisoes/0023-folga-a-ficha-manda.md)):
 
-O viés é deliberado e conservador. Quando as fontes discordam, o sistema não sabe
-a verdade — e entre "deixar de cobrar o ponto de alguém" e "marcar falta em quem
-estava descansando", o segundo erro é muito mais grave: um custa uma conversa, o
-outro mexe no registro de trabalho de uma pessoa.
+1. **Convocação** (`especial` com `folga: false`) → **trabalha**. É o registro mais
+   específico e mais recente sobre aquele dia, e nada o vence.
+2. **Folga concedida à mão** (`especial` com `folga: true`) → **folga**. O gestor
+   deu o dia; a ficha não desfaz uma decisão individual.
+3. **A ficha afirma `folgaDiaSemana`** → **a ficha decide, sozinha** (a escala
+   semanal GERAL não é consultada).
+4. **A ficha é omissa** → a escala semanal geral ainda vale.
+
+O viés é deliberado e conservador nos passos 1, 2 e 4: entre "deixar de cobrar o
+ponto de alguém" e "marcar falta em quem estava descansando", o segundo erro é
+muito mais grave — um custa uma conversa, o outro mexe no registro de trabalho de
+uma pessoa.
+
+#### Por que o passo 3 existe
+
+A regra era um **OU** puro: qualquer fonte que dissesse "descansa" bastava. Um OU
+trata as duas fontes como **pares**, e elas não são: a ficha é a fonte, e a escala
+semanal é a **projeção** dela (`sincronizarEscalaFiscal` a regenera a cada edição
+do cadastro). Uma projeção velha não pode **somar** um dia de descanso que a fonte
+não afirma — e somava: uma fiscal com folga na quinta na ficha, e uma linha antiga
+de quarta na escala, aparecia de folga nos **dois** dias.
+
+O passo 4 preserva o viés conservador **onde ele ainda protege alguém**: sem nada
+na ficha não há fonte que contradiga a escala, então ela vale.
+
+O preço do passo 3: quem era dispensado de bater ponto pelo dia **velho** da escala
+passa a ser cobrado nesse dia. A conta fecha porque a escala publicada — o
+documento que a equipe recebe — sempre mostrou a folga da **ficha**; agora o
+sistema cobra exatamente o dia que a equipe lê.
+
+#### `semFolgaNaFicha` — o dado que falta, dito em voz alta
+
+O mesmo consultor responde quem **não tem dia de folga na ficha**. Sem folga, a
+pessoa é escalada os sete dias da semana e pode receber falta automática num dia em
+que estava descansando — e nada avisava. Quem expõe isso na tela é a
+[escala publicada](escala-exportacao.md); a regra só devolve o fato, para o aviso e
+a decisão não poderem discordar.
 
 #### A convocação é a única coisa que vence a folga
 
 Uma **exceção individual que manda trabalhar** (`EscalaEntry` com
 `especial: true` e `folga: false`) derruba a folga da ficha. É o registro mais
-específico que existe sobre aquele dia, e é exactamente assim que se chama alguém
+específico que existe sobre aquele dia, e é exatamente assim que se chama alguém
 no descanso.
 
 A distinção é fina e importa nas duas pontas:
 
 | Entrada na escala semanal | Resultado |
 |---|---|
-| `especial: true`, `folga: false` | **Convocação** — não é folga |
-| `especial: true`, `folga: true` | **Dispensa** — é folga |
+| `especial: true`, `folga: false` | **Convocação** — não é folga, vence a ficha |
+| `especial: true`, `folga: true` | **Dispensa** — é folga, vence a ficha |
 | `especial: false`, `folga: false` | Entrada comum — **não** vence a folga da ficha |
-| `especial: false`, `folga: true` | É folga |
+| `especial: false`, `folga: true` | Folga **só quando a ficha é omissa** (ADR 0023) |
 
 A terceira linha preserva o viés conservador: foi a escala semanal desatualizada
 contra a ficha correta que gerou faltas indevidas em dia de descanso, então uma
 entrada comum que diz "trabalha" **não** basta para convocar.
+
+A quarta é a mudança do ADR 0023: uma folga **geral** é derivada da ficha, então
+não vota contra ela — só decide quando a ficha não diz nada. As duas primeiras
+linhas continuam vencendo porque não são derivadas de nada: são o gestor combinando
+algo sobre aquele dia específico.
 
 Antes desta regra a convocação se perdia em todo lugar que consulta a folga:
 a pessoa era chamada, não entrava na lista de esperados do dia (ninguém cobrava o

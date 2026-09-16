@@ -347,9 +347,15 @@ regra 16 e [`compensacao-horas`](compensacao-horas.md).
    - **tem turno previsto** (`entradaEsperadaNoDia`: ficha, rodízio de domingo,
      feriado). Sem `grupoDomingo`, sem âncora ou sem `entradaDom`, nenhum domingo
      é apontado;
-   - **não está de folga pela regra única** (`FolgaService`), que também lê a
-     folga marcada apenas na escala semanal. `@Optional()`: sem o serviço vale só
-     a ficha, e o comportamento degrada em vez de quebrar;
+   - **não está de folga pela regra única** ([`FolgaService`](escala-domingo.md)),
+     que também lê a folga marcada apenas na escala semanal — **quando a ficha é
+     omissa**. Quando a ficha afirma um dia, é ela que decide, e uma linha antiga da
+     escala semanal não dispensa mais ninguém
+     ([ADR 0023](../02-arquitetura/decisoes/0023-folga-a-ficha-manda.md)): o dia
+     volta a ser apontado, que é o desejado — este apontamento mostra um **buraco**
+     para o gestor resolver, não lança falta em ninguém, e antes havia um dia em que
+     o furo era engolido em silêncio. `@Optional()`: sem o serviço vale só a ficha,
+     e o comportamento degrada em vez de quebrar;
    - **o dia já terminou.** Um dia em curso ou futuro sem batidas não é falta —
      a pessoa ainda pode entrar.
 
