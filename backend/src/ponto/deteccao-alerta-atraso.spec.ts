@@ -105,3 +105,93 @@ describe('PontoDeteccaoAutomaticaService — alerta de atraso (1h)', () => {
     expect(notificacoes.notificarComPermissao).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * A trava do aviso é keyed só por `pessoaId`, mas uma pessoa pode ter DUAS
+ * identidades de ponto (`Fiscal.id` + a ficha). Reservando uma só, a outra
+ * identidade abria uma segunda linha e o MESMO atraso era avisado duas vezes.
+ * Reservamos as duas, e basta uma colidir para o aviso não se repetir.
+ */
+describe('PontoDeteccaoAutomaticaService — atraso com identidade dupla', () => {
+  const AGORA = new Date('2026-07-20T15:00:00.000Z'); // 12:00 em Brasília
+  const DIA = new Date('2026-07-20T00:00:00.000Z');
+
+  beforeAll(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(AGORA);
+  });
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
+  function criarServico(opcoes: { idsJaReservados?: string[] }) {
+    const jaReservados = new Set(opcoes.idsJaReservados ?? []);
+    const criarReserva = jest
+      .fn()
+      .mockImplementation((args: { data: { pessoaId: string } }) =>
+        jaReservados.has(args.data.pessoaId)
+          ? Promise.reject(
+              new Prisma.PrismaClientKnownRequestError('duplicado', {
+                code: 'P2002',
+                clientVersion: 'test',
+              }),
+            )
+          : Promise.resolve({}),
+      );
+    const prismaFake = {
+      batidaPonto: { findMany: () => Promise.resolve([]) },
+      registroPontoFiscal: { findMany: () => Promise.resolve([]) },
+      ausencia: { findMany: () => Promise.resolve([]) },
+      incidenciaEscala: { findMany: () => Promise.resolve([]) },
+      exclusaoOcorrenciaAutomatica: { findMany: () => Promise.resolve([]) },
+      alertaAtrasoEnviado: { create: criarReserva },
+    };
+    const fiscais = {
+      escaladosDoDia: jest.fn().mockResolvedValue([
+        {
+          pessoaId: 'fis-1',
+          tipoPessoa: 'FISCAL' as const,
+          colaboradorId: 'col-9',
+          nome: 'Diones',
+          funcao: 'FISCAL',
+          entradaPrevista: '11:00', // 60 min de atraso às 12:00
+        },
+      ]),
+      registrarFalta: jest.fn().mockResolvedValue({}),
+    };
+    const notificacoes = {
+      notificarComPermissao: jest.fn().mockResolvedValue([]),
+    };
+    const service = new PontoDeteccaoAutomaticaService(
+      prismaFake as never,
+      fiscais as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      notificacoes as never,
+    );
+    return { service, criarReserva, notificacoes };
+  }
+
+  it('reserva as DUAS identidades e avisa uma única vez', async () => {
+    const { service, criarReserva, notificacoes } = criarServico({});
+    await service.verificar();
+    expect(criarReserva).toHaveBeenCalledWith({
+      data: { pessoaId: 'fis-1', dia: DIA },
+    });
+    expect(criarReserva).toHaveBeenCalledWith({
+      data: { pessoaId: 'col-9', dia: DIA },
+    });
+    expect(notificacoes.notificarComPermissao).toHaveBeenCalledTimes(1);
+  });
+
+  it('NÃO reavisa quando a outra identidade já tinha reservado o dia', async () => {
+    // A ficha já avisou (por exemplo, num ciclo em que a pessoa ainda era
+    // operadora). A identidade nova não pode gerar um segundo aviso.
+    const { service, notificacoes } = criarServico({
+      idsJaReservados: ['col-9'],
+    });
+    await service.verificar();
+    expect(notificacoes.notificarComPermissao).not.toHaveBeenCalled();
+  });
+});

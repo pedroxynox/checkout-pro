@@ -1,6 +1,10 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { Prisma, TipoOcorrenciaAutomatica } from '@prisma/client';
+import {
+  Prisma,
+  TipoOcorrenciaAutomatica,
+  TipoPessoaPonto,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   agoraNaBrasilia,
@@ -53,6 +57,14 @@ const AUTOR_SISTEMA = { id: 'sistema', nome: 'Detecção automática' };
  *
  * O alerta preventivo de 1h (atraso) é apenas visual (calculado na "equipe do
  * dia"), então este cron não age nele — só na falta (2h) e no não retorno.
+ *
+ * **Duas fontes de vigiados.** A escala responde "quem devia trabalhar", mas
+ * desde que o ponto em dia de folga passou a ser aceito (ADR 0019) ela deixou de
+ * responder "quem está trabalhando": quem bate ponto num dia marcado como folga
+ * é excluído de `escaladosDoDia` e ficava fora de toda a vigilância — justamente
+ * a pessoa em situação irregular saía do intervalo e ninguém era avisado. Por
+ * isso o cron também varre O RELÓGIO PONTO (quem bateu hoje) e vigia quem não
+ * está na escala. Ver `vigiadosForaDaEscala`.
  *
  * Best-effort e defensivo: uma pessoa com dados inconsistentes nunca impede a
  * verificação das demais, e nenhuma falha trava o serviço.
@@ -115,7 +127,9 @@ export class PontoDeteccaoAutomaticaService {
       this.logger.warn(`Falha ao carregar escalados do dia: ${String(erro)}`);
       return;
     }
-    if (escalados.length === 0) return;
+    // Sem `return` quando a escala do dia está vazia: as batidas são a SEGUNDA
+    // fonte de vigiados, e num dia em que só trabalhou gente marcada como de
+    // folga a escala vem vazia — era exatamente aí que a vigilância silenciava.
 
     // Carrega de UMA vez os sinais do dia (antes fazíamos um findFirst por
     // escalado — N consultas no caminho quente que roda a cada 5 min):
@@ -127,7 +141,10 @@ export class PontoDeteccaoAutomaticaService {
       await Promise.all([
         this.prisma.batidaPonto.findMany({
           where: { data: dia },
-          select: { pessoaId: true, colaboradorId: true },
+          // `tipoPessoa` sai de graça no mesmo round-trip e é o que permite usar
+          // esta leitura como SEGUNDA FONTE de vigiados (só o par
+          // pessoaId+tipoPessoa identifica alguém para `jornadaDoDia`).
+          select: { pessoaId: true, tipoPessoa: true, colaboradorId: true },
         }),
         this.prisma.registroPontoFiscal.findMany({
           where: { data: dia },
@@ -166,6 +183,21 @@ export class PontoDeteccaoAutomaticaService {
     const naoRetornoRegistrado = new Set(
       naoRetornosDoDia.map((i) => i.colaboradorId),
     );
+
+    // SEGUNDA FONTE: quem bateu ponto hoje sem estar na escala do dia.
+    let foraDaEscala: EscaladoDia[] = [];
+    try {
+      foraDaEscala = await this.vigiadosForaDaEscala(escalados, batidas);
+    } catch (erro) {
+      // Modo de falha correto: seguir vigiando a escala (comportamento antigo),
+      // nunca deixar de vigiar quem está escalado.
+      this.logger.warn(
+        `Falha ao montar os vigiados fora da escala: ${String(erro)} — o ciclo segue só com a escala.`,
+      );
+    }
+    const aVigiar = [...escalados, ...foraDaEscala];
+    if (aVigiar.length === 0) return;
+
     // Dias que o gestor JÁ EXCLUIU à mão: a detecção não insiste. Sem isto,
     // excluir uma card não tinha efeito prático — a condição seguia verdadeira e
     // o próximo ciclo (5 min) recriava a ocorrência.
@@ -174,7 +206,7 @@ export class PontoDeteccaoAutomaticaService {
       this.idsComExclusao('NAO_RETORNO_INTERVALO', dia),
     ]);
 
-    for (const escalado of escalados) {
+    for (const escalado of aVigiar) {
       try {
         // As duas chaves nos DOIS lados: o escalado é identificado pelo id da
         // batida (`Fiscal.id` para fiscais) mas conhece a própria ficha, e as
@@ -196,6 +228,12 @@ export class PontoDeteccaoAutomaticaService {
           // Sem batida: 1h de atraso → avisa (uma vez); 2h → falta automática.
           // Os estados são mutuamente exclusivos (ver `estadoSemBatida`), então
           // no máximo um dos dois age.
+          //
+          // Quem vem da SEGUNDA FONTE nunca cai aqui: foi derivado das próprias
+          // batidas do dia, então está em `comAtividade` por construção. E ainda
+          // que caísse, `entradaPrevista` é null para ele — `estadoSemBatida`
+          // devolve AGUARDANDO e os dois métodos abaixo não fazem nada. Nunca se
+          // cobra atraso nem se marca falta de quem não era esperado hoje.
           await this.verificarAtraso(escalado, dia, agora, idsComFalta);
           await this.verificarFaltaAutomatica(
             escalado,
@@ -211,6 +249,93 @@ export class PontoDeteccaoAutomaticaService {
         );
       }
     }
+  }
+
+  /**
+   * SEGUNDA FONTE de vigiados: quem **bateu ponto hoje sem estar na escala**.
+   *
+   * A vigilância nasceu guiada pela escala, o que era suficiente enquanto o
+   * ponto em dia de folga fosse recusado. Depois que passou a ser aceito (ADR
+   * 0019 — na prática é a folga que mudou e o cadastro não foi atualizado),
+   * abriu-se um vão: `escaladosDoDia` exclui quem está de folga, então a pessoa
+   * trabalhava o dia inteiro fora de qualquer verificação. Saía para o intervalo,
+   * não voltava, e o gestor não recebia nada — o pior caso possível, porque é
+   * exatamente o dia em que a escala já está errada.
+   *
+   * Derivar de `batidas_ponto` (e não de `AvisoPontoEmFolga`) cobre o vão inteiro
+   * de uma vez: folga, férias lançadas por engano, escala não publicada, convocação
+   * de última hora. A pergunta deixa de ser "por que ela não está na escala?" e
+   * passa a ser "ela está trabalhando?".
+   *
+   * O que estas pessoas recebem é **só o não-retorno do intervalo**, e isso é
+   * garantido por construção, não por um `if`: elas vêm das batidas do dia, logo
+   * entram sempre pelo ramo "tem atividade" do loop; e `entradaPrevista` é null,
+   * o que torna atraso e falta automática inertes mesmo se algum dia caírem no
+   * outro ramo. Cobrar atraso de quem não era esperada seria absurdo, e marcar
+   * falta de quem está trabalhando, um bug.
+   *
+   * Exige `colaboradorId`: a `IncidenciaEscala` do não-retorno é keyed por ficha,
+   * então sem ela não há o que registrar (`registrarBatida` resolve a ficha antes
+   * de gravar, portanto o caso normal sempre a tem).
+   */
+  private async vigiadosForaDaEscala(
+    escalados: readonly EscaladoDia[],
+    batidas: readonly {
+      pessoaId: string;
+      tipoPessoa: TipoPessoaPonto;
+      colaboradorId: string | null;
+    }[],
+  ): Promise<EscaladoDia[]> {
+    if (batidas.length === 0) return [];
+
+    // AS DUAS chaves de quem já está na escala — o vigiado da escala é
+    // identificado pelo `Fiscal.id` mas a batida pode estar sob a ficha (o
+    // incidente da mudança de função, ADR 0020). Comparar por uma só chave
+    // duplicaria a pessoa: ela seria vigiada como escalada E como "fora da
+    // escala".
+    const naEscala = new Set<string>();
+    for (const e of escalados) {
+      naEscala.add(e.pessoaId);
+      if (e.colaboradorId) naEscala.add(e.colaboradorId);
+    }
+
+    // Uma entrada por pessoa (são até 4 batidas por dia cada uma).
+    const candidatos = new Map<
+      string,
+      { pessoaId: string; tipoPessoa: 'FISCAL' | 'OPERADOR'; ficha: string }
+    >();
+    for (const b of batidas) {
+      // Só as identidades de ponto que `jornadaDoDia` sabe calcular.
+      if (b.tipoPessoa !== 'FISCAL' && b.tipoPessoa !== 'OPERADOR') continue;
+      if (!b.colaboradorId) continue;
+      if (naEscala.has(b.pessoaId) || naEscala.has(b.colaboradorId)) continue;
+      if (candidatos.has(b.pessoaId)) continue;
+      candidatos.set(b.pessoaId, {
+        pessoaId: b.pessoaId,
+        tipoPessoa: b.tipoPessoa,
+        ficha: b.colaboradorId,
+      });
+    }
+    if (candidatos.size === 0) return [];
+
+    const vigiados: EscaladoDia[] = [];
+    for (const c of candidatos.values()) {
+      vigiados.push({
+        pessoaId: c.pessoaId,
+        tipoPessoa: c.tipoPessoa,
+        colaboradorId: c.ficha,
+        // Só rótulo de log/aviso; nenhuma decisão depende dele.
+        nome: await this.nomePessoaDoAviso({
+          pessoaId: c.pessoaId,
+          colaboradorId: c.ficha,
+        }),
+        funcao: c.tipoPessoa,
+        // Não existe hora prevista para um dia em que a pessoa não era esperada
+        // — e é esse null que mantém atraso e falta fora de cena.
+        entradaPrevista: null,
+      });
+    }
+    return vigiados;
   }
 
   /**
@@ -340,7 +465,11 @@ export class PontoDeteccaoAutomaticaService {
     }
   }
 
-  /** Nome para o aviso de resolução (ficha primeiro, fiscal como fallback). */
+  /**
+   * Nome de uma pessoa a partir do par de ids (ficha primeiro, fiscal como
+   * fallback). Usado nos avisos e nos logs, onde é só rótulo — nenhuma decisão
+   * depende dele, por isso o default genérico em vez de falhar.
+   */
   private async nomePessoaDoAviso(aviso: {
     pessoaId: string;
     colaboradorId: string | null;
@@ -582,18 +711,29 @@ export class PontoDeteccaoAutomaticaService {
     if (ids.some((id) => idsComFalta.has(id))) return;
 
     // Reserva a trava (uma por pessoa/dia). Se já existe, alguém já avisou hoje.
-    try {
-      await this.prisma.alertaAtrasoEnviado.create({
-        data: { pessoaId: escalado.pessoaId, dia },
-      });
-    } catch (erro) {
-      if (
-        erro instanceof Prisma.PrismaClientKnownRequestError &&
-        erro.code === 'P2002'
-      ) {
-        return; // já avisado hoje — não repete
+    //
+    // Reserva sob AS DUAS identidades. A tabela é keyed só por `pessoaId`, então
+    // uma pessoa com duas identidades de ponto (`Fiscal.id` + ficha) gerava duas
+    // linhas distintas — e portanto DOIS avisos do mesmo atraso, um por chave.
+    // Basta uma das reservas colidir para o aviso já ter saído: nesse caso não se
+    // repete. Para operadores as duas chaves são iguais e nada muda (uma linha).
+    const idsTrava = [
+      ...new Set(ids), // pessoaId + colaboradorId, já sem nulos
+    ];
+    for (const pessoaId of idsTrava) {
+      try {
+        await this.prisma.alertaAtrasoEnviado.create({
+          data: { pessoaId, dia },
+        });
+      } catch (erro) {
+        if (
+          erro instanceof Prisma.PrismaClientKnownRequestError &&
+          erro.code === 'P2002'
+        ) {
+          return; // já avisado hoje — não repete
+        }
+        throw erro;
       }
-      throw erro;
     }
 
     try {

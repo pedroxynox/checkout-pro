@@ -114,11 +114,19 @@ A sugestão **nunca se aplica sozinha**. A frase termina em "Confirme no cadastr
 - Uma tabela nova (`AvisoPontoEmFolga`) apenas para dedup do aviso, com
   `resolvidoEm` em vez de exclusão — a trava continua valendo e fica rastro da
   correção.
-- **Risco residual documentado:** quem trabalha num dia que o sistema tem como
-  folga continua fora da detecção automática de falta e de não-retorno, porque
-  essa varredura parte de `escaladosDoDia` (e a folga a exclui de lá). Está
-  anotado nos riscos de [`ponto`](../../03-atlas-backend/ponto.md); a correção é
-  acrescentar "quem tem batida hoje" como fonte da varredura.
+- **Risco residual — resolvido depois.** Aceitar o ponto sem ajustar a varredura
+  deixou a pessoa trabalhando fora de **toda** vigilância: `escaladosDoDia` exclui
+  a folga, então ela saía para o intervalo, não voltava, e nenhum gestor era
+  avisado. Foi corrigido acrescentando as batidas do dia como **segunda fonte** da
+  varredura (`vigiadosForaDaEscala`, regra 17 de
+  [`ponto`](../../03-atlas-backend/ponto.md)).
+
+  A lição vale além deste caso: ao **relaxar uma recusa**, o caminho que passou a
+  ser permitido precisa herdar as verificações do caminho normal. Aqui a recusa era
+  o que garantia que ninguém trabalhasse fora da escala — retirá-la, sozinha,
+  transferiu para a vigilância um caso que ela nunca soube tratar. Só o
+  não-retorno alcança essa pessoa: atraso e falta pressupõem uma hora esperada,
+  que num dia de folga não existe.
 
 ## Referências
 
