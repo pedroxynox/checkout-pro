@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { DecisaoContrato, MarcoContrato as MarcoPrisma } from '@prisma/client';
+import {
+  DecisaoContrato,
+  FuncaoColaborador,
+  MarcoContrato as MarcoPrisma,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { inicioDoDia } from '../common/datas';
 import {
@@ -36,6 +40,12 @@ export interface ContratoCard {
   colaboradorId: string;
   nome: string;
   matricula: string;
+  /**
+   * Função ATUAL da pessoa. Vai no card porque a carteira deixou de ser só de
+   * operadores (ADR 0024) — sem ela, duas pessoas de áreas diferentes ficam
+   * indistinguíveis numa lista que agora mistura caixa, fiscais e supervisão.
+   */
+  funcao: FuncaoColaborador;
   dataAdmissao: string | null;
   diasDeCasa: number;
   estado: EstadoContrato;
@@ -89,22 +99,47 @@ const PRIORIDADE_URGENCIA: Record<UrgenciaContrato, number> = {
 };
 
 /**
+ * Funções que entram na carteira de contratos de experiência.
+ *
+ * **O contrato de experiência é da PESSOA, não do cargo** (ADR 0024): o prazo de
+ * 45+45 dias corre desde a admissão e não é interrompido nem reiniciado por uma
+ * promoção. Antes daqui só saía `OPERADOR`, e o efeito apareceu na operação: um
+ * operador promovido a fiscal **desaparecia da aba Contratos** no mesmo instante,
+ * e — pior — parava de receber o **alerta dos 90 dias**, o único aviso de que a
+ * efetivação automática estava chegando. Nada era apagado; ficava inalcançável.
+ *
+ * É o mesmo erro que o [ADR 0020](../../../docs/02-arquitetura/decisoes/0020-mudanca-de-funcao-preserva-o-ponto.md)
+ * já havia diagnosticado no ponto e nos painéis: **a função de hoje decidindo o
+ * que aconteceu ontem.** Aqui a lição faltava.
+ *
+ * `GESTOR` fica fora por um motivo prático, não de mérito: o cadastro não pede
+ * data de admissão para a gerência, então um gestor só poderia aparecer no balde
+ * "definir admissão" — um pedido de ação que ninguém tem como atender pela tela.
+ * Para incluí-los, o cadastro precisa passar a coletar a data primeiro.
+ */
+const FUNCOES_COM_EXPERIENCIA: FuncaoColaborador[] = [
+  'OPERADOR',
+  'FISCAL',
+  'SUPERVISOR',
+];
+
+/**
  * Serviço dos Contratos de experiência. Concentra os efeitos colaterais
  * (Prisma) e delega TODA a decisão ao domínio puro (`contratos.domain`).
  *
- * O escopo do módulo são os **operadores** (contrato de experiência aplica-se
- * às novas contratações da frente de caixa). O estado do contrato nunca é
- * gravado: é sempre derivado de `dataAdmissao` + decisões.
+ * O escopo são **todas as funções contratadas** (ver `FUNCOES_COM_EXPERIENCIA`).
+ * O estado do contrato nunca é gravado: é sempre derivado de `dataAdmissao` +
+ * decisões.
  */
 @Injectable()
 export class ContratosService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Lista os cards de contrato dos operadores. Por padrão inclui também os que
-   * ainda não têm data de admissão (bucket "definir admissão"), para o gestor
-   * completá-la; `incluirSemAdmissao=false` os oculta. Ordena por urgência e,
-   * dentro dela, pelo marco mais próximo e pelo nome.
+   * Lista os cards de contrato de todo o quadro contratado. Por padrão inclui
+   * também os que ainda não têm data de admissão (bucket "definir admissão"),
+   * para o gestor completá-la; `incluirSemAdmissao=false` os oculta. Ordena por
+   * urgência e, dentro dela, pelo marco mais próximo e pelo nome.
    */
   async listar(
     filtros: ListarContratosFiltros = {},
@@ -112,7 +147,7 @@ export class ContratosService {
   ): Promise<ContratoCard[]> {
     const colaboradores = await this.prisma.colaborador.findMany({
       where: {
-        funcao: 'OPERADOR',
+        funcao: { in: FUNCOES_COM_EXPERIENCIA },
         ativo: true,
         ...(filtros.busca && filtros.busca.trim()
           ? {
@@ -125,7 +160,13 @@ export class ContratosService {
             }
           : {}),
       },
-      select: { id: true, nome: true, matricula: true, dataAdmissao: true },
+      select: {
+        id: true,
+        nome: true,
+        matricula: true,
+        funcao: true,
+        dataAdmissao: true,
+      },
       orderBy: { nome: 'asc' },
     });
 
@@ -141,7 +182,7 @@ export class ContratosService {
         },
         hoje,
       );
-      return this.montarCard(c.id, c.nome, c.matricula, resumo);
+      return this.montarCard(c.id, c.nome, c.matricula, c.funcao, resumo);
     });
 
     if (filtros.incluirSemAdmissao === false) {
@@ -297,12 +338,20 @@ export class ContratosService {
   }
 
   /**
-   * Avalia os alertas do dia para todos os operadores com admissão definida.
+   * Avalia os alertas do dia para todo o quadro com admissão definida.
    * Consumido pelo cron; não envia nada (efeito fica no cron).
+   *
+   * O escopo aqui é o mesmo da listagem, e tem de ser: era esta consulta que
+   * parava de avisar sobre um promovido, deixando a efetivação automática
+   * acontecer sem que ninguém decidisse nada (ADR 0024).
    */
   async avaliarAlertasDoDia(hoje: Date = new Date()): Promise<AlertaDoDia[]> {
     const colaboradores = await this.prisma.colaborador.findMany({
-      where: { funcao: 'OPERADOR', ativo: true, dataAdmissao: { not: null } },
+      where: {
+        funcao: { in: FUNCOES_COM_EXPERIENCIA },
+        ativo: true,
+        dataAdmissao: { not: null },
+      },
       select: { id: true, nome: true, dataAdmissao: true },
     });
     if (colaboradores.length === 0) return [];
@@ -336,7 +385,13 @@ export class ContratosService {
   ): Promise<ContratoCard> {
     const c = await this.prisma.colaborador.findUnique({
       where: { id: colaboradorId },
-      select: { id: true, nome: true, matricula: true, dataAdmissao: true },
+      select: {
+        id: true,
+        nome: true,
+        matricula: true,
+        funcao: true,
+        dataAdmissao: true,
+      },
     });
     if (!c) throw new ColaboradorContratoNaoEncontradoError();
     const decisoes =
@@ -346,7 +401,7 @@ export class ContratosService {
       { dataAdmissao: c.dataAdmissao, decisoes },
       new Date(),
     );
-    return this.montarCard(c.id, c.nome, c.matricula, resumo);
+    return this.montarCard(c.id, c.nome, c.matricula, c.funcao, resumo);
   }
 
   /** Monta o DTO do card a partir do resumo derivado. */
@@ -354,12 +409,14 @@ export class ContratosService {
     colaboradorId: string,
     nome: string,
     matricula: string,
+    funcao: FuncaoColaborador,
     resumo: ResumoContrato,
   ): ContratoCard {
     return {
       colaboradorId,
       nome,
       matricula,
+      funcao,
       dataAdmissao: iso(resumo.dataAdmissao),
       diasDeCasa: resumo.diasDeCasa,
       estado: resumo.estado,

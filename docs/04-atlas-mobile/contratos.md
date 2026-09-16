@@ -3,7 +3,9 @@
 # Área: `contratos`
 
 ## 1. Propósito
-Acompanhar os **contratos de experiência (45 + 45 dias)** dos operadores: uma
+Acompanhar os **contratos de experiência (45 + 45 dias)** de todo o quadro
+contratado — caixa, fiscais e supervisão, porque o contrato é da pessoa e não do
+cargo ([ADR 0024](../02-arquitetura/decisoes/0024-contrato-de-experiencia-e-da-pessoa.md)): uma
 carteira com resumo, filtros por etiqueta e um card por pessoa mostrando o tempo
 de casa, a etapa atual e o semáforo de urgência.
 
@@ -18,8 +20,8 @@ de casa, a etapa atual e o semáforo de urgência.
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `ContratosScreen.tsx` | Carteira de contratos (resumo, filtros e cards) | 429 |
-| `ContratosScreen.test.tsx` | Testes de render/permissão | 128 |
+| `ContratosScreen.tsx` | Carteira de contratos (resumo, filtros e cards, com o cargo de cada pessoa) | 443 |
+| `ContratosScreen.test.tsx` | Testes de render/permissão | 194 |
 
 ## 4. Fluxo do usuário
 1. **Carregar:** a tela busca em paralelo os cards (`listar`) e o resumo
@@ -60,6 +62,11 @@ e [`colaboradores`](../03-atlas-backend/colaboradores.md) (no encerramento).
 - O botão **Encerrar contrato** só aparece no estado `EXPERIENCIA`; **não**
   aparece para quem já está `EFETIVADO`.
 - Os botões de gestão só aparecem com `CONTRATOS_GERIR`.
+- **O card mostra o cargo** (`Caixa` / `Fiscal` / `Supervisão`) antes do tempo de
+  casa. A carteira deixou de ser só de operadores ([ADR 0024](../02-arquitetura/decisoes/0024-contrato-de-experiencia-e-da-pessoa.md)),
+  e sem o cargo duas pessoas de áreas diferentes ficam indistinguíveis para quem
+  está conferindo vencimentos. São as palavras da loja, não os nomes das colunas
+  do banco (`OPERADOR`/`SUPERVISOR`).
 
 ## 7. Lógica pura / utilidades
 - `coresUrgencia(u)`: mapeia a urgência (semáforo) para cor/fundo do selo.
@@ -78,7 +85,7 @@ e [`colaboradores`](../03-atlas-backend/colaboradores.md) (no encerramento).
 ## 9. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `ContratosScreen.test.tsx` | Etapa `45D`/`90D` e status; botões de gestão (editar admissão/encerrar) só com `CONTRATOS_GERIR`; sem encerrar para efetivado; sem botões sem permissão | 5 |
+| `ContratosScreen.test.tsx` | Etapa `45D`/`90D` e status; botões de gestão (editar admissão/encerrar) só com `CONTRATOS_GERIR`; sem encerrar para efetivado; sem botões sem permissão; e o **cargo no card** (traduzido para a palavra da loja, e presente também em quem ainda não tem admissão) | 8 |
 
 ## 10. Riscos, dívidas e pendências
 - ⚠️ O serviço ainda expõe `decidir` (decisão manual de marco), mas a tela usa

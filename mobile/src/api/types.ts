@@ -1844,10 +1844,17 @@ export type EtiquetaContrato =
   | 'encerrado';
 export type UrgenciaContrato = 'INATIVO' | 'OK' | 'ATENCAO' | 'CRITICO';
 
-/** Card de contrato de um operador (seção Contratos). */
+/** Card de contrato de um colaborador (seção Contratos). */
 export interface ContratoCard {
   colaboradorId: string;
   nome: string;
+  /**
+   * Função ATUAL. A carteira deixou de ser só de operadores (ADR 0024): o
+   * contrato de experiência é da pessoa, não do cargo, então quem é promovido
+   * continua na lista — e o cargo passa a ser necessário para distinguir quem é
+   * quem numa lista que agora mistura caixa, fiscais e supervisão.
+   */
+  funcao: FuncaoColaborador;
   matricula: string;
   dataAdmissao: string | null;
   diasDeCasa: number;
