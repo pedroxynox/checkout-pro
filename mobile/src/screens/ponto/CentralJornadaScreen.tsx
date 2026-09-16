@@ -270,11 +270,7 @@ export function CentralJornadaScreen(): React.ReactElement {
               pessoa de propósito. O resumo mostra o problema (o time tem X de
               50% em aberto); esta seção mostra o que fazer com ele, antes de o
               gestor descer para as cards individuais e resolver à mão. */}
-          <CartaoCompensacao
-            ciclo={ciclo}
-            podeConceder={podeCompensar}
-            aoMudar={recarregarTudo}
-          />
+          <CartaoCompensacao ciclo={ciclo} podeConceder={podeCompensar} />
 
           {/* Lista por pessoa */}
           {pessoas.length === 0 ? (

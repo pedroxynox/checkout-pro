@@ -261,8 +261,12 @@ regra 16 e [`compensacao-horas`](compensacao-horas.md).
    (extra de 50% acima da base, débito abaixo). Antes desta regra um domingo de
    6h contra a base de 7h20 lançava 1h20 de débito — que, por consumir apenas as
    50% (regra 6), ainda apagava as extras de 50% ganhas nos outros dias.
-5. **Conflito ponto↔ausência**: as horas vêm das batidas (a ausência é
-   ignorada no cálculo) e o conflito fica sinalizado para o gestor resolver.
+5. **Conflito ponto↔ausência**: no mesmo dia a pessoa **bateu ponto** e tem uma
+   ausência marcada (**falta, atestado ou licença**). As horas vêm das batidas (a
+   ausência é ignorada no cálculo) e o conflito fica sinalizado para o gestor
+   resolver — apagar a batida indevida **ou** a ausência indevida. O sistema não
+   escolhe por ele: as duas coisas são registros humanos, e adivinhar qual está
+   errado esconderia o erro em vez de corrigi-lo.
 6. **O débito consome só as 50%; as 100% nunca são debitadas.** Daí saem os três
    números da tela, todos derivados da mesma regra:
    - **"Extras 50%"** (total do time e chip da pessoa) = `extras50AtualMs`

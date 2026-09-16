@@ -23,6 +23,7 @@ import { RequisicoesScreen } from '../screens/insumos/RequisicoesScreen';
 import { JornadaFiscaisScreen } from '../screens/fiscais/JornadaFiscaisScreen';
 import { RegistroPontoScreen } from '../screens/ponto/RegistroPontoScreen';
 import { CentralJornadaScreen } from '../screens/ponto/CentralJornadaScreen';
+import { CompensacaoScreen } from '../screens/ponto/CompensacaoScreen';
 import { DetalheJornadaScreen } from '../screens/ponto/DetalheJornadaScreen';
 import { InconsistenciasScreen } from '../screens/ponto/InconsistenciasScreen';
 import { MarcacoesInvalidasScreen } from '../screens/ponto/MarcacoesInvalidasScreen';
@@ -169,6 +170,16 @@ export function AppNavigator(): React.ReactElement {
           name="CentralJornada"
           component={CentralJornadaScreen}
           options={{ title: 'Central de Jornada' }}
+        />
+      )}
+      {/* Compensação de horas: tela própria, aberta pela card da Central. A
+          permissão de ENTRAR é a da Central; conceder exige
+          `OPERADORES_AUSENCIAS`, verificado na card e no servidor. */}
+      {podeAcessar('CENTRAL_JORNADA') && (
+        <Stack.Screen
+          name="Compensacao"
+          component={CompensacaoScreen}
+          options={{ title: 'Compensação de horas' }}
         />
       )}
       {podeAcessar('CENTRAL_JORNADA') && (
