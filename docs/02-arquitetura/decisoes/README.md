@@ -32,3 +32,5 @@ numerado (`NNNN-titulo-curto.md`).
 | 0019 | [Ponto em dia de folga: aceitar e apontar, em vez de recusar](0019-ponto-em-dia-de-folga.md) |
 
 | 0020 | [Mudança de função preserva o histórico de ponto](0020-mudanca-de-funcao-preserva-o-ponto.md) |
+
+| 0022 | [Indicador "Sacolas": venda por sacola que entra no estoque](0022-indicador-sacolas-venda-por-sacola.md) _(proposta)_ |
