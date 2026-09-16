@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `mobile/src/screens/indicadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-16 · **Cobre:** `mobile/src/screens/indicadores/`
 
 # Área: `indicadores`
 
@@ -9,6 +9,12 @@ atenção"; o **detalhe** de cada indicador (meta, projeção, comparativo,
 evolução mês a mês, tendência e ranking); o **Painel de Vendas** inteligente
 (meta mensal, projeção, comparativos, curva horária e heatmap); e a fila de
 **não reconhecidos**.
+
+Inclui também os dois indicadores **calculados**, que não têm arquivo de
+importação e por isso ficam fora do array `ARRECADACAO`: **Cancelamentos Totais**
+(itens + cupom sobre as vendas, com teto próprio e um detalhe que diz o que está
+impactando e o que fazer — [ADR 0025](../02-arquitetura/decisoes/0025-cancelamentos-totais-indicador-calculado.md))
+e **Sacolas** ([ADR 0022](../02-arquitetura/decisoes/0022-indicador-sacolas-venda-por-sacola.md)).
 
 O painel tem um **seletor de mês** no topo: os dados não são reiniciados no dia
 1º, apenas troca o mês de referência. Voltar com a seta mostra qualquer mês da
@@ -28,8 +34,9 @@ janela de retenção (padrão 24 meses), sempre com a meta que valia nele.
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `IndicadoresScreen.tsx` | Hub: seletor de mês, vendas, destaques, semáforos (inclusive **Sacolas**) e painel de atenção | 767 |
+| `IndicadoresScreen.tsx` | Hub: seletor de mês, vendas, destaques, semáforos (inclusive **Cancelamentos Totais** e **Sacolas**) e painel de atenção | 878 |
 | `IndicadorDetalheScreen.tsx` | Detalhe de um indicador (meta, projeção, evolução mensal, tendência, ranking, cancelamentos) | 1044 |
+| `CancelamentosTotaisDetalheScreen.tsx` | Detalhe de **Cancelamentos Totais**: teto em R$ e excedente, composição itens × cupom, causas e ações, simulação dos maiores, ofensores, motivos, autorizadores, forma do dano e evolução mensal | 774 |
 | `SacolasDetalheScreen.tsx` | Detalhe de **Sacolas**: teto de sacolas, projeção do fechamento, recebido × usado, dias de entrada e série do mês | 532 |
 | `PainelVendasScreen.tsx` | Painel de vendas (meta, projeção, comparativos, curva, heatmap, por hora) | 700 |
 | `NaoReconhecidosScreen.tsx` | Fila de códigos sem cadastro (associar/criar) | 284 |
@@ -50,10 +57,16 @@ janela de retenção (padrão 24 meses), sempre com a meta que valia nele.
    12 meses coloridas pelo semáforo de cada mês e, abaixo, a lista dos meses com
    movimento: valor, meta do mês e a variação vs o mês anterior — a seta mostra
    para onde o número foi e a **cor** diz se isso foi bom ou ruim.
-3. **Vendas:** `PainelVendasScreen` mostra a venda do dia em destaque (com a
+3. **Cancelamentos Totais:** a card fica **logo depois** das duas metades que
+   ela soma e abre `CancelamentosTotaisDetalheScreen`, que responde as duas
+   perguntas úteis, nesta ordem: o mês (valor, teto em R$ e **excedente**), de
+   onde vem (composição itens × cupom), **o que está impactando** (as causas),
+   **o que fazer** (as ações), a **simulação** sem os maiores, quem mais pesa,
+   os motivos e quem autorizou (só cupom), a forma do dano e a evolução mensal.
+4. **Vendas:** `PainelVendasScreen` mostra a venda do dia em destaque (com a
    estimativa do dia), a meta do mês e projeção, comparativos por data, horas
    que mais venderam, curva horária, heatmap dia×hora e o detalhe por hora.
-4. **Não reconhecidos:** lista os códigos do mês sem cadastro; o gestor associa
+5. **Não reconhecidos:** lista os códigos do mês sem cadastro; o gestor associa
    a um colaborador (conserta o histórico) ou cria um cadastro.
 Todas tratam **carregando / erro / vazio**.
 
@@ -75,6 +88,8 @@ Todas tratam **carregando / erro / vazio**.
 | Vendas (resumo) | `vendasService.resumo(data)` | `GET /vendas/resumo` |
 | Painel de vendas | `vendasService.painel(data)` | `GET /vendas/painel` |
 | Vendas por hora | `vendasService.porHora(ini, fim)` | `GET /vendas/por-hora` |
+| Cancelamentos Totais | `arrecadacaoService.cancelamentosTotais(anoMes)` | `GET /arrecadacao/cancelamentos-totais` |
+| Detalhe de Cancelamentos Totais | `arrecadacaoService.cancelamentosTotaisDetalhe(anoMes)` | `GET /arrecadacao/cancelamentos-totais/detalhe` |
 | Indicador de Sacolas | `insumosService.indicadorSacolas(anoMes)` | `GET /insumos/indicador-sacolas` |
 | Detalhe de Sacolas | `insumosService.detalheSacolas(anoMes)` | `GET /insumos/indicador-sacolas/detalhe` |
 
@@ -84,6 +99,35 @@ e [`vendas`](../03-atlas-backend/vendas.md); associação de códigos usa
 de [`insumos`](../03-atlas-backend/insumos.md).
 
 ## 6. Estado local e regras de UI
+- **Cancelamentos Totais entra no meio da lista, não no fim.** A card é renderizada
+  dentro do `map` dos semáforos, imediatamente **depois** de `CANCELAMENTO_CUPOM`:
+  um total lido antes das partes não se entende, e lido longe delas parece um sexto
+  indicador independente. Fundo e recuo levemente diferentes indicam, sem texto,
+  que é o consolidado das duas de cima.
+- **A card diz que é a soma, e que o teto é próprio.** As duas linhas de rodapé
+  ("Soma das duas cards acima · teto próprio, não a soma dos dois tetos") existem
+  para o gestor não somar de novo o que já está somado e não estranhar as duas
+  metades verdes com o total amarelo — o teto do total é 0,75%, e não 0,75 + 0,5.
+- **O valor nunca aparece sozinho:** vem com o desvio em pontos percentuais e o
+  teto ("1,10% · +0,35 p.p. (teto 0,75%)"), a mesma forma pedida para Sacolas. Se
+  houve excedente, a card ainda escreve o valor em **R$** — o número que se discute.
+- **Mês sem venda registrada não mostra 0,00% e não recebe cor.** A card escreve
+  "Sem venda registrada neste mês". É a correção do comportamento dos outros cinco
+  indicadores, que devolvem 0% quando falta o arquivo de vendas e por isso pintam
+  de verde um mês sobre o qual nada se sabe (ADR 0025).
+- **Uma falha no indicador não derruba o painel** (`.catch(() => null)`, como
+  Sacolas, os destaques e o painel de atenção): a card simplesmente não aparece.
+- **A definição vive fora do array `ARRECADACAO`** (`CANCELAMENTOS_TOTAIS_DEF` em
+  `utils/rotulos.ts`). Aquele array é a lista de arquivos a importar e o espelho de
+  `TIPOS_ARRECADACAO`: entrar nele faria Importações pedir um arquivo inexistente e
+  o fechamento do dia nunca concluir.
+- **No detalhe, a simulação só aparece quando o mês está fora do teto** — dentro
+  dele não há o que resolver. E as causas/ações vêm **prontas do backend**: a tela
+  não recalcula nem reescreve texto, para o app, um aviso futuro e um relatório
+  contarem a mesma história sobre o mesmo mês.
+- **O detalhe declara as suas limitações:** que os motivos e os autorizadores
+  cobrem apenas a metade do cupom, e que o ranking só inclui colaboradores
+  cadastrados (embora o total some todos).
 - **Sacolas tem card própria, e a base escrita embaixo.** Ela fica junto dos cinco
   semáforos de arrecadação porque é um indicador de gestão, mas o denominador dela
   são **sacolas recebidas** — não as vendas nem um valor fixo. A linha "N fardos
@@ -128,6 +172,10 @@ de [`insumos`](../03-atlas-backend/insumos.md).
   resultados e a associação pede confirmação (afeta o histórico).
 
 ## 7. Lógica pura / utilidades
+- `textoCancelamentosTotais` (valor + desvio + teto, ou a explicação do mês sem
+  denominador) no hub; `corNivel`/`fundoNivel`/`rotuloNivel`, `ppTexto`,
+  `rotuloPerfil` e `explicacaoPerfil` no detalhe de Cancelamentos Totais. O
+  **diagnóstico não é calculado aqui**: vem do domínio do backend.
 - `intervaloDoPeriodo`, `totalDoPeriodo`, `percentualDoPeriodo`,
   `vendasDoPeriodo` (janelas e leitura do resumo por período).
 - `nivelMes`/`avaliarCor` e mapeamentos de cor/ícone dos semáforos.
@@ -153,6 +201,8 @@ de [`insumos`](../03-atlas-backend/insumos.md).
 | `PainelVendasScreen.test.tsx` | Faturamento/projeção do mês, venda do dia e estimativa atingida | 3 |
 | `IndicadoresScreen.test.tsx` | Card de Sacolas: valor **sempre** com o desvio até o piso, fardos/entregas/mês em andamento, desvio negativo, mês sem entrada e sem venda explicados (nunca R$ 0,00), aviso de entregas atípicas, degradação silenciosa e o mês pedido | 8 |
 | `SacolasDetalheScreen.test.tsx` | Detalhe de Sacolas: os fardos que **ainda cabem** em destaque, a fonte da venda esperada e quanto já é fato, o aviso de que a saída também pode ser vender mais, teto estourado mostrando a venda que faltaria (sem número negativo), a projeção com a suposição escrita, acúmulo × desperdício e o extrato de entradas | 8 |
+| `IndicadoresScreen.test.tsx` (2ª suíte) | Card de Cancelamentos Totais: valor **sempre** com o desvio até o teto, o excedente em R$, o aviso de que é a soma das duas de cima com teto próprio, mês dentro do teto sem linha de excedente, mês sem venda explicado (nunca 0,00% verde), degradação silenciosa e o mês pedido | 7 |
+| `CancelamentosTotaisDetalheScreen.test.tsx` | Detalhe: teto em R$ e excedente, o aviso de que o teto não é a soma dos tetos das partes, a composição com o % de cada metade sobre as vendas, causas e ações do diagnóstico, a simulação dizendo o que bastaria resolver (e a sua ausência quando o mês está dentro), o ranking combinado com a quebra itens/cupom, o aviso de que os motivos só cobrem o cupom, o mês sem venda e a forma do dano | 11 |
 
 ## 10. Riscos, dívidas e pendências
 - 🔧 `IndicadorDetalheScreen.tsx` (>800 linhas) reúne muitos sub-gráficos num só
@@ -171,3 +221,17 @@ de [`insumos`](../03-atlas-backend/insumos.md).
   retenção do servidor for alterada por variável de ambiente, o app só saberá
   disso pelo campo `mesesRetencao` do histórico — a seta continuará limitada a
   24 meses até o espelho ser ajustado.
+- ⚠️ **Duas leituras do "mês sem vendas" convivem no painel.** A card de
+  Cancelamentos Totais explica a falta e não recebe cor; as cinco cards de
+  arrecadação continuam mostrando "0,00%" em verde no mesmo mês. Alinhar as cinco
+  ao novo comportamento depende de mudar o backend (ver
+  [`arrecadacao`](../03-atlas-backend/arrecadacao.md), §12).
+- 🔧 `CancelamentosTotaisDetalheScreen.tsx` (>700 linhas) reúne dez cartões num só
+  arquivo, como o detalhe de indicador; candidato a extrair cada cartão.
+- ⚠️ O aviso "o teto do total não é a soma dos tetos" está escrito em **três
+  lugares** (card do painel, detalhe e tela de Metas). O valor é único
+  (`metas_mensais`), mas os textos precisam ser mantidos em sincronia.
+- ⚠️ `CANCELAMENTOS_TOTAIS_DEF.metaPadrao` é um espelho do padrão do backend
+  (0,75). Serve apenas de referência: a cor e os textos usam sempre a meta que o
+  servidor devolve, então uma divergência não pinta nada errado — mas convém
+  ajustar o espelho se o padrão mudar.

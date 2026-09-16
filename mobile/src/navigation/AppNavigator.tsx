@@ -16,6 +16,7 @@ import { FechamentoScreen } from '../screens/fechamento/FechamentoScreen';
 import { IndicadoresScreen } from '../screens/indicadores/IndicadoresScreen';
 import { IndicadorDetalheScreen } from '../screens/indicadores/IndicadorDetalheScreen';
 import { SacolasDetalheScreen } from '../screens/indicadores/SacolasDetalheScreen';
+import { CancelamentosTotaisDetalheScreen } from '../screens/indicadores/CancelamentosTotaisDetalheScreen';
 import { PainelVendasScreen } from '../screens/indicadores/PainelVendasScreen';
 import { InsumosScreen } from '../screens/insumos/InsumosScreen';
 import { InsumoDetalheScreen } from '../screens/insumos/InsumoDetalheScreen';
@@ -122,6 +123,14 @@ export function AppNavigator(): React.ReactElement {
             name="SacolasDetalhe"
             component={SacolasDetalheScreen}
             options={{ title: 'Venda por sacola' }}
+          />
+          {/* Cancelamentos Totais também tem tela própria (ADR 0025): o detalhe
+              dele responde "o que está impactando e o que fazer", e não os
+              gráficos de meta/ranking do detalhe de um tipo importado. */}
+          <Stack.Screen
+            name="CancelamentosTotaisDetalhe"
+            component={CancelamentosTotaisDetalheScreen}
+            options={{ title: 'Cancelamentos Totais' }}
           />
         </>
       )}

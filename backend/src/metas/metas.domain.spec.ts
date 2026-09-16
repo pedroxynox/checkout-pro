@@ -19,7 +19,7 @@ describe('metas.domain', () => {
 
     it('mantém todas as outras metas como digitadas', () => {
       const digitadas = TIPOS_META.filter((t) => t !== 'VENDAS');
-      expect(digitadas).toHaveLength(5);
+      expect(digitadas).toHaveLength(6);
       for (const tipo of digitadas) {
         expect(ehMetaDerivada(tipo)).toBe(false);
       }
@@ -45,6 +45,34 @@ describe('metas.domain', () => {
 
     it('é MAIOR_MELHOR: vender mais por sacola é usar menos sacolas', () => {
       expect(CONFIG_METAS.SACOLAS.sentido).toBe('MAIOR_MELHOR');
+    });
+  });
+
+  /**
+   * O teto do indicador calculado Cancelamentos Totais (itens + cupom sobre as
+   * vendas). Duas coisas precisam ficar travadas por teste:
+   *  - ele é **digitado** (o gestor edita o mês em Centro de Controle ▸ Metas);
+   *  - o padrão é 0,75% e **não** a soma das duas metas (0,75 + 0,5 = 1,25). É
+   *    um limite global mais exigente, decidido pelo dono do projeto; se alguém
+   *    "corrigir" isso para a soma, o indicador deixa de apertar o total.
+   */
+  describe('CONFIG_METAS.CANCELAMENTOS_TOTAIS', () => {
+    it('é um percentual sobre as vendas, com teto padrão de 0,75%', () => {
+      const cfg = CONFIG_METAS.CANCELAMENTOS_TOTAIS;
+      expect(cfg.unidade).toBe('PERCENTUAL');
+      expect(cfg.sentido).toBe('MENOR_MELHOR');
+      expect(cfg.valorPadrao).toBe(0.75);
+    });
+
+    it('não é a soma das metas das duas metades', () => {
+      const soma =
+        CONFIG_METAS.CANCELAMENTO_ITENS.valorPadrao +
+        CONFIG_METAS.CANCELAMENTO_CUPOM.valorPadrao;
+      expect(CONFIG_METAS.CANCELAMENTOS_TOTAIS.valorPadrao).not.toBe(soma);
+    });
+
+    it('é digitada pelo gestor, não derivada', () => {
+      expect(ehMetaDerivada('CANCELAMENTOS_TOTAIS')).toBe(false);
     });
   });
 

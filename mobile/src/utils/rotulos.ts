@@ -80,6 +80,32 @@ export const ARRECADACAO: DefinicaoArrecadacao[] = [
   },
 ];
 
+/**
+ * Definição do indicador **Cancelamentos Totais** (ADR 0025).
+ *
+ * Fica **fora** do array `ARRECADACAO` de propósito: aquele array é a lista dos
+ * arquivos a importar (`ImportacoesScreen` o transforma na sequência numerada) e
+ * também espelha `TIPOS_ARRECADACAO`, o contrato do fechamento do dia. Este
+ * indicador é **calculado** a partir das duas metades de cancelamento — não tem
+ * arquivo. Entrar no array faria a tela pedir para sempre um arquivo que não
+ * existe e o dia nunca fecharia.
+ *
+ * A meta aqui é só o **padrão** exibido antes de o servidor responder: o valor do
+ * mês vem de `metas_mensais` (Centro de Controle ▸ Metas), e é o do servidor que
+ * decide a cor.
+ */
+export const CANCELAMENTOS_TOTAIS_DEF = {
+  tipo: 'CANCELAMENTOS_TOTAIS' as const,
+  titulo: 'Cancelamentos Totais',
+  base: 'VENDAS' as const,
+  metaPadrao: 0.75,
+  sentido: 'MENOR_MELHOR' as const,
+  descricao:
+    'Cancelamento de itens + cancelamento de cupom somados, sobre as vendas. ' +
+    'Teto próprio, independente das metas das duas partes.',
+  icone: 'close-circle-outline',
+};
+
 export const ROTULO_TIPO_ARRECADACAO: Record<TipoArrecadacao, string> =
   ARRECADACAO.reduce(
     (acc, d) => {

@@ -27,6 +27,11 @@ export type RootStackParamList = {
   Indicadores: undefined;
   /** Detalhe do indicador Sacolas (teto de sacolas, entradas, consumo). */
   SacolasDetalhe: undefined;
+  /**
+   * Detalhe de Cancelamentos Totais: o que está impactando (composição,
+   * ofensores, motivos, autorizadores) e o que fazer para melhorar (ADR 0025).
+   */
+  CancelamentosTotaisDetalhe: undefined;
   IndicadorDetalhe: {
     tipo: TipoArrecadacao;
     /** Ao vir de um "ponto de atenção": foca o detalhe na causa. */

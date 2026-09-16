@@ -438,6 +438,173 @@ export interface DetalheSacolas {
   serie: DiaSerieSacolas[];
 }
 
+// ----- Indicador CANCELAMENTOS TOTAIS (itens + cupom sobre as vendas) -----
+
+/**
+ * Por que o percentual do mês pode não existir (ADR 0025).
+ *
+ * Zero cancelamento **com** venda registrada não é nenhum destes estados: é um
+ * mês legítimo de 0%, e verde.
+ */
+export type EstadoCancelamentos = 'OK' | 'SEM_VENDA' | 'SEM_MOVIMENTO';
+
+/** Distância até o teto da meta, com sinal. */
+export interface DesvioTetoCancelamentos {
+  /** `valor − meta`, em pontos percentuais. Negativo = dentro do teto (bom). */
+  absoluto: number;
+  /** O mesmo desvio como % da meta. */
+  percentual: number;
+  dentro: boolean;
+}
+
+/**
+ * Indicador **Cancelamentos Totais** de um mês: a soma de Cancelamento de Itens
+ * + Cancelamento de Cupom sobre as vendas da loja, com teto próprio.
+ *
+ * É **calculado**: não tem arquivo de importação nem "sem movimento" — sai dos
+ * dois tipos que já são importados (ADR 0025).
+ */
+export interface IndicadorCancelamentosTotais {
+  tipo: 'CANCELAMENTOS_TOTAIS';
+  titulo: string;
+  anoMes: string;
+  rotulo: string;
+  base: 'VENDAS';
+  sentido: 'MENOR_MELHOR';
+  total: number;
+  totalItens: number;
+  totalCupom: number;
+  /** Itens cancelados informados no arquivo de itens. */
+  itens: number;
+  lancamentos: number;
+  lancamentosItens: number;
+  lancamentosCupom: number;
+  vendas: number;
+  /** % sobre as vendas; `null` quando não há venda registrada no mês. */
+  percentual: number | null;
+  meta: number;
+  nivel: NivelIndicador | null;
+  cumpriuMeta: boolean | null;
+  desvio: DesvioTetoCancelamentos | null;
+  estado: EstadoCancelamentos;
+  /** Teto da meta traduzido em R$ (meta% × vendas). */
+  limiteReais: number | null;
+  /** Quanto passou do teto, em R$ (0 quando dentro). */
+  excedente: number | null;
+  parcial: boolean;
+  valorAnterior: number | null;
+  variacao: number | null;
+  evolucao: EvolucaoMes | null;
+}
+
+/** Composição do total: quanto vem de cada metade. */
+export interface ComposicaoCancelamentos {
+  totalItens: number;
+  totalCupom: number;
+  participacaoItens: number;
+  participacaoCupom: number;
+  /** % de cada metade sobre as vendas — na mesma régua da meta do total. */
+  percentualItens: number | null;
+  percentualCupom: number | null;
+  dominante: 'ITENS' | 'CUPOM' | 'EQUILIBRADO';
+}
+
+/** Uma pessoa no ranking combinado dos dois cancelamentos. */
+export interface OfensorCancelamentos {
+  nome: string;
+  total: number;
+  totalItens: number;
+  totalCupom: number;
+  /** Fatia da pessoa no total das pessoas cadastradas (%). */
+  participacao: number;
+  percentualVendas: number | null;
+}
+
+/** Quantas pessoas explicam o número (gente × processo). */
+export interface ConcentracaoCancelamentos {
+  pessoas: number;
+  participacaoTop3: number;
+  pessoasParaMetade: number;
+  /** true quando o valor está espalhado: é processo, não caso individual. */
+  espalhado: boolean;
+}
+
+/** "E se os maiores fossem resolvidos?" */
+export interface SimulacaoCancelamentos {
+  quantos: number;
+  nomes: string[];
+  valorRemovido: number;
+  percentualSimulado: number;
+  ficariaDentro: boolean;
+}
+
+/** Uma fatia agrupada por texto (motivo ou quem autorizou). */
+export interface FatiaCancelamentos {
+  rotulo: string;
+  total: number;
+  lancamentos: number;
+  participacao: number;
+}
+
+/** Forma do dano: muitos lançamentos pequenos ou poucos grandes. */
+export interface PerfilDanoCancelamentos {
+  lancamentos: number;
+  ticketMedio: number;
+  maioresConsiderados: number;
+  participacaoMaiores: number;
+  perfil: 'POUCOS_GRANDES' | 'MUITOS_PEQUENOS' | 'MISTO';
+}
+
+/** Uma causa identificada no mês. */
+export interface CausaCancelamentos {
+  titulo: string;
+  detalhe: string;
+}
+
+/** Leitura do mês: o que está impactando e o que fazer. */
+export interface DiagnosticoCancelamentos {
+  resumo: string;
+  causas: CausaCancelamentos[];
+  acoes: string[];
+}
+
+/** Um mês da série histórica do indicador. */
+export interface PontoMesCancelamentos {
+  anoMes: string;
+  rotulo: string;
+  total: number;
+  totalItens: number;
+  totalCupom: number;
+  vendas: number;
+  percentual: number | null;
+  meta: number;
+  nivel: NivelIndicador | null;
+  cumpriuMeta: boolean;
+  variacao: number | null;
+  evolucao: EvolucaoMes | null;
+  parcial: boolean;
+  semDados: boolean;
+}
+
+/** Detalhe do indicador: o que está impactando e o que fazer. */
+export interface DetalheCancelamentosTotais {
+  indicador: IndicadorCancelamentosTotais;
+  composicao: ComposicaoCancelamentos;
+  ofensores: OfensorCancelamentos[];
+  concentracao: ConcentracaoCancelamentos;
+  simulacao: SimulacaoCancelamentos | null;
+  /** Motivos do cancelamento de **cupom** (o arquivo de itens não os traz). */
+  motivos: FatiaCancelamentos[];
+  /** Quem autorizou os cancelamentos de **cupom**. */
+  autorizadores: FatiaCancelamentos[];
+  perfil: PerfilDanoCancelamentos;
+  diagnostico: DiagnosticoCancelamentos;
+  historico: PontoMesCancelamentos[];
+  sequenciaCumprindo: number;
+  mesesRetencao: number;
+  anoMesLimite: string;
+}
+
 // ----- Metas mensais (Centro de Controle ▸ Metas) -----
 
 /** Indicadores cuja meta é configurável por mês (período mensal). */
@@ -446,6 +613,8 @@ export type TipoMeta =
   | 'RECARGAS_CELULAR'
   | 'CANCELAMENTO_ITENS'
   | 'CANCELAMENTO_CUPOM'
+  /** Teto único das duas metades de cancelamento somadas (ADR 0025). */
+  | 'CANCELAMENTOS_TOTAIS'
   | 'DEVOLUCOES'
   /** Venda em R$ por sacola que ENTRA no estoque (ADR 0022). */
   | 'SACOLAS';

@@ -1,11 +1,12 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `mobile/src/screens/metas/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-16 · **Cobre:** `mobile/src/screens/metas/`
 
 # Área: `metas`
 
 ## 1. Propósito
 Centro de Controle ▸ **Metas**: acompanhar as metas **mensais** de cada indicador
-(Vendas, Recargas de Celular, Cancelamento de Itens, Cancelamento de Cupom e
-Devoluções) no mês escolhido, e **definir** as quatro que são digitadas.
+(Vendas, Recargas de Celular, Cancelamento de Itens, Cancelamento de Cupom,
+Cancelamentos Totais, Devoluções e Sacolas) no mês escolhido, e **definir** as seis
+que são digitadas.
 
 A meta de **Vendas não é digitada aqui**: ela é a soma das estimativas diárias
 cadastradas na Central de Vendas e aparece como somente leitura, com atalho para
@@ -27,9 +28,9 @@ essa tela. Ver
    (`AAAA-MM`); o padrão é o mês atual (dia-calendário de Brasília, UTC−3).
 2. **Carregar:** a tela busca `metasService.listar(anoMes)`; estados
    **carregando / erro**.
-3. **Editar meta digitada:** os cards das quatro metas digitadas mostram o valor
-   atual (R$ ou %) e um botão "Editar meta"; abre o campo, valida (número ≥ 0) e
-   salva via `definir`, recarregando a lista e notificando.
+3. **Editar meta digitada:** os cards das metas digitadas mostram o valor atual
+   (R$, % ou R$ por sacola) e um botão "Editar meta"; abre o campo, valida
+   (número ≥ 0) e salva via `definir`, recarregando a lista e notificando.
 4. **Consultar a meta de Vendas:** o card mostra o valor calculado, a frase de
    origem e um botão **"Abrir Central de Vendas"**, que navega para a tela onde
    as estimativas diárias são cadastradas. Não há botão de editar.
@@ -66,13 +67,21 @@ para a origem da meta de Vendas, [`vendas`](../03-atlas-backend/vendas.md).
 - Quando `definida` é falso, a card explica o porquê conforme o regime: nas
   digitadas, "valor padrão (ainda não definida)"; em Vendas, "sem estimativas
   cadastradas neste mês".
+- **Aviso por tipo (`AVISOS`), hoje só em Cancelamentos Totais.** O card do teto do
+  total escreve que ele **não é a soma dos tetos de Itens e de Cupom**. Sem essa
+  linha, o gestor esperaria 1,25% (0,75 + 0,5) e trataria o 0,75% como erro de
+  digitação — e não entenderia por que as duas metades podem cumprir a meta e o
+  total, não. Ver
+  [ADR 0025](../02-arquitetura/decisoes/0025-cancelamentos-totais-indicador-calculado.md).
+- **A ordem dos cards é a do backend** (`TIPOS_META`): o teto do total aparece logo
+  depois das duas metades que ele soma, como no painel de Indicadores.
 
 ## 7. Lógica pura / utilidades
 - `mesAtual()`, `deslocarMes(anoMes, delta)` e `rotuloMes(anoMes)` vêm de
   `../utils/periodoMensal` — fonte única do período mensal, partilhada com o
   histórico de Indicadores. Ver [Hooks e utilidades](hooks-e-utilidades.md).
 - `formatarValor(item)` e `ajudaUnidade(item)`: formatação/ajuda conforme a
-  unidade (R$ ou %); `ICONES` por tipo de meta.
+  unidade (R$, % ou R$ por unidade); `ICONES` e `AVISOS` por tipo de meta.
 
 ## 8. Componentes e hooks compartilhados usados
 - `useRequisicao` (carga das metas do mês) — ver [Hooks e utilidades](hooks-e-utilidades.md).

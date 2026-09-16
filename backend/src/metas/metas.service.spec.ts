@@ -195,13 +195,28 @@ describe('MetasService', () => {
       });
     });
 
-    it('devolve os 6 tipos, com só VENDAS derivada', async () => {
+    it('devolve os 7 tipos, com só VENDAS derivada', async () => {
       const { service } = criarServico();
       const lista = await service.listar('2026-06');
-      expect(lista).toHaveLength(6);
+      expect(lista).toHaveLength(7);
       expect(lista.filter((m) => m.derivada).map((m) => m.tipo)).toEqual([
         'VENDAS',
       ]);
+    });
+
+    it('CANCELAMENTOS_TOTAIS entra na lista como teto digitável de 0,75%', async () => {
+      const { service } = criarServico();
+      const lista = await service.listar('2026-06');
+      expect(lista.find((m) => m.tipo === 'CANCELAMENTOS_TOTAIS')).toMatchObject(
+        {
+          titulo: 'Cancelamentos Totais',
+          unidade: 'PERCENTUAL',
+          sentido: 'MENOR_MELHOR',
+          meta: 0.75,
+          definida: false,
+          derivada: false,
+        },
+      );
     });
 
     it('SACOLAS entra na lista como meta digitável de R$ 28,00 por sacola', async () => {

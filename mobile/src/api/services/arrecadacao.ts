@@ -5,6 +5,10 @@
  * os indicadores: Troco Solidário, Recargas de Celular, Cancelamento de Itens,
  * Cancelamento de Cupom e Devoluções. Este serviço faz o upload do arquivo de
  * um tipo e consulta os totais (dia/semana/mês) e o ranking por operador.
+ *
+ * Traz também o indicador **Cancelamentos Totais**, que não tem arquivo próprio:
+ * é a soma das duas metades de cancelamento sobre as vendas, calculada pelo
+ * backend (ADR 0025).
  */
 import { Platform } from 'react-native';
 import { apiClient } from '../client';
@@ -12,7 +16,9 @@ import {
   AnomaliaIndicador,
   ComparativoIndicador,
   DetalheArrecadacao,
+  DetalheCancelamentosTotais,
   HistoricoIndicador,
+  IndicadorCancelamentosTotais,
   ItemRankingArrecadacao,
   MetaIndicador,
   DestaquesMes,
@@ -212,5 +218,31 @@ export const arrecadacaoService = {
   /** Painel "Precisa de atenção" completo (metas em risco + operadores). */
   painelAtencao(data: string): Promise<PainelAtencao> {
     return apiClient.get<PainelAtencao>('/arrecadacao/painel-atencao', { data });
+  },
+
+  // ----- Cancelamentos Totais (indicador calculado — ADR 0025) -----
+
+  /**
+   * Indicador "Cancelamentos Totais" do mês: itens + cupom sobre as vendas.
+   *
+   * Consulta por **mês** (`AAAA-MM`), como o indicador de Sacolas, e não por
+   * data: o teto é mensal e comparar com a meta só faz sentido no mês fechado
+   * ou no acumulado dele.
+   */
+  cancelamentosTotais(anoMes: string): Promise<IndicadorCancelamentosTotais> {
+    return apiClient.get<IndicadorCancelamentosTotais>(
+      '/arrecadacao/cancelamentos-totais',
+      { anoMes },
+    );
+  },
+
+  /** Detalhe do indicador: o que está impactando e o que fazer para melhorar. */
+  cancelamentosTotaisDetalhe(
+    anoMes: string,
+  ): Promise<DetalheCancelamentosTotais> {
+    return apiClient.get<DetalheCancelamentosTotais>(
+      '/arrecadacao/cancelamentos-totais/detalhe',
+      { anoMes },
+    );
   },
 };

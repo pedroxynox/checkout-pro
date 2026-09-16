@@ -53,7 +53,13 @@ import {
   HistoricoIndicador,
   HistoricoIndicadoresService,
 } from './historico-indicadores.service';
+import {
+  CancelamentosTotaisService,
+  DetalheCancelamentosTotais,
+  IndicadorCancelamentosTotais,
+} from './cancelamentos-totais.service';
 import { TipoArrecadacao } from './arrecadacao.domain';
+import { anoMesDe, ehAnoMesValido } from '../metas/metas.domain';
 
 /**
  * Controller da arrecadação por operador (indicadores). Visualização liberada
@@ -67,7 +73,19 @@ export class ArrecadacaoController {
     private readonly arrecadacaoService: ArrecadacaoService,
     private readonly inteligente: IndicadoresInteligenteService,
     private readonly historicoService: HistoricoIndicadoresService,
+    private readonly cancelamentosTotais: CancelamentosTotaisService,
   ) {}
+
+  /**
+   * Mês de referência de uma consulta mensal: o parâmetro quando válido, senão o
+   * mês corrente. Mesmo tratamento do indicador de Sacolas — um "AAAA-MM"
+   * digitado errado devolve o mês atual em vez de derrubar a tela.
+   */
+  private mesDe(anoMes?: string): string {
+    return ehAnoMesValido(anoMes ?? '')
+      ? (anoMes as string)
+      : anoMesDe(new Date());
+  }
 
   /** Recebe o arquivo .txt de um tipo e importa as linhas do dia. */
   @Post('upload')
@@ -249,5 +267,34 @@ export class ArrecadacaoController {
   @Get('painel-atencao')
   painelAtencao(@Query() dto: DataIndicadorDto) {
     return this.inteligente.painelAtencao(new Date(dto.data));
+  }
+
+  // ===== Cancelamentos Totais (indicador calculado) =====
+
+  /**
+   * Indicador "Cancelamentos Totais" do mês: a soma de Cancelamento de Itens +
+   * Cancelamento de Cupom sobre as vendas, com meta própria.
+   *
+   * Não tem upload nem "sem movimento": é **derivado** dos dois tipos que já são
+   * importados. Ver `cancelamentos-totais.domain.ts` para o motivo de ele não
+   * entrar em `TIPOS_ARRECADACAO`.
+   */
+  @Get('cancelamentos-totais')
+  cancelamentosTotaisIndicador(
+    @Query('anoMes') anoMes?: string,
+  ): Promise<IndicadorCancelamentosTotais> {
+    return this.cancelamentosTotais.indicador(this.mesDe(anoMes));
+  }
+
+  /**
+   * Detalhe do indicador: o que está impactando (composição, ofensores,
+   * concentração, motivos, autorizadores, perfil do dano) e o que fazer para
+   * melhorar (diagnóstico com ações deduzidas dos números).
+   */
+  @Get('cancelamentos-totais/detalhe')
+  cancelamentosTotaisDetalhe(
+    @Query('anoMes') anoMes?: string,
+  ): Promise<DetalheCancelamentosTotais> {
+    return this.cancelamentosTotais.detalhe(this.mesDe(anoMes));
   }
 }
