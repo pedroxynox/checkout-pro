@@ -244,3 +244,267 @@ describe('IndicadorSacolasService.doMes', () => {
     expect(r.valor).toBe(15);
   });
 });
+
+
+/**
+ * O DETALHE do mês (ADR 0022): o teto de sacolas, os dias de entrada, o cruze
+ * consumo × entrada e a projeção do fechamento.
+ *
+ * Prisma falso mais completo que o de cima: o detalhe também lê estimativas,
+ * consumo e a lista de movimentos com data/origem/responsável.
+ */
+function criarServicoDetalhe(opcoes: {
+  entradas?: { delta: number; dataHora: Date; origem?: string | null; responsavelNome?: string | null }[];
+  saidas?: { delta: number; dataHora: Date }[];
+  vendasPorDia?: Record<string, number>;
+  estimativasPorDia?: Record<string, number>;
+  meta?: number;
+}) {
+  const {
+    entradas = [],
+    saidas = [],
+    vendasPorDia = {},
+    estimativasPorDia = {},
+    meta = 28,
+  } = opcoes;
+
+  const movimentos = [
+    ...entradas.map((e) => ({
+      delta: e.delta,
+      dataHora: e.dataHora,
+      origem: e.origem ?? 'ENTRADA',
+      responsavelNome: e.responsavelNome ?? 'Gerente',
+    })),
+    ...saidas.map((sa) => ({
+      delta: sa.delta,
+      dataHora: sa.dataHora,
+      origem: 'CONSUMO',
+      responsavelNome: 'Fiscal',
+    })),
+  ];
+
+  const dentro = (d: Date, w: { gte: Date; lt: Date }): boolean =>
+    d >= w.gte && d < w.lt;
+
+  const prismaFake = {
+    movimentoEstoque: {
+      findMany: jest.fn(
+        async (args: {
+          where: { dataHora: { gte: Date; lt: Date }; delta?: { gt?: number; lt?: number } };
+          orderBy?: { dataHora?: 'asc' | 'desc' };
+        }) => {
+          const w = args.where.dataHora;
+          const filtrados = movimentos.filter((m) => {
+            if (!dentro(m.dataHora, w)) return false;
+            if (args.where.delta?.gt != null) return m.delta > args.where.delta.gt;
+            if (args.where.delta?.lt != null) return m.delta < args.where.delta.lt;
+            return true;
+          });
+          // O serviço pede `orderBy: { dataHora: 'desc' }` e a tela conta com a
+          // ordem — o falso precisa respeitá-la para o teste valer algo.
+          if (args.orderBy?.dataHora === 'desc') {
+            filtrados.sort((a, b) => b.dataHora.getTime() - a.dataHora.getTime());
+          }
+          return filtrados;
+        },
+      ),
+      aggregate: jest.fn(
+        async (args: { where: { dataHora: { gte: Date; lt: Date } } }) => {
+          const w = args.where.dataHora;
+          const soma = movimentos
+            .filter((m) => dentro(m.dataHora, w) && m.delta < 0)
+            .reduce((s, m) => s + m.delta, 0);
+          return { _sum: { delta: soma } };
+        },
+      ),
+    },
+    vendaDiaria: {
+      aggregate: jest.fn(
+        async (args: { where: { data: { gte: Date } } }) => {
+          const mes = args.where.data.gte.toISOString().slice(0, 7);
+          const soma = Object.entries(vendasPorDia)
+            .filter(([dia]) => dia.startsWith(mes))
+            .reduce((s, [, v]) => s + v, 0);
+          return { _sum: { valor: soma } };
+        },
+      ),
+      findMany: jest.fn(async (args: { where: { data: { gte: Date } } }) => {
+        const mes = args.where.data.gte.toISOString().slice(0, 7);
+        return Object.entries(vendasPorDia)
+          .filter(([dia]) => dia.startsWith(mes))
+          .map(([dia, valor]) => ({ data: new Date(`${dia}T00:00:00.000Z`), valor }));
+      }),
+    },
+    estimativaVendaDia: {
+      findMany: jest.fn(async (args: { where: { data: { gte: Date } } }) => {
+        const mes = args.where.data.gte.toISOString().slice(0, 7);
+        return Object.entries(estimativasPorDia)
+          .filter(([dia]) => dia.startsWith(mes))
+          .map(([dia, valor]) => ({ data: new Date(`${dia}T00:00:00.000Z`), valor }));
+      }),
+    },
+    insumo: { findFirst: jest.fn().mockResolvedValue({ fatorEmbalagem: 1000 }) },
+  };
+  const metasFake = { resolver: jest.fn().mockResolvedValue(meta) };
+  return new IndicadorSacolasService(prismaFake as never, metasFake as never);
+}
+
+const dh = (iso: string) => new Date(`${iso}T10:00:00.000Z`);
+
+describe('IndicadorSacolasService.detalhe — o teto de sacolas', () => {
+  it('diz quantos fardos ainda cabem sem furar a meta', async () => {
+    // Realizado até 16/09: R$ 1,5 mi. Estimativas dos dias 17 a 20: R$ 1,5 mi.
+    // Venda esperada = R$ 3 mi → teto = 107 fardos. Já entraram 100.
+    const service = criarServicoDetalhe({
+      entradas: [{ delta: 100_000, dataHora: dh('2026-09-05') }],
+      vendasPorDia: { '2026-09-10': 1_500_000 },
+      estimativasPorDia: {
+        '2026-09-17': 500_000,
+        '2026-09-18': 500_000,
+        '2026-09-19': 500_000,
+      },
+    });
+    const d = await service.detalhe('2026-09', HOJE);
+
+    expect(d.vendaEsperada.fonte).toBe('ESTIMATIVA');
+    expect(d.vendaEsperada.valor).toBe(3_000_000);
+    expect(d.teto?.tetoFardos).toBe(107);
+    expect(d.teto?.podemEntrarFardos).toBe(7);
+    expect(d.teto?.tetoEstourado).toBe(false);
+  });
+
+  it('teto estourado: mostra a venda que faltaria para justificar o recebido', async () => {
+    const service = criarServicoDetalhe({
+      entradas: [{ delta: 200_000, dataHora: dh('2026-09-05') }],
+      vendasPorDia: { '2026-09-10': 1_500_000 },
+      estimativasPorDia: { '2026-09-20': 1_500_000 },
+    });
+    const d = await service.detalhe('2026-09', HOJE);
+
+    expect(d.vendaEsperada.valor).toBe(3_000_000);
+    expect(d.teto?.tetoEstourado).toBe(true);
+    expect(d.teto?.podemEntrarFardos).toBe(0);
+    expect(d.teto?.vendaNecessaria).toBe(5_600_000);
+  });
+
+  it('lista os dias em que entrou sacola, com fardos, origem e responsável', async () => {
+    const service = criarServicoDetalhe({
+      entradas: [
+        { delta: 50_000, dataHora: dh('2026-09-05'), responsavelNome: 'Ana' },
+        { delta: 50_000, dataHora: dh('2026-09-12'), origem: 'REQUISICAO' },
+      ],
+      vendasPorDia: { '2026-09-10': 3_000_000 },
+    });
+    const d = await service.detalhe('2026-09', HOJE);
+
+    expect(d.entradas).toHaveLength(2);
+    // Mais recente primeiro.
+    expect(d.entradas[0].data).toBe('2026-09-12');
+    expect(d.entradas[0].fardos).toBe(50);
+    expect(d.entradas[0].origem).toBe('REQUISICAO');
+    expect(d.entradas[1].responsavelNome).toBe('Ana');
+  });
+
+  it('o estoque inicial não aparece na lista de entradas', async () => {
+    const service = criarServicoDetalhe({
+      entradas: [
+        { delta: 200_000, dataHora: dh('2026-09-02'), origem: 'ESTOQUE_INICIAL' },
+        { delta: 100_000, dataHora: dh('2026-09-05') },
+      ],
+      vendasPorDia: { '2026-09-10': 3_000_000 },
+    });
+    const d = await service.detalhe('2026-09', HOJE);
+
+    expect(d.entradas).toHaveLength(1);
+    expect(d.indicador.sacolasRecebidas).toBe(100_000);
+  });
+
+  it('distingue acúmulo de estoque de desperdício', async () => {
+    const service = criarServicoDetalhe({
+      entradas: [{ delta: 200_000, dataHora: dh('2026-09-05') }],
+      saidas: [{ delta: -150_000, dataHora: dh('2026-09-10') }],
+      vendasPorDia: { '2026-09-10': 3_000_000 },
+    });
+    const d = await service.detalhe('2026-09', HOJE);
+
+    expect(d.consumoVsEntrada.sacolasConsumidas).toBe(150_000);
+    expect(d.consumoVsEntrada.variacaoEstoque).toBe(50_000);
+    expect(d.consumoVsEntrada.porEntrada).toBe(15);
+    expect(d.consumoVsEntrada.porConsumo).toBe(20);
+    expect(d.consumoVsEntrada.leitura).toContain('não é desperdício');
+  });
+
+  it('a série cobre todos os dias do mês, com venda, estimativa e consumo', async () => {
+    const service = criarServicoDetalhe({
+      entradas: [{ delta: 100_000, dataHora: dh('2026-09-05') }],
+      saidas: [{ delta: -10_000, dataHora: dh('2026-09-06') }],
+      vendasPorDia: { '2026-09-06': 100_000 },
+      estimativasPorDia: { '2026-09-20': 90_000 },
+    });
+    const d = await service.detalhe('2026-09', HOJE);
+
+    expect(d.serie).toHaveLength(30); // setembro
+    const dia6 = d.serie.find((x) => x.data === '2026-09-06');
+    expect(dia6).toMatchObject({ venda: 100_000, consumo: 10_000, entrada: 0 });
+    const dia5 = d.serie.find((x) => x.data === '2026-09-05');
+    expect(dia5?.entrada).toBe(100_000);
+    expect(d.serie.find((x) => x.data === '2026-09-20')?.estimativa).toBe(90_000);
+    expect(d.serie.find((x) => x.data === '2026-09-01')?.estimativa).toBeNull();
+  });
+
+  it('projeta o fechamento supondo a 2ª entrega do ciclo quinzenal', async () => {
+    // Uma entrega só até agora e faltam dias no mês → supõe outra igual.
+    const service = criarServicoDetalhe({
+      entradas: [{ delta: 100_000, dataHora: dh('2026-09-05') }],
+      vendasPorDia: { '2026-09-10': 1_500_000 },
+      estimativasPorDia: { '2026-09-20': 1_500_000 },
+    });
+    const d = await service.detalhe('2026-09', HOJE);
+
+    expect(d.projecao.sacolasPrevistas).toBe(100_000);
+    expect(d.projecao.sacolasNoFechamento).toBe(200_000);
+    expect(d.projecao.valor).toBe(15);
+    expect(d.projecao.cumprira).toBe(false);
+    // A suposição fica escrita, nunca implícita.
+    expect(d.projecao.baseDaPrevisao).toContain('quinzenal');
+  });
+
+  it('com as 2 entregas do mês já recebidas, não supõe uma terceira', async () => {
+    const service = criarServicoDetalhe({
+      entradas: [
+        { delta: 50_000, dataHora: dh('2026-09-05') },
+        { delta: 50_000, dataHora: dh('2026-09-12') },
+      ],
+      vendasPorDia: { '2026-09-10': 3_000_000 },
+    });
+    const d = await service.detalhe('2026-09', HOJE);
+
+    expect(d.projecao.sacolasPrevistas).toBe(0);
+    expect(d.projecao.baseDaPrevisao).toContain('Não supõe entrega nova');
+  });
+
+  it('mês fechado: venda esperada é o realizado e não prevê entrega', async () => {
+    const service = criarServicoDetalhe({
+      entradas: [{ delta: 100_000, dataHora: dh('2026-08-05') }],
+      vendasPorDia: { '2026-08-10': 2_800_000 },
+    });
+    const d = await service.detalhe('2026-08', HOJE);
+
+    expect(d.vendaEsperada.fonte).toBe('REALIZADO');
+    expect(d.vendaEsperada.fracaoRealizada).toBe(1);
+    expect(d.projecao.sacolasPrevistas).toBe(0);
+    expect(d.projecao.baseDaPrevisao).toContain('Mês fechado');
+  });
+
+  it('sem estimativas futuras, a venda esperada vem do ritmo', async () => {
+    const service = criarServicoDetalhe({
+      entradas: [{ delta: 100_000, dataHora: dh('2026-09-05') }],
+      vendasPorDia: { '2026-09-10': 100_000, '2026-09-11': 100_000 },
+    });
+    const d = await service.detalhe('2026-09', HOJE);
+
+    expect(d.vendaEsperada.fonte).toBe('RUN_RATE');
+    // 200.000 em 2 dias com venda × 30 dias = 3.000.000.
+    expect(d.vendaEsperada.valor).toBe(3_000_000);
+  });
+});

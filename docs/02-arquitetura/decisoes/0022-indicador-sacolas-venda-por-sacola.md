@@ -204,6 +204,84 @@ mexer nele. Hoje o resultado é idêntico (existe um item só).
   só tem `vendas`).
 - **Projeção e painel de atenção**, que hoje vivem no módulo de arrecadação.
 
+### 10. O detalhe: o indicador lido de trás para frente (o TETO de sacolas)
+
+A intenção, dita pelo dono do projeto, é *"no fim do mês não desperdiçar sacolas
+e vender o que diz a meta, ou mais, por sacola"*. Isso muda qual pergunta é útil.
+
+Enquanto o mês corre, saber que o indicador está em R$ 22 **não diz o que fazer**.
+O que diz é a mesma conta invertida:
+
+```
+indicador = venda ÷ sacolas ≥ meta    ⟺    sacolas ≤ venda ÷ meta
+```
+
+Existe, portanto, um **teto de sacolas** que o mês suporta sem furar a meta. Com
+R$ 3.000.000 esperados e meta de R$ 28, o teto é 107.142 sacolas — **107 fardos**.
+Se 100 já entraram, **ainda cabem 7**. O indicador deixa de ser um boletim (que só
+se lê no fim) e passa a ser uma **régua de compra** (que serve durante o mês).
+
+O teto em fardos é **truncado para baixo**: com teto de 107.142 sacolas, o 108º
+fardo furaria a meta. Arredondar para cima daria um número que não se pode usar.
+
+**O que a tela de detalhe mostra, nesta ordem:** o teto (o número que serve para
+decidir vem primeiro) · a projeção do fechamento (o horizonte da intenção) ·
+recebido × usado (separa desperdício de reposição) · os dias em que entrou sacola
+(o extrato que sustenta o denominador, com data, fardos, origem e quem registrou)
+· a série do mês (venda e consumo dia a dia).
+
+**A venda esperada do mês, em ordem de confiança:**
+
+| Fonte | Quando vale | O que é |
+|---|---|---|
+| `ESTIMATIVA` | há estimativas para os dias que faltam | realizado até hoje **+** as estimativas da gestão para o resto do mês |
+| `RUN_RATE` | sem estimativas | projeção pelo ritmo (média dos dias com venda × dias do mês) |
+| `REALIZADO` | mês fechado | o que aconteceu |
+
+Junto vai a **fração já realizada**: o teto calculado no dia 2 é quase todo
+previsão e no dia 30 é quase todo fato. Sem esse aviso o gestor confiaria num
+número frágil como se fosse certo.
+
+#### ⚠️ A direção é contraintuitiva, e isso fica escrito na tela
+
+Receber **menos** sacolas **melhora** o indicador. Isso nunca pode ser lido como
+"compre menos": a loja precisa de sacolas para atender. O teto é uma **linha de
+aviso** — passar dela significa que, com a venda esperada, o mês fecha abaixo da
+meta. E a saída pode ser **vender mais**, não necessariamente comprar menos. Por
+isso o detalhe mostra também a pergunta espelho: **quanta venda o mês precisaria
+para as sacolas já recebidas ficarem na meta**.
+
+#### Desperdício ≠ acúmulo de estoque
+
+O indicador oficial mede pela entrada, mas o estoque é um **amortecedor**: num mês
+a loja pode receber 200 fardos e usar 150. Nesse mês o indicador oficial parece
+pior do que o uso real, e a diferença **não é desperdício** — é estoque que subiu,
+e que vai aparecer como indicador melhor no mês seguinte.
+
+O detalhe mostra os dois lado a lado: **oficial** = venda ÷ sacolas *recebidas*;
+**referência de uso real** = venda ÷ sacolas *consumidas*. Desperdício aparece no
+consumo alto em relação à venda; acúmulo aparece na entrada alta em relação ao
+consumo. Sem os dois, um mês de reposição maior seria lido como desperdício —
+exatamente o erro que a intenção do dono do projeto quer evitar.
+
+#### A suposição da projeção fica visível
+
+Para projetar o fechamento é preciso supor se **ainda vem entrega** no mês. A
+regra: se restam ao menos 3 dias, o ciclo é quinzenal e só veio **uma** entrega,
+supõe-se uma segunda do tamanho da primeira. Essa frase viaja com o dado
+(`baseDaPrevisao`) e aparece na tela: um palpite sem rótulo seria lido como fato.
+
+### 11. Onde o indicador aparece (revisto)
+
+Passa a existir **só no painel de Indicadores** — a card foi **removida do
+Almoxarifado**, por decisão do dono do projeto. O almoxarifado segue com o que é
+dele (saldo, ruptura, pedido quinzenal); o indicador de gestão fica junto dos
+outros, e tocá-lo abre o detalhe (tela própria `SacolasDetalhe`, porque o detalhe
+dos indicadores de arrecadação é acoplado ao catálogo `FIXA`/`VENDAS`).
+
+Esta seção **substitui** a decisão 4 da tabela abaixo, que dizia "no Almoxarifado
+**e** no painel".
+
 ## Consequências
 
 **A favor:**

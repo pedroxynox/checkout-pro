@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 133 arquivos, 1161 casos. **Mobile:** 35 arquivos, 242 casos. **Total: 1403 casos.**
+> **Backend:** 133 arquivos, 1189 casos. **Mobile:** 36 arquivos, 250 casos. **Total: 1439 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -96,12 +96,12 @@
 | `src/incidencias/incidencias.sancoes.spec.ts` | 7 | 2 |
 | `src/incidencias/incidencias.service.spec.ts` | 14 | 2 |
 | `src/incidencias/incidencias.tipos.spec.ts` | 7 | 1 |
-| `src/insumos/indicador-sacolas.service.spec.ts` | 13 | 1 |
+| `src/insumos/indicador-sacolas.service.spec.ts` | 23 | 2 |
 | `src/insumos/insumos.controller.spec.ts` | 5 | 1 |
 | `src/insumos/insumos.properties.spec.ts` | 5 | 2 |
 | `src/insumos/insumos.resumo.spec.ts` | 2 | 1 |
 | `src/insumos/insumos.service.spec.ts` | 12 | 1 |
-| `src/insumos/sacolas.domain.spec.ts` | 33 | 10 |
+| `src/insumos/sacolas.domain.spec.ts` | 51 | 14 |
 | `src/metas/metas.domain.spec.ts` | 13 | 5 |
 | `src/metas/metas.service.spec.ts` | 15 | 5 |
 | `src/notificacoes/notificacoes.properties.spec.ts` | 2 | 1 |
@@ -170,6 +170,7 @@
 | `src/screens/indicadores/IndicadoresScreen.test.tsx` | 8 | 1 |
 | `src/screens/indicadores/NaoReconhecidosScreen.test.tsx` | 3 | 1 |
 | `src/screens/indicadores/PainelVendasScreen.test.tsx` | 3 | 1 |
+| `src/screens/indicadores/SacolasDetalheScreen.test.tsx` | 8 | 1 |
 | `src/screens/insumos/InsumosScreen.test.tsx` | 2 | 1 |
 | `src/screens/notificacoes/NotificacoesScreen.test.tsx` | 5 | 1 |
 | `src/screens/operadores/JustificativasScreen.test.tsx` | 5 | 1 |

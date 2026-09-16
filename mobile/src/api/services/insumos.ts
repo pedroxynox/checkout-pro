@@ -3,6 +3,7 @@ import { apiClient } from '../client';
 import {
   AnaliseInsumo,
   CategoriaInsumo,
+  DetalheSacolas,
   EntradaInsumo,
   IndicadorSacolas,
   Insumo,
@@ -35,6 +36,17 @@ export const insumosService = {
   indicadorSacolas(anoMes?: string): Promise<IndicadorSacolas> {
     return apiClient.get<IndicadorSacolas>(
       '/insumos/indicador-sacolas',
+      anoMes ? { anoMes } : undefined,
+    );
+  },
+
+  /**
+   * Detalhe do indicador SACOLAS: teto de sacolas do mês, dias de entrada,
+   * consumo × entrada, série diária e projeção do fechamento.
+   */
+  detalheSacolas(anoMes?: string): Promise<DetalheSacolas> {
+    return apiClient.get<DetalheSacolas>(
+      '/insumos/indicador-sacolas/detalhe',
       anoMes ? { anoMes } : undefined,
     );
   },

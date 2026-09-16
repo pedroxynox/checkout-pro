@@ -30,6 +30,7 @@ janela de retenção (padrão 24 meses), sempre com a meta que valia nele.
 |---|---|---|
 | `IndicadoresScreen.tsx` | Hub: seletor de mês, vendas, destaques, semáforos (inclusive **Sacolas**) e painel de atenção | 767 |
 | `IndicadorDetalheScreen.tsx` | Detalhe de um indicador (meta, projeção, evolução mensal, tendência, ranking, cancelamentos) | 1044 |
+| `SacolasDetalheScreen.tsx` | Detalhe de **Sacolas**: teto de sacolas, projeção do fechamento, recebido × usado, dias de entrada e série do mês | 532 |
 | `PainelVendasScreen.tsx` | Painel de vendas (meta, projeção, comparativos, curva, heatmap, por hora) | 700 |
 | `NaoReconhecidosScreen.tsx` | Fila de códigos sem cadastro (associar/criar) | 284 |
 
@@ -75,6 +76,7 @@ Todas tratam **carregando / erro / vazio**.
 | Painel de vendas | `vendasService.painel(data)` | `GET /vendas/painel` |
 | Vendas por hora | `vendasService.porHora(ini, fim)` | `GET /vendas/por-hora` |
 | Indicador de Sacolas | `insumosService.indicadorSacolas(anoMes)` | `GET /insumos/indicador-sacolas` |
+| Detalhe de Sacolas | `insumosService.detalheSacolas(anoMes)` | `GET /insumos/indicador-sacolas/detalhe` |
 
 Módulos do backend relacionados: [`arrecadacao`](../03-atlas-backend/arrecadacao.md)
 e [`vendas`](../03-atlas-backend/vendas.md); associação de códigos usa
@@ -150,6 +152,7 @@ de [`insumos`](../03-atlas-backend/insumos.md).
 | `NaoReconhecidosScreen.test.tsx` | Lista com aviso de total, estado vazio e associação de código | 3 |
 | `PainelVendasScreen.test.tsx` | Faturamento/projeção do mês, venda do dia e estimativa atingida | 3 |
 | `IndicadoresScreen.test.tsx` | Card de Sacolas: valor **sempre** com o desvio até o piso, fardos/entregas/mês em andamento, desvio negativo, mês sem entrada e sem venda explicados (nunca R$ 0,00), aviso de entregas atípicas, degradação silenciosa e o mês pedido | 8 |
+| `SacolasDetalheScreen.test.tsx` | Detalhe de Sacolas: os fardos que **ainda cabem** em destaque, a fonte da venda esperada e quanto já é fato, o aviso de que a saída também pode ser vender mais, teto estourado mostrando a venda que faltaria (sem número negativo), a projeção com a suposição escrita, acúmulo × desperdício e o extrato de entradas | 8 |
 
 ## 10. Riscos, dívidas e pendências
 - 🔧 `IndicadorDetalheScreen.tsx` (>800 linhas) reúne muitos sub-gráficos num só

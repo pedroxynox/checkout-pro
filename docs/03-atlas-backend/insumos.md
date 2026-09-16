@@ -24,12 +24,12 @@ aprovação do gestor.
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `insumos.controller.ts` | Rotas HTTP do almoxarifado | 240 |
+| `insumos.controller.ts` | Rotas HTTP do almoxarifado | 258 |
 | `insumos.service.ts` | Regras de aplicação: saldo, movimentos, análise, painel | 506 |
 | `insumos.domain.ts` | Regras puras: saldo, fardo, estoque baixo, proativo | 351 |
 | `insumos.errors.ts` | Erros de domínio (fardo, quantidade, estoque insuficiente) | 65 |
-| `sacolas.domain.ts` | Regras puras do indicador SACOLAS (razão, desvio, estado, avisos) | 276 |
-| `indicador-sacolas.service.ts` | Apura o indicador SACOLAS do mês (entradas × vendas × meta) | 229 |
+| `sacolas.domain.ts` | Regras puras do indicador SACOLAS: razão, desvio, estado, avisos, **teto de sacolas**, venda esperada e o cruze consumo × entrada | 507 |
+| `indicador-sacolas.service.ts` | Apura o indicador SACOLAS do mês e monta o **detalhe** (teto, entradas do mês, consumo, série diária, projeção) | 526 |
 | `insumos.module.ts` | Ligações (DI) do módulo | 32 |
 | `insumos-proativo.service.ts` | Crons de alerta (crítico, ruptura, relatório) | 106 |
 | `pedidos-recorrentes.controller.ts` | Rotas HTTP dos pedidos recorrentes | 80 |
@@ -196,8 +196,8 @@ Operação administrativa; retorna a contagem removida.
 |---|---|---|
 | `insumos.service.spec.ts` | Cadastro, fardo, consumo, estoque insuficiente, alerta, N+1 | 12 |
 | `insumos.controller.spec.ts` | Delegação das rotas (fardo, cadastro, zerar) | 5 |
-| `sacolas.domain.spec.ts` | Indicador SACOLAS puro: a razão (com o exemplo dos 200 fardos), `null` em vez de zero sem entrada/venda, desvio com sinal, o semáforo na direção certa, comparação com o mês anterior, avisos de 1 e 3+ entregas e os textos | 33 |
-| `indicador-sacolas.service.spec.ts` | Apuração com Prisma falso: **estoque inicial fora do denominador**, soma por categoria `SACOLA`, entradas de requisição/pedido/sem origem, mês sem entrada e sem venda, mês parcial, meta pelo `MetasService` e o fator do fardo | 13 |
+| `sacolas.domain.spec.ts` | Indicador SACOLAS puro: a razão (com o exemplo dos 200 fardos), `null` em vez de zero sem entrada/venda, desvio com sinal, o semáforo na direção certa, comparação com o mês anterior, avisos de entregas, os textos — mais o **teto de sacolas** (fardos truncados para baixo, teto estourado com a venda necessária), a venda esperada nas três fontes, a projeção do fechamento e o cruze consumo × entrada | 51 |
+| `indicador-sacolas.service.spec.ts` | Apuração com Prisma falso: **estoque inicial fora do denominador**, soma por categoria `SACOLA`, entradas de requisição/pedido/sem origem, mês sem entrada e sem venda, mês parcial, meta pelo `MetasService` e o fator do fardo — mais o **detalhe** (teto e fardos que ainda cabem, teto estourado, extrato de entradas em ordem, série densificada do mês, projeção com e sem entrega suposta, mês fechado) | 23 |
 | `insumos.properties.spec.ts` | Propriedades: saldo, fardo, alerta, saldo não-negativo | 5 |
 | `insumos.resumo.spec.ts` | `resumoEstoque` (consumo/entrada de 7 dias, fronteira) | 2 |
 

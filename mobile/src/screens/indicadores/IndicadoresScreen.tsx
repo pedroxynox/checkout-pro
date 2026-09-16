@@ -357,6 +357,7 @@ export function IndicadoresScreen({
             coisas que não se comparam.
           */}
           {sacolas && (
+            <Pressable onPress={() => navigation.navigate('SacolasDetalhe')}>
             <View
               style={[
                 styles.saudeCard,
@@ -413,7 +414,13 @@ export function IndicadoresScreen({
                   />
                 </View>
               )}
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={cores.textoSecundario}
+              />
             </View>
+            </Pressable>
           )}
 
           {/* Card "Precisa de atenção" — detalhado */}

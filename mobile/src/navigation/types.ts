@@ -25,6 +25,8 @@ export type RootStackParamList = {
   Importacoes: undefined;
   Fechamento: undefined;
   Indicadores: undefined;
+  /** Detalhe do indicador Sacolas (teto de sacolas, entradas, consumo). */
+  SacolasDetalhe: undefined;
   IndicadorDetalhe: {
     tipo: TipoArrecadacao;
     /** Ao vir de um "ponto de atenção": foca o detalhe na causa. */
