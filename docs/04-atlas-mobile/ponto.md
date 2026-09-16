@@ -26,10 +26,11 @@ feriados).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `RegistroPontoScreen.tsx` | Tela principal: busca, jornada do dia, batidas, leitor e **modo correção** | 1704 |
-| `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, lista por pessoa, comparativo) | 694 |
+| `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, **compensação de horas**, lista por pessoa, comparativo) | 719 |
 | `RankingTimeScreen.tsx` | Ranking do time numa métrica do resumo (uma tela para as sete) | 549 |
 | `metricasResumo.ts` | Identidade das sete métricas do resumo (fonte única de card + ranking) | 153 |
-| `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 344 |
+| `CartaoCompensacao.tsx` | Seção "Compensação de horas": carteira de 50%, dias mais fracos, liberações e coberturas sugeridas | 804 |
+| `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 418 |
 | `InconsistenciasScreen.tsx` | Problemas do ciclo agrupados por dia | 325 |
 | `MarcacoesInvalidasScreen.tsx` | Marcações que faltam registrar: quantas e quais, por dia; cada item abre o ajuste | 644 |
 | `filaCorrecao.ts` | Fila de correção (lógica pura): filtros, ordem de trabalho e próxima pendência | 118 |
@@ -70,7 +71,15 @@ feriados).
 
    O relatório continua não editando nada: ele aponta, e o ajuste acontece no
    Relógio Ponto (é lá que vivem as permissões e a validação da batida).
-7. **Ranking do time:** cada card do "Resumo do time" abre o
+7. **Compensação de horas:** logo abaixo do resumo do time, a seção
+   "Compensação de horas" mostra quanto a equipe tem de 50% em aberto, quanto
+   **não cabe** nos dias que restam do ciclo, os dias mais fracos, e uma linha por
+   sugestão: quem liberar, em que dia, quanto trabalha e quanto compensa — com a
+   frase que justifica cada uma. Duas ações por linha (**Conceder** /
+   **Descartar**), sempre com confirmação. Em bloco próprio, as **coberturas de
+   falta**: usar as mesmas horas de 50% para quitar faltas passadas, pelo botão de
+   débito que já existe.
+8. **Ranking do time:** cada card do "Resumo do time" abre o
    `RankingTimeScreen` daquela métrica (extras 50%, extras 100%, faltas,
    atestados, TAC, atrasos ou conflitos), da pessoa que mais tem à que menos tem;
    dali toca-se numa pessoa para cair no detalhe diário dela.
@@ -94,6 +103,10 @@ Cada tela trata os estados **carregando / erro / vazio**.
 | Comparativo | `centralJornadaService.comparativos(qtd)` | `GET /central-jornada/comparativos` |
 | Detalhe por pessoa | `centralJornadaService.pessoa(id, ciclo)` | `GET /central-jornada/pessoa/:id` |
 | Marcar débito | `centralJornadaService.marcarDebito(id, debito)` | `POST /central-jornada/ausencia/:id/debito` |
+| Painel de compensação | `compensacaoHorasService.painel(ciclo)` | `GET /compensacao-horas` |
+| Conceder compensação | `compensacaoHorasService.aprovar(dados)` | `POST /compensacao-horas/aprovar` |
+| Descartar sugestão | `compensacaoHorasService.recusar(id, data, motivo?)` | `POST /compensacao-horas/recusar` |
+| Desfazer compensação | `compensacaoHorasService.cancelar(id)` | `POST /compensacao-horas/:id/cancelar` |
 | Revisão do ciclo | `centralJornadaService.exportacao(ciclo)` | `GET /central-jornada/exportacao` |
 | Status do ciclo | `cicloFolhaService.status(ciclo)` | `GET /ciclo-folha/status` |
 | Fechar / reabrir | `cicloFolhaService.fechar/reabrir(ciclo)` | `POST /ciclo-folha/fechar` · `POST /ciclo-folha/reabrir` |
@@ -101,6 +114,7 @@ Cada tela trata os estados **carregando / erro / vazio**.
 
 Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
 [`central-jornada`](../03-atlas-backend/central-jornada.md),
+[`compensacao-horas`](../03-atlas-backend/compensacao-horas.md),
 [`ciclo-folha`](../03-atlas-backend/ciclo-folha.md),
 [`feriados`](../03-atlas-backend/feriados.md) e
 [`fiscais`](../03-atlas-backend/fiscais.md) (autosserviço do fiscal).
@@ -140,6 +154,32 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   **não aparece em domingo nem em feriado**: faltar nesses dias fica apenas como
   ausência e o servidor recusaria a marcação. O botão segue disponível nos
   demais dias para quem tem `OPERADORES_AUSENCIAS`.
+- **A seção "Compensação de horas" some inteira para quem não pode conceder** —
+  e, junto com ela, a consulta ao servidor. A permissão é `OPERADORES_AUSENCIAS`,
+  **a mesma do botão "Débito"**, porque conceder compensação e marcar débito são o
+  mesmo poder (ADR 0021 — "débito é compensação"). O hook de requisição roda
+  sempre (regra dos hooks), então a chamada é trocada por uma promessa vazia; era
+  isso ou pedir um painel caro (apuração do ciclo + escala + férias + 90 dias de
+  venda) que o servidor recusaria de todo modo. Mesmo padrão do comparativo por
+  ciclo, que só busca quando é aberto.
+- **A seção nunca mostra lista vazia sem explicação.** Quando não há sugestões, o
+  backend devolve o motivo (`bloqueio`) e a tela o traduz: ciclo passado, ciclo
+  fechado, sem dia disponível ou **sem dado de venda**. "Não sei ainda, e por
+  isso" é informação; uma lista vazia é um defeito aparente.
+- **Toda ação pede confirmação, e a frase diz o efeito real.** Ao cobrir uma
+  falta, o texto afirma que o débito **NÃO apaga a falta** nem o registro para
+  advertência — sem isso o abono passa a ser lido como perdão. Ao desfazer, avisa
+  que as horas **voltam** para o saldo da pessoa.
+- **Chip "Compensou" em verde, separado de "Deve".** São opostos: quem compensou
+  **usou** horas que tinha; quem deve está negativo. Usar a mesma cor ou o mesmo
+  chip faria boa gestão parecer dívida.
+- **No detalhe diário, o dia compensado aparece como "Compensação"** (verde) com
+  a linha "usou Xh de 50%" e a entrada combinada, e **não** como falta ou jornada
+  incompleta — o dia curto foi acordado. Ver a regra 16 da
+  [`central-jornada`](../03-atlas-backend/central-jornada.md).
+- **As frases de justificativa vêm do servidor, não da tela.** A mesma frase é
+  gravada no banco quando o gestor decide (é o retrato do que se sabia naquele
+  momento), então duplicá-la no app garantiria que um dia as duas divergissem.
 - **Bater ponto em dia de folga é permitido**, e a tela não pede confirmação nem
   avisa a pessoa: quem tem de agir é o gestor. O dia aparece com a marca
   📅 **"Trabalhou num dia marcado como FOLGA"** em **azul** — informativo, não de
@@ -306,6 +346,7 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
 | `InconsistenciasScreen.test.tsx` | Agrupamento por dia e filtro por pessoa | 2 |
 | `MarcacoesInvalidasScreen.test.tsx` | O que falta em cada dia (já expandido), horas registradas + turno, motivo da conferência, resumo, filtros por pessoa e por marcação, recolher dia, estado vazio, aviso dos não-retornos deixados fora, abertura do ajuste na pessoa/dia do item, filtros levados para a fila, item não tocável sem acesso ao ponto e guarda do primeiro foco | 13 |
 | `filaCorrecao.test.ts` | Identidade do item, filtros, ordem de trabalho e próxima pendência (mesmo dia ainda incompleto, item seguinte, volta ao topo, respeito aos filtros e fim da fila) | 10 |
+| `CartaoCompensacao.test.tsx` | Seção de compensação: invisível (e sem consultar o servidor) para quem não pode conceder, carteira com o que não cabe no ciclo, o **motivo** de não haver sugestões em vez de lista vazia, a liberação com dia/horas/justificativa/régua de venda, conceder só após confirmar (com os minutos certos), nada gravado ao negar, descarte registrado, cobertura de falta pelo débito existente avisando que a falta permanece, lista do que já foi concedido com desfazer, e o aviso de quem tem menos de 3h | 11 |
 | `RankingTimeScreen.test.tsx` | Ordem do maior ao menor, total do time, zerados no rodapé recolhido, detalhe dia a dia, navegação ao detalhe diário, título/formato por métrica, atestados como métrica separada das faltas, estado vazio e ciclo recebido | 9 |
 | `leituraComprovanteUtil.test.ts` | Gatilho `leituraCompleta` e extração `horaLida` (tolerante ao OCR) | 4 |
 | `montarTextoOcr.test.ts` | Reconstrução do texto pela geometria do OCR | 3 |

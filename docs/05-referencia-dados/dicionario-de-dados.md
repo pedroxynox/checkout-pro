@@ -3,7 +3,7 @@
 
 # Dicionário de Dados
 
-> Detalhe campo a campo das **55 tabelas**. Fonte: `backend/prisma/schema.prisma`.
+> Detalhe campo a campo das **56 tabelas**. Fonte: `backend/prisma/schema.prisma`.
 
 ## `Usuario`
 
@@ -876,5 +876,34 @@ futura (a foto exige um storage de objetos/S3, ainda não disponível).
 | `tipo` | `String?` |  |  |
 | `descricao` | `String?` |  |  |
 | `fotoUrl` | `String?` |  |  |
+| `atualizadoEm` | `DateTime` |  |  |
+
+## `CompensacaoHoras`
+
+converte para ms na fronteira.
+
+| Campo | Tipo | Chave | Descrição |
+|---|---|---|---|
+| `id` | `String` | PK |  |
+| `colaboradorId` | `String` |  | A ficha do Cadastro Unificado (operador, fiscal ou supervisor). |
+| `data` | `DateTime` |  | Dia da compensação, em meia-noite UTC do dia civil (convenção do schema). |
+| `minutosCompensados` | `Int` |  | que o saldo da pessoa — a compensação não pode criar saldo negativo. |
+| `minutosTrabalhados` | `Int` |  | Vale a identidade: minutosCompensados + minutosTrabalhados = carga do dia. |
+| `horaInicio` | `String?` |  | Faixa em que ela trabalha ("HH:mm"), nula quando o dia é inteiro livre. |
+| `horaFim` | `String?` |  |  |
+| `semIntervalo` | `Boolean` |  | batidas em vez de quatro. |
+| `status` | `StatusCompensacao` |  |  |
+| `origem` | `OrigemCompensacao` |  |  |
+| `motivo` | `String?` |  | liberamos esta pessoa neste dia?" — só recalcular um passado que já é outro. |
+| `vendaPrevista` | `Decimal?` |  |  |
+| `fonteVendaPrevista` | `String?` |  | aquela data) ou HISTORICO (média do dia da semana). |
+| `saldo50MinNaEpoca` | `Int?` |  |  |
+| `coberturaNoDia` | `Int?` |  | Quantas pessoas da mesma função ficavam no dia, já contando esta saída. |
+| `criadoPor` | `String?` |  |  |
+| `criadoPorNome` | `String?` |  |  |
+| `criadoEm` | `DateTime` |  |  |
+| `decididoPor` | `String?` |  |  |
+| `decididoPorNome` | `String?` |  |  |
+| `decididoEm` | `DateTime?` |  |  |
 | `atualizadoEm` | `DateTime` |  |  |
 

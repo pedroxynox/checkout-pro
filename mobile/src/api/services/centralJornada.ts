@@ -18,6 +18,14 @@ export interface CentralTotais {
   horasDevidasMs: number;
   horasAtestadoMs: number;
   /**
+   * Horas de 50% consumidas por compensação aprovada no ciclo.
+   *
+   * Balde próprio, e não somado a `horasDevidasMs`, porque quem compensou não
+   * **deve** horas — ele **usou** horas que já tinha. Na aritmética, porém,
+   * abate as 50% igual ao débito (e nunca as 100%).
+   */
+  compensadoMs: number;
+  /**
    * Dias de ausência que **não** são atestado (falta simples ou com débito).
    * O atestado médico é abonado e tem contador próprio (`atestados`).
    */
@@ -67,6 +75,13 @@ export type TipoDiaJornada =
    */
   | "FALTA_NAO_REGISTRADA"
   | "ATESTADO"
+  /**
+   * Dia com **compensação de horas aprovada**: a pessoa trabalha menos (ou
+   * nada) para consumir o próprio saldo de 50%. Tem tipo próprio porque, sem
+   * ele, um dia inteiro compensado apareceria como `FALTA_NAO_REGISTRADA` — a
+   * Central acusaria em laranja o dia que ela mesma sugeriu.
+   */
+  | "COMPENSACAO"
   | "SEM_REGISTRO";
 
 export interface CentralDiaDetalhe {
@@ -87,6 +102,8 @@ export interface CentralDiaDetalhe {
   extras50Ms: number;
   extras100Ms: number;
   devidasMs: number;
+  /** Horas de 50% consumidas por compensação aprovada neste dia. */
+  compensadoMs?: number;
   tac: boolean;
   motivosTac: string[];
   /** id da ausência (dias de falta/atestado), para marcar débito. */

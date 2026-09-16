@@ -1516,3 +1516,105 @@ model ProdutoPesado {
   @@index([nomeNormalizado])
   @@map("produtos_pesados")
 }
+
+
+
+// Estado de uma compensação de horas (ADR 0021). Não existe estado "sugerida":
+// as sugestões são CALCULADAS a cada consulta (como todo número de jornada) e
+// nunca gravadas — gravá-las encheria a tabela de recomendações que ninguém
+// leu. O que se grava é a DECISÃO do gestor:
+//   APROVADA  = concedida; passa a abater o saldo de 50% no cálculo da jornada;
+//   RECUSADA  = sugestão descartada; serve para não sugerir aquele dia de novo;
+//   CANCELADA = uma aprovação desfeita; deixa de abater (a linha fica pelo
+//               histórico, em vez de ser apagada).
+enum StatusCompensacao {
+  APROVADA
+  RECUSADA
+  CANCELADA
+}
+
+// Como a compensação nasceu: da sugestão automática ou lançada à mão pelo
+// gestor. Guardado para medir, no futuro, se as sugestões são aproveitadas.
+enum OrigemCompensacao {
+  SUGESTAO
+  MANUAL
+}
+
+// COMPENSAÇÃO DE HORAS (ADR 0021) — um dia em que o colaborador trabalha MENOS
+// que a carga (ou não trabalha nada) para consumir o próprio saldo de horas de
+// 50%. É a mesma operação do `Ausencia.debitoHoras` ("débito é compensação"),
+// só que planejada e possivelmente PARCIAL.
+//
+// ## Por que uma tabela nova, e não um motivo novo em `Ausencia`
+//
+// Duas razões independentes, e cada uma já bastaria:
+//
+//  1. Uma compensação parcial NÃO é uma ausência. No dia em que a pessoa
+//     trabalha 2h e vai para casa, ela esteve presente — `Ausencia` diz o
+//     contrário, e o dia tem batidas de ponto.
+//  2. `calcularPessoa` conta como FALTA toda ausência que não seja atestado.
+//     Uma compensação gravada em `Ausencia` apareceria como falta na card da
+//     pessoa, nos rankings, nos comparativos e nos alertas: quem foi bem gerido
+//     ficaria com ficha de faltoso.
+//
+// ## Por que não existe escala por data, e por que isto resolve
+//
+// `EscalaEntry` é por DIA DA SEMANA e a folga fixa vive na ficha, então até
+// aqui não havia onde registrar "esta pessoa, neste dia, trabalha menos".
+// Esta é a primeira tabela de exceção de escala POR DATA.
+//
+// Tudo em MINUTOS (e não em milissegundos) de propósito: é a unidade em que o
+// gestor pensa e fala, e evita `BigInt` na serialização. O cálculo da jornada
+// converte para ms na fronteira.
+model CompensacaoHoras {
+  id            String   @id @default(uuid())
+  // A ficha do Cadastro Unificado (operador, fiscal ou supervisor).
+  colaboradorId String
+  // Dia da compensação, em meia-noite UTC do dia civil (convenção do schema).
+  data          DateTime
+
+  // Minutos de 50% consumidos neste dia. Nunca maior que a carga do dia nem
+  // que o saldo da pessoa — a compensação não pode criar saldo negativo.
+  minutosCompensados Int
+  // Minutos que a pessoa AINDA trabalha no dia. Zero = dia inteiro livre.
+  // Vale a identidade: minutosCompensados + minutosTrabalhados = carga do dia.
+  minutosTrabalhados Int
+  // Faixa em que ela trabalha ("HH:mm"), nula quando o dia é inteiro livre.
+  horaInicio String?
+  horaFim    String?
+  // true quando a jornada curta encerra SEM intervalo (até 4h50 no contrato
+  // 6x1). Guardado porque muda o que se espera do ponto naquele dia: duas
+  // batidas em vez de quatro.
+  semIntervalo Boolean @default(true)
+
+  status StatusCompensacao
+  origem OrigemCompensacao @default(SUGESTAO)
+
+  // RETRATO DA JUSTIFICATIVA no instante da decisão. Não é redundância: os
+  // números de venda e de cobertura mudam com o tempo (novos arquivos, novas
+  // faltas), e sem o retrato ninguém consegue responder, meses depois, "por que
+  // liberamos esta pessoa neste dia?" — só recalcular um passado que já é outro.
+  motivo             String?
+  vendaPrevista      Decimal? @db.Decimal(14, 2)
+  // De onde veio a venda prevista: ESTIMATIVA (a previsão da gestão para
+  // aquela data) ou HISTORICO (média do dia da semana).
+  fonteVendaPrevista String?
+  saldo50MinNaEpoca  Int?
+  // Quantas pessoas da mesma função ficavam no dia, já contando esta saída.
+  coberturaNoDia     Int?
+
+  criadoPor       String?
+  criadoPorNome   String?
+  criadoEm        DateTime  @default(now())
+  decididoPor     String?
+  decididoPorNome String?
+  decididoEm      DateTime?
+  atualizadoEm    DateTime  @default(now()) @updatedAt
+
+  // Uma decisão por pessoa por dia: aprovar de novo, recusar ou cancelar
+  // ATUALIZA a linha, em vez de acumular decisões contraditórias no mesmo dia.
+  @@unique([colaboradorId, data])
+  @@index([data])
+  @@index([status, data])
+  @@map("compensacoes_horas")
+}

@@ -28,7 +28,7 @@ tendência, curva típica, heatmap e estimativas de venda por dia.
 | `vendas.controller.ts` | Rotas HTTP (upload, resumo, por-hora, painel, painel-resumo, estimativas) |
 | `vendas.service.ts` | Regras de aplicação: importação, painel, estimativas, avisos |
 | `vendas.parser.ts` | Lê o `.txt` por cabeçalho (hora + valor líquido) |
-| `vendas.domain.ts` | Utilitários puros de período/hora e dias da semana |
+| `vendas.domain.ts` | Utilitários puros de período/hora, dias da semana e **estatística de movimento** (média por dia da semana, heatmap, venda numa faixa) |
 | `vendas.module.ts` | Ligações (DI) do módulo |
 | `dto/vendas.dto.ts` | Validação de entrada das rotas |
 
@@ -109,6 +109,29 @@ Manutenção: remove os `VendaDiaria` sem detalhe por hora correspondente.
 - `diasNoMes(data)` / `deslocarMeses(data, meses)` (com clamp no fim do mês).
 - `horaParaMinutos(hhmm)` — converte "HH:mm" em minutos; `null` se inválido.
 - `NOMES_DIA_SEMANA` — nomes curtos dos dias (0=Dom..6=Sáb).
+- `mediaPorDiaSemana(diarios, { ehFeriado?, minAmostras? })` → média do total
+  diário por dia da semana, com o tamanho da amostra. **Feriados podem ser
+  excluídos** por predicado, e há um piso de amostras (`MIN_AMOSTRAS_DIA_SEMANA`
+  = 3, o mesmo do aviso de queda anômala) abaixo do qual a média vem `null` em
+  vez de virar ruído. O painel passa `minAmostras: 1` porque ali a média é
+  informativa e não decide nada; a Compensação de horas usa o piso padrão,
+  porque ali o número escolhe o dia de folga de alguém.
+- `heatmapDiaSemanaHora(regs)` → matriz 7×24 com a média de venda de cada hora
+  por dia da semana. Divide pelos **dias distintos** observados, e não pelo total
+  de registros: sem isso, um dia da semana com mais semanas de história pareceria
+  vender mais por hora só por ter mais amostras.
+- `vendaMediaNaFaixa(linhaHeatmap, inicioMin, fimMin)` → soma da venda média de
+  uma faixa de horas, contando as horas das pontas **proporcionalmente** (um
+  turno que acaba às 14h30 leva metade da hora 14). Sem a proporção, uma faixa de
+  2h30 e uma de 3h pesariam igual.
+
+> **Por que estas três moram no domínio, e não no service:** além do painel de
+> vendas, a [`compensacao-horas`](compensacao-horas.md) precisa responder "que dia
+> da semana move menos?" e "que ponta do turno move menos?" para sugerir quando
+> liberar alguém. Duas implementações da mesma estatística divergiriam no
+> primeiro caso de borda, e as duas telas passariam a contar histórias diferentes
+> sobre o mesmo dia. `calcularPerfilHorario` e `calcularPadraoDiaSemana` (ambos
+> privados no service) agora **delegam** a elas.
 - Parser (`vendas.parser.ts`): localiza a hora dentro da coluna "Empresa : Hora",
   prefere o valor líquido ("liq" + "valor"), ignora a linha de total e soma
   múltiplas linhas por hora.
@@ -127,8 +150,11 @@ relevante é `status.enviado`, um booleano do dia).
 ## 9. Dependências
 - **Depende de:** `PrismaService`, `FechamentoService`, `MetasService`,
   `NotificacoesService` (opcional) e `ValidacaoDataService` (opcional).
-- **É usado por:** o app (Painel de Vendas) e, indiretamente, o módulo
-  `arrecadacao` (que lê `VendaDiaria` para os percentuais dos indicadores).
+- **É usado por:** o app (Painel de Vendas); indiretamente o módulo
+  `arrecadacao` (que lê `VendaDiaria` para os percentuais dos indicadores); e a
+  [`compensacao-horas`](compensacao-horas.md), que consome **só as funções puras**
+  de `vendas.domain.ts` (não o service) para ranquear os dias mais fracos do
+  ciclo e escolher a ponta do turno a liberar.
 
 ## 10. Regras de negócio-chave
 1. **O upload substitui o dia** de vendas; não existe ajuste manual.

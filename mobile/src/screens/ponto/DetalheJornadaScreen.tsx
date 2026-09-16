@@ -63,6 +63,11 @@ function rotuloTipoDia(tipo: CentralDiaDetalhe["tipo"]): string {
       return "Faltou (não registrada)";
     case "ATESTADO":
       return "Atestado";
+    // Compensação de horas aprovada: a pessoa trabalhou menos (ou nada) para
+    // consumir o próprio saldo de 50%. Rótulo próprio para o dia não ser lido
+    // como falta nem como jornada incompleta — foi combinado.
+    case "COMPENSACAO":
+      return "Compensação";
     case "INCOMPLETO":
       return "Incompleto";
     default:
@@ -219,7 +224,7 @@ export function DetalheJornadaScreen(): React.ReactElement {
                 </Text>
                 <Text style={styles.diaInfo}>
                   {rotuloTipoDia(d.tipo)}
-                  {d.tipo === "TRABALHO"
+                  {d.tipo === "TRABALHO" || d.tipo === "COMPENSACAO"
                     ? ` • ${formatarDuracao(d.trabalhadoMs)} de ${formatarDuracao(d.baseMs)}`
                     : ""}
                   {d.extras50Ms > 0
@@ -230,6 +235,10 @@ export function DetalheJornadaScreen(): React.ReactElement {
                     : ""}
                   {d.devidasMs > 0
                     ? ` • deve ${formatarDuracao(d.devidasMs)}`
+                    : ""}
+                  {/* "Usou", nunca "deve": a pessoa gastou horas que já tinha. */}
+                  {(d.compensadoMs ?? 0) > 0
+                    ? ` • usou ${formatarDuracao(d.compensadoMs!)} de 50%`
                     : ""}
                 </Text>
                 {d.tipo === "INCOMPLETO" && d.faltando.length > 0 && (
@@ -266,6 +275,16 @@ export function DetalheJornadaScreen(): React.ReactElement {
                   <Text style={styles.diaPontoEmFolga}>
                     📅 Trabalhou num dia marcado como FOLGA no cadastro. O ponto
                     está correto — a escala é que parece desatualizada.
+                  </Text>
+                )}
+                {d.tipo === "COMPENSACAO" && (
+                  <Text style={styles.diaCompensacao}>
+                    ↔️ Compensação aprovada
+                    {d.entradaPrevista
+                      ? ` (entrada combinada ${d.entradaPrevista})`
+                      : ""}
+                    . As horas saíram do saldo de 50% dela — não é falta nem
+                    dívida.
                   </Text>
                 )}
               </View>
@@ -370,6 +389,13 @@ const styles = StyleSheet.create({
   diaPontoEmFolga: {
     ...tipografia.legenda,
     color: cores.azul,
+    marginTop: 2,
+    fontWeight: "600",
+  },
+  // Verde: compensação é boa gestão, não problema. O dia curto foi combinado.
+  diaCompensacao: {
+    ...tipografia.legenda,
+    color: cores.verde,
     marginTop: 2,
     fontWeight: "600",
   },

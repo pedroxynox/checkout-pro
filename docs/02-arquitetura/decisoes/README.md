@@ -32,3 +32,5 @@ numerado (`NNNN-titulo-curto.md`).
 | 0019 | [Ponto em dia de folga: aceitar e apontar, em vez de recusar](0019-ponto-em-dia-de-folga.md) |
 
 | 0020 | [Mudança de função preserva o histórico de ponto](0020-mudanca-de-funcao-preserva-o-ponto.md) |
+
+| 0021 | [Compensação de horas: sugerir a data mais fraca, dentro do ciclo](0021-compensacao-de-horas.md) |

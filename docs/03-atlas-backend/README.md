@@ -5,7 +5,7 @@
 
 Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modulo.md`](./_modelo-modulo.md).
 
-**Cobertura:** 37/37 documentados (100%).
+**Cobertura:** 38/38 documentados (100%).
 
 | Item | Documento | Estado |
 |---|---|---|
@@ -21,6 +21,7 @@ Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modul
 | `ciclo-folha` | [`ciclo-folha`](./ciclo-folha.md) | ✅ documentado |
 | `colaboradores` | [`colaboradores`](./colaboradores.md) | ✅ documentado |
 | `common` | [`common`](./common.md) | ✅ documentado |
+| `compensacao-horas` | [`compensacao-horas`](./compensacao-horas.md) | ✅ documentado |
 | `config` | [`config`](./config.md) | ✅ documentado |
 | `contratos` | [`contratos`](./contratos.md) | ✅ documentado |
 | `data-inicial` | [`data-inicial`](./data-inicial.md) | ✅ documentado |
