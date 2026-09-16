@@ -31,6 +31,7 @@ import {
   AnaliseInsumo,
 } from './insumos.service';
 import {
+  DetalheSacolas,
   IndicadorSacolas,
   IndicadorSacolasService,
 } from './indicador-sacolas.service';
@@ -74,6 +75,23 @@ export class InsumosController {
       ? (anoMes as string)
       : anoMesDe(new Date());
     return this.indicadorSacolasService.doMes(mes);
+  }
+
+  /**
+   * Detalhe do indicador SACOLAS: o **teto de sacolas** do mês (quantas ainda
+   * cabem sem furar a meta), os dias em que entrou sacola, o cruze consumo ×
+   * entrada, a série diária (venda/estimativa/consumo) e a projeção do
+   * fechamento. `anoMes=AAAA-MM`; sem ele, o mês atual.
+   */
+  @Get('indicador-sacolas/detalhe')
+  @Funcionalidade('INDICADORES_VISUALIZAR')
+  async indicadorSacolasDetalhe(
+    @Query('anoMes') anoMes?: string,
+  ): Promise<DetalheSacolas> {
+    const mes = ehAnoMesValido(anoMes ?? '')
+      ? (anoMes as string)
+      : anoMesDe(new Date());
+    return this.indicadorSacolasService.detalhe(mes);
   }
 
   @Get('proativo')

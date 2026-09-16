@@ -15,6 +15,7 @@ import { ImportacoesScreen } from '../screens/importacoes/ImportacoesScreen';
 import { FechamentoScreen } from '../screens/fechamento/FechamentoScreen';
 import { IndicadoresScreen } from '../screens/indicadores/IndicadoresScreen';
 import { IndicadorDetalheScreen } from '../screens/indicadores/IndicadorDetalheScreen';
+import { SacolasDetalheScreen } from '../screens/indicadores/SacolasDetalheScreen';
 import { PainelVendasScreen } from '../screens/indicadores/PainelVendasScreen';
 import { InsumosScreen } from '../screens/insumos/InsumosScreen';
 import { InsumoDetalheScreen } from '../screens/insumos/InsumoDetalheScreen';
@@ -112,6 +113,14 @@ export function AppNavigator(): React.ReactElement {
             options={({ route }) => ({
               title: ROTULO_TIPO_ARRECADACAO[route.params.tipo] ?? 'Indicador',
             })}
+          />
+          {/* Sacolas tem tela própria: o detalhe dele (teto de sacolas, dias de
+              entrada, consumo × entrada) não tem nada em comum com o detalhe dos
+              indicadores de arrecadação, que ramifica em base FIXA/VENDAS. */}
+          <Stack.Screen
+            name="SacolasDetalhe"
+            component={SacolasDetalheScreen}
+            options={{ title: 'Venda por sacola' }}
           />
         </>
       )}

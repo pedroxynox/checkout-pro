@@ -504,6 +504,11 @@ model MovimentoEstoque {
   responsavel Usuario? @relation("ResponsavelMovimento", fields: [responsavelId], references: [id])
 
   @@index([insumoId])
+  // Consultas por JANELA DE DATAS: a análise de uso, o indicador de Sacolas e o
+  // seu detalhe filtram por `dataHora` **sem** filtrar por insumo (o recorte é
+  // pela categoria, via join). Sem este índice o Postgres varre a tabela toda, e
+  // ela cresce a cada entrada e a cada saída registrada.
+  @@index([dataHora])
   @@map("movimentos_estoque")
 }
 

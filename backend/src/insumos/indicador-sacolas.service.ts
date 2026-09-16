@@ -1,6 +1,7 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { arredondar } from '../common/numeros';
+import { inicioDoDia } from '../common/datas';
 import { MetasService } from '../metas/metas.service';
 import { CONFIG_METAS } from '../metas/metas.domain';
 import {
@@ -12,15 +13,22 @@ import {
   rotuloAnoMes,
 } from '../arrecadacao/historico-indicadores.domain';
 import {
+  ConsumoVsEntrada,
   DesvioMeta,
   EstadoIndicadorSacolas,
   ORIGENS_FORA_DO_INDICADOR,
   SENTIDO_SACOLAS,
+  TetoSacolas,
+  VendaEsperadaMes,
   avaliarMes,
   avisoDeEntregas,
+  calcularTeto,
   compararComAnterior,
+  compararConsumoEntrada,
   emFardos,
+  projecaoDoFechamento,
   textoDoMes,
+  vendaEsperadaDoMes,
 } from './sacolas.domain';
 
 /** Fator usado quando nenhum insumo de sacola tem embalagem cadastrada. */
@@ -226,4 +234,293 @@ export class IndicadorSacolasService {
       avisoEntregas: avisoDeEntregas(entradas.entregas),
     };
   }
+
+  // ----------------------------- Detalhe do mês ----------------------------
+
+  /**
+   * Entradas de sacola do mês, uma linha por registro (o "dia que entrou
+   * sacola"). Exclui o estoque inicial, como o denominador.
+   */
+  private async entradasDetalhadas(
+    inicio: Date,
+    fimExclusivo: Date,
+    fatorEmbalagem: number,
+  ): Promise<EntradaSacolaDia[]> {
+    const movimentos = await this.prisma.movimentoEstoque.findMany({
+      where: {
+        delta: { gt: 0 },
+        dataHora: { gte: inicio, lt: fimExclusivo },
+        insumo: { categoria: 'SACOLA' },
+      },
+      orderBy: { dataHora: 'desc' },
+      select: {
+        delta: true,
+        dataHora: true,
+        origem: true,
+        responsavelNome: true,
+      },
+    });
+    return movimentos
+      .filter(
+        (m) => !(m.origem && ORIGENS_FORA_DO_INDICADOR.includes(m.origem)),
+      )
+      .map((m) => ({
+        data: inicioDoDia(m.dataHora).toISOString().slice(0, 10),
+        dataHora: m.dataHora.toISOString(),
+        sacolas: m.delta,
+        fardos: emFardos(m.delta, fatorEmbalagem),
+        origem: m.origem,
+        responsavelNome: m.responsavelNome,
+      }));
+  }
+
+  /** Sacolas consumidas (saídas) no período. */
+  private async consumoDoPeriodo(
+    inicio: Date,
+    fimExclusivo: Date,
+  ): Promise<number> {
+    const r = await this.prisma.movimentoEstoque.aggregate({
+      _sum: { delta: true },
+      where: {
+        delta: { lt: 0 },
+        dataHora: { gte: inicio, lt: fimExclusivo },
+        insumo: { categoria: 'SACOLA' },
+      },
+    });
+    return Math.abs(Number(r._sum.delta ?? 0));
+  }
+
+  /**
+   * Série diária do mês: venda, estimativa, consumo e entrada por dia.
+   *
+   * Densificada (todo dia do mês aparece, com zero quando não houve nada), como
+   * a `analiseInsumo` já faz — é o formato que o gráfico consome sem buracos.
+   */
+  private async serieDoMes(
+    inicio: Date,
+    fimExclusivo: Date,
+  ): Promise<DiaSerieSacolas[]> {
+    const [vendas, estimativas, movimentos] = await Promise.all([
+      this.prisma.vendaDiaria.findMany({
+        where: { data: { gte: inicio, lt: fimExclusivo } },
+        select: { data: true, valor: true },
+      }),
+      this.prisma.estimativaVendaDia.findMany({
+        where: { data: { gte: inicio, lt: fimExclusivo } },
+        select: { data: true, valor: true },
+      }),
+      this.prisma.movimentoEstoque.findMany({
+        where: {
+          dataHora: { gte: inicio, lt: fimExclusivo },
+          insumo: { categoria: 'SACOLA' },
+        },
+        select: { delta: true, dataHora: true, origem: true },
+      }),
+    ]);
+
+    const chave = (d: Date): string =>
+      inicioDoDia(d).toISOString().slice(0, 10);
+    const vendaPorDia = new Map(
+      vendas.map((v) => [chave(v.data), Number(v.valor)]),
+    );
+    const estimativaPorDia = new Map(
+      estimativas.map((e) => [chave(e.data), Number(e.valor)]),
+    );
+    const consumoPorDia = new Map<string, number>();
+    const entradaPorDia = new Map<string, number>();
+    for (const m of movimentos) {
+      const k = chave(m.dataHora);
+      if (m.delta < 0) {
+        consumoPorDia.set(k, (consumoPorDia.get(k) ?? 0) + Math.abs(m.delta));
+      } else if (!(m.origem && ORIGENS_FORA_DO_INDICADOR.includes(m.origem))) {
+        entradaPorDia.set(k, (entradaPorDia.get(k) ?? 0) + m.delta);
+      }
+    }
+
+    const serie: DiaSerieSacolas[] = [];
+    for (
+      let t = inicio.getTime();
+      t < fimExclusivo.getTime();
+      t += 24 * 60 * 60 * 1000
+    ) {
+      const k = new Date(t).toISOString().slice(0, 10);
+      const estimativa = estimativaPorDia.get(k);
+      serie.push({
+        data: k,
+        venda: arredondar(vendaPorDia.get(k) ?? 0),
+        estimativa: estimativa != null ? arredondar(estimativa) : null,
+        consumo: consumoPorDia.get(k) ?? 0,
+        entrada: entradaPorDia.get(k) ?? 0,
+      });
+    }
+    return serie;
+  }
+
+  /**
+   * Detalhe do mês: o **teto de sacolas**, os dias em que entrou sacola, o cruze
+   * consumo × entrada e a projeção do fechamento.
+   *
+   * O teto é o coração desta tela. Enquanto o mês corre, saber que o indicador
+   * está em R$ 22 não diz o que fazer; saber que **ainda cabem 7 fardos** diz.
+   */
+  async detalhe(anoMes: string, hoje = new Date()): Promise<DetalheSacolas> {
+    const inicio = inicioDoAnoMes(anoMes);
+    const fimExclusivo = inicioDoProximoAnoMes(anoMes);
+    const hojeISO = inicioDoDia(hoje).toISOString().slice(0, 10);
+    const mesEmCurso = hoje < fimExclusivo && hoje >= inicio;
+
+    const indicador = await this.doMes(anoMes, hoje);
+    const fator = indicador.fatorEmbalagem;
+
+    const [entradas, consumidas, serie] = await Promise.all([
+      this.entradasDetalhadas(inicio, fimExclusivo, fator),
+      this.consumoDoPeriodo(inicio, fimExclusivo),
+      this.serieDoMes(inicio, fimExclusivo),
+    ]);
+
+    // Venda esperada: FATO até hoje + ESTIMATIVA dos dias que faltam. Num mês
+    // fechado não há "dias que faltam", então vale o realizado inteiro.
+    const realizado = mesEmCurso
+      ? arredondar(
+          serie
+            .filter((d) => d.data <= hojeISO)
+            .reduce((soma, d) => soma + d.venda, 0),
+        )
+      : indicador.vendaMes;
+    const estimativasFuturas = mesEmCurso
+      ? serie
+          .filter((d) => d.data > hojeISO && d.estimativa != null)
+          .map((d) => d.estimativa as number)
+      : [];
+    // Ritmo (run-rate) como último recurso: média dos dias COM venda × dias do
+    // mês. Divide pelos dias com venda (e não pelos decorridos) para um arquivo
+    // de venda ainda não enviado não puxar a média para baixo.
+    const diasComVenda = serie.filter((d) => d.venda > 0).length;
+    const runRate =
+      mesEmCurso && diasComVenda > 0
+        ? arredondar((realizado / diasComVenda) * serie.length)
+        : 0;
+
+    const vendaEsperada = vendaEsperadaDoMes(
+      realizado,
+      estimativasFuturas,
+      runRate,
+    );
+
+    const teto = calcularTeto(
+      vendaEsperada.valor,
+      indicador.sacolasRecebidas,
+      indicador.meta,
+      fator,
+    );
+
+    // A SUPOSIÇÃO da projeção, escrita: se ainda restam dias no mês, o ciclo é
+    // quinzenal e só veio 1 entrega, supõe-se uma segunda, do tamanho da que já
+    // veio. Um palpite sem rótulo seria lido como fato.
+    const diasRestantes = mesEmCurso
+      ? Math.max(
+          0,
+          Math.round(
+            (fimExclusivo.getTime() - inicioDoDia(hoje).getTime()) / 86_400_000,
+          ),
+        )
+      : 0;
+    const mediaPorEntrega =
+      entradas.length > 0
+        ? Math.round(indicador.sacolasRecebidas / entradas.length)
+        : 0;
+    const esperaOutraEntrega =
+      mesEmCurso &&
+      diasRestantes >= DIAS_MINIMOS_PARA_NOVA_ENTREGA &&
+      entradas.length === 1;
+    const sacolasPrevistas = esperaOutraEntrega ? mediaPorEntrega : 0;
+    const baseDaPrevisao = !mesEmCurso
+      ? 'Mês fechado: não há entrega a prever.'
+      : esperaOutraEntrega
+        ? `Supõe 1 entrega a mais (${emFardos(mediaPorEntrega, fator)} fardos, ` +
+          `o tamanho da que já veio), porque faltam ${diasRestantes} dias e o ` +
+          'ciclo de sacolas é quinzenal.'
+        : 'Não supõe entrega nova: o mês já recebeu as entregas do ciclo, ou está no fim.';
+
+    const projecao = {
+      ...projecaoDoFechamento(
+        vendaEsperada.valor,
+        indicador.sacolasRecebidas,
+        sacolasPrevistas,
+        indicador.meta,
+      ),
+      sacolasPrevistas,
+      baseDaPrevisao,
+    };
+
+    return {
+      indicador,
+      vendaEsperada,
+      teto,
+      projecao,
+      consumoVsEntrada: compararConsumoEntrada(
+        indicador.vendaMes,
+        indicador.sacolasRecebidas,
+        consumidas,
+        fator,
+      ),
+      entradas,
+      serie,
+    };
+  }
 }
+
+
+/** Uma entrada de sacola no mês (o "dia que entrou sacola"). */
+export interface EntradaSacolaDia {
+  /** Dia (ISO, "AAAA-MM-DD"). */
+  data: string;
+  /** Momento exato do registro. */
+  dataHora: string;
+  sacolas: number;
+  fardos: number;
+  origem: string | null;
+  responsavelNome: string | null;
+}
+
+/** Um dia da série: o que se vendeu, o que se esperava e o que se consumiu. */
+export interface DiaSerieSacolas {
+  data: string;
+  /** Venda realizada (R$). */
+  venda: number;
+  /** Estimativa da gestão para o dia (R$), quando existe. */
+  estimativa: number | null;
+  /** Sacolas consumidas no dia. */
+  consumo: number;
+  /** Sacolas que entraram no dia (zero na maioria — a entrada é em lote). */
+  entrada: number;
+}
+
+/** Detalhe do indicador de Sacolas num mês. */
+export interface DetalheSacolas {
+  /** O mesmo resumo da card, para a tela não precisar de duas chamadas. */
+  indicador: IndicadorSacolas;
+  /** Venda esperada para o mês fechado, e o quanto já é fato. */
+  vendaEsperada: VendaEsperadaMes;
+  /** O teto de sacolas do mês. `null` sem venda esperada. */
+  teto: TetoSacolas | null;
+  /** Onde o mês fecha, se nada mudar. */
+  projecao: {
+    valor: number | null;
+    cumprira: boolean | null;
+    sacolasNoFechamento: number;
+    /** Sacolas que ainda devem chegar até o fim do mês (suposição). */
+    sacolasPrevistas: number;
+    /** Como as previstas foram estimadas — a suposição, escrita. */
+    baseDaPrevisao: string;
+  };
+  /** Indicador oficial (entrada) vs uso real (consumo). */
+  consumoVsEntrada: ConsumoVsEntrada;
+  /** Os dias em que entrou sacola, do mais recente ao mais antigo. */
+  entradas: EntradaSacolaDia[];
+  /** Série diária do mês (venda, estimativa, consumo, entrada). */
+  serie: DiaSerieSacolas[];
+}
+
+/** Dias de tolerância para supor que ainda cabe uma entrega no mês. */
+const DIAS_MINIMOS_PARA_NOVA_ENTREGA = 3;
