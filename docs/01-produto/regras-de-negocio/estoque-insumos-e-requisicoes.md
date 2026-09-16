@@ -72,7 +72,32 @@ O fiscal solicita um insumo e o gerente/supervisor **aprova** ou **nega**:
     confirmada** — nunca de um processo automático. Os alertas proativos apenas
     chamam a atenção.
 
-## 7. Observações
+## 7. Indicador "Sacolas": quanto se vende por sacola
+
+15. **O almoxarifado responde quanto a loja vende, em R$, por sacola que ENTRA no
+    estoque.** A meta é definida em Centro de Controle ▸ Metas (padrão **R$ 28,00
+    por sacola**) e o indicador aparece no almoxarifado e no painel de
+    Indicadores. A conta é **venda do mês ÷ sacolas recebidas no mês**, em
+    unidades base (as 200.000 sacolas de 200 fardos, não os 200 fardos).
+16. **Mede-se pela ENTRADA, não pelo consumo.** A entrada é um evento único e
+    auditável — a mercadoria chega e alguém registra. O consumo depende de cada
+    saída ser lançada todos os dias, e cada saída esquecida reduziria o
+    denominador, **melhorando** o indicador artificialmente.
+17. **O estoque inicial não conta:** não foi uma compra, é o saldo de abertura do
+    sistema. Somam-se **todas** as sacolas (categoria `SACOLA`), não um item pelo
+    nome — assim um segundo tipo de sacola entra na conta sozinho.
+18. **Maior é melhor, e a meta é um piso.** Acima dela a loja usou menos sacolas
+    para o mesmo faturamento; abaixo é desperdício. Passar do piso **nunca** é
+    alerta.
+19. **Um mês sem entrega não é um mês em zero:** é informado como "sem entrada de
+    sacolas" e **não** é comparado com a meta. O número de entregas do mês aparece
+    junto, porque um mês com 1 ou 3 entregas (em vez das 2 do ciclo quinzenal)
+    muda o indicador **sem** que a operação tenha mudado.
+
+Detalhe do desenho na
+[ADR 0022](../../02-arquitetura/decisoes/0022-indicador-sacolas-venda-por-sacola.md).
+
+## 8. Observações
 
 - **Criar/listar requisições e ver/consumir insumos** é liberado ao fiscal
   (`INSUMOS`). **Aprovar, dar entrada, configurar pedidos e gerir** exige

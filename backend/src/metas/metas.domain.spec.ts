@@ -1,4 +1,5 @@
 import {
+  CONFIG_METAS,
   TIPOS_META,
   ehMetaDerivada,
   intervaloDoMes,
@@ -16,12 +17,34 @@ describe('metas.domain', () => {
       expect(ehMetaDerivada('VENDAS')).toBe(true);
     });
 
-    it('mantém as outras quatro metas como digitadas', () => {
+    it('mantém todas as outras metas como digitadas', () => {
       const digitadas = TIPOS_META.filter((t) => t !== 'VENDAS');
-      expect(digitadas).toHaveLength(4);
+      expect(digitadas).toHaveLength(5);
       for (const tipo of digitadas) {
         expect(ehMetaDerivada(tipo)).toBe(false);
       }
+    });
+
+    /**
+     * SACOLAS tem o **valor apurado** calculado pelo sistema (venda do mês ÷
+     * sacolas recebidas), mas a **meta** é digitada pelo gestor. Derivada é
+     * sobre o alvo, não sobre o realizado — confundir os dois deixaria a meta
+     * somente leitura na tela e sem como ser definida.
+     */
+    it('SACOLAS é digitada: o apurado é calculado, a meta não', () => {
+      expect(ehMetaDerivada('SACOLAS')).toBe(false);
+    });
+  });
+
+  describe('CONFIG_METAS.SACOLAS', () => {
+    it('é uma razão em R$ por unidade, com piso de R$ 28,00', () => {
+      const cfg = CONFIG_METAS.SACOLAS;
+      expect(cfg.unidade).toBe('REAIS_POR_UNIDADE');
+      expect(cfg.valorPadrao).toBe(28);
+    });
+
+    it('é MAIOR_MELHOR: vender mais por sacola é usar menos sacolas', () => {
+      expect(CONFIG_METAS.SACOLAS.sentido).toBe('MAIOR_MELHOR');
     });
   });
 

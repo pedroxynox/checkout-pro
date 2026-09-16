@@ -8,6 +8,9 @@
  *  - RECARGAS_CELULAR: arrecadação de recargas no mês (R$).
  *  - CANCELAMENTO_ITENS / CANCELAMENTO_CUPOM / DEVOLUCOES: limite em % sobre as
  *    vendas (menor é melhor).
+ *  - SACOLAS: quanto a loja vende, em R$, por sacola que ENTRA no estoque
+ *    (maior é melhor). É a primeira meta de **razão** do sistema — nem um valor
+ *    absoluto nem um percentual sobre as vendas. Ver a ADR 0022.
  *
  * As quatro metas que não são VENDAS seguem **digitadas** pelo gestor, com
  * valor padrão quando o mês ainda não foi definido.
@@ -24,12 +27,21 @@ export const TIPOS_META = [
   'CANCELAMENTO_ITENS',
   'CANCELAMENTO_CUPOM',
   'DEVOLUCOES',
+  'SACOLAS',
 ] as const;
 
 export type TipoMeta = (typeof TIPOS_META)[number];
 
-/** Unidade do valor da meta. */
-export type UnidadeMeta = 'REAIS' | 'PERCENTUAL';
+/**
+ * Unidade do valor da meta.
+ *
+ * `REAIS_POR_UNIDADE` é uma **razão** (R$ por sacola, por bobina, por metro…) e
+ * existe porque nem `REAIS` nem `PERCENTUAL` a descrevem: um valor absoluto
+ * responde "quanto arrecadou", um percentual responde "que fatia das vendas", e
+ * uma razão responde "quanto de venda cada unidade sustenta". Sem unidade própria
+ * a tela de Metas escreveria "28,00%" onde o certo é "R$ 28,00 por sacola".
+ */
+export type UnidadeMeta = 'REAIS' | 'PERCENTUAL' | 'REAIS_POR_UNIDADE';
 
 /** Configuração (rótulo, unidade, sentido e valor padrão) de cada meta. */
 export interface ConfigMeta {
@@ -79,6 +91,16 @@ export const CONFIG_METAS: Record<TipoMeta, ConfigMeta> = {
     unidade: 'PERCENTUAL',
     sentido: 'MENOR_MELHOR',
     valorPadrao: 0.05,
+  },
+  SACOLAS: {
+    tipo: 'SACOLAS',
+    titulo: 'Sacolas',
+    unidade: 'REAIS_POR_UNIDADE',
+    // MAIOR_MELHOR com a meta como PISO: vender mais por sacola significa usar
+    // menos sacolas para o mesmo faturamento. Passar da meta nunca é problema —
+    // o lado ruim é ficar abaixo dela (desperdício). Ver a ADR 0022, item 9.
+    sentido: 'MAIOR_MELHOR',
+    valorPadrao: 28,
   },
 };
 

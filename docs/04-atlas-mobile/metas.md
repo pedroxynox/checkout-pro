@@ -52,8 +52,15 @@ para a origem da meta de Vendas, [`vendas`](../03-atlas-backend/vendas.md).
 - Ao trocar de mês, fecha qualquer edição aberta (`editTipo = null`).
 - **Meta derivada:** quando `derivada` é verdadeiro (só Vendas), o card não
   oferece edição — exibe o texto de `origem` e o atalho para a Central de Vendas.
-- **Unidade por indicador:** `REAIS` (R$) ou `PERCENTUAL` (%); o rótulo do campo,
-  a formatação do valor e o texto de ajuda variam conforme a unidade.
+- **Unidade por indicador:** `REAIS` (R$), `PERCENTUAL` (%) ou
+  **`REAIS_POR_UNIDADE`** (R$ por sacola); o rótulo do campo, a formatação do
+  valor e o texto de ajuda variam conforme a unidade. As três condições ficam em
+  helpers próprios (`formatarValor`, `ajudaUnidade`, `rotuloCampo`) porque antes
+  eram ternários que **caíam no ramo de `PERCENTUAL`** para qualquer unidade
+  desconhecida — o que faria a meta de Sacolas aparecer como "28,00%".
+- **Sacolas** (`REAIS_POR_UNIDADE`) é exibida como "R$ 28,00 por sacola": o "por
+  sacola" é parte do número, sem ele o valor não se entende. A ajuda explica que
+  é um **piso** — acima dele significa usar menos sacolas para vender o mesmo.
 - No campo, o valor 0 é exibido vazio para facilitar a digitação; a entrada usa
   máscara de milhar e é convertida com `parseNumeroBR`.
 - Quando `definida` é falso, a card explica o porquê conforme o regime: nas

@@ -45,20 +45,36 @@ const ICONES: Record<TipoMeta, keyof typeof Ionicons.glyphMap> = {
   CANCELAMENTO_ITENS: 'remove-circle-outline',
   CANCELAMENTO_CUPOM: 'receipt-outline',
   DEVOLUCOES: 'return-down-back-outline',
+  SACOLAS: 'bag-handle-outline',
 };
 
-/** Valor formatado conforme a unidade (R$ ou %). */
+/** Valor formatado conforme a unidade (R$, % ou R$ por unidade). */
 function formatarValor(item: MetaMensal): string {
-  return item.unidade === 'REAIS'
-    ? formatarMoeda(item.meta)
-    : formatarPercentual(item.meta, 2);
+  if (item.unidade === 'REAIS') return formatarMoeda(item.meta);
+  // Razão: o "por sacola" é parte do número — sem ele o valor não se entende.
+  if (item.unidade === 'REAIS_POR_UNIDADE') {
+    return `${formatarMoeda(item.meta)} por sacola`;
+  }
+  return formatarPercentual(item.meta, 2);
 }
 
 /** Texto de ajuda do campo de edição. */
 function ajudaUnidade(item: MetaMensal): string {
-  return item.unidade === 'REAIS'
-    ? 'Valor em reais (R$) a alcançar no mês.'
-    : 'Percentual (%) sobre as vendas — quanto menor, melhor.';
+  if (item.unidade === 'REAIS') return 'Valor em reais (R$) a alcançar no mês.';
+  if (item.unidade === 'REAIS_POR_UNIDADE') {
+    return (
+      'Quanto a loja deve vender, em R$, por cada sacola que entra no estoque. ' +
+      'É um piso: acima dele significa usar menos sacolas para vender o mesmo.'
+    );
+  }
+  return 'Percentual (%) sobre as vendas — quanto menor, melhor.';
+}
+
+/** Rótulo do campo de edição, por unidade. */
+function rotuloCampo(item: MetaMensal): string {
+  if (item.unidade === 'REAIS') return 'Meta (R$)';
+  if (item.unidade === 'REAIS_POR_UNIDADE') return 'Meta (R$ por sacola)';
+  return 'Meta (%)';
 }
 
 export function MetasScreen({
@@ -176,9 +192,7 @@ export function MetasScreen({
             ) : editTipo === item.tipo ? (
               <>
                 <CampoTexto
-                  rotulo={
-                    item.unidade === 'REAIS' ? 'Meta (R$)' : 'Meta (%)'
-                  }
+                  rotulo={rotuloCampo(item)}
                   keyboardType="decimal-pad"
                   value={valor}
                   onChangeText={(t) => setValor(mascaraMilhar(t))}

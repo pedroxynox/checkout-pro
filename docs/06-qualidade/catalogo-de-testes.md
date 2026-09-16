@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 131 arquivos, 1109 casos. **Mobile:** 34 arquivos, 234 casos. **Total: 1343 casos.**
+> **Backend:** 133 arquivos, 1161 casos. **Mobile:** 35 arquivos, 242 casos. **Total: 1403 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -23,7 +23,7 @@
 | `src/app.service.spec.ts` | 5 | 1 |
 | `src/arrecadacao/arrecadacao.nao-reconhecidos.spec.ts` | 2 | 1 |
 | `src/arrecadacao/destaque-menos-cancelou.spec.ts` | 1 | 1 |
-| `src/arrecadacao/historico-indicadores.domain.spec.ts` | 23 | 7 |
+| `src/arrecadacao/historico-indicadores.domain.spec.ts` | 25 | 7 |
 | `src/arrecadacao/historico-indicadores.service.spec.ts` | 15 | 4 |
 | `src/arrecadacao/indicadores-inteligente.destaques.spec.ts` | 3 | 2 |
 | `src/assistente/gemini.client.spec.ts` | 3 | 1 |
@@ -96,12 +96,14 @@
 | `src/incidencias/incidencias.sancoes.spec.ts` | 7 | 2 |
 | `src/incidencias/incidencias.service.spec.ts` | 14 | 2 |
 | `src/incidencias/incidencias.tipos.spec.ts` | 7 | 1 |
+| `src/insumos/indicador-sacolas.service.spec.ts` | 13 | 1 |
 | `src/insumos/insumos.controller.spec.ts` | 5 | 1 |
 | `src/insumos/insumos.properties.spec.ts` | 5 | 2 |
 | `src/insumos/insumos.resumo.spec.ts` | 2 | 1 |
 | `src/insumos/insumos.service.spec.ts` | 12 | 1 |
-| `src/metas/metas.domain.spec.ts` | 10 | 4 |
-| `src/metas/metas.service.spec.ts` | 14 | 5 |
+| `src/insumos/sacolas.domain.spec.ts` | 33 | 10 |
+| `src/metas/metas.domain.spec.ts` | 13 | 5 |
+| `src/metas/metas.service.spec.ts` | 15 | 5 |
 | `src/notificacoes/notificacoes.properties.spec.ts` | 2 | 1 |
 | `src/notificacoes/notificacoes.service.spec.ts` | 10 | 3 |
 | `src/operadores/ausencia-a-prazo-vinculo.spec.ts` | 1 | 1 |
@@ -165,6 +167,7 @@
 | `src/screens/escala/EscalaScreen.test.tsx` | 6 | 1 |
 | `src/screens/fechamento/FechamentoScreen.test.tsx` | 2 | 1 |
 | `src/screens/importacoes/ImportacoesScreen.test.tsx` | 2 | 1 |
+| `src/screens/indicadores/IndicadoresScreen.test.tsx` | 8 | 1 |
 | `src/screens/indicadores/NaoReconhecidosScreen.test.tsx` | 3 | 1 |
 | `src/screens/indicadores/PainelVendasScreen.test.tsx` | 3 | 1 |
 | `src/screens/insumos/InsumosScreen.test.tsx` | 2 | 1 |

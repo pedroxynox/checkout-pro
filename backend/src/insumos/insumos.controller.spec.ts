@@ -19,7 +19,9 @@ describe('InsumosController', () => {
     const registrar = jest.fn().mockResolvedValue(90);
     const controller = new InsumosController({
       registrarRetiradaFardo: registrar,
-    } as unknown as InsumosService);
+    } as unknown as InsumosService,
+      // O indicador de sacolas não participa destes casos.
+      undefined as never,);
 
     const resultado = await controller.retirarFardo(
       { codigoBarras: '789', insumoId: 'i1' },
@@ -39,7 +41,9 @@ describe('InsumosController', () => {
       registrarRetiradaFardo: jest.fn(() =>
         Promise.reject(new FardoNaoReconhecidoError('000')),
       ),
-    } as unknown as InsumosService);
+    } as unknown as InsumosService,
+      // O indicador de sacolas não participa destes casos.
+      undefined as never,);
 
     await expect(
       controller.retirarFardo({ codigoBarras: '000', insumoId: 'i1' }, usuario),
@@ -52,7 +56,9 @@ describe('InsumosController', () => {
     );
     const controller = new InsumosController({
       cadastrarInsumo: cadastrar,
-    } as unknown as InsumosService);
+    } as unknown as InsumosService,
+      // O indicador de sacolas não participa destes casos.
+      undefined as never,);
 
     await controller.cadastrar({
       nome: 'Bobina',
@@ -67,7 +73,9 @@ describe('InsumosController', () => {
     const zerar = jest.fn(() => Promise.resolve(42));
     const controller = new InsumosController({
       zerarEstoque: zerar,
-    } as unknown as InsumosService);
+    } as unknown as InsumosService,
+      // O indicador de sacolas não participa destes casos.
+      undefined as never,);
 
     const resultado = await controller.zerarEstoque();
     expect(zerar).toHaveBeenCalled();
@@ -78,7 +86,9 @@ describe('InsumosController', () => {
     const zerarInsumo = jest.fn(() => Promise.resolve(3));
     const controller = new InsumosController({
       zerarEstoqueInsumo: zerarInsumo,
-    } as unknown as InsumosService);
+    } as unknown as InsumosService,
+      // O indicador de sacolas não participa destes casos.
+      undefined as never,);
 
     const resultado = await controller.zerarEstoqueInsumo('insumo-1');
     expect(zerarInsumo).toHaveBeenCalledWith('insumo-1');

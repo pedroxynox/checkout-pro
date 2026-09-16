@@ -17,7 +17,7 @@ semana** (sugestões automáticas) e gerir **requisições** (solicitar → apro
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `InsumosScreen.tsx` | Painel do almoxarifado (estoque, ações rápidas, gestão) | 939 |
+| `InsumosScreen.tsx` | Painel do almoxarifado (venda por sacola, estoque, ações rápidas, gestão) | 1023 |
 | `InsumoDetalheScreen.tsx` | Detalhe de um insumo (saldo, uso×vendas, movimentos) | 399 |
 | `RequisicoesScreen.tsx` | Solicitar/aprovar/negar requisições | 381 |
 | `InsumosScreen.test.tsx` | Teste de componente do painel | 121 |
@@ -50,6 +50,7 @@ Cada tela trata os estados **carregando / erro / vazio**.
 | Registrar saída | `insumosService.consumirEmbalagem(id, qtd)` | `POST /insumos/consumo-embalagem` |
 | Registrar entrada | `insumosService.registrarEntrada(id, base, 'ENTRADA')` | `POST /insumos/:id/entrada` |
 | Sugestões pendentes | `insumosService.sugestoesPendentes()` | `GET /insumos/pedidos-recorrentes/sugestoes` |
+| Venda por sacola (indicador) | `insumosService.indicadorSacolas()` | `GET /insumos/indicador-sacolas` |
 | Próximo quinzenal | `insumosService.proximoQuinzenal()` | `GET /insumos/pedidos-recorrentes/proximo-quinzenal` |
 | Confirmar pedido | `insumosService.confirmarSugestoes(ids)` | `POST /insumos/pedidos-recorrentes/confirmar` |
 | Ignorar pedido | `insumosService.ignorarSugestoes(ids)` | `POST /insumos/pedidos-recorrentes/ignorar` |
@@ -65,6 +66,13 @@ Módulos do backend relacionados: [`insumos`](../03-atlas-backend/insumos.md) e
 [`requisicoes`](../03-atlas-backend/requisicoes.md).
 
 ## 6. Estado local e regras de UI
+- **Card "Venda por sacola"** no topo do almoxarifado: o indicador do mês (ADR
+  0022), com a frase de resumo vinda **do servidor** — a mesma que o painel de
+  Indicadores e qualquer relatório usam, para não haver duas versões do mesmo mês.
+  O valor é verde quando está no piso ou acima e vermelho quando está abaixo.
+- A card **desaparece** quando o indicador não vem (`.catch(() => null)`): ele
+  exige `INDICADORES_VISUALIZAR`, que o fiscal não tem, e a falta dele não pode
+  esconder o almoxarifado.
 - O painel guarda em memória a lista de insumos, contagem de pendentes,
   sugestões, dias até o próximo quinzenal e os flags de carregamento/erro.
 - **Saída:** o card flutuante começa em 1 e o stepper fica entre 1 e

@@ -14,6 +14,9 @@ jest.mock('../../api/services', () => ({
     listarProativo: jest.fn(),
     sugestoesPendentes: jest.fn(),
     proximoQuinzenal: jest.fn(),
+    // Indicador SACOLAS (ADR 0022): exige permissão de indicadores, que o
+    // fiscal deste teste não tem — a tela precisa funcionar sem ele.
+    indicadorSacolas: jest.fn(),
     entradas: jest.fn(),
     retirarFardo: jest.fn(),
     consumirBobina: jest.fn(),
@@ -97,6 +100,8 @@ describe('InsumosScreen', () => {
     insumosService.listarProativo.mockRejectedValue(new Error('usar fallback'));
     insumosService.sugestoesPendentes.mockResolvedValue([]);
     insumosService.proximoQuinzenal.mockResolvedValue(null);
+    // Sem indicador de sacolas: a card não aparece e o almoxarifado segue igual.
+    insumosService.indicadorSacolas.mockResolvedValue(null);
     insumosService.entradas.mockResolvedValue([]);
     requisicoesService.pendentes.mockResolvedValue({ total: 0 });
   });

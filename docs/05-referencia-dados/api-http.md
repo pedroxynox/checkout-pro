@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **210 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **211 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -245,6 +245,7 @@
 | Método | Rota | Handler | Permissão |
 |---|---|---|---|
 | GET | `/insumos` | `listar` | `INSUMOS` |
+| GET | `/insumos/indicador-sacolas` | `indicadorSacolas` | `INDICADORES_VISUALIZAR` |
 | GET | `/insumos/proativo` | `proativo` | `INSUMOS` |
 | POST | `/insumos/consumo-embalagem` | `consumoEmbalagem` | `INSUMOS` |
 | GET | `/insumos/:id/analise` | `analise` | `INSUMOS` |

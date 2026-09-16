@@ -99,25 +99,51 @@ describe('Histórico de indicadores — domínio puro', () => {
   });
 
   describe('semáforo e cumprimento da meta', () => {
-    it('base FIXA: atingir a meta é OK; de 75% para cima, atenção', () => {
-      expect(nivelDoMes('FIXA', 2000, 2000)).toBe('OK');
-      expect(nivelDoMes('FIXA', 2500, 2000)).toBe('OK');
-      expect(nivelDoMes('FIXA', 1500, 2000)).toBe('ATENCAO');
-      expect(nivelDoMes('FIXA', 1499, 2000)).toBe('FORA');
+    it('MAIOR_MELHOR: atingir a meta é OK; de 75% para cima, atenção', () => {
+      expect(nivelDoMes('MAIOR_MELHOR', 2000, 2000)).toBe('OK');
+      expect(nivelDoMes('MAIOR_MELHOR', 2500, 2000)).toBe('OK');
+      expect(nivelDoMes('MAIOR_MELHOR', 1500, 2000)).toBe('ATENCAO');
+      expect(nivelDoMes('MAIOR_MELHOR', 1499, 2000)).toBe('FORA');
     });
 
-    it('base VENDAS: dentro da meta é OK; até 1,5× a meta, atenção', () => {
-      expect(nivelDoMes('VENDAS', 0.5, 0.75)).toBe('OK');
-      expect(nivelDoMes('VENDAS', 0.75, 0.75)).toBe('OK');
-      expect(nivelDoMes('VENDAS', 1.0, 0.75)).toBe('ATENCAO');
-      expect(nivelDoMes('VENDAS', 1.2, 0.75)).toBe('FORA');
+    it('MENOR_MELHOR: dentro da meta é OK; até 1,5× a meta, atenção', () => {
+      expect(nivelDoMes('MENOR_MELHOR', 0.5, 0.75)).toBe('OK');
+      expect(nivelDoMes('MENOR_MELHOR', 0.75, 0.75)).toBe('OK');
+      expect(nivelDoMes('MENOR_MELHOR', 1.0, 0.75)).toBe('ATENCAO');
+      expect(nivelDoMes('MENOR_MELHOR', 1.2, 0.75)).toBe('FORA');
     });
 
     it('cumpriuMeta não tem meio-termo (serve para contar sequências)', () => {
-      expect(cumpriuMeta('FIXA', 2000, 2000)).toBe(true);
-      expect(cumpriuMeta('FIXA', 1999, 2000)).toBe(false);
-      expect(cumpriuMeta('VENDAS', 0.75, 0.75)).toBe(true);
-      expect(cumpriuMeta('VENDAS', 0.76, 0.75)).toBe(false);
+      expect(cumpriuMeta('MAIOR_MELHOR', 2000, 2000)).toBe(true);
+      expect(cumpriuMeta('MAIOR_MELHOR', 1999, 2000)).toBe(false);
+      expect(cumpriuMeta('MENOR_MELHOR', 0.75, 0.75)).toBe(true);
+      expect(cumpriuMeta('MENOR_MELHOR', 0.76, 0.75)).toBe(false);
+    });
+
+    /**
+     * A REGRESSÃO que motivou a troca de `base` por `sentido` (ADR 0022).
+     *
+     * O indicador de Sacolas é `MAIOR_MELHOR` com uma base que **não** é `FIXA`
+     * (o denominador são sacolas recebidas). Com a regra antiga — que olhava a
+     * base — ele caía no ramo "menor é melhor" e o sistema pintava de VERDE o
+     * mês de MAIOR desperdício. Estes casos travam essa direção.
+     */
+    it('MAIOR_MELHOR com base que não é FIXA não é julgado ao contrário', () => {
+      const meta = 28; // R$ 28,00 de venda por sacola
+      // Acima do piso: bom, e nunca é alerta por "passar" da meta.
+      expect(nivelDoMes('MAIOR_MELHOR', 34, meta)).toBe('OK');
+      expect(cumpriuMeta('MAIOR_MELHOR', 34, meta)).toBe(true);
+      // Abaixo do piso: é o lado ruim — desperdiçou sacolas.
+      expect(nivelDoMes('MAIOR_MELHOR', 22, meta)).toBe('ATENCAO');
+      expect(cumpriuMeta('MAIOR_MELHOR', 22, meta)).toBe(false);
+      expect(nivelDoMes('MAIOR_MELHOR', 15, meta)).toBe('FORA');
+    });
+
+    it('a correlação base↔sentido dos indicadores atuais é preservada', () => {
+      // FIXA sempre foi MAIOR_MELHOR e VENDAS sempre foi MENOR_MELHOR: os
+      // valores destes indicadores não mudam com a troca de parâmetro.
+      expect(nivelDoMes('MAIOR_MELHOR', 2000, 2000)).toBe('OK'); // era FIXA
+      expect(nivelDoMes('MENOR_MELHOR', 0.5, 0.75)).toBe('OK'); // era VENDAS
     });
   });
 

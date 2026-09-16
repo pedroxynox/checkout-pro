@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
 } from '@nestjs/common';
 import { Insumo, MovimentoEstoque } from '@prisma/client';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
@@ -29,6 +30,11 @@ import {
   EntradaResumo,
   AnaliseInsumo,
 } from './insumos.service';
+import {
+  IndicadorSacolas,
+  IndicadorSacolasService,
+} from './indicador-sacolas.service';
+import { anoMesDe, ehAnoMesValido } from '../metas/metas.domain';
 
 /**
  * Controller do Modulo_Insumos (Req 3.1–3.3): cadastro de insumos, retirada de
@@ -39,7 +45,10 @@ import {
 @Controller('insumos')
 @Funcionalidade('INSUMOS')
 export class InsumosController {
-  constructor(private readonly insumosService: InsumosService) {}
+  constructor(
+    private readonly insumosService: InsumosService,
+    private readonly indicadorSacolasService: IndicadorSacolasService,
+  ) {}
 
   /** Lista os insumos ativos com o resumo de estoque (painel do almoxarifado). */
   @Get()
@@ -48,6 +57,25 @@ export class InsumosController {
   }
 
   /** Painel proativo: insumos com predicción, nível, sugestão de reposição. */
+  /**
+   * Indicador SACOLAS (ADR 0022): quanto a loja vende, em R$, por sacola que
+   * ENTRA no estoque, no mês pedido (`anoMes=AAAA-MM`; sem ele, o mês atual).
+   *
+   * Exige `INDICADORES_VISUALIZAR` — e não `INSUMOS` — porque é um indicador de
+   * gestão, exibido no painel de Indicadores ao lado dos outros. Fica nesta rota
+   * porque é aqui que vive o denominador (as entradas do almoxarifado).
+   */
+  @Get('indicador-sacolas')
+  @Funcionalidade('INDICADORES_VISUALIZAR')
+  async indicadorSacolas(
+    @Query('anoMes') anoMes?: string,
+  ): Promise<IndicadorSacolas> {
+    const mes = ehAnoMesValido(anoMes ?? '')
+      ? (anoMes as string)
+      : anoMesDe(new Date());
+    return this.indicadorSacolasService.doMes(mes);
+  }
+
   @Get('proativo')
   async proativo(): Promise<InsumoProativo[]> {
     return this.insumosService.listarProativo();

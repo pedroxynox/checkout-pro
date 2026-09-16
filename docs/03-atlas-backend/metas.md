@@ -9,8 +9,12 @@ gestor definir as metas **digitadas**. A meta de `VENDAS` é **derivada** — é
 soma das estimativas diárias do mês e não se digita (ver
 [ADR 0017](../02-arquitetura/decisoes/0017-meta-de-vendas-derivada-das-estimativas.md)).
 
+A meta de **`SACOLAS`** (venda em R$ por sacola que entra no estoque) é digitada
+aqui, mas o seu valor **realizado** é apurado por [`insumos`](insumos.md) — ver
+[ADR 0022](../02-arquitetura/decisoes/0022-indicador-sacolas-venda-por-sacola.md).
+
 ## 2. Responsabilidades e limites
-- **Faz:** lista as metas dos 5 tipos para um mês (valor resolvido + metadados);
+- **Faz:** lista as metas dos 6 tipos para um mês (valor resolvido + metadados);
   define (cria/atualiza) as metas digitadas; resolve o valor de qualquer meta,
   calculando a de `VENDAS` a partir das estimativas diárias.
 - **Não faz:** cálculo/coloração dos indicadores em si (fica em
@@ -26,7 +30,7 @@ soma das estimativas diárias do mês e não se digita (ver
 | `metas.service.ts` | Regras de aplicação: resolver, listar e definir |
 | `metas.domain.ts` | Regras puras: tipos, config, meta derivada, período |
 | `metas.errors.ts` | Erro de domínio: meta derivada não é editável |
-| `metas.module.ts` | Ligações (DI) do módulo |
+| `metas.module.ts` | Ligações (DI) do módulo (exportado para `insumos`, por causa de SACOLAS) |
 | `dto/metas.dto.ts` | Validação de entrada das rotas |
 
 ## 4. Endpoints (rotas HTTP)
@@ -97,8 +101,12 @@ de Controle.
 
 ## 7. Estados e enums
 - `TipoMeta`: `VENDAS` (derivada) · `RECARGAS_CELULAR` · `CANCELAMENTO_ITENS` ·
-  `CANCELAMENTO_CUPOM` · `DEVOLUCOES`.
-- `UnidadeMeta`: `REAIS` · `PERCENTUAL`.
+  `CANCELAMENTO_CUPOM` · `DEVOLUCOES` · **`SACOLAS`**.
+- `UnidadeMeta`: `REAIS` · `PERCENTUAL` · **`REAIS_POR_UNIDADE`**.
+  A última é uma **razão** (R$ por sacola) e existe porque as outras duas não a
+  descrevem: um valor absoluto responde "quanto arrecadou", um percentual responde
+  "que fatia das vendas", e uma razão responde "quanto de venda cada unidade
+  sustenta". Sem unidade própria, a tela de Metas escreveria "28,00%".
 - Sentido: `MAIOR_MELHOR` · `MENOR_MELHOR`.
 
 ## 8. Dados que o módulo toca
@@ -110,8 +118,9 @@ de Controle.
 ## 9. Dependências
 - **Depende de:** `PrismaService`.
 - **É usado por:** `arrecadacao` (via `ArrecadacaoService.metaDe`), `vendas` (via
-  `VendasService.painelResumo`/avisos) e `assistente` (contexto de vendas do
-  Cluby); exporta o `MetasService`.
+  `VendasService.painelResumo`/avisos), `assistente` (contexto de vendas do
+  Cluby) e [`insumos`](insumos.md) (o indicador SACOLAS resolve a sua meta aqui);
+  exporta o `MetasService`.
 
 ## 10. Regras de negócio-chave
 1. **Metas são por período mensal** (`AAAA-MM`); cada tipo tem um valor por mês.
@@ -125,6 +134,17 @@ de Controle.
    definida" (painel sem comparação).
 6. `TROCO_SOLIDARIO` **não é gerido aqui** (segue a meta global em `arrecadacao`).
 7. A meta não pode ser negativa (validação no DTO e no domínio).
+8. **`SACOLAS` é uma meta DIGITADA, com valor apurado calculado.** O gestor digita
+   o piso (padrão **R$ 28,00** por sacola); o valor realizado é calculado por
+   [`insumos`](insumos.md) (venda do mês ÷ sacolas recebidas). *Derivada* é sobre
+   o **alvo**, não sobre o realizado — por isso `SACOLAS` **não** entra em
+   `TIPOS_META_DERIVADA`. Confundir os dois deixaria a meta somente leitura na
+   tela, sem como ser definida.
+9. **A unidade de `SACOLAS` é uma razão** (`REAIS_POR_UNIDADE`) e o **sentido é
+   `MAIOR_MELHOR` com a meta como piso**: passar dela nunca é problema (significa
+   usar menos sacolas para o mesmo faturamento); o lado ruim é ficar abaixo. Foi
+   por causa desta meta que o semáforo passou a decidir pelo **sentido** e não
+   pela base — ver [`arrecadacao`](arrecadacao.md), §6 e §10.
 
 ## 11. Testes
 | Arquivo | Cobre |

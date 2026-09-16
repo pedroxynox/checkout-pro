@@ -139,15 +139,34 @@ export function valorComparavel(
  * Semáforo do mês — **fonte única de verdade** (antes a regra estava duplicada
  * na tela de Indicadores e no detalhe do indicador).
  *
- * - base FIXA (maior é melhor): atingiu a meta = OK; a partir de 75% = ATENCAO.
- * - base VENDAS (menor é melhor): dentro da meta = OK; até 1,5× a meta = ATENCAO.
+ * - `MAIOR_MELHOR`: atingiu a meta = OK; a partir de 75% dela = ATENCAO.
+ * - `MENOR_MELHOR`: dentro da meta = OK; até 1,5× a meta = ATENCAO.
+ *
+ * ## Por que decide pelo SENTIDO, e não pela base
+ *
+ * Até a ADR 0022 esta função (e `cumpriuMeta`) olhava a **base**: `FIXA` era
+ * tratada como "maior é melhor" e qualquer outra como "menor é melhor". Isso
+ * funcionava por **coincidência** — os cinco indicadores de arrecadação têm
+ * `FIXA ↔ MAIOR_MELHOR` e `VENDAS ↔ MENOR_MELHOR`, perfeitamente correlacionados.
+ *
+ * O indicador de **Sacolas** (venda em R$ por sacola recebida) quebrou a
+ * coincidência: é `MAIOR_MELHOR`, mas a sua base não é `FIXA` — o denominador é
+ * *sacolas recebidas*, não vendas nem um valor absoluto. Com a regra antiga ele
+ * cairia no ramo "menor é melhor" e o sistema pintaria de **VERDE justamente o
+ * mês em que a loja mais desperdiçou sacolas**. Um indicador que erra a direção é
+ * pior do que nenhum indicador: ele é obedecido.
+ *
+ * A troca **não altera nenhum valor** dos indicadores existentes (a correlação
+ * segue valendo para eles) e alinha esta função com
+ * `IndicadoresResumoService.semaforo`, que já decidia pelo sentido — encerrando
+ * uma divergência entre duas das três cópias da mesma regra.
  */
 export function nivelDoMes(
-  base: BaseIndicador,
+  sentido: SentidoIndicador,
   valor: number,
   meta: number,
 ): NivelIndicador {
-  if (base === 'FIXA') {
+  if (sentido === 'MAIOR_MELHOR') {
     if (valor >= meta) return 'OK';
     if (valor >= meta * 0.75) return 'ATENCAO';
     return 'FORA';
@@ -157,13 +176,17 @@ export function nivelDoMes(
   return 'FORA';
 }
 
-/** true se o mês cumpriu a meta (sem meio-termo, para contar sequências). */
+/**
+ * true se o mês cumpriu a meta (sem meio-termo, para contar sequências).
+ *
+ * Decide pelo **sentido**, pela mesma razão de `nivelDoMes`.
+ */
 export function cumpriuMeta(
-  base: BaseIndicador,
+  sentido: SentidoIndicador,
   valor: number,
   meta: number,
 ): boolean {
-  return base === 'FIXA' ? valor >= meta : valor <= meta;
+  return sentido === 'MAIOR_MELHOR' ? valor >= meta : valor <= meta;
 }
 
 /**
