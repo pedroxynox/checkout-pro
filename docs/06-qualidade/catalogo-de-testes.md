@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 128 arquivos, 1053 casos. **Mobile:** 33 arquivos, 223 casos. **Total: 1276 casos.**
+> **Backend:** 129 arquivos, 1059 casos. **Mobile:** 33 arquivos, 223 casos. **Total: 1282 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -117,12 +117,13 @@
 | `src/operadores/quadro-folga-escala.spec.ts` | 4 | 1 |
 | `src/operadores/remover-ausencia-periodo.spec.ts` | 4 | 1 |
 | `src/ponto/contrato-6x1-congelado.spec.ts` | 5 | 1 |
-| `src/ponto/deteccao-alerta-atraso.spec.ts` | 3 | 1 |
+| `src/ponto/deteccao-alerta-atraso.spec.ts` | 5 | 2 |
 | `src/ponto/deteccao-autocura-nao-retorno.spec.ts` | 3 | 1 |
 | `src/ponto/deteccao-automatica.domain.spec.ts` | 8 | 4 |
 | `src/ponto/deteccao-exclusao-gestor.spec.ts` | 8 | 2 |
 | `src/ponto/deteccao-falta-a-prazo.spec.ts` | 3 | 1 |
 | `src/ponto/deteccao-revalidacao.spec.ts` | 15 | 3 |
+| `src/ponto/deteccao-vigilancia-fora-da-escala.spec.ts` | 4 | 1 |
 | `src/ponto/marcacoes-invalidas.domain.spec.ts` | 25 | 7 |
 | `src/ponto/mudanca-de-funcao.spec.ts` | 6 | 1 |
 | `src/ponto/ponto-alertas.service.spec.ts` | 2 | 2 |

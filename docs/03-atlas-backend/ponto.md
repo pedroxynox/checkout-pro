@@ -126,6 +126,38 @@ entrada sem batida) e registra não-retorno do intervalo. Nessa ordem, uma
 ocorrência revalidada não é reavaliada no mesmo ciclo e o "já tem falta?" da
 detecção enxerga a base já limpa.
 
+**Duas fontes de vigiados — `vigiadosForaDaEscala`.** A escala responde "quem
+devia trabalhar"; as batidas do dia respondem "quem está trabalhando". A varredura
+usa **as duas**, e a segunda existe porque a primeira deixou de ser suficiente:
+desde que o ponto em dia de folga passou a ser aceito
+([ADR 0019](../02-arquitetura/decisoes/0019-ponto-em-dia-de-folga.md)),
+`escaladosDoDia` — que exclui a folga — passou a ter um vão. Quem trabalhava
+nesse dia ficava fora de **toda** verificação: saía para o intervalo, não voltava,
+e ninguém era avisado. O pior caso possível, porque é exatamente o dia em que a
+escala já está errada.
+
+- **Derivada de `batidas_ponto`**, não de `AvisoPontoEmFolga`: cobre o vão inteiro
+  de uma vez (folga, férias lançadas por engano, escala não publicada, convocação
+  de última hora). A pergunta deixa de ser "por que ela não está na escala?" e
+  passa a ser "ela está trabalhando?". O `tipoPessoa` entra no `select` porque só o
+  par (`pessoaId`, `tipoPessoa`) identifica alguém para `jornadaDoDia`.
+- **Só recebem não-retorno do intervalo.** Isso é garantido **por construção**, não
+  por um `if`: vêm das batidas do dia, logo entram sempre pelo ramo "tem
+  atividade"; e `entradaPrevista` é `null`, o que torna atraso e falta inertes
+  (`estadoSemBatida(null) === 'AGUARDANDO'`) mesmo se um dia caírem no outro ramo.
+  Cobrar atraso de quem não era esperada seria absurdo; marcar falta de quem está
+  trabalhando, um bug.
+- **Exige a ficha** (`colaboradorId`): a `IncidenciaEscala` do não-retorno é keyed
+  por colaborador, então sem ela não há o que registrar.
+- **Sem `return` quando a escala do dia vem vazia** — era justamente o dia em que
+  só trabalhou gente marcada como de folga que silenciava a varredura inteira.
+- Quem já está na escala **não é vigiado duas vezes**: a comparação cruza as duas
+  chaves (regra 16), senão a pessoa cuja batida está sob a ficha entraria pelas
+  duas fontes.
+- Best-effort: se a montagem falhar, o ciclo segue vigiando a escala — o modo de
+  falha correto é voltar ao comportamento antigo, nunca deixar de vigiar quem está
+  escalado.
+
 **Revalidação (auto-cura) — `revalidarOcorrenciasAutomaticas`.** Varre as
 ocorrências **que o sistema criou** no **ciclo de folha aberto** e apaga as que já
 não são verdade, pela decisão pura de
@@ -156,6 +188,13 @@ preventivo, não lança nada. Enviado **uma vez por pessoa/dia**: uma linha em
 `AlertaAtrasoEnviado` (índice único `pessoaId+dia`) é a trava atômica
 (reserva → envia; `P2002` = já avisado). Antes, o atraso de 1h era **apenas
 visual** na "equipe do dia" e nenhum aviso era disparado.
+
+> **A reserva cobre as DUAS identidades.** A tabela é keyed só por `pessoaId`, e
+> uma pessoa com duas identidades de ponto (`Fiscal.id` + ficha) abria **duas**
+> linhas distintas — logo dois avisos do mesmo atraso. Reserva-se uma linha por
+> chave e basta **uma** colidir para o aviso não se repetir. Para operadores as
+> duas chaves são iguais e nada muda. Aplicação da regra 16 a uma trava de dedupe:
+> uma chave só não deduplica quem tem duas.
 
 > **Respeita a ausência do dia** (dupla chave, como a falta de 2h já fazia): com
 > atestado, ausência a prazo ou falta já lançada, o aviso **não** é enviado. Este
@@ -484,6 +523,19 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
    as batidas do período, depois as fichas de quem bateu. A função de hoje não
    decide o que aconteceu num dia passado. Ver
    [ADR 0020](../02-arquitetura/decisoes/0020-mudanca-de-funcao-preserva-o-ponto.md).
+17. **A vigilância pergunta quem ESTÁ trabalhando, não só quem DEVIA trabalhar.**
+   A escala é a fonte de "quem era esperado"; ela não é fonte de presença. Toda
+   verificação que dependa de a pessoa estar trabalhando **agora** (não-retorno do
+   intervalo, riscos de TAC) parte também das batidas do dia — o
+   `PontoAlertasService` sempre fez assim, e a detecção automática passou a fazer
+   em `vigiadosForaDaEscala`.
+
+   O corolário separa as duas famílias de verificação, e ele é o que impede o
+   remédio de virar doença: o que se cobra de **ausência** (atraso, falta) só vale
+   para quem a escala esperava; o que se cobra de **presença** vale para quem
+   apareceu, escalado ou não. Misturar as duas produz os dois piores erros
+   possíveis — cobrar atraso de quem estava de folga, ou marcar falta de quem está
+   batendo ponto.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
@@ -499,6 +551,9 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 | `revalidacao-automatica.domain.spec.ts` | Quando a ocorrência deixa de ser verdade; as assimetrias falta × não retorno (batida e **folga**); o que a auto-cura **não** pode apagar | 16 |
 | `deteccao-revalidacao.spec.ts` | Auto-cura no ciclo: batida (inclusive em atraso), atestado, ausência a prazo, férias, fiscal por outra chave — e o que **fica** | 15 |
 | `deteccao-exclusao-gestor.spec.ts` | A exclusão do gestor prevalece (não recria) e o aviso de atraso respeita a ausência do dia | 8 |
+| `deteccao-vigilancia-fora-da-escala.spec.ts` | **Quem bateu ponto sem estar na escala é vigiado:** registra o não-retorno (inclusive com a escala vazia), **nunca** cobra atraso nem falta, não duplica quem já está na escala (batida sob a ficha) e ignora a batida sem ficha | 4 |
+| `deteccao-alerta-atraso.spec.ts` | O aviso de 1h: envia uma vez, respeita a reserva do dia, não antecipa — e **reserva as duas identidades** (o mesmo atraso não é avisado por duas chaves) | 5 |
+| `deteccao-autocura-nao-retorno.spec.ts` | Auto-cura do não-retorno no ciclo: remove quando a pessoa fechou o intervalo, mantém enquanto não voltou, registra quando ainda não existe | 3 |
 | `marcacoes-invalidas.domain.spec.ts` | Quantas marcações faltam e quais: entrada esquecida, ajustes por duração, sem turno, bordas e 4 propriedades invariantes (fast-check) | 25 |
 | `deteccao-falta-a-prazo.spec.ts` | Ausência a prazo (chave dupla) não vira falta automática duplicada | 3 |
 | `ponto-alertas.service.spec.ts` | Cron periódico de riscos de TAC | 1 |
@@ -518,14 +573,19 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
   volta a esconder o histórico de quem mudou de função. Foi assim que o caso do
   [ADR 0020](../02-arquitetura/decisoes/0020-mudanca-de-funcao-preserva-o-ponto.md)
   chegou à produção.
-- ⚠️ **Quem trabalha num dia marcado como folga fica fora da vigilância
-  automática.** A varredura de 5 minutos parte de `escaladosDoDia`, e a folga
-  exclui a pessoa de lá — então ela **não** recebe alerta de atraso nem detecção
-  de não-retorno do intervalo naquele dia, mesmo tendo batido ponto. O registro e
-  o cálculo funcionam; o que falta é a vigilância. A correção é acrescentar "quem
-  tem batida hoje" como segunda fonte da varredura (o `PontoAlertasService` já usa
-  esse padrão com `batidaPonto.groupBy`). Ver
-  [ADR 0019](../02-arquitetura/decisoes/0019-ponto-em-dia-de-folga.md).
+- ✅ **Quem trabalha num dia marcado como folga já está sob vigilância** (era o
+  vão aberto pela [ADR 0019](../02-arquitetura/decisoes/0019-ponto-em-dia-de-folga.md)):
+  `vigiadosForaDaEscala` acrescentou as batidas do dia como segunda fonte da
+  varredura. **Por decisão, só o não-retorno do intervalo** alcança essa pessoa —
+  atraso e falta pressupõem uma hora esperada, que não existe num dia em que ela
+  não era esperada (regra 17). Se algum dia se quiser cobrar horário nesse caso, o
+  caminho não é ligar a cobrança aqui, é **corrigir a escala** (que é o que o aviso
+  de ponto em folga pede ao gestor).
+- 🔧 A vigilância pela segunda fonte **não** cobre quem registra por
+  `registros_ponto_fiscal` (a via legada do fiscal, sem `tipoPessoa` nem vínculo com
+  a ficha na linha). Na prática o fiscal de folga bate pelo Relógio Ponto, então o
+  caso é teórico; resolvê-lo de vez sai junto com a aposentadoria do modelo `Fiscal`
+  ([ADR 0004](../02-arquitetura/decisoes/0004-cadastro-unificado-e-escala-opcao-a.md)).
 - ⚠️ O deslocamento de Brasília é fixo (UTC−3): correto enquanto o país não
   tiver horário de verão; uma eventual volta exigiria revisão.
 - 🔧 A memória de aliases (`AliasLeituraPonto`) guarda cópia de nome/ficha usada
