@@ -274,3 +274,234 @@ export function textoDoMes(
     ? `${base} Está ${distancia} acima da meta de ${reaisPorSacola(avaliacao.meta)}.`
     : `${base} Está ${distancia} abaixo da meta de ${reaisPorSacola(avaliacao.meta)}.`;
 }
+
+
+// ---------------------------------------------------------------------------
+// O TETO DE SACOLAS — o indicador lido de trás para frente
+//
+// A intenção do dono do projeto: "no final do mês, não desperdiçar sacolas e
+// vender o que diz a meta, ou mais, por sacola". Isso muda a pergunta útil.
+//
+// Enquanto o mês corre, saber que o indicador está em R$ 22 não diz o que fazer.
+// O que diz é a conta invertida:
+//
+//     indicador = venda ÷ sacolas ≥ meta     ⟺     sacolas ≤ venda ÷ meta
+//
+// Ou seja: **existe um teto de sacolas** que o mês suporta sem furar a meta. Com
+// R$ 3.000.000 esperados e meta de R$ 28, o teto é 107.142 sacolas (107 fardos).
+// Se 100 fardos já entraram, ainda cabem 7.
+//
+// Isto transforma o indicador de um boletim (que só se lê no fim) numa **régua
+// de compra** (que serve durante o mês).
+//
+// ⚠️ **A direção é contraintuitiva e precisa estar escrita na tela:** receber
+// MENOS sacolas MELHORA o indicador. Isso nunca deve ser lido como "compre
+// menos" — a loja precisa de sacolas para operar. O teto é uma **linha de
+// aviso**: passar dela significa que, com a venda esperada, o mês fecha abaixo
+// da meta. A saída pode ser vender mais, e não necessariamente comprar menos.
+// ---------------------------------------------------------------------------
+
+/** De onde veio a venda esperada do mês. */
+export type FonteVendaEsperada = 'ESTIMATIVA' | 'RUN_RATE' | 'REALIZADO';
+
+/** Venda que se espera para o mês inteiro, e o quanto dela já é fato. */
+export interface VendaEsperadaMes {
+  valor: number;
+  fonte: FonteVendaEsperada;
+  /** Quanto do valor já foi realizado (0..1). 1 = mês fechado. */
+  fracaoRealizada: number;
+  realizado: number;
+}
+
+/**
+ * Venda esperada do mês: **fato para o passado, previsão para o futuro**.
+ *
+ * Ordem de confiança:
+ * 1. `ESTIMATIVA` — realizado até hoje **mais** as estimativas dos dias que
+ *    faltam. É a melhor: usa fatos onde há fatos e a previsão da própria gestão
+ *    onde ainda não há. As estimativas diárias já existem (Central de Vendas) e
+ *    são o número que o dono do projeto pediu para considerar.
+ * 2. `RUN_RATE` — sem estimativas para os dias que faltam, cai na projeção por
+ *    ritmo (`projecaoFechamento` do painel de vendas).
+ * 3. `REALIZADO` — mês fechado, ou sem nada em que se apoiar: vale o que
+ *    aconteceu.
+ *
+ * `fracaoRealizada` existe porque o teto calculado no dia 2 é quase todo
+ * previsão e no dia 30 é quase todo fato — e a tela precisa dizer isso, ou o
+ * gestor confia num número frágil como se fosse certo.
+ */
+export function vendaEsperadaDoMes(
+  realizado: number,
+  estimativasFuturas: readonly number[],
+  projecaoRunRate: number,
+): VendaEsperadaMes {
+  const real = Number.isFinite(realizado) && realizado > 0 ? realizado : 0;
+  const somaFuturas = estimativasFuturas
+    .filter((v) => Number.isFinite(v) && v > 0)
+    .reduce((s, v) => s + v, 0);
+
+  let valor = real;
+  let fonte: FonteVendaEsperada = 'REALIZADO';
+  if (somaFuturas > 0) {
+    valor = arredondar(real + somaFuturas);
+    fonte = 'ESTIMATIVA';
+  } else if (Number.isFinite(projecaoRunRate) && projecaoRunRate > real) {
+    valor = arredondar(projecaoRunRate);
+    fonte = 'RUN_RATE';
+  }
+
+  return {
+    valor,
+    fonte,
+    fracaoRealizada: valor > 0 ? Math.min(1, arredondar(real / valor)) : 0,
+    realizado: real,
+  };
+}
+
+/** O teto e o que ele significa para o mês em curso. */
+export interface TetoSacolas {
+  /** Máximo de sacolas que o mês suporta sem furar a meta. */
+  tetoSacolas: number;
+  /** O mesmo teto em fardos (arredondado para BAIXO — 107,9 fardos é 107). */
+  tetoFardos: number;
+  /** Quantas sacolas ainda cabem. Zero quando o teto já foi passado. */
+  podemEntrarSacolas: number;
+  podemEntrarFardos: number;
+  /** true quando já entrou mais do que o teto. */
+  tetoEstourado: boolean;
+  /**
+   * Venda que o mês precisaria alcançar para as sacolas JÁ recebidas ficarem
+   * dentro da meta. É a pergunta espelho, e a saída que não passa por comprar
+   * menos: vender mais.
+   */
+  vendaNecessaria: number;
+  /** Quanto falta de venda para chegar lá. Zero quando já está dentro. */
+  vendaFaltante: number;
+}
+
+/**
+ * Calcula o teto de sacolas do mês.
+ *
+ * O teto em **fardos é truncado para baixo** de propósito: com teto de 107.142
+ * sacolas e fardos de 1.000, o 108º fardo furaria a meta. Arredondar para cima
+ * daria um número que não se pode usar.
+ */
+export function calcularTeto(
+  vendaEsperada: number,
+  sacolasRecebidas: number,
+  meta: number,
+  fatorEmbalagem: number,
+): TetoSacolas | null {
+  if (!Number.isFinite(meta) || meta <= 0) return null;
+  if (!Number.isFinite(vendaEsperada) || vendaEsperada <= 0) return null;
+  const fator = Number.isFinite(fatorEmbalagem) && fatorEmbalagem > 0 ? fatorEmbalagem : 1;
+
+  const tetoSacolas = Math.floor(vendaEsperada / meta);
+  const recebidas = Math.max(0, sacolasRecebidas);
+  const restam = Math.max(0, tetoSacolas - recebidas);
+  const vendaNecessaria = arredondar(recebidas * meta);
+
+  return {
+    tetoSacolas,
+    tetoFardos: Math.floor(tetoSacolas / fator),
+    podemEntrarSacolas: restam,
+    podemEntrarFardos: Math.floor(restam / fator),
+    tetoEstourado: recebidas > tetoSacolas,
+    vendaNecessaria,
+    vendaFaltante: Math.max(0, arredondar(vendaNecessaria - vendaEsperada)),
+  };
+}
+
+/**
+ * Onde o mês vai fechar, se nada mudar.
+ *
+ * `sacolasPrevistas` é informado por quem chama (e não deduzido aqui) porque
+ * depende de uma **suposição** — quantas entregas ainda cabem no mês, pelo ciclo
+ * quinzenal — e uma suposição precisa estar visível no ponto onde é feita, não
+ * escondida numa função pura.
+ */
+export function projecaoDoFechamento(
+  vendaEsperada: number,
+  sacolasRecebidas: number,
+  sacolasPrevistas: number,
+  meta: number,
+): { valor: number | null; cumprira: boolean | null; sacolasNoFechamento: number } {
+  const sacolasNoFechamento =
+    Math.max(0, sacolasRecebidas) + Math.max(0, sacolasPrevistas);
+  if (sacolasNoFechamento <= 0 || vendaEsperada <= 0 || meta <= 0) {
+    return { valor: null, cumprira: null, sacolasNoFechamento };
+  }
+  const valor = arredondar(vendaEsperada / sacolasNoFechamento);
+  return { valor, cumprira: valor >= meta, sacolasNoFechamento };
+}
+
+/**
+ * Compara o indicador oficial (pela ENTRADA) com o uso real (pelo CONSUMO).
+ *
+ * ## Por que os dois números existem
+ *
+ * O indicador oficial mede pela entrada, porque a entrada é auditável. Mas o
+ * estoque é um **amortecedor**: num mês a loja pode receber 200 fardos e usar
+ * 150. Nesse mês o indicador oficial parece pior do que o uso real — e a
+ * diferença não é desperdício, é **estoque que subiu** (e que vai aparecer como
+ * indicador melhor no mês seguinte, quando receber menos).
+ *
+ * Distinguir as duas coisas é exatamente o que a intenção do dono do projeto
+ * exige: *não desperdiçar sacolas*. Desperdício aparece no **consumo** alto em
+ * relação à venda; acúmulo aparece na **entrada** alta em relação ao consumo.
+ * Sem os dois lado a lado, um mês de reposição maior seria lido como desperdício.
+ */
+export interface ConsumoVsEntrada {
+  sacolasRecebidas: number;
+  sacolasConsumidas: number;
+  /** Recebidas − consumidas. Positivo = estoque subiu no mês. */
+  variacaoEstoque: number;
+  /** Indicador oficial (venda ÷ recebidas). */
+  porEntrada: number | null;
+  /** Referência de uso real (venda ÷ consumidas). */
+  porConsumo: number | null;
+  /** Frase que explica a diferença, ou `null` quando não há diferença relevante. */
+  leitura: string | null;
+}
+
+/** Diferença mínima (em fardos) para valer a pena comentar o desvio. */
+export const FARDOS_DIFERENCA_RELEVANTE = 5;
+
+export function compararConsumoEntrada(
+  vendaMes: number,
+  sacolasRecebidas: number,
+  sacolasConsumidas: number,
+  fatorEmbalagem: number,
+): ConsumoVsEntrada {
+  const fator = fatorEmbalagem > 0 ? fatorEmbalagem : 1;
+  const porEntrada = vendaPorSacola(vendaMes, sacolasRecebidas);
+  const porConsumo = vendaPorSacola(vendaMes, sacolasConsumidas);
+  const variacaoEstoque = sacolasRecebidas - sacolasConsumidas;
+  const diferencaFardos = Math.abs(variacaoEstoque) / fator;
+
+  let leitura: string | null = null;
+  if (
+    porEntrada != null &&
+    porConsumo != null &&
+    diferencaFardos >= FARDOS_DIFERENCA_RELEVANTE
+  ) {
+    const fardos = Math.round(diferencaFardos);
+    leitura =
+      variacaoEstoque > 0
+        ? `Entraram ${fardos} fardos mais do que se usou: o estoque subiu. ` +
+          `O indicador oficial (${reaisPorSacola(porEntrada)}) fica abaixo do uso ` +
+          `real (${reaisPorSacola(porConsumo)}) — não é desperdício, é reposição.`
+        : `Usou-se ${fardos} fardos mais do que entrou: o estoque caiu. ` +
+          `O indicador oficial (${reaisPorSacola(porEntrada)}) fica acima do uso ` +
+          `real (${reaisPorSacola(porConsumo)}) — o mês consumiu estoque antigo.`;
+  }
+
+  return {
+    sacolasRecebidas,
+    sacolasConsumidas,
+    variacaoEstoque,
+    porEntrada,
+    porConsumo,
+    leitura,
+  };
+}

@@ -3,12 +3,16 @@ import {
   SENTIDO_SACOLAS,
   avaliarMes,
   avisoDeEntregas,
+  calcularTeto,
   compararComAnterior,
+  compararConsumoEntrada,
   desvioDaMeta,
   emFardos,
   estadoDoIndicador,
+  projecaoDoFechamento,
   reaisPorSacola,
   textoDoMes,
+  vendaEsperadaDoMes,
   vendaPorSacola,
 } from './sacolas.domain';
 
@@ -219,5 +223,149 @@ describe('ORIGENS_FORA_DO_INDICADOR', () => {
     for (const origem of ['ENTRADA', 'REQUISICAO', 'PEDIDO_RECORRENTE']) {
       expect(ORIGENS_FORA_DO_INDICADOR).not.toContain(origem);
     }
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// O TETO DE SACOLAS e o resto do detalhe (ADR 0022)
+// ---------------------------------------------------------------------------
+
+describe('vendaEsperadaDoMes', () => {
+  it('usa fato até hoje + estimativa dos dias que faltam', () => {
+    const r = vendaEsperadaDoMes(1_200_000, [300_000, 300_000, 200_000], 0);
+    expect(r.valor).toBe(2_000_000);
+    expect(r.fonte).toBe('ESTIMATIVA');
+    // 1,2 mi de 2 mi já é fato: 60%.
+    expect(r.fracaoRealizada).toBeCloseTo(0.6, 2);
+  });
+
+  it('sem estimativas futuras, cai no ritmo (run-rate)', () => {
+    const r = vendaEsperadaDoMes(1_200_000, [], 3_000_000);
+    expect(r.valor).toBe(3_000_000);
+    expect(r.fonte).toBe('RUN_RATE');
+  });
+
+  it('mês fechado (sem futuro e sem ritmo) vale o realizado, 100% fato', () => {
+    const r = vendaEsperadaDoMes(2_800_000, [], 0);
+    expect(r.valor).toBe(2_800_000);
+    expect(r.fonte).toBe('REALIZADO');
+    expect(r.fracaoRealizada).toBe(1);
+  });
+
+  it('a estimativa vence o ritmo (é a previsão da própria gestão)', () => {
+    const r = vendaEsperadaDoMes(1_000_000, [500_000], 9_000_000);
+    expect(r.fonte).toBe('ESTIMATIVA');
+    expect(r.valor).toBe(1_500_000);
+  });
+
+  it('ignora estimativas inválidas ou negativas', () => {
+    const r = vendaEsperadaDoMes(1_000_000, [Number.NaN, -50, 200_000], 0);
+    expect(r.valor).toBe(1_200_000);
+  });
+});
+
+describe('calcularTeto — o indicador lido de trás para frente', () => {
+  const META = 28;
+
+  it('com R$ 3 mi esperados, o teto é 107 fardos', () => {
+    const t = calcularTeto(3_000_000, 0, META, 1000);
+    // 3.000.000 / 28 = 107.142,85 → 107.142 sacolas
+    expect(t?.tetoSacolas).toBe(107_142);
+    expect(t?.tetoFardos).toBe(107);
+  });
+
+  it('já recebeu 100 fardos: ainda cabem 7', () => {
+    const t = calcularTeto(3_000_000, 100_000, META, 1000);
+    expect(t?.podemEntrarSacolas).toBe(7_142);
+    expect(t?.podemEntrarFardos).toBe(7);
+    expect(t?.tetoEstourado).toBe(false);
+  });
+
+  /**
+   * O fardo é indivisível: com teto de 107.142 sacolas, o 108º fardo furaria a
+   * meta. Arredondar para cima daria um número que não se pode usar.
+   */
+  it('trunca os fardos para BAIXO (108 fardos furaria a meta)', () => {
+    const t = calcularTeto(3_000_000, 0, META, 1000);
+    expect(t?.tetoFardos).toBe(107);
+    expect((t as { tetoFardos: number }).tetoFardos * 1000).toBeLessThanOrEqual(
+      107_142,
+    );
+  });
+
+  it('teto estourado: não cabe mais nada e mostra a venda necessária', () => {
+    // 200.000 sacolas recebidas com só R$ 3 mi esperados.
+    const t = calcularTeto(3_000_000, 200_000, META, 1000);
+    expect(t?.tetoEstourado).toBe(true);
+    expect(t?.podemEntrarFardos).toBe(0);
+    // Para 200.000 sacolas ficarem dentro da meta: 200.000 × 28 = R$ 5,6 mi.
+    expect(t?.vendaNecessaria).toBe(5_600_000);
+    expect(t?.vendaFaltante).toBe(2_600_000);
+  });
+
+  it('dentro do teto não falta venda', () => {
+    const t = calcularTeto(3_000_000, 50_000, META, 1000);
+    expect(t?.vendaFaltante).toBe(0);
+  });
+
+  it('sem venda esperada ou sem meta não há teto', () => {
+    expect(calcularTeto(0, 100_000, META, 1000)).toBeNull();
+    expect(calcularTeto(3_000_000, 100_000, 0, 1000)).toBeNull();
+  });
+});
+
+describe('projecaoDoFechamento', () => {
+  const META = 28;
+
+  it('sem entrega nova, projeta com o que já entrou', () => {
+    const p = projecaoDoFechamento(3_000_000, 100_000, 0, META);
+    expect(p.sacolasNoFechamento).toBe(100_000);
+    expect(p.valor).toBe(30);
+    expect(p.cumprira).toBe(true);
+  });
+
+  it('a entrega prevista derruba a projeção abaixo da meta', () => {
+    const p = projecaoDoFechamento(3_000_000, 100_000, 100_000, META);
+    expect(p.sacolasNoFechamento).toBe(200_000);
+    expect(p.valor).toBe(15);
+    expect(p.cumprira).toBe(false);
+  });
+
+  it('sem sacola nenhuma não há projeção', () => {
+    const p = projecaoDoFechamento(3_000_000, 0, 0, META);
+    expect(p.valor).toBeNull();
+    expect(p.cumprira).toBeNull();
+  });
+});
+
+describe('compararConsumoEntrada — desperdício ou acúmulo?', () => {
+  const META_FATOR = 1000;
+
+  it('recebeu mais do que usou: estoque subiu, não é desperdício', () => {
+    const c = compararConsumoEntrada(3_000_000, 200_000, 150_000, META_FATOR);
+    expect(c.variacaoEstoque).toBe(50_000);
+    expect(c.porEntrada).toBe(15);
+    expect(c.porConsumo).toBe(20);
+    expect(c.leitura).toContain('estoque subiu');
+    expect(c.leitura).toContain('não é desperdício');
+  });
+
+  it('usou mais do que recebeu: consumiu estoque antigo', () => {
+    const c = compararConsumoEntrada(3_000_000, 100_000, 150_000, META_FATOR);
+    expect(c.variacaoEstoque).toBe(-50_000);
+    expect(c.leitura).toContain('estoque caiu');
+  });
+
+  it('diferença pequena não gera leitura (seria ruído)', () => {
+    const c = compararConsumoEntrada(3_000_000, 100_000, 99_000, META_FATOR);
+    expect(c.variacaoEstoque).toBe(1_000); // 1 fardo
+    expect(c.leitura).toBeNull();
+  });
+
+  it('sem consumo registrado, a referência por consumo é null', () => {
+    const c = compararConsumoEntrada(3_000_000, 100_000, 0, META_FATOR);
+    expect(c.porConsumo).toBeNull();
+    expect(c.leitura).toBeNull();
   });
 });

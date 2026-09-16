@@ -359,6 +359,85 @@ export interface IndicadorSacolas {
   avisoEntregas: string | null;
 }
 
+/** De onde veio a venda esperada do mês. */
+export type FonteVendaEsperada = 'ESTIMATIVA' | 'RUN_RATE' | 'REALIZADO';
+
+/** Venda que se espera para o mês inteiro, e o quanto dela já é fato. */
+export interface VendaEsperadaMes {
+  valor: number;
+  fonte: FonteVendaEsperada;
+  /** Quanto do valor já foi realizado (0..1). 1 = mês fechado. */
+  fracaoRealizada: number;
+  realizado: number;
+}
+
+/**
+ * O TETO de sacolas do mês — o indicador lido de trás para frente.
+ *
+ * `indicador = venda ÷ sacolas ≥ meta` ⟺ `sacolas ≤ venda ÷ meta`. Serve como
+ * régua durante o mês: "ainda cabem 7 fardos" diz o que fazer; "o indicador está
+ * em R$ 22" não.
+ */
+export interface TetoSacolas {
+  tetoSacolas: number;
+  tetoFardos: number;
+  podemEntrarSacolas: number;
+  podemEntrarFardos: number;
+  tetoEstourado: boolean;
+  /** Venda que o mês precisaria para as sacolas JÁ recebidas ficarem na meta. */
+  vendaNecessaria: number;
+  vendaFaltante: number;
+}
+
+/** Indicador oficial (pela entrada) vs uso real (pelo consumo). */
+export interface ConsumoVsEntrada {
+  sacolasRecebidas: number;
+  sacolasConsumidas: number;
+  /** Recebidas − consumidas. Positivo = o estoque subiu no mês. */
+  variacaoEstoque: number;
+  porEntrada: number | null;
+  porConsumo: number | null;
+  /** Frase que explica a diferença (acúmulo × desperdício), quando relevante. */
+  leitura: string | null;
+}
+
+/** Uma entrada de sacola no mês (o "dia que entrou sacola"). */
+export interface EntradaSacolaDia {
+  data: string;
+  dataHora: string;
+  sacolas: number;
+  fardos: number;
+  origem: string | null;
+  responsavelNome: string | null;
+}
+
+/** Um dia da série: venda, estimativa, consumo e entrada. */
+export interface DiaSerieSacolas {
+  data: string;
+  venda: number;
+  estimativa: number | null;
+  consumo: number;
+  entrada: number;
+}
+
+/** Detalhe do indicador de Sacolas num mês. */
+export interface DetalheSacolas {
+  indicador: IndicadorSacolas;
+  vendaEsperada: VendaEsperadaMes;
+  teto: TetoSacolas | null;
+  projecao: {
+    valor: number | null;
+    cumprira: boolean | null;
+    sacolasNoFechamento: number;
+    sacolasPrevistas: number;
+    /** A suposição da previsão, escrita — nunca implícita. */
+    baseDaPrevisao: string;
+  };
+  consumoVsEntrada: ConsumoVsEntrada;
+  entradas: EntradaSacolaDia[];
+  serie: DiaSerieSacolas[];
+}
+
 // ----- Metas mensais (Centro de Controle ▸ Metas) -----
 
 /** Indicadores cuja meta é configurável por mês (período mensal). */
