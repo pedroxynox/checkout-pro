@@ -155,6 +155,8 @@ function montar(
     ausencia: { findMany: jest.fn().mockResolvedValue(ausencias) },
     fiscal: { findMany: jest.fn().mockResolvedValue([]) },
     usuario: { findMany: jest.fn().mockResolvedValue([]) },
+    // Compensações de horas (ADR 0021): sem nenhuma, o cálculo é o de antes.
+    compensacaoHoras: { findMany: jest.fn().mockResolvedValue([]) },
   };
   const feriadosFake = {
     mapaNoPeriodo: jest.fn().mockResolvedValue(new Map<number, string>()),

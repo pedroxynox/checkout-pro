@@ -38,6 +38,7 @@ import { EscalaExportacaoModule } from './escala-exportacao/escala-exportacao.mo
 import { ResetOperacionalModule } from './reset-operacional/reset-operacional.module';
 import { FeriadosModule } from './feriados/feriados.module';
 import { CentralJornadaModule } from './central-jornada/central-jornada.module';
+import { CompensacaoHorasModule } from './compensacao-horas/compensacao-horas.module';
 import { PermissoesModule } from './permissoes/permissoes.module';
 import { CheckoutsModule } from './checkouts/checkouts.module';
 import { CicloFolhaModule } from './ciclo-folha/ciclo-folha.module';
@@ -86,6 +87,7 @@ import { AtestadosModule } from './atestados/atestados.module';
     ResetOperacionalModule,
     FeriadosModule,
     CentralJornadaModule,
+    CompensacaoHorasModule,
     PermissoesModule,
     CheckoutsModule,
     CicloFolhaModule,

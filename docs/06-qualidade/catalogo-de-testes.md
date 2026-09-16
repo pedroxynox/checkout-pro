@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 131 arquivos, 1111 casos. **Mobile:** 34 arquivos, 231 casos. **Total: 1342 casos.**
+> **Backend:** 133 arquivos, 1161 casos. **Mobile:** 35 arquivos, 242 casos. **Total: 1403 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -33,6 +33,7 @@
 | `src/central-jornada/agrupar-atestados.spec.ts` | 12 | 3 |
 | `src/central-jornada/central-jornada.controller.spec.ts` | 2 | 2 |
 | `src/central-jornada/central-jornada.service.spec.ts` | 39 | 5 |
+| `src/central-jornada/compensacao-jornada.spec.ts` | 12 | 5 |
 | `src/central-jornada/marcacoes-invalidas.service.spec.ts` | 12 | 1 |
 | `src/central-jornada/rankings.service.spec.ts` | 10 | 1 |
 | `src/central-jornada/saldo-time.spec.ts` | 4 | 1 |
@@ -56,6 +57,7 @@
 | `src/common/guards/perfil.guard.spec.ts` | 5 | 1 |
 | `src/common/justificativas.spec.ts` | 9 | 2 |
 | `src/common/risco-ocorrencias.spec.ts` | 5 | 4 |
+| `src/compensacao-horas/compensacao-horas.domain.spec.ts` | 38 | 7 |
 | `src/config/env.validation.spec.ts` | 4 | 1 |
 | `src/contratos/contratos-alertas.service.spec.ts` | 5 | 1 |
 | `src/contratos/contratos.properties.spec.ts` | 13 | 1 |
@@ -171,6 +173,7 @@
 | `src/screens/insumos/InsumosScreen.test.tsx` | 2 | 1 |
 | `src/screens/notificacoes/NotificacoesScreen.test.tsx` | 5 | 1 |
 | `src/screens/operadores/JustificativasScreen.test.tsx` | 5 | 1 |
+| `src/screens/ponto/CartaoCompensacao.test.tsx` | 11 | 1 |
 | `src/screens/ponto/ExportarCicloScreen.test.tsx` | 2 | 1 |
 | `src/screens/ponto/InconsistenciasScreen.test.tsx` | 3 | 1 |
 | `src/screens/ponto/MarcacoesInvalidasScreen.test.tsx` | 13 | 1 |

@@ -42,6 +42,10 @@ import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 import {
+  CompensacaoAplicada,
+  carregarCompensacoesAprovadas,
+} from '../compensacao-horas/compensacao-horas.consulta';
+import {
   agoraNaBrasilia,
   inicioDoDia,
   inicioDoProximoDia,
@@ -89,6 +93,18 @@ export interface CentralPessoaResumo {
    */
   horasDevidasAtualMs: number;
   horasAtestadoMs: number;
+  /**
+   * Horas de 50% consumidas por COMPENSAÇÃO aprovada no ciclo (ADR 0021).
+   *
+   * Balde próprio, e não somado a `horasDevidasMs`, por uma razão de leitura:
+   * quem compensou não **deve** horas — ele **usou** horas que já tinha. Jogar
+   * as duas coisas no mesmo número faria o gestor ver dívida onde houve boa
+   * gestão, exatamente no relatório que existe para premiar a boa gestão.
+   *
+   * Na aritmética, porém, comporta-se como `horasDevidasMs`: abate as 50% (e
+   * **nunca** as 100%, que não são debitadas).
+   */
+  compensadoMs: number;
   /**
    * Dias de ausência que **não** são atestado (falta simples ou com débito).
    * Atestado médico é ausência abonada e tem o seu próprio contador
@@ -138,6 +154,12 @@ export interface CentralDiaDetalhe {
    * É diferente de `FALTA`: aquela tem uma `Ausencia` gravada e entra nos
    * contadores. Esta é um **apontamento visual** para o gestor registrar (ou não)
    * a falta; não soma em `faltas`, não gera hora devida e não move nenhum valor.
+   *
+   * `COMPENSACAO` é o dia com uma compensação de horas **aprovada** (ADR 0021):
+   * a pessoa trabalha menos (ou nada) para consumir o próprio saldo de 50%. Tem
+   * tipo próprio porque, sem ele, um dia inteiro compensado cairia em
+   * `FALTA_NAO_REGISTRADA` — a Central acusaria em laranja justamente o dia que
+   * ela própria recomendou.
    */
   tipo:
     | 'TRABALHO'
@@ -146,6 +168,7 @@ export interface CentralDiaDetalhe {
     | 'FALTA_DEBITO'
     | 'FALTA_NAO_REGISTRADA'
     | 'ATESTADO'
+    | 'COMPENSACAO'
     | 'SEM_REGISTRO';
   /** Estado canônico calculado para dias com batidas. */
   status: StatusJornadaPonto;
@@ -155,6 +178,11 @@ export interface CentralDiaDetalhe {
   extras50Ms: number;
   extras100Ms: number;
   devidasMs: number;
+  /**
+   * Horas de 50% consumidas por compensação aprovada neste dia (ADR 0021).
+   * Zero nos dias comuns.
+   */
+  compensadoMs?: number;
   tac: boolean;
   motivosTac: string[];
   /** id da ausência (nos dias de FALTA/FALTA_DEBITO/ATESTADO), para marcar débito. */
@@ -641,8 +669,16 @@ export function contribuicaoSaldoTime(p: {
   extras50Ms: number;
   extras100Ms: number;
   horasDevidasMs: number;
+  /**
+   * Horas já COMPENSADAS (ADR 0021). Abatem as 50% junto com o débito: elas
+   * saíram da mesma carteira, e não descontá-las faria o total do time mostrar
+   * um passivo que já foi resolvido — o oposto do que a seção existe para fazer.
+   * Opcional para não quebrar chamadas antigas (ausente = zero).
+   */
+  compensadoMs?: number;
 }): number {
-  return Math.max(0, p.extras50Ms - p.horasDevidasMs) + p.extras100Ms;
+  const usado = p.horasDevidasMs + (p.compensadoMs ?? 0);
+  return Math.max(0, p.extras50Ms - usado) + p.extras100Ms;
 }
 
 @Injectable()
@@ -704,6 +740,7 @@ export class CentralJornadaService {
       usuarios,
       ancora,
       consultorFolga,
+      compensacoes,
     ] = await Promise.all([
       this.prisma.colaborador.findMany({
         where: {
@@ -753,6 +790,10 @@ export class CentralJornadaService {
       this.folga
         ? this.folga.consultor(diasDoPeriodo(inicio, fimExclusivo))
         : null,
+      // Compensações de horas aprovadas do ciclo (ADR 0021). Função livre, e não
+      // serviço injetado, para não criar um ciclo de dependência com o módulo de
+      // Compensação — que depende desta Central para saber o saldo de cada um.
+      carregarCompensacoesAprovadas(this.prisma, inicio, fimExclusivo),
     ]);
 
     // Um fiscal bate ponto pela sua identidade de Fiscal (batida.pessoaId =
@@ -784,7 +825,27 @@ export class CentralJornadaService {
       fiscalIdsPorColaborador,
       ancora,
       consultorFolga,
+      compensacoes,
     };
+  }
+
+  /**
+   * Compensações de UMA pessoa, indexadas pelo ISO do dia.
+   *
+   * O mapa carregado é do time inteiro (uma consulta só); aqui ele é recortado
+   * para a pessoa, no formato que `calcularPessoa` consome.
+   */
+  private compensacoesDe(
+    todas: Map<string, CompensacaoAplicada>,
+    colaboradorId: string,
+  ): Map<string, CompensacaoAplicada> {
+    const minhas = new Map<string, CompensacaoAplicada>();
+    for (const c of todas.values()) {
+      if (c.colaboradorId === colaboradorId) {
+        minhas.set(inicioDoDia(c.data).toISOString(), c);
+      }
+    }
+    return minhas;
   }
 
   /**
@@ -838,6 +899,7 @@ export class CentralJornadaService {
         feriadoMap: new Map<number, string>(),
         ancora: null as AncoraDomingo | null,
         consultorFolga: null as ConsultorFolga | null,
+        compensacoes: new Map<string, CompensacaoAplicada>(),
       };
     }
 
@@ -859,8 +921,14 @@ export class CentralJornadaService {
     const idList = [...ids];
 
     // Só as batidas/ausências DESTA pessoa no ciclo (por ficha ou por fiscalId).
-    const [batidas, ausencias, feriadoMap, ancora, consultorFolga] =
-      await Promise.all([
+    const [
+      batidas,
+      ausencias,
+      feriadoMap,
+      ancora,
+      consultorFolga,
+      compensacoes,
+    ] = await Promise.all([
         this.prisma.batidaPonto.findMany({
           where: {
             data: { gte: inicio, lt: fimExclusivo },
@@ -887,6 +955,7 @@ export class CentralJornadaService {
         this.folga
           ? this.folga.consultor(diasDoPeriodo(inicio, fimExclusivo))
           : null,
+        carregarCompensacoesAprovadas(this.prisma, inicio, fimExclusivo),
       ]);
 
     return {
@@ -901,6 +970,7 @@ export class CentralJornadaService {
       feriadoMap,
       ancora,
       consultorFolga,
+      compensacoes,
     };
   }
 
@@ -943,6 +1013,11 @@ export class CentralJornadaService {
      */
     consultorFolga: ConsultorFolga | null,
     regras: RegrasContrato,
+    /**
+     * Compensações de horas APROVADAS desta pessoa no ciclo (ADR 0021),
+     * indexadas pelo ISO do dia. Vazio quando não há nenhuma — o caso normal.
+     */
+    compensacoes: Map<string, CompensacaoAplicada>,
     // Quando false, calcula só os TOTAIS (não monta o array `dias`). O resumo
     // do ciclo usa isso para não construir o detalhe diário de todo mundo —
     // que só é necessário no drill-down por pessoa (detalhePessoa).
@@ -980,6 +1055,7 @@ export class CentralJornadaService {
     let extras100Ms = 0;
     let horasDevidasMs = 0;
     let horasAtestadoMs = 0;
+    let compensadoMs = 0;
     let faltas = 0;
     // Dias de atestado do ciclo; viram ATESTADOS (documentos) no fim.
     const diasAtestado: DiaAtestado[] = [];
@@ -1023,6 +1099,7 @@ export class CentralJornadaService {
       const baseMs = this.baseDoDia(dia, ehFeriado, regras);
       const regs = batidasPorDia.get(k);
       const ausencia = ausenciaPorDia.get(k);
+      const compensacao = compensacoes.get(k);
       const diaCompleto = inicioDoProximoDia(dia).getTime() <= limite.getTime();
       // Domingo e feriado pagam a carga cumprida e NUNCA geram hora devida —
       // nem por déficit (trabalhou abaixo da base), nem por falta lançada como
@@ -1050,9 +1127,20 @@ export class CentralJornadaService {
         // que depois consumia as extras de 50% dos outros dias (via
         // `extras50AtualMs` e `saldoMs`).
         let devidasDia = 0;
+        let compensadoDia = 0;
         if (diaGeraDebito && diaCompleto && j.trabalhadoMs < baseMs) {
-          devidasDia = baseMs - j.trabalhadoMs;
+          const deficit = baseMs - j.trabalhadoMs;
+          // Numa COMPENSAÇÃO aprovada (ADR 0021), o déficit do dia **é** a
+          // compensação: foi combinado que a pessoa trabalharia menos. Por isso
+          // o déficit é RECLASSIFICADO, e não somado — a aritmética fica
+          // idêntica (os dois abatem as 50%), mas o dia deixa de ser lido como
+          // dívida. Somar os dois contaria as mesmas horas duas vezes.
+          compensadoDia = compensacao
+            ? Math.min(deficit, compensacao.compensadoMs)
+            : 0;
+          devidasDia = deficit - compensadoDia;
           horasDevidasMs += devidasDia;
+          compensadoMs += compensadoDia;
         }
         // Conflito: bateu ponto E tem ausência marcada no mesmo dia. As horas
         // vêm das batidas (a ausência é ignorada no cálculo), mas sinalizamos
@@ -1073,12 +1161,12 @@ export class CentralJornadaService {
           (min, b) => (b.hora < min ? b.hora : min),
           regs[0].hora,
         );
-        const entradaPrevista = entradaEsperadaNoDia(
-          ficha,
-          dia,
-          ancora,
-          ehFeriado,
-        );
+        // Numa compensação que libera o INÍCIO do turno, o horário combinado é o
+        // da compensação, não o da ficha. Sem esta troca o sistema apontaria
+        // atraso em quem seguiu exatamente a liberação que ele mesmo concedeu.
+        const entradaPrevista =
+          compensacao?.horaInicio ??
+          entradaEsperadaNoDia(ficha, dia, ancora, ehFeriado);
         const atrasoMinutos =
           minutosDeAtraso(entradaPrevista, entradaReal) ?? undefined;
         if (atrasoMinutos != null) atrasos += 1;
@@ -1095,7 +1183,14 @@ export class CentralJornadaService {
             diaSemana,
             ehFeriado,
             feriadoNome,
-            tipo: j.status === 'INCOMPLETO' ? 'INCOMPLETO' : 'TRABALHO',
+            // `INCOMPLETO` vence a compensação: marcação faltando é um problema
+            // de dado que continua precisando de correção, compensado ou não.
+            tipo:
+              j.status === 'INCOMPLETO'
+                ? 'INCOMPLETO'
+                : compensacao
+                  ? 'COMPENSACAO'
+                  : 'TRABALHO',
             status: j.status,
             faltando: j.faltando,
             trabalhadoMs: j.trabalhadoMs,
@@ -1103,6 +1198,7 @@ export class CentralJornadaService {
             extras50Ms: j.horasExtras50Ms,
             extras100Ms: j.horasExtras100Ms,
             devidasMs: devidasDia,
+            compensadoMs: compensadoDia,
             tac: j.tac,
             motivosTac: j.motivosTac,
             conflitoAusencia: conflito,
@@ -1162,6 +1258,42 @@ export class CentralJornadaService {
             // não deve aparecer como debitado na tela.
             debito: debitoValido,
           });
+      } else if (compensacao && compensacao.trabalharMs === 0) {
+        // COMPENSAÇÃO DE DIA INTEIRO (ADR 0021): sem batidas porque foi
+        // combinado que a pessoa não viria, consumindo o próprio saldo de 50%.
+        //
+        // Precisa de um caso próprio porque, sem ele, este dia cairia no bloco
+        // seguinte e sairia como `FALTA_NAO_REGISTRADA` — a Central acusaria em
+        // laranja exatamente o dia que a seção de Compensação recomendou e o
+        // gestor aprovou.
+        //
+        // O desconto vale só quando o dia JÁ TERMINOU, pela mesma razão que o
+        // déficit: um dia futuro ainda não consumiu nada, e antecipá-lo faria o
+        // saldo da pessoa despencar no momento em que a compensação é aprovada.
+        const compensadoDia =
+          diaGeraDebito && diaCompleto
+            ? Math.min(compensacao.compensadoMs, baseMs)
+            : 0;
+        compensadoMs += compensadoDia;
+        if (coletarDias)
+          dias.push({
+            data: k,
+            diaSemana,
+            ehFeriado,
+            feriadoNome,
+            tipo: 'COMPENSACAO',
+            status: 'SEM_REGISTRO',
+            faltando: [],
+            trabalhadoMs: 0,
+            baseMs,
+            extras50Ms: 0,
+            extras100Ms: 0,
+            devidasMs: 0,
+            compensadoMs: compensadoDia,
+            tac: false,
+            motivosTac: [],
+            entradaPrevista: null,
+          });
       } else if (coletarDias) {
         // Dia sem batidas e sem ausência. Ele é um BURACO ou uma FALTA que
         // ninguém registrou, e a diferença é se a pessoa estava escalada.
@@ -1205,16 +1337,21 @@ export class CentralJornadaService {
       }
     }
 
-    const saldoMs = extras50Ms + extras100Ms - horasDevidasMs;
-    // 50% REAIS disponíveis agora: o que deve consome só as 50% (piso 0),
+    // O que já SAIU da carteira de 50%: o que a pessoa deve mais o que ela
+    // compensou. São a mesma moeda (ADR 0021 — "débito é compensação") e por isso
+    // entram juntas em todas as contas abaixo; ficam separadas apenas no
+    // relatório, porque dever horas e usar horas não se leem igual.
+    const usadoDas50Ms = horasDevidasMs + compensadoMs;
+    const saldoMs = extras50Ms + extras100Ms - usadoDas50Ms;
+    // 50% REAIS disponíveis agora: o que saiu consome só as 50% (piso 0),
     // igual ao saldo do time. É o número que a tela mostra (não o bruto do mês).
-    const extras50AtualMs = Math.max(0, extras50Ms - horasDevidasMs);
+    const extras50AtualMs = Math.max(0, extras50Ms - usadoDas50Ms);
     // O que deve DE VERDADE agora: as 50% abatem o débito. Se sobram 50%
     // positivas, não deve nada (complementar a extras50AtualMs).
-    const horasDevidasAtualMs = Math.max(0, horasDevidasMs - extras50Ms);
+    const horasDevidasAtualMs = Math.max(0, usadoDas50Ms - extras50Ms);
     // Saldo só das 50% (com sinal): é o "saldo" da card. As 100% não entram —
     // nunca são debitadas e têm chip próprio.
-    const saldo50Ms = extras50Ms - horasDevidasMs;
+    const saldo50Ms = extras50Ms - usadoDas50Ms;
     const atestadosAgrupados = agruparAtestados(diasAtestado);
     return {
       atestados: atestadosAgrupados,
@@ -1226,6 +1363,7 @@ export class CentralJornadaService {
         horasDevidasMs,
         horasDevidasAtualMs,
         horasAtestadoMs,
+        compensadoMs,
         faltas,
         // O contador é de ATESTADOS, não de dias.
         atestados: atestadosAgrupados.length,
@@ -1259,6 +1397,7 @@ export class CentralJornadaService {
           dados.ancora,
           dados.consultorFolga,
           regras,
+          this.compensacoesDe(dados.compensacoes, c.id),
           // Só totais: o resumo não precisa do detalhe diário de cada pessoa.
           false,
         );
@@ -1333,6 +1472,7 @@ export class CentralJornadaService {
       dados.ancora,
       dados.consultorFolga,
       regras,
+      this.compensacoesDe(dados.compensacoes, colaboradorId),
     );
     return { periodo: this.montarPeriodo(dados.periodo, deslocamento), dias };
   }
@@ -1375,6 +1515,7 @@ export class CentralJornadaService {
         dados.ancora,
         dados.consultorFolga,
         regras,
+        this.compensacoesDe(dados.compensacoes, c.id),
       );
 
       // Horas das batidas da pessoa por dia (para detectar duplicidade).
@@ -1539,6 +1680,7 @@ export class CentralJornadaService {
           dados.ancora,
           dados.consultorFolga,
           regras,
+          this.compensacoesDe(dados.compensacoes, c.id),
         );
 
         // Cada detalhe abaixo é a lista dos dias que geraram o contador
@@ -1661,6 +1803,7 @@ export class CentralJornadaService {
         dados.ancora,
         dados.consultorFolga,
         regras,
+        this.compensacoesDe(dados.compensacoes, c.id),
       );
 
       // Horas das batidas da pessoa por dia — o relatório mostra as marcações
@@ -1810,6 +1953,7 @@ export class CentralJornadaService {
         dados.ancora,
         dados.consultorFolga,
         regras,
+        this.compensacoesDe(dados.compensacoes, c.id),
       );
       pessoas.push({
         colaboradorId: c.id,

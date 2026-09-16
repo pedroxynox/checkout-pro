@@ -22,6 +22,17 @@ export { pontoService } from './ponto';
 export { feriadosService } from './feriados';
 export type { Feriado, AmbitoFeriado } from './feriados';
 export { centralJornadaService } from './centralJornada';
+export { compensacaoHorasService } from './compensacaoHoras';
+export type {
+  CompensacaoPainel,
+  CompensacaoView,
+  CoberturaView,
+  DataFracaView,
+  LiberacaoView,
+  ResumoCarteira,
+  FonteMovimento,
+  FuncaoCompensavel,
+} from './compensacaoHoras';
 export { tiposContratoService } from './tiposContrato';
 export type { TipoContratoJornada, TipoContratoInput } from './tiposContrato';
 export { cicloFolhaService } from './cicloFolha';
