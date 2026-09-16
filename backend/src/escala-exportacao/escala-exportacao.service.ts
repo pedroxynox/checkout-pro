@@ -24,13 +24,13 @@ import {
   GrupoDomingo,
   grupoFolgaNoDomingo,
 } from '../escala-domingo/escala-domingo.domain';
-import { feriadosNacionais } from '../feriados/feriados.domain';
+import { carregarMapaDeFeriados } from '../feriados/feriados.consulta';
 import { FeriasService } from '../ferias/ferias.service';
 import { FolgaService } from '../escala-domingo/folga.service';
+import { carregarHorariosEspeciais } from './escala-especiais.consulta';
 import {
   FichaColaboradorEscala,
   FuncaoEscala,
-  HorarioEspecialDia,
   LinhaEscala,
   ORDEM_FUNCOES,
   SecaoEscala,
@@ -142,66 +142,6 @@ export class EscalaExportacaoService {
   }
 
   /**
-   * Feriados de um intervalo (`yyyy-mm-dd` → nome), juntando os nacionais
-   * automáticos com os manuais cadastrados. Feito num só passo para a semana não
-   * disparar sete consultas.
-   */
-  private async feriadosDoPeriodo(
-    inicio: Date,
-    fimExclusivo: Date,
-  ): Promise<Map<string, string>> {
-    const mapa = new Map<string, string>();
-    // Nacionais: cobre a virada de ano olhando os dois anos do intervalo.
-    const anos = new Set([
-      inicio.getUTCFullYear(),
-      new Date(fimExclusivo.getTime() - 1).getUTCFullYear(),
-    ]);
-    for (const ano of anos) {
-      for (const f of feriadosNacionais(ano)) {
-        const iso = isoDoDia(f.data);
-        if (f.data >= inicio && f.data < fimExclusivo) mapa.set(iso, f.nome);
-      }
-    }
-    const manuais = await this.prisma.feriado.findMany({
-      where: { data: { gte: inicio, lt: fimExclusivo } },
-      select: { data: true, nome: true },
-    });
-    // O manual descreve melhor a data local (estadual/municipal) — prevalece.
-    for (const m of manuais) mapa.set(isoDoDia(m.data), m.nome);
-    return mapa;
-  }
-
-  /**
-   * Exceções de horário por pessoa e dia da semana (`colaboradorId|diaSemana`).
-   *
-   * Só as marcadas como `especial`: são as que existem justamente para
-   * prevalecer sobre o turno do cadastro. Entradas sem `colaboradorId` (escalas
-   * antigas, sem vínculo com a ficha) são ignoradas — sem a ficha não há como
-   * saber com segurança de quem é a exceção, e aplicar no palpite seria pior.
-   */
-  private async especiais(): Promise<Map<string, HorarioEspecialDia>> {
-    const entries = await this.prisma.escalaEntry.findMany({
-      where: { especial: true, colaboradorId: { not: null } },
-      select: {
-        colaboradorId: true,
-        diaSemana: true,
-        entrada: true,
-        saida: true,
-        folga: true,
-      },
-    });
-    const mapa = new Map<string, HorarioEspecialDia>();
-    for (const e of entries) {
-      mapa.set(`${e.colaboradorId}|${e.diaSemana}`, {
-        entrada: e.entrada ?? null,
-        saida: e.saida ?? null,
-        folga: e.folga,
-      });
-    }
-    return mapa;
-  }
-
-  /**
    * Ausências do intervalo por `colaboradorId|yyyy-mm-dd`.
    *
    * **Procura pelas DUAS chaves.** `Ausencia.pessoaId` guarda o id com que a
@@ -269,8 +209,8 @@ export class EscalaExportacaoService {
     const [fichas, ancoraDomingo, feriados, especiais] = await Promise.all([
       this.fichas(),
       this.ancora(),
-      this.feriadosDoPeriodo(dia, fim),
-      this.especiais(),
+      carregarMapaDeFeriados(this.prisma, dia, fim),
+      carregarHorariosEspeciais(this.prisma),
     ]);
     const ids = fichas.map((f) => f.colaboradorId);
     const [ocorrencias, deFerias] = await Promise.all([
@@ -284,7 +224,7 @@ export class EscalaExportacaoService {
       ? await this.folga.consultor([dia])
       : null;
 
-    const nomeFeriado = feriados.get(iso) ?? null;
+    const nomeFeriado = feriados.get(dia.getTime()) ?? null;
     const linhas: LinhaEscala[] = fichas.map((ficha) =>
       montarLinhaEscala({
         ficha,
@@ -328,8 +268,8 @@ export class EscalaExportacaoService {
     const [fichas, ancoraDomingo, feriados, especiais] = await Promise.all([
       this.fichas(),
       this.ancora(),
-      this.feriadosDoPeriodo(inicio, fimExclusivo),
-      this.especiais(),
+      carregarMapaDeFeriados(this.prisma, inicio, fimExclusivo),
+      carregarHorariosEspeciais(this.prisma),
     ]);
     const ids = fichas.map((f) => f.colaboradorId);
     const ocorrencias = await this.ocorrencias(ids, inicio, fimExclusivo);
@@ -349,7 +289,7 @@ export class EscalaExportacaoService {
       : null;
 
     const dias: DiaSemanaEscala[] = diasISO.map((iso) => {
-      const nome = feriados.get(iso) ?? null;
+      const nome = feriados.get(diaUTC(iso).getTime()) ?? null;
       return {
         dataISO: iso,
         diaSemana: diaUTC(iso).getUTCDay(),

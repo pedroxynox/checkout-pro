@@ -196,7 +196,11 @@ Delegam às funções puras homônimas do domínio.
   diferente da que estava na escala que ele recebeu.
 - **EXCEÇÃO DE HORÁRIO** (`EscalaEntry.especial`) prevalece sobre o turno do
   cadastro, inclusive sobre a folga da ficha — é assim que se convoca alguém no
-  seu dia de descanso. O quadro ignorava as exceções por completo.
+  seu dia de descanso. O quadro ignorava as exceções por completo. A leitura é a
+  **consulta compartilhada** `carregarHorariosEspeciais`: o quadro tinha uma cópia
+  idêntica dela, e depois do trabalho de unificar a *decisão* em
+  `montarLinhaEscala`, manter dois carregamentos do mesmo *ingrediente* era deixar
+  aberta a porta pela qual o bug do horário entrou.
 - `diaOperadores(dataRef?)` — roster de um dia, ordenado por entrada (folga ao
   fim); propaga o turno do cadastro. Os campos de ausência (`ausenciaId`, `cid`,
   período do atestado, estado da justificativa) só aparecem quando a falta

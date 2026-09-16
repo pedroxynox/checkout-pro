@@ -36,6 +36,7 @@ mesma pessoa no mesmo feriado. Módulos separados, **regra única**.
 | `escala-exportacao.controller.ts` | Rotas do dia e da semana | 46 |
 | `escala-exportacao.service.ts` | Junta ficha + rodízio + feriado + férias + ausências | 366 |
 | `escala-publicada.domain.ts` | Regras puras: precedência do estado, ordem, agrupamento, semana | 252 |
+| `escala-especiais.consulta.ts` | **A única** leitura das exceções de horário (compartilhada com o Quadro) | 48 |
 | `escala-exportacao.module.ts` | Ligações (DI) do módulo | 21 |
 | `dto/escala-exportacao.dto.ts` | Validação da data de referência | 13 |
 
@@ -182,14 +183,21 @@ que a equipe recebe.
 - 🔧 A escala publicada **não tem histórico**: ela é recalculada a cada consulta.
   Se amanhã for preciso provar "o que foi publicado no dia X", será necessário
   guardar o documento gerado.
-- 🔧 **Duas resoluções de feriado convivem:** este módulo tem um
-  `feriadosDoPeriodo` privado (chave `yyyy-mm-dd`) e o [Quadro de
-  Operadores](operadores.md) usa `FeriadosService.mapaNoPeriodo` (chave
-  timestamp). As duas leem as mesmas fontes (`feriadosNacionais` + `Feriado`
-  manual), então o **resultado** não pode divergir — só a forma da chave. Ainda
-  assim é código repetido: unificar em `FeriadosService` é o próximo passo
-  natural, agora que a decisão de escala já é única.
-- 🔧 **A duplicação de `especiais()`** tem a mesma natureza: o quadro repete a
-  consulta a `EscalaEntry.especial` porque não podia depender deste serviço. O
-  candidato é mover a leitura para `escala-domingo` (onde a regra de horário
-  mora) e os dois passarem a consumi-la.
+- ✅ **Feriado e exceção de horário têm uma fonte só.** Conviviam duas resoluções
+  de feriado (um `feriadosDoPeriodo` privado aqui, com chave `yyyy-mm-dd`, e
+  `FeriadosService.mapaNoPeriodo`, com chave timestamp) e duas cópias **idênticas**
+  de `especiais()` (aqui e no [Quadro](operadores.md)). Hoje há uma implementação
+  de cada, em `carregarMapaDeFeriados` e `carregarHorariosEspeciais`, e todos os
+  chamadores passam por elas.
+
+  **Por que função livre e não serviço injetado.** O único ingrediente das duas é o
+  Prisma, que é dependência obrigatória de todos os chamadores. Injetar
+  `FeriadosService` aqui exigiria um parâmetro **obrigatório** no construtor — e a
+  posição obrigatória vem antes das `@Optional()`, o que desloca os argumentos
+  posicionais e mexe em testes que nada têm com feriado. Injetar de forma
+  **opcional** seria pior: criaria um modo silencioso "nenhum feriado existe" /
+  "exceções ignoradas", isto é, trocaria duplicação visível por degradação
+  invisível. A função livre dá a fonte única sem aresta de módulo e sem modo de
+  falha novo — e a prova é que a unificação passou **sem alterar um único teste**,
+  incluindo `coerencia-quadro-escala.spec.ts`, que agora compara duas telas que
+  rodam exatamente o mesmo código.

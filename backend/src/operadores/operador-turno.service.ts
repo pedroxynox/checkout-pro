@@ -19,10 +19,10 @@ import {
 } from '../escala-domingo/escala-domingo.domain';
 import {
   FichaColaboradorEscala,
-  HorarioEspecialDia,
   LinhaEscala,
   montarLinhaEscala,
 } from '../escala-exportacao/escala-publicada.domain';
+import { carregarHorariosEspeciais } from '../escala-exportacao/escala-especiais.consulta';
 
 /**
  * Estado de uma célula da grade semanal. `FERIAS` existe porque a grade é um
@@ -333,34 +333,6 @@ export class OperadorTurnoService {
   }
 
   /**
-   * Exceções de horário por `colaboradorId|diaSemana`, só as marcadas como
-   * `especial` — são as que existem justamente para prevalecer sobre o turno do
-   * cadastro. Entradas sem `colaboradorId` são ignoradas: sem a ficha não há
-   * como saber de quem é a exceção, e aplicá-la no palpite seria pior.
-   */
-  private async especiais(): Promise<Map<string, HorarioEspecialDia>> {
-    const entries = await this.prisma.escalaEntry.findMany({
-      where: { especial: true, colaboradorId: { not: null } },
-      select: {
-        colaboradorId: true,
-        diaSemana: true,
-        entrada: true,
-        saida: true,
-        folga: true,
-      },
-    });
-    const mapa = new Map<string, HorarioEspecialDia>();
-    for (const e of entries) {
-      mapa.set(`${e.colaboradorId}|${e.diaSemana}`, {
-        entrada: e.entrada ?? null,
-        saida: e.saida ?? null,
-        folga: e.folga,
-      });
-    }
-    return mapa;
-  }
-
-  /**
    * Tudo o que decidir "o que esta pessoa faz neste dia" precisa saber, carregado
    * UMA vez para um intervalo de dias.
    *
@@ -383,7 +355,7 @@ export class OperadorTurnoService {
     const [ancoraDomingo, especiais, consultorFolga, mapaFeriados] =
       await Promise.all([
         this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
-        this.especiais(),
+        carregarHorariosEspeciais(this.prisma),
         this.folga ? this.folga.consultor(dias) : null,
         this.feriados
           ? this.feriados.mapaNoPeriodo(inicio, fimExclusivo)
