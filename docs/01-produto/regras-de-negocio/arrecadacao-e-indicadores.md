@@ -121,7 +121,20 @@ cancelou"**:
     anterior (semáforo por indicador, destaques e anomalias) e avisa quem tem
     `INDICADORES_VISUALIZAR`.
 
-## 9. Observações
+## 9. O semáforo decide pelo SENTIDO, não pela base
+
+Desde a [ADR 0022](../../02-arquitetura/decisoes/0022-indicador-sacolas-venda-por-sacola.md),
+verde/amarelo/vermelho saem de **"maior é melhor" ou "menor é melhor"**, e não do
+tipo de base. Os cinco indicadores desta seção **não mudaram de valor**: neles as
+duas coisas sempre andaram juntas (valor em R$ = maior é melhor; % sobre vendas =
+menor é melhor).
+
+A mudança foi necessária por causa do indicador **Sacolas** (venda em R$ por
+sacola recebida, no almoxarifado): ali *maior é melhor*, mas a base não é nem um
+valor fixo nem um percentual sobre as vendas. Com a regra antiga o sistema
+pintaria de **verde justamente o mês de maior desperdício de sacolas**.
+
+## 10. Observações
 
 - Os **percentuais sobre vendas** usam o total diário de vendas, cuja fonte é o
   Painel de Vendas — ver [`vendas`](../../03-atlas-backend/vendas.md).

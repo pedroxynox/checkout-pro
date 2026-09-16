@@ -33,4 +33,4 @@ numerado (`NNNN-titulo-curto.md`).
 
 | 0020 | [Mudança de função preserva o histórico de ponto](0020-mudanca-de-funcao-preserva-o-ponto.md) |
 
-| 0022 | [Indicador "Sacolas": venda por sacola que entra no estoque](0022-indicador-sacolas-venda-por-sacola.md) _(proposta)_ |
+| 0022 | [Indicador "Sacolas": venda por sacola que entra no estoque](0022-indicador-sacolas-venda-por-sacola.md) |

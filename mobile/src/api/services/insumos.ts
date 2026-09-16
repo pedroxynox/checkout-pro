@@ -4,6 +4,7 @@ import {
   AnaliseInsumo,
   CategoriaInsumo,
   EntradaInsumo,
+  IndicadorSacolas,
   Insumo,
   InsumoProativo,
   InsumoResumo,
@@ -25,6 +26,17 @@ export const insumosService = {
   /** Lista as entradas recentes de estoque (Controle de requisição). */
   entradas(): Promise<EntradaInsumo[]> {
     return apiClient.get<EntradaInsumo[]>('/insumos/entradas');
+  },
+
+  /**
+   * Indicador SACOLAS do mês: venda em R$ por sacola que entrou no estoque
+   * (ADR 0022). `anoMes` no formato "AAAA-MM"; sem ele, o mês atual.
+   */
+  indicadorSacolas(anoMes?: string): Promise<IndicadorSacolas> {
+    return apiClient.get<IndicadorSacolas>(
+      '/insumos/indicador-sacolas',
+      anoMes ? { anoMes } : undefined,
+    );
   },
 
   /** Consumo simplificado em embalagens inteiras (1 fardo, 1 caixa, 1 galão). */

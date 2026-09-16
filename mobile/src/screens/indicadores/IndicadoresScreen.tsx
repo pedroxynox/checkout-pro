@@ -14,9 +14,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { arrecadacaoService, vendasService } from '../../api/services';
+import {
+  arrecadacaoService,
+  insumosService,
+  vendasService,
+} from '../../api/services';
 import {
   DestaquesMes,
+  IndicadorSacolas,
   PainelAtencao,
   ResumoArrecadacao,
   ResumoVendas,
@@ -50,16 +55,24 @@ interface SaudeIndicador {
   valorTexto: string;
 }
 
-/** Avalia o nível do indicador no acumulado do mês. */
+/**
+ * Avalia o nível do indicador no acumulado do mês.
+ *
+ * Decide pelo **sentido**, não pela base — espelha `nivelDoMes` do backend, que
+ * mudou pela ADR 0022. A base continua dizendo QUAL número se compara
+ * (`totalMes` em R$ ou `percentualMes` em %); o sentido diz se maior é melhor.
+ * Antes as duas perguntas eram respondidas pelo mesmo campo, o que só funcionava
+ * porque os cinco indicadores de arrecadação têm base e sentido correlacionados.
+ */
 function nivelMes(def: DefinicaoArrecadacao, resumo: ResumoArrecadacao): Nivel {
-  if (def.base === 'FIXA') {
-    if (resumo.totalMes >= resumo.meta) return 'OK';
-    if (resumo.totalMes >= resumo.meta * 0.75) return 'ATENCAO';
+  const valor = def.base === 'FIXA' ? resumo.totalMes : (resumo.percentualMes ?? 0);
+  if (def.sentido === 'MAIOR_MELHOR') {
+    if (valor >= resumo.meta) return 'OK';
+    if (valor >= resumo.meta * 0.75) return 'ATENCAO';
     return 'FORA';
   }
-  const pct = resumo.percentualMes ?? 0;
-  if (pct <= resumo.meta) return 'OK';
-  if (pct <= resumo.meta * 1.5) return 'ATENCAO';
+  if (valor <= resumo.meta) return 'OK';
+  if (valor <= resumo.meta * 1.5) return 'ATENCAO';
   return 'FORA';
 }
 
@@ -88,6 +101,34 @@ function valorMesTexto(def: DefinicaoArrecadacao, resumo: ResumoArrecadacao): st
   return `${formatarPercentual(resumo.percentualMes ?? 0)} (meta ≤ ${formatarPercentual(def.meta)})`;
 }
 
+/**
+ * Texto do valor do indicador de Sacolas.
+ *
+ * Mostra **sempre** a distância até a meta, e não só o número: foi a forma pedida
+ * pelo dono do projeto ("a meta como referência, com R$ 28 de piso"). Ver
+ * R$ 34,00 é uma informação; ver "+R$ 6,00 acima da meta" é uma conclusão.
+ */
+function textoSacolas(ind: IndicadorSacolas): string {
+  if (ind.valor == null) {
+    return ind.estado === 'SEM_ENTRADA'
+      ? 'Sem entrada de sacolas neste mês'
+      : 'Sem venda registrada neste mês';
+  }
+  const alvo = `piso ${formatarMoeda(ind.meta)}`;
+  if (!ind.desvio) return `${formatarMoeda(ind.valor)} por sacola (${alvo})`;
+  const sinal = ind.desvio.absoluto >= 0 ? '+' : '−';
+  const distancia = formatarMoeda(Math.abs(ind.desvio.absoluto));
+  return `${formatarMoeda(ind.valor)} por sacola · ${sinal}${distancia} (${alvo})`;
+}
+
+/**
+ * Semáforo do indicador de Sacolas. Sem valor não há cor: pintar de vermelho um
+ * mês sem entrega seria acusar a loja de algo que não aconteceu.
+ */
+function nivelSacolas(ind: IndicadorSacolas): Nivel | null {
+  return ind.nivel;
+}
+
 export function IndicadoresScreen({
   navigation,
 }: PropsTela<'Indicadores'>): React.ReactElement {
@@ -113,10 +154,14 @@ export function IndicadoresScreen({
     const resumos = await Promise.all(
       ARRECADACAO.map((def) => arrecadacaoService.resumo(def.tipo, data)),
     );
-    const [vendas, destaques, painel] = await Promise.all([
+    const [vendas, destaques, painel, sacolas] = await Promise.all([
       vendasService.resumo(data).catch(() => null),
       arrecadacaoService.destaquesMes(data).catch(() => null),
       arrecadacaoService.painelAtencao(data).catch(() => null),
+      // Indicador de Sacolas: vive no almoxarifado, não na arrecadação (ADR
+      // 0022). Degrada em silêncio como os demais — uma falha aqui não pode
+      // derrubar o painel inteiro.
+      insumosService.indicadorSacolas(anoMes).catch(() => null),
     ]);
     const saude: SaudeIndicador[] = ARRECADACAO.map((def, i) => ({
       def,
@@ -124,13 +169,14 @@ export function IndicadoresScreen({
       nivel: nivelMes(def, resumos[i]),
       valorTexto: valorMesTexto(def, resumos[i]),
     }));
-    return { saude, vendas, destaques, painel };
-  }, [data]);
+    return { saude, vendas, destaques, painel, sacolas };
+  }, [data, anoMes]);
 
   const saude = req.dados?.saude ?? [];
   const vendas: ResumoVendas | null = req.dados?.vendas ?? null;
   const destaques: DestaquesMes | null = req.dados?.destaques ?? null;
   const painel: PainelAtencao | null = req.dados?.painel ?? null;
+  const sacolas: IndicadorSacolas | null = req.dados?.sacolas ?? null;
 
   const irParaDetalhe = useCallback(
     (tipo: DefinicaoArrecadacao['tipo']) =>
@@ -301,6 +347,74 @@ export function IndicadoresScreen({
               </View>
             </Pressable>
           ))}
+
+          {/*
+            Sacolas — venda em R$ por sacola que ENTRA no estoque (ADR 0022).
+
+            Fica junto dos outros cinco porque é um indicador de gestão, mas tem
+            card própria e a base escrita embaixo: o denominador dele são as
+            sacolas recebidas, não as vendas. Sem esse aviso o gestor compararia
+            coisas que não se comparam.
+          */}
+          {sacolas && (
+            <View
+              style={[
+                styles.saudeCard,
+                {
+                  borderLeftColor: sacolas.nivel
+                    ? corNivel(sacolas.nivel)
+                    : cores.divisor,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.saudeIcone,
+                  {
+                    backgroundColor: sacolas.nivel
+                      ? fundoNivel(sacolas.nivel)
+                      : cores.superficieAlternativa,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="bag-handle"
+                  size={20}
+                  color={
+                    sacolas.nivel ? corNivel(sacolas.nivel) : cores.textoSecundario
+                  }
+                />
+              </View>
+              <View style={styles.flex1}>
+                <Text style={styles.saudeNome}>Sacolas</Text>
+                <Text style={styles.saudeValor}>{textoSacolas(sacolas)}</Text>
+                <Text style={styles.sacolasBase}>
+                  {sacolas.fardosRecebidos} fardos recebidos
+                  {sacolas.entregas > 0
+                    ? ` em ${sacolas.entregas} entrega${sacolas.entregas > 1 ? 's' : ''}`
+                    : ''}
+                  {sacolas.parcial ? ' · mês em andamento' : ''}
+                </Text>
+                {sacolas.avisoEntregas && (
+                  <Text style={styles.sacolasAviso}>{sacolas.avisoEntregas}</Text>
+                )}
+              </View>
+              {nivelSacolas(sacolas) && (
+                <View
+                  style={[
+                    styles.saudeBadge,
+                    { backgroundColor: fundoNivel(sacolas.nivel as Nivel) },
+                  ]}
+                >
+                  <Ionicons
+                    name={iconeNivel(sacolas.nivel as Nivel)}
+                    size={18}
+                    color={corNivel(sacolas.nivel as Nivel)}
+                  />
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Card "Precisa de atenção" — detalhado */}
           {painel && !painel.tudoCerto && (
@@ -594,6 +708,19 @@ const styles = StyleSheet.create({
     color: cores.texto,
     marginTop: espacamento.sm,
     marginBottom: espacamento.sm,
+  },
+  // Base do indicador de Sacolas: o denominador dele é outro, e isso precisa
+  // ficar escrito na card para o gestor não comparar coisas diferentes.
+  sacolasBase: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 2,
+  },
+  sacolasAviso: {
+    ...tipografia.legenda,
+    color: cores.laranja,
+    marginTop: 2,
+    lineHeight: 16,
   },
   saudeCard: {
     flexDirection: 'row',

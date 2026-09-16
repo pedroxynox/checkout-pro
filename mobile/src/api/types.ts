@@ -310,6 +310,55 @@ export interface MetaIndicador {
   sentido: 'MAIOR_MELHOR' | 'MENOR_MELHOR';
 }
 
+// ----- Indicador SACOLAS (venda por sacola que entra no estoque) -----
+
+/** Por que o indicador do mês pode não existir (ADR 0022). */
+export type EstadoIndicadorSacolas = 'OK' | 'SEM_ENTRADA' | 'SEM_VENDA';
+
+/** Distância até a meta, com sinal. */
+export interface DesvioMetaSacolas {
+  /** `valor − meta`. Positivo = acima do piso. */
+  absoluto: number;
+  percentual: number;
+  noPiso: boolean;
+}
+
+/**
+ * Indicador SACOLAS de um mês: quanto a loja vendeu, em R$, por sacola que
+ * ENTROU no estoque.
+ *
+ * É diferente dos cinco indicadores de arrecadação: o denominador vem do
+ * almoxarifado (entradas de sacola), não das vendas, e as vendas são o
+ * **numerador**. Por isso não tem `base` FIXA nem VENDAS.
+ */
+export interface IndicadorSacolas {
+  anoMes: string;
+  rotulo: string;
+  parcial: boolean;
+  vendaMes: number;
+  /** Sacolas recebidas no mês (unidades, o número inteiro). */
+  sacolasRecebidas: number;
+  fardosRecebidos: number;
+  /** Quantas entregas houve no mês (o normal são 2, ciclo quinzenal). */
+  entregas: number;
+  fatorEmbalagem: number;
+  /** R$ de venda por sacola. `null` quando não dá para calcular. */
+  valor: number | null;
+  meta: number;
+  unidade: 'REAIS_POR_UNIDADE';
+  sentido: 'MAIOR_MELHOR';
+  nivel: 'OK' | 'ATENCAO' | 'FORA' | null;
+  cumpriuMeta: boolean | null;
+  desvio: DesvioMetaSacolas | null;
+  estado: EstadoIndicadorSacolas;
+  valorAnterior: number | null;
+  variacao: number | null;
+  evolucao: 'MELHOROU' | 'PIOROU' | 'ESTAVEL' | null;
+  /** Frase que resume o mês (a mesma no app e em qualquer relatório). */
+  resumo: string;
+  avisoEntregas: string | null;
+}
+
 // ----- Metas mensais (Centro de Controle ▸ Metas) -----
 
 /** Indicadores cuja meta é configurável por mês (período mensal). */
@@ -318,10 +367,18 @@ export type TipoMeta =
   | 'RECARGAS_CELULAR'
   | 'CANCELAMENTO_ITENS'
   | 'CANCELAMENTO_CUPOM'
-  | 'DEVOLUCOES';
+  | 'DEVOLUCOES'
+  /** Venda em R$ por sacola que ENTRA no estoque (ADR 0022). */
+  | 'SACOLAS';
 
-/** Unidade do valor da meta (R$ ou % sobre vendas). */
-export type UnidadeMeta = 'REAIS' | 'PERCENTUAL';
+/**
+ * Unidade do valor da meta.
+ *
+ * `REAIS_POR_UNIDADE` é uma **razão** (R$ por sacola): nem um valor absoluto nem
+ * uma fatia das vendas. Sem ela, a tela de Metas escreveria "28,00%" onde o certo
+ * é "R$ 28,00 por sacola".
+ */
+export type UnidadeMeta = 'REAIS' | 'PERCENTUAL' | 'REAIS_POR_UNIDADE';
 
 /** Meta mensal de um indicador (valor + metadados de exibição). */
 export interface MetaMensal {

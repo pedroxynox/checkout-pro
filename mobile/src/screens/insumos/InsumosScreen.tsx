@@ -16,7 +16,12 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ApiError } from '../../api/client';
 import { insumosService, requisicoesService } from '../../api/services';
-import { InsumoProativo, NivelEstoque, SugestaoPedido } from '../../api/types';
+import {
+  IndicadorSacolas,
+  InsumoProativo,
+  NivelEstoque,
+  SugestaoPedido,
+} from '../../api/types';
 import { useAuth } from '../../auth/AuthContext';
 import {
   Botao,
@@ -30,7 +35,7 @@ import {
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
-import { formatarNumero } from '../../utils/formato';
+import { formatarMoeda, formatarNumero } from '../../utils/formato';
 
 // ==================== Helpers ====================
 
@@ -90,6 +95,10 @@ export function InsumosScreen({
   const [pendentes, setPendentes] = useState(0);
   const [sugestoes, setSugestoes] = useState<SugestaoPedido[]>([]);
   const [proximoSacolas, setProximoSacolas] = useState<number | null>(null);
+  // Indicador SACOLAS do mês (ADR 0022): venda em R$ por sacola que ENTRA no
+  // estoque. Aqui, no almoxarifado, porque é onde vive o denominador.
+  const [indicadorSacolas, setIndicadorSacolas] =
+    useState<IndicadorSacolas | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -107,16 +116,20 @@ export function InsumosScreen({
   const [registrandoEntrada, setRegistrandoEntrada] = useState(false);
 
   const buscar = useCallback(async () => {
-    const [lista, cont, sugs, prox] = await Promise.all([
+    const [lista, cont, sugs, prox, indSacolas] = await Promise.all([
       insumosService.listarProativo().catch(() => insumosService.listar()),
       requisicoesService.pendentes().catch(() => ({ total: 0 })),
       insumosService.sugestoesPendentes().catch(() => [] as SugestaoPedido[]),
       insumosService.proximoQuinzenal().catch(() => null),
+      // Degrada em silêncio: o indicador exige permissão de indicadores, que o
+      // fiscal não tem — e a falta dele não pode esconder o almoxarifado.
+      insumosService.indicadorSacolas().catch(() => null),
     ]);
     setInsumos(lista as InsumoProativo[]);
     setPendentes(cont.total);
     setSugestoes(sugs);
     setProximoSacolas(prox?.diasRestantes ?? null);
+    setIndicadorSacolas(indSacolas);
     setErro(null);
   }, []);
 
@@ -283,6 +296,47 @@ export function InsumosScreen({
   return (
     <Tela aoAtualizar={() => void carregar(true)} atualizando={atualizando}>
       {erro && <MensagemErro mensagem={erro} aoTentarNovamente={() => void carregar()} />}
+
+      {/* ===== SACOLAS: quanto a loja vende por sacola recebida (ADR 0022) ===== */}
+      {indicadorSacolas && (
+        <Cartao style={styles.cardSacolas}>
+          <View style={styles.sacolasTopo}>
+            <Ionicons name="bag-handle" size={22} color={cores.primaria} />
+            <View style={styles.flex1}>
+              <Text style={styles.sacolasTitulo}>Venda por sacola</Text>
+              <Text style={styles.sacolasSub}>
+                {indicadorSacolas.rotulo}
+                {indicadorSacolas.parcial ? ' · mês em andamento' : ''}
+              </Text>
+            </View>
+            {indicadorSacolas.valor != null && (
+              <View style={styles.sacolasValorBox}>
+                <Text
+                  style={[
+                    styles.sacolasValor,
+                    {
+                      color:
+                        indicadorSacolas.desvio?.noPiso === false
+                          ? cores.vermelho
+                          : cores.verde,
+                    },
+                  ]}
+                >
+                  {formatarMoeda(indicadorSacolas.valor)}
+                </Text>
+                <Text style={styles.sacolasValorLabel}>por sacola</Text>
+              </View>
+            )}
+          </View>
+          {/* A frase vem do servidor: app e relatórios dizem a mesma coisa. */}
+          <Text style={styles.sacolasResumo}>{indicadorSacolas.resumo}</Text>
+          {indicadorSacolas.avisoEntregas && (
+            <Text style={styles.sacolasAviso}>
+              {indicadorSacolas.avisoEntregas}
+            </Text>
+          )}
+        </Cartao>
+      )}
 
       {/* ===== PEDIDO DA SEMANA (sugestões pendentes) ===== */}
       {sugestoes.length > 0 && (
@@ -806,6 +860,36 @@ const styles = StyleSheet.create({
   },
   chipTextoAtivo: {
     color: cores.textoInverso,
+  },
+  cardSacolas: { borderLeftWidth: 3, borderLeftColor: cores.primaria },
+  sacolasTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.md,
+  },
+  sacolasTitulo: { ...tipografia.secao, color: cores.texto },
+  sacolasSub: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: 1,
+  },
+  sacolasValorBox: { alignItems: 'flex-end' },
+  sacolasValor: { ...tipografia.subtitulo },
+  sacolasValorLabel: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+  },
+  sacolasResumo: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: espacamento.sm,
+    lineHeight: 17,
+  },
+  sacolasAviso: {
+    ...tipografia.legenda,
+    color: cores.laranja,
+    marginTop: espacamento.xs,
+    lineHeight: 17,
   },
   cardPedido: {
     borderWidth: 1,

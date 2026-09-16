@@ -210,8 +210,10 @@ export class HistoricoIndicadoresService {
       percentual: config.base === 'VENDAS' ? valor : null,
       valor,
       meta: dados.meta,
-      nivel: nivelDoMes(config.base, valor, dados.meta),
-      cumpriuMeta: cumpriuMeta(config.base, valor, dados.meta),
+      // Semáforo pelo SENTIDO (ADR 0022): a base seguiu sendo o que define o
+      // valor comparável, mas não é ela que diz se maior é melhor.
+      nivel: nivelDoMes(config.sentido, valor, dados.meta),
+      cumpriuMeta: cumpriuMeta(config.sentido, valor, dados.meta),
       // Preenchidos depois, quando a série inteira estiver montada.
       variacao: null,
       evolucao: null,
@@ -343,8 +345,8 @@ export class HistoricoIndicadoresService {
       vendas: dados.vendas,
       percentual: config.base === 'VENDAS' ? valor : null,
       meta: dados.meta,
-      nivel: nivelDoMes(config.base, valor, dados.meta),
-      cumpriu: cumpriuMeta(config.base, valor, dados.meta),
+      nivel: nivelDoMes(config.sentido, valor, dados.meta),
+      cumpriu: cumpriuMeta(config.sentido, valor, dados.meta),
       congeladoEm: new Date(),
     };
     await this.prisma.fotoMesIndicador.upsert({

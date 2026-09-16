@@ -28,7 +28,7 @@ janela de retenção (padrão 24 meses), sempre com a meta que valia nele.
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `IndicadoresScreen.tsx` | Hub: seletor de mês, vendas, destaques, semáforos e painel de atenção | 640 |
+| `IndicadoresScreen.tsx` | Hub: seletor de mês, vendas, destaques, semáforos (inclusive **Sacolas**) e painel de atenção | 767 |
 | `IndicadorDetalheScreen.tsx` | Detalhe de um indicador (meta, projeção, evolução mensal, tendência, ranking, cancelamentos) | 1044 |
 | `PainelVendasScreen.tsx` | Painel de vendas (meta, projeção, comparativos, curva, heatmap, por hora) | 700 |
 | `NaoReconhecidosScreen.tsx` | Fila de códigos sem cadastro (associar/criar) | 284 |
@@ -74,12 +74,32 @@ Todas tratam **carregando / erro / vazio**.
 | Vendas (resumo) | `vendasService.resumo(data)` | `GET /vendas/resumo` |
 | Painel de vendas | `vendasService.painel(data)` | `GET /vendas/painel` |
 | Vendas por hora | `vendasService.porHora(ini, fim)` | `GET /vendas/por-hora` |
+| Indicador de Sacolas | `insumosService.indicadorSacolas(anoMes)` | `GET /insumos/indicador-sacolas` |
 
 Módulos do backend relacionados: [`arrecadacao`](../03-atlas-backend/arrecadacao.md)
 e [`vendas`](../03-atlas-backend/vendas.md); associação de códigos usa
-[`colaboradores`](../03-atlas-backend/colaboradores.md).
+[`colaboradores`](../03-atlas-backend/colaboradores.md); o indicador de Sacolas vem
+de [`insumos`](../03-atlas-backend/insumos.md).
 
 ## 6. Estado local e regras de UI
+- **Sacolas tem card própria, e a base escrita embaixo.** Ela fica junto dos cinco
+  semáforos de arrecadação porque é um indicador de gestão, mas o denominador dela
+  são **sacolas recebidas** — não as vendas nem um valor fixo. A linha "N fardos
+  recebidos em N entregas" existe para o gestor não comparar coisas que não se
+  comparam.
+- **O valor nunca aparece sozinho:** vem sempre com a distância até o piso
+  ("R$ 30,00 por sacola · +R$ 2,00 (piso R$ 28,00)"). Ver o número é informação;
+  ver o desvio é conclusão — foi a forma pedida pelo dono do projeto.
+- **Mês sem entrega não mostra R$ 0,00.** Exibe "Sem entrada de sacolas neste mês"
+  e **sem semáforo**: pintar de vermelho um mês em que o caminhão não veio seria
+  acusar a loja de algo que não aconteceu. O mesmo para "sem venda registrada",
+  que quase sempre significa arquivo de venda ainda não enviado.
+- **O semáforo de Sacolas é "maior é melhor"** — passar do piso é verde, ficar
+  abaixo é amarelo/vermelho. `nivelMes` (dos outros indicadores) passou a decidir
+  pelo **sentido** e não pela base, espelhando o backend (ADR 0022): sem isso, o
+  app e o servidor discordariam sobre a cor do mesmo mês.
+- **Uma falha no indicador de Sacolas não derruba o painel** (`.catch(() => null)`,
+  como os destaques e o painel de atenção): a card simplesmente não aparece.
 - O nível do semáforo (`nivelMes`/`avaliarCor`) depende da **base** do
   indicador: `FIXA` compara o total com a meta; `VENDAS` compara o percentual
   sobre as vendas (meta como teto).
@@ -129,6 +149,7 @@ e [`vendas`](../03-atlas-backend/vendas.md); associação de códigos usa
 |---|---|---|
 | `NaoReconhecidosScreen.test.tsx` | Lista com aviso de total, estado vazio e associação de código | 3 |
 | `PainelVendasScreen.test.tsx` | Faturamento/projeção do mês, venda do dia e estimativa atingida | 3 |
+| `IndicadoresScreen.test.tsx` | Card de Sacolas: valor **sempre** com o desvio até o piso, fardos/entregas/mês em andamento, desvio negativo, mês sem entrada e sem venda explicados (nunca R$ 0,00), aviso de entregas atípicas, degradação silenciosa e o mês pedido | 8 |
 
 ## 10. Riscos, dívidas e pendências
 - 🔧 `IndicadorDetalheScreen.tsx` (>800 linhas) reúne muitos sub-gráficos num só

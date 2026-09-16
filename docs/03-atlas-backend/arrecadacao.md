@@ -152,7 +152,8 @@ indicador, destaques e anomalias) e notifica quem tem `INDICADORES_VISUALIZAR`.
 - Histórico (`historico-indicadores.domain.ts`): aritmética de período mensal
   (`inicioDoAnoMes`, `fimDoAnoMes`, `anoMesDeslocado`, `janelaDeMeses`,
   `anoMesLimiteDaJanela`, `rotuloAnoMes`), `valorComparavel` (R$ ou % sobre
-  vendas), `nivelDoMes` e `cumpriuMeta` (**fonte única** do semáforo mensal),
+  vendas), `nivelDoMes` e `cumpriuMeta` (**fonte única** do semáforo mensal, que
+  desde a ADR 0022 decidem pelo **sentido** e não pela base — ver a regra no §10),
   `variacaoMensal` e `evolucaoDoMes` — esta última traduz a variação em
   melhora/piora **respeitando o sentido** (cair é MELHORAR em cancelamentos e
   devoluções) — e `sequenciaCumprindo` (meses seguidos dentro da meta).
@@ -198,7 +199,19 @@ indicador, destaques e anomalias) e notifica quem tem `INDICADORES_VISUALIZAR`.
    assiduidade perfeita (sem faltas); é medido em % sobre as vendas da loja.
 5. **Anomalias/ofensores** exigem ≥ 3 pessoas e valor ≥ 2× a média da equipe.
 6. Indicadores base `VENDAS` são avaliados por % (menor é melhor); base `FIXA`
-   por valor/ritmo (maior é melhor).
+   por valor/ritmo (maior é melhor). **A base diz QUAL número se compara; o
+   `sentido` diz se maior é melhor** — e é pelo `sentido` que `nivelDoMes` e
+   `cumpriuMeta` decidem, desde a ADR 0022.
+
+   Antes decidiam pela **base**, e funcionava por coincidência: os cinco
+   indicadores daqui têm `FIXA ↔ MAIOR_MELHOR` e `VENDAS ↔ MENOR_MELHOR`,
+   perfeitamente correlacionados. O indicador **Sacolas** (venda em R$ por sacola
+   recebida, em [`insumos`](insumos.md)) quebrou a coincidência: é `MAIOR_MELHOR`
+   com base que não é `FIXA`, então caía no ramo "menor é melhor" e o sistema
+   pintaria de **verde justamente o mês de maior desperdício**. A troca **não
+   alterou nenhum valor** dos cinco indicadores daqui e alinhou a regra com
+   `IndicadoresResumoService.semaforo`, que já decidia pelo sentido — encerrando
+   uma divergência entre duas das três cópias da mesma regra.
 7. Datas anteriores à Data Inicial do Sistema são rejeitadas na importação e na
    marca de "sem movimento".
 8. **Os indicadores não são reiniciados no dia 1º.** O que muda é o mês de
@@ -217,7 +230,7 @@ indicador, destaques e anomalias) e notifica quem tem `INDICADORES_VISUALIZAR`.
 | `arrecadacao.nao-reconhecidos.spec.ts` | Agregado e fila de códigos não reconhecidos | 2 |
 | `destaque-menos-cancelou.spec.ts` | "Menos cancelou": exclui falta/inativo, premia por % sobre vendas | 1 |
 | `indicadores-inteligente.destaques.spec.ts` | Destaques do mês só para operadores | 3 |
-| `historico-indicadores.domain.spec.ts` | Aritmética de "AAAA-MM", semáforo do mês, variação e evolução por sentido, sequência | 24 |
+| `historico-indicadores.domain.spec.ts` | Aritmética de "AAAA-MM", semáforo do mês **por sentido** (incluindo a regressão de um `MAIOR_MELHOR` com base não-`FIXA`, que antes era julgado ao contrário), variação e evolução por sentido, sequência | 26 |
 | `historico-indicadores.service.spec.ts` | Série (foto vs ao vivo), congelamento idempotente e limites da limpeza | 15 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).

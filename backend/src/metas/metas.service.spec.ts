@@ -195,13 +195,26 @@ describe('MetasService', () => {
       });
     });
 
-    it('devolve os 5 tipos, com só VENDAS derivada', async () => {
+    it('devolve os 6 tipos, com só VENDAS derivada', async () => {
       const { service } = criarServico();
       const lista = await service.listar('2026-06');
-      expect(lista).toHaveLength(5);
+      expect(lista).toHaveLength(6);
       expect(lista.filter((m) => m.derivada).map((m) => m.tipo)).toEqual([
         'VENDAS',
       ]);
+    });
+
+    it('SACOLAS entra na lista como meta digitável de R$ 28,00 por sacola', async () => {
+      const { service } = criarServico();
+      const lista = await service.listar('2026-06');
+      expect(lista.find((m) => m.tipo === 'SACOLAS')).toMatchObject({
+        titulo: 'Sacolas',
+        unidade: 'REAIS_POR_UNIDADE',
+        sentido: 'MAIOR_MELHOR',
+        meta: 28,
+        definida: false,
+        derivada: false,
+      });
     });
   });
 });

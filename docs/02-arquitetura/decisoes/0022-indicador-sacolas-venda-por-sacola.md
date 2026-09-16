@@ -1,7 +1,8 @@
 # ADR 0022 — Indicador "Sacolas": quanto se vende por sacola que entra no estoque
 
-- **Status:** proposta (aguardando decisão do dono do projeto)
+- **Status:** aceita
 - **Data:** 2026-09-16
+- **Decidido com o dono do projeto em:** 2026-09-16 (respostas na seção final)
 - **Contexto:** Insumos (almoxarifado), Metas, Painel de Vendas, Indicadores
 
 ## Contexto
@@ -244,7 +245,7 @@ mexer nele. Hoje o resultado é idêntico (existe um item só).
 
 | # | Pergunta | Decisão |
 |---|---|---|
-| 1 | Meta é piso? | **Não é piso.** Ainda a precisar: ver "Ponto aberto" abaixo |
+| 1 | Meta é piso? | **Piso na direção, diagnóstico na apresentação** — ver item 9 |
 | 2 | Valor padrão | **R$ 28,00 por sacola** |
 | 3 | Referência | **Mensal.** A janela de 90 dias foi recusada |
 | 4 | Onde aparece | No Almoxarifado **e** no painel de Indicadores, junto aos outros cinco |
@@ -280,21 +281,22 @@ dono do projeto reforçou que "este indicador é diferente dos outros"). Na prá
 - `TIPOS_ARRECADACAO` **não** é alterado, então `congelarMes` e a purga seguem
   intactos.
 
-## Ponto aberto (bloqueia a implementação)
+### 9. A leitura da meta: piso na direção, diagnóstico na apresentação
 
-**"A meta não é piso" precisa de uma leitura única, porque ela define o sentido do
-semáforo — e um semáforo invertido é o defeito mais grave descrito neste
-documento (item 3).**
+A resposta do dono do projeto foi **"a B com R$ 28 como piso"** — e as duas metades
+dizem coisas diferentes, sobre eixos diferentes. Separá-las é o que faz o
+indicador ficar certo:
 
-Com meta de R$ 28,00 por sacola, as leituras possíveis são:
-
-| Leitura | R$ 34 por sacola | R$ 22 por sacola |
+| Eixo | Decisão | Consequência |
 |---|---|---|
-| **(A) Maior é melhor** — 28 é o mínimo desejado | verde | amarelo/vermelho |
-| **(B) Referência** — 28 é o alvo, desvio para qualquer lado é sinalizado | sinaliza "acima" | sinaliza "abaixo" |
-| **(C) Menor é melhor** — 28 é um teto | amarelo/vermelho | verde |
+| **Direção** (como se julga) | **`MAIOR_MELHOR`**, com R$ 28,00 como piso | O lado ruim é **abaixo** da meta. Passar dos R$ 28 **nunca** é problema: significa que a loja usou menos sacolas para o mesmo faturamento |
+| **Apresentação** (como se mostra) | **Diagnóstico**, não boletim | O card mostra **sempre** o desvio com sinal ("R$ 34,00 · +R$ 6,00 acima da meta"), e não apenas uma cor. Ficar acima aparece como informação, nunca como alerta |
 
-A economia da operação aponta para **(A)**: vender mais por sacola significa usar
-menos sacolas para o mesmo faturamento. Mas "não é piso" pode indicar **(B)** — o
-número serve para diagnosticar, não para reprovar. A implementação fica esperando
-esta definição, em vez de arriscar a direção.
+Na prática, o semáforo é o de "maior é melhor" já existente — o que muda é que o
+número **nunca aparece sozinho**: vem acompanhado da distância até a meta, para
+o gestor ver *quanto* e *para que lado*, e não só se passou ou não passou.
+
+Isto reforça por que a correção do item 3 é obrigatória: com `sentido` decidindo o
+semáforo, "abaixo do piso" pinta amarelo/vermelho corretamente. Com a regra atual
+(que decide pela `base`), R$ 22 por sacola sairia **verde** — o mês de maior
+desperdício seria premiado.

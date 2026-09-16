@@ -24,11 +24,13 @@ aprovação do gestor.
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `insumos.controller.ts` | Rotas HTTP do almoxarifado | 212 |
+| `insumos.controller.ts` | Rotas HTTP do almoxarifado | 240 |
 | `insumos.service.ts` | Regras de aplicação: saldo, movimentos, análise, painel | 506 |
 | `insumos.domain.ts` | Regras puras: saldo, fardo, estoque baixo, proativo | 351 |
 | `insumos.errors.ts` | Erros de domínio (fardo, quantidade, estoque insuficiente) | 65 |
-| `insumos.module.ts` | Ligações (DI) do módulo | 24 |
+| `sacolas.domain.ts` | Regras puras do indicador SACOLAS (razão, desvio, estado, avisos) | 276 |
+| `indicador-sacolas.service.ts` | Apura o indicador SACOLAS do mês (entradas × vendas × meta) | 229 |
+| `insumos.module.ts` | Ligações (DI) do módulo | 32 |
 | `insumos-proativo.service.ts` | Crons de alerta (crítico, ruptura, relatório) | 106 |
 | `pedidos-recorrentes.controller.ts` | Rotas HTTP dos pedidos recorrentes | 80 |
 | `pedidos-recorrentes.service.ts` | Sugestões semanais/quinzenais + confirmação | 280 |
@@ -194,6 +196,8 @@ Operação administrativa; retorna a contagem removida.
 |---|---|---|
 | `insumos.service.spec.ts` | Cadastro, fardo, consumo, estoque insuficiente, alerta, N+1 | 12 |
 | `insumos.controller.spec.ts` | Delegação das rotas (fardo, cadastro, zerar) | 5 |
+| `sacolas.domain.spec.ts` | Indicador SACOLAS puro: a razão (com o exemplo dos 200 fardos), `null` em vez de zero sem entrada/venda, desvio com sinal, o semáforo na direção certa, comparação com o mês anterior, avisos de 1 e 3+ entregas e os textos | 33 |
+| `indicador-sacolas.service.spec.ts` | Apuração com Prisma falso: **estoque inicial fora do denominador**, soma por categoria `SACOLA`, entradas de requisição/pedido/sem origem, mês sem entrada e sem venda, mês parcial, meta pelo `MetasService` e o fator do fardo | 13 |
 | `insumos.properties.spec.ts` | Propriedades: saldo, fardo, alerta, saldo não-negativo | 5 |
 | `insumos.resumo.spec.ts` | `resumoEstoque` (consumo/entrada de 7 dias, fronteira) | 2 |
 
