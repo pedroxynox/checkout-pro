@@ -8,6 +8,7 @@ import { Feriado, FeriadoAmbito } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { inicioDoDia } from '../common/datas';
 import { ehFeriadoNacional, feriadosNacionais } from './feriados.domain';
+import { carregarMapaDeFeriados } from './feriados.consulta';
 
 /** Um feriado como exibido ao gestor (nacional automático ou manual). */
 export interface FeriadoView {
@@ -70,27 +71,16 @@ export class FeriadosService {
   /**
    * Mapa `tempo(00:00 UTC) → nome` dos feriados no período `[inicio, fim)`.
    * Usado pela Central de Jornada para saber, por dia, se é feriado (100%).
+   *
+   * A implementação vive em `carregarMapaDeFeriados` porque a escala publicada
+   * faz a mesma pergunta sem passar por este serviço; é a mesma resposta, não
+   * uma parecida.
    */
   async mapaNoPeriodo(
     inicio: Date,
     fimExclusivo: Date,
   ): Promise<Map<number, string>> {
-    const mapa = new Map<number, string>();
-    const anoFim = new Date(fimExclusivo.getTime() - 1).getUTCFullYear();
-    for (let ano = inicio.getUTCFullYear(); ano <= anoFim; ano++) {
-      for (const n of feriadosNacionais(ano)) {
-        if (n.data >= inicio && n.data < fimExclusivo) {
-          mapa.set(n.data.getTime(), n.nome);
-        }
-      }
-    }
-    const manuais = await this.prisma.feriado.findMany({
-      where: { data: { gte: inicio, lt: fimExclusivo } },
-    });
-    for (const m of manuais) {
-      mapa.set(inicioDoDia(m.data).getTime(), m.nome);
-    }
-    return mapa;
+    return carregarMapaDeFeriados(this.prisma, inicio, fimExclusivo);
   }
 
   /** Cadastra um feriado manual (ESTADUAL/MUNICIPAL). */

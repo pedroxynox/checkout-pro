@@ -22,6 +22,7 @@ o rodízio por grupos.
 |---|---|---|
 | `feriados.controller.ts` | Rotas HTTP (listar/criar/remover) | 61 |
 | `feriados.service.ts` | Regras de aplicação e persistência (Prisma) | 146 |
+| `feriados.consulta.ts` | **A única** resolução de "que dias são feriado" no período (compartilhada com a escala publicada) | 60 |
 | `feriados.domain.ts` | Regras puras: feriados nacionais e Páscoa | 88 |
 | `feriados.module.ts` | Ligações (DI); exporta o serviço | 15 |
 | `dto/feriados.dto.ts` | Validação de entrada (feriado manual) | 16 |
@@ -52,6 +53,14 @@ que consome os feriados); o fiscal (`FISCAIS_JORNADA`) não gerencia feriados.
 #### `mapaNoPeriodo(inicio, fimExclusivo)`
 Devolve um `Map<tempo → nome>` com os feriados no período (nacionais + manuais),
 usado pela Central de Jornada para saber, por dia, se é feriado (100%).
+
+Só delega: a implementação é a **consulta compartilhada**
+`carregarMapaDeFeriados` (`feriados.consulta.ts`). A escala publicada tinha a sua
+própria cópia dessa resolução; "o que é feriado" decide carga, extras a 100%,
+isenção de hora devida e o horário que a equipe lê na escala — não pode ter duas
+respostas. A chave é o **timestamp da meia-noite UTC**, e **o manual prevalece**
+sobre o nacional na mesma data (ao contrário de `listarDoAno`, acima, que é a tela
+de cadastro e mostra o nacional de propósito).
 
 #### `adicionar(dto, autor?)`
 - **Recebe:** data, nome e âmbito (`ESTADUAL`/`MUNICIPAL`) e o autor.

@@ -8,9 +8,11 @@ import { EscalaExportacaoService } from './escala-exportacao.service';
  * Módulo da escala publicada (PDF/imagem enviados à equipe).
  *
  * Importa o rodízio de domingo (âncora dos grupos) e as férias (quem está de
- * férias aparece como tal, e não como falta). Feriados são lidos direto do
- * banco + da regra dos nacionais, sem depender do módulo de feriados, para não
- * criar uma dependência só por uma consulta. `PrismaService` é global.
+ * férias aparece como tal, e não como falta). Feriados vêm da consulta
+ * compartilhada `carregarMapaDeFeriados` — a MESMA que o `FeriadosService` usa —
+ * sem depender do módulo de feriados: uma função sobre o Prisma (que é global)
+ * dá a fonte única sem a aresta de módulo, e sem o risco de uma dependência
+ * opcional degradar para "nenhum feriado existe". `PrismaService` é global.
  */
 @Module({
   imports: [EscalaDomingoModule, FeriasModule],
