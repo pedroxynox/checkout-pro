@@ -230,7 +230,7 @@ indicador, destaques e anomalias) e notifica quem tem `INDICADORES_VISUALIZAR`.
 | `arrecadacao.nao-reconhecidos.spec.ts` | Agregado e fila de códigos não reconhecidos | 2 |
 | `destaque-menos-cancelou.spec.ts` | "Menos cancelou": exclui falta/inativo, premia por % sobre vendas | 1 |
 | `indicadores-inteligente.destaques.spec.ts` | Destaques do mês só para operadores | 3 |
-| `historico-indicadores.domain.spec.ts` | Aritmética de "AAAA-MM", semáforo do mês **por sentido** (incluindo a regressão de um `MAIOR_MELHOR` com base não-`FIXA`, que antes era julgado ao contrário), variação e evolução por sentido, sequência | 26 |
+| `historico-indicadores.domain.spec.ts` | Aritmética de "AAAA-MM", semáforo do mês **por sentido** (incluindo a regressão de um `MAIOR_MELHOR` com base não-`FIXA`, que antes era julgado ao contrário), variação e evolução por sentido, sequência | 25 |
 | `historico-indicadores.service.spec.ts` | Série (foto vs ao vivo), congelamento idempotente e limites da limpeza | 15 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
