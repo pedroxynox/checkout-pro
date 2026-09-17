@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-16 · **Cobre:** `backend/src/arrecadacao/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/arrecadacao/`
 
 # Módulo: `arrecadacao`
 
@@ -210,7 +210,9 @@ indicador, destaques e anomalias) e notifica quem tem `INDICADORES_VISUALIZAR`.
     autorizadores, com "Não informado" preservado).
   - `diagnosticar` — monta resumo, causas e **ações deduzidas dos números**. O
     texto mora no domínio, e não na tela, para o app e um relatório futuro
-    contarem a mesma história sobre o mesmo mês.
+    contarem a mesma história sobre o mesmo mês. O tom é português padrão
+    levemente formal, sem gíria nem anglicismo ("valor médio" e não "ticket
+    médio", "distribuído" e não "espalhado"), e há teste que trava isso.
 - Parser (`arrecadacao.parser.ts`): localiza colunas pelo cabeçalho (nome, valor,
   quantidade, autorizador, motivo), extrai "matrícula - nome" das devoluções e
   interpreta valor com vírgula decimal.
@@ -305,7 +307,7 @@ indicador, destaques e anomalias) e notifica quem tem `INDICADORES_VISUALIZAR`.
 | `indicadores-inteligente.destaques.spec.ts` | Destaques do mês só para operadores | 3 |
 | `historico-indicadores.domain.spec.ts` | Aritmética de "AAAA-MM", semáforo do mês **por sentido** (incluindo a regressão de um `MAIOR_MELHOR` com base não-`FIXA`, que antes era julgado ao contrário), variação e evolução por sentido, sequência | 25 |
 | `historico-indicadores.service.spec.ts` | Série (foto vs ao vivo), congelamento idempotente e limites da limpeza | 15 |
-| `cancelamentos-totais.domain.spec.ts` | Cancelamentos Totais: percentual e estados (incluindo o mês sem venda, que **não** vira 0% verde), semáforo idêntico ao do Cancelamento de Itens, teto e excedente em R$, composição, fusão dos rankings, concentração, simulação, perfil do dano, motivos e as ramificações do diagnóstico | 31 |
+| `cancelamentos-totais.domain.spec.ts` | Cancelamentos Totais: percentual e estados (incluindo o mês sem venda, que **não** vira 0% verde), semáforo idêntico ao do Cancelamento de Itens, teto e excedente em R$, composição, fusão dos rankings, concentração, simulação, perfil dos lançamentos, motivos (com o plural de "cupons"), as ramificações do diagnóstico e o **tom dos textos** (sem anglicismo nem gíria) | 32 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

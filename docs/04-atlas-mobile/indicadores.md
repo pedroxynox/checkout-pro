@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-16 · **Cobre:** `mobile/src/screens/indicadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `mobile/src/screens/indicadores/`
 
 # Área: `indicadores`
 
@@ -34,9 +34,9 @@ janela de retenção (padrão 24 meses), sempre com a meta que valia nele.
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `IndicadoresScreen.tsx` | Hub: seletor de mês, vendas, destaques, semáforos (inclusive **Cancelamentos Totais** e **Sacolas**) e painel de atenção | 899 |
+| `IndicadoresScreen.tsx` | Hub: seletor de mês, vendas, destaques, semáforos (inclusive **Cancelamentos Totais** e **Sacolas**) e painel de atenção | 879 |
 | `IndicadorDetalheScreen.tsx` | Detalhe de um indicador (meta, projeção, evolução mensal, tendência, ranking, cancelamentos) | 1044 |
-| `CancelamentosTotaisDetalheScreen.tsx` | Detalhe de **Cancelamentos Totais**: teto em R$ e excedente, composição itens × cupom, causas e ações, simulação dos maiores, ofensores, motivos, autorizadores, forma do dano e evolução mensal | 944 |
+| `CancelamentosTotaisDetalheScreen.tsx` | Detalhe de **Cancelamentos Totais**, em 8 cartões: o mês (teto em R$ e excedente), composição itens × cupom, diagnóstico (causas + ações), cenário sem os maiores, quem concentra o valor, cupom (motivos + autorizações), perfil dos lançamentos e evolução mensal | 1002 |
 | `SacolasDetalheScreen.tsx` | Detalhe de **Sacolas**: teto de sacolas, projeção do fechamento, recebido × usado, dias de entrada (com o recebido do mês em fardos e entregas) e série do mês | 548 |
 | `PainelVendasScreen.tsx` | Painel de vendas (meta, projeção, comparativos, curva, heatmap, por hora) | 700 |
 | `NaoReconhecidosScreen.tsx` | Fila de códigos sem cadastro (associar/criar) | 284 |
@@ -57,14 +57,15 @@ janela de retenção (padrão 24 meses), sempre com a meta que valia nele.
    12 meses coloridas pelo semáforo de cada mês e, abaixo, a lista dos meses com
    movimento: valor, meta do mês e a variação vs o mês anterior — a seta mostra
    para onde o número foi e a **cor** diz se isso foi bom ou ruim.
-3. **Cancelamentos Totais:** a card fica **logo depois** das duas metades que
-   ela soma e abre `CancelamentosTotaisDetalheScreen`, que responde as duas
-   perguntas úteis, nesta ordem: o mês (valor, teto em R$ e **excedente**), de
-   onde vem (composição itens × cupom), **o que está impactando** (as causas),
-   **o que fazer** (as ações), a **simulação** sem os maiores, quem mais pesa,
-   os motivos e quem autorizou (só cupom), a forma do dano e a evolução mensal.
-   A card do painel mostra só o valor com a meta e, se houver, o excesso em R$:
-   o que ficou de fora dela está tudo aqui.
+3. **Cancelamentos Totais:** a card fecha a lista dos indicadores de arrecadação
+   e abre `CancelamentosTotaisDetalheScreen`, organizada em **oito cartões**, na
+   ordem do que serve para decidir: (1) o mês — valor, teto em R$ e **excedente**;
+   (2) **Composição do total** — itens × cupom; (3) **Diagnóstico do mês** —
+   causas e ações no mesmo cartão; (4) **Cenário sem os maiores lançamentos** — a
+   simulação, só quando o mês está fora do teto; (5) **Quem concentra o valor**;
+   (6) **Cupom: motivos e autorizações**; (7) **Perfil dos lançamentos**;
+   (8) **Evolução mês a mês**. A card do painel mostra só o valor com a meta e, se
+   houver, o excesso em R$: o que ficou de fora dela está todo aqui.
    O detalhe de **Sacolas** ganhou o mesmo tratamento: o "Recebido no mês"
    (fardos e entregas) abre o extrato de entradas, porque saiu da card.
 4. **Vendas:** `PainelVendasScreen` mostra a venda do dia em destaque (com a
@@ -103,11 +104,12 @@ e [`vendas`](../03-atlas-backend/vendas.md); associação de códigos usa
 de [`insumos`](../03-atlas-backend/insumos.md).
 
 ## 6. Estado local e regras de UI
-- **Cancelamentos Totais entra no meio da lista, não no fim.** A card é renderizada
-  dentro do `map` dos semáforos, imediatamente **depois** de `CANCELAMENTO_CUPOM`:
-  um total lido antes das partes não se entende, e lido longe delas parece um sexto
-  indicador independente. Fundo e recuo levemente diferentes indicam, sem texto,
-  que é o consolidado das duas de cima.
+- **Cancelamentos Totais fecha a lista, depois de Devoluções.** A card é
+  renderizada **fora** do `map` dos semáforos, logo após os cinco indicadores
+  importados e antes de Sacolas. Usa **exatamente o mesmo desenho** das demais —
+  mesma cor de fundo, mesmo recuo, mesma altura: nada no visual sugere que ela
+  seja de outra natureza. (A primeira versão a colocava no meio da lista, com
+  fundo e recuo próprios; o dono do projeto pediu o alinhamento com as vizinhas.)
 - **A card é enxuta e lê como as vizinhas:** `1,24% (meta ≤ 0,75%)`, no mesmo
   formato das três cards de cancelamento/devolução. A explicação de que o teto é
   próprio (e não a soma dos dois tetos) **não** fica aqui — vive no detalhe e no
@@ -134,9 +136,22 @@ de [`insumos`](../03-atlas-backend/insumos.md).
   dele não há o que resolver. E as causas/ações vêm **prontas do backend**: a tela
   não recalcula nem reescreve texto, para o app, um aviso futuro e um relatório
   contarem a mesma história sobre o mesmo mês.
-- **O detalhe declara as suas limitações:** que os motivos e os autorizadores
-  cobrem apenas a metade do cupom, e que o ranking só inclui colaboradores
+- **Causa e ação moram no mesmo cartão** ("Diagnóstico do mês", com duas
+  subseções). Lidas juntas formam uma orientação; separadas em dois cartões, viram
+  duas listas — e o leitor precisa cruzá-las de cabeça.
+- **Motivos e autorizações do cupom também dividem um cartão só.** As duas leituras
+  têm a **mesma limitação** (o arquivo de itens não informa nem motivo nem
+  autorizador), e juntá-las permite dizê-la **uma única vez**, em vez de repetir a
+  ressalva em dois lugares.
+- **O detalhe declara as suas limitações:** que motivos e autorizações abrangem
+  apenas os cancelamentos de cupom, e que o ranking só inclui colaboradores
   cadastrados (embora o total some todos).
+- **O início do histórico é exibido por extenso** ("Outubro de 2024", via
+  `rotuloMes`), e não como o `AAAA-MM` cru que o backend devolve.
+- **Linguagem:** os textos do indicador usam português padrão levemente formal, sem
+  gírias nem anglicismos — "valor médio" em vez de "ticket médio", "distribuído" em
+  vez de "espalhado", "as duas partes" em vez de "as duas metades". As frases do
+  diagnóstico vêm do domínio do backend e seguem o mesmo tom.
 - **Sacolas tem card própria, também enxuta.** Ela fica junto dos cinco semáforos
   de arrecadação porque é um indicador de gestão, mas o denominador dela são
   **sacolas recebidas** — não as vendas nem um valor fixo. A linha "N fardos
@@ -218,7 +233,7 @@ de [`insumos`](../03-atlas-backend/insumos.md).
 | `IndicadoresScreen.test.tsx` | Card de Sacolas: valor **sempre** com o desvio até o piso, desvio negativo, mês sem entrada e sem venda explicados (nunca R$ 0,00), a **ausência** de fardos/entregas e do aviso de calendário (foram para o detalhe), degradação silenciosa e o mês pedido | 8 |
 | `SacolasDetalheScreen.test.tsx` | Detalhe de Sacolas: os fardos que **ainda cabem** em destaque, a fonte da venda esperada e quanto já é fato, o aviso de que a saída também pode ser vender mais, teto estourado mostrando a venda que faltaria (sem número negativo), a projeção com a suposição escrita, acúmulo × desperdício, o extrato de entradas e o **"Recebido no mês"** em fardos e entregas (com plural correto) | 10 |
 | `IndicadoresScreen.test.tsx` (2ª suíte) | Card de Cancelamentos Totais: valor no formato das vizinhas (`1,10% (meta ≤ 0,75%)`), a meta vinda **do servidor** e não de um padrão fixo, o excedente em R$, a **ausência** da explicação do teto na card, mês dentro do teto sem linha de excesso, mês sem venda explicado (nunca 0,00% verde), degradação silenciosa e o mês pedido | 8 |
-| `CancelamentosTotaisDetalheScreen.test.tsx` | Detalhe: teto em R$ e excedente, o aviso de que o teto não é a soma dos tetos das partes, a composição com o % de cada metade sobre as vendas, causas e ações do diagnóstico, a simulação dizendo o que bastaria resolver (e a sua ausência quando o mês está dentro), o ranking combinado com a quebra itens/cupom, o aviso de que os motivos só cobrem o cupom, o mês sem venda e a forma do dano | 11 |
+| `CancelamentosTotaisDetalheScreen.test.tsx` | Detalhe: teto em R$ e excedente, o aviso de que o teto não corresponde à soma dos tetos das partes, a composição com o % de cada parte sobre as vendas, causas e ações **no mesmo cartão**, a simulação dizendo o que bastaria tratar (e a sua ausência quando o mês está dentro), o ranking combinado com a divisão itens/cupom, motivos e autorizações reunidos com a ressalva dita **uma vez**, o mês sem venda, o perfil dos lançamentos e o início do histórico por extenso | 12 |
 
 ## 10. Riscos, dívidas e pendências
 - 🔧 `IndicadorDetalheScreen.tsx` (>800 linhas) reúne muitos sub-gráficos num só
@@ -242,7 +257,7 @@ de [`insumos`](../03-atlas-backend/insumos.md).
   arrecadação continuam mostrando "0,00%" em verde no mesmo mês. Alinhar as cinco
   ao novo comportamento depende de mudar o backend (ver
   [`arrecadacao`](../03-atlas-backend/arrecadacao.md), §12).
-- 🔧 `CancelamentosTotaisDetalheScreen.tsx` (>700 linhas) reúne dez cartões num só
+- 🔧 `CancelamentosTotaisDetalheScreen.tsx` (>900 linhas) reúne oito cartões num só
   arquivo, como o detalhe de indicador; candidato a extrair cada cartão.
 - ⚠️ O aviso "o teto do total não é a soma dos tetos" está escrito em **dois
   lugares** (detalhe e tela de Metas; saiu da card no enxugamento). O valor é único
@@ -251,6 +266,14 @@ de [`insumos`](../03-atlas-backend/insumos.md).
   que o teto do total é independente, nem quantas entregas de sacola houve no mês.
   Foi a escolha do dono do projeto (painel limpo, explicação no detalhe); vale
   lembrar dela se alguém reportar que "falta informação na tela".
+- ⚠️ **Nada distingue visualmente o consolidado dos indicadores importados.** A card
+  de Cancelamentos Totais é idêntica às outras por pedido do dono do projeto, então
+  um leitor novo pode não perceber que ela **soma** duas das cards acima e contá-las
+  em dobro. A posição (logo depois das partes) e o detalhe são o que esclarecem.
+- 🔧 O título do cartão de cupom é "Cupom: motivos e autorizações" e não
+  "Cancelamento de cupom" porque este último **colide** com o rótulo da linha na
+  card de composição (dois nós com o mesmo texto quebram a busca por texto nos
+  testes). Se o título mudar, conferir a unicidade.
 - ⚠️ `CANCELAMENTOS_TOTAIS_DEF.metaPadrao` é um espelho do padrão do backend
   (0,75). Serve apenas de referência: a cor e os textos usam sempre a meta que o
   servidor devolve, então uma divergência não pinta nada errado — mas convém

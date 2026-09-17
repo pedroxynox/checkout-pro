@@ -8,9 +8,9 @@
  * detalhe (totais, meta, gráficos, evolução mês a mês e ranking).
  *
  * Além dos cinco indicadores de arrecadação, a lista traz duas cards de
- * indicadores **calculados**: `Cancelamentos Totais` (ADR 0025), logo depois das
- * duas metades que ele soma, e `Sacolas` (ADR 0022), no fim. Nenhum dos dois tem
- * arquivo de importação — por isso não estão no array `ARRECADACAO`.
+ * indicadores **calculados**, ambas com o mesmo desenho das demais e depois
+ * delas: `Cancelamentos Totais` (ADR 0025) e `Sacolas` (ADR 0022). Nenhum dos
+ * dois tem arquivo de importação — por isso não estão no array `ARRECADACAO`.
  *
  * Os dados NÃO são reiniciados a cada mês: o dia 1º apenas troca o mês de
  * referência. Basta voltar com a seta para rever qualquer mês da janela, sempre
@@ -368,115 +368,101 @@ export function IndicadoresScreen({
               : `Resultado de ${rotuloMes(anoMes)}`}
           </Text>
           {saude.map((s) => (
-            <React.Fragment key={s.def.tipo}>
-              <Pressable onPress={() => irParaDetalhe(s.def.tipo)}>
-                <View style={[styles.saudeCard, { borderLeftColor: corNivel(s.nivel) }]}>
-                  <View style={[styles.saudeIcone, { backgroundColor: fundoNivel(s.nivel) }]}>
-                    <Ionicons
-                      name={s.def.icone as keyof typeof Ionicons.glyphMap}
-                      size={20}
-                      color={corNivel(s.nivel)}
-                    />
-                  </View>
-                  <View style={styles.flex1}>
-                    <Text style={styles.saudeNome}>{s.def.titulo}</Text>
-                    <Text style={styles.saudeValor}>{s.valorTexto}</Text>
-                  </View>
-                  <View style={[styles.saudeBadge, { backgroundColor: fundoNivel(s.nivel) }]}>
-                    <Ionicons name={iconeNivel(s.nivel)} size={18} color={corNivel(s.nivel)} />
-                  </View>
+            <Pressable key={s.def.tipo} onPress={() => irParaDetalhe(s.def.tipo)}>
+              <View style={[styles.saudeCard, { borderLeftColor: corNivel(s.nivel) }]}>
+                <View style={[styles.saudeIcone, { backgroundColor: fundoNivel(s.nivel) }]}>
+                  <Ionicons
+                    name={s.def.icone as keyof typeof Ionicons.glyphMap}
+                    size={20}
+                    color={corNivel(s.nivel)}
+                  />
                 </View>
-              </Pressable>
+                <View style={styles.flex1}>
+                  <Text style={styles.saudeNome}>{s.def.titulo}</Text>
+                  <Text style={styles.saudeValor}>{s.valorTexto}</Text>
+                </View>
+                <View style={[styles.saudeBadge, { backgroundColor: fundoNivel(s.nivel) }]}>
+                  <Ionicons name={iconeNivel(s.nivel)} size={18} color={corNivel(s.nivel)} />
+                </View>
+              </View>
+            </Pressable>
+          ))}
 
-              {/*
-                Cancelamentos Totais (ADR 0025) — entra LOGO DEPOIS das duas
-                metades que ele soma, e não no fim da lista: um total lido antes
-                das partes não se entende, e lido longe delas parece um sexto
-                indicador independente.
-
-                A linha "soma das duas cards acima" existe para o gestor não
-                somar de novo o que já está somado, e a do teto para ele não
-                estranhar as duas partes verdes com o total amarelo — o teto do
-                total é independente, não é a soma dos dois tetos.
-              */}
-              {s.def.tipo === 'CANCELAMENTO_CUPOM' && totais && (
-                <Pressable
-                  onPress={() => navigation.navigate('CancelamentosTotaisDetalhe')}
+          {/*
+            Cancelamentos Totais (ADR 0025) — depois dos cinco indicadores
+            importados, e com exatamente o mesmo desenho deles: mesma cor de
+            fundo, mesmo recuo, mesma altura. O consolidado fecha a lista em vez
+            de interrompê-la, e nada no visual sugere que ele seja um item de
+            outra natureza.
+          */}
+          {totais && (
+            <Pressable
+              onPress={() => navigation.navigate('CancelamentosTotaisDetalhe')}
+            >
+              <View
+                style={[
+                  styles.saudeCard,
+                  {
+                    borderLeftColor: totais.nivel
+                      ? corNivel(totais.nivel)
+                      : cores.divisor,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.saudeIcone,
+                    {
+                      backgroundColor: totais.nivel
+                        ? fundoNivel(totais.nivel)
+                        : cores.superficieAlternativa,
+                    },
+                  ]}
                 >
+                  <Ionicons
+                    name={
+                      CANCELAMENTOS_TOTAIS_DEF.icone as keyof typeof Ionicons.glyphMap
+                    }
+                    size={20}
+                    color={
+                      totais.nivel ? corNivel(totais.nivel) : cores.textoSecundario
+                    }
+                  />
+                </View>
+                <View style={styles.flex1}>
+                  <Text style={styles.saudeNome}>{totais.titulo}</Text>
+                  <Text style={styles.saudeValor}>
+                    {textoCancelamentosTotais(totais)}
+                  </Text>
+                  {/*
+                    A única linha extra da card é o excesso, e só quando ele
+                    existe. O percentual diz que há um problema; os reais dizem o
+                    tamanho dele. Toda a explicação (composição, causas, ações)
+                    mora no detalhe — a card é para bater o olho.
+                  */}
+                  {totais.excedente != null && totais.excedente > 0 && (
+                    <Text style={styles.totaisExcedente}>
+                      {formatarMoeda(totais.excedente)} acima do permitido
+                    </Text>
+                  )}
+                </View>
+                {totais.nivel && (
                   <View
                     style={[
-                      styles.saudeCard,
-                      styles.totaisCard,
-                      {
-                        borderLeftColor: totais.nivel
-                          ? corNivel(totais.nivel)
-                          : cores.divisor,
-                      },
+                      styles.saudeBadge,
+                      { backgroundColor: fundoNivel(totais.nivel) },
                     ]}
                   >
-                    <View
-                      style={[
-                        styles.saudeIcone,
-                        {
-                          backgroundColor: totais.nivel
-                            ? fundoNivel(totais.nivel)
-                            : cores.superficieAlternativa,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name={
-                          CANCELAMENTOS_TOTAIS_DEF.icone as keyof typeof Ionicons.glyphMap
-                        }
-                        size={20}
-                        color={
-                          totais.nivel
-                            ? corNivel(totais.nivel)
-                            : cores.textoSecundario
-                        }
-                      />
-                    </View>
-                    <View style={styles.flex1}>
-                      <Text style={styles.saudeNome}>{totais.titulo}</Text>
-                      <Text style={styles.saudeValor}>
-                        {textoCancelamentosTotais(totais)}
-                      </Text>
-                      {/*
-                        A única linha extra da card é o excesso, e só quando ele
-                        existe. O percentual diz que há um problema; os reais dizem
-                        o tamanho dele. Toda a explicação (composição, causas,
-                        ações) mora no detalhe — a card é para bater o olho.
-                      */}
-                      {totais.excedente != null && totais.excedente > 0 && (
-                        <Text style={styles.totaisExcedente}>
-                          {formatarMoeda(totais.excedente)} acima do permitido
-                        </Text>
-                      )}
-                    </View>
-                    {totais.nivel && (
-                      <View
-                        style={[
-                          styles.saudeBadge,
-                          { backgroundColor: fundoNivel(totais.nivel) },
-                        ]}
-                      >
-                        <Ionicons
-                          name={iconeNivel(totais.nivel)}
-                          size={18}
-                          color={corNivel(totais.nivel)}
-                        />
-                      </View>
-                    )}
                     <Ionicons
-                      name="chevron-forward"
+                      name={iconeNivel(totais.nivel)}
                       size={18}
-                      color={cores.textoSecundario}
+                      color={corNivel(totais.nivel)}
                     />
                   </View>
-                </Pressable>
-              )}
-            </React.Fragment>
-          ))}
+                )}
+              </View>
+            </Pressable>
+          )}
 
           {/*
             Sacolas — venda em R$ por sacola que ENTRA no estoque (ADR 0022).
@@ -841,12 +827,6 @@ const styles = StyleSheet.create({
     color: cores.texto,
     marginTop: espacamento.sm,
     marginBottom: espacamento.sm,
-  },
-  // Cancelamentos Totais: um leve recuo e um fundo diferente deixam claro, sem
-  // texto, que a card é o consolidado das duas de cima e não um sexto indicador.
-  totaisCard: {
-    backgroundColor: cores.superficieAlternativa,
-    marginLeft: espacamento.md,
   },
   totaisExcedente: {
     ...tipografia.legenda,

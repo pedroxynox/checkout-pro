@@ -327,16 +327,40 @@ describe('Cancelamentos Totais — domínio puro', () => {
       expect(d.resumo).toContain('−0,15 p.p.');
     });
 
-    it('peso em itens e valor espalhado → ação de processo, não individual', () => {
+    it('peso em itens e valor distribuído → ação de processo, não individual', () => {
       const ranking = Array.from({ length: 10 }, (_, i) => ({
         nome: `Pessoa ${i}`,
         total: 100,
       }));
       const d = montar(1_000, 100, VENDAS, { itens: ranking, cupom: [] });
       expect(d.causas[0].titulo).toContain('cancelamento de itens');
-      expect(d.causas[1].titulo).toContain('espalhado');
+      expect(d.causas[1].titulo).toContain('distribuído');
       expect(d.acoes[0]).toContain('escaneamento');
       expect(d.acoes[1]).toContain('processo');
+    });
+
+    /**
+     * O texto do diagnóstico é lido por quem gere a loja, então o tom importa:
+     * português padrão levemente formal, sem gíria e sem anglicismo. Estes dois
+     * casos travam os termos que já foram corrigidos uma vez.
+     */
+    it('não usa anglicismo nem gíria nos textos do diagnóstico', () => {
+      const d = montar(
+        1_000,
+        100,
+        VENDAS,
+        { itens: [{ nome: 'Ana', total: 900 }], cupom: [] },
+        { valores: [800, 100, 100, 50, 50, 50, 50, 50, 50, 50] },
+      );
+      const texto = [
+        d.resumo,
+        ...d.causas.map((c) => `${c.titulo} ${c.detalhe}`),
+        ...d.acoes,
+      ].join(' ');
+      expect(texto).not.toMatch(/ticket/i);
+      expect(texto).not.toMatch(/espalhad/i);
+      expect(texto).not.toMatch(/atacar/i);
+      expect(texto).not.toMatch(/metade[s]? do valor vem/i);
     });
 
     it('peso em cupom e concentrado → critério de autorização e conversa individual', () => {
@@ -353,7 +377,9 @@ describe('Cancelamentos Totais — domínio puro', () => {
         },
         {
           motivos: [
-            { rotulo: 'Cliente desistiu', valor: 800 },
+            // Dois lançamentos do mesmo motivo, para conferir o plural "cupons".
+            { rotulo: 'Cliente desistiu', valor: 400 },
+            { rotulo: 'Cliente desistiu', valor: 400 },
             { rotulo: 'Erro de preço', valor: 200 },
           ],
           autorizadores: [
@@ -365,7 +391,11 @@ describe('Cancelamentos Totais — domínio puro', () => {
       expect(d.causas[0].titulo).toContain('cancelamento de cupom');
       expect(d.causas[1].titulo).toContain('concentrado');
       expect(d.causas[1].detalhe).toContain('Ana');
-      expect(d.causas.some((c) => c.titulo.includes('Cliente desistiu'))).toBe(true);
+      const motivo = d.causas.find((c) => c.titulo.includes('Cliente desistiu'));
+      expect(motivo).toBeDefined();
+      // Plural correto: "2 cupons", nunca "2 cupom(ns)".
+      expect(motivo?.detalhe).toContain('cupons');
+      expect(motivo?.detalhe).not.toContain('cupom(ns)');
       expect(d.acoes.some((a) => a.includes('Ana'))).toBe(true);
     });
 

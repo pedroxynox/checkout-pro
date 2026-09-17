@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 134 arquivos, 1252 casos. **Mobile:** 38 arquivos, 286 casos. **Total: 1538 casos.**
+> **Backend:** 134 arquivos, 1253 casos. **Mobile:** 38 arquivos, 287 casos. **Total: 1540 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -22,7 +22,7 @@
 | `src/alertas/saudacao-diaria.service.spec.ts` | 1 | 1 |
 | `src/app.service.spec.ts` | 5 | 1 |
 | `src/arrecadacao/arrecadacao.nao-reconhecidos.spec.ts` | 2 | 1 |
-| `src/arrecadacao/cancelamentos-totais.domain.spec.ts` | 31 | 12 |
+| `src/arrecadacao/cancelamentos-totais.domain.spec.ts` | 32 | 12 |
 | `src/arrecadacao/destaque-menos-cancelou.spec.ts` | 1 | 1 |
 | `src/arrecadacao/historico-indicadores.domain.spec.ts` | 25 | 7 |
 | `src/arrecadacao/historico-indicadores.service.spec.ts` | 15 | 4 |
@@ -168,7 +168,7 @@
 | `src/screens/escala/EscalaScreen.test.tsx` | 10 | 2 |
 | `src/screens/fechamento/FechamentoScreen.test.tsx` | 2 | 1 |
 | `src/screens/importacoes/ImportacoesScreen.test.tsx` | 2 | 1 |
-| `src/screens/indicadores/CancelamentosTotaisDetalheScreen.test.tsx` | 11 | 1 |
+| `src/screens/indicadores/CancelamentosTotaisDetalheScreen.test.tsx` | 12 | 1 |
 | `src/screens/indicadores/IndicadoresScreen.test.tsx` | 16 | 2 |
 | `src/screens/indicadores/NaoReconhecidosScreen.test.tsx` | 3 | 1 |
 | `src/screens/indicadores/PainelVendasScreen.test.tsx` | 3 | 1 |

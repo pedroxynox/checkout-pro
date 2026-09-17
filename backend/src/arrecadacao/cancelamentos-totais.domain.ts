@@ -21,7 +21,7 @@
  *
  * A soma é a parte trivial. O valor da tela está em responder **o que está
  * empurrando o número** e **o que fazer**, e é isso que as funções abaixo
- * calculam de forma determinística: composição (qual das duas metades manda),
+ * calculam de forma determinística: composição (qual das duas partes manda),
  * excedente em R$ (o percentual em dinheiro), concentração (é gente ou é
  * processo?), simulação (o que bastaria resolver para fechar dentro), perfil do
  * dano (muitos pequenos ou poucos grandes), motivos e autorizadores.
@@ -259,30 +259,30 @@ export function compararComAnterior(
 /* ----------------------- o que está impactando ---------------------------- */
 
 /**
- * A partir de que fatia uma das duas metades é considerada a **dominante**.
- * Abaixo disso o problema é dos dois, e tratar só um lado não resolve.
+ * A partir de que fatia uma das duas partes é considerada a **dominante**.
+ * Abaixo disso o problema é dos dois lados, e tratar apenas um não resolve.
  */
 export const LIMIAR_DOMINANCIA_PCT = 60;
 
-/** Composição do total: quanto vem de cada metade. */
+/** Composição do total: quanto vem de cada parte. */
 export interface ComposicaoCancelamentos {
   totalItens: number;
   totalCupom: number;
-  /** Fatia de cada metade no total (%). Somam 100 quando há total. */
+  /** Fatia de cada parte no total (%). Somam 100 quando há total. */
   participacaoItens: number;
   participacaoCupom: number;
-  /** % de cada metade sobre as vendas — comparável com a meta do total. */
+  /** % de cada parte sobre as vendas — comparável com a meta do total. */
   percentualItens: number | null;
   percentualCupom: number | null;
   dominante: 'ITENS' | 'CUPOM' | 'EQUILIBRADO';
 }
 
 /**
- * Decompõe o total nas duas metades.
+ * Decompõe o total nas duas partes.
  *
  * É a primeira pergunta que o gestor faz e a mais barata de responder: "1,10% =
- * 0,80% de itens + 0,30% de cupom" já diz onde ir. Um total sozinho não aponta
- * para nenhuma ação.
+ * 0,80% de itens + 0,30% de cupom" já indica onde atuar. Um total isolado não
+ * aponta para nenhuma ação.
  */
 export function composicaoDe(
   totalItens: number,
@@ -545,7 +545,7 @@ export interface FatiaCancelamentos {
  *
  * Os dois campos só existem no arquivo de **cancelamento de cupom** — o de itens
  * não traz nem motivo nem autorizador. Por isso a tela precisa dizer que esta
- * leitura cobre apenas a metade do cupom: apresentá-la como se fosse do total
+ * leitura abrange apenas os cancelamentos de cupom: apresentá-la como se fosse do total
  * seria induzir o gestor a uma conclusão errada.
  *
  * Valores sem texto entram como "Não informado" em vez de serem descartados —
@@ -669,9 +669,7 @@ export function diagnosticar(
       resumo:
         'Nenhum cancelamento e nenhuma venda registrada neste mês — nada a analisar.',
       causas: [],
-      acoes: [
-        'Confirmar em Importações se os arquivos do mês foram enviados.',
-      ],
+      acoes: ['Confirmar em Importações se os arquivos do mês foram enviados.'],
     };
   }
   if (avaliacao.estado === 'SEM_VENDA') {
@@ -703,7 +701,7 @@ export function diagnosticar(
   } else {
     const excedente =
       avaliacao.excedente != null && avaliacao.excedente > 0
-        ? ` — ${reaisTexto(avaliacao.excedente)} acima do que a meta permitia`
+        ? `, com ${reaisTexto(avaliacao.excedente)} acima do que a meta permitia`
         : '';
     resumo =
       `${pctTexto(valor)} das vendas, contra um teto de ` +
@@ -715,7 +713,7 @@ export function diagnosticar(
     resumo += ' Melhorou em relação ao mês anterior.';
   }
 
-  /* ---- causa 1: qual metade manda ---- */
+  /* ---- causa 1: qual parte manda ---- */
   if (composicao.dominante === 'ITENS') {
     causas.push({
       titulo: 'O peso está no cancelamento de itens',
@@ -725,7 +723,7 @@ export function diagnosticar(
         `${reaisTexto(composicao.totalCupom)} de cupom.`,
     });
     acoes.push(
-      'Itens são cancelados na hora de passar a compra: revisar o escaneamento e a marcação de preço na gôndola.',
+      'Os itens são cancelados durante o registro da compra: revisar o escaneamento e a marcação de preço na gôndola.',
     );
   } else if (composicao.dominante === 'CUPOM') {
     causas.push({
@@ -736,18 +734,18 @@ export function diagnosticar(
         `${reaisTexto(composicao.totalItens)} de itens.`,
     });
     acoes.push(
-      'Cupom cancelado passa por autorização: revisar o critério com quem autoriza.',
+      'O cancelamento de cupom passa por autorização: revisar o critério com os responsáveis.',
     );
   } else {
     causas.push({
-      titulo: 'As duas metades pesam parecido',
+      titulo: 'As duas partes pesam de forma semelhante',
       detalhe:
         `Itens ${pctTexto(composicao.participacaoItens, 0)} e cupom ` +
-        `${pctTexto(composicao.participacaoCupom, 0)} do valor — tratar só um ` +
-        'lado não resolve o total.',
+        `${pctTexto(composicao.participacaoCupom, 0)} do valor: tratar apenas ` +
+        'um dos lados não resolve o total.',
     });
     acoes.push(
-      'Atacar os dois lados: escaneamento na frente de caixa e critério de autorização de cupom.',
+      'Atuar nos dois lados: escaneamento na frente de caixa e critério de autorização de cupom.',
     );
   }
 
@@ -765,18 +763,19 @@ export function diagnosticar(
           `do valor das pessoas cadastradas: ${nomes}.`,
       });
       acoes.push(
-        `Conversa individual com ${nomes} — aqui o ganho é caso a caso, não campanha geral.`,
+        `Conversa individual com ${nomes}: neste caso o ganho é pontual, e não de campanha geral.`,
       );
     } else {
       causas.push({
-        titulo: 'O valor está espalhado pela equipe',
+        titulo: 'O valor está distribuído pela equipe',
         detalhe:
-          `São ${concentracao.pessoas} pessoas com cancelamento, e precisam de ` +
-          `${concentracao.pessoasParaMetade} delas para somar metade do valor: ` +
-          'é comportamento de rotina, não exceção de alguém.',
+          `São ${concentracao.pessoas} pessoas com cancelamento, e são ` +
+          `necessárias ${concentracao.pessoasParaMetade} delas para somar ` +
+          'metade do valor: trata-se de comportamento de rotina, e não de ' +
+          'exceção individual.',
       });
       acoes.push(
-        'Tratar como processo (rotina e treinamento da frente de caixa): cobrar indivíduos não move um número espalhado.',
+        'Tratar como processo (rotina e treinamento da frente de caixa): cobranças individuais não alteram um número distribuído.',
       );
     }
   }
@@ -789,13 +788,14 @@ export function diagnosticar(
     motivoTop.participacao >= LIMIAR_MOTIVO_RELEVANTE_PCT
   ) {
     causas.push({
-      titulo: `Motivo mais caro: ${motivoTop.rotulo}`,
+      titulo: `Motivo de maior custo: ${motivoTop.rotulo}`,
       detalhe:
-        `${reaisTexto(motivoTop.total)} em ${motivoTop.lancamentos} cupom(ns), ` +
+        `${reaisTexto(motivoTop.total)} em ${motivoTop.lancamentos} ` +
+        `${motivoTop.lancamentos === 1 ? 'cupom' : 'cupons'}, ` +
         `${pctTexto(motivoTop.participacao, 0)} do valor cancelado em cupom.`,
     });
     acoes.push(
-      `Atacar a causa de "${motivoTop.rotulo}" — é o motivo que mais custa em cupom.`,
+      `Atuar sobre a causa de "${motivoTop.rotulo}": é o motivo de maior custo em cupom.`,
     );
   }
 
@@ -814,7 +814,7 @@ export function diagnosticar(
         `do valor em cupom (${autorizadorTop.lancamentos} cancelamentos).`,
     });
     acoes.push(
-      `Alinhar o critério de autorização com ${autorizadorTop.rotulo} — pode ser turno, pode ser critério.`,
+      `Alinhar o critério de autorização com ${autorizadorTop.rotulo}: a concentração pode decorrer do turno ou do critério aplicado.`,
     );
   }
 
@@ -822,17 +822,17 @@ export function diagnosticar(
   if (perfil.lancamentos > 0) {
     if (perfil.perfil === 'POUCOS_GRANDES') {
       acoes.push(
-        `Poucos lançamentos grandes concentram ${pctTexto(perfil.participacaoMaiores, 0)} do valor (ticket médio ${reaisTexto(perfil.ticketMedio)}): revisar caso a caso os maiores.`,
+        `Poucos lançamentos concentram ${pctTexto(perfil.participacaoMaiores, 0)} do valor (valor médio de ${reaisTexto(perfil.ticketMedio)}): revisar os maiores caso a caso.`,
       );
     } else if (perfil.perfil === 'MUITOS_PEQUENOS') {
       acoes.push(
-        `São ${perfil.lancamentos} lançamentos pequenos (ticket médio ${reaisTexto(perfil.ticketMedio)}): o ganho vem de rotina, não de caso isolado.`,
+        `São ${perfil.lancamentos} lançamentos de valor baixo (valor médio de ${reaisTexto(perfil.ticketMedio)}): o ganho vem da rotina, e não de casos isolados.`,
       );
     }
   }
   if (!dentro && simulacao?.ficariaDentro) {
     acoes.push(
-      `Resolvendo os ${simulacao.quantos} maiores (${reaisTexto(simulacao.valorRemovido)}), o mês fecharia em ${pctTexto(simulacao.percentualSimulado)} — dentro da meta.`,
+      `Tratando os ${simulacao.quantos} maiores (${reaisTexto(simulacao.valorRemovido)}), o mês fecharia em ${pctTexto(simulacao.percentualSimulado)}, dentro da meta.`,
     );
   }
 

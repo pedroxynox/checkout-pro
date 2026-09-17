@@ -6,24 +6,27 @@
  *
  * A card diz *quanto* a loja cancelou, somando itens e cupom sobre as vendas.
  * Isso é um boletim. Esta tela responde as duas perguntas que mudam o dia
- * seguinte: **o que está empurrando o número** e **o que fazer para melhorar**.
+ * seguinte: **o que está pesando no resultado** e **o que fazer para melhorar**.
  *
  * ## A ordem dos blocos, e por quê
  *
  * 1. **O mês** — o valor, o teto e, sobretudo, o excedente em R$. Um percentual
  *    não se discute numa reunião; "R$ 4.200 acima do teto" sim.
- * 2. **De onde vem** — a composição itens × cupom. É a primeira pergunta do
- *    gestor e a mais barata de responder: já diz para que lado ir.
- * 3. **O que está impactando** — as causas que o backend deduziu dos números.
- * 4. **O que fazer** — as ações, deduzidas das causas (nunca frases fixas).
- * 5. **Se resolver os maiores** — a simulação. Transforma o indicador num plano:
- *    em vez de "está acima da meta", diz "resolvendo estes três, fecha dentro".
- * 6. **Quem mais pesa** — o ranking combinado das duas metades.
- * 7. **Motivos** e **quem autorizou** — só do cupom, e a tela diz isso: o
- *    arquivo de itens não tem essas colunas.
- * 8. **Forma do dano** — muitos lançamentos pequenos (rotina) ou poucos grandes
- *    (exceção). Dois meses com o mesmo total pedem ações opostas.
- * 9. **Evolução mês a mês** — o histórico, com a cor de cada mês.
+ * 2. **Composição do total** — itens × cupom. É a primeira pergunta do gestor e a
+ *    mais barata de responder: já indica para que lado ir.
+ * 3. **Diagnóstico do mês** — as causas que o backend identificou e as ações
+ *    correspondentes, no mesmo cartão. Causa e recomendação lidas juntas formam
+ *    uma orientação; separadas em dois cartões, viram duas listas.
+ * 4. **Cenário sem os maiores lançamentos** — a simulação. Transforma o indicador
+ *    num plano: em vez de "está acima do teto", diz "tratando estes três, fecha
+ *    dentro".
+ * 5. **Quem concentra o valor** — o ranking combinado das duas partes.
+ * 6. **Cancelamento de cupom** — motivos e autorizações. Ficam num cartão só
+ *    porque compartilham a mesma limitação, que precisa ser dita uma única vez:
+ *    o arquivo de itens não informa nem motivo nem autorizador.
+ * 7. **Perfil dos lançamentos** — muitos de valor baixo (rotina) ou poucos de
+ *    valor alto (exceção). Dois meses com o mesmo total pedem ações opostas.
+ * 8. **Evolução mês a mês** — o histórico, com a cor de cada mês.
  *
  * Tela própria (e não o `IndicadorDetalheScreen`) porque aquele é acoplado ao
  * catálogo `ARRECADACAO` e ramifica em `base === 'FIXA' | 'VENDAS'`, e este
@@ -50,7 +53,11 @@ import {
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { formatarMoeda, formatarNumero, formatarPercentual } from '../../utils/formato';
+import {
+  formatarMoeda,
+  formatarNumero,
+  formatarPercentual,
+} from '../../utils/formato';
 import {
   MESES_HISTORICO_INDICADORES,
   deslocarMes,
@@ -82,32 +89,26 @@ function rotuloNivel(nivel: NivelIndicador | null): string {
   return 'Sem dados';
 }
 
-/** "+0,35 p.p." / "−0,15 p.p." — o desvio com sinal explícito. */
-function ppTexto(valor: number): string {
-  const sinal = valor >= 0 ? '+' : '−';
-  return `${sinal}${Math.abs(valor).toFixed(2).replace('.', ',')} p.p.`;
-}
-
-/** Forma do dano em linguagem de loja. */
+/** Perfil dos lançamentos em linguagem de loja. */
 function rotuloPerfil(
   perfil: DetalheCancelamentosTotais['perfil']['perfil'],
 ): string {
-  if (perfil === 'POUCOS_GRANDES') return 'Poucos lançamentos grandes';
-  if (perfil === 'MUITOS_PEQUENOS') return 'Muitos lançamentos pequenos';
-  return 'Misto';
+  if (perfil === 'POUCOS_GRANDES') return 'Poucos lançamentos de valor alto';
+  if (perfil === 'MUITOS_PEQUENOS') return 'Muitos lançamentos de valor baixo';
+  return 'Perfil misto';
 }
 
-/** O que a forma do dano implica na prática. */
+/** O que o perfil dos lançamentos implica na prática. */
 function explicacaoPerfil(
   perfil: DetalheCancelamentosTotais['perfil']['perfil'],
 ): string {
   if (perfil === 'POUCOS_GRANDES') {
-    return 'O valor está em poucas ocorrências: dá para revisar caso a caso.';
+    return 'O valor está concentrado em poucas ocorrências, o que permite revisá-las caso a caso.';
   }
   if (perfil === 'MUITOS_PEQUENOS') {
-    return 'O valor vem do volume do dia a dia: o ganho está na rotina da frente de caixa, não em casos isolados.';
+    return 'O valor decorre do volume diário: o ganho está na rotina da frente de caixa, e não em casos isolados.';
   }
-  return 'O valor está repartido entre lançamentos grandes e pequenos.';
+  return 'O valor está distribuído entre lançamentos de valor alto e baixo.';
 }
 
 /** Uma linha rótulo → valor, o formato de leitura desta tela. */
@@ -137,7 +138,12 @@ function Linha({
   );
 }
 
-/** Uma fatia (motivo ou autorizador) com barra proporcional. */
+/** Título de uma subseção dentro de um cartão. */
+function Subsecao({ texto }: { texto: string }): React.ReactElement {
+  return <Text style={styles.subsecao}>{texto}</Text>;
+}
+
+/** Uma fatia (motivo ou autorização) com barra proporcional. */
 function FatiaLinha({
   fatia,
   cor,
@@ -166,14 +172,14 @@ function FatiaLinha({
       </View>
       <Text style={styles.fatiaMeta}>
         {formatarPercentual(fatia.participacao, 0)} do valor em cupom ·{' '}
-        {formatarNumero(fatia.lancamentos)} lançamento
-        {fatia.lancamentos === 1 ? '' : 's'}
+        {formatarNumero(fatia.lancamentos)}{' '}
+        {fatia.lancamentos === 1 ? 'lançamento' : 'lançamentos'}
       </Text>
     </View>
   );
 }
 
-/** Uma pessoa do ranking combinado, com a quebra entre as duas metades. */
+/** Uma pessoa do ranking combinado, com a divisão entre as duas partes. */
 function OfensorLinha({
   posicao,
   ofensor,
@@ -204,9 +210,9 @@ function OfensorLinha({
 /**
  * Evolução mês a mês, com as barras coloridas pelo semáforo de cada mês.
  *
- * Um mês sem dados aparece cinza e fica **fora** da lista de leitura: um mês
- * vazio não é uma queda. E a seta respeita o sentido do indicador — cair aqui é
- * melhorar, então a flecha para baixo é verde.
+ * Um mês sem dados aparece em cinza e fica **fora** da lista de leitura: um mês
+ * vazio não é uma queda. A seta respeita o sentido do indicador — cair aqui é
+ * melhorar, então a seta para baixo é verde.
  */
 function CardEvolucao({
   meses,
@@ -363,8 +369,7 @@ export function CancelamentosTotaisDetalheScreen(): React.ReactElement {
               <View style={styles.flex1}>
                 <Text style={styles.titulo}>Cancelamentos Totais</Text>
                 <Text style={styles.subtitulo}>
-                  itens + cupom · teto {formatarPercentual(d.indicador.meta)} das
-                  vendas
+                  itens e cupom somados, sobre as vendas
                 </Text>
               </View>
               <Selo
@@ -384,11 +389,9 @@ export function CancelamentosTotaisDetalheScreen(): React.ReactElement {
                 >
                   {formatarPercentual(d.indicador.percentual)}
                 </Text>
-                {d.indicador.desvio && (
-                  <Text style={styles.valorDesvio}>
-                    {ppTexto(d.indicador.desvio.absoluto)} do teto
-                  </Text>
-                )}
+                <Text style={styles.valorReferencia}>
+                  meta ≤ {formatarPercentual(d.indicador.meta)}
+                </Text>
               </View>
             )}
 
@@ -396,7 +399,8 @@ export function CancelamentosTotaisDetalheScreen(): React.ReactElement {
 
             {/*
               O teto em dinheiro. É a tradução que torna o indicador discutível:
-              o percentual diz que há um problema, o excedente diz o tamanho dele.
+              o percentual indica que há um problema, o excedente indica o
+              tamanho dele.
             */}
             {d.indicador.limiteReais != null && (
               <>
@@ -426,54 +430,64 @@ export function CancelamentosTotaisDetalheScreen(): React.ReactElement {
                     cor={cores.verde}
                   />
                 )}
+                <View style={styles.divisor} />
+                <Linha
+                  rotulo="Vendas do mês"
+                  valor={formatarMoeda(d.indicador.vendas)}
+                />
+                <Linha
+                  rotulo="Lançamentos"
+                  valor={formatarNumero(d.indicador.lancamentos)}
+                />
+                {d.indicador.itens > 0 && (
+                  <Linha
+                    rotulo="Itens cancelados"
+                    valor={formatarNumero(d.indicador.itens)}
+                  />
+                )}
+                {/*
+                  O teto do total é independente, e isso precisa estar escrito:
+                  sem o aviso, as duas partes verdes com o total amarelo parecem
+                  um erro do sistema.
+                */}
                 <Text style={styles.nota}>
-                  Vendas do mês: {formatarMoeda(d.indicador.vendas)} ·{' '}
-                  {formatarNumero(d.indicador.lancamentos)} lançamentos
-                  {d.indicador.itens > 0
-                    ? ` · ${formatarNumero(d.indicador.itens)} itens cancelados`
-                    : ''}
-                </Text>
-                {/* O teto do total é independente, e isso tem de estar escrito:
-                    sem o aviso, as duas metades verdes com o total amarelo
-                    parecem um erro do sistema. */}
-                <Text style={styles.nota}>
-                  Este teto é próprio do total — não é a soma dos tetos de
-                  Cancelamento de Itens e de Cupom. É editável por mês em Centro
-                  de Controle ▸ Metas.
+                  Este teto é próprio do total e não corresponde à soma dos tetos
+                  de Cancelamento de Itens e de Cupom. É editável por mês em
+                  Centro de Controle ▸ Metas.
                 </Text>
               </>
             )}
           </Cartao>
 
-          {/* ===== 2. De onde vem ===== */}
-          <Cartao titulo="De onde vem">
+          {/* ===== 2. Composição do total ===== */}
+          <Cartao titulo="Composição do total">
             <View style={styles.pilhaTrilha}>
               <View
                 style={[
                   styles.pilhaItens,
-                  {
-                    flex: Math.max(1, d.composicao.participacaoItens),
-                  },
+                  { flex: Math.max(1, d.composicao.participacaoItens) },
                 ]}
               />
               <View
                 style={[
                   styles.pilhaCupom,
-                  {
-                    flex: Math.max(1, d.composicao.participacaoCupom),
-                  },
+                  { flex: Math.max(1, d.composicao.participacaoCupom) },
                 ]}
               />
             </View>
             <View style={styles.legendaLinha}>
               <View style={styles.legendaItem}>
-                <View style={[styles.legendaPonto, { backgroundColor: cores.primaria }]} />
+                <View
+                  style={[styles.legendaPonto, { backgroundColor: cores.primaria }]}
+                />
                 <Text style={styles.legendaTexto}>
                   Itens {formatarPercentual(d.composicao.participacaoItens, 0)}
                 </Text>
               </View>
               <View style={styles.legendaItem}>
-                <View style={[styles.legendaPonto, { backgroundColor: cores.laranja }]} />
+                <View
+                  style={[styles.legendaPonto, { backgroundColor: cores.laranja }]}
+                />
                 <Text style={styles.legendaTexto}>
                   Cupom {formatarPercentual(d.composicao.participacaoCupom, 0)}
                 </Text>
@@ -497,47 +511,56 @@ export function CancelamentosTotaisDetalheScreen(): React.ReactElement {
               }
             />
             <Text style={styles.nota}>
-              Os percentuais são sobre as vendas da loja, na mesma régua do teto —
-              somados, dão o valor do indicador.
+              Os percentuais são calculados sobre as vendas da loja, no mesmo
+              critério do teto: somados, resultam no valor do indicador.
             </Text>
           </Cartao>
 
-          {/* ===== 3. O que está impactando ===== */}
-          {d.diagnostico.causas.length > 0 && (
-            <Cartao titulo="O que está impactando">
-              {d.diagnostico.causas.map((c, i) => (
-                <View key={`${c.titulo}-${i}`} style={styles.causa}>
-                  <Text style={styles.causaTitulo}>{c.titulo}</Text>
-                  <Text style={styles.causaDetalhe}>{c.detalhe}</Text>
-                </View>
-              ))}
+          {/* ===== 3. Diagnóstico do mês ===== */}
+          {(d.diagnostico.causas.length > 0 ||
+            d.diagnostico.acoes.length > 0) && (
+            <Cartao titulo="Diagnóstico do mês">
+              {d.diagnostico.causas.length > 0 && (
+                <>
+                  <Subsecao texto="O que está pesando no resultado" />
+                  {d.diagnostico.causas.map((c, i) => (
+                    <View key={`${c.titulo}-${i}`} style={styles.causa}>
+                      <Text style={styles.causaTitulo}>{c.titulo}</Text>
+                      <Text style={styles.causaDetalhe}>{c.detalhe}</Text>
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {d.diagnostico.acoes.length > 0 && (
+                <>
+                  {d.diagnostico.causas.length > 0 && (
+                    <View style={styles.divisor} />
+                  )}
+                  <Subsecao texto="O que fazer para melhorar" />
+                  {d.diagnostico.acoes.map((a, i) => (
+                    <View key={`acao-${i}`} style={styles.acao}>
+                      <Ionicons
+                        name="arrow-forward-circle"
+                        size={16}
+                        color={cores.primaria}
+                        style={styles.acaoIcone}
+                      />
+                      <Text style={styles.acaoTexto}>{a}</Text>
+                    </View>
+                  ))}
+                  <Text style={styles.nota}>
+                    As recomendações são derivadas dos números do mês: mudam
+                    quando a composição, a concentração ou os motivos mudam.
+                  </Text>
+                </>
+              )}
             </Cartao>
           )}
 
-          {/* ===== 4. O que fazer ===== */}
-          {d.diagnostico.acoes.length > 0 && (
-            <Cartao titulo="O que fazer para melhorar">
-              {d.diagnostico.acoes.map((a, i) => (
-                <View key={`acao-${i}`} style={styles.acao}>
-                  <Ionicons
-                    name="arrow-forward-circle"
-                    size={16}
-                    color={cores.primaria}
-                    style={styles.acaoIcone}
-                  />
-                  <Text style={styles.acaoTexto}>{a}</Text>
-                </View>
-              ))}
-              <Text style={styles.nota}>
-                Estas recomendações são deduzidas dos números do mês: mudam
-                quando a composição, a concentração ou os motivos mudam.
-              </Text>
-            </Cartao>
-          )}
-
-          {/* ===== 5. Se resolver os maiores ===== */}
+          {/* ===== 4. Cenário sem os maiores lançamentos ===== */}
           {d.simulacao && d.indicador.cumpriuMeta === false && (
-            <Cartao titulo="Se resolver os maiores">
+            <Cartao titulo="Cenário sem os maiores lançamentos">
               <View style={styles.simulacaoBloco}>
                 <Text
                   style={[
@@ -552,7 +575,9 @@ export function CancelamentosTotaisDetalheScreen(): React.ReactElement {
                   {formatarPercentual(d.simulacao.percentualSimulado)}
                 </Text>
                 <Text style={styles.simulacaoLabel}>
-                  seria o mês sem os {d.simulacao.quantos} maiores
+                  seria o resultado do mês sem {d.simulacao.quantos === 1
+                    ? 'o maior lançamento'
+                    : `os ${d.simulacao.quantos} maiores`}
                 </Text>
                 <Text style={styles.simulacaoSub}>
                   {d.simulacao.nomes.join(', ')}
@@ -573,17 +598,18 @@ export function CancelamentosTotaisDetalheScreen(): React.ReactElement {
                 ]}
               >
                 {d.simulacao.ficariaDentro
-                  ? `Só com eles resolvidos, o mês fecharia dentro do teto de ${formatarPercentual(d.indicador.meta)}.`
-                  : 'Mesmo sem eles o mês ficaria acima do teto: o problema não está só nos maiores.'}
+                  ? `Tratando apenas esses lançamentos, o mês fecharia dentro do teto de ${formatarPercentual(d.indicador.meta)}.`
+                  : 'Mesmo sem eles, o mês permaneceria acima do teto: o problema não se concentra apenas nos maiores.'}
               </Text>
             </Cartao>
           )}
 
-          {/* ===== 6. Quem mais pesa ===== */}
-          <Cartao titulo="Quem mais pesa">
+          {/* ===== 5. Quem concentra o valor ===== */}
+          <Cartao titulo="Quem concentra o valor">
             {d.ofensores.length === 0 ? (
               <Text style={styles.nota}>
-                Nenhum lançamento casou com um colaborador cadastrado neste mês.
+                Nenhum lançamento corresponde a um colaborador cadastrado neste
+                mês.
               </Text>
             ) : (
               <>
@@ -591,59 +617,71 @@ export function CancelamentosTotaisDetalheScreen(): React.ReactElement {
                   <OfensorLinha key={o.nome} posicao={i + 1} ofensor={o} />
                 ))}
                 <View style={styles.divisor} />
-                <Text style={styles.nota}>
+                <Text style={styles.leitura}>
                   {d.concentracao.espalhado
-                    ? `Valor espalhado: são ${formatarNumero(d.concentracao.pessoas)} pessoas, e precisam de ${formatarNumero(d.concentracao.pessoasParaMetade)} delas para somar metade do valor.`
-                    : `Valor concentrado: os 3 maiores respondem por ${formatarPercentual(d.concentracao.participacaoTop3, 0)} do total das pessoas cadastradas.`}
+                    ? `Valor distribuído: são ${formatarNumero(d.concentracao.pessoas)} pessoas com cancelamento, e é necessário somar ${formatarNumero(d.concentracao.pessoasParaMetade)} delas para chegar à metade do valor.`
+                    : `Valor concentrado: os três maiores respondem por ${formatarPercentual(d.concentracao.participacaoTop3, 0)} do total das pessoas cadastradas.`}
                 </Text>
                 <Text style={styles.nota}>
-                  Só entram colaboradores cadastrados. Lançamentos sem cadastro
-                  somam no total do indicador, mas não aparecem aqui — é a mesma
-                  regra dos outros indicadores.
+                  Apenas colaboradores cadastrados aparecem aqui. Lançamentos sem
+                  cadastro são somados no total do indicador, mas não entram nesta
+                  lista — é a mesma regra dos demais indicadores.
                 </Text>
               </>
             )}
           </Cartao>
 
-          {/* ===== 7. Motivos (só cupom) ===== */}
-          <Cartao titulo="Motivos do cancelamento de cupom">
-            {d.motivos.length === 0 ? (
+          {/* ===== 6. Cancelamento de cupom: motivos e autorizações ===== */}
+          <Cartao titulo="Cupom: motivos e autorizações">
+            {d.motivos.length === 0 && d.autorizadores.length === 0 ? (
               <Text style={styles.nota}>
                 Nenhum cancelamento de cupom neste mês.
               </Text>
             ) : (
               <>
-                {d.motivos.map((m) => (
-                  <FatiaLinha key={m.rotulo} fatia={m} cor={cores.laranja} />
-                ))}
-                {/* Sem este aviso, o gestor leria os motivos como se cobrissem
-                    o indicador inteiro — e tomaria a decisão errada. */}
+                {d.motivos.length > 0 && (
+                  <>
+                    <Subsecao texto="Motivos de maior custo" />
+                    {d.motivos.map((m) => (
+                      <FatiaLinha key={m.rotulo} fatia={m} cor={cores.laranja} />
+                    ))}
+                  </>
+                )}
+
+                {d.autorizadores.length > 0 && (
+                  <>
+                    {d.motivos.length > 0 && <View style={styles.divisor} />}
+                    <Subsecao texto="Quem autorizou" />
+                    {d.autorizadores.map((a) => (
+                      <FatiaLinha key={a.rotulo} fatia={a} cor={cores.primaria} />
+                    ))}
+                    <Text style={styles.nota}>
+                      A concentração de autorizações pode refletir turno, volume
+                      ou critério de aprovação — convém verificar antes de
+                      concluir.
+                    </Text>
+                  </>
+                )}
+
+                {/*
+                  Sem este aviso, o gestor leria motivos e autorizações como se
+                  explicassem o indicador inteiro — e decidiria com base em
+                  metade do quadro.
+                */}
                 <Text style={styles.nota}>
-                  Cobre apenas a metade do cupom: o arquivo de cancelamento de
-                  itens não traz motivo.
+                  Estas duas leituras abrangem apenas os cancelamentos de cupom: o
+                  arquivo de cancelamento de itens não informa motivo nem
+                  autorizador.
                 </Text>
               </>
             )}
           </Cartao>
 
-          {/* ===== 8. Quem autorizou (só cupom) ===== */}
-          {d.autorizadores.length > 0 && (
-            <Cartao titulo="Quem autorizou os cupons">
-              {d.autorizadores.map((a) => (
-                <FatiaLinha key={a.rotulo} fatia={a} cor={cores.primaria} />
-              ))}
-              <Text style={styles.nota}>
-                Concentração de autorizações pode ser turno, volume ou critério —
-                vale conferir antes de concluir.
-              </Text>
-            </Cartao>
-          )}
-
-          {/* ===== 9. Forma do dano ===== */}
+          {/* ===== 7. Perfil dos lançamentos ===== */}
           {d.perfil.lancamentos > 0 && (
-            <Cartao titulo="Forma do dano">
+            <Cartao titulo="Perfil dos lançamentos">
               <Linha
-                rotulo="Perfil"
+                rotulo="Classificação"
                 valor={rotuloPerfil(d.perfil.perfil)}
                 destaque
               />
@@ -659,13 +697,13 @@ export function CancelamentosTotaisDetalheScreen(): React.ReactElement {
                 rotulo={`Concentração nos ${formatarNumero(d.perfil.maioresConsiderados)} maiores`}
                 valor={formatarPercentual(d.perfil.participacaoMaiores, 0)}
               />
-              <Text style={styles.nota}>
+              <Text style={styles.leitura}>
                 {explicacaoPerfil(d.perfil.perfil)}
               </Text>
             </Cartao>
           )}
 
-          {/* ===== 10. Evolução mês a mês ===== */}
+          {/* ===== 8. Evolução mês a mês ===== */}
           <CardEvolucao meses={d.historico} />
 
           {d.sequenciaCumprindo > 1 && (
@@ -677,8 +715,8 @@ export function CancelamentosTotaisDetalheScreen(): React.ReactElement {
           <Text style={styles.rodape}>
             Indicador calculado a partir dos arquivos de cancelamento de itens e
             de cupom — não existe arquivo próprio para carregar. Histórico
-            disponível dos últimos {formatarNumero(d.mesesRetencao)} meses (desde{' '}
-            {d.anoMesLimite}).
+            disponível desde {rotuloMes(d.anoMesLimite)} (
+            {formatarNumero(d.mesesRetencao)} meses).
           </Text>
         </>
       )}
@@ -734,14 +772,15 @@ const styles = StyleSheet.create({
   },
   valorBloco: {
     alignItems: 'center',
-    marginTop: espacamento.md,
+    marginTop: espacamento.lg,
+    marginBottom: espacamento.xs,
   },
   valorGrande: {
     fontSize: 40,
     fontWeight: '800',
   },
-  valorDesvio: {
-    ...tipografia.legenda,
+  valorReferencia: {
+    ...tipografia.rotulo,
     color: cores.textoSecundario,
     marginTop: 2,
   },
@@ -755,6 +794,14 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: cores.divisor,
     marginVertical: espacamento.md,
+  },
+  subsecao: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: espacamento.sm,
   },
   linha: {
     flexDirection: 'row',
@@ -774,13 +821,20 @@ const styles = StyleSheet.create({
     color: cores.texto,
     fontWeight: '700',
   },
+  // Uma conclusão em prosa (não é rodapé nem ressalva): fica no tom do texto.
+  leitura: {
+    ...tipografia.legenda,
+    color: cores.texto,
+    marginTop: espacamento.sm,
+    lineHeight: 17,
+  },
   nota: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
     marginTop: espacamento.sm,
     lineHeight: 16,
   },
-  // Barra empilhada da composição: a leitura de "qual metade manda" em 1 segundo.
+  // Barra empilhada da composição: a leitura de "qual parte manda" em 1 segundo.
   pilhaTrilha: {
     flexDirection: 'row',
     height: 14,
@@ -834,10 +888,14 @@ const styles = StyleSheet.create({
   },
   simulacaoBloco: {
     alignItems: 'center',
-    paddingVertical: espacamento.sm,
+    paddingBottom: espacamento.md,
   },
   simulacaoNumero: { fontSize: 34, fontWeight: '800' },
-  simulacaoLabel: { ...tipografia.rotulo, color: cores.texto },
+  simulacaoLabel: {
+    ...tipografia.rotulo,
+    color: cores.texto,
+    textAlign: 'center',
+  },
   simulacaoSub: {
     ...tipografia.legenda,
     color: cores.textoSecundario,
