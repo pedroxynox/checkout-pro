@@ -142,9 +142,13 @@ function nivelSacolas(ind: IndicadorSacolas): Nivel | null {
 /**
  * Texto do valor de **Cancelamentos Totais**.
  *
- * Segue a forma pedida pelo dono do projeto no indicador de Sacolas: o valor
- * **nunca aparece sozinho**, vem sempre com a distância até o teto. Ver "1,10%"
- * é informação; ver "+0,35 p.p. do teto de 0,75%" é conclusão.
+ * Mesma forma dos outros indicadores sobre vendas ("1,24% (meta ≤ 0,75%)"), para
+ * a card ler igual às vizinhas. A meta vem do **servidor** (`ind.meta`), não de um
+ * padrão espelhado no app: editar o teto do mês em Metas muda o que se lê aqui.
+ *
+ * A distância até o teto não é repetida em pontos percentuais — quando há excesso,
+ * ele aparece embaixo em **reais**, que é o número acionável. Ver "1,24%" é
+ * informação; ver "R$ 350,00 acima do permitido" é conclusão.
  *
  * Sem venda registrada não mostra "0,00%": um mês em que o arquivo de vendas
  * ainda não subiu não é um mês perfeito, é um mês sem denominador.
@@ -155,13 +159,7 @@ function textoCancelamentosTotais(ind: IndicadorCancelamentosTotais): string {
       ? 'Sem venda registrada neste mês'
       : 'Sem movimento neste mês';
   }
-  const teto = `teto ${formatarPercentual(ind.meta)}`;
-  if (!ind.desvio) return `${formatarPercentual(ind.percentual)} (${teto})`;
-  const sinal = ind.desvio.absoluto >= 0 ? '+' : '−';
-  const distancia = Math.abs(ind.desvio.absoluto)
-    .toFixed(2)
-    .replace('.', ',');
-  return `${formatarPercentual(ind.percentual)} · ${sinal}${distancia} p.p. (${teto})`;
+  return `${formatarPercentual(ind.percentual)} (meta ≤ ${formatarPercentual(ind.meta)})`;
 }
 
 export function IndicadoresScreen({
@@ -443,14 +441,15 @@ export function IndicadoresScreen({
                       <Text style={styles.saudeValor}>
                         {textoCancelamentosTotais(totais)}
                       </Text>
-                      <Text style={styles.totaisBase}>
-                        Soma das duas cards acima · teto próprio, não a soma dos
-                        dois tetos
-                      </Text>
+                      {/*
+                        A única linha extra da card é o excesso, e só quando ele
+                        existe. O percentual diz que há um problema; os reais dizem
+                        o tamanho dele. Toda a explicação (composição, causas,
+                        ações) mora no detalhe — a card é para bater o olho.
+                      */}
                       {totais.excedente != null && totais.excedente > 0 && (
                         <Text style={styles.totaisExcedente}>
-                          {formatarMoeda(totais.excedente)} acima do que o teto
-                          permitia no mês
+                          {formatarMoeda(totais.excedente)} acima do permitido
                         </Text>
                       )}
                     </View>
@@ -517,19 +516,15 @@ export function IndicadoresScreen({
                   }
                 />
               </View>
+              {/*
+                Só o nome e o valor: os fardos/entregas do mês e o aviso do efeito
+                de calendário saíram da card e vivem no detalhe, onde há espaço
+                para explicá-los. A base do indicador (sacolas recebidas, não as
+                vendas) continua dita no detalhe — aqui ela poluía a leitura.
+              */}
               <View style={styles.flex1}>
                 <Text style={styles.saudeNome}>Sacolas</Text>
                 <Text style={styles.saudeValor}>{textoSacolas(sacolas)}</Text>
-                <Text style={styles.sacolasBase}>
-                  {sacolas.fardosRecebidos} fardos recebidos
-                  {sacolas.entregas > 0
-                    ? ` em ${sacolas.entregas} entrega${sacolas.entregas > 1 ? 's' : ''}`
-                    : ''}
-                  {sacolas.parcial ? ' · mês em andamento' : ''}
-                </Text>
-                {sacolas.avisoEntregas && (
-                  <Text style={styles.sacolasAviso}>{sacolas.avisoEntregas}</Text>
-                )}
               </View>
               {nivelSacolas(sacolas) && (
                 <View
@@ -847,30 +842,11 @@ const styles = StyleSheet.create({
     marginTop: espacamento.sm,
     marginBottom: espacamento.sm,
   },
-  // Base do indicador de Sacolas: o denominador dele é outro, e isso precisa
-  // ficar escrito na card para o gestor não comparar coisas diferentes.
-  sacolasBase: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    marginTop: 2,
-  },
-  sacolasAviso: {
-    ...tipografia.legenda,
-    color: cores.laranja,
-    marginTop: 2,
-    lineHeight: 16,
-  },
   // Cancelamentos Totais: um leve recuo e um fundo diferente deixam claro, sem
   // texto, que a card é o consolidado das duas de cima e não um sexto indicador.
   totaisCard: {
     backgroundColor: cores.superficieAlternativa,
     marginLeft: espacamento.md,
-  },
-  totaisBase: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    marginTop: 2,
-    lineHeight: 16,
   },
   totaisExcedente: {
     ...tipografia.legenda,
