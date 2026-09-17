@@ -73,6 +73,13 @@ enxuta e lê como as vizinhas ("1,24% (meta ≤ 0,75%)"), com uma única linha e
 em vermelho e só quando existe, dizendo o excesso em reais. Um painel é para bater
 o olho; a explicação é um toque adiante.
 
+> **Atualização (2026-09-17).** Também por pedido do dono do projeto, a card deixou
+> de ter desenho próprio (fundo e recuo distintos) e saiu do meio da lista: agora
+> fecha o bloco dos indicadores de arrecadação, **depois de Devoluções**, com
+> exatamente o mesmo visual das demais. A consequência aceita é que nada no visual
+> indica que ela soma duas das cards acima — o que esclarece isso é a posição
+> (imediatamente após as partes) e o detalhe.
+
 ### 3. O semáforo é o **mesmo**, reaproveitado — nada recalculado
 
 A cor vem de `nivelDoMes(sentido, valor, meta)`, a fonte única já usada pelos
@@ -105,12 +112,12 @@ O detalhe não é um relatório: é um diagnóstico determinístico, calculado e
 
 | Leitura | O que responde |
 |---|---|
-| **Composição** | Qual das duas metades manda (dominante a partir de 60% do valor). |
+| **Composição** | Qual das duas partes manda (dominante a partir de 60% do valor). |
 | **Excedente em R$** | O percentual traduzido em dinheiro — o número que se discute numa reunião. É a única dessas leituras que também aparece na card do painel. |
 | **Concentração** | É gente ou é processo: se os 3 maiores somam menos de 50%, o valor está espalhado. |
 | **Simulação** | O mês sem os 3 maiores: "resolvendo estes, fecha dentro". |
-| **Motivos** e **autorizadores** | Só do cupom — e a tela diz isso. |
-| **Forma do dano** | Muitos lançamentos pequenos (rotina) ou poucos grandes (exceção). |
+| **Motivos** e **autorizações** | Só do cupom — e a tela diz isso, uma vez, no cartão que reúne as duas leituras. |
+| **Perfil dos lançamentos** | Muitos de valor baixo (rotina) ou poucos de valor alto (exceção). |
 
 As **ações são deduzidas** dessas leituras, não fixas. Uma frase fixa ("revisar os
 cancelamentos de maior valor") serve para qualquer mês e por isso não muda o
@@ -145,9 +152,9 @@ acumular dados.
   de referência para corrigir os outros cinco.
 
 **Negativas / limites**
-- **Motivos e autorizadores cobrem apenas a metade do cupom.** O arquivo de
-  cancelamento de itens não traz essas colunas. A tela declara isso; sem o aviso,
-  o gestor tomaria a conclusão errada.
+- **Motivos e autorizações abrangem apenas os cancelamentos de cupom.** O arquivo
+  de cancelamento de itens não traz essas colunas. A tela declara isso; sem o
+  aviso, o gestor tomaria a conclusão errada.
 - **Não há leitura por hora ou por turno.** Os arquivos de cancelamento não
   trazem a hora. Isso exigiria mudar a origem dos dados, não o indicador.
 - **O ranking só inclui colaboradores cadastrados.** Lançamentos sem cadastro

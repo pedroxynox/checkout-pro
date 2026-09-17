@@ -58,7 +58,7 @@ export interface IndicadorCancelamentosTotais {
   rotulo: string;
   base: 'VENDAS';
   sentido: typeof SENTIDO_CANCELAMENTOS;
-  /** Soma das duas metades (R$). */
+  /** Soma das duas partes (R$). */
   total: number;
   totalItens: number;
   totalCupom: number;

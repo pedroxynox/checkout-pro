@@ -127,8 +127,8 @@ const DETALHE = {
       },
     ],
     acoes: [
-      "Itens são cancelados na hora de passar a compra: revisar o escaneamento e a marcação de preço na gôndola.",
-      "Conversa individual com Ana Souza, Bia Lima — aqui o ganho é caso a caso, não campanha geral.",
+      "Os itens são cancelados durante o registro da compra: revisar o escaneamento e a marcação de preço na gôndola.",
+      "Conversa individual com Ana Souza, Bia Lima: neste caso o ganho é pontual, e não de campanha geral.",
     ],
   },
   historico: [
@@ -196,26 +196,33 @@ describe("CancelamentosTotaisDetalheScreen", () => {
 
     await screen.findByText("Cancelamentos Totais");
     expect(
-      screen.getByText(/não é a soma dos tetos de Cancelamento de Itens e de Cupom/),
+      screen.getByText(
+        /não corresponde à soma dos tetos de Cancelamento de Itens e de Cupom/,
+      ),
     ).toBeTruthy();
   });
 
-  it("decompõe o total nas duas metades, com o % de cada uma sobre as vendas", async () => {
+  it("decompõe o total nas duas partes, com o % de cada uma sobre as vendas", async () => {
     arrecadacaoService.cancelamentosTotaisDetalhe.mockResolvedValue(DETALHE);
     render(<CancelamentosTotaisDetalheScreen />);
 
-    await screen.findByText("De onde vem");
+    await screen.findByText("Composição do total");
     expect(screen.getByText("Itens 73%")).toBeTruthy();
     expect(screen.getByText("Cupom 27%")).toBeTruthy();
     expect(screen.getByText(/R\$\s?800,00 · 0,80%/)).toBeTruthy();
     expect(screen.getByText(/R\$\s?300,00 · 0,30%/)).toBeTruthy();
   });
 
-  it("mostra as causas e as ações deduzidas dos números", async () => {
+  /**
+   * Causa e recomendação vivem no MESMO cartão: lidas juntas formam uma
+   * orientação; separadas em dois cartões, viram duas listas.
+   */
+  it("reúne causas e ações num só cartão de diagnóstico", async () => {
     arrecadacaoService.cancelamentosTotaisDetalhe.mockResolvedValue(DETALHE);
     render(<CancelamentosTotaisDetalheScreen />);
 
-    await screen.findByText("O que está impactando");
+    await screen.findByText("Diagnóstico do mês");
+    expect(screen.getByText("O que está pesando no resultado")).toBeTruthy();
     expect(screen.getByText("O peso está no cancelamento de itens")).toBeTruthy();
     expect(screen.getByText("O que fazer para melhorar")).toBeTruthy();
     expect(screen.getByText(/revisar o escaneamento/)).toBeTruthy();
@@ -225,9 +232,11 @@ describe("CancelamentosTotaisDetalheScreen", () => {
     arrecadacaoService.cancelamentosTotaisDetalhe.mockResolvedValue(DETALHE);
     render(<CancelamentosTotaisDetalheScreen />);
 
-    await screen.findByText("Se resolver os maiores");
+    await screen.findByText("Cenário sem os maiores lançamentos");
     expect(screen.getByText("0,20%")).toBeTruthy();
-    expect(screen.getByText("seria o mês sem os 2 maiores")).toBeTruthy();
+    expect(
+      screen.getByText("seria o resultado do mês sem os 2 maiores"),
+    ).toBeTruthy();
     expect(
       screen.getByText(/o mês fecharia dentro do teto de 0,75%/),
     ).toBeTruthy();
@@ -250,14 +259,14 @@ describe("CancelamentosTotaisDetalheScreen", () => {
 
     await screen.findByText("Cancelamentos Totais");
     expect(screen.getByText("Dentro do teto")).toBeTruthy();
-    expect(screen.queryByText("Se resolver os maiores")).toBeNull();
+    expect(screen.queryByText("Cenário sem os maiores lançamentos")).toBeNull();
   });
 
   it("mostra o ranking combinado com a quebra entre itens e cupom", async () => {
     arrecadacaoService.cancelamentosTotaisDetalhe.mockResolvedValue(DETALHE);
     render(<CancelamentosTotaisDetalheScreen />);
 
-    await screen.findByText("Quem mais pesa");
+    await screen.findByText("Quem concentra o valor");
     expect(screen.getByText("Ana Souza")).toBeTruthy();
     expect(
       screen.getByText(/itens R\$\s?500,00 · cupom R\$\s?100,00 · 0,60% das vendas/),
@@ -268,17 +277,21 @@ describe("CancelamentosTotaisDetalheScreen", () => {
    * Sem este aviso, o gestor leria os motivos como se explicassem o indicador
    * inteiro — quando o arquivo de itens simplesmente não tem essa coluna.
    */
-  it("avisa que os motivos cobrem apenas a metade do cupom", async () => {
+  it("reúne motivos e autorizações do cupom, com a ressalva dita uma vez", async () => {
     arrecadacaoService.cancelamentosTotaisDetalhe.mockResolvedValue(DETALHE);
     render(<CancelamentosTotaisDetalheScreen />);
 
-    await screen.findByText("Motivos do cancelamento de cupom");
+    await screen.findByText("Cupom: motivos e autorizações");
+    expect(screen.getByText("Motivos de maior custo")).toBeTruthy();
     expect(screen.getByText("Cliente desistiu")).toBeTruthy();
+    expect(screen.getByText("Quem autorizou")).toBeTruthy();
+    expect(screen.getByText("Fiscal Carla")).toBeTruthy();
+    // A limitação é dita UMA vez, e vale para as duas leituras do cartão.
     expect(
-      screen.getByText(
-        /o arquivo de cancelamento de itens não traz motivo/,
+      screen.getAllByText(
+        /não informa motivo nem\s+autorizador/,
       ),
-    ).toBeTruthy();
+    ).toHaveLength(1);
   });
 
   it("mês sem venda registrada explica a falta, sem inventar percentual", async () => {
@@ -313,13 +326,26 @@ describe("CancelamentosTotaisDetalheScreen", () => {
     expect(screen.getByText(/Enviar o arquivo de vendas/)).toBeTruthy();
   });
 
-  it("informa a forma do dano para separar rotina de exceção", async () => {
+  it("informa o perfil dos lançamentos para separar rotina de exceção", async () => {
     arrecadacaoService.cancelamentosTotaisDetalhe.mockResolvedValue(DETALHE);
     render(<CancelamentosTotaisDetalheScreen />);
 
-    await screen.findByText("Forma do dano");
-    expect(screen.getByText("Poucos lançamentos grandes")).toBeTruthy();
-    expect(screen.getByText(/dá para revisar caso a caso/)).toBeTruthy();
+    await screen.findByText("Perfil dos lançamentos");
+    expect(screen.getByText("Poucos lançamentos de valor alto")).toBeTruthy();
+    expect(screen.getByText(/permite revisá-las caso a caso/)).toBeTruthy();
+  });
+
+  /**
+   * O mês mais antigo conservado é exibido por extenso ("Outubro de 2024"), e não
+   * como o "2024-10" cru que o backend devolve.
+   */
+  it("escreve o início do histórico por extenso, não em AAAA-MM", async () => {
+    arrecadacaoService.cancelamentosTotaisDetalhe.mockResolvedValue(DETALHE);
+    render(<CancelamentosTotaisDetalheScreen />);
+
+    await screen.findByText("Cancelamentos Totais");
+    expect(screen.getByText(/Outubro de 2024/)).toBeTruthy();
+    expect(screen.queryByText(/2024-10/)).toBeNull();
   });
 
   it("pede o detalhe do mês corrente ao abrir", async () => {
