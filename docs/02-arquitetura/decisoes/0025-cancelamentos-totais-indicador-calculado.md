@@ -62,11 +62,16 @@ verdes, o total também está — o painel nunca se contradiz. Foi **recusada** 
 decisão de produto: um teto de 1,25% é mais frouxo do que qualquer uma das partes
 e não aperta nada. O teto escolhido é deliberadamente mais exigente.
 
-A consequência é aceita e **tem de estar escrita na tela**: as duas metades podem
-aparecer verdes com o total em amarelo. Sem esse aviso, a combinação parece um
-defeito do sistema. Por isso a card do painel diz "teto próprio, não a soma dos
-dois tetos", a tela de detalhe repete a frase, e a tela de Metas traz o mesmo
-aviso no card da meta.
+A consequência é aceita e **tem de estar escrita**: as duas metades podem aparecer
+verdes com o total em amarelo. Sem esse aviso, a combinação parece um defeito do
+sistema. A explicação vive na **tela de detalhe** e no card da meta em Centro de
+Controle ▸ Metas — os dois lugares onde o gestor vai quando quer entender o
+número.
+
+A card do painel **não** repete a frase: a pedido do dono do projeto, ela ficou
+enxuta e lê como as vizinhas ("1,24% (meta ≤ 0,75%)"), com uma única linha extra,
+em vermelho e só quando existe, dizendo o excesso em reais. Um painel é para bater
+o olho; a explicação é um toque adiante.
 
 ### 3. O semáforo é o **mesmo**, reaproveitado — nada recalculado
 
@@ -101,7 +106,7 @@ O detalhe não é um relatório: é um diagnóstico determinístico, calculado e
 | Leitura | O que responde |
 |---|---|
 | **Composição** | Qual das duas metades manda (dominante a partir de 60% do valor). |
-| **Excedente em R$** | O percentual traduzido em dinheiro — o número que se discute numa reunião. |
+| **Excedente em R$** | O percentual traduzido em dinheiro — o número que se discute numa reunião. É a única dessas leituras que também aparece na card do painel. |
 | **Concentração** | É gente ou é processo: se os 3 maiores somam menos de 50%, o valor está espalhado. |
 | **Simulação** | O mês sem os 3 maiores: "resolvendo estes, fecha dentro". |
 | **Motivos** e **autorizadores** | Só do cupom — e a tela diz isso. |

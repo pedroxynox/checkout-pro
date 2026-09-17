@@ -388,7 +388,23 @@ export function SacolasDetalheScreen(): React.ReactElement {
                 Nenhuma entrada de sacola neste mês.
               </Text>
             ) : (
-              d.entradas.map((e) => <LinhaEntrada key={e.dataHora} item={e} />)
+              <>
+                {/*
+                  O total de fardos e o número de entregas ficavam na card do
+                  painel. Saíram de lá para deixá-la limpa, então precisam estar
+                  escritos aqui: são o denominador do indicador, e sem eles o
+                  extrato abaixo não se soma a nada.
+                */}
+                <Linha
+                  rotulo="Recebido no mês"
+                  valor={`${formatarNumero(d.indicador.fardosRecebidos)} fardos em ${formatarNumero(d.indicador.entregas)} entrega${d.indicador.entregas === 1 ? '' : 's'}`}
+                  destaque
+                />
+                <View style={styles.divisor} />
+                {d.entradas.map((e) => (
+                  <LinhaEntrada key={e.dataHora} item={e} />
+                ))}
+              </>
             )}
           </Cartao>
 

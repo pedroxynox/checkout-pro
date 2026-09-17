@@ -356,6 +356,14 @@ dono do projeto reforçou que "este indicador é diferente dos outros"). Na prá
 - o card precisa deixar visível que a base dele é **outra** (sacolas recebidas, e
   não vendas nem um valor fixo), ou o gestor vai comparar coisas que não se
   comparam;
+
+  > **Atualização (2026-09-16).** A pedido do dono do projeto, o painel foi
+  > enxugado: a linha de fardos/entregas e o aviso de calendário saíram da card e
+  > passaram para a **tela de detalhe**, onde há espaço para explicá-los (o
+  > recebido do mês virou a primeira linha do extrato de entradas). A card
+  > mantém o essencial desta decisão — o valor **nunca aparece sozinho**, sempre
+  > com a distância até o piso —, e o esclarecimento da base continua escrito,
+  > só que um toque adiante.
 - `TIPOS_ARRECADACAO` **não** é alterado, então `congelarMes` e a purga seguem
   intactos.
 
