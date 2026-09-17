@@ -34,29 +34,35 @@
  * está gravado e lista as diferenças, para que a correção seja uma decisão
  * humana com os dados na mão.
  *
- * ## Por que ele cresceu (etapa 2 da ADR 0026)
+ * ## O que mudou quando a ficha assumiu (etapa 2 da ADR 0026)
  *
- * A [ADR 0026](../../../docs/02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md)
- * fez o **horário exibido** ser sempre o da ficha. Falta a etapa 2: a **detecção
- * automática de falta** passar a ler a ficha também, e a cópia semanal desaparecer.
+ * Este diagnóstico nasceu para responder uma pergunta com data de validade: "quem
+ * seria afetado se a hora cobrada passasse a sair da ficha?". A resposta veio — em
+ * produção eram sete fiscais, com a cópia semanal de quarenta minutos a uma hora
+ * mais tardia que a ficha — e a troca foi feita.
  *
- * Essa troca não é neutra, e o roadmap exige rodar este diagnóstico **antes**. Três
- * perguntas precisam de resposta com nome e sobrenome, e são as que os campos novos
- * respondem:
+ * Com isso, **uma divergência entre a ficha e a cópia semanal deixou de ter efeito
+ * sobre a cobrança de ponto**. A cópia continua existindo (ela ainda guarda o
+ * intervalo do turno e o vínculo com a ficha de quem perdeu a conta de acesso) e
+ * continua sendo regenerada, mas ninguém lhe pergunta mais que horas são. As
+ * diferenças que aparecem aqui são informativas: mostram onde a regeneração não
+ * chegou, não uma hora errada sendo cobrada de alguém.
  *
- * 1. **Quem passaria a ser cobrado MAIS CEDO?** Hoje, quando a ficha e a cópia
- *    discordam, vale a hora **mais tardia** (`entradaEsperadaConservadora`). Ao
- *    passar a valer a ficha, quem tem ficha mais cedo que a cópia começa a ser
- *    cobrado antes — e pode receber falta onde hoje não recebe. É o **único** efeito
- *    arriscado da etapa 2, e `efeito: 'COBRA_MAIS_CEDO'` o isola, com os minutos.
- * 2. **Quem perderia o dia de descanso?** Quem tem a ficha **sem dia de folga**
- *    hoje descansa por causa de uma linha de folga na cópia semanal (ADR 0023,
- *    passo da ficha omissa). Sem a cópia, essa pessoa passa a ser esperada todos os
- *    dias. É bloqueio absoluto: `semFolgaNaFicha`.
- * 3. **Quem trabalha domingo sem horário de domingo?** Quem está no rodízio
- *    (`grupoDomingo`) e não tem `entradaDom`/`saidaDom` na ficha não tem hora para
- *    o domingo — e, por regra de negócio, também não tem para **feriado**:
- *    `domingoSemHorario`.
+ * O que passou a ser o assunto principal são as **lacunas da própria ficha**, que
+ * agora não têm mais nada por baixo para as cobrir:
+ *
+ * 1. **Ficha vazia** — sem horários na ficha, ninguém é esperado. A pessoa sai da
+ *    equipe do dia e da detecção automática: nunca recebe falta, nunca aparece
+ *    como atrasada. Antes a cópia sobrevivente do seed preenchia esse vazio com um
+ *    horário que ninguém revisava; hoje o vazio é visível, e é isto que o mostra.
+ * 2. **Bloco de horário pela metade** (entrada sem saída) — o mesmo, mas só nos
+ *    dias daquele bloco.
+ * 3. **Rodízio de domingo sem horário de domingo** — trabalha domingo (e feriado,
+ *    que segue o mesmo horário) sem hora nenhuma na ficha.
+ * 4. **Ficha sem dia de folga** — hoje essa pessoa ainda descansa porque a regra
+ *    única de folga aceita a cópia semanal quando a ficha é omissa. É o último fio
+ *    que liga a cópia a uma decisão, e ele se rompe quando a tabela sair (etapa 3):
+ *    aí a pessoa passaria a ser esperada todos os dias.
  *
  * Sem efeitos colaterais — testável sem banco.
  */
@@ -93,20 +99,6 @@ export interface EntradaEscalaGeral {
   folga: boolean;
 }
 
-/**
- * O que aconteceria com a COBRANÇA desse dia ao trocar a fonte para a ficha.
- *
- * Hoje a regra conservadora usa a hora **mais tardia** entre as duas fontes. Logo:
- *
- * - `COBRA_MAIS_CEDO` — a cópia semanal é mais tardia, então é ela que vale hoje.
- *   Passando a valer a ficha, a cobrança **adianta**: é o único caso que pode criar
- *   falta onde hoje não existe. É o que precisa ser revisto antes da etapa 2.
- * - `SEM_EFEITO` — a ficha já é a que vale hoje (é a mais tardia, ou a cópia não
- *   tem hora), ou a ficha não afirma turno e por isso já não se cobra nada. A
- *   divergência aparece na escala, mas trocar a fonte não muda a cobrança.
- */
-export type EfeitoNaCobranca = 'COBRA_MAIS_CEDO' | 'SEM_EFEITO';
-
 /** Um dia em que a ficha e a escala semanal discordam. */
 export interface DiaIncoerente {
   diaSemana: number;
@@ -122,13 +114,12 @@ export interface DiaIncoerente {
     saida: string | null;
     folga: boolean;
   } | null;
-  /** Efeito da etapa 2 sobre a cobrança de ponto nesse dia. */
-  efeito: EfeitoNaCobranca;
   /**
-   * Quantos minutos a cobrança adiantaria (só em `COBRA_MAIS_CEDO`; 0 nos demais).
-   * É a medida do risco: dez minutos é uma conversa, uma hora é outra história.
+   * Distância entre as duas horas, em minutos (0 quando não há duas horas para
+   * comparar). Mede o quanto a cópia semanal ficou para trás — **não** um erro de
+   * cobrança: a hora cobrada é a da ficha desde a etapa 2 da ADR 0026.
    */
-  minutosAdiantados: number;
+  minutosDeDiferenca: number;
 }
 
 /** Um fiscal cuja escala semanal não corresponde à ficha. */
@@ -205,13 +196,14 @@ export interface ReporteIntegridadeEscala {
   totalFiscaisAtivos: number;
   coerentes: number;
   /**
-   * Quantas pessoas **impedem a etapa 2** hoje: as que seriam cobradas mais cedo
-   * e as que perderiam o dia de descanso. Enquanto for maior que zero, mover a
-   * detecção de falta para a ficha muda a vida de alguém sem aviso.
+   * Quantas pessoas têm uma **lacuna na ficha** que as deixa, total ou
+   * parcialmente, fora do controle de ponto: ficha vazia, bloco de horário pela
+   * metade, domingo sem horário, ou nenhum dia de folga. Como a ficha passou a ser
+   * a única fonte, uma lacuna aqui não é mais compensada por nada.
    */
-  bloqueiamEtapa2: number;
-  /** Nomes de quem bloqueia, para o resumo caber numa frase. */
-  nomesQueBloqueiam: string[];
+  fichasComLacuna: number;
+  /** Nomes de quem tem lacuna, para o resumo caber numa frase. */
+  nomesComLacuna: string[];
   /** true quando não há nenhuma pendência. */
   ok: boolean;
 }
@@ -225,25 +217,17 @@ function minutosDoHorario(hhmm: string | null): number | null {
 }
 
 /**
- * Efeito da etapa 2 num dia divergente. Espelha `entradaEsperadaConservadora`:
- * hoje vale a hora mais tardia, então só adianta a cobrança quando a cópia semanal
- * é a mais tardia das duas.
+ * Distância em minutos entre a hora da ficha e a da cópia semanal. `0` quando
+ * falta uma das duas — não há distância a medir, só uma ausência a mostrar.
  */
-export function efeitoNaCobranca(
+export function minutosDeDiferenca(
   daFicha: string | null,
   daEscala: string | null,
-): { efeito: EfeitoNaCobranca; minutosAdiantados: number } {
+): number {
   const mFicha = minutosDoHorario(daFicha);
   const mEscala = minutosDoHorario(daEscala);
-  // Sem hora na ficha a regra atual já não cobra nada; sem hora na escala a ficha
-  // já é a que vale. Nos dois casos, trocar a fonte não muda a cobrança.
-  if (mFicha == null || mEscala == null) {
-    return { efeito: 'SEM_EFEITO', minutosAdiantados: 0 };
-  }
-  if (mEscala > mFicha) {
-    return { efeito: 'COBRA_MAIS_CEDO', minutosAdiantados: mEscala - mFicha };
-  }
-  return { efeito: 'SEM_EFEITO', minutosAdiantados: 0 };
+  if (mFicha == null || mEscala == null) return 0;
+  return Math.abs(mEscala - mFicha);
 }
 
 const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -330,7 +314,12 @@ export function detectarEscalasIncoerentes(
           nome: ficha.nome,
           matricula: ficha.matricula,
           grupoDomingo: ficha.grupoDomingo,
-          falta: !temEntrada && !temSaida ? 'AMBAS' : !temEntrada ? 'ENTRADA' : 'SAIDA',
+          falta:
+            !temEntrada && !temSaida
+              ? 'AMBAS'
+              : !temEntrada
+                ? 'ENTRADA'
+                : 'SAIDA',
         });
       }
     }
@@ -362,16 +351,15 @@ export function detectarEscalasIncoerentes(
           nome: ficha.nome,
           matricula: ficha.matricula,
           fichaVazia: true,
-          // Ficha vazia: não há hora na ficha, então a regra atual já não cobra
-          // ponto. Trocar a fonte não adianta cobrança de ninguém aqui — o
-          // problema desta pessoa é a ficha em branco, não a etapa 2.
+          // Ficha vazia: não há hora na ficha, e é justamente por isso que esta
+          // pessoa não é cobrada em nenhum dia. O problema dela é a ficha em
+          // branco — o que a cópia semanal ainda diz não muda nada.
           dias: doFiscal
             .map((e) => ({
               diaSemana: e.diaSemana,
               ficha: null,
               escala: { entrada: e.entrada, saida: e.saida, folga: e.folga },
-              efeito: 'SEM_EFEITO' as const,
-              minutosAdiantados: 0,
+              minutosDeDiferenca: 0,
             }))
             .sort((a, b) => a.diaSemana - b.diaSemana),
         });
@@ -407,18 +395,18 @@ export function detectarEscalasIncoerentes(
       const daFicha = esperado.get(diaSemana) ?? null;
       const daEscala = gravado.get(diaSemana) ?? null;
       if (!mesmoDia(daFicha, daEscala)) {
-        // Numa folga não há hora para comparar: o efeito da etapa 2 sobre a
-        // cobrança é nulo por construção (quem folga não é cobrado).
+        // Numa folga não há hora para comparar.
         const emFolga = daFicha?.folga === true || daEscala?.folga === true;
-        const { efeito, minutosAdiantados } = emFolga
-          ? { efeito: 'SEM_EFEITO' as const, minutosAdiantados: 0 }
-          : efeitoNaCobranca(daFicha?.entrada ?? null, daEscala?.entrada ?? null);
         dias.push({
           diaSemana,
           ficha: daFicha,
           escala: daEscala,
-          efeito,
-          minutosAdiantados,
+          minutosDeDiferenca: emFolga
+            ? 0
+            : minutosDeDiferenca(
+                daFicha?.entrada ?? null,
+                daEscala?.entrada ?? null,
+              ),
         });
       }
     }
@@ -454,18 +442,16 @@ export function detectarEscalasIncoerentes(
         a.diaSemana - b.diaSemana,
     );
 
-  // Quem impede a etapa 2, sem repetir nome: seria cobrado mais cedo, ou perderia
-  // o dia de descanso. As outras pendências são problemas de cadastro — precisam
-  // de atenção, mas não mudam a vida de ninguém quando a fonte trocar.
-  const bloqueiam = new Map<string, string>();
+  // Quem tem uma lacuna na ficha, sem repetir nome. A divergência com a cópia
+  // semanal NÃO entra: ela não afeta mais a cobrança. O que entra é o que deixa
+  // alguém sem hora esperada — e portanto sem atraso, sem falta e sem cobrança.
+  const comLacuna = new Map<string, string>();
   for (const f of incoerentes) {
-    if (f.dias.some((d) => d.efeito === 'COBRA_MAIS_CEDO')) {
-      bloqueiam.set(f.colaboradorId, f.nome);
-    }
+    if (f.fichaVazia) comLacuna.set(f.colaboradorId, f.nome);
   }
-  for (const f of semFolgaNaFicha) {
-    bloqueiam.set(f.colaboradorId, f.nome);
-  }
+  for (const f of horarioIncompleto) comLacuna.set(f.colaboradorId, f.nome);
+  for (const f of domingoSemHorario) comLacuna.set(f.colaboradorId, f.nome);
+  for (const f of semFolgaNaFicha) comLacuna.set(f.colaboradorId, f.nome);
 
   return {
     incoerentes: incoerentes.sort((a, b) => a.nome.localeCompare(b.nome)),
@@ -482,10 +468,8 @@ export function detectarEscalasIncoerentes(
     ),
     totalFiscaisAtivos: ativas.length,
     coerentes: ativas.length - incoerentes.length - semEscala.length,
-    bloqueiamEtapa2: bloqueiam.size,
-    nomesQueBloqueiam: [...bloqueiam.values()].sort((a, b) =>
-      a.localeCompare(b),
-    ),
+    fichasComLacuna: comLacuna.size,
+    nomesComLacuna: [...comLacuna.values()].sort((a, b) => a.localeCompare(b)),
     ok:
       incoerentes.length === 0 &&
       semEscala.length === 0 &&

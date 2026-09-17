@@ -48,7 +48,11 @@ import { FeriasService } from '../ferias/ferias.service';
 import { FolgaService } from '../escala-domingo/folga.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
-import { entradaEsperadaConservadora } from './hora-esperada-fiscal';
+import { linhasDaSemana } from './turno-fiscal';
+import {
+  carregarFiscaisComFicha,
+  entradasPrevistasPorFiscal,
+} from './turno-fiscal.consulta';
 import {
   agoraNaBrasilia,
   diaCivilBrasilia,
@@ -107,18 +111,6 @@ export interface ItemJornada extends Jornada {
   faltando: string[];
   /** Marcações (batidas) do dia, em ordem: entrada, saída, volta, encerramento. */
   marcacoes: MarcacaoDia[];
-}
-
-/**
- * Campos da ficha que decidem o turno do dia. Usados para comparar a ficha (a
- * fonte) com a escala semanal (o derivado, que pode estar velho).
- */
-interface FichaTurnoFiscal {
-  folgaDiaSemana: number | null;
-  grupoDomingo: string | null;
-  entradaSemana: string | null;
-  entradaFds: string | null;
-  entradaDom: string | null;
 }
 
 /** Um colaborador escalado para trabalhar num dia (fonte da "equipe do dia"). */
@@ -253,31 +245,6 @@ export class FiscaisService {
     if (!this.feriados) return new Set();
     const mapa = await this.feriados.mapaNoPeriodo(inicio, fimExclusivo);
     return new Set(mapa.keys());
-  }
-
-  /**
-   * Horário de entrada de DOMINGO (`entradaDom`) das fichas informadas, por id.
-   * Usado no feriado, que segue o horário de domingo: para os fiscais esse
-   * horário está na ficha de colaborador, e não na escala semanal. Fichas sem
-   * `entradaDom` ficam fora do mapa (o chamador mantém o horário da escala).
-   */
-  private async fichasDosFiscais(
-    ids: readonly (string | null)[],
-  ): Promise<Map<string, FichaTurnoFiscal>> {
-    const validos = [...new Set(ids.filter((id): id is string => !!id))];
-    if (validos.length === 0) return new Map();
-    const fichas = await this.prisma.colaborador.findMany({
-      where: { id: { in: validos } },
-      select: {
-        id: true,
-        folgaDiaSemana: true,
-        grupoDomingo: true,
-        entradaSemana: true,
-        entradaFds: true,
-        entradaDom: true,
-      },
-    });
-    return new Map(fichas.map((f) => [f.id, f]));
   }
 
   /** Fiscal vinculado ao usuário autenticado (erro se não houver). */
@@ -829,50 +796,27 @@ export class FiscaisService {
       ? { data: ancora.data, ordem: ancora.ordem }
       : null;
 
-    // Fiscais: a escala consolidada já resolve folga, horário especial e o
-    // rodízio de domingo, além do nome/ficha canônica.
+    // Fiscais: a escala consolidada resolve o turno a partir da FICHA — folga,
+    // rodízio de domingo, feriado e o nome/ficha canônica —, exatamente como a
+    // escala publicada que a equipe recebe.
+    //
+    // Aqui havia uma comparação entre a ficha e a cópia semanal, em que vencia a
+    // hora mais TARDIA. Ela existia para que trocar a fonte não adiantasse a
+    // cobrança de ninguém, e cumpriu esse papel: a Conferência de escala mostrou
+    // onde as duas discordavam antes de a ficha assumir. Mantê-la agora seria
+    // manter o problema, porque em sete das nove fichas divergentes a cópia era
+    // mais tardia — e era exatamente por isso que o atraso real dessas pessoas
+    // não aparecia (ADR 0026, etapa 2).
     const consolidada = this.escala
-      ? await this.escala.escalaConsolidada(diaSemana, dataISO)
+      ? await this.escala.escalaConsolidada(diaSemana, dataISO, {
+          ehFeriado,
+          ancoraDomingo,
+        })
       : [];
-    // Fichas dos fiscais consolidados: a escala semanal é um DERIVADO da ficha e
-    // pode estar velha, então as duas são comparadas antes de cobrar o ponto de
-    // alguém (ver `entradaEsperadaConservadora`).
-    const fichaPorId = await this.fichasDosFiscais(
-      consolidada.map((i) => i.colaboradorId ?? null),
-    );
     const dosFiscais: EscaladoDia[] = consolidada.flatMap((item) => {
       if (item.efetiva === 'FOLGA') return [];
-      const entradaDaEscala = item.efetiva.entrada ?? null;
-      const ficha = item.colaboradorId
-        ? (fichaPorId.get(item.colaboradorId) ?? null)
-        : null;
-      // A hora que a FICHA prevê para o dia, pelas mesmas regras da escala
-      // publicada (dia útil / fim de semana / domingo com rodízio / feriado, que
-      // segue o horário de domingo).
-      const daFicha = ficha
-        ? entradaEsperadaNoDia(
-            {
-              folgaDiaSemana: ficha.folgaDiaSemana,
-              grupoDomingo: ficha.grupoDomingo,
-              entradaSemana: ficha.entradaSemana,
-              entradaFds: ficha.entradaFds,
-              entradaDom: ficha.entradaDom,
-            },
-            inicio,
-            ancoraDomingo,
-            ehFeriado,
-          )
-        : null;
-      // Quando as duas discordam vale a mais TARDIA: assim a correção do
-      // desencontro nunca cria uma falta que antes não existia. Ficha sem turno
-      // no dia não é cobrada. Não há mais exceção de horário a considerar: o
-      // horário é sempre o da ficha (ADR 0026).
-      const entrada = entradaEsperadaConservadora({
-        daEscala: entradaDaEscala,
-        daFicha,
-        temFicha: ficha != null,
-        ehFeriado,
-      });
+      const entrada = item.efetiva.entrada;
+      // Sem turno afirmado pela ficha não se cobra ponto.
       if (!entrada) return [];
       return [
         {
@@ -1584,18 +1528,12 @@ export class FiscaisService {
       where: { data: { gte: inicioMes, lt: fimMes } },
       orderBy: { em: 'asc' },
     });
-    const escalas = await this.prisma.escalaEntry.findMany({
-      where: { folga: false },
-    });
-
-    // Mapa de escala por fiscal + dia.
-    const escalaMap = new Map<string, Map<number, string>>();
-    for (const e of escalas) {
-      if (!e.entrada) continue;
-      if (!escalaMap.has(e.funcionarioId))
-        escalaMap.set(e.funcionarioId, new Map());
-      escalaMap.get(e.funcionarioId)!.set(e.diaSemana, e.entrada);
-    }
+    // Hora prevista por fiscal e dia da semana, vinda da FICHA (ADR 0026). O
+    // ranking mede a distância entre a batida e a hora esperada: se ele lesse uma
+    // hora diferente da que a detecção de falta cobra, o mesmo dia poderia ser
+    // "pontual" aqui e "atrasado" lá. Feriado e rodízio de domingo não entram —
+    // este é um retrato por dia da semana, e é assim que o painel o apresenta.
+    const escalaMap = await entradasPrevistasPorFiscal(this.prisma);
 
     // Agrupar primeiro DISPONIVEL por fiscal por dia.
     const primeiroDisponivel = new Map<
@@ -1751,40 +1689,18 @@ export class FiscaisService {
     });
   }
 
-  /** Contexto de escala formatado para integração com Cluby (texto). */
+  /**
+   * Contexto de escala formatado para integração com Cluby (texto), montado a
+   * partir da FICHA de cada fiscal (ADR 0026) — a mesma fonte da escala publicada
+   * e da hora cobrada. Antes vinha da cópia semanal, e a assistente respondia
+   * horários que não estavam na ficha de ninguém.
+   */
   async contextoEscala(): Promise<{ contexto: string }> {
-    const fiscais = await this.prisma.fiscal.findMany({
-      orderBy: { nome: 'asc' },
-    });
-    const escalas = await this.prisma.escalaEntry.findMany();
-    const DIAS = [
-      'Domingo',
-      'Segunda',
-      'Terça',
-      'Quarta',
-      'Quinta',
-      'Sexta',
-      'Sábado',
-    ];
-
     const linhas: string[] = ['=== ESCALA DE FISCAIS ==='];
-
-    for (const fiscal of fiscais) {
-      const escFiscal = escalas.filter((e) => e.funcionarioId === fiscal.id);
-      linhas.push(
-        `\n${fiscal.nome} (${fiscal.turno}${fiscal.especial ? ' - horário especial' : ''}):`,
-      );
-      for (let dia = 0; dia <= 6; dia++) {
-        const esc = escFiscal.find((e) => e.diaSemana === dia);
-        if (!esc) continue;
-        if (esc.folga) {
-          linhas.push(`  ${DIAS[dia]}: FOLGA`);
-        } else {
-          linhas.push(`  ${DIAS[dia]}: ${esc.entrada} - ${esc.saida}`);
-        }
-      }
+    for (const f of await carregarFiscaisComFicha(this.prisma)) {
+      linhas.push(`\n${f.nome}:`);
+      linhas.push(...linhasDaSemana(f.ficha));
     }
-
     return { contexto: linhas.join('\n') };
   }
 
@@ -1805,42 +1721,49 @@ export class FiscaisService {
     return count;
   }
 
-  /** Verifica se o fiscal está de folga num dia (baseado na escala). */
+  /**
+   * Verifica se o fiscal está de folga num dia, pela **regra única de folga**
+   * (ficha + rodízio de domingo). Antes lia a cópia semanal, que podia afirmar um
+   * descanso que a ficha não afirmava — e vice-versa.
+   */
   private async isFolgaHoje(
     fiscalId: string,
     dia: Date = new Date(),
   ): Promise<boolean> {
-    const diaSemana = this.diaSemanaEmBrasilia(dia);
-    const escala = await this.prisma.escalaEntry.findFirst({
-      where: { funcionarioId: fiscalId, diaSemana, folga: true },
-    });
-    return !!escala;
+    const folgas = await this.folgasDosFiscais(dia);
+    return folgas.has(fiscalId);
   }
 
-  /** Lista de fiscais que estão de folga hoje. */
+  /** Lista de fiscais que estão de folga hoje (regra única de folga). */
   async folgaHoje(dia: Date = new Date()): Promise<ItemFolga[]> {
-    const diaSemana = this.diaSemanaEmBrasilia(dia);
-    const escalas = await this.prisma.escalaEntry.findMany({
-      where: { diaSemana, folga: true },
-    });
-    if (escalas.length === 0) return [];
-
-    const fiscalIds = escalas.map((e) => e.funcionarioId);
-    const fiscais = await this.prisma.fiscal.findMany({
-      where: { id: { in: fiscalIds } },
-      orderBy: { nome: 'asc' },
-    });
-    return fiscais.map((f) => ({
-      fiscalId: f.id,
-      primeiroNome: primeiroNome(f.nome),
-    }));
+    const folgas = await this.folgasDosFiscais(dia);
+    return [...folgas.entries()]
+      .map(([fiscalId, nome]) => ({ fiscalId, nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome))
+      .map(({ fiscalId, nome }) => ({
+        fiscalId,
+        primeiroNome: primeiroNome(nome),
+      }));
   }
 
-  /** Retorna o dia da semana (0=Dom..6=Sáb) no fuso de Brasília (UTC-3). */
-  private diaSemanaEmBrasilia(data: Date = new Date()): number {
-    // Brasília = UTC-3. Subtrai 3 horas para obter a data/hora local.
-    const emBrasilia = new Date(data.getTime() - 3 * 60 * 60 * 1000);
-    return emBrasilia.getUTCDay();
+  /**
+   * Fiscais de folga no dia: `Fiscal.id` → nome. A folga sai da ficha pela regra
+   * única (`FolgaService`), a mesma que a equipe do dia e a escala publicada usam.
+   */
+  private async folgasDosFiscais(dia: Date): Promise<Map<string, string>> {
+    // Dia civil de Brasília (UTC-3), a mesma referência do resto do módulo.
+    const diaCivil = inicioDoDia(new Date(dia.getTime() - 3 * 60 * 60 * 1000));
+    const consultor = this.folga
+      ? await this.folga.consultor([diaCivil])
+      : null;
+    const out = new Map<string, string>();
+    for (const f of await carregarFiscaisComFicha(this.prisma)) {
+      const deFolga = consultor
+        ? consultor.ehFolga(diaCivil, [f.colaboradorId, f.fiscalId])
+        : false;
+      if (deFolga) out.set(f.fiscalId, f.nome);
+    }
+    return out;
   }
 
   /** Agrupa registros (linha do banco) por fiscalId, mantendo a ordem. */

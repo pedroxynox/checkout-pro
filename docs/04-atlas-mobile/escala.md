@@ -1,14 +1,16 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `mobile/src/screens/escala/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-18 · **Cobre:** `mobile/src/screens/escala/`
 
 # Área: `escala`
 
 ## 1. Propósito
 
 > Esta área tem **duas** telas: a de **publicar a escala** (PDF/imagem para a
-> equipe) e a **Conferência de escala** (ADR 0026, etapa 2) — um diagnóstico de
-> gestão, só leitura, que mostra onde a ficha e a escala semanal discordam e **quem
-> seria afetado** se o sistema passasse a cobrar o ponto pelo horário da ficha.
-> Entra por Centro de Controle ▸ Conferência de escala.
+> equipe) e a **Conferência de escala** (ADR 0026) — um diagnóstico de gestão, só
+> leitura, que mostra as **lacunas das fichas**: quem está sem horário, sem horário
+> de domingo ou sem dia de folga, e por isso fica fora do controle de ponto. Foi
+> essa tela que autorizou a troca da fonte do horário; feita a troca, o assunto dela
+> passou a ser a completude das fichas. Entra por Centro de Controle ▸ Conferência
+> de escala.
 Publicar a escala: gerar a escala do **dia** ou da **semana**, com todo o time, em
 **PDF** ou **imagem 4K**, para enviar aos colaboradores.
 
@@ -24,7 +26,7 @@ Publicar a escala: gerar a escala do **dia** ou da **semana**, com todo o time, 
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `EscalaScreen.tsx` | Tela: seletor de período/dia, **aviso de ficha sem folga**, prévia e os dois botões de exportação | 512 |
-| `ConferenciaEscalaScreen.tsx` | **Conferência de escala**: veredito da etapa 2, quem seria cobrado mais cedo, ficha sem folga, domingo sem horário e as demais divergências | 372 |
+| `ConferenciaEscalaScreen.tsx` | **Conferência de escala**: resumo das lacunas, ficha sem horário, ficha sem folga, domingo sem horário, horário pela metade e a cópia semanal desatualizada (informativo) | 400 |
 
 Utilidades que fazem o trabalho pesado (fora da área, porque são puras):
 | Arquivo | Papel | Linhas |

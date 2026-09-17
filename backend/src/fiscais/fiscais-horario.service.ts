@@ -1,8 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { inicioDoDia } from '../common/datas';
+import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
+import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
+import { carregarFiscaisComFicha } from './turno-fiscal.consulta';
+
+/** Um fiscal com turno hoje: quem é, a que hora entra e por qual ficha avisar. */
+interface TurnoDeHoje {
+  /** `Fiscal.id` — a identidade que a batida do ponto usa. */
+  funcionarioId: string;
+  colaboradorId: string | null;
+  entrada: string;
+}
 
 /**
  * Serviço de lembretes de horário para fiscais.
@@ -29,6 +40,9 @@ export class FiscaisHorarioService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificacoes: NotificacoesService,
+    // Rodízio de domingo: sem a âncora não se afirma o turno de domingo.
+    // Opcional para não obrigar os testes unitários a montar o grafo inteiro.
+    @Optional() private readonly escalaDomingo?: EscalaDomingoService,
   ) {}
 
   /** Reseta os lembretes enviados a cada dia. */
@@ -54,11 +68,11 @@ export class FiscaisHorarioService {
     const emBrasilia = new Date(agora.getTime() - 3 * 60 * 60 * 1000);
     const diaSemana = emBrasilia.getUTCDay();
 
-    // Buscar escalas do dia atual (apenas quem não está de folga).
-    const escalas = await this.prisma.escalaEntry.findMany({
-      where: { diaSemana, folga: false, entrada: { not: null } },
-    });
-
+    // Quem tem turno hoje, pela FICHA (ADR 0026). O lembrete diz a hora a que a
+    // pessoa é esperada: se ele lesse a cópia semanal enquanto a detecção de
+    // falta cobra a ficha, o aviso chegaria na hora errada — e a pessoa que o
+    // seguisse chegaria atrasada por obedecer ao sistema.
+    const escalas = await this.turnosDeHoje(emBrasilia, diaSemana);
     if (escalas.length === 0) return;
 
     // Hora/minuto atual em Brasília (o cron já roda nesse fuso).
@@ -117,9 +131,46 @@ export class FiscaisHorarioService {
   }
 
   /**
-   * Resolve a conta de acesso (e o nome) de uma linha de escala pela ficha
-   * canônica (`colaboradorId`), com fallback ao registro legado `Fiscal`
-   * enquanto ele existir. Passo A.3 do épico de aposentar o `Fiscal`.
+   * Os turnos de hoje, tirados da FICHA de cada fiscal: quem trabalha, a que
+   * horas, e por qual conta avisar.
+   *
+   * O feriado não entra aqui de propósito: este cron roda a cada minuto e um
+   * lembrete de dez minutos não justifica consultar o calendário de feriados
+   * sessenta vezes por hora. Num feriado o turno segue o horário de domingo, e
+   * quem estiver nessa situação simplesmente não recebe o lembrete — deixar de
+   * avisar é melhor do que avisar a hora errada.
+   */
+  private async turnosDeHoje(
+    diaEmBrasilia: Date,
+    diaSemana: number,
+  ): Promise<TurnoDeHoje[]> {
+    const ancora =
+      diaSemana === 0 && this.escalaDomingo
+        ? await this.escalaDomingo.obterAncora()
+        : null;
+    const diaCivil = inicioDoDia(diaEmBrasilia);
+
+    const out: TurnoDeHoje[] = [];
+    for (const f of await carregarFiscaisComFicha(this.prisma)) {
+      const entrada = entradaEsperadaNoDia(
+        f.ficha,
+        diaCivil,
+        ancora ? { data: ancora.data, ordem: ancora.ordem } : null,
+      );
+      if (!entrada) continue;
+      out.push({
+        funcionarioId: f.fiscalId,
+        colaboradorId: f.colaboradorId,
+        entrada,
+      });
+    }
+    return out;
+  }
+
+  /**
+   * Resolve a conta de acesso (e o nome) de um turno pela ficha canônica
+   * (`colaboradorId`), com fallback ao registro legado `Fiscal` enquanto ele
+   * existir. Passo A.3 do épico de aposentar o `Fiscal`.
    */
   private async contaDaEscala(escala: {
     funcionarioId: string;

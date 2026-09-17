@@ -3,7 +3,6 @@ import { apiClient } from '../client';
 import {
   ConferenciaEscala,
   EditarIncidenciaInput,
-  EscalaEfetiva,
   FiltroIncidencias,
   IncidenciaEscala,
   ItemEquipeDiaFiscal,
@@ -89,8 +88,12 @@ export const fiscaisService = {
 
 export const escalaService = {
   /**
-   * Escala consolidada por dia da semana (Req 4.3.6). Passe `data` (ISO
-   * yyyy-mm-dd) para que o domingo venha do rodízio de grupos dos fiscais.
+   * Escala consolidada por dia da semana (Req 4.3.6), resolvida a partir da ficha
+   * de cada colaborador. Passe `data` (ISO yyyy-mm-dd) sempre que a tiver: com ela
+   * valem o feriado, a posição no rodízio de domingo e as férias do dia.
+   *
+   * A rota `/escala/:funcionarioId/efetiva` que existia aqui foi removida com a
+   * cópia semanal (ADR 0026): lia a cópia e não tinha nenhum consumidor.
    */
   consolidada(
     diaSemana: number,
@@ -99,17 +102,6 @@ export const escalaService = {
     const q = data ? `?data=${encodeURIComponent(data)}` : '';
     return apiClient.get<ItemEscalaConsolidada[]>(
       `/escala/consolidada/${diaSemana}${q}`,
-    );
-  },
-
-  /** Escala efetiva de um funcionário num dia (Req 4.3.5). */
-  efetiva(
-    funcionarioId: string,
-    diaSemana: number,
-  ): Promise<{ efetiva: EscalaEfetiva }> {
-    return apiClient.get<{ efetiva: EscalaEfetiva }>(
-      `/escala/${funcionarioId}/efetiva`,
-      { diaSemana },
     );
   },
 

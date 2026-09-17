@@ -11,17 +11,26 @@ import {
  *
  * ## Por que existe
  *
- * A [ADR 0026](../../../docs/02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md)
- * fez o horário **exibido** ser sempre o da ficha. A etapa 2 é a **detecção
- * automática de falta** passar a ler a ficha e a cópia semanal (`EscalaEntry`)
- * desaparecer — e o roadmap exige rodar este diagnóstico **antes**, porque a troca
- * de fonte muda a hora cobrada de quem tem ficha mais cedo que a cópia.
- *
  * O diagnóstico já existia, mas só como **comando de terminal**
  * (`npm run integridade`), com acesso ao banco de produção. O dono do produto não
  * tem como rodá-lo, e era justamente ele quem precisava da resposta ("por que a
  * escala mostra um horário que não está na ficha?"). Este serviço entrega a mesma
  * apuração pela API, para a tela de Conferência de escala.
+ *
+ * Foi essa tela que autorizou a etapa 2 da
+ * [ADR 0026](../../../docs/02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md):
+ * ela nomeou, em produção, as sete pessoas cuja cópia semanal era mais tardia que
+ * a ficha — e portanto as sete cujo atraso real o sistema não enxergava.
+ *
+ * ## O que ela responde agora
+ *
+ * Feita a troca, a hora cobrada é a da ficha, e uma divergência com a cópia
+ * semanal deixou de ter efeito sobre a cobrança. A tela seguiu útil porque o
+ * assunto mudou: o que importa hoje são as **lacunas da ficha** — quem está sem
+ * horário, sem horário de domingo ou sem dia de folga —, porque a ficha virou a
+ * única fonte e já não há nada por baixo dela para cobrir um vazio. As diferenças
+ * com a cópia continuam listadas como informação: mostram onde a regeneração não
+ * chegou.
  *
  * ## O que faz, e o que NÃO faz
  *

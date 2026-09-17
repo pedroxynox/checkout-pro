@@ -1,6 +1,7 @@
 import { EscalaExportacaoService } from '../escala-exportacao/escala-exportacao.service';
 import { FolgaService } from '../escala-domingo/folga.service';
 import { FeriadosService } from '../feriados/feriados.service';
+import { EscalaService } from './escala.service';
 import { FiscaisService } from './fiscais.service';
 
 /**
@@ -37,8 +38,8 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
     /** Falta registrada. `pessoaId` distingue o id da batida do da ficha. */
     faltaDe?: 'OPERADOR' | 'FISCAL';
     /**
-     * Hora gravada na escala SEMANAL da fiscal, quando se quer deixá-la em
-     * desacordo com a ficha dela (07:00) — o caso da escala velha.
+     * Hora gravada na cópia SEMANAL da fiscal, para deixá-la em desacordo com a
+     * ficha dela (07:00) — o caso da escala velha que ninguém sincronizou.
      */
     entradaNaEscalaDaBia?: string;
   }
@@ -72,6 +73,8 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
     const fiscalFicha = {
       id: 'col-bia',
       nome: 'Bia',
+      matricula: '900001',
+      usuarioId: 'u-bia',
       genero: 'F',
       funcao: 'FISCAL',
       turno: null,
@@ -88,19 +91,32 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
     };
     const fichas = [operador, fiscalFicha];
 
-    const entradasEscala = cenario.especialOperador
-      ? [
-          {
-            funcionarioId: 'col-erick',
-            colaboradorId: 'col-erick',
-            diaSemana: cenario.especialOperador.diaSemana,
-            folga: false,
-            especial: true,
-            entrada: cenario.especialOperador.entrada,
-            saida: cenario.especialOperador.saida,
-          },
-        ]
-      : [];
+    const entradasEscala = [
+      ...(cenario.especialOperador
+        ? [
+            {
+              funcionarioId: 'col-erick',
+              colaboradorId: 'col-erick',
+              diaSemana: cenario.especialOperador.diaSemana,
+              folga: false,
+              especial: true,
+              entrada: cenario.especialOperador.entrada,
+              saida: cenario.especialOperador.saida,
+            },
+          ]
+        : []),
+      // A cópia semanal da fiscal. O horário aqui NÃO deve influenciar mais
+      // nada: é o resquício que a etapa 2 aposentou como fonte.
+      {
+        funcionarioId: 'fiscal-bia',
+        colaboradorId: 'col-bia',
+        diaSemana: 3,
+        folga: false,
+        especial: false,
+        entrada: cenario.entradaNaEscalaDaBia ?? '07:00',
+        saida: '15:20',
+      },
+    ];
 
     // A falta do OPERADOR é gravada com o id da ficha; a do FISCAL, com o
     // `Fiscal.id` — e o vínculo com a ficha vai em `colaboradorId`. É exatamente
@@ -183,32 +199,18 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
       usuario: { findMany: () => Promise.resolve([]) },
     };
 
-    // A escala consolidada dos fiscais. Por padrão a Bia trabalha na quarta às
-    // 07:00 — o MESMO horário da ficha dela. `entradaNaEscalaDaBia` permite
-    // deixar a escala semanal em desacordo com a ficha (o caso da escala velha).
-    const escalaFake = {
-      escalaConsolidada: () =>
-        Promise.resolve([
-          {
-            funcionarioId: 'fiscal-bia',
-            colaboradorId: 'col-bia',
-            nome: 'Bia',
-            matricula: null,
-            efetiva: {
-              funcionarioId: 'fiscal-bia',
-              diaSemana: 3,
-              entrada: cenario.entradaNaEscalaDaBia ?? '07:00',
-              saida: '15:20',
-              intervaloMin: 60,
-              folga: false,
-              especial: false,
-            },
-          },
-        ]),
-    };
-
     const folga = new FolgaService(prismaFake as never, undefined);
     const feriados = new FeriadosService(prismaFake as never);
+    // O serviço REAL da escala consolidada, sobre o mesmo Prisma falso. Antes
+    // havia aqui um dublê que devolvia a hora da cópia semanal — e com ele o
+    // teste não podia ver a única coisa que a etapa 2 mudou: de onde sai a hora.
+    // Ordem: prisma, escalaDomingo, ferias, feriados.
+    const escala = new EscalaService(
+      prismaFake as never,
+      undefined,
+      undefined,
+      feriados,
+    );
 
     // Ordem: prisma, eventos, notificacoes, validacaoData, feriados,
     // cicloFolha, tiposContrato, escala, escalaDomingo, ferias, folga.
@@ -220,7 +222,7 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
       feriados,
       undefined,
       undefined,
-      escalaFake as never,
+      escala,
       undefined,
       undefined,
       folga,
@@ -371,31 +373,24 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
     expect(await folga.ehFolga(QUARTA, ['col-erick'])).toBe(true);
   });
 
-  it('escala semanal VELHA e mais cedo: a detecção passa a usar a hora da ficha', async () => {
+  it('a hora da cópia semanal não influencia mais a cobrança', async () => {
     // O desencontro que a equipe sentia: a ficha (e a escala publicada que ela
-    // recebe) diz 07:00, mas a escala semanal ficou em 06:50 depois de uma edição
+    // recebe) diz 07:00, mas a cópia semanal ficou em 06:50 depois de uma edição
     // que não sincronizou. A detecção cobrava 06:50 e marcava falta às 08:50 em
-    // quem chegou às 07:00. Agora as duas dizem 07:00.
-    const { deteccao, publicada } = await comparar({
-      entradaNaEscalaDaBia: '06:50',
-    });
+    // quem chegou às 07:00.
+    const maisCedo = await comparar({ entradaNaEscalaDaBia: '06:50' });
+    expect(maisCedo.publicada.get('col-bia')).toBe('07:00');
+    expect(maisCedo.deteccao).toEqual(maisCedo.publicada);
 
-    expect(publicada.get('col-bia')).toBe('07:00');
-    expect(deteccao).toEqual(publicada);
-  });
-
-  it('escala semanal mais TARDE que a ficha: a detecção NÃO adianta a cobrança', async () => {
-    // O contrapeso, e a razão de a regra ser conservadora em vez de "a ficha
-    // manda": aqui usar a ficha (07:00) ADIANTARIA a cobrança que hoje é 08:00,
-    // criando falta em quem chega 07:30 confiando no horário antigo. A detecção
-    // segue em 08:00; a divergência aparece no `npm run integridade`, para o
-    // gestor resolver reabrindo o cadastro.
-    const { deteccao, publicada } = await comparar({
-      entradaNaEscalaDaBia: '08:00',
-    });
-
-    expect(publicada.get('col-bia')).toBe('07:00');
-    expect(deteccao.get('col-bia')).toBe('08:00');
+    // E o outro lado, que é a razão de este teste existir em vez do par que
+    // havia antes. Enquanto a regra era conservadora — "vale a hora mais
+    // TARDIA" —, uma cópia atrasada continuava mandando: a detecção esperava a
+    // pessoa às 08:00 embora a ficha dissesse 07:00, e o atraso real de uma hora
+    // não existia para o sistema. Era exatamente o que acontecia com sete das
+    // onze fiscais em produção. Agora as duas pontas dizem 07:00.
+    const maisTarde = await comparar({ entradaNaEscalaDaBia: '08:00' });
+    expect(maisTarde.publicada.get('col-bia')).toBe('07:00');
+    expect(maisTarde.deteccao.get('col-bia')).toBe('07:00');
   });
 
   it('dispensa gravada na escala não vence a ficha', async () => {

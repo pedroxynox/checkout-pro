@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/escala-exportacao/`, `backend/src/escala-domingo/folga.service.ts`, `backend/src/fiscais/`, `backend/src/operadores/operador-turno.service.ts`, `backend/src/compensacao-horas/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-18 · **Cobre:** `backend/src/escala-exportacao/`, `backend/src/escala-domingo/folga.service.ts`, `backend/src/fiscais/`, `backend/src/operadores/operador-turno.service.ts`, `backend/src/compensacao-horas/`, `backend/src/alertas/saudacao-diaria.service.ts`, `backend/src/assistente/assistente.service.ts`
 
 # ADR 0026 — O horário é o da ficha; nada na escala o sobrepõe
 
@@ -69,25 +69,87 @@ Concretamente:
    explicasse. Agora o perfil mostra Domingo, o grupo do rodízio e a regra do
    feriado por escrito.
 
-## O que NÃO muda (de propósito)
+## Etapa 2 (2026-09-18) — a hora cobrada também é a da ficha
 
-**A regra conservadora da detecção de falta continua** (`hora-esperada-fiscal.ts`):
-quando a ficha e a cópia semanal discordam, vale a hora **mais tardia**. Trocar a
-fonte de uma vez adiantaria a cobrança de quem tem a ficha mais cedo que a escala e
-**criaria faltas que hoje não existem** — corrigir um desencontro criando faltas
-novas não é corrigir. Só o ramo da exceção saiu daquela função.
+A etapa 1 acertou o horário **exibido**. A etapa 2 acerta o **cobrado**, e foi
+autorizada por dados, não por opinião: a tela **Conferência de escala** rodou em
+produção e nomeou, entre 11 fiscais ativos, **7 pessoas** cuja cópia semanal estava
+mais tardia que a ficha — cinco por 40 minutos, duas por 1 hora. Os horários da
+cópia coincidiam exatamente com os do seed de demonstração (`06:50`, `11:00`,
+`13:50`), o que confirmou a origem: a cópia nunca tinha sido revista por ninguém.
 
-Mover a detecção de falta para ler a ficha (e retirar a cópia semanal) é a **etapa
-2** deste trabalho, deliberadamente separada.
+O efeito prático era o oposto do que a regra conservadora prometia proteger. Ela
+existia para não criar faltas novas, e cumpriu esse papel; mas como a cópia era a
+**mais tardia** em sete dos nove casos divergentes, era ela que decidia — e o atraso
+real dessas sete pessoas, de 40 minutos a 1 hora por dia, simplesmente não existia
+para o sistema. Zero faltas indevidas, e zero atrasos detectados.
 
-> **Atualização (2026-09-17) — o diagnóstico da etapa 2 já está entregue.** A tela
-> **Conferência de escala** (Centro de Controle, só leitura) responde as três
-> perguntas que a troca de fonte exige: quem seria **cobrado mais cedo** (com os
-> minutos), quem **perderia o dia de descanso** (ficha sem folga) e quem **trabalha
-> domingo sem horário**. Antes a apuração existia apenas como `npm run integridade`,
-> um comando de terminal com acesso ao banco — inacessível para quem precisava da
-> resposta. A troca da fonte só deve acontecer quando o veredito apontar **zero**
-> pessoas afetadas.
+**A ficha passou a ser a única fonte da hora esperada, em todos os sete lugares que
+liam a cópia semanal:**
+
+1. **`hora-esperada-fiscal.ts` foi apagado.** Era a regra conservadora inteira.
+   Sem duas fontes não há o que comparar.
+2. **A escala consolidada (`escala.service.ts`) resolve o turno na ficha em todos
+   os dias**, não só no domingo. Usa `entradaEsperadaNoDia`/`saidaEsperadaNoDia` —
+   as mesmas funções da escala publicada —, então a hora cobrada é, **por
+   construção**, a hora que a equipe recebeu na escala.
+3. **A detecção de falta (`escaladosDoDia`) deixou de reinterpretar nada:** consome
+   a hora da escala consolidada e a cobra. Um cálculo, não dois.
+4. **Os avisos automáticos seguiram a fonte:** lembrete de dez minutos
+   (`fiscais-horario.service.ts`), saudação de entrada
+   (`saudacao-diaria.service.ts`), alertas semanais de atraso
+   (`fiscais-alertas.service.ts`) e ranking de pontualidade. Um aviso que chega na
+   hora errada é pior do que nenhum: quem o segue chega atrasado por obedecer ao
+   sistema.
+5. **A assistente também** (`assistente.service.ts` e `contextoEscala`): ela
+   respondia horários que não estavam na ficha de ninguém, com a autoridade de quem
+   "consultou o sistema".
+6. **As rotas que escreviam ou liam a cópia saíram:** `POST /escala` (gravava uma
+   hora que já não teria efeito — uma rota que aceita um dado inócuo é pior do que
+   rota nenhuma) e `GET /escala/:funcionarioId/efetiva` (sem nenhum consumidor).
+7. **A leitura ficou num lugar só:** `turno-fiscal.ts` (puro) e
+   `turno-fiscal.consulta.ts` (as consultas). Sete caminhos montavam por conta
+   própria o trio `Fiscal` + `Usuario` + `Colaborador`, e bastava um `select`
+   esquecido para um deles resolver um turno pela metade.
+
+**Uma regra nova, e é a mais importante desta etapa:** *sem turno afirmado pela
+ficha, não se cobra ponto.* Ficha sem horário para o dia, fiscal sem ficha nenhuma,
+domingo sem âncora do rodízio — em todos, a pessoa sai da equipe do dia em vez de
+entrar com uma hora inventada. É o mesmo critério que já valia para operadores e
+supervisores.
+
+### O que a Conferência de escala virou
+
+A tela respondeu a pergunta para a qual foi feita, e essa pergunta expirou. Deixá-la
+dizendo "7 pessoas seriam afetadas" depois da troca seria enganoso, então o assunto
+dela mudou: **as lacunas da ficha**. Como a ficha é agora a única fonte, um vazio
+nela não é mais coberto por nada — quem está sem horário não é esperado em dia
+nenhum, e por isso nunca aparece atrasado nem faltante. `EfeitoNaCobranca` e
+`minutosAdiantados` deram lugar a `minutosDeDiferenca` (informativo), e
+`bloqueiamEtapa2` a `fichasComLacuna`.
+
+## O que a etapa 2 NÃO fez (etapa 3)
+
+**A tabela `EscalaEntry` continua existindo.** Nada lê mais um horário dela, mas
+retirá-la exige resolver duas coisas primeiro, e nenhuma delas cabia aqui sem
+inflar o risco desta mudança:
+
+1. **`intervaloMin` só vive nela.** É a duração do intervalo do turno, e a ficha não
+   tem campo para ela. Usam-na as sugestões de "não retornou do intervalo"
+   (`incidencias.service.ts`, dois pontos). Antes de apagar a tabela, esse dado
+   precisa de outro lugar — na ficha ou no tipo de contrato de jornada.
+2. **O vínculo `funcionarioId → colaboradorId` gravado nela** é o único jeito de
+   reconhecer a ficha de um fiscal que teve a conta de acesso desvinculada. Sem ele,
+   essa pessoa desaparece da escala — e, se estiver **desligada**, escapa do filtro
+   que tira os desligados do quadro, o pior dos dois mundos. `carregarFiscaisComFicha`
+   lê da cópia **apenas esse vínculo**, nunca um horário.
+
+Também ficou de fora, de propósito, o **passo da ficha omissa na regra de folga**
+(`FolgaService`): quando a ficha não tem dia de folga cadastrado, a cópia semanal
+ainda pode afirmar o descanso. É o último fio que liga a cópia a uma decisão, e
+cortá-lo agora não traria benefício nenhum — apenas o risco de escalar sete dias por
+semana quem tem a ficha incompleta, que é a classe de erro que este trabalho existe
+para evitar. A Conferência de escala aponta essas fichas como lacuna.
 
 ## Consequências
 
@@ -107,13 +169,17 @@ Mover a detecção de falta para ler a ficha (e retirar a cópia semanal) é a *
   disso, tem de ser construído como recurso de primeira classe: **com data de
   validade, com tela para ver e desfazer, e vinculado à ficha**. Ficou registrado
   em [Roadmap e pendências](../08-gestao/roadmap-e-pendencias.md).
-- **A coluna `especial` continua no banco**, sempre `false`: nenhum caminho a
-  escreve como `true` e nenhum leitor a honra. `escalaConsolidada` ainda a filtra
-  explicitamente, como cinto de segurança contra um resquício inserido à mão.
-  Removê-la exige mexer em todas as consultas da escala e fica para a etapa 2.
-- **A cópia semanal (`EscalaEntry`) segue existindo** e segue podendo ficar velha —
-  é a etapa 2. O diagnóstico `npm run integridade` continua sendo a forma de ver as
-  divergências.
+- **A coluna `especial` continua no banco**, sempre `false`, e a tabela
+  `EscalaEntry` também — ver "O que a etapa 2 não fez". A diferença é que nenhuma
+  das duas decide mais um horário.
+- **Os atrasos reais de sete pessoas passaram a ser detectados**, de 40 minutos a
+  1 hora por dia. Isto é o objetivo da mudança, não um efeito colateral, mas é uma
+  mudança visível na vida da equipe e precisa ser comunicada: ninguém começou a
+  chegar mais tarde — o sistema parou de esperá-las mais tarde do que a escala que
+  elas receberam.
+- **Um fiscal sem ficha deixa de ser cobrado.** Em produção não há nenhum (os 11
+  ativos têm ficha), mas se houver, a pessoa sai do controle de ponto em silêncio.
+  A Conferência de escala é onde isso aparece.
 - Uma dispensa ou folga concedida gravada para um dia que a **ficha diz de
   trabalho** deixa de valer. É a ADR 0023 aplicada ao último lugar que escapava
   dela, e não uma regra nova: a ficha já vencia nesse conflito em todos os outros
@@ -129,6 +195,15 @@ Mover a detecção de falta para ler a ficha (e retirar a cópia semanal) é a *
 3. **Apagar todas as linhas `especial` num único `DELETE`.** Recusada: levaria
    embora as folgas concedidas e poderia gerar falta automática em quem estava
    descansando. Daí a migração em dois passos.
-4. **Fazer a detecção de falta ler a ficha agora.** Recusada **nesta etapa**: pela
-   razão documentada em `hora-esperada-fiscal.ts`, adiantaria cobranças e criaria
-   faltas novas. É a etapa 2, com o diagnóstico rodado antes.
+4. **Fazer a detecção de falta ler a ficha na etapa 1.** Recusada então, feita na
+   etapa 2 — e a ordem foi o ponto. Sem o diagnóstico rodado antes, a troca seria
+   uma aposta sobre a vida de pessoas reais; com ele, foi uma decisão informada
+   sobre sete nomes conhecidos.
+5. **Retirar a tabela `EscalaEntry` no mesmo passo da troca de fonte.** Recusada:
+   juntaria uma mudança de comportamento (arriscada, pequena, verificável) com uma
+   remoção mecânica que toca dezenas de arquivos. Se algo desse errado, não haveria
+   como saber qual das duas causou. E há um bloqueio real: `intervaloMin` não tem
+   outro lugar onde morar.
+6. **Manter a regra conservadora e apenas avisar o gestor das divergências.**
+   Recusada: era o estado anterior. As divergências existiam há meses, ninguém as
+   via, e sete pessoas seguiam com o atraso invisível.

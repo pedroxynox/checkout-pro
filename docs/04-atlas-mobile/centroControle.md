@@ -53,10 +53,11 @@ operacionais).
    (carga por dia, intervalos, limites e riscos de TAC, tudo em minutos).
 5. **Insumos (dados):** zera o estoque de um insumo, de todos, ou limpa o
    histórico de requisições — cada ação pede confirmação.
-6. **Conferência de escala:** abre o diagnóstico ficha × escala semanal
-   (`OPERADORES_CRUD`, só leitura) — onde as duas discordam e **quem seria afetado**
-   se o sistema passasse a cobrar o ponto pelo horário da ficha. A tela vive na área
-   de [Escala](escala.md); aqui é apenas o atalho. Ver
+6. **Conferência de escala:** abre o diagnóstico das fichas dos fiscais
+   (`OPERADORES_CRUD`, só leitura) — quem está **sem horário**, sem horário de
+   domingo ou sem dia de folga e, por isso, fica fora do controle de ponto. Desde a
+   ADR 0026 o horário cobrado é o da ficha, então uma lacuna nela não é mais coberta
+   por nada. A tela vive na área de [Escala](escala.md); aqui é apenas o atalho. Ver
    [ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md).
 7. **Zerar dados operacionais:** exige digitar `ZERAR` e confirmar; ao concluir,
    mostra o resumo com a contagem apagada por entidade (hoje 16 entidades de

@@ -89,7 +89,7 @@ usuário só acessa a **própria** conversa, isolada por `usuario.sub`.
 
 #### Funções privadas relevantes (montagem de contexto)
 - `montarContextoEscala()` — turno, horários e folgas de cada fiscal, lidos de
-  `Fiscal` + `EscalaEntry`.
+  `Fiscal` + `Colaborador` (a ficha, fonte do horário desde a ADR 0026).
 - `montarContextoIndicadores()` — totais do mês por tipo de arrecadação, meta e
   semáforo (🟢/🟡/🔴), além dos destaques do mês (top por categoria, **excluindo
   fiscais**).
@@ -134,7 +134,7 @@ e monta o "documento" com marcadores de foto. **Atualmente desativado** — ver 
 
 ## 8. Dados que o módulo toca
 - **Escreve:** `MensagemAssistente` (pergunta + resposta; efêmeras 24h).
-- **Lê (apenas contexto):** `Fiscal`, `EscalaEntry`, `MetaIndicador`,
+- **Lê (apenas contexto):** `Fiscal`, `Colaborador`, `MetaIndicador`,
   `RegistroArrecadacao`, `VendaDiaria`, `VendaHora`. A meta mensal de vendas vem
   do `MetasService`, não mais de `ConfigVendas`.
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).

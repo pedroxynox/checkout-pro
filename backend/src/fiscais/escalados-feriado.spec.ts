@@ -52,30 +52,15 @@ interface OpcoesServico {
   ehFeriado?: boolean;
   /** Escala consolidada dos fiscais (o que `EscalaService` devolveria). */
   consolidada?: unknown[];
-  /** Fichas (id → entradaDom) para o feriado dos fiscais. */
-  fichas?: { id: string; entradaDom: string | null }[];
 }
 
 function criarServico({
   operadores = [TRABALHA_SEGUNDA],
   ehFeriado = true,
   consolidada = [],
-  fichas = [],
 }: OpcoesServico = {}) {
   const prismaFake = {
-    colaborador: {
-      // A mesma consulta serve a dois usos: a lista de operadores/supervisores e
-      // a busca das fichas dos fiscais (por id) no feriado.
-      findMany: (args?: { where?: { id?: { in?: string[] } } }) =>
-        args?.where?.id?.in
-          ? Promise.resolve(
-              fichas.filter((f) => args.where!.id!.in!.includes(f.id)),
-            )
-          : Promise.resolve(operadores),
-    },
-    // Exceções de horário: `escaladosDoDia` agora consulta a mesma fonte que a
-    // escala publicada. Nenhuma exceção nestes cenários.
-    escalaEntry: { findMany: () => Promise.resolve([]) },
+    colaborador: { findMany: () => Promise.resolve(operadores) },
   };
   const feriadosFake = { ehFeriado: () => Promise.resolve(ehFeriado) };
   const escalaFake = { escalaConsolidada: () => Promise.resolve(consolidada) };
@@ -132,8 +117,16 @@ describe('FiscaisService.escaladosDoDia — feriado usa o horário de domingo', 
     expect(escalados[0].entradaPrevista).toBe('08:00');
   });
 
-  it('fiscal num feriado também usa o horário de domingo da sua ficha', async () => {
-    // O horário de domingo do fiscal vive na FICHA, não na escala semanal.
+  /**
+   * Os fiscais entram aqui pela escala consolidada, que já resolveu o turno na
+   * FICHA — inclusive o feriado, que segue o horário de domingo (ADR 0026,
+   * etapa 2). Antes `escaladosDoDia` recebia a hora da cópia semanal e a
+   * corrigia por conta própria; a correção deixou de existir porque a fonte
+   * deixou de estar errada. O que se garante aqui é que esta função **não
+   * reinterpreta** o que a consolidada disse: a hora que chega é a hora cobrada,
+   * e FOLGA é FOLGA. O feriado dos fiscais é testado em `escala.service.spec.ts`.
+   */
+  it('fiscal: a hora que a escala consolidada resolveu é a hora cobrada', async () => {
     const escalados = await criarServico({
       operadores: [],
       consolidada: [
@@ -141,10 +134,9 @@ describe('FiscaisService.escaladosDoDia — feriado usa o horário de domingo', 
           funcionarioId: 'fis-1',
           colaboradorId: 'col-f',
           nome: 'Duda Fiscal',
-          efetiva: { entrada: '10:00', folga: false },
+          efetiva: { entrada: '06:30', folga: false },
         },
       ],
-      fichas: [{ id: 'col-f', entradaDom: '06:30' }],
     }).escaladosDoDia(FERIADO_SEGUNDA);
 
     expect(escalados).toHaveLength(1);
@@ -163,13 +155,14 @@ describe('FiscaisService.escaladosDoDia — feriado usa o horário de domingo', 
           efetiva: 'FOLGA',
         },
       ],
-      fichas: [{ id: 'col-f', entradaDom: '06:30' }],
     }).escaladosDoDia(FERIADO_SEGUNDA);
 
     expect(escalados).toEqual([]);
   });
 
-  it('fiscal sem horário de domingo na ficha mantém o horário da escala', async () => {
+  it('fiscal sem turno resolvido no dia não é cobrado', async () => {
+    // Sem hora afirmada pela ficha não se cobra ponto de ninguém — a pessoa sai
+    // da equipe do dia em vez de entrar com uma hora inventada.
     const escalados = await criarServico({
       operadores: [],
       consolidada: [
@@ -177,13 +170,12 @@ describe('FiscaisService.escaladosDoDia — feriado usa o horário de domingo', 
           funcionarioId: 'fis-1',
           colaboradorId: 'col-f',
           nome: 'Duda Fiscal',
-          efetiva: { entrada: '10:00', folga: false },
+          efetiva: { entrada: null, folga: false },
         },
       ],
-      fichas: [{ id: 'col-f', entradaDom: null }],
     }).escaladosDoDia(FERIADO_SEGUNDA);
 
-    expect(escalados[0].entradaPrevista).toBe('10:00');
+    expect(escalados).toEqual([]);
   });
 
   it('sem o serviço de feriados, o dia é tratado como normal', async () => {

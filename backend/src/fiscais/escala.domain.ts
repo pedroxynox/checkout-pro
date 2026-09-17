@@ -1,54 +1,39 @@
 /**
- * Lógica de domínio **pura** da escala de trabalho (Req 4.3).
- *
- * Concentra a resolução da escala efetiva por funcionário/dia e a consolidação
- * da escala por dia da semana (Req 4.3.6).
+ * Lógica de domínio **pura** da escala de trabalho dos fiscais (Req 4.3).
  *
  * ## O que saiu daqui (ADR 0026)
  *
- * Havia uma **regra de prevalência**: uma entrada marcada como `especial`
- * sobrepunha a entrada geral do dia. Foi removida — o horário é sempre o da
- * ficha, e a entrada geral é o que a ficha gera. A coluna `especial` continua no
- * banco, mas é sempre `false`: nenhum caminho a escreve como `true` e nenhum
- * leitor a honra.
+ * Duas coisas, em duas etapas.
  *
- * Por serem puras e determinísticas, podem ser exercitadas por testes de
- * propriedade (fast-check) sem qualquer infraestrutura.
+ * A **etapa 1** removeu a regra de prevalência do horário `especial`: uma entrada
+ * marcada como exceção sobrepunha a entrada geral do dia, sem validade, sem tela
+ * e invisível à ficha.
+ *
+ * A **etapa 2** removeu a resolução da escala a partir da cópia semanal
+ * (`resolverEscalaEfetiva` e `escalaConsolidada`). Elas liam a `EscalaEntry` e
+ * tinham de conviver com duplicadas — a tabela nunca teve índice único em
+ * `(funcionarioId, diaSemana)` —, o que fazia a escala efetiva de uma pessoa
+ * depender de qual leitor perguntava. O turno passou a ser resolvido a partir da
+ * **ficha**, por `turno-fiscal.ts` + `entradaEsperadaNoDia`/`saidaEsperadaNoDia`,
+ * as mesmas funções da escala publicada.
+ *
+ * O que resta aqui é a geração da cópia semanal a partir da ficha — o único
+ * caminho que ainda escreve na tabela, mantido enquanto ela guardar o intervalo
+ * (etapa 3) — e as formas de resposta da escala consolidada.
  */
 
-/** Uma entrada de escala de um funcionário em um dia da semana (0–6). */
-export interface EscalaEntry {
+/** Turno efetivo de um funcionário num dia: os horários, ou 'FOLGA'. */
+export interface TurnoEfetivo {
   funcionarioId: string;
   diaSemana: number;
   entrada: string | null;
   saida: string | null;
   intervaloMin: number;
   folga: boolean;
-  especial: boolean;
 }
 
-/** Escala efetiva resolvida: a entrada aplicável ou 'FOLGA'. */
-export type EscalaEfetiva = EscalaEntry | 'FOLGA';
-
-/** Converte uma entrada em escala efetiva: folga (ou ausência) vira 'FOLGA'. */
-function entryParaEfetiva(entry: EscalaEntry | null): EscalaEfetiva {
-  if (!entry || entry.folga) {
-    return 'FOLGA';
-  }
-  return entry;
-}
-
-/**
- * Resolve a escala efetiva de um funcionário em um dia: a entrada geral do turno
- * (derivada da ficha) ou folga, quando não há entrada ou ela é uma folga.
- *
- * @param geral entrada geral do turno (ou `null`).
- */
-export function resolverEscalaEfetiva(
-  geral: EscalaEntry | null,
-): EscalaEfetiva {
-  return entryParaEfetiva(geral);
-}
+/** Escala efetiva resolvida: o turno aplicável ou 'FOLGA'. */
+export type EscalaEfetiva = TurnoEfetivo | 'FOLGA';
 
 /** Item da escala consolidada por funcionário em um dia da semana. */
 export interface ItemEscalaConsolidada {
@@ -57,48 +42,11 @@ export interface ItemEscalaConsolidada {
 }
 
 /**
- * Consolida a escala de um dia da semana (Req 4.3.6): para cada funcionário com
- * entrada naquele dia, resolve a escala efetiva. O resultado é ordenado por
- * `funcionarioId` para ser determinístico.
- *
- * Entradas marcadas como `especial` são **ignoradas** (ADR 0026): elas não são
- * mais criadas e as antigas foram apagadas, mas ignorá-las explicitamente evita
- * que um resquício volte a decidir o horário de alguém.
- */
-export function escalaConsolidada(
-  entries: readonly EscalaEntry[],
-  diaSemana: number,
-): ItemEscalaConsolidada[] {
-  const doDia = entries.filter((e) => e.diaSemana === diaSemana && !e.especial);
-  const porFuncionario = new Map<string, EscalaEntry>();
-
-  for (const e of doDia) {
-    // PRIMEIRA entrada ganha, não a última. Não deveria haver duplicadas (a
-    // escrita substitui em vez de acrescentar), mas as antigas existem — e
-    // `resolverEscalaEfetiva`, que lê a mesma tabela, sempre usou
-    // `entries.find(...)`, ou seja a primeira. Com critérios opostos, a escala
-    // efetiva de uma pessoa dependia de qual dos dois leitores perguntava.
-    // `npm run integridade` aponta as duplicadas que ainda existirem.
-    if (!porFuncionario.has(e.funcionarioId)) {
-      porFuncionario.set(e.funcionarioId, e);
-    }
-  }
-
-  return Array.from(porFuncionario.entries())
-    .map(([funcionarioId, geral]) => ({
-      funcionarioId,
-      efetiva: resolverEscalaEfetiva(geral),
-    }))
-    .sort((a, b) => a.funcionarioId.localeCompare(b.funcionarioId));
-}
-
-/**
  * Escala semanal definida no cadastro do colaborador (fonte única — Opção A).
  *
  * O cadastro guarda um modelo simples: horário Seg–Qui, horário Sex–Sáb e um
- * dia de folga. A partir dele geramos as entradas GERAIS da escala (uma por dia
- * da semana), que alimentam a tela "Escala". Os ajustes pontuais (horário
- * especial de um dia) seguem como exceções (`especial`) e NÃO são tocados aqui.
+ * dia de folga. A partir dele geramos as entradas da cópia semanal (uma por dia
+ * da semana).
  */
 export interface EscalaColaboradorInput {
   entradaSemana: string | null;
@@ -108,7 +56,7 @@ export interface EscalaColaboradorInput {
   folgaDiaSemana: number | null;
 }
 
-/** Um dia gerado da escala semanal (geral). */
+/** Um dia gerado da escala semanal. */
 export interface DiaEscalaGerado {
   diaSemana: number;
   entrada: string | null;
@@ -128,14 +76,19 @@ export function temEscalaDefinida(input: EscalaColaboradorInput): boolean {
 }
 
 /**
- * Gera a escala semanal GERAL a partir do cadastro (Opção A). Regras:
+ * Gera a escala semanal a partir do cadastro (Opção A). Regras:
  * - o dia de folga vira uma entrada de folga;
  * - Seg–Qui (1–4) usam o horário Seg–Qui; Sex–Sáb (5–6) usam o horário Sex–Sáb;
- * - Domingo (0) só aparece se for o dia de folga (o cadastro não tem horário de
- *   domingo);
+ * - Domingo (0) só aparece se for o dia de folga — o rodízio de grupos decide o
+ *   domingo, e ele não cabe numa tabela por dia da semana;
  * - dias sem horário completo (e que não são folga) são omitidos.
  *
  * Retorna apenas os dias que produziram uma entrada (determinístico, ordenado).
+ *
+ * **Nada lê estes horários para cobrar ponto** desde a etapa 2 da ADR 0026: a
+ * hora esperada vem da ficha. A geração continua porque a cópia semanal ainda
+ * guarda o intervalo do turno, e deixá-la congelada com dados antigos seria pior
+ * do que mantê-la em dia enquanto a etapa 3 não lhe dá outro lugar.
  */
 export function gerarEscalaSemanalFiscal(
   input: EscalaColaboradorInput,

@@ -90,36 +90,47 @@ defeito de produto.
     isolamento por linha/RLS e testes de vazamento entre lojas. Feriados por
     localização/unidade dependem disso.
 
-### Horário e escala: etapa 2 (ADR 0026)
+### Horário e escala: etapa 3 (ADR 0026)
 
-A **etapa 1** já está feita: o horário exibido é sempre o da ficha, a exceção de
-horário da escala semanal foi removida e os dados antigos foram limpos (ver
-[ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md)).
+**Etapas 1 e 2 concluídas.** O horário exibido e o horário **cobrado** são os da
+ficha; a regra conservadora "vale a hora mais tardia" e o arquivo
+`hora-esperada-fiscal.ts` deixaram de existir. A troca foi autorizada pela
+**Conferência de escala** rodada em produção: 7 de 11 fiscais tinham a cópia semanal
+de 40 minutos a 1 hora mais tardia que a ficha, e era por isso que o atraso real
+delas não aparecia. Ver
+[ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md).
 
-Ficou para a etapa 2, na ordem:
+Ficou para a **etapa 3** — retirar a tabela `EscalaEntry`. Nada lê mais um horário
+dela, mas ela guarda duas coisas sem outro lugar, e **as duas precisam ser resolvidas
+antes**:
 
-0. **Concluído — o diagnóstico virou auto-serviço.** A **Conferência de escala**
-   (Centro de Controle, só leitura) mostra onde a ficha e a escala semanal
-   discordam e responde o que a etapa 2 exige: **quem seria cobrado mais cedo**
-   (com os minutos), **quem perderia o dia de descanso** (ficha sem folga) e **quem
-   trabalha domingo sem horário**. Traz um veredito com nomes
-   (`bloqueiamEtapa2`). Antes isso só existia como comando de terminal, fora do
-   alcance de quem precisava da resposta.
-1. **A detecção de falta passa a ler a ficha.** Hoje ela lê a cópia semanal
-   (`EscalaEntry`) com uma regra conservadora — quando as duas discordam, vale a
-   hora mais tardia, para nunca criar uma falta que antes não existia. **Só avançar
-   quando a Conferência de escala apontar zero pessoas afetadas**; enquanto houver,
-   corrigir a ficha delas primeiro.
-2. **Retirar a cópia semanal.** Com todos os leitores na ficha, `EscalaEntry` deixa
-   de ter função e a coluna `especial` (hoje sempre `false`) pode ser removida.
-3. **A escala semanal derivada ignora o horário de domingo da ficha.**
-   `gerarEscalaSemanalFiscal` só gera domingo quando é o dia de folga, então a cópia
-   semanal nunca recebe `entradaDom`. Corrigir isso **sem** o rodízio G1/G2/G3 faria
-   todo fiscal ser esperado em todo domingo — por isso depende do item 1.
-4. **Se o negócio precisar de horário pontual ou convocação**, construir como
+1. **Dar um lar a `intervaloMin`.** É a duração do intervalo do turno, e a ficha não
+   tem esse campo. Usam-na as sugestões de "não retornou do intervalo"
+   ([`incidencias`](../03-atlas-backend/incidencias.md), dois pontos de leitura).
+   Candidatos: um campo na ficha, ou o tipo de contrato de jornada — que é onde a
+   duração da jornada já mora.
+2. **Dar um lar ao vínculo `Fiscal → Colaborador`.** O `colaboradorId` gravado na
+   cópia é hoje o único jeito de reconhecer a ficha de um fiscal que teve a conta de
+   acesso desvinculada. Sem ele essa pessoa desaparece da escala — e, se estiver
+   **desligada**, escapa do filtro que tira os desligados do quadro. Isto se resolve
+   junto com o épico de aposentar o modelo `Fiscal`.
+3. **Cortar o passo da ficha omissa na regra de folga** (`FolgaService`). É a última
+   decisão que ainda depende da cópia: quando a ficha não tem dia de folga, a cópia
+   pode afirmar o descanso (ADR 0023). Cortar antes de as fichas estarem completas
+   escalaria essas pessoas sete dias por semana. A Conferência de escala aponta
+   quais são (`semFolgaNaFicha`); o pré-requisito é essa lista estar vazia.
+4. **Só então apagar a tabela** e a coluna `especial` (hoje sempre `false`), e com
+   elas `gerarEscalaSemanalFiscal`, `sincronizarEscalaFiscal` e a própria Conferência
+   de escala na parte que compara com a cópia.
+5. **Se o negócio precisar de horário pontual ou convocação**, construir como
    recurso de primeira classe: com **data de validade**, com **tela para ver e
    desfazer**, e vinculado à ficha. O mecanismo antigo não tinha nenhuma das três
    coisas, e foi por isso que virou um horário fantasma.
+
+> **O item que morreu.** "A escala semanal derivada ignora o horário de domingo da
+> ficha" saiu da lista: só fazia sentido enquanto a cópia decidisse horário. O
+> domingo dos fiscais vem do rodízio G1/G2/G3 aplicado à ficha, e uma tabela por dia
+> da semana nunca poderia representá-lo.
 
 ### Dívidas técnicas recorrentes (das seções "Riscos" do Atlas)
 

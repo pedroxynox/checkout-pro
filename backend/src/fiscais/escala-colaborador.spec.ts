@@ -1,9 +1,6 @@
-import type { EscalaEntry } from '@prisma/client';
 import {
   EscalaColaboradorInput,
-  escalaConsolidada,
   gerarEscalaSemanalFiscal,
-  resolverEscalaEfetiva,
   temEscalaDefinida,
 } from './escala.domain';
 
@@ -92,74 +89,5 @@ describe('gerarEscalaSemanalFiscal', () => {
       }),
     ).toBe(false);
     expect(temEscalaDefinida({ ...base })).toBe(true);
-  });
-});
-
-/**
- * DESEMPATE de entradas gerais duplicadas.
- *
- * A tabela `EscalaEntry` não tem índice único em (funcionarioId, diaSemana,
- * especial), então existem bases com duas entradas GERAIS para o mesmo dia. O
- * problema não eram as duplicadas em si — era que os dois leitores desempatavam
- * ao contrário: `resolverEscalaEfetiva` usa `entries.find(...)` (a primeira) e
- * `escalaConsolidada` sobrescrevia no laço (a última). A escala efetiva de uma
- * pessoa passava a depender de qual consumidor perguntava: a tela de escala podia
- * mostrar um horário e a detecção de falta cobrar outro.
- *
- * Os dois usam agora a PRIMEIRA. A escrita passou a substituir em vez de
- * acrescentar, e `npm run integridade` aponta as duplicadas que ainda existam.
- */
-describe('escalaConsolidada — duplicadas', () => {
-  const entrada = (over: Partial<EscalaEntry>): EscalaEntry =>
-    ({
-      id: 'e1',
-      funcionarioId: 'f1',
-      colaboradorId: 'c1',
-      diaSemana: 3,
-      entrada: '07:00',
-      saida: '15:20',
-      intervaloMin: 60,
-      folga: false,
-      especial: false,
-      ...over,
-    }) as EscalaEntry;
-
-  it('usa a PRIMEIRA entrada geral, igual a resolverEscalaEfetiva', () => {
-    const entries = [
-      entrada({ id: 'e1', entrada: '07:00' }),
-      entrada({ id: 'e2', entrada: '09:00' }),
-    ];
-
-    const consolidada = escalaConsolidada(entries, 3);
-    const efetiva = resolverEscalaEfetiva(
-      entries.find((e) => !e.especial) ?? null,
-    );
-
-    expect(consolidada[0].efetiva).not.toBe('FOLGA');
-    expect(consolidada[0].efetiva).toEqual(efetiva);
-    expect(
-      consolidada[0].efetiva === 'FOLGA'
-        ? null
-        : consolidada[0].efetiva.entrada,
-    ).toBe('07:00');
-  });
-
-  /**
-   * A exceção de horário deixou de existir (ADR 0026). Um resquício na tabela é
-   * IGNORADO: quem decide o horário é a ficha, e a entrada geral é o que ela
-   * gera. Sem este teste, uma linha antiga voltaria a mandar no horário de
-   * alguém sem ninguém perceber.
-   */
-  it('um resquício de exceção é ignorado: vale a entrada geral', () => {
-    const entries = [
-      entrada({ id: 'e1', entrada: '07:00' }),
-      entrada({ id: 'e2', entrada: '10:00', especial: true }),
-    ];
-
-    const [item] = escalaConsolidada(entries, 3);
-
-    expect(item.efetiva === 'FOLGA' ? null : item.efetiva.entrada).toBe(
-      '07:00',
-    );
   });
 });

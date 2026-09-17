@@ -152,24 +152,26 @@ async function main(): Promise<void> {
               ? 'folga'
               : `${d.escala.entrada}–${d.escala.saida}`
             : '(nada)';
-          // O efeito da etapa 2 fica ao lado do dia: é o que decide se a troca de
-          // fonte pode andar sem mexer na vida de alguém.
-          const efeito =
-            d.efeito === 'COBRA_MAIS_CEDO'
-              ? `  ⚠️ etapa 2 adiantaria a cobrança em ${d.minutosAdiantados} min`
+          // A distância entre as duas horas. Informativa: a hora cobrada é a da
+          // ficha desde a etapa 2 da ADR 0026.
+          const distancia =
+            d.minutosDeDiferenca > 0
+              ? `  (${d.minutosDeDiferenca} min de diferença)`
               : '';
           console.log(
-            `      ${nomeDoDia(d.diaSemana)}: ficha ${naFicha} · escala ${naEscala}${efeito}`,
+            `      ${nomeDoDia(d.diaSemana)}: ficha ${naFicha} · cópia ${naEscala}${distancia}`,
           );
         }
       }
       console.log(
-        '\n    Como corrigir: reabrir e salvar o cadastro do colaborador' +
-          ' regenera a escala a partir da ficha.\n' +
-          '    Nos marcados "FICHA SEM HORÁRIOS", preencher os horários na ficha' +
-          ' primeiro — enquanto ela estiver vazia\n' +
-          '    a sincronização não apaga a escala antiga, e é ela que alimenta a' +
-          ' detecção de falta.',
+        '\n    A hora cobrada é a da ficha (ADR 0026): estas diferenças NÃO afetam' +
+          ' a cobrança de ponto de ninguém.\n' +
+          '    Reabrir e salvar o cadastro do colaborador regenera a cópia a partir' +
+          ' da ficha.\n' +
+          '    Os marcados "FICHA SEM HORÁRIOS" são o caso grave: sem horário na' +
+          ' ficha, a pessoa não tem hora\n' +
+          '    esperada em dia nenhum — não entra na equipe do dia e nunca aparece' +
+          ' atrasada ou faltante.',
       );
     }
 
@@ -241,21 +243,23 @@ async function main(): Promise<void> {
     }
 
     if (e.ok) {
-      console.log('\n✅ Escala semanal coerente com as fichas.');
+      console.log('\n✅ Fichas completas e cópia semanal em dia.');
     }
 
-    // Veredito da etapa 2 (ADR 0026): a troca da fonte da detecção de falta só
-    // pode andar quando ninguém for cobrado mais cedo nem perder o descanso.
-    console.log('\n== Etapa 2: a detecção de falta pode passar a ler a ficha? ==');
-    if (e.bloqueiamEtapa2 === 0) {
+    // A ficha é a única fonte da hora esperada (ADR 0026, etapa 2), então o que
+    // importa é se ela está completa: uma lacuna aqui deixa alguém sem hora
+    // esperada, e quem não tem hora esperada não é cobrado por nada.
+    console.log('\n== As fichas cobrem toda a equipe? ==');
+    if (e.fichasComLacuna === 0) {
       console.log(
-        '✅ Sim. Nenhuma pessoa seria cobrada mais cedo nem perderia o dia de folga.',
+        '✅ Sim. Todas as fichas têm horário completo, dia de folga e horário de domingo.',
       );
     } else {
       console.log(
-        `⚠️  Ainda não: ${e.bloqueiamEtapa2} pessoa(s) seriam afetadas — ` +
-          `${e.nomesQueBloqueiam.join(', ')}.\n` +
-          '    Corrija a ficha delas (horário e dia de folga) e rode de novo.',
+        `⚠️  Não: ${e.fichasComLacuna} ficha(s) com informação faltando — ` +
+          `${e.nomesComLacuna.join(', ')}.\n` +
+          '    Enquanto a lacuna existir, essas pessoas ficam total ou parcialmente' +
+          ' fora do controle de ponto.',
       );
     }
 
