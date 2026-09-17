@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 134 arquivos, 1260 casos. **Mobile:** 39 arquivos, 294 casos. **Total: 1554 casos.**
+> **Backend:** 134 arquivos, 1255 casos. **Mobile:** 39 arquivos, 294 casos. **Total: 1549 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -75,9 +75,10 @@
 | `src/feriados/feriados.domain.spec.ts` | 4 | 1 |
 | `src/ferias/ferias.domain.spec.ts` | 13 | 7 |
 | `src/ferias/ferias.service.spec.ts` | 14 | 1 |
-| `src/fiscais/coerencia-escalados-escala.spec.ts` | 10 | 1 |
-| `src/fiscais/escala-colaborador.spec.ts` | 6 | 2 |
+| `src/fiscais/coerencia-escalados-escala.spec.ts` | 9 | 1 |
+| `src/fiscais/escala-colaborador.spec.ts` | 4 | 1 |
 | `src/fiscais/escala-inativo.spec.ts` | 1 | 1 |
+| `src/fiscais/escala.service.spec.ts` | 12 | 1 |
 | `src/fiscais/escalados-feriado.spec.ts` | 8 | 1 |
 | `src/fiscais/escalados-ferias.spec.ts` | 2 | 1 |
 | `src/fiscais/escalados-folga.spec.ts` | 4 | 1 |
@@ -86,8 +87,7 @@
 | `src/fiscais/fiscais.gateway.spec.ts` | 3 | 1 |
 | `src/fiscais/fiscais.painel-status.spec.ts` | 2 | 1 |
 | `src/fiscais/fiscais.properties.spec.ts` | 5 | 1 |
-| `src/fiscais/fiscais.service.spec.ts` | 20 | 1 |
-| `src/fiscais/hora-esperada-fiscal.spec.ts` | 11 | 1 |
+| `src/fiscais/fiscais.service.spec.ts` | 17 | 1 |
 | `src/fiscais/integridade-escala.spec.ts` | 16 | 1 |
 | `src/fiscais/integridade-vinculo.spec.ts` | 6 | 1 |
 | `src/fiscais/jornada-marcacoes.spec.ts` | 2 | 1 |

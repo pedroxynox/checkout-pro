@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { Perfil, Usuario } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -6,6 +6,9 @@ import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { RELOGIO, Relogio } from '../common/relogio';
 import { inicioDoDia } from '../common/datas';
 import { montarSaudacaoDiaria } from './saudacao-diaria.domain';
+import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
+import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
+import { carregarFiscaisComFicha } from '../fiscais/turno-fiscal.consulta';
 
 /** Fuso de operação da loja. Os crons disparam no horário local de Brasília. */
 const FUSO_BRASILIA = 'America/Sao_Paulo';
@@ -44,6 +47,8 @@ export class SaudacaoDiariaService {
     private readonly prisma: PrismaService,
     private readonly notificacoes: NotificacoesService,
     @Inject(RELOGIO) private readonly relogio: Relogio,
+    // Rodízio de domingo: sem a âncora não se afirma o turno de domingo.
+    @Optional() private readonly escalaDomingo?: EscalaDomingoService,
   ) {}
 
   /** Reseta o controle de "já saudado" a cada dia. */
@@ -69,12 +74,13 @@ export class SaudacaoDiariaService {
     const minutosAgora =
       emBrasilia.getUTCHours() * 60 + emBrasilia.getUTCMinutes();
 
-    const escalas = await this.prisma.escalaEntry.findMany({
-      where: { diaSemana, folga: false, entrada: { not: null } },
-    });
+    // O turno de hoje sai da FICHA (ADR 0026): a saudação chega na hora de
+    // entrada da pessoa, e é a mesma hora que a escala publicada mostra e que a
+    // detecção de falta cobra.
+    const escalas = await this.turnosDeHoje(emBrasilia, diaSemana);
     // Quem entra AGORA (dentro da janela) e ainda não foi saudado hoje.
     const pendentes = escalas.filter((e) => {
-      if (!e.entrada || this.saudadosFiscais.has(e.funcionarioId)) return false;
+      if (this.saudadosFiscais.has(e.funcionarioId)) return false;
       const [h, m] = e.entrada.split(':').map(Number);
       const diff = minutosAgora - (h * 60 + m);
       return diff >= 0 && diff <= JANELA_ENTRADA_MIN;
@@ -107,9 +113,47 @@ export class SaudacaoDiariaService {
   }
 
   /**
-   * Resolve a conta de acesso (e o nome) de uma linha de escala pela ficha
-   * canônica (`colaboradorId`), com fallback ao registro legado `Fiscal`
-   * enquanto ele existir. Passo A.3 do épico de aposentar o `Fiscal`.
+   * Os turnos de hoje, tirados da FICHA de cada fiscal. O feriado fica de fora
+   * pelo mesmo motivo do lembrete de dez minutos: é um cron por minuto, e uma
+   * saudação não paga o custo de consultar o calendário sessenta vezes por hora.
+   */
+  private async turnosDeHoje(
+    diaEmBrasilia: Date,
+    diaSemana: number,
+  ): Promise<
+    { funcionarioId: string; colaboradorId: string | null; entrada: string }[]
+  > {
+    const ancora =
+      diaSemana === 0 && this.escalaDomingo
+        ? await this.escalaDomingo.obterAncora()
+        : null;
+    const diaCivil = inicioDoDia(diaEmBrasilia);
+
+    const out: {
+      funcionarioId: string;
+      colaboradorId: string | null;
+      entrada: string;
+    }[] = [];
+    for (const f of await carregarFiscaisComFicha(this.prisma)) {
+      const entrada = entradaEsperadaNoDia(
+        f.ficha,
+        diaCivil,
+        ancora ? { data: ancora.data, ordem: ancora.ordem } : null,
+      );
+      if (!entrada) continue;
+      out.push({
+        funcionarioId: f.fiscalId,
+        colaboradorId: f.colaboradorId,
+        entrada,
+      });
+    }
+    return out;
+  }
+
+  /**
+   * Resolve a conta de acesso (e o nome) de um turno pela ficha canônica
+   * (`colaboradorId`), com fallback ao registro legado `Fiscal` enquanto ele
+   * existir. Passo A.3 do épico de aposentar o `Fiscal`.
    */
   private async contaDaEscala(escala: {
     funcionarioId: string;

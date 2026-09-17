@@ -1,12 +1,16 @@
 /**
- * Conferência de escala (ADR 0026, etapa 2).
+ * Conferência de escala (ADR 0026).
  *
- * O que estes testes travam é o propósito da tela: ela não existe para listar
- * divergências, e sim para responder **se dá para mover a cobrança de ponto para a
- * ficha e quem seria afetado**. Então travam o veredito, a separação entre o risco
- * real (a cobrança adiantaria) e o ruído (divergência que não muda cobrança), e as
- * duas pendências que a versão anterior do diagnóstico não via: ficha sem dia de
- * folga e domingo sem horário.
+ * O que estes testes travam é o propósito da tela, e ele mudou junto com a ADR.
+ * Antes a pergunta era "dá para mover a cobrança de ponto para a ficha, e quem
+ * seria afetado?" — a tela respondeu (sete pessoas, em produção) e a troca foi
+ * feita. Agora a hora cobrada é a da ficha, e uma diferença com a cópia semanal
+ * não afeta mais ninguém.
+ *
+ * Então o que se trava aqui é o novo assunto: as **lacunas da ficha**, que agora
+ * não têm nada por baixo para as cobrir, e a separação entre elas e o resquício
+ * informativo da cópia semanal. O teste mais importante é o quarto: a cópia
+ * desatualizada não pode voltar a ser apresentada como um problema de cobrança.
  */
 import { render, screen } from "@testing-library/react-native";
 import React from "react";
@@ -29,33 +33,35 @@ const LIMPO = {
   domingoSemHorario: [],
   totalFiscaisAtivos: 6,
   coerentes: 6,
-  bloqueiamEtapa2: 0,
-  nomesQueBloqueiam: [],
+  fichasComLacuna: 0,
+  nomesComLacuna: [],
   ok: true,
 };
 
 describe("ConferenciaEscalaScreen", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("sem pendências, diz que dá para acertar a cobrança", async () => {
+  it("sem lacunas, diz que o controle de ponto cobre a equipe inteira", async () => {
     escalaService.conferenciaEscala.mockResolvedValue(LIMPO);
     render(<ConferenciaEscalaScreen />);
 
     await screen.findByText("Conferência de escala");
     expect(screen.getByText("6 fiscais ativos · 6 sem divergência")).toBeTruthy();
     expect(
-      screen.getByText(/Nenhuma pessoa seria cobrada mais cedo/),
+      screen.getByText(/Todas as fichas têm horário completo/),
     ).toBeTruthy();
     expect(
-      screen.getByText("Fichas e escala semanal coerentes. Nada a ajustar."),
+      screen.getByText("Fichas completas e cópia semanal em dia. Nada a ajustar."),
     ).toBeTruthy();
   });
 
   /**
-   * O caso que decide a etapa 2: a escala semanal é mais tardia, então é ela que
-   * vale hoje. Passar a valer a ficha adianta a cobrança — com nome, dia e minutos.
+   * O caso mais grave depois da troca de fonte: sem horário na ficha não há hora
+   * esperada, e sem hora esperada a pessoa não entra na equipe do dia — nunca
+   * aparece atrasada, nunca recebe falta. Antes a cópia sobrevivente do seed
+   * escondia esse vazio cobrando um horário que ninguém tinha revisado.
    */
-  it("nomeia quem seria cobrado mais cedo, com o dia e os minutos", async () => {
+  it("aponta a ficha sem horário e diz que a pessoa não é esperada", async () => {
     escalaService.conferenciaEscala.mockResolvedValue({
       ...LIMPO,
       incoerentes: [
@@ -63,28 +69,30 @@ describe("ConferenciaEscalaScreen", () => {
           colaboradorId: "c1",
           nome: "Bia",
           matricula: "1001",
-          fichaVazia: false,
+          fichaVazia: true,
           dias: [
             {
               diaSemana: 2,
-              ficha: { entrada: "07:00", saida: "15:20", folga: false },
+              ficha: null,
               escala: { entrada: "07:25", saida: "15:20", folga: false },
-              efeito: "COBRA_MAIS_CEDO",
-              minutosAdiantados: 25,
+              minutosDeDiferenca: 0,
             },
           ],
         },
       ],
       coerentes: 5,
-      bloqueiamEtapa2: 1,
-      nomesQueBloqueiam: ["Bia"],
+      fichasComLacuna: 1,
+      nomesComLacuna: ["Bia"],
       ok: false,
     });
     render(<ConferenciaEscalaScreen />);
 
-    await screen.findByText("Seriam cobrados mais cedo");
-    expect(screen.getByText(/1 pessoa\(s\) seriam afetadas/)).toBeTruthy();
-    expect(screen.getByText(/passaria a cobrar 25 min mais cedo/)).toBeTruthy();
+    await screen.findByText("Ficha sem horário");
+    expect(screen.getByText(/1 ficha\(s\) com informação faltando/)).toBeTruthy();
+    expect(screen.getByText(/não é esperada em dia nenhum/)).toBeTruthy();
+    expect(
+      screen.getByText(/a cópia semanal ainda guarda 07:25–15:20/),
+    ).toBeTruthy();
   });
 
   it("converte a distância em horas quando passa de uma hora", async () => {
@@ -101,28 +109,25 @@ describe("ConferenciaEscalaScreen", () => {
               diaSemana: 5,
               ficha: { entrada: "07:00", saida: "15:20", folga: false },
               escala: { entrada: "08:05", saida: "15:20", folga: false },
-              efeito: "COBRA_MAIS_CEDO",
-              minutosAdiantados: 65,
+              minutosDeDiferenca: 65,
             },
           ],
         },
       ],
-      bloqueiamEtapa2: 1,
-      nomesQueBloqueiam: ["Bia"],
       ok: false,
     });
     render(<ConferenciaEscalaScreen />);
 
-    await screen.findByText("Seriam cobrados mais cedo");
-    expect(screen.getByText(/1h05 mais cedo/)).toBeTruthy();
+    await screen.findByText("Cópia semanal desatualizada");
+    expect(screen.getByText(/1h05 de diferença/)).toBeTruthy();
   });
 
   /**
-   * Separar o risco do ruído é o que faz um relatório ser lido. Uma divergência
-   * que não muda a hora cobrada não pode aparecer no mesmo bloco de quem pode
-   * receber falta.
+   * A diferença com a cópia semanal é informação, não problema — e a tela tem de
+   * dizer isso com todas as letras. Se ela voltar a apresentá-la como algo a
+   * corrigir, a gestão gasta tempo com uma lista que não muda nada.
    */
-  it("separa a divergência que não muda a cobrança", async () => {
+  it("apresenta a cópia desatualizada como informação, sem nada a fazer", async () => {
     escalaService.conferenciaEscala.mockResolvedValue({
       ...LIMPO,
       incoerentes: [
@@ -136,22 +141,27 @@ describe("ConferenciaEscalaScreen", () => {
               diaSemana: 3,
               ficha: { entrada: "07:00", saida: "15:20", folga: false },
               escala: { entrada: "06:50", saida: "15:20", folga: false },
-              efeito: "SEM_EFEITO",
-              minutosAdiantados: 0,
+              minutosDeDiferenca: 10,
             },
           ],
         },
       ],
-      bloqueiamEtapa2: 0,
-      nomesQueBloqueiam: [],
       ok: false,
     });
     render(<ConferenciaEscalaScreen />);
 
-    await screen.findByText("Outras divergências");
-    expect(screen.queryByText("Seriam cobrados mais cedo")).toBeNull();
-    expect(screen.getByText(/Nenhuma pessoa seria cobrada mais cedo/)).toBeTruthy();
-    expect(screen.getByText(/ficha 07:00–15:20 · escala 06:50–15:20/)).toBeTruthy();
+    await screen.findByText("Cópia semanal desatualizada");
+    expect(screen.queryByText("Ficha sem horário")).toBeNull();
+    // Nenhuma lacuna de ficha: o resumo segue verde.
+    expect(
+      screen.getByText(/Todas as fichas têm horário completo/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/ficha 07:00–15:20 · cópia 06:50–15:20/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/estas diferenças não afetam ninguém/),
+    ).toBeTruthy();
   });
 
   it("aponta a ficha sem dia de folga e explica o que aconteceria", async () => {
@@ -165,19 +175,17 @@ describe("ConferenciaEscalaScreen", () => {
           diasDeFolgaNaEscala: [1],
         },
       ],
-      bloqueiamEtapa2: 1,
-      nomesQueBloqueiam: ["Carla"],
+      fichasComLacuna: 1,
+      nomesComLacuna: ["Carla"],
       ok: false,
     });
     render(<ConferenciaEscalaScreen />);
 
     await screen.findByText("Ficha sem dia de folga");
     expect(
-      screen.getByText(/hoje descansa Seg por causa da escala semanal/),
+      screen.getByText(/hoje descansa Seg por causa da cópia semanal/),
     ).toBeTruthy();
-    expect(
-      screen.getByText(/ficariam escaladas todos\s+os dias/),
-    ).toBeTruthy();
+    expect(screen.getByText(/ficariam escaladas todos\s+os dias/)).toBeTruthy();
   });
 
   it("aponta quem trabalha domingo sem horário de domingo, e cita o feriado", async () => {
@@ -192,6 +200,8 @@ describe("ConferenciaEscalaScreen", () => {
           falta: "AMBAS",
         },
       ],
+      fichasComLacuna: 1,
+      nomesComLacuna: ["Duda"],
       ok: false,
     });
     render(<ConferenciaEscalaScreen />);

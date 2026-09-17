@@ -21,6 +21,8 @@ import {
 import { arredondar } from '../common/numeros';
 import { MetasService } from '../metas/metas.service';
 import { anoMesDe } from '../metas/metas.domain';
+import { linhasDaSemana } from '../fiscais/turno-fiscal';
+import { carregarFiscaisComFicha } from '../fiscais/turno-fiscal.consulta';
 
 /** Uma mensagem da conversa exposta ao app. */
 export interface MensagemConversa {
@@ -154,39 +156,16 @@ export class AssistenteService {
    */
   private async montarContextoEscala(): Promise<string | undefined> {
     try {
-      const [fiscais, escalas] = await Promise.all([
-        this.prisma.fiscal.findMany({ orderBy: { nome: 'asc' } }),
-        this.prisma.escalaEntry.findMany(),
-      ]);
-      if (fiscais.length === 0 || escalas.length === 0) {
-        return undefined;
-      }
+      // O horário sai da FICHA de cada fiscal (ADR 0026). Antes vinha da cópia
+      // semanal, e a assistente respondia horários que não estavam na ficha de
+      // ninguém — com a autoridade de quem "consultou o sistema".
+      const comFicha = await carregarFiscaisComFicha(this.prisma);
+      if (comFicha.length === 0) return undefined;
 
-      const DIAS = [
-        'Domingo',
-        'Segunda',
-        'Terça',
-        'Quarta',
-        'Quinta',
-        'Sexta',
-        'Sábado',
-      ];
       const linhas: string[] = [];
-
-      for (const fiscal of fiscais) {
-        const escFiscal = escalas.filter((e) => e.funcionarioId === fiscal.id);
-        if (escFiscal.length === 0) continue;
-        const especial = fiscal.especial ? ' - horário especial' : '';
-        linhas.push(`\n${fiscal.nome} (${fiscal.turno}${especial}):`);
-        for (let dia = 0; dia <= 6; dia++) {
-          const esc = escFiscal.find((e) => e.diaSemana === dia);
-          if (!esc) continue;
-          if (esc.folga) {
-            linhas.push(`  ${DIAS[dia]}: FOLGA`);
-          } else {
-            linhas.push(`  ${DIAS[dia]}: ${esc.entrada} - ${esc.saida}`);
-          }
-        }
+      for (const f of comFicha) {
+        linhas.push(`\n${f.nome}:`);
+        linhas.push(...linhasDaSemana(f.ficha));
       }
 
       return linhas.length > 0 ? linhas.join('\n') : undefined;

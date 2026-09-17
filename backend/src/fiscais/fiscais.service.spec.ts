@@ -1,12 +1,11 @@
 import { FiscaisService } from './fiscais.service';
-import { EscalaService } from './escala.service';
 import { inicioDoDia } from './fiscais.domain';
 
 /**
  * Testes unitários dos serviços de fiscais (controle de jornada) e escala,
  * usando um `PrismaService` falso (em memória), sem banco de dados.
  */
-describe('FiscaisService e EscalaService', () => {
+describe('FiscaisService', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function criarPrisma() {
     const fiscais = [
@@ -669,78 +668,5 @@ describe('FiscaisService e EscalaService', () => {
     await fiscais.registrarFalta('f1', new Date('2024-03-10T09:00:00Z'));
     expect(prisma.ausencias).toHaveLength(1);
     expect(prisma.ausencias[0].pessoaId).toBe('f1');
-  });
-
-  it('cadastra escala com horários por dia, intervalo variável e folga (Req 4.3.1-4.3.4)', async () => {
-    const prisma = criarPrisma();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const escala = new EscalaService(prisma as any);
-    await escala.cadastrarEscala({
-      funcionarioId: 'func-1',
-      diaSemana: 1,
-      entrada: '08:00',
-      saida: '16:00',
-      intervaloMin: 60,
-    });
-    await escala.cadastrarEscala({
-      funcionarioId: 'func-1',
-      diaSemana: 0,
-      folga: true,
-    });
-    const seg = await escala.resolverEscalaEfetiva('func-1', 1);
-    expect((seg as { entrada: string }).entrada).toBe('08:00');
-    const dom = await escala.resolverEscalaEfetiva('func-1', 0);
-    expect(dom).toBe('FOLGA');
-  });
-
-  /**
-   * Não há mais como sobrepor o horário: o serviço não expõe nenhum caminho para
-   * gravar uma exceção, e cadastrar o mesmo dia duas vezes SUBSTITUI a entrada em
-   * vez de acrescentar uma segunda (ADR 0026).
-   */
-  it('não existe caminho para sobrepor o horário da escala geral', async () => {
-    const prisma = criarPrisma();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const escala = new EscalaService(prisma as any);
-    await escala.cadastrarEscala({
-      funcionarioId: 'func-2',
-      diaSemana: 3,
-      entrada: '08:00',
-      saida: '16:00',
-      intervaloMin: 60,
-    });
-    const efetiva = await escala.resolverEscalaEfetiva('func-2', 3);
-    expect((efetiva as { entrada: string }).entrada).toBe('08:00');
-    // Não há mais nenhum caminho para sobrepor esse horário.
-    expect('definirHorarioEspecial' in escala).toBe(false);
-  });
-
-  it('escala manual grava o vínculo colaboradorId (Fase 4 · Opção A)', async () => {
-    const prisma = criarPrisma();
-    // Ficha canônica vinculada pela conta de acesso do fiscal (f1 → u1).
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (prisma as any).colaborador.findFirst = ({ where }: any) =>
-      Promise.resolve(where.usuarioId === 'u1' ? { id: 'colab-1' } : null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const escala = new EscalaService(prisma as any);
-    const geral = await escala.cadastrarEscala({
-      funcionarioId: 'f1',
-      diaSemana: 1,
-      entrada: '08:00',
-      saida: '16:00',
-      intervaloMin: 60,
-    });
-    expect((geral as { colaboradorId: string | null }).colaboradorId).toBe(
-      'colab-1',
-    );
-    const outroDia = await escala.cadastrarEscala({
-      funcionarioId: 'f1',
-      diaSemana: 2,
-      entrada: '10:00',
-      saida: '18:00',
-    });
-    expect((outroDia as { colaboradorId: string | null }).colaboradorId).toBe(
-      'colab-1',
-    );
   });
 });

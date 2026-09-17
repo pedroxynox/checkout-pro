@@ -8,7 +8,7 @@ import {
   statusAtual,
   statusValido,
 } from './fiscais.domain';
-import { EscalaEntry, resolverEscalaEfetiva } from './escala.domain';
+import { dataDeReferencia, turnoDoDia } from './turno-fiscal';
 
 /**
  * Testes de propriedade (fast-check) do Modulo_Fiscais (controle de jornada) e
@@ -112,8 +112,22 @@ describe('Fiscais e Escala — testes de propriedade', () => {
     expect(jornada.tempoIntervaloMs).toBe(0);
   });
 
-  // Property 20: Horário especial prevalece sobre a regra geral (Req 4.3.5).
-  it('Property 20: existindo horário especial no dia, a escala efetiva é o especial; senão, a regra geral (ou folga)', () => {
+  /**
+   * Property 20: o turno cobrado sai SEMPRE da ficha.
+   *
+   * Esta propriedade substitui duas anteriores, e a troca resume a ADR 0026. A
+   * primeira afirmava que uma exceção de horário vencia a regra geral (etapa 1
+   * apagou as exceções). A segunda afirmava que a correção "nunca devolve uma
+   * hora mais cedo do que a escala cobrava antes" — o viés conservador que
+   * permitiu trocar a fonte sem criar faltas de surpresa, e que a etapa 2
+   * remove de propósito, porque era ele que mantinha invisível o atraso de quem
+   * tinha a cópia semanal mais tardia que a ficha.
+   *
+   * O que garantimos agora é mais forte e mais simples: o horário devolvido é
+   * um dos horários **da própria ficha**, ou nada. Nenhuma terceira fonte pode
+   * se infiltrar na hora que o sistema cobra de uma pessoa.
+   */
+  it('Property 20: o turno de um dia é sempre um horário da própria ficha (ou nenhum)', () => {
     const horarioArb = fc.constantFrom(
       '06:00',
       '08:00',
@@ -121,27 +135,38 @@ describe('Fiscais e Escala — testes de propriedade', () => {
       '13:00',
       '14:00',
     );
-    const entryArb = (especial: boolean): fc.Arbitrary<EscalaEntry> =>
-      fc.record({
-        funcionarioId: fc.constant('func-1'),
-        diaSemana: fc.integer({ min: 0, max: 6 }),
-        entrada: horarioArb,
-        saida: horarioArb,
-        intervaloMin: fc.integer({ min: 0, max: 120 }),
-        folga: fc.constant(false),
-        especial: fc.constant(especial),
-      });
+    const fichaArb = fc.record({
+      folgaDiaSemana: fc.option(fc.integer({ min: 0, max: 6 }), { nil: null }),
+      grupoDomingo: fc.constantFrom(null, 'G1', 'G2', 'G3'),
+      entradaSemana: fc.option(horarioArb, { nil: null }),
+      saidaSemana: fc.option(horarioArb, { nil: null }),
+      entradaFds: fc.option(horarioArb, { nil: null }),
+      saidaFds: fc.option(horarioArb, { nil: null }),
+      entradaDom: fc.option(horarioArb, { nil: null }),
+      saidaDom: fc.option(horarioArb, { nil: null }),
+    });
 
-    // Sem exceção de horário (ADR 0026): a escala efetiva é a entrada geral,
-    // ou FOLGA quando não há entrada ou ela é uma folga.
     fc.assert(
-      fc.property(fc.option(entryArb(false), { nil: null }), (geral) => {
-        const efetiva = resolverEscalaEfetiva(geral);
-        if (geral && !geral.folga) {
-          return efetiva === geral;
-        }
-        return efetiva === 'FOLGA';
-      }),
+      fc.property(
+        fichaArb,
+        fc.integer({ min: 0, max: 6 }),
+        fc.boolean(),
+        (ficha, diaSemana, ehFeriado) => {
+          const turno = turnoDoDia(
+            ficha,
+            dataDeReferencia(diaSemana),
+            { data: dataDeReferencia(0), ordem: ['G1', 'G2', 'G3'] },
+            ehFeriado,
+          );
+          const daFicha = [
+            ficha.entradaSemana,
+            ficha.entradaFds,
+            ficha.entradaDom,
+            null,
+          ];
+          return daFicha.includes(turno.entrada);
+        },
+      ),
       { numRuns: NUM_RUNS },
     );
   });

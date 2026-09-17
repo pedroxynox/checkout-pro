@@ -69,11 +69,10 @@ describe('detectarEscalasIncoerentes', () => {
     expect(r.incoerentes).toEqual([]);
   });
 
-  it('aponta o dia em que o HORÁRIO gravado difere da ficha', () => {
-    // A ficha diz 07:00 e a escala semanal ficou em 06:50. A equipe lê 07:00 na
-    // escala publicada. A regra conservadora já usa a hora mais TARDIA, então a
-    // cobrança hoje também é às 07:00 — a divergência existe, mas trocar a fonte
-    // pela ficha não muda a cobrança de ninguém: `SEM_EFEITO`.
+  it('aponta o dia em que o HORÁRIO gravado difere da ficha, com a distância', () => {
+    // A ficha diz 07:00 e a cópia semanal ficou em 06:50: dez minutos de
+    // distância. A hora cobrada é a da ficha (ADR 0026, etapa 2), então isto é
+    // informação sobre a cópia atrasada, não uma cobrança errada.
     const escala = escalaCoerente();
     escala[1] = { ...escala[1], entrada: '06:50' };
     const r = rodar([ficha()], escala);
@@ -85,21 +84,20 @@ describe('detectarEscalasIncoerentes', () => {
         diaSemana: 2,
         ficha: { entrada: '07:00', saida: '15:20', folga: false },
         escala: { entrada: '06:50', saida: '15:20', folga: false },
-        efeito: 'SEM_EFEITO',
-        minutosAdiantados: 0,
+        minutosDeDiferenca: 10,
       },
     ]);
-    expect(r.bloqueiamEtapa2).toBe(0);
+    expect(r.fichasComLacuna).toBe(0);
   });
 
   /**
-   * O caso que decide se a etapa 2 pode andar: a cópia semanal é MAIS TARDIA que
-   * a ficha, então é ela que vale hoje. Passando a valer a ficha, a cobrança
-   * adianta 25 minutos — e quem chegava às 07:20 sem problema pode receber falta.
-   * É o único efeito arriscado de trocar a fonte, e o diagnóstico tem de nomeá-lo
-   * com pessoa e minutos.
+   * O caso que motivou a etapa 2, agora resolvido: a cópia semanal MAIS TARDIA
+   * que a ficha. Enquanto a regra era "vale a hora mais tardia", era a cópia que
+   * decidia, e o atraso real de quem chegava depois da hora da ficha não existia
+   * para o sistema. Hoje a divergência é medida nos dois sentidos, e em nenhum
+   * deles muda a cobrança.
    */
-  it('isola quem passaria a ser cobrado MAIS CEDO, com os minutos', () => {
+  it('mede a distância também quando a cópia é mais TARDIA que a ficha', () => {
     const escala = escalaCoerente();
     escala[1] = { ...escala[1], entrada: '07:25' };
     const r = rodar([ficha()], escala);
@@ -109,18 +107,18 @@ describe('detectarEscalasIncoerentes', () => {
         diaSemana: 2,
         ficha: { entrada: '07:00', saida: '15:20', folga: false },
         escala: { entrada: '07:25', saida: '15:20', folga: false },
-        efeito: 'COBRA_MAIS_CEDO',
-        minutosAdiantados: 25,
+        minutosDeDiferenca: 25,
       },
     ]);
-    expect(r.bloqueiamEtapa2).toBe(1);
-    expect(r.nomesQueBloqueiam).toEqual(['Bia']);
+    // Ninguém é cobrado pela cópia, então isto não é lacuna de ficha.
+    expect(r.fichasComLacuna).toBe(0);
   });
 
   /**
-   * Bloqueio absoluto da etapa 2: sem dia de folga na ficha, a pessoa descansa
-   * hoje por causa de uma linha da cópia semanal (ADR 0023, passo da ficha
-   * omissa). Retirar a cópia a deixaria escalada todos os dias.
+   * A última decisão que ainda depende da cópia: sem dia de folga na ficha, a
+   * pessoa descansa por causa de uma linha da cópia semanal (ADR 0023, passo da
+   * ficha omissa). Quando a tabela sair (etapa 3), ela ficaria escalada todos os
+   * dias — por isso é lacuna de ficha, e o lugar de corrigir é o cadastro.
    */
   it('aponta a ficha SEM dia de folga que hoje descansa pela cópia semanal', () => {
     const r = rodar([ficha({ folgaDiaSemana: null })], escalaCoerente());
@@ -133,12 +131,13 @@ describe('detectarEscalasIncoerentes', () => {
         diasDeFolgaNaEscala: [1],
       },
     ]);
-    expect(r.bloqueiamEtapa2).toBe(1);
+    expect(r.fichasComLacuna).toBe(1);
+    expect(r.nomesComLacuna).toEqual(['Bia']);
   });
 
   it('não acusa ficha sem folga quando a cópia também não concede folga', () => {
-    // Sem folga em nenhuma das duas fontes não há descanso a perder: o problema
-    // dessa pessoa é outro (ficha incompleta), e não é bloqueio da etapa 2.
+    // Sem folga em nenhuma das duas fontes não há descanso a perder quando a
+    // cópia sair: o problema dessa pessoa é outro (ficha incompleta).
     const semFolga = escalaCoerente().filter((e) => !e.folga);
     const r = rodar([ficha({ folgaDiaSemana: null })], semFolga);
 
@@ -195,18 +194,18 @@ describe('detectarEscalasIncoerentes', () => {
     expect(r.ok).toBe(true);
   });
 
-  it('uma folga divergente não adianta cobrança: quem folga não é cobrado', () => {
-    // A folga é reconciliada em runtime pela regra única, e não há hora a
-    // comparar. Vira divergência de cadastro, nunca bloqueio da etapa 2.
+  it('numa folga divergente não há distância a medir', () => {
+    // A folga é reconciliada em runtime pela regra única, e não há duas horas a
+    // comparar. Vira divergência de cadastro, sem número a exibir.
     const escala = escalaCoerente().map((e) =>
       e.diaSemana === 3 ? { ...e, entrada: null, saida: null, folga: true } : e,
     );
     const r = rodar([ficha()], escala);
 
-    expect(r.incoerentes[0].dias.every((d) => d.efeito === 'SEM_EFEITO')).toBe(
+    expect(r.incoerentes[0].dias.every((d) => d.minutosDeDiferenca === 0)).toBe(
       true,
     );
-    expect(r.bloqueiamEtapa2).toBe(0);
+    expect(r.fichasComLacuna).toBe(0);
   });
 
   it('aponta quando a FOLGA da escala não é a da ficha', () => {

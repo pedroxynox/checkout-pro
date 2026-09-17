@@ -17,6 +17,7 @@ import {
   fimDoDiaBrasiliaEmUtc,
 } from '../common/datas';
 import { FiscaisService } from './fiscais.service';
+import { entradasPrevistasPorFiscal } from './turno-fiscal.consulta';
 
 /**
  * Serviço de alertas inteligentes para fiscais.
@@ -326,14 +327,11 @@ export class FiscaisAlertasService {
       orderBy: { em: 'asc' },
     });
 
-    const escalas = await this.prisma.escalaEntry.findMany();
-    const escalaMap = new Map<string, Map<number, string>>(); // fiscalId -> diaSemana -> entrada
-    for (const e of escalas) {
-      if (!e.entrada || e.folga) continue;
-      if (!escalaMap.has(e.funcionarioId))
-        escalaMap.set(e.funcionarioId, new Map());
-      escalaMap.get(e.funcionarioId)!.set(e.diaSemana, e.entrada);
-    }
+    // Hora prevista por fiscal e dia da semana, vinda da FICHA (ADR 0026). O
+    // alerta acusa "atrasos frequentes": lê-lo de outra fonte que não a cobrada
+    // faria o gestor conversar com alguém sobre um atraso que o sistema não
+    // reconhece — ou deixar de conversar sobre um que reconhece.
+    const escalaMap = await entradasPrevistasPorFiscal(this.prisma);
 
     // Agrupar registros por fiscal e dia.
     const porFiscalDia = new Map<

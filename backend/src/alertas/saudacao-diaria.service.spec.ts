@@ -13,30 +13,54 @@ describe('SaudacaoDiariaService — resolução por ficha canônica', () => {
   function criar() {
     const fiscalFindUnique = jest.fn().mockResolvedValue(null);
     const enviar = jest.fn().mockResolvedValue(undefined);
+    // A ficha da Ana: entra às 10:00 de segunda a quinta e folga no domingo. É
+    // daqui que sai a hora da saudação desde a ADR 0026 — antes vinha da cópia
+    // semanal, que podia dizer outra coisa.
+    const fichaAna = {
+      id: 'c1',
+      nome: 'Ana Fiscal',
+      matricula: '900001',
+      usuarioId: 'u1',
+      ativo: true,
+      folgaDiaSemana: 0,
+      grupoDomingo: null,
+      entradaSemana: '10:00',
+      saidaSemana: '19:00',
+      entradaFds: '10:00',
+      saidaFds: '19:00',
+      entradaDom: null,
+      saidaDom: null,
+    };
     const prisma = {
       escalaEntry: {
-        findMany: jest.fn().mockResolvedValue([
-          {
-            funcionarioId: 'f1',
-            colaboradorId: 'c1',
-            diaSemana: 1,
-            entrada: '10:00',
-            folga: false,
-          },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ funcionarioId: 'f1', colaboradorId: 'c1' }]),
       },
       colaborador: {
+        findMany: jest.fn().mockResolvedValue([fichaAna]),
         findUnique: ({ where: { id } }: { where: { id: string } }) =>
           Promise.resolve(
             id === 'c1' ? { usuarioId: 'u1', nome: 'Ana Fiscal' } : null,
           ),
       },
-      fiscal: { findUnique: fiscalFindUnique },
+      fiscal: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: 'f1', nome: 'Ana', usuarioId: 'u1' }]),
+        findUnique: fiscalFindUnique,
+      },
       usuario: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'u1', login: '900001' }]),
         findUnique: ({ where: { id } }: { where: { id: string } }) =>
           Promise.resolve(
             id === 'u1'
-              ? { id: 'u1', perfil: Perfil.FISCAL, nome: 'Ana Fiscal', login: 'ana' }
+              ? {
+                  id: 'u1',
+                  perfil: Perfil.FISCAL,
+                  nome: 'Ana Fiscal',
+                  login: 'ana',
+                }
               : null,
           ),
       },

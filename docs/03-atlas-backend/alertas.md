@@ -101,7 +101,8 @@ Em `saudacao-diaria.domain.ts`:
   00:00; importações pendentes = `HORARIO_FIM_DO_DIA`.
 
 ## 8. Dados que o módulo toca
-- **Lê:** `EscalaEntry`, `Fiscal`, `Usuario`, `VendaDiaria` (na saudação);
+- **Lê:** `Colaborador` (a ficha — fonte do turno desde a ADR 0026), `Fiscal`,
+  `Usuario`, `VendaDiaria` (na saudação);
   indiretamente `Checklist`/arrecadação/fechamento via os serviços consumidos.
 - **Escreve:** nada diretamente; os avisos são gravados por
   [`notificacoes`](notificacoes.md) (`Notificacao`).

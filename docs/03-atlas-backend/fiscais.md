@@ -1,11 +1,13 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/fiscais/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-18 · **Cobre:** `backend/src/fiscais/`
 
 # Módulo: `fiscais`
-> **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
-> (`EscalaEntry.especial`) foi **removida**: o horário é sempre o da ficha.
-> Com ela saíram a **convocação** e a **folga concedida** que dependiam do
-> mesmo campo. Os trechos abaixo que descrevem esse mecanismo valem apenas
-> como histórico. Ver
+> **ADR 0026 — a ficha é a única fonte do horário.** Em duas etapas:
+> a **exceção de horário** (`EscalaEntry.especial`) foi removida, junto com a
+> **convocação** e a **folga concedida** que dependiam dela (2026-09-17); e a
+> **hora cobrada** passou a sair da ficha, não mais da cópia semanal
+> `EscalaEntry` (2026-09-18). A regra conservadora "vale a hora mais tardia"
+> (`hora-esperada-fiscal.ts`) deixou de existir com a segunda etapa. Trechos
+> abaixo que descrevam esses mecanismos valem como histórico. Ver
 > [ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md).
 
 
@@ -31,21 +33,23 @@ os alertas automáticos e a **escala de trabalho** (apenas a geral, derivada da 
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `fiscais.controller.ts` | Rotas de status/jornada/painel do fiscal | 134 |
-| `fiscais.service.ts` | Regras de aplicação: status, jornada, extras, painel | 1747 |
+| `fiscais.service.ts` | Regras de aplicação: status, jornada, extras, painel | 1785 |
 | `fiscais.domain.ts` | Regras puras: status atual, jornada, transições | 150 |
 | `fiscais.errors.ts` | Erros de domínio (mapeados para HTTP) | 47 |
 | `fiscais.eventos.ts` | Barramento de eventos de status (produtor↔gateway) | 38 |
 | `fiscais.gateway.ts` | Gateway WebSocket do painel em tempo real | 92 |
-| `fiscais-horario.service.ts` | Cron: lembretes de horário aos fiscais (conta resolvida pela ficha) | 143 |
+| `fiscais-horario.service.ts` | Cron: lembretes de horário aos fiscais (turno e conta resolvidos pela ficha) | 194 |
 | `fiscais-alertas.service.ts` | Cron: alertas de intervalo longo e cobertura | 416 |
-| `escala.controller.ts` | Rotas da escala de trabalho | 64 |
-| `conferencia-escala.service.ts` | **Conferência de escala**: monta o diagnóstico ficha × escala semanal para a API (só leitura) | 89 |
-| `escala.service.ts` | Regras da escala (geral e consolidada) | 337 |
-| `escala.domain.ts` | Regras puras: escala efetiva, consolidada, semanal | 166 |
+| `escala.controller.ts` | Rota da escala consolidada (só leitura) | 39 |
+| `conferencia-escala.service.ts` | **Conferência de escala**: monta o diagnóstico das fichas para a API (só leitura) | 101 |
+| `escala.service.ts` | Escala consolidada de um dia, resolvida na ficha | 159 |
+| `escala.domain.ts` | Regras puras: formas da resposta + geração da cópia semanal a partir da ficha | 116 |
 | `colaborador-vinculo.ts` | Regra pura: mapeia fiscal → colaborador (ficha) | 84 |
 | `identidades.consulta.ts` | **A única** carga das identidades de uma pessoa (ficha + ids de fiscal), nos dois sentidos | 85 |
 | `integridade-vinculo.ts` | Regra pura: detecta vínculos órfãos fiscal ↔ ficha | 96 |
-| `integridade-escala.ts` | Regra pura do diagnóstico ficha × escala semanal, incluindo o **efeito da etapa 2** sobre a cobrança | 420 |
+| `integridade-escala.ts` | Regra pura do diagnóstico: lacunas da ficha + distância até a cópia semanal | 476 |
+| `turno-fiscal.ts` | **Regra pura do turno**: junta fiscal + conta + ficha, e resolve o horário do dia | 229 |
+| `turno-fiscal.consulta.ts` | A **única** carga do trio `Fiscal` + `Usuario` + `Colaborador` para resolver turnos | 84 |
 | `dto/fiscais.dto.ts` | Validação de entrada (status e escala) | 59 |
 
 ## 4. Endpoints (rotas HTTP)
@@ -144,29 +148,35 @@ desacordo era escalado e acabava com **falta automática no próprio dia de
 descanso**. Sair de `escaladosDoDia` é o que impede a falta de nascer; as guardas
 em `registrarFalta`/`registrarAusencia` são a segunda linha.
 
-**A hora esperada do fiscal é a mais TARDIA entre a ficha e a escala semanal**
-(`entradaEsperadaConservadora`, em `hora-esperada-fiscal.ts`). A ficha é a fonte e
-a escala semanal é um derivado que fica velho; quando discordam, cobrar pela mais
-tardia garante que **a correção nunca cria uma falta que antes não existia** — só
-pode deixar de criar. É o mesmo viés da regra única de folga, e pela mesma razão:
-marcar falta em quem estava no horário é muito pior do que deixar de cobrar
-alguém. Três ramos fogem da comparação, cada um por um motivo:
+**A hora esperada é a da FICHA, para fiscais e operadores** (ADR 0026, etapa 2).
+Os dois ramos chamam `entradaEsperadaNoDia` — a mesma função da escala publicada —,
+então a hora cobrada é, por construção, a hora que a equipe recebeu na escala.
+Nenhum cálculo intermediário: `escaladosDoDia` consome a hora que a escala
+consolidada resolveu e a cobra.
 
-| Situação | Hora usada | Por quê |
+Aqui havia uma regra conservadora: quando a ficha e a cópia semanal discordavam,
+valia a hora **mais TARDIA**. Ela existia para que trocar a fonte não criasse falta
+em ninguém, e cumpriu esse papel — mas em produção a cópia era a mais tardia em
+sete dos nove casos divergentes, de 40 minutos a 1 hora. Ou seja: era ela que
+decidia, e o atraso real dessas sete pessoas não existia para o sistema. A
+Conferência de escala nomeou as sete, e a regra saiu junto com
+`hora-esperada-fiscal.ts`.
+
+**Sem turno afirmado pela ficha, não se cobra ponto.** Vale para os três casos em
+que a ficha não afirma nada, e em todos a pessoa sai da lista em vez de entrar com
+uma hora inventada:
+
+| Situação | Efeito | Por quê |
 |---|---|---|
-| **Feriado** | a da ficha (`entradaDom`), com a escala como último recurso | A escala semanal **não conhece feriados** — o valor dela não é uma opinião concorrente, é um dado que não se aplica. Comparar faria o horário de dia útil vencer sempre que fosse mais tarde. |
-| Fiscal **sem ficha** resolvida | a da escala | Sem duas fontes não há o que comparar, e tirá-lo da lista seria uma decisão sem base. |
+| Ficha **sem horário** para o dia | fora da lista | Se a ficha não afirma um turno, o sistema não tem base para afirmar uma expectativa. Era o caso "ficha vazia com cópia do seed sobrevivente", em que se cobrava o ponto por um dado que ninguém revisou. |
+| Fiscal **sem ficha** resolvida | fora da lista | Sem fonte não há hora. A Conferência de escala é onde isso aparece; em produção não há nenhum caso. |
+| **Domingo sem âncora** do rodízio | fora da lista | Sem o ponto de partida não se sabe quem trabalha neste domingo, e afirmar um turno criaria falta em quem descansava. |
 
-E um caso em que **não se cobra nada**: ficha sem turno para o dia. A ficha é a
-fonte; se ela não afirma um turno, o sistema não tem base para afirmar uma
-expectativa. É o caso "ficha vazia com escala do seed sobrevivente", em que se
-cobrava o ponto por um dado que ninguém revisou.
-
-Para operadores/supervisores a hora vem direto de
-`entradaEsperadaNoDia(..., ehFeriado)` — ali a ficha já é a única fonte, e a
-comparação não faz sentido. Sem `FeriadosService` (injetado com `@Optional()`), o
-dia é tratado como normal. A folga não muda em feriado (regra 7 de
-[`escala-domingo`](escala-domingo.md)).
+**No feriado vale o horário de DOMINGO da ficha** (`entradaDom`), a mesma regra que
+a jornada aplica ao pagamento e a escala publicada ao turno. Quem não tem horário de
+domingo cadastrado mantém o horário normal do dia, em vez de desaparecer da equipe.
+Sem `FeriadosService` (injetado com `@Optional()`), o dia é tratado como normal. A
+folga **não** muda em feriado (regra 7 de [`escala-domingo`](escala-domingo.md)).
 
 Os demais: log de tempos por
 fiscal; jornada de equipe (todos os escalados, com atraso e falta); e o
@@ -184,14 +194,41 @@ Ponte batidas → status: reescreve o log do dia dentro da transação das batid
 a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 
 ### `EscalaService`
-- `cadastrarEscala(entry)` / `definirHorarioEspecial(funcionarioId, entry)` —
-  escala geral (derivada da ficha). Grava o vínculo
-  `colaboradorId` (ficha canônica), resolvido do `funcionarioId` (Fase 4 · Opção A).
-- `resolverEscalaEfetiva(funcionarioId, diaSemana)` — a escala aplicável no dia.
-- `escalaConsolidada(diaSemana, dataISO?)` — consolidação por dia; no domingo,
-  os fiscais vêm do rodízio de grupos. Quando há **data concreta** (`dataISO`),
-  quem está de férias nesse dia é excluído (via `FeriasService`); a grade
-  semanal sem data não aplica férias (elas são por dia).
+Um método só, e é de leitura: `escalaConsolidada(diaSemana, dataISO?, contexto?)`
+— para cada fiscal, o turno que a **ficha** prevê no dia (entrada, saída, folga),
+com nome e ficha resolvidos.
+
+- **Com `dataISO`** valem o feriado, a posição no rodízio de domingo e as férias do
+  dia (via `FeriasService`). **Sem ela**, a resposta é o turno típico daquele dia da
+  semana — a grade semanal não aplica férias nem feriado, porque eles são por dia.
+- **`contexto`** permite a quem já resolveu o feriado e a âncora passá-los adiante.
+  Quem faz isso é a equipe do dia (`escaladosDoDia`), e não é só economia de
+  consulta: garante que os dois ramos dela respondam ao **mesmo** feriado e à
+  **mesma** âncora.
+- Quem não tem turno no dia aparece como `FOLGA` em vez de desaparecer: a pergunta
+  que esta lista responde é "quem trabalha hoje?", e a ausência de uma linha não
+  distingue "descansa" de "não sei".
+
+Três coisas saíram daqui na etapa 2 da ADR 0026: `cadastrarEscala` (POST `/escala`,
+que gravava uma hora sem efeito sobre a cobrança — pior do que rota nenhuma),
+`resolverEscalaEfetiva` (GET `/escala/:id/efetiva`, sem consumidor) e a leitura de
+horários da cópia semanal.
+
+### `turno-fiscal.ts` + `turno-fiscal.consulta.ts`
+A leitura do turno de um fiscal, num lugar só. Resolvê-lo exige três tabelas —
+`Fiscal` (a identidade da batida), `Usuario` (a conta que liga) e `Colaborador` (a
+ficha, que é a fonte) —, e sete caminhos montavam esse trio por conta própria.
+Bastava um `select` esquecido para um deles resolver um turno pela metade.
+
+- `fiscaisComFicha(...)` — a junção. **Fiscais sem ficha ficam de fora**, pela mesma
+  regra que já valia para operadores. Aceita `vinculosGravados`, o resgate de quem
+  teve a conta desvinculada (ver os riscos).
+- `turnoDoDia(ficha, dia, ancora, ehFeriado)` — entrada e saída juntas, delegando a
+  `entradaEsperadaNoDia`/`saidaEsperadaNoDia`.
+- `dataDeReferencia(diaSemana)` — um dia civil qualquer com aquele dia da semana,
+  para as consultas que só conhecem "quinta" e não uma data. Deixa explícito que ali
+  não há feriado nem rodízio a considerar.
+- `linhasDaSemana(ficha)` — a semana em texto, para a assistente e a Cluby.
 
 ### Coerência ficha ↔ escala semanal — **Conferência de escala**
 
@@ -207,18 +244,24 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 > quem precisava da resposta ("por que a escala mostra um horário que não está na
 > ficha?"). Um diagnóstico que só o time técnico consegue ler não é um diagnóstico.
 
-#### O que ele apura (e o que decide a etapa 2)
+#### O que ele apura
 
-Além das divergências de horário/folga, o relatório responde as três perguntas que a
-**etapa 2** da [ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md)
-exige responder antes de a detecção de falta passar a ler a ficha:
+Este diagnóstico autorizou a **etapa 2** da
+[ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md): rodado em
+produção, nomeou as 7 pessoas (de 11 fiscais ativos) cuja cópia semanal estava mais
+tardia que a ficha. Feita a troca, o assunto dele mudou — a hora cobrada é a da
+ficha, então uma diferença com a cópia não afeta mais ninguém. O que importa agora
+são as **lacunas da ficha**, porque ela virou a única fonte e já não há nada por
+baixo para cobrir um vazio:
 
 | Campo | Pergunta que responde |
 |---|---|
-| `dias[].efeito = 'COBRA_MAIS_CEDO'` + `minutosAdiantados` | **Quem passaria a ser cobrado mais cedo?** Hoje vale a hora mais tardia entre as duas fontes; só este caso pode criar falta onde hoje não existe. |
-| `semFolgaNaFicha` | **Quem perderia o dia de descanso?** Ficha sem `folgaDiaSemana` que hoje folga por uma linha da cópia semanal (ADR 0023, passo da ficha omissa). Bloqueio absoluto. |
+| `incoerentes[].fichaVazia` | **Quem está fora do controle de ponto?** Sem horário na ficha não há hora esperada em dia nenhum: a pessoa não entra na equipe do dia e nunca aparece atrasada ou faltante. O caso mais grave. |
+| `horarioIncompleto` | **Quem tem um bloco pela metade?** Entrada sem saída (ou o inverso) em Seg–Qui ou Sex–Sáb: aqueles dias desaparecem da escala em silêncio. |
 | `domingoSemHorario` | **Quem trabalha domingo sem hora?** Está no rodízio (`grupoDomingo`) e não tem `entradaDom`/`saidaDom` — e, por regra, também fica sem hora em **feriado**. |
-| `bloqueiamEtapa2` + `nomesQueBloqueiam` | O veredito, com nomes. Enquanto for maior que zero, trocar a fonte muda a vida de alguém sem aviso. |
+| `semFolgaNaFicha` | **Quem perderia o descanso quando a cópia sair?** Ficha sem `folgaDiaSemana` que hoje folga por uma linha da cópia semanal (ADR 0023, passo da ficha omissa). É a última decisão que ainda depende dela. |
+| `fichasComLacuna` + `nomesComLacuna` | O resumo, com nomes: quantas fichas têm alguma das lacunas acima. |
+| `dias[].minutosDeDiferenca` | **Onde a cópia ficou para trás.** Informativo: mede a distância entre as duas horas, não um erro de cobrança. |
 
 #### Detalhe da apuração
 
@@ -251,10 +294,12 @@ vazamentos.
   entradas gerais. As **exceções** (`especial`) deixaram de existir — antes eram decisões
   humanas por dia, não derivadas da ficha.
 
-Isso importa porque as duas pontas têm consumidores diferentes: a **detecção
-automática de falta** lê a escala semanal e a **escala publicada** (o PDF que a
-equipe recebe) lê a ficha. Onde discordam, o time lê uma hora e o sistema cobra
-outra — e duas horas depois da hora que o sistema acha certa, nasce uma falta.
+Isso **importava** porque as duas pontas tinham consumidores diferentes: a detecção
+automática de falta lia a cópia semanal e a escala publicada lia a ficha. Onde
+discordavam, o time lia uma hora e o sistema cobrava outra. Desde a etapa 2 da ADR
+0026 as duas leem a ficha, e a cópia velha não cobra nada de ninguém — o que resta
+é o valor de diagnóstico: onde a cópia ficou para trás, a ficha provavelmente
+passou por uma edição que merece um olhar.
 
 `detectarEscalasIncoerentes` (`integridade-escala.ts`, lógica pura) **só
 diagnostica**: não escolhe um lado nem corrige nada. Compara o que a ficha
@@ -273,7 +318,7 @@ casos de ficha vazia, preencher os horários **primeiro**.
 > (`funcionarioId`, `diaSemana`, `especial`), e `cadastrarEscala` fazia `create`
 > cego — criando uma segunda entrada geral para o mesmo dia. O problema não eram
 > as duplicadas: era que os dois leitores desempatavam **ao contrário**
-> (`resolverEscalaEfetiva` pegava a primeira, `escalaConsolidada` a última), então
+> (um pegava a primeira linha, outro a última), então
 > a escala efetiva de uma pessoa dependia de quem perguntava. Hoje a escrita
 > **substitui** a geral do dia e os dois leitores usam a **primeira**. As
 > duplicadas remanescentes aparecem no `npm run integridade`; um índice único
@@ -296,7 +341,8 @@ casos de ficha vazia, preencher os horários **primeiro**.
   sex-sáb 8h); envolvida por `cargaBaseDoDia` em [`ponto`](ponto.md), que é quem
   os cálculos usam. `isDomingo(diaSemana)` é legado: **não** decide o adicional
   (quem decide é `diaPagaAdicional100`).
-- Escala: `resolverEscalaEfetiva`, `escalaConsolidada`, `gerarEscalaSemanalFiscal`,
+- Escala: `turnoDoDia`, `fiscaisComFicha`, `dataDeReferencia`, `linhasDaSemana`,
+  `gerarEscalaSemanalFiscal`,
   `temEscalaDefinida` (o cadastro é a fonte única — Opção A).
 - `mapearFiscalColaborador(...)` → une o fiscal à ficha do colaborador por conta
   de acesso ou, em fallback, por matrícula.
@@ -307,12 +353,12 @@ casos de ficha vazia, preencher os horários **primeiro**.
 ## 7. Estados e enums
 - `StatusFiscal`: `DISPONIVEL` · `INTERVALO` · `FORA_EXPEDIENTE`. O status atual
   é sempre o da última transição; toda mudança gera aviso ao gestor.
-- `EscalaEfetiva`: uma `EscalaEntry` aplicável **ou** `'FOLGA'`.
+- `EscalaEfetiva`: um `TurnoEfetivo` (os horários do dia) **ou** `'FOLGA'`.
 - Jornada esperada: Seg–Qui 7h, Sex–Sáb 8h, Dom 7h20 (o excedente é hora extra).
 
 ## 8. Dados que o módulo toca
 - **Escreve:** `RegistroPontoFiscal` (log de status, agora com `colaboradorId`
-  em registros novos), `EscalaEntry` (escala geral/especial), `Ausencia` (falta
+  em registros novos), `Ausencia` (falta
   do fiscal, agora com `colaboradorId`).
 - **Lê:** `Fiscal`, `Usuario`, `Colaborador` (vínculo/nome), `EscalaEntry`,
   `Ausencia`, contratos e feriados (regras de jornada/extras).
@@ -362,24 +408,24 @@ casos de ficha vazia, preencher os horários **primeiro**.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `fiscais.service.spec.ts` | Status, painel, jornada, fiscal histórico e vínculo `colaboradorId` no ponto/falta/escala/status (Fase 4) | 19 |
+| `fiscais.service.spec.ts` | Status, painel, jornada, fiscal histórico e vínculo `colaboradorId` no ponto/falta/status (Fase 4) | 17 |
 | `status-operador.spec.ts` | Painel inclui operadores; `publicarStatusColaborador` emite o evento pela ficha | 2 |
-| `fiscais.properties.spec.ts` | Status atual, transição, jornada, escala (property-based) | 5 |
+| `fiscais.properties.spec.ts` | Status atual, transição, jornada e a **Property 20**: o turno de um dia é sempre um horário da própria ficha, ou nenhum (property-based) | 5 |
 | `fiscais.controller.spec.ts` | Rotas do próprio fiscal e log de jornada | 4 |
 | `fiscais.gateway.spec.ts` | Broadcast do painel via WebSocket (integração) | 3 |
 | `fiscais.painel-status.spec.ts` | Status do painel a partir das batidas | 2 |
 | `fiscais-alertas.intervalo.spec.ts` | Alerta de intervalo longo | 2 |
 | `jornada-marcacoes.spec.ts` | Jornada a partir das marcações do dia | 2 |
 | `integridade-vinculo.ts` + `integridade-escala.ts` | Regras puras dos dois diagnósticos de `npm run integridade` (vínculos e coerência de escala) | — |
-| `hora-esperada-fiscal.ts` | Regra pura: a hora que pode ser cobrada de um fiscal (a mais tardia entre ficha e escala) | — |
+| `turno-fiscal.ts` | Regra pura: o turno de um fiscal num dia, sempre a partir da ficha | — |
 | `escala-inativo.spec.ts` | Escala de colaborador inativo | 1 |
 | `escalados-ferias.spec.ts` | `escaladosDoDia` exclui quem está de férias | 2 |
 | `escalados-folga.spec.ts` | **Regressão:** `escaladosDoDia` respeita a folga pela regra única e na ordem certa — não escala o fiscal com folga na ficha mesmo com a escala semanal escalando (o caso real), nem quem tem folga na escala **com a ficha omissa**; e **escala** quando a ficha afirma outro dia e só a escala velha diz folga (ADR 0023) | 4 |
-| `escalados-feriado.spec.ts` | `escaladosDoDia` em feriado: horário de domingo (operador e fiscal), folga inalterada, fallback sem `entradaDom` e sem `FeriadosService` | 8 |
-| `coerencia-escalados-escala.spec.ts` | **Coerência entre `escaladosDoDia` e a [escala publicada](escala-exportacao.md):** dia normal, folga, falta do operador, **falta do fiscal** (a que a publicada não via, por causa da tradução de ids), exceção de horário, convocação em dia de folga, os dois casos que impedem o laço da revalidação, e a **escala semanal velha** nas duas direções (mais cedo → passa a usar a ficha; mais tarde → não adianta a cobrança) | 10 |
-| `integridade-escala.spec.ts` | **Diagnóstico ficha ↔ escala semanal**: horário divergente, folga divergente, **ficha vazia com escala sobrevivente**, ficha sem escala, horário pela metade, entradas duplicadas, inativos ignorados, escala antiga ligada só pelo `funcionarioId` e — para a etapa 2 — quem seria **cobrado mais cedo** (com os minutos), ficha **sem dia de folga** que hoje descansa pela cópia, e **rodízio de domingo sem horário** (falta entrada, saída ou ambas) | 16 |
-| `hora-esperada-fiscal.spec.ts` | A **regra conservadora** da hora cobrada: as duas pontas da discordância, a exceção que vence, o feriado que não entra na comparação, ficha sem turno (não se cobra), fiscal sem ficha, horas ilegíveis — e a **propriedade central**, varrida sobre uma grade: nunca devolve hora mais cedo do que a escala cobrava antes | 11 |
-| `escala-colaborador.spec.ts` | Geração da escala semanal a partir da ficha (Seg–Qui, Sex–Sáb, folga, domingo) + o **desempate de duplicadas**: os dois leitores usam a primeira entrada, e a exceção segue prevalecendo | 6 |
+| `escala.service.spec.ts` | **A escala consolidada vem da ficha**: a hora da cópia semanal é ignorada nos dois sentidos, folga da ficha, dia sem horário, feriado com o horário de domingo, rodízio de domingo (com e sem âncora), desligado, férias, fiscal sem ficha, resgate pelo vínculo gravado e a consulta por dia da semana | 12 |
+| `escalados-feriado.spec.ts` | `escaladosDoDia` em feriado: horário de domingo do operador, folga inalterada, fallback sem `entradaDom`, sem `FeriadosService` e a **delegação** aos fiscais (a hora da consolidada é a cobrada; FOLGA e "sem turno" saem da lista) | 8 |
+| `coerencia-escalados-escala.spec.ts` | **Coerência entre `escaladosDoDia` e a [escala publicada](escala-exportacao.md)**, agora com o `EscalaService` real em vez de um dublê: dia normal, folga, falta do operador, **falta do fiscal** (a que a publicada não via, por causa da tradução de ids), os dois casos que impedem o laço da revalidação, e a **cópia semanal desatualizada nos dois sentidos** — mais cedo e mais tarde, as duas sem efeito sobre a cobrança | 9 |
+| `integridade-escala.spec.ts` | **Diagnóstico das fichas**: **ficha vazia** (a pessoa fica fora do controle de ponto), horário pela metade, **rodízio de domingo sem horário** (falta entrada, saída ou ambas), ficha **sem dia de folga** que hoje descansa pela cópia, distância até a cópia semanal nos **dois sentidos**, folga divergente sem distância a medir, ficha sem cópia, duplicadas, inativos ignorados e cópia antiga ligada só pelo `funcionarioId` | 16 |
+| `escala-colaborador.spec.ts` | Geração da cópia semanal a partir da ficha (Seg–Qui, Sex–Sáb, folga, domingo) | 4 |
 | `integridade-vinculo.spec.ts` | Detecção de vínculos órfãos fiscal ↔ ficha (Fase 4) | 6 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
@@ -388,20 +434,30 @@ casos de ficha vazia, preencher os horários **primeiro**.
 - 🔧 `fiscais.service.ts` concentra status, painel, jornada, extras, ranking e
   contexto — forte candidato a extrair sub-serviços. (Tamanho atual em
   [estado-e-métricas](../08-gestao/estado-e-metricas.md).)
+- 🔧 **A tabela `EscalaEntry` sobrevive sem decidir horário** (etapa 3 da ADR
+  0026). Nada lê mais uma hora dela, mas ela guarda duas coisas que ainda não têm
+  outro lugar: **`intervaloMin`** (a duração do intervalo do turno, usada pelas
+  sugestões de "não retornou do intervalo" em [`incidencias`](incidencias.md), e a
+  ficha não tem campo para ela) e o **vínculo `funcionarioId → colaboradorId`**, o
+  único jeito de reconhecer a ficha de um fiscal que teve a conta de acesso
+  desvinculada — sem ele essa pessoa desaparece da escala, e se estiver desligada
+  escapa do filtro de inativos. `carregarFiscaisComFicha` lê da cópia **apenas o
+  vínculo**. Enquanto a tabela existir, `sincronizarEscalaFiscal` continua a
+  regenerá-la: congelá-la com dados antigos seria pior.
+- 🔧 **A regra de folga ainda aceita a cópia semanal quando a ficha é omissa**
+  (`FolgaService`, passo 2 — ADR 0023). É a última decisão que depende dela. Cortar
+  esse passo hoje não traria benefício e escalaria sete dias por semana quem tem a
+  ficha incompleta; a Conferência de escala aponta essas fichas em
+  `semFolgaNaFicha`, e o lugar de corrigir é o cadastro.
 - ⚠️ **`escaladosDoDia` é a terceira forma de responder "quem trabalha hoje".** O
   Quadro de Operadores e a escala publicada já convergiram em
   `montarLinhaEscala`; esta não. O que ainda a separa:
-  1. **A fonte do horário do fiscal — resolvida pela via conservadora.** A ficha é
-     a fonte (Opção A) e a escala semanal é um **derivado** que fica velho quando
-     `sincronizarEscalaFiscal` sai por uma das suas guardas. Em vez de trocar a
-     fonte de uma vez (o que **adiantaria** a cobrança de quem tem a ficha mais
-     cedo, criando faltas novas), a detecção passou a usar a **hora mais tardia**
-     das duas. Nunca cria falta que antes não existia; as divergências continuam
-     aparecendo em `npm run integridade` para o gestor resolver na ficha. A
-     unificação completa (ler só a ficha) fica para quando os dados estiverem
-     coerentes.
+  1. ~~**A fonte do horário do fiscal.**~~ **Resolvido** (ADR 0026, etapa 2): as
+     três formas leem a ficha, pelas mesmas funções
+     (`entradaEsperadaNoDia`/`saidaEsperadaNoDia`). A hora cobrada é a hora
+     publicada, por construção.
   2. **A forma.** Whitelist sem estado nem saída, contra uma tabela de estados.
-     Um fiscal **sem `EscalaEntry`** para o dia simplesmente não existe aqui (não
+     Um fiscal **sem horário na ficha** para o dia simplesmente não existe aqui (não
      sai como folga: não sai), então nunca recebe falta automática.
   3. **A identidade.** `EscaladoDia` carrega o par `(pessoaId, tipoPessoa)` porque
      o cron precisa gravar a falta com o id certo — `Fiscal.id` para fiscais,

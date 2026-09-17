@@ -37,10 +37,10 @@ describe('EscalaService.escalaConsolidada — exclui inativos "sem ficha"', () =
   }): EscalaService {
     const prisma = {
       escalaEntry: {
-        findMany: ({ where }: { where: { diaSemana: number } }) =>
-          Promise.resolve(
-            opts.entries.filter((e) => e.diaSemana === where.diaSemana),
-          ),
+        // A escala consolidada lê daqui apenas o VÍNCULO
+        // (funcionarioId → colaboradorId), nunca um horário: é o que reconhece a
+        // ficha de quem teve a conta de acesso desvinculada.
+        findMany: () => Promise.resolve(opts.entries),
       },
       fiscal: { findMany: () => Promise.resolve(opts.fiscais) },
       usuario: { findMany: () => Promise.resolve([]) },

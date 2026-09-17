@@ -605,16 +605,7 @@ export interface DetalheCancelamentosTotais {
   anoMesLimite: string;
 }
 
-// ----- Conferência de escala (ficha × escala semanal — ADR 0026, etapa 2) -----
-
-/**
- * Efeito de mover a detecção de falta para a ficha, num dia divergente.
- *
- * Hoje vale a hora **mais tardia** entre a ficha e a cópia semanal. Então só
- * `COBRA_MAIS_CEDO` muda a vida de alguém: a cobrança adianta e pode nascer falta
- * onde hoje não existe.
- */
-export type EfeitoNaCobranca = 'COBRA_MAIS_CEDO' | 'SEM_EFEITO';
+// ----- Conferência de escala (ficha × cópia semanal — ADR 0026) -----
 
 /** O turno de um dia, como cada fonte o descreve. */
 export interface TurnoDoDia {
@@ -629,9 +620,11 @@ export interface DiaIncoerente {
   /** `null` = a fonte não tem entrada para esse dia. */
   ficha: TurnoDoDia | null;
   escala: TurnoDoDia | null;
-  efeito: EfeitoNaCobranca;
-  /** Minutos que a cobrança adiantaria (0 quando não há efeito). */
-  minutosAdiantados: number;
+  /**
+   * Distância entre as duas horas, em minutos (0 quando falta uma delas). Mede o
+   * atraso da cópia, não um erro de cobrança: a hora cobrada é a da ficha.
+   */
+  minutosDeDiferenca: number;
 }
 
 /** Um fiscal cuja escala semanal não corresponde à ficha. */
@@ -640,7 +633,11 @@ export interface FiscalEscalaIncoerente {
   nome: string;
   matricula: string;
   dias: DiaIncoerente[];
-  /** Ficha sem nenhum horário, com escala sobrevivente (tipicamente do seed). */
+  /**
+   * Ficha sem nenhum horário. Como a ficha é a única fonte, esta pessoa não tem
+   * hora esperada em nenhum dia: não aparece na equipe do dia e nunca é apontada
+   * como atrasada ou faltante.
+   */
   fichaVazia: boolean;
 }
 
@@ -653,7 +650,11 @@ export interface FiscalHorarioIncompleto {
   blocos: string[];
 }
 
-/** Ficha sem dia de folga que hoje descansa por causa da cópia semanal. */
+/**
+ * Ficha sem dia de folga que hoje descansa por causa da cópia semanal — a última
+ * decisão que ainda depende dela. Quando a cópia sair, esta pessoa passaria a ser
+ * esperada todos os dias.
+ */
 export interface FichaSemFolga {
   colaboradorId: string;
   nome: string;
@@ -687,9 +688,13 @@ export interface ConferenciaEscala {
   domingoSemHorario: DomingoSemHorario[];
   totalFiscaisAtivos: number;
   coerentes: number;
-  /** Quantas pessoas seriam afetadas se a fonte trocasse hoje. */
-  bloqueiamEtapa2: number;
-  nomesQueBloqueiam: string[];
+  /**
+   * Quantas pessoas têm uma lacuna na ficha que as deixa, total ou parcialmente,
+   * fora do controle de ponto: sem horário, com um bloco pela metade, no rodízio de
+   * domingo sem horário de domingo, ou sem dia de folga.
+   */
+  fichasComLacuna: number;
+  nomesComLacuna: string[];
   /** true quando não há nenhuma pendência. */
   ok: boolean;
 }
@@ -1232,7 +1237,6 @@ export interface EscalaEntry {
   saida: string | null;
   intervaloMin: number;
   folga: boolean;
-  especial: boolean;
 }
 
 /** Escala efetiva resolvida: a entrada aplicável ou 'FOLGA'. */
