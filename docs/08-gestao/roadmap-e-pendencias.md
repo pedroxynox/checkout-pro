@@ -98,11 +98,18 @@ horário da escala semanal foi removida e os dados antigos foram limpos (ver
 
 Ficou para a etapa 2, na ordem:
 
+0. **Concluído — o diagnóstico virou auto-serviço.** A **Conferência de escala**
+   (Centro de Controle, só leitura) mostra onde a ficha e a escala semanal
+   discordam e responde o que a etapa 2 exige: **quem seria cobrado mais cedo**
+   (com os minutos), **quem perderia o dia de descanso** (ficha sem folga) e **quem
+   trabalha domingo sem horário**. Traz um veredito com nomes
+   (`bloqueiamEtapa2`). Antes isso só existia como comando de terminal, fora do
+   alcance de quem precisava da resposta.
 1. **A detecção de falta passa a ler a ficha.** Hoje ela lê a cópia semanal
    (`EscalaEntry`) com uma regra conservadora — quando as duas discordam, vale a
-   hora mais tardia, para nunca criar uma falta que antes não existia. Trocar a
-   fonte exige **rodar o diagnóstico antes** (`npm run integridade`) e conferir
-   quem seria cobrado mais cedo.
+   hora mais tardia, para nunca criar uma falta que antes não existia. **Só avançar
+   quando a Conferência de escala apontar zero pessoas afetadas**; enquanto houver,
+   corrigir a ficha delas primeiro.
 2. **Retirar a cópia semanal.** Com todos os leitores na ficha, `EscalaEntry` deixa
    de ter função e a coluna `especial` (hoje sempre `false`) pode ser removida.
 3. **A escala semanal derivada ignora o horário de domingo da ficha.**

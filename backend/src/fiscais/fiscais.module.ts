@@ -10,6 +10,7 @@ import { FiscaisController } from './fiscais.controller';
 import { FiscaisService } from './fiscais.service';
 import { FiscaisHorarioService } from './fiscais-horario.service';
 import { FiscaisAlertasService } from './fiscais-alertas.service';
+import { ConferenciaEscalaService } from './conferencia-escala.service';
 import { EscalaController } from './escala.controller';
 import { EscalaService } from './escala.service';
 import { FiscaisGateway } from './fiscais.gateway';
@@ -22,6 +23,10 @@ import { FiscalStatusEventos } from './fiscais.eventos';
  *
  * Importa o `NotificacoesModule` para avisar os gestores nas transições de
  * status e nas faltas. O `PrismaService` é global.
+ *
+ * Inclui a **Conferência de escala**: o diagnóstico ficha × escala semanal, antes
+ * disponível só por comando de terminal, agora consultável pelo gestor (ADR 0026,
+ * etapa 2).
  */
 @Module({
   imports: [
@@ -37,6 +42,7 @@ import { FiscalStatusEventos } from './fiscais.eventos';
     FiscaisService,
     FiscaisHorarioService,
     FiscaisAlertasService,
+    ConferenciaEscalaService,
     EscalaService,
     FiscalStatusEventos,
     FiscaisGateway,

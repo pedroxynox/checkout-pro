@@ -57,6 +57,11 @@ async function main(): Promise<void> {
           saidaSemana: true,
           entradaFds: true,
           saidaFds: true,
+          // Domingo decide domingo E feriado: sem estes campos o diagnóstico não
+          // vê quem está no rodízio sem hora para trabalhar (ADR 0026, etapa 2).
+          entradaDom: true,
+          saidaDom: true,
+          grupoDomingo: true,
           folgaDiaSemana: true,
           ativo: true,
         },
@@ -147,8 +152,14 @@ async function main(): Promise<void> {
               ? 'folga'
               : `${d.escala.entrada}–${d.escala.saida}`
             : '(nada)';
+          // O efeito da etapa 2 fica ao lado do dia: é o que decide se a troca de
+          // fonte pode andar sem mexer na vida de alguém.
+          const efeito =
+            d.efeito === 'COBRA_MAIS_CEDO'
+              ? `  ⚠️ etapa 2 adiantaria a cobrança em ${d.minutosAdiantados} min`
+              : '';
           console.log(
-            `      ${nomeDoDia(d.diaSemana)}: ficha ${naFicha} · escala ${naEscala}`,
+            `      ${nomeDoDia(d.diaSemana)}: ficha ${naFicha} · escala ${naEscala}${efeito}`,
           );
         }
       }
@@ -184,6 +195,39 @@ async function main(): Promise<void> {
       }
     }
 
+    if (e.semFolgaNaFicha.length > 0) {
+      console.log(
+        `\nFicha SEM dia de folga (${e.semFolgaNaFicha.length}) —` +
+          ' hoje descansam por causa da cópia semanal.\n' +
+          '    Retirar a cópia (etapa 2) as deixaria escaladas TODOS os dias:',
+      );
+      for (const f of e.semFolgaNaFicha) {
+        const dias = f.diasDeFolgaNaEscala.map(nomeDoDia).join(', ');
+        console.log(
+          `  - ${f.nome} (matrícula=${f.matricula}): folga na escala em ${dias}`,
+        );
+      }
+    }
+
+    if (e.domingoSemHorario.length > 0) {
+      console.log(
+        `\nNo rodízio de domingo SEM horário de domingo (${e.domingoSemHorario.length}) —` +
+          ' trabalham domingo sem hora,\n' +
+          '    e por regra também ficam sem hora em FERIADO (que usa o horário de domingo):',
+      );
+      for (const f of e.domingoSemHorario) {
+        const oQueFalta =
+          f.falta === 'AMBAS'
+            ? 'entrada e saída'
+            : f.falta === 'ENTRADA'
+              ? 'entrada'
+              : 'saída';
+        console.log(
+          `  - ${f.nome} (matrícula=${f.matricula}, grupo ${f.grupoDomingo}): falta ${oQueFalta}`,
+        );
+      }
+    }
+
     if (e.duplicadas.length > 0) {
       console.log(
         `\nEntradas GERAIS duplicadas (${e.duplicadas.length}) —` +
@@ -198,6 +242,21 @@ async function main(): Promise<void> {
 
     if (e.ok) {
       console.log('\n✅ Escala semanal coerente com as fichas.');
+    }
+
+    // Veredito da etapa 2 (ADR 0026): a troca da fonte da detecção de falta só
+    // pode andar quando ninguém for cobrado mais cedo nem perder o descanso.
+    console.log('\n== Etapa 2: a detecção de falta pode passar a ler a ficha? ==');
+    if (e.bloqueiamEtapa2 === 0) {
+      console.log(
+        '✅ Sim. Nenhuma pessoa seria cobrada mais cedo nem perderia o dia de folga.',
+      );
+    } else {
+      console.log(
+        `⚠️  Ainda não: ${e.bloqueiamEtapa2} pessoa(s) seriam afetadas — ` +
+          `${e.nomesQueBloqueiam.join(', ')}.\n` +
+          '    Corrija a ficha delas (horário e dia de folga) e rode de novo.',
+      );
     }
 
     const tudoOk =

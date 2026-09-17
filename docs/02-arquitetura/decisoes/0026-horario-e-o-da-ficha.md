@@ -80,6 +80,15 @@ novas não é corrigir. Só o ramo da exceção saiu daquela função.
 Mover a detecção de falta para ler a ficha (e retirar a cópia semanal) é a **etapa
 2** deste trabalho, deliberadamente separada.
 
+> **Atualização (2026-09-17) — o diagnóstico da etapa 2 já está entregue.** A tela
+> **Conferência de escala** (Centro de Controle, só leitura) responde as três
+> perguntas que a troca de fonte exige: quem seria **cobrado mais cedo** (com os
+> minutos), quem **perderia o dia de descanso** (ficha sem folga) e quem **trabalha
+> domingo sem horário**. Antes a apuração existia apenas como `npm run integridade`,
+> um comando de terminal com acesso ao banco — inacessível para quem precisava da
+> resposta. A troca da fonte só deve acontecer quando o veredito apontar **zero**
+> pessoas afetadas.
+
 ## Consequências
 
 **Positivas**

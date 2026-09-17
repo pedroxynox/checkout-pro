@@ -83,6 +83,11 @@ export type RootStackParamList = {
   };
   /** Escala para publicar (dia/semana) em PDF e imagem 4K. */
   Escala: undefined;
+  /**
+   * Conferência de escala: onde a ficha e a escala semanal discordam, e quem
+   * seria afetado se a detecção de falta passasse a ler a ficha (ADR 0026).
+   */
+  ConferenciaEscala: undefined;
   Inconsistencias: undefined;
   /** Relatório de marcações faltantes do ciclo (aberto pela Central). */
   MarcacoesInvalidas: undefined;

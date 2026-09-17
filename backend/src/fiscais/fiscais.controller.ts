@@ -24,6 +24,8 @@ import {
   ResumoStatus,
 } from './fiscais.service';
 import { Jornada } from './fiscais.domain';
+import { ConferenciaEscalaService } from './conferencia-escala.service';
+import { ReporteIntegridadeEscala } from './integridade-escala';
 
 /**
  * API do Modulo_Fiscais (controle de jornada).
@@ -35,7 +37,23 @@ import { Jornada } from './fiscais.domain';
  */
 @Controller('fiscais')
 export class FiscaisController {
-  constructor(private readonly service: FiscaisService) {}
+  constructor(
+    private readonly service: FiscaisService,
+    private readonly conferencia: ConferenciaEscalaService,
+  ) {}
+
+  /**
+   * **Conferência de escala**: onde a ficha e a escala semanal discordam.
+   *
+   * Só leitura, e restrita ao gestor (`OPERADORES_CRUD`, como o restante do
+   * Centro de Controle). Antes esta apuração só existia como comando de terminal
+   * (`npm run integridade`), fora do alcance de quem precisa da resposta.
+   */
+  @Get('conferencia-escala')
+  @Funcionalidade('OPERADORES_CRUD')
+  conferenciaEscala(): Promise<ReporteIntegridadeEscala> {
+    return this.conferencia.conferir();
+  }
 
   /** Painel de todos os fiscais com o status atual. */
   @Get('painel')

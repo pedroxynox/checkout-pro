@@ -34,6 +34,7 @@ import { FeriadosScreen } from '../screens/ponto/FeriadosScreen';
 import { ChecklistScreen } from '../screens/checklist/ChecklistScreen';
 import { OperadoresScreen } from '../screens/operadores/OperadoresScreen';
 import { EscalaScreen } from '../screens/escala/EscalaScreen';
+import { ConferenciaEscalaScreen } from '../screens/escala/ConferenciaEscalaScreen';
 import { JustificativasScreen } from '../screens/operadores/JustificativasScreen';
 import { ColaboradoresScreen } from '../screens/colaboradores/ColaboradoresScreen';
 import { ContratosScreen } from '../screens/contratos/ContratosScreen';
@@ -263,6 +264,16 @@ export function AppNavigator(): React.ReactElement {
           name="Escala"
           component={EscalaScreen}
           options={{ title: 'Publicar escala' }}
+        />
+      )}
+      {/* Conferência de escala: diagnóstico de gestão (ficha × escala semanal),
+          por isso exige a mesma permissão do Centro de Controle e não a de
+          visualizar escala. */}
+      {podeAcessar('OPERADORES_CRUD') && (
+        <Stack.Screen
+          name="ConferenciaEscala"
+          component={ConferenciaEscalaScreen}
+          options={{ title: 'Conferência de escala' }}
         />
       )}
       {podeAcessar('OPERADORES_AUSENCIAS') && (

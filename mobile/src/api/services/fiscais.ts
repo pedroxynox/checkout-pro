@@ -1,6 +1,7 @@
 /** Serviço de Fiscais (controle de jornada) e Escala (Req 4.x). */
 import { apiClient } from '../client';
 import {
+  ConferenciaEscala,
   EditarIncidenciaInput,
   EscalaEfetiva,
   FiltroIncidencias,
@@ -199,5 +200,15 @@ export const escalaService = {
       inicio,
       fim,
     });
+  },
+
+  /**
+   * **Conferência de escala**: onde a ficha e a escala semanal discordam.
+   *
+   * Só leitura. Antes esta apuração existia apenas como comando de terminal, fora
+   * do alcance de quem precisa da resposta (ADR 0026, etapa 2).
+   */
+  conferenciaEscala(): Promise<ConferenciaEscala> {
+    return apiClient.get<ConferenciaEscala>('/fiscais/conferencia-escala');
   },
 };

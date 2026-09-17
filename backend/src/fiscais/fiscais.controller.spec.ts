@@ -7,6 +7,12 @@ import { FiscaisService } from './fiscais.service';
  * próprio status e informa falta (auto-identificado pelo login); erro quando o
  * usuário não é fiscal; e o log de jornada delega ao serviço.
  */
+/**
+ * A Conferência de escala é dependência nova do controller (ADR 0026, etapa 2) e
+ * não participa de nenhum destes casos: um fake vazio basta.
+ */
+const conferenciaFake = { conferir: () => Promise.resolve(null) };
+
 describe('FiscaisController', () => {
   const usuarioFiscal = { sub: 'u1', login: '1', perfil: 'FISCAL' } as never;
 
@@ -21,7 +27,7 @@ describe('FiscaisController', () => {
     const controller = new FiscaisController({
       meuFiscal,
       definirStatus,
-    } as unknown as FiscaisService);
+    } as unknown as FiscaisService, conferenciaFake as never);
 
     await controller.definirMeuStatus({ status: 'INTERVALO' }, usuarioFiscal);
 
@@ -35,7 +41,7 @@ describe('FiscaisController', () => {
     const controller = new FiscaisController({
       meuFiscal,
       registrarFalta,
-    } as unknown as FiscaisService);
+    } as unknown as FiscaisService, conferenciaFake as never);
 
     await controller.informarFalta(usuarioFiscal);
 
@@ -48,7 +54,7 @@ describe('FiscaisController', () => {
       .mockRejectedValue(new FiscalNaoEncontradoError());
     const controller = new FiscaisController({
       meuFiscal,
-    } as unknown as FiscaisService);
+    } as unknown as FiscaisService, conferenciaFake as never);
 
     await expect(
       controller.definirMeuStatus({ status: 'DISPONIVEL' }, {
@@ -63,7 +69,7 @@ describe('FiscaisController', () => {
     const jornadaDoDia = jest.fn().mockResolvedValue([{ fiscalId: 'f1' }]);
     const controller = new FiscaisController({
       jornadaDoDia,
-    } as unknown as FiscaisService);
+    } as unknown as FiscaisService, conferenciaFake as never);
 
     await controller.jornada('2024-03-10');
 

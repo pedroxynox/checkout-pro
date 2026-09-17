@@ -32,6 +32,11 @@ describe('detectarEscalasIncoerentes', () => {
       entradaFds: '08:00',
       saidaFds: '16:20',
       folgaDiaSemana: 1,
+      // Fora do rodízio de domingo por padrão: quem não trabalha domingo não
+      // precisa de horário de domingo, e não deve aparecer como pendência.
+      entradaDom: null,
+      saidaDom: null,
+      grupoDomingo: null,
       ativo: true,
       ...over,
     };
@@ -65,9 +70,10 @@ describe('detectarEscalasIncoerentes', () => {
   });
 
   it('aponta o dia em que o HORÁRIO gravado difere da ficha', () => {
-    // O caso central: a ficha diz 07:00 e a escala semanal ficou em 06:50. A
-    // equipe lê 07:00 na escala publicada; a detecção cobra o ponto às 06:50 e
-    // marca falta às 08:50 em quem chegou às 07:00.
+    // A ficha diz 07:00 e a escala semanal ficou em 06:50. A equipe lê 07:00 na
+    // escala publicada. A regra conservadora já usa a hora mais TARDIA, então a
+    // cobrança hoje também é às 07:00 — a divergência existe, mas trocar a fonte
+    // pela ficha não muda a cobrança de ninguém: `SEM_EFEITO`.
     const escala = escalaCoerente();
     escala[1] = { ...escala[1], entrada: '06:50' };
     const r = rodar([ficha()], escala);
@@ -79,8 +85,128 @@ describe('detectarEscalasIncoerentes', () => {
         diaSemana: 2,
         ficha: { entrada: '07:00', saida: '15:20', folga: false },
         escala: { entrada: '06:50', saida: '15:20', folga: false },
+        efeito: 'SEM_EFEITO',
+        minutosAdiantados: 0,
       },
     ]);
+    expect(r.bloqueiamEtapa2).toBe(0);
+  });
+
+  /**
+   * O caso que decide se a etapa 2 pode andar: a cópia semanal é MAIS TARDIA que
+   * a ficha, então é ela que vale hoje. Passando a valer a ficha, a cobrança
+   * adianta 25 minutos — e quem chegava às 07:20 sem problema pode receber falta.
+   * É o único efeito arriscado de trocar a fonte, e o diagnóstico tem de nomeá-lo
+   * com pessoa e minutos.
+   */
+  it('isola quem passaria a ser cobrado MAIS CEDO, com os minutos', () => {
+    const escala = escalaCoerente();
+    escala[1] = { ...escala[1], entrada: '07:25' };
+    const r = rodar([ficha()], escala);
+
+    expect(r.incoerentes[0].dias).toEqual([
+      {
+        diaSemana: 2,
+        ficha: { entrada: '07:00', saida: '15:20', folga: false },
+        escala: { entrada: '07:25', saida: '15:20', folga: false },
+        efeito: 'COBRA_MAIS_CEDO',
+        minutosAdiantados: 25,
+      },
+    ]);
+    expect(r.bloqueiamEtapa2).toBe(1);
+    expect(r.nomesQueBloqueiam).toEqual(['Bia']);
+  });
+
+  /**
+   * Bloqueio absoluto da etapa 2: sem dia de folga na ficha, a pessoa descansa
+   * hoje por causa de uma linha da cópia semanal (ADR 0023, passo da ficha
+   * omissa). Retirar a cópia a deixaria escalada todos os dias.
+   */
+  it('aponta a ficha SEM dia de folga que hoje descansa pela cópia semanal', () => {
+    const r = rodar([ficha({ folgaDiaSemana: null })], escalaCoerente());
+
+    expect(r.semFolgaNaFicha).toEqual([
+      {
+        colaboradorId: 'col-1',
+        nome: 'Bia',
+        matricula: '1001',
+        diasDeFolgaNaEscala: [1],
+      },
+    ]);
+    expect(r.bloqueiamEtapa2).toBe(1);
+  });
+
+  it('não acusa ficha sem folga quando a cópia também não concede folga', () => {
+    // Sem folga em nenhuma das duas fontes não há descanso a perder: o problema
+    // dessa pessoa é outro (ficha incompleta), e não é bloqueio da etapa 2.
+    const semFolga = escalaCoerente().filter((e) => !e.folga);
+    const r = rodar([ficha({ folgaDiaSemana: null })], semFolga);
+
+    expect(r.semFolgaNaFicha).toHaveLength(0);
+  });
+
+  /**
+   * Quem está no rodízio e não tem horário de domingo trabalha domingo sem hora —
+   * e, por regra de negócio, também fica sem hora em FERIADO, que usa o horário
+   * de domingo. A ficha não mostrava esse campo até a ADR 0026.
+   */
+  it('aponta quem está no rodízio de domingo sem horário de domingo', () => {
+    const r = rodar([ficha({ grupoDomingo: 'G2' })], escalaCoerente());
+
+    expect(r.domingoSemHorario).toEqual([
+      {
+        colaboradorId: 'col-1',
+        nome: 'Bia',
+        matricula: '1001',
+        grupoDomingo: 'G2',
+        falta: 'AMBAS',
+      },
+    ]);
+    expect(r.ok).toBe(false);
+  });
+
+  it('distingue falta só da entrada, só da saída ou das duas no domingo', () => {
+    const soEntrada = rodar(
+      [ficha({ grupoDomingo: 'G1', saidaDom: '13:00' })],
+      escalaCoerente(),
+    );
+    const soSaida = rodar(
+      [ficha({ grupoDomingo: 'G1', entradaDom: '07:00' })],
+      escalaCoerente(),
+    );
+
+    expect(soEntrada.domingoSemHorario[0].falta).toBe('ENTRADA');
+    expect(soSaida.domingoSemHorario[0].falta).toBe('SAIDA');
+  });
+
+  it('rodízio COM horário de domingo completo não é pendência', () => {
+    const r = rodar(
+      [
+        ficha({
+          grupoDomingo: 'G3',
+          entradaDom: '07:00',
+          saidaDom: '13:00',
+        }),
+      ],
+      escalaCoerente(),
+    );
+
+    expect(r.domingoSemHorario).toHaveLength(0);
+    expect(r.ok).toBe(true);
+  });
+
+  it('uma folga divergente não adianta cobrança: quem folga não é cobrado', () => {
+    // A folga é reconciliada em runtime pela regra única, e não há hora a
+    // comparar. Vira divergência de cadastro, nunca bloqueio da etapa 2.
+    const escala = escalaCoerente().map((e) =>
+      e.diaSemana === 3 ? { ...e, entrada: null, saida: null, folga: true } : e,
+    );
+    const r = rodar([ficha()], escala);
+
+    expect(r.incoerentes[0].dias.every((d) => d.efeito === 'SEM_EFEITO')).toBe(
+      true,
+    );
+    expect(r.bloqueiamEtapa2).toBe(0);
   });
 
   it('aponta quando a FOLGA da escala não é a da ficha', () => {

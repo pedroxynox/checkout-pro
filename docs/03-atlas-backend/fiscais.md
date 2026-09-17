@@ -39,11 +39,13 @@ os alertas automáticos e a **escala de trabalho** (apenas a geral, derivada da 
 | `fiscais-horario.service.ts` | Cron: lembretes de horário aos fiscais (conta resolvida pela ficha) | 143 |
 | `fiscais-alertas.service.ts` | Cron: alertas de intervalo longo e cobertura | 416 |
 | `escala.controller.ts` | Rotas da escala de trabalho | 64 |
+| `conferencia-escala.service.ts` | **Conferência de escala**: monta o diagnóstico ficha × escala semanal para a API (só leitura) | 89 |
 | `escala.service.ts` | Regras da escala (geral e consolidada) | 337 |
 | `escala.domain.ts` | Regras puras: escala efetiva, consolidada, semanal | 166 |
 | `colaborador-vinculo.ts` | Regra pura: mapeia fiscal → colaborador (ficha) | 84 |
 | `identidades.consulta.ts` | **A única** carga das identidades de uma pessoa (ficha + ids de fiscal), nos dois sentidos | 85 |
 | `integridade-vinculo.ts` | Regra pura: detecta vínculos órfãos fiscal ↔ ficha | 96 |
+| `integridade-escala.ts` | Regra pura do diagnóstico ficha × escala semanal, incluindo o **efeito da etapa 2** sobre a cobrança | 420 |
 | `dto/fiscais.dto.ts` | Validação de entrada (status e escala) | 59 |
 
 ## 4. Endpoints (rotas HTTP)
@@ -57,6 +59,7 @@ os alertas automáticos e a **escala de trabalho** (apenas a geral, derivada da 
 | `GET /escala/consolidada/:diaSemana` | `ESCALA_VISUALIZAR` | Escala consolidada do dia (domingo vem do rodízio). |
 | `GET /escala/:funcionarioId/efetiva` | `ESCALA_VISUALIZAR` | Escala efetiva do funcionário no dia. |
 | `GET /fiscais/painel` | `FISCAIS_STATUS` | Painel de todos os fiscais com o status atual. |
+| `GET /fiscais/conferencia-escala` | `OPERADORES_CRUD` | **Conferência de escala**: onde a ficha e a escala semanal discordam, e quem seria afetado pela etapa 2. Só leitura. |
 | `GET /fiscais/eu` | — (autenticado) | Resumo do próprio fiscal (status + jornada); null se não for fiscal. |
 | `POST /fiscais/eu/status` | — (autenticado) | O fiscal define o próprio status (auto-identificado). |
 | `POST /fiscais/eu/falta` | — (autenticado) | O fiscal informa a própria falta do dia. |
@@ -190,7 +193,34 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
   quem está de férias nesse dia é excluído (via `FeriasService`); a grade
   semanal sem data não aplica férias (elas são por dia).
 
-### Coerência ficha ↔ escala semanal (`npm run integridade`)
+### Coerência ficha ↔ escala semanal — **Conferência de escala**
+
+> **Duas vias, uma apuração.** O diagnóstico é o mesmo (`detectarEscalasIncoerentes`,
+> puro) e responde por dois caminhos:
+>
+> - `GET /fiscais/conferencia-escala` (`OPERADORES_CRUD`) → a tela **Conferência de
+>   escala**, em Centro de Controle. É a via da gestão.
+> - `npm run integridade` → o comando de terminal, que também confere os vínculos
+>   órfãos. É a via técnica.
+>
+> Antes só existia o comando, com acesso ao banco de produção — fora do alcance de
+> quem precisava da resposta ("por que a escala mostra um horário que não está na
+> ficha?"). Um diagnóstico que só o time técnico consegue ler não é um diagnóstico.
+
+#### O que ele apura (e o que decide a etapa 2)
+
+Além das divergências de horário/folga, o relatório responde as três perguntas que a
+**etapa 2** da [ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md)
+exige responder antes de a detecção de falta passar a ler a ficha:
+
+| Campo | Pergunta que responde |
+|---|---|
+| `dias[].efeito = 'COBRA_MAIS_CEDO'` + `minutosAdiantados` | **Quem passaria a ser cobrado mais cedo?** Hoje vale a hora mais tardia entre as duas fontes; só este caso pode criar falta onde hoje não existe. |
+| `semFolgaNaFicha` | **Quem perderia o dia de descanso?** Ficha sem `folgaDiaSemana` que hoje folga por uma linha da cópia semanal (ADR 0023, passo da ficha omissa). Bloqueio absoluto. |
+| `domingoSemHorario` | **Quem trabalha domingo sem hora?** Está no rodízio (`grupoDomingo`) e não tem `entradaDom`/`saidaDom` — e, por regra, também fica sem hora em **feriado**. |
+| `bloqueiamEtapa2` + `nomesQueBloqueiam` | O veredito, com nomes. Enquanto for maior que zero, trocar a fonte muda a vida de alguém sem aviso. |
+
+#### Detalhe da apuração
 
 A ficha é a fonte da escala (Opção A): `sincronizarEscalaFiscal` regenera as
 entradas **gerais** de `EscalaEntry` ao cadastrar, editar ou reativar um fiscal, e
@@ -347,7 +377,7 @@ casos de ficha vazia, preencher os horários **primeiro**.
 | `escalados-folga.spec.ts` | **Regressão:** `escaladosDoDia` respeita a folga pela regra única e na ordem certa — não escala o fiscal com folga na ficha mesmo com a escala semanal escalando (o caso real), nem quem tem folga na escala **com a ficha omissa**; e **escala** quando a ficha afirma outro dia e só a escala velha diz folga (ADR 0023) | 4 |
 | `escalados-feriado.spec.ts` | `escaladosDoDia` em feriado: horário de domingo (operador e fiscal), folga inalterada, fallback sem `entradaDom` e sem `FeriadosService` | 8 |
 | `coerencia-escalados-escala.spec.ts` | **Coerência entre `escaladosDoDia` e a [escala publicada](escala-exportacao.md):** dia normal, folga, falta do operador, **falta do fiscal** (a que a publicada não via, por causa da tradução de ids), exceção de horário, convocação em dia de folga, os dois casos que impedem o laço da revalidação, e a **escala semanal velha** nas duas direções (mais cedo → passa a usar a ficha; mais tarde → não adianta a cobrança) | 10 |
-| `integridade-escala.spec.ts` | **Diagnóstico ficha ↔ escala semanal** (`npm run integridade`): horário divergente, folga divergente, **ficha vazia com escala sobrevivente**, ficha sem escala, horário pela metade, entradas duplicadas, inativos ignorados e escala antiga ligada só pelo `funcionarioId` | 9 |
+| `integridade-escala.spec.ts` | **Diagnóstico ficha ↔ escala semanal**: horário divergente, folga divergente, **ficha vazia com escala sobrevivente**, ficha sem escala, horário pela metade, entradas duplicadas, inativos ignorados, escala antiga ligada só pelo `funcionarioId` e — para a etapa 2 — quem seria **cobrado mais cedo** (com os minutos), ficha **sem dia de folga** que hoje descansa pela cópia, e **rodízio de domingo sem horário** (falta entrada, saída ou ambas) | 16 |
 | `hora-esperada-fiscal.spec.ts` | A **regra conservadora** da hora cobrada: as duas pontas da discordância, a exceção que vence, o feriado que não entra na comparação, ficha sem turno (não se cobra), fiscal sem ficha, horas ilegíveis — e a **propriedade central**, varrida sobre uma grade: nunca devolve hora mais cedo do que a escala cobrava antes | 11 |
 | `escala-colaborador.spec.ts` | Geração da escala semanal a partir da ficha (Seg–Qui, Sex–Sáb, folga, domingo) + o **desempate de duplicadas**: os dois leitores usam a primeira entrada, e a exceção segue prevalecendo | 6 |
 | `integridade-vinculo.spec.ts` | Detecção de vínculos órfãos fiscal ↔ ficha (Fase 4) | 6 |
