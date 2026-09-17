@@ -1,6 +1,13 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-16 · **Cobre:** `backend/src/compensacao-horas/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/compensacao-horas/`
 
 # Módulo: `compensacao-horas`
+> **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
+> (`EscalaEntry.especial`) foi **removida**: o horário é sempre o da ficha.
+> Com ela saíram a **convocação** e a **folga concedida** que dependiam do
+> mesmo campo. Os trechos abaixo que descrevem esse mecanismo valem apenas
+> como histórico. Ver
+> [ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md).
+
 
 ## 1. Propósito
 

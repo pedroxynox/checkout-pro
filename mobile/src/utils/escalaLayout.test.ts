@@ -42,7 +42,6 @@ const DIA: EscalaDiaPublicada = {
           status: 'TRABALHA',
           entrada: '07:00',
           saida: '15:20',
-          horarioEspecial: false,
         },
       ],
     },
@@ -57,7 +56,6 @@ const DIA: EscalaDiaPublicada = {
           status: 'TRABALHA',
           entrada: '14:00',
           saida: '22:20',
-          horarioEspecial: true,
         },
         {
           colaboradorId: 'o2',
@@ -67,7 +65,6 @@ const DIA: EscalaDiaPublicada = {
           status: 'FOLGA',
           entrada: null,
           saida: null,
-          horarioEspecial: false,
         },
         {
           colaboradorId: 'o3',
@@ -77,7 +74,6 @@ const DIA: EscalaDiaPublicada = {
           status: 'FALTA',
           entrada: '09:00',
           saida: '17:20',
-          horarioEspecial: false,
         },
       ],
     },
@@ -251,11 +247,14 @@ describe('svgEscalaDia', () => {
     }
   });
 
-  it('marca a exceção de horário ao lado do nome', () => {
-    // Ao lado, e não abaixo: é raro e não pode mudar a altura da linha, senão
-    // quebraria o ritmo de toda a folha.
+  /**
+   * A marca "• especial" existia para sinalizar uma exceção de horário gravada
+   * na escala semanal. Essa exceção deixou de existir (ADR 0026): o horário é
+   * sempre o da ficha, então não há nada de excepcional para marcar.
+   */
+  it('não marca mais exceção de horário: o horário é sempre o da ficha', () => {
     const { svg } = svgEscalaDia(DIA, { geradoEm: GERADO_EM });
-    expect(svg).toContain('• especial');
+    expect(svg).not.toContain('• especial');
   });
 
   it('destaca o feriado com o nome', () => {

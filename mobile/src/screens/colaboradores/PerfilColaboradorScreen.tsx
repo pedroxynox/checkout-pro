@@ -689,6 +689,27 @@ export function PerfilColaboradorScreen({
                   : '—'}
               </Text>
             </View>
+            {/*
+              Domingo entra na ficha porque é ele que decide o horário de
+              DOMINGO e o de FERIADO na escala. Estava só no formulário de
+              edição (embaixo do grupo do rodízio), então quem consultava a
+              ficha via dois horários e a escala usava um terceiro — sem nada
+              que explicasse de onde vinha. Ver ADR 0026.
+            */}
+            <View style={styles.escalaLinha}>
+              <Text style={styles.escalaRotulo}>Domingo</Text>
+              <Text style={styles.escalaValor}>
+                {p.colaborador.entradaDom && p.colaborador.saidaDom
+                  ? `${p.colaborador.entradaDom} – ${p.colaborador.saidaDom}`
+                  : '—'}
+              </Text>
+            </View>
+            <View style={styles.escalaLinha}>
+              <Text style={styles.escalaRotulo}>Grupo de domingo</Text>
+              <Text style={styles.escalaValor}>
+                {p.colaborador.grupoDomingo ?? 'fora do rodízio'}
+              </Text>
+            </View>
             <View style={styles.escalaLinha}>
               <Text style={styles.escalaRotulo}>Folga</Text>
               <Text style={styles.escalaValor}>
@@ -698,6 +719,10 @@ export function PerfilColaboradorScreen({
                   : '—'}
               </Text>
             </View>
+            <Text style={styles.escalaNota}>
+              Em feriado vale o horário de domingo. Sem horário de domingo
+              cadastrado, o feriado mantém o horário normal do dia.
+            </Text>
           </Cartao>
 
         </>
@@ -900,6 +925,12 @@ const styles = StyleSheet.create({
   },
   escalaRotulo: { ...tipografia.corpo, color: cores.textoSecundario },
   escalaValor: { ...tipografia.corpo, color: cores.texto, fontWeight: '600' },
+  escalaNota: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginTop: espacamento.sm,
+    lineHeight: 16,
+  },
   statusLinha: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pontoStatus: { width: 9, height: 9, borderRadius: 5 },
 });

@@ -40,8 +40,6 @@ import {
   saidaEsperadaNoDia,
 } from '../escala-domingo/escala-domingo.domain';
 import { carregarMapaDeFeriados } from '../feriados/feriados.consulta';
-import { carregarHorariosEspeciais } from '../escala-exportacao/escala-especiais.consulta';
-import { HorarioEspecialDia } from '../escala-exportacao/escala-publicada.domain';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 import {
   heatmapDiaSemanaHora,
@@ -328,7 +326,6 @@ export class CompensacaoHorasService {
       feriadoMap,
       consultorFolga,
       ancora,
-      especiais,
       feriasPorDia,
       ausencias,
       movimento,
@@ -336,7 +333,6 @@ export class CompensacaoHorasService {
       carregarMapaDeFeriados(this.prisma, inicio, fimExclusivo),
       this.folga.consultor(candidatas),
       this.escalaDomingo?.obterAncora() ?? Promise.resolve(null),
-      carregarHorariosEspeciais(this.prisma),
       Promise.all(
         candidatas.map(
           (d) =>
@@ -407,7 +403,7 @@ export class CompensacaoHorasService {
         return false;
       }
       if (feriasNoDia.get(dia.getTime())?.has(ficha.id)) return false;
-      return this.entradaDoDia(ficha, dia, ancoraDomingo, especiais) != null;
+      return this.entradaDoDia(ficha, dia, ancoraDomingo) != null;
     };
 
     const ausenciaNoDia = new Set<string>();
@@ -440,7 +436,8 @@ export class CompensacaoHorasService {
       funcao: FuncaoCompensavel;
     })[] = [];
     for (const p of resumo.pessoas) {
-      if (!FUNCOES_COMPENSAVEIS.includes(p.funcao as FuncaoCompensavel)) continue;
+      if (!FUNCOES_COMPENSAVEIS.includes(p.funcao as FuncaoCompensavel))
+        continue;
       if (p.extras50AtualMs <= 0) continue;
       compensaveis.push({ ...p, funcao: p.funcao as FuncaoCompensavel });
     }
@@ -500,8 +497,8 @@ export class CompensacaoHorasService {
         const ficha = fichaPorId.get(colaboradorId);
         if (!ficha) return { entrada: null, saida: null };
         return {
-          entrada: this.entradaDoDia(ficha, data, ancoraDomingo, especiais),
-          saida: this.saidaDoDia(ficha, data, ancoraDomingo, especiais),
+          entrada: this.entradaDoDia(ficha, data, ancoraDomingo),
+          saida: this.saidaDoDia(ficha, data, ancoraDomingo),
         };
       },
       vendaNaFaixa: (diaSemana, inicioMin, fimMin) =>
@@ -925,29 +922,27 @@ export class CompensacaoHorasService {
     return mapa;
   }
 
-  /** Entrada esperada no dia, já considerando exceção de horário da escala. */
+  /**
+   * Entrada esperada no dia — **sempre** a da ficha (ADR 0026).
+   *
+   * Antes uma exceção de horário da escala semanal podia sobrepor este valor.
+   * Ela deixou de existir: se sobrepusesse aqui e não na escala publicada, a
+   * sugestão de compensação contaria uma jornada que a equipe não vê.
+   */
   private entradaDoDia(
     ficha: FichaEscalaCompleta,
     dia: Date,
     ancora: { data: Date; ordem: readonly GrupoDomingo[] } | null,
-    especiais: Map<string, HorarioEspecialDia>,
   ): string | null {
-    const especial = especiais.get(`${ficha.id}|${dia.getUTCDay()}`);
-    if (especial?.folga) return null;
-    if (especial?.entrada) return especial.entrada;
     return entradaEsperadaNoDia(ficha, dia, ancora, false);
   }
 
-  /** Saída esperada no dia, já considerando exceção de horário da escala. */
+  /** Saída esperada no dia — **sempre** a da ficha (ADR 0026). */
   private saidaDoDia(
     ficha: FichaEscalaCompleta,
     dia: Date,
     ancora: { data: Date; ordem: readonly GrupoDomingo[] } | null,
-    especiais: Map<string, HorarioEspecialDia>,
   ): string | null {
-    const especial = especiais.get(`${ficha.id}|${dia.getUTCDay()}`);
-    if (especial?.folga) return null;
-    if (especial?.saida) return especial.saida;
     return saidaEsperadaNoDia(ficha, dia, ancora, false);
   }
 

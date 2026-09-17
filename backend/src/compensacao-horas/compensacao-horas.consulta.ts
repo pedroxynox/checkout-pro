@@ -2,7 +2,7 @@
  * A ÚNICA leitura das compensações de horas APROVADAS (ADR 0021).
  *
  * Existe como **função livre**, e não como método de serviço, pelo mesmo motivo
- * de `carregarMapaDeFeriados` e `carregarHorariosEspeciais`: o único ingrediente
+ * de `carregarMapaDeFeriados`: o único ingrediente
  * é o Prisma, e os dois lados que precisam dela — a Central de Jornada (que
  * apura as horas) e a própria seção de Compensação (que sugere e grava) — se
  * referenciariam em círculo se isto fosse um serviço injetado.
@@ -32,7 +32,10 @@ export interface CompensacaoAplicada {
 }
 
 /** Chave do mapa: `colaboradorId|diaISO`. */
-export function chaveCompensacao(colaboradorId: string, diaISO: string): string {
+export function chaveCompensacao(
+  colaboradorId: string,
+  diaISO: string,
+): string {
   return `${colaboradorId}|${diaISO}`;
 }
 

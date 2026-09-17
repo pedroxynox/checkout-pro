@@ -43,13 +43,6 @@ export interface FichaColaboradorEscala extends FichaEscalaTurno {
   turno: string | null;
 }
 
-/** Exceção individual gravada para o dia da semana (prevalece sobre o turno). */
-export interface HorarioEspecialDia {
-  entrada: string | null;
-  saida: string | null;
-  folga: boolean;
-}
-
 /** Ausência registrada no dia (falta comum ou atestado médico). */
 export interface OcorrenciaDia {
   ehAtestado: boolean;
@@ -65,8 +58,6 @@ export interface LinhaEscala {
   /** Turno do dia ("HH:mm"), mantido também quando a pessoa faltou. */
   entrada: string | null;
   saida: string | null;
-  /** true quando o horário do dia vem de uma exceção individual. */
-  horarioEspecial: boolean;
 }
 
 /**
@@ -74,19 +65,28 @@ export interface LinhaEscala {
  *
  * Precedência (a ordem importa e é o coração desta função):
  *  1. **Férias** — período aprovado ganha de tudo; não há turno nem falta.
- *  2. **Horário especial** do dia da semana — é a exceção que o gestor cadastrou
- *     justamente para prevalecer sobre o turno padrão (e sobre a folga da ficha:
- *     é assim que se convoca alguém no seu dia de descanso).
- *  3. **Folga pela regra única** (`deFolga`) — a ficha **ou** a escala semanal.
- *     Vem depois do especial (que é a exceção explícita) e antes do turno,
- *     porque uma folga escrita só na escala semanal não é visível para o turno
- *     do cadastro. Sem este passo, o mesmo dia saía FOLGA no Quadro de
- *     Operadores e TRABALHA aqui.
- *  4. **Turno do cadastro**, pelas regras de dia útil / fim de semana / domingo
- *     com rodízio / feriado.
- *  5. **Sem turno no dia** ⇒ folga (é o que "sem horário" significa aqui).
- *  6. **Ausência** só é aplicada a quem deveria trabalhar: falta em dia de folga
+ *  2. **Folga pela regra única** (`deFolga`) — a ficha **ou** a escala semanal.
+ *     Vem antes do turno porque uma folga escrita só na escala semanal não é
+ *     visível para o turno do cadastro. Sem este passo, o mesmo dia saía FOLGA
+ *     no Quadro de Operadores e TRABALHA aqui.
+ *  3. **Turno do cadastro**, pelas regras de dia útil / fim de semana / domingo
+ *     com rodízio / feriado. **É a única fonte de horário** (ADR 0026).
+ *  4. **Sem turno no dia** ⇒ folga (é o que "sem horário" significa aqui).
+ *  5. **Ausência** só é aplicada a quem deveria trabalhar: falta em dia de folga
  *     não existe, e mostrá-la assustaria quem lê.
+ *
+ * ## O que saiu daqui, e por quê
+ *
+ * Havia um passo 2 anterior: o **horário especial** do dia da semana
+ * (`EscalaEntry.especial`), que prevalecia sobre o turno do cadastro e até sobre
+ * a folga da ficha. Ele foi removido pela **ADR 0026**: o horário passa a ser
+ * **sempre** o da ficha.
+ *
+ * O motivo é concreto. A exceção não tinha validade (valia todas as semanas, para
+ * sempre), era gravada sob o id legado do fiscal, **nenhuma tela a criava, exibia
+ * ou apagava**, e a sincronização da ficha a preservava de propósito. O resultado
+ * prático era um horário que aparecia na escala, não existia em lugar nenhum da
+ * ficha e não havia como remover pelo app.
  */
 export function montarLinhaEscala(params: {
   ficha: FichaColaboradorEscala;
@@ -100,7 +100,6 @@ export function montarLinhaEscala(params: {
    * esquecê-lo era justamente o bug.
    */
   deFolga: boolean;
-  especial: HorarioEspecialDia | null;
   ocorrencia: OcorrenciaDia | null;
 }): LinhaEscala {
   const {
@@ -110,7 +109,6 @@ export function montarLinhaEscala(params: {
     ehFeriado,
     deFerias,
     deFolga,
-    especial,
     ocorrencia,
   } = params;
   const base = {
@@ -121,47 +119,19 @@ export function montarLinhaEscala(params: {
   };
 
   if (deFerias) {
-    return {
-      ...base,
-      status: 'FERIAS',
-      entrada: null,
-      saida: null,
-      horarioEspecial: false,
-    };
+    return { ...base, status: 'FERIAS', entrada: null, saida: null };
   }
 
-  const usaEspecial = especial != null;
-
-  // Folga pela regra única, depois da exceção do gestor e antes do turno.
-  if (!usaEspecial && deFolga) {
-    return {
-      ...base,
-      status: 'FOLGA',
-      entrada: null,
-      saida: null,
-      horarioEspecial: false,
-    };
+  // Folga pela regra única, antes do turno.
+  if (deFolga) {
+    return { ...base, status: 'FOLGA', entrada: null, saida: null };
   }
 
-  const entrada = usaEspecial
-    ? especial.folga
-      ? null
-      : especial.entrada
-    : entradaEsperadaNoDia(ficha, dia, ancoraDomingo, ehFeriado);
-  const saida = usaEspecial
-    ? especial.folga
-      ? null
-      : especial.saida
-    : saidaEsperadaNoDia(ficha, dia, ancoraDomingo, ehFeriado);
+  const entrada = entradaEsperadaNoDia(ficha, dia, ancoraDomingo, ehFeriado);
+  const saida = saidaEsperadaNoDia(ficha, dia, ancoraDomingo, ehFeriado);
 
   if (!entrada) {
-    return {
-      ...base,
-      status: 'FOLGA',
-      entrada: null,
-      saida: null,
-      horarioEspecial: usaEspecial,
-    };
+    return { ...base, status: 'FOLGA', entrada: null, saida: null };
   }
 
   return {
@@ -173,7 +143,6 @@ export function montarLinhaEscala(params: {
       : 'TRABALHA',
     entrada,
     saida,
-    horarioEspecial: usaEspecial,
   };
 }
 

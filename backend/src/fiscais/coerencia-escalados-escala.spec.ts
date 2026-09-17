@@ -321,45 +321,43 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
     );
   });
 
-  it('exceção de horário do OPERADOR: as duas usam o horário da exceção', async () => {
-    // A exceção do gestor para a quarta (10:00) prevalece sobre o turno da
-    // ficha (08:00). A escala publicada aplica; a detecção automática ignorava —
-    // e ficava esperando a pessoa duas horas antes do combinado, o que marca
-    // falta em quem chegou no horário certo.
+  it('resquício de exceção de horário: as duas usam o horário da FICHA', async () => {
+    // A exceção de horário deixou de existir (ADR 0026). Uma linha antiga de
+    // 10:00 não muda nada: as duas pontas leem a ficha (08:00) e continuam
+    // concordando — que é o que este arquivo existe para garantir.
     const cenario: Cenario = {
       especialOperador: { diaSemana: 3, entrada: '10:00', saida: '18:00' },
     };
     const { deteccao, publicada } = await comparar(cenario);
 
-    expect(publicada.get('col-erick')).toBe('10:00');
+    expect(publicada.get('col-erick')).toBe('08:00');
     expect(deteccao).toEqual(publicada);
   });
 
-  it('convocação por exceção no dia de folga da ficha: as duas esperam a pessoa', async () => {
-    // Uma exceção cadastrada para o dia em que a pessoa folga é justamente como
-    // se convoca alguém no descanso. A escala publicada a convoca (o `especial`
-    // vence a folga); a detecção automática a descartava no filtro de folga —
-    // ninguém cobrava o ponto de quem foi chamado.
+  it('exceção no dia de folga da ficha: nenhuma das duas espera a pessoa', async () => {
+    // Antes esta era a forma de convocar alguém no descanso, e ela sumiu com a
+    // exceção de horário (ADR 0026). O importante aqui não é quem ganhou, e sim
+    // que as duas pontas dizem a MESMA coisa: no dia de folga da ficha, ninguém
+    // é esperado. Se divergissem, nasceria falta em quem estava descansando.
     const cenario: Cenario = {
       folgaOperador: 3,
       especialOperador: { diaSemana: 3, entrada: '10:00', saida: '18:00' },
     };
     const { deteccao, publicada } = await comparar(cenario);
 
-    expect(publicada.get('col-erick')).toBe('10:00');
+    expect(publicada.get('col-erick')).toBeUndefined();
     expect(deteccao).toEqual(publicada);
   });
 
-  it('a regra única de folga concorda: quem foi convocado NÃO está de folga', async () => {
-    // Este caso não é sobre as duas telas — é sobre o laço que a correção
-    // anterior poderia criar. A revalidação do Relógio Ponto apaga uma falta
-    // automática quando `FolgaService` diz que o dia era de folga. Se a
-    // convocação só fosse conhecida por `escaladosDoDia`, a falta de quem foi
-    // chamado e não veio nasceria e seria apagada a cada cinco minutos, num laço
-    // de notificações — pior do que o bug original.
+  it('a regra única de folga concorda: o dia de folga da ficha É folga', async () => {
+    // Este caso não é sobre as duas telas — é sobre o laço que uma divergência
+    // criaria. A revalidação do Relógio Ponto apaga uma falta automática quando
+    // `FolgaService` diz que o dia era de folga. Se a detecção esperasse a pessoa
+    // e a regra de folga dissesse que ela descansa, a falta nasceria e seria
+    // apagada a cada cinco minutos, num laço de notificações.
     //
-    // Por isso a convocação vive na regra ÚNICA de folga: quem a consulta
-    // (detecção, revalidação, Quadro, escala publicada) recebe a mesma resposta.
+    // Com a ficha como fonte única (ADR 0026), quem consulta a regra — detecção,
+    // revalidação, Quadro, escala publicada — recebe sempre a mesma resposta.
     const { escalados } = montar({
       folgaOperador: 3,
       especialOperador: { diaSemana: 3, entrada: '10:00', saida: '18:00' },
@@ -370,7 +368,7 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
       undefined,
     );
 
-    expect(await folga.ehFolga(QUARTA, ['col-erick'])).toBe(false);
+    expect(await folga.ehFolga(QUARTA, ['col-erick'])).toBe(true);
   });
 
   it('escala semanal VELHA e mais cedo: a detecção passa a usar a hora da ficha', async () => {
@@ -400,10 +398,11 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
     expect(deteccao.get('col-bia')).toBe('08:00');
   });
 
-  it('exceção marcada como FOLGA continua sendo folga (dispensa, não convocação)', async () => {
-    // O contrapeso do caso acima: uma exceção pode ser uma DISPENSA. Se o
-    // `especial` sempre vencesse a folga, dispensar alguém pela escala semanal
-    // passaria a convocá-lo — o oposto do que o gestor quis.
+  it('dispensa gravada na escala não vence a ficha', async () => {
+    // Uma linha de folga na escala semanal para um dia que a ficha diz de
+    // trabalho não cria descanso: a ficha decide sozinha (ADR 0023 + 0026). A
+    // linha só volta a valer quando a ficha é omissa — coberto em
+    // `folga.service.spec.ts`.
     const { escalados } = montar({
       especialOperador: { diaSemana: 3, entrada: '10:00', saida: '18:00' },
     });
@@ -425,6 +424,6 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
       ]);
     const folga = new FolgaService(prisma as never, undefined);
 
-    expect(await folga.ehFolga(QUARTA, ['col-erick'])).toBe(true);
+    expect(await folga.ehFolga(QUARTA, ['col-erick'])).toBe(false);
   });
 });

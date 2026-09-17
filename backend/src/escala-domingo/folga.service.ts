@@ -123,7 +123,6 @@ export class FolgaService {
               colaboradorId: true,
               diaSemana: true,
               folga: true,
-              especial: true,
             },
           })
         : Promise.resolve([]),
@@ -145,24 +144,20 @@ export class FolgaService {
     // Chave `diaSemana|id`, com as duas identidades da escala (o vínculo com a
     // ficha pode estar vazio em escalas antigas).
     //
-    // As folgas da escala vão para DOIS conjuntos, e a separação é o coração do
-    // ADR 0023: a folga GERAL é derivada da ficha (e por isso não vota contra
-    // ela), enquanto a folga ESPECIAL é uma decisão individual do gestor (e por
-    // isso vence). Um conjunto só não sabia distinguir as duas.
+    // Um conjunto só. Antes havia três, porque uma entrada marcada como
+    // `especial` era uma **decisão individual** que vencia a ficha: com folga era
+    // "folga concedida" (vencia) e sem folga era "convocação" (mandava
+    // trabalhar). As duas dependiam da exceção de horário para funcionar — uma
+    // convocação sem hora não diz a que horas a pessoa vem — e a exceção de
+    // horário foi removida pela ADR 0026. As linhas `especial` deixaram de
+    // existir (a migração `9zzr` apagou as de horário e rebaixou as de folga a
+    // entradas comuns), então aqui resta a folga GERAL, derivada da ficha.
     const folgaGeralNaEscala = new Set<string>();
-    const folgaConcedidaNaEscala = new Set<string>();
-    // Convocações: exceções individuais que mandam a pessoa TRABALHAR nesse dia.
-    const convocadoNaEscala = new Set<string>();
     for (const e of entradasDeFolga) {
+      if (!e.folga) continue;
       for (const id of [e.funcionarioId, e.colaboradorId]) {
         if (!id) continue;
-        const chave = `${e.diaSemana}|${id}`;
-        if (e.folga) {
-          if (e.especial) folgaConcedidaNaEscala.add(chave);
-          else folgaGeralNaEscala.add(chave);
-        } else if (e.especial) {
-          convocadoNaEscala.add(chave);
-        }
+        folgaGeralNaEscala.add(`${e.diaSemana}|${id}`);
       }
     }
 
@@ -186,23 +181,7 @@ export class FolgaService {
         const diaSemana = dia.getUTCDay();
         const conhecidos = ids.filter((id): id is string => !!id);
 
-        // 1. CONVOCAÇÃO: uma exceção individual que manda trabalhar vence tudo,
-        // porque é o registro mais específico e mais recente que existe sobre
-        // aquele dia — é assim que se chama alguém no descanso. Sem este passo a
-        // convocação se perdia: a pessoa era chamada, não aparecia na lista de
-        // esperados, e ninguém cobrava o ponto dela; ou pior, a falta nascia e a
-        // revalidação a apagava cinco minutos depois, em laço.
-        for (const id of conhecidos) {
-          if (convocadoNaEscala.has(`${diaSemana}|${id}`)) return false;
-        }
-
-        // 2. FOLGA CONCEDIDA à mão (exceção): o gestor deu o dia. A ficha não
-        // desfaz uma decisão individual — é a contrapartida da convocação.
-        for (const id of conhecidos) {
-          if (folgaConcedidaNaEscala.has(`${diaSemana}|${id}`)) return true;
-        }
-
-        // 3. A FICHA, quando afirma um dia de folga, decide SOZINHA (ADR 0023).
+        // 1. A FICHA, quando afirma um dia de folga, decide SOZINHA (ADR 0023).
         // A escala semanal geral é derivada dela, e um derivado velho não soma um
         // dia de descanso que a fonte não afirma. Inclui o domingo: lá a ficha
         // decide pelo rodízio, que também é dela.
@@ -211,13 +190,13 @@ export class FolgaService {
           return ehDiaDeFolga(ficha, dia, ancoraDomingo);
         }
 
-        // 4. Ficha OMISSA: aí a escala semanal geral ainda vale. Não há fonte que
+        // 2. Ficha OMISSA: aí a escala semanal geral ainda vale. Não há fonte que
         // a contradiga, e o viés conservador continua protegendo a pessoa.
         for (const id of conhecidos) {
           if (folgaGeralNaEscala.has(`${diaSemana}|${id}`)) return true;
         }
 
-        // 5. Ficha omissa no dia da semana, mas o rodízio de domingo é dela.
+        // 3. Ficha omissa no dia da semana, mas o rodízio de domingo é dela.
         return ficha ? ehDiaDeFolga(ficha, dia, ancoraDomingo) : false;
       },
 

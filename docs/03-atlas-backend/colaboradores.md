@@ -1,6 +1,13 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/colaboradores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/colaboradores/`
 
 # Módulo: `colaboradores`
+> **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
+> (`EscalaEntry.especial`) foi **removida**: o horário é sempre o da ficha.
+> Com ela saíram a **convocação** e a **folga concedida** que dependiam do
+> mesmo campo. Os trechos abaixo que descrevem esse mecanismo valem apenas
+> como histórico. Ver
+> [ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md).
+
 
 ## 1. Propósito
 Cadastro **unificado** de todas as pessoas da operação (operador, fiscal,
@@ -130,7 +137,8 @@ colaborador, atribuindo retroativamente o histórico. Idempotente.
   > pessoa passava a descansar **dois** dias, o da ficha e o da linha esquecida. E
   > `if (funcao !== 'FISCAL') return` saía antes de qualquer limpeza, deixando a
   > escala de fiscal viva para sempre em quem já não era fiscal. As **exceções**
-  > (`especial`) continuam intocadas: são decisões por dia, não derivadas da ficha.
+  > (`especial`) deixaram de existir (ADR 0026); o perfil passou a expor também o
+  > horário de **domingo** e o grupo do rodízio, que decidem domingo e feriado.
 - `grupoDomingoEfetivo(...)` — remove do rodízio de domingo quem tem contrato que
   não trabalha domingo.
 - `garantirUsuarioVinculavel(...)` / `definirAtivo(...)`.

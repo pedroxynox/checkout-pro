@@ -1,6 +1,13 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/escala-exportacao/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/escala-exportacao/`
 
 # Módulo: `escala-exportacao`
+> **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
+> (`EscalaEntry.especial`) foi **removida**: o horário é sempre o da ficha.
+> Com ela saíram a **convocação** e a **folga concedida** que dependiam do
+> mesmo campo. Os trechos abaixo que descrevem esse mecanismo valem apenas
+> como histórico. Ver
+> [ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md).
+
 
 ## 1. Propósito
 Monta a **escala publicada** — a escala como ela é entregue à equipe, do dia ou da
@@ -80,7 +87,7 @@ amanhã justamente no horário em que ela é enviada à equipe.
 
 ## 6. Lógica de domínio (funções puras)
 Em `escala-publicada.domain.ts`:
-- `montarLinhaEscala({ ficha, dia, ancoraDomingo, ehFeriado, deFerias, deFolga, especial, ocorrencia })`
+- `montarLinhaEscala({ ficha, dia, ancoraDomingo, ehFeriado, deFerias, deFolga, ocorrencia })`
   → a linha de uma pessoa num dia, aplicando a **precedência** da seção 10.
   **É a regra única de "o que esta pessoa faz neste dia":** o
   [Quadro de Operadores](operadores.md) a chama também (grade, roster e tablero ao
@@ -109,8 +116,8 @@ escala publicada — antes só existia a entrada).
 - `StatusEscala`: `TRABALHA`, `FOLGA`, `FALTA`, `ATESTADO`, `FERIAS`.
 
 ## 8. Dados que o módulo toca
-- **Lê:** `Colaborador`, `Feriado`, `EscalaEntry` (as `especial` para o horário e,
-  via `FolgaService`, as de folga **e as convocações**), `Ausencia`,
+- **Lê:** `Colaborador`, `Feriado`, `EscalaEntry` (apenas as de **folga**, via
+  `FolgaService`; o horário vem só da ficha — ADR 0026), `Ausencia`,
   `Atestado` (indiretamente, pelo vínculo da ausência), `ConfigSistema`,
   `FeriasColaborador`.
 - **Escreve:** nada.
@@ -146,7 +153,8 @@ escala publicada — antes só existia a entrada).
 
 **Precedência do estado de uma pessoa no dia** (a ordem é o coração do módulo):
 1. **Férias** ganham de tudo — período aprovado não tem turno nem falta.
-2. **Horário especial** do dia da semana (`EscalaEntry.especial`) prevalece sobre
+2. ~~**Horário especial** do dia da semana~~ — **removido pela ADR 0026.** O texto
+   abaixo fica como histórico: a exceção prevalecia sobre
    a folga e sobre o turno do cadastro: é a exceção que o gestor cadastrou
    justamente para isso — é assim que se convoca alguém no seu dia de descanso.
 3. **Folga pela regra única** ([`FolgaService`](escala-domingo.md): a ficha manda
@@ -183,7 +191,7 @@ que a equipe recebe.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `escala-publicada.domain.spec.ts` | Precedência (férias, especial, folga, falta, atestado), feriado nas duas pontas, ordem por entrada, agrupamento por função, totais e a semana segunda→domingo | 14 |
+| `escala-publicada.domain.spec.ts` | Precedência (férias, folga, falta, atestado), a garantia de que **só a ficha** define o horário, feriado nas duas pontas, ordem por entrada, agrupamento por função, totais e a semana segunda→domingo | 13 |
 | `../operadores/coerencia-quadro-escala.spec.ts` | **Coerência** com o Quadro de Operadores: para o mesmo dia e pessoa, as duas vistas dizem o mesmo — estado **e horário** (trabalho, folga da ficha, folga da escala semanal com a ficha omissa e como exceção, **ficha afirmando outro dia**, férias, falta, atestado, **feriado** e **horário de exceção**) | 10 |
 | `escala-exportacao.service.spec.ts` | Cobertura de todas as funções, feriado com nome, férias, exceção de horário, falta com turno preservado, grupo do domingo, inativos fora, a grade semanal (sete células, regra por dia, ordem por nome), as **duas identidades de um fiscal** (folga e exceção gravadas só sob o `Fiscal.id`, e a linha velha que não soma um segundo dia) e o **aviso de ficha sem folga** | 16 |
 

@@ -569,21 +569,6 @@ function linhaPessoaDia(
       cor: trabalha ? COR.texto : COR.textoSec,
     }),
   );
-  // "Horário especial" fica ao lado do nome, não abaixo: é raro e não deve
-  // mudar a altura da linha (o que quebraria o ritmo de toda a folha).
-  if (linha.horarioEspecial) {
-    const depoisDoNome =
-      x + 8 + larguraEstimada(encurtar(linha.nome, larguraNome, m.fonteNome), m.fonteNome);
-    // Folga generosa: a largura do nome é estimada, e quando a estimativa erra
-    // para baixo o rótulo cola na última letra e parece parte do nome.
-    partes.push(
-      texto(depoisDoNome + m.fonteSecundaria * 1.2, baseTexto, '• especial', {
-        tamanho: m.fonteSecundaria,
-        cor: COR.primaria,
-        peso: '600',
-      }),
-    );
-  }
 
   // Separador em `borda`, não em `divisor`: a linha entre nomes é um pedido
   // explícito do documento, e no tom mais claro ela praticamente não aparecia.

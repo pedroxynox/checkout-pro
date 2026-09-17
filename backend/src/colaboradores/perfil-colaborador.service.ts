@@ -85,6 +85,15 @@ export interface PerfilColaboradorResposta {
     saidaSemana: string | null;
     entradaFds: string | null;
     saidaFds: string | null;
+    /**
+     * Horário de DOMINGO — e também o de FERIADO (ADR 0026). Vai no perfil
+     * porque é ele que decide esses dois casos na escala: sem exibi-lo, a ficha
+     * mostrava dois horários e a escala usava um terceiro.
+     */
+    entradaDom: string | null;
+    saidaDom: string | null;
+    /** Grupo do rodízio de domingo (G1/G2/G3); `null` = fora do rodízio. */
+    grupoDomingo: string | null;
     folgaDiaSemana: number | null;
   };
   /**
@@ -452,6 +461,9 @@ export class PerfilColaboradorService {
         saidaSemana: colaborador.saidaSemana,
         entradaFds: colaborador.entradaFds,
         saidaFds: colaborador.saidaFds,
+        entradaDom: colaborador.entradaDom,
+        saidaDom: colaborador.saidaDom,
+        grupoDomingo: colaborador.grupoDomingo,
         folgaDiaSemana: colaborador.folgaDiaSemana,
       },
       vinculoApp,

@@ -417,7 +417,13 @@ async function seedEscalas(): Promise<void> {
     'Fabiana Sirley Sarafim': 4,             // Quinta
   };
 
-  // Horários por turno:
+  // Horários por turno (dados de DEMONSTRAÇÃO).
+  //
+  // Estes valores alimentam a escala semanal derivada, usada pela detecção
+  // automática de falta. Eles NÃO são a fonte do horário exibido: a escala
+  // publicada e a compensação de horas leem sempre a FICHA do colaborador
+  // (ADR 0026). Ao preparar a entrega ao cliente, os horários reais vão na ficha.
+  //
   // ABERTURA (normal): Seg-Qui 06:50-15:50, Sex-Sáb 06:50-16:50
   // ABERTURA (especial - Josiane): Seg-Qui 08:00-17:00, Sex-Sáb 08:00-18:00
   // INTERMEDIARIO (normal): Seg-Qui 11:00-20:00, Sex-Sáb 11:00-21:00
@@ -503,9 +509,16 @@ async function seedEscalas(): Promise<void> {
       horarios = horarioFechamento();
     }
 
-    // Criar entrada para cada dia da semana (0-6)
+    // Uma entrada por dia da semana.
+    //
+    // DOMINGO (0) só entra quando é o dia de folga. O domingo dos fiscais vem do
+    // rodízio de grupos (G1/G2/G3) — `EscalaService.escalaConsolidada` desvia
+    // para ele quando a data é um domingo —, e não de uma linha fixa na semana.
+    // Gravar domingo aqui punha todo fiscal como escalado em TODO domingo, o que
+    // rende falta automática em domingo de folga.
     for (let dia = 0; dia <= 6; dia++) {
       const folga = dia === folgaDia;
+      if (dia === 0 && !folga) continue;
       const h = horarios[dia];
 
       // Buscar se já existe (idempotência)
@@ -513,28 +526,27 @@ async function seedEscalas(): Promise<void> {
         where: { funcionarioId: fiscal.id, diaSemana: dia },
       });
 
+      // `especial: false` SEMPRE (ADR 0026). Antes esta linha gravava
+      // `fiscal.especial`, e os dois fiscais marcados como "especial" no seed
+      // ganhavam uma exceção que sobrepunha a ficha para sempre — sem validade,
+      // invisível no app e impossível de apagar por lá. Era a origem do
+      // "horário que aparece na escala e não existe na ficha".
+      const dados = {
+        entrada: folga ? null : h?.entrada ?? null,
+        saida: folga ? null : h?.saida ?? null,
+        folga,
+        especial: false,
+        intervaloMin: 120, // 2h de intervalo para todos
+      };
+
       if (existente) {
         await prisma.escalaEntry.update({
           where: { id: existente.id },
-          data: {
-            entrada: folga ? null : h?.entrada ?? null,
-            saida: folga ? null : h?.saida ?? null,
-            folga,
-            especial: fiscal.especial,
-            intervaloMin: 120, // 2h de intervalo para todos
-          },
+          data: dados,
         });
       } else {
         await prisma.escalaEntry.create({
-          data: {
-            funcionarioId: fiscal.id,
-            diaSemana: dia,
-            entrada: folga ? null : h?.entrada ?? null,
-            saida: folga ? null : h?.saida ?? null,
-            folga,
-            especial: fiscal.especial,
-            intervaloMin: 120,
-          },
+          data: { funcionarioId: fiscal.id, diaSemana: dia, ...dados },
         });
       }
     }

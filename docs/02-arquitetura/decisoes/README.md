@@ -44,3 +44,5 @@ numerado (`NNNN-titulo-curto.md`).
 | 0024 | [O contrato de experiência é da pessoa, não do cargo](0024-contrato-de-experiencia-e-da-pessoa.md) |
 
 | 0025 | ["Cancelamentos Totais": indicador calculado, com teto próprio](0025-cancelamentos-totais-indicador-calculado.md) |
+
+| 0026 | [O horário é o da ficha; nada na escala o sobrepõe](0026-horario-e-o-da-ficha.md) |

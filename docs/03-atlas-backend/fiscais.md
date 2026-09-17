@@ -1,18 +1,25 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-27 · **Cobre:** `backend/src/fiscais/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/fiscais/`
 
 # Módulo: `fiscais`
+> **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
+> (`EscalaEntry.especial`) foi **removida**: o horário é sempre o da ficha.
+> Com ela saíram a **convocação** e a **folga concedida** que dependiam do
+> mesmo campo. Os trechos abaixo que descrevem esse mecanismo valem apenas
+> como histórico. Ver
+> [ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md).
+
 
 ## 1. Propósito
 Controle de jornada dos fiscais: os três estados (Disponível / Intervalo / Fora
 de expediente), o painel em tempo real, o log de jornada (tempos e horas extras),
-os alertas automáticos e a **escala de trabalho** (geral e horário especial).
+os alertas automáticos e a **escala de trabalho** (apenas a geral, derivada da ficha).
 
 ## 2. Responsabilidades e limites
 - **Faz:** registra o status do fiscal (ponto) e calcula a jornada do dia;
   painel em tempo real (WebSocket); log de jornada, jornada de equipe, horas
   extras do mês, ranking e previsão; falta e folga do dia; alertas automáticos
   (intervalo longo, cobertura, lembretes de horário); escala geral, horário
-  especial, escala efetiva e consolidada; vínculo Fiscal → Colaborador.
+  escala efetiva e consolidada; vínculo Fiscal → Colaborador.
 - **Não faz:** autenticação/permissões (fica em [`acessos`](acessos.md)); o
   registro das batidas do Relógio de Ponto (fica em [`ponto`](ponto.md), que
   alimenta o log via ponte); o portal gerencial do ciclo de folha (fica em
@@ -32,7 +39,7 @@ os alertas automáticos e a **escala de trabalho** (geral e horário especial).
 | `fiscais-horario.service.ts` | Cron: lembretes de horário aos fiscais (conta resolvida pela ficha) | 143 |
 | `fiscais-alertas.service.ts` | Cron: alertas de intervalo longo e cobertura | 416 |
 | `escala.controller.ts` | Rotas da escala de trabalho | 64 |
-| `escala.service.ts` | Regras da escala (geral, especial, consolidada) | 355 |
+| `escala.service.ts` | Regras da escala (geral e consolidada) | 337 |
 | `escala.domain.ts` | Regras puras: escala efetiva, consolidada, semanal | 166 |
 | `colaborador-vinculo.ts` | Regra pura: mapeia fiscal → colaborador (ficha) | 84 |
 | `identidades.consulta.ts` | **A única** carga das identidades de uma pessoa (ficha + ids de fiscal), nos dois sentidos | 85 |
@@ -47,7 +54,6 @@ os alertas automáticos e a **escala de trabalho** (geral e horário especial).
 | Método + Rota | Permissão | O que faz |
 |---|---|---|
 | `POST /escala` | `ESCALA_EDITAR` | Cadastra a escala geral de um funcionário num dia. |
-| `POST /escala/:funcionarioId/especial` | `ESCALA_EDITAR` | Define horário especial que prevalece sobre a geral. |
 | `GET /escala/consolidada/:diaSemana` | `ESCALA_VISUALIZAR` | Escala consolidada do dia (domingo vem do rodízio). |
 | `GET /escala/:funcionarioId/efetiva` | `ESCALA_VISUALIZAR` | Escala efetiva do funcionário no dia. |
 | `GET /fiscais/painel` | `FISCAIS_STATUS` | Painel de todos os fiscais com o status atual. |
@@ -119,7 +125,10 @@ vira falta automática.
 > só carrega a **entrada** — o cron não usa a saída. A coerência com a escala
 > publicada é verificada em `coerencia-escalados-escala.spec.ts`. Ver os riscos.
 
-**Exceções de horário** (`EscalaEntry.especial`) valem também para operadores e
+> **Removido (ADR 0026).** O parágrafo abaixo descreve as **exceções de horário**,
+> que deixaram de existir. Fica como histórico.
+
+**Exceções de horário** (`EscalaEntry.especial`) valiam também para operadores e
 supervisores, na mesma precedência de `montarLinhaEscala`: a exceção vence o turno
 do cadastro. Antes o ramo dos operadores as ignorava por completo — a detecção
 esperava a pessoa no horário do turno padrão e não no que o gestor combinou com
@@ -142,7 +151,6 @@ alguém. Três ramos fogem da comparação, cada um por um motivo:
 
 | Situação | Hora usada | Por quê |
 |---|---|---|
-| **Exceção** de horário (`especial`) | a da escala | É o combinado mais recente e específico do dia; comparar desfaria a convocação. |
 | **Feriado** | a da ficha (`entradaDom`), com a escala como último recurso | A escala semanal **não conhece feriados** — o valor dela não é uma opinião concorrente, é um dado que não se aplica. Comparar faria o horário de dia útil vencer sempre que fosse mais tarde. |
 | Fiscal **sem ficha** resolvida | a da escala | Sem duas fontes não há o que comparar, e tirá-lo da lista seria uma decisão sem base. |
 
@@ -174,7 +182,7 @@ a ponte que ligará o ponto do fiscal à ficha canônica (Fase 4).
 
 ### `EscalaService`
 - `cadastrarEscala(entry)` / `definirHorarioEspecial(funcionarioId, entry)` —
-  escala geral e horário especial (que prevalece). Ambas gravam o vínculo
+  escala geral (derivada da ficha). Grava o vínculo
   `colaboradorId` (ficha canônica), resolvido do `funcionarioId` (Fase 4 · Opção A).
 - `resolverEscalaEfetiva(funcionarioId, diaSemana)` — a escala aplicável no dia.
 - `escalaConsolidada(diaSemana, dataISO?)` — consolidação por dia; no domingo,
@@ -210,7 +218,7 @@ vazamentos.
   (`if (funcao !== 'FISCAL') return`) **antes** de qualquer limpeza, e a escala
   seguia alimentando a folga e a detecção automática de falta de alguém que já não
   era fiscal — para sempre. Hoje o rebaixamento (e o desligamento) apaga as
-  entradas gerais. As **exceções** (`especial`) continuam intocadas: são decisões
+  entradas gerais. As **exceções** (`especial`) deixaram de existir — antes eram decisões
   humanas por dia, não derivadas da ficha.
 
 Isso importa porque as duas pontas têm consumidores diferentes: a **detecção
@@ -301,7 +309,7 @@ casos de ficha vazia, preencher os horários **primeiro**.
    (seg-qui 7h · sex-sáb 8h). O teto de extras é 1h50 por dia, sempre — acima
    disso é TAC. Ver
    [ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md).
-6. **Horário especial prevalece** sobre a escala geral (escala efetiva).
+6. **O horário é o da ficha** — não há exceção que o sobreponha (ADR 0026).
 7. **O cadastro é a fonte única da escala** (Opção A); no domingo a escala dos
    fiscais vem do rodízio de grupos.
 8. **Ponte batidas → status é atômica**; o tempo real só é anunciado após o

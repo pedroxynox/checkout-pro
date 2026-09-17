@@ -33,13 +33,9 @@
  * registro de trabalho de uma pessoa. Por construção, esta regra **nunca cria uma
  * falta que não existia antes** — só pode deixar de criar.
  *
- * Duas exceções à comparação, nas duas pontas:
+ * Uma exceção à comparação:
  *
- * 1. **A exceção de horário (`especial`) vence.** Ela é o registro mais recente e
- *    mais específico sobre aquele dia — foi o gestor combinando algo diferente, e
- *    é assim que se convoca alguém. Comparar uma convocação com o turno padrão
- *    desfaria a convocação.
- * 2. **Ficha sem horário para o dia ⇒ não se cobra nada.** A ficha é a fonte; se
+ * 1. **Ficha sem horário para o dia ⇒ não se cobra nada.** A ficha é a fonte; se
  *    ela não afirma um turno, o sistema não tem base para afirmar uma expectativa.
  *    É exatamente o caso "ficha vazia com escala do seed sobrevivente", em que
  *    hoje se cobra o ponto por um dado que ninguém revisou.
@@ -81,8 +77,6 @@ export interface EntradaConservadoraParams {
    * nenhuma ficha — aí não há duas fontes, e vale a escala.
    */
   temFicha: boolean;
-  /** A hora da escala vem de uma exceção individual (`EscalaEntry.especial`)? */
-  especial: boolean;
   /**
    * O dia é FERIADO? Aí a ficha vence direto (o horário de domingo é a regra) e
    * a escala serve só como último recurso — ela não conhece feriados, então não é
@@ -99,24 +93,21 @@ export interface EntradaConservadoraParams {
 export function entradaEsperadaConservadora(
   params: EntradaConservadoraParams,
 ): string | null {
-  const { daEscala, daFicha, temFicha, especial, ehFeriado } = params;
+  const { daEscala, daFicha, temFicha, ehFeriado } = params;
 
-  // 1. A exceção do gestor vence: é o combinado mais recente sobre o dia.
-  if (especial) return daEscala;
-
-  // 2. Sem ficha resolvida não há o que comparar — comportamento antigo.
+  // 1. Sem ficha resolvida não há o que comparar — comportamento antigo.
   if (!temFicha) return daEscala;
 
-  // 3. Feriado: a ficha vence por regra (horário de domingo), com a escala como
+  // 2. Feriado: a ficha vence por regra (horário de domingo), com a escala como
   //    último recurso. Sem a comparação, de propósito — ver o cabeçalho.
   if (ehFeriado) return daFicha ?? daEscala;
 
-  // 4. A ficha é a fonte: se ela não afirma turno, não se cobra ponto.
+  // 3. A ficha é a fonte: se ela não afirma turno, não se cobra ponto.
   if (!daFicha) return null;
 
   if (!daEscala) return daFicha;
 
-  // 5. Discordância: a mais TARDIA, para nunca adiantar a cobrança.
+  // 4. Discordância: a mais TARDIA, para nunca adiantar a cobrança.
   const mFicha = minutos(daFicha);
   const mEscala = minutos(daEscala);
   if (mFicha == null) return daEscala;

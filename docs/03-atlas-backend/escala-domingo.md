@@ -1,6 +1,13 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-27 · **Cobre:** `backend/src/escala-domingo/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/escala-domingo/`
 
 # Módulo: `escala-domingo`
+> **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
+> (`EscalaEntry.especial`) foi **removida**: o horário é sempre o da ficha.
+> Com ela saíram a **convocação** e a **folga concedida** que dependiam do
+> mesmo campo. Os trechos abaixo que descrevem esse mecanismo valem apenas
+> como histórico. Ver
+> [ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md).
+
 
 ## 1. Propósito
 Define o **rodízio de domingo**: aos domingos a operação trabalha com 2 grupos e
@@ -82,7 +89,11 @@ folga nunca chega.
 **A regra**, na ordem que importa (ver
 [ADR 0023](../02-arquitetura/decisoes/0023-folga-a-ficha-manda.md)):
 
-1. **Convocação** (`especial` com `folga: false`) → **trabalha**. É o registro mais
+> Os passos 1 e 2 desta lista **não existem mais** (ADR 0026). A regra em vigor
+> começa no passo 3: a ficha decide sozinha quando afirma um dia; a escala semanal
+> geral só decide quando a ficha é omissa.
+
+1. ~~**Convocação**~~ (`especial` com `folga: false`) → **trabalha**. É o registro mais
    específico e mais recente sobre aquele dia, e nada o vence.
 2. **Folga concedida à mão** (`especial` com `folga: true`) → **folga**. O gestor
    deu o dia; a ficha não desfaz uma decisão individual.
@@ -131,8 +142,8 @@ A distinção é fina e importa nas duas pontas:
 
 | Entrada na escala semanal | Resultado |
 |---|---|
-| `especial: true`, `folga: false` | **Convocação** — não é folga, vence a ficha |
-| `especial: true`, `folga: true` | **Dispensa** — é folga, vence a ficha |
+| `especial: true`, `folga: false` | ~~Convocação~~ — **não existe mais** (ADR 0026); a migração `9zzr` apagou essas linhas |
+| `especial: true`, `folga: true` | ~~Dispensa~~ — **não existe mais**; a `9zzr` as rebaixou a folga comum, preservando o descanso |
 | `especial: false`, `folga: false` | Entrada comum — **não** vence a folga da ficha |
 | `especial: false`, `folga: true` | Folga **só quando a ficha é omissa** (ADR 0023) |
 
@@ -159,7 +170,7 @@ que aparecia como fato consumado.
 
 | Método | O que faz |
 |---|---|
-| `consultor(dias)` | Carrega fichas + entradas da escala (folgas **e** convocações) + âncora **de uma vez** e devolve `ehFolga(dia, ids)`. É o que a varredura de 5 minutos e o quadro usam. |
+| `consultor(dias)` | Carrega fichas + entradas de **folga** da escala + âncora **de uma vez** e devolve `ehFolga(dia, ids)`. É o que a varredura de 5 minutos e o quadro usam. |
 | `ehFolga(dia, ids)` | Atalho para uma pessoa num dia. |
 
 `ids` aceita a pessoa em **todas** as suas identidades (`Fiscal.id`,

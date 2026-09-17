@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-27 · **Cobre:** `mobile/src/screens/escala/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `mobile/src/screens/escala/`
 
 # Área: `escala`
 
@@ -17,7 +17,7 @@ Publicar a escala: gerar a escala do **dia** ou da **semana**, com todo o time, 
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `EscalaScreen.tsx` | Tela: seletor de período/dia, **aviso de ficha sem folga**, prévia e os dois botões de exportação | 515 |
+| `EscalaScreen.tsx` | Tela: seletor de período/dia, **aviso de ficha sem folga**, prévia e os dois botões de exportação | 512 |
 
 Utilidades que fazem o trabalho pesado (fora da área, porque são puras):
 | Arquivo | Papel | Linhas |
@@ -163,6 +163,11 @@ perfil). Ver [Componentes compartilhados](componentes-compartilhados.md) e
 - 🔧 `escalaLayout.ts` calcula posições à mão porque o tamanho final em pixels é
   requisito. É legível, mas mexer no layout exige atenção aos deslocamentos; se
   crescer mais, vale extrair um pequeno "empilhador de blocos".
+- ✅ **O horário exibido é sempre o da ficha** (ADR 0026). A prévia e o PDF/imagem
+  perderam a marca "Horário especial" / "• especial": a exceção de horário da escala
+  semanal deixou de existir, então não há mais nada de excepcional para sinalizar.
+  Se alguém reportar que "o selo de horário especial desapareceu", é isto — e o
+  horário que aparece agora é o do cadastro.
 - ⚠️ Escalas muito grandes (centenas de pessoas) geram imagens muito altas. Há
   limite de segurança com mensagem clara, mas o caminho nesse caso é publicar por
   função.
