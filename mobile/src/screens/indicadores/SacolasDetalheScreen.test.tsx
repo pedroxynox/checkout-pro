@@ -188,4 +188,29 @@ describe("SacolasDetalheScreen", () => {
     await screen.findByText("Dias em que entrou sacola");
     expect(screen.getByText("Nenhuma entrada de sacola neste mês.")).toBeTruthy();
   });
+
+  /**
+   * O total de fardos e o número de entregas ficavam na card do painel. Saíram de
+   * lá para deixá-la enxuta, então precisam estar escritos aqui: são o denominador
+   * do indicador, e sem eles o extrato não se soma a nada.
+   */
+  it("escreve o recebido do mês em fardos e entregas, acima do extrato", async () => {
+    insumosService.detalheSacolas.mockResolvedValue(DETALHE);
+    render(<SacolasDetalheScreen />);
+
+    await screen.findByText("Dias em que entrou sacola");
+    expect(screen.getByText("Recebido no mês")).toBeTruthy();
+    expect(screen.getByText("100 fardos em 1 entrega")).toBeTruthy();
+  });
+
+  it("pluraliza as entregas quando houve mais de uma", async () => {
+    insumosService.detalheSacolas.mockResolvedValue({
+      ...DETALHE,
+      indicador: { ...INDICADOR, entregas: 2 },
+    });
+    render(<SacolasDetalheScreen />);
+
+    await screen.findByText("Dias em que entrou sacola");
+    expect(screen.getByText("100 fardos em 2 entregas")).toBeTruthy();
+  });
 });

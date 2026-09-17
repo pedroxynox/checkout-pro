@@ -2,10 +2,10 @@
  * Painel de Indicadores — foco nas duas cards de indicadores **calculados**:
  * Sacolas (ADR 0022) e Cancelamentos Totais (ADR 0025).
  *
- * O que os testes travam, nos dois: o valor vem sempre acompanhado da distância
- * até a meta (o pedido do dono do projeto), um mês sem o denominador NÃO aparece
- * como zero, os avisos de contexto aparecem, e uma falha num deles não derruba o
- * painel inteiro.
+ * O que os testes travam, nos dois: um mês sem o denominador NÃO aparece como
+ * zero, a card fica **enxuta** (nome, valor e — só nos totais, só quando existe —
+ * o excesso em reais), o detalhe é que carrega a explicação, e uma falha num deles
+ * não derruba o painel inteiro.
  */
 import { render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
@@ -124,14 +124,17 @@ describe("IndicadoresScreen — card de Sacolas", () => {
     ).toBeTruthy();
   });
 
-  it("mostra os fardos recebidos, as entregas e o mês em andamento", async () => {
+  /**
+   * A card ficou enxuta por pedido do dono do projeto: fardos, entregas e o aviso
+   * de calendário saíram dela e vivem no detalhe, onde há espaço para explicá-los.
+   */
+  it("não polui a card com fardos, entregas nem mês em andamento", async () => {
     preparar();
     render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
 
     await screen.findByText("Sacolas");
-    expect(
-      screen.getByText("100 fardos recebidos em 2 entregas · mês em andamento"),
-    ).toBeTruthy();
+    expect(screen.queryByText(/fardos recebidos/)).toBeNull();
+    expect(screen.queryByText(/mês em andamento/)).toBeNull();
   });
 
   it("abaixo do piso mostra o desvio negativo", async () => {
@@ -179,7 +182,7 @@ describe("IndicadoresScreen — card de Sacolas", () => {
     expect(screen.getByText("Sem venda registrada neste mês")).toBeTruthy();
   });
 
-  it("avisa quando o mês teve um número atípico de entregas", async () => {
+  it("o aviso de entregas atípicas não aparece mais na card (vive no detalhe)", async () => {
     preparar({
       ...SACOLAS,
       entregas: 1,
@@ -189,7 +192,7 @@ describe("IndicadoresScreen — card de Sacolas", () => {
     render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
 
     await screen.findByText("Sacolas");
-    expect(screen.getByText(/Só 1 entrega neste mês/)).toBeTruthy();
+    expect(screen.queryByText(/Só 1 entrega neste mês/)).toBeNull();
   });
 
   it("uma falha no indicador de sacolas não derruba o painel", async () => {
@@ -218,20 +221,32 @@ describe("IndicadoresScreen — card de Sacolas", () => {
 /**
  * Card de **Cancelamentos Totais** (ADR 0025).
  *
- * O que estes testes travam: o valor nunca aparece sozinho (vem com o desvio até
- * o teto), o excedente em R$ é visível, a card avisa que é a soma das duas de
- * cima e que o teto é próprio, um mês sem venda não vira "0,00% verde", e uma
- * falha aqui não derruba o painel.
+ * O que estes testes travam: a card lê igual às vizinhas ("1,10% (meta ≤ 0,75%)")
+ * usando a meta **do servidor**, o excesso aparece em R$ quando existe, um mês sem
+ * venda não vira "0,00% verde", e uma falha aqui não derruba o painel.
  */
 describe("IndicadoresScreen — card de Cancelamentos Totais", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("mostra o percentual com a distância até o teto", async () => {
+  it("mostra o percentual e a meta, na mesma forma das cards vizinhas", async () => {
     preparar();
     render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
 
     await screen.findByText("Cancelamentos Totais");
-    expect(screen.getByText("1,10% · +0,35 p.p. (teto 0,75%)")).toBeTruthy();
+    expect(screen.getByText("1,10% (meta ≤ 0,75%)")).toBeTruthy();
+  });
+
+  /**
+   * A meta exibida vem do servidor, e não de um padrão espelhado no app: editar o
+   * teto do mês em Metas tem de mudar o que se lê aqui. É justamente a divergência
+   * que as cinco cards de arrecadação ainda têm (elas mostram a meta do código).
+   */
+  it("usa a meta que o servidor devolve, não um padrão fixo do app", async () => {
+    preparar(SACOLAS, { ...TOTAIS, meta: 1.2, nivel: "OK", cumpriuMeta: true, excedente: 0 });
+    render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
+
+    await screen.findByText("Cancelamentos Totais");
+    expect(screen.getByText("1,10% (meta ≤ 1,20%)")).toBeTruthy();
   });
 
   it("traduz o excesso em dinheiro, que é o número discutível", async () => {
@@ -239,25 +254,20 @@ describe("IndicadoresScreen — card de Cancelamentos Totais", () => {
     render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
 
     await screen.findByText("Cancelamentos Totais");
-    expect(
-      screen.getByText(/R\$\s?350,00 acima do que o teto permitia no mês/),
-    ).toBeTruthy();
+    expect(screen.getByText(/R\$\s?350,00 acima do permitido/)).toBeTruthy();
   });
 
   /**
-   * Sem este aviso o gestor somaria de novo o que já está somado, e estranharia
-   * as duas metades verdes com o total amarelo.
+   * A card ficou enxuta: a explicação de que o teto é próprio (e não a soma dos
+   * dois tetos) saiu dela e continua no detalhe e na tela de Metas, onde há espaço.
    */
-  it("avisa que é a soma das duas cards acima e que o teto é próprio", async () => {
+  it("não repete na card a explicação do teto — ela vive no detalhe", async () => {
     preparar();
     render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
 
     await screen.findByText("Cancelamentos Totais");
-    expect(
-      screen.getByText(
-        /Soma das duas cards acima · teto próprio, não a soma dos dois tetos/,
-      ),
-    ).toBeTruthy();
+    expect(screen.queryByText(/Soma das duas cards acima/)).toBeNull();
+    expect(screen.queryByText(/não a soma dos dois tetos/)).toBeNull();
   });
 
   it("dentro do teto não mostra linha de excedente", async () => {
@@ -273,8 +283,8 @@ describe("IndicadoresScreen — card de Cancelamentos Totais", () => {
     render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
 
     await screen.findByText("Cancelamentos Totais");
-    expect(screen.getByText("0,60% · −0,15 p.p. (teto 0,75%)")).toBeTruthy();
-    expect(screen.queryByText(/acima do que o teto permitia/)).toBeNull();
+    expect(screen.getByText("0,60% (meta ≤ 0,75%)")).toBeTruthy();
+    expect(screen.queryByText(/acima do permitido/)).toBeNull();
   });
 
   /**
@@ -285,6 +295,10 @@ describe("IndicadoresScreen — card de Cancelamentos Totais", () => {
   it("mês sem venda registrada não vira 0,00% verde — explica", async () => {
     preparar(SACOLAS, {
       ...TOTAIS,
+      // Teto distinto dos das cards vizinhas de propósito: se esta card voltasse
+      // a escrever um percentual, ele apareceria como "0,00% (meta ≤ 0,90%)" —
+      // um texto que só ela poderia produzir, e o teste pega.
+      meta: 0.9,
       vendas: 0,
       percentual: null,
       nivel: null,
@@ -298,9 +312,9 @@ describe("IndicadoresScreen — card de Cancelamentos Totais", () => {
 
     await screen.findByText("Cancelamentos Totais");
     expect(screen.getByText("Sem venda registrada neste mês")).toBeTruthy();
-    // Sem denominador não há valor nem teto para comparar: a card não escreve
+    // Sem denominador não há valor nem meta para comparar: a card não escreve
     // percentual nenhum (é justamente o "0,00% verde" que se quer evitar).
-    expect(screen.queryByText(/\(teto 0,75%\)/)).toBeNull();
+    expect(screen.queryByText(/\(meta ≤ 0,90%\)/)).toBeNull();
   });
 
   it("uma falha no indicador não derruba o painel", async () => {
