@@ -3,6 +3,12 @@
 # Área: `escala`
 
 ## 1. Propósito
+
+> Esta área tem **duas** telas: a de **publicar a escala** (PDF/imagem para a
+> equipe) e a **Conferência de escala** (ADR 0026, etapa 2) — um diagnóstico de
+> gestão, só leitura, que mostra onde a ficha e a escala semanal discordam e **quem
+> seria afetado** se o sistema passasse a cobrar o ponto pelo horário da ficha.
+> Entra por Centro de Controle ▸ Conferência de escala.
 Publicar a escala: gerar a escala do **dia** ou da **semana**, com todo o time, em
 **PDF** ou **imagem 4K**, para enviar aos colaboradores.
 
@@ -18,6 +24,7 @@ Publicar a escala: gerar a escala do **dia** ou da **semana**, com todo o time, 
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `EscalaScreen.tsx` | Tela: seletor de período/dia, **aviso de ficha sem folga**, prévia e os dois botões de exportação | 512 |
+| `ConferenciaEscalaScreen.tsx` | **Conferência de escala**: veredito da etapa 2, quem seria cobrado mais cedo, ficha sem folga, domingo sem horário e as demais divergências | 372 |
 
 Utilidades que fazem o trabalho pesado (fora da área, porque são puras):
 | Arquivo | Papel | Linhas |
@@ -48,6 +55,7 @@ cadastro em uso).
 | Ação na tela | Chamada | Endpoint |
 |---|---|---|
 | Escala do dia | `escalaExportacaoService.dia(data)` | `GET /escala-exportacao/dia` |
+| Conferência de escala | `escalaService.conferenciaEscala()` | `GET /fiscais/conferencia-escala` |
 | Escala da semana | `escalaExportacaoService.semana(data)` | `GET /escala-exportacao/semana` |
 
 Módulo do backend relacionado:
@@ -151,6 +159,7 @@ perfil). Ver [Componentes compartilhados](componentes-compartilhados.md) e
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `EscalaScreen.test.tsx` | Prévia do dia (nome, horário, quem folga), PDF com o desenho, imagem com nome de arquivo previsível, aviso do WhatsApp, ausência do botão de imagem sem canvas, troca para a semana e o **aviso de ficha sem folga** (nomes, consequência, silêncio quando está tudo preenchido, e o mesmo aviso na grade semanal) | 10 |
+| `ConferenciaEscalaScreen.test.tsx` | Conferência: veredito quando não há pendência, quem seria **cobrado mais cedo** (com dia e minutos, e a conversão para horas), a **separação** entre risco e divergência sem efeito, ficha sem dia de folga, domingo sem horário (citando o feriado) e a ausência de qualquer botão que altere dados | 7 |
 | `utils/escalaLayout.test.ts` | Dimensões e orientação declarada, **preenchimento exato da folha 4K** (e o encurtar/alongar nos extremos), ausência do turno, dia da semana/data, seções, horários, folga, falta com turno preservado, exceção ao lado do nome, feriado, rodízio do domingo, assinatura do rodapé, logo (com e sem), escape de caracteres, grade dos sete dias e a folha de impressão | 25 |
 
 ## 10. Riscos, dívidas e pendências
@@ -168,6 +177,13 @@ perfil). Ver [Componentes compartilhados](componentes-compartilhados.md) e
   semanal deixou de existir, então não há mais nada de excepcional para sinalizar.
   Se alguém reportar que "o selo de horário especial desapareceu", é isto — e o
   horário que aparece agora é o do cadastro.
+- ✅ **A Conferência de escala é só leitura.** Não corrige, não sincroniza e não
+  apaga nada: a correção é sempre reabrir e salvar a ficha, que regenera a escala.
+  Foi decisão consciente — um diagnóstico que também "arruma" tira do gestor a
+  chance de entender o que estava errado.
+- ⚠️ A Conferência lê **fiscais ativos**. Operadores e supervisores não têm escala
+  semanal derivada, então não entram; se algum dia passarem a ter, o diagnóstico
+  precisa acompanhar.
 - ⚠️ Escalas muito grandes (centenas de pessoas) geram imagens muito altas. Há
   limite de segurança com mensagem clara, mas o caminho nesse caso é publicar por
   função.

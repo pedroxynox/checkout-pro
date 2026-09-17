@@ -106,6 +106,14 @@ const ITENS: ItemControle[] = [
     funcionalidade: 'ADMIN_DADOS',
   },
   {
+    rota: 'ConferenciaEscala',
+    titulo: 'Conferência de escala',
+    descricao:
+      'Onde a ficha e a escala semanal discordam, e quem seria afetado ao acertar',
+    icone: 'git-compare-outline',
+    funcionalidade: 'OPERADORES_CRUD',
+  },
+  {
     rota: 'ReiniciarDados',
     titulo: 'Zerar dados operacionais',
     descricao: 'Reiniciar o sistema: apagar os dados de movimento (mantém os cadastros)',

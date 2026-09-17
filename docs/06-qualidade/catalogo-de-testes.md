@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 134 arquivos, 1253 casos. **Mobile:** 38 arquivos, 287 casos. **Total: 1540 casos.**
+> **Backend:** 134 arquivos, 1260 casos. **Mobile:** 39 arquivos, 294 casos. **Total: 1554 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -88,7 +88,7 @@
 | `src/fiscais/fiscais.properties.spec.ts` | 5 | 1 |
 | `src/fiscais/fiscais.service.spec.ts` | 20 | 1 |
 | `src/fiscais/hora-esperada-fiscal.spec.ts` | 11 | 1 |
-| `src/fiscais/integridade-escala.spec.ts` | 9 | 1 |
+| `src/fiscais/integridade-escala.spec.ts` | 16 | 1 |
 | `src/fiscais/integridade-vinculo.spec.ts` | 6 | 1 |
 | `src/fiscais/jornada-marcacoes.spec.ts` | 2 | 1 |
 | `src/fiscais/status-operador.spec.ts` | 2 | 1 |
@@ -165,6 +165,7 @@
 | `src/screens/colaboradores/GestaoColaboradoresScreen.test.tsx` | 2 | 1 |
 | `src/screens/colaboradores/PerfilColaboradorScreen.test.tsx` | 3 | 2 |
 | `src/screens/contratos/ContratosScreen.test.tsx` | 8 | 2 |
+| `src/screens/escala/ConferenciaEscalaScreen.test.tsx` | 7 | 1 |
 | `src/screens/escala/EscalaScreen.test.tsx` | 10 | 2 |
 | `src/screens/fechamento/FechamentoScreen.test.tsx` | 2 | 1 |
 | `src/screens/importacoes/ImportacoesScreen.test.tsx` | 2 | 1 |

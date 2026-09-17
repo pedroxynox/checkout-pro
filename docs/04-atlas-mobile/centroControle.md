@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `mobile/src/screens/centroControle/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `mobile/src/screens/centroControle/`
 
 # Área: `centroControle`
 
@@ -53,7 +53,12 @@ operacionais).
    (carga por dia, intervalos, limites e riscos de TAC, tudo em minutos).
 5. **Insumos (dados):** zera o estoque de um insumo, de todos, ou limpa o
    histórico de requisições — cada ação pede confirmação.
-6. **Zerar dados operacionais:** exige digitar `ZERAR` e confirmar; ao concluir,
+6. **Conferência de escala:** abre o diagnóstico ficha × escala semanal
+   (`OPERADORES_CRUD`, só leitura) — onde as duas discordam e **quem seria afetado**
+   se o sistema passasse a cobrar o ponto pelo horário da ficha. A tela vive na área
+   de [Escala](escala.md); aqui é apenas o atalho. Ver
+   [ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md).
+7. **Zerar dados operacionais:** exige digitar `ZERAR` e confirmar; ao concluir,
    mostra o resumo com a contagem apagada por entidade (hoje 16 entidades de
    movimento — os lotes de sacolas saíram do plano com a remoção da área APAE).
 Cada tela de dados trata os estados **carregando / erro / vazio**.

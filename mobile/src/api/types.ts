@@ -605,6 +605,95 @@ export interface DetalheCancelamentosTotais {
   anoMesLimite: string;
 }
 
+// ----- Conferência de escala (ficha × escala semanal — ADR 0026, etapa 2) -----
+
+/**
+ * Efeito de mover a detecção de falta para a ficha, num dia divergente.
+ *
+ * Hoje vale a hora **mais tardia** entre a ficha e a cópia semanal. Então só
+ * `COBRA_MAIS_CEDO` muda a vida de alguém: a cobrança adianta e pode nascer falta
+ * onde hoje não existe.
+ */
+export type EfeitoNaCobranca = 'COBRA_MAIS_CEDO' | 'SEM_EFEITO';
+
+/** O turno de um dia, como cada fonte o descreve. */
+export interface TurnoDoDia {
+  entrada: string | null;
+  saida: string | null;
+  folga: boolean;
+}
+
+/** Um dia em que a ficha e a escala semanal discordam. */
+export interface DiaIncoerente {
+  diaSemana: number;
+  /** `null` = a fonte não tem entrada para esse dia. */
+  ficha: TurnoDoDia | null;
+  escala: TurnoDoDia | null;
+  efeito: EfeitoNaCobranca;
+  /** Minutos que a cobrança adiantaria (0 quando não há efeito). */
+  minutosAdiantados: number;
+}
+
+/** Um fiscal cuja escala semanal não corresponde à ficha. */
+export interface FiscalEscalaIncoerente {
+  colaboradorId: string;
+  nome: string;
+  matricula: string;
+  dias: DiaIncoerente[];
+  /** Ficha sem nenhum horário, com escala sobrevivente (tipicamente do seed). */
+  fichaVazia: boolean;
+}
+
+/** Pessoa com um bloco de horário pela metade (entrada sem saída, ou o inverso). */
+export interface FiscalHorarioIncompleto {
+  colaboradorId: string;
+  nome: string;
+  matricula: string;
+  /** Rótulos dos blocos: 'Seg–Qui' e/ou 'Sex–Sáb'. */
+  blocos: string[];
+}
+
+/** Ficha sem dia de folga que hoje descansa por causa da cópia semanal. */
+export interface FichaSemFolga {
+  colaboradorId: string;
+  nome: string;
+  matricula: string;
+  diasDeFolgaNaEscala: number[];
+}
+
+/** Quem está no rodízio de domingo sem horário de domingo na ficha. */
+export interface DomingoSemHorario {
+  colaboradorId: string;
+  nome: string;
+  matricula: string;
+  grupoDomingo: string;
+  falta: 'ENTRADA' | 'SAIDA' | 'AMBAS';
+}
+
+/** Entradas da escala repetidas para a mesma pessoa e dia. */
+export interface EscalaDuplicada {
+  funcionarioId: string;
+  diaSemana: number;
+  quantidade: number;
+}
+
+/** O relatório completo da Conferência de escala. */
+export interface ConferenciaEscala {
+  incoerentes: FiscalEscalaIncoerente[];
+  semEscala: { colaboradorId: string; nome: string; matricula: string }[];
+  horarioIncompleto: FiscalHorarioIncompleto[];
+  duplicadas: EscalaDuplicada[];
+  semFolgaNaFicha: FichaSemFolga[];
+  domingoSemHorario: DomingoSemHorario[];
+  totalFiscaisAtivos: number;
+  coerentes: number;
+  /** Quantas pessoas seriam afetadas se a fonte trocasse hoje. */
+  bloqueiamEtapa2: number;
+  nomesQueBloqueiam: string[];
+  /** true quando não há nenhuma pendência. */
+  ok: boolean;
+}
+
 // ----- Metas mensais (Centro de Controle ▸ Metas) -----
 
 /** Indicadores cuja meta é configurável por mês (período mensal). */
