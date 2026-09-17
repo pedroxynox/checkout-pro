@@ -307,13 +307,15 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
     expect(publicada).toEqual(quadro);
   });
 
-  it('folga marcada como EXCEÇÃO na escala semanal: as duas dizem FOLGA', async () => {
+  it('folga marcada como EXCEÇÃO não vence a ficha: as duas dizem TRABALHA', async () => {
+    // A ficha diz folga na segunda; a linha antiga diz quarta. A ficha decide
+    // sozinha (ADR 0023 + 0026) e as duas telas continuam concordando.
     const { quadro, publicada } = await comparar({
       folgaNaEscalaEm: 3,
       escalaEspecial: true,
     });
 
-    expect(quadro.get('c1')).toBe('FOLGA -----');
+    expect(quadro.get('c1')).toBe('TRABALHA 08:00-16:00');
     expect(publicada).toEqual(quadro);
   });
 
@@ -361,13 +363,14 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
     expect(quadro).toEqual(publicada);
   });
 
-  it('com HORÁRIO DE EXCEÇÃO as duas usam o mesmo horário', async () => {
-    // A exceção do gestor para a quarta (10:00–18:00) prevalece sobre o turno.
+  it('resquício de HORÁRIO DE EXCEÇÃO: as duas usam o horário da ficha', async () => {
+    // A exceção de horário deixou de existir (ADR 0026): vale o turno da ficha,
+    // e as duas telas seguem concordando.
     const { quadro, publicada } = await comparar({
       horarioEspecialEm: { diaSemana: 3, entrada: '10:00', saida: '18:00' },
     });
 
-    expect(publicada.get('c1')).toBe('TRABALHA 10:00-18:00');
+    expect(publicada.get('c1')).toBe('TRABALHA 08:00-16:00');
     expect(quadro).toEqual(publicada);
   });
 });

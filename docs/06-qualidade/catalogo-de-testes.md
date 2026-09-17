@@ -69,7 +69,7 @@
 | `src/escala-domingo/escala-domingo.domain.spec.ts` | 37 | 6 |
 | `src/escala-domingo/folga.service.spec.ts` | 20 | 4 |
 | `src/escala-exportacao/escala-exportacao.service.spec.ts` | 16 | 4 |
-| `src/escala-exportacao/escala-publicada.domain.spec.ts` | 14 | 5 |
+| `src/escala-exportacao/escala-publicada.domain.spec.ts` | 13 | 5 |
 | `src/fechamento/fechamento.domain.spec.ts` | 5 | 1 |
 | `src/feedforward/feedforward.domain.spec.ts` | 7 | 2 |
 | `src/feriados/feriados.domain.spec.ts` | 4 | 1 |
@@ -119,7 +119,7 @@
 | `src/operadores/operadores.properties.spec.ts` | 5 | 1 |
 | `src/operadores/operadores.service.spec.ts` | 12 | 4 |
 | `src/operadores/quadro-ferias-escala.spec.ts` | 14 | 5 |
-| `src/operadores/quadro-folga-escala.spec.ts` | 4 | 1 |
+| `src/operadores/quadro-folga-escala.spec.ts` | 5 | 1 |
 | `src/operadores/remover-ausencia-periodo.spec.ts` | 4 | 1 |
 | `src/ponto/contrato-6x1-congelado.spec.ts` | 5 | 1 |
 | `src/ponto/deteccao-alerta-atraso.spec.ts` | 5 | 2 |

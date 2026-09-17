@@ -1,0 +1,49 @@
+-- O HORÁRIO É O DA FICHA (ADR 0026): retira as exceções da escala semanal que
+-- sobrepunham a ficha do colaborador.
+--
+-- ## O que eram essas linhas
+--
+-- `escala_entries` com `especial = true` guardavam uma exceção por DIA DA SEMANA.
+-- Ela prevalecia sobre o horário da ficha na escala publicada, no Quadro de
+-- Operadores, na compensação de horas e na detecção automática de falta — e sobre
+-- a própria folga da ficha.
+--
+-- Quatro propriedades juntas as tornavam um problema, não um recurso:
+--   1. não tinham validade: uma convocação pontual valia todas as semanas, para
+--      sempre;
+--   2. eram gravadas sob o id LEGADO do fiscal, então a ficha não as "via";
+--   3. nenhuma tela do app as criava, exibia ou apagava — só existia a rota
+--      técnica, removida junto com esta migração;
+--   4. a sincronização da ficha as preservava de propósito, então salvar o
+--      cadastro de novo nunca as corrigia.
+--
+-- O resultado prático: a escala mostrava um horário que não existia em nenhum
+-- campo da ficha, e não havia como removê-lo pelo aplicativo. A maior parte delas
+-- vinha do seed de demonstração, que marcava dois fiscais como "especial".
+--
+-- ## Por que dois comandos, e não um DELETE
+--
+-- As linhas `especial` faziam DUAS coisas diferentes, e só uma é problema:
+--
+--   - `folga = false` → **exceção de HORÁRIO**. É a que sobrepunha a ficha. Sai.
+--   - `folga = true`  → **folga concedida** à mão. Essa só dá descanso, nunca
+--     cobra ponto de ninguém. Apagá-la poderia retirar o dia de descanso de quem
+--     tem a ficha omissa e cair em falta automática — o erro exato que este
+--     trabalho existe para evitar. Então ela é **preservada**, apenas rebaixada a
+--     entrada comum (`especial = false`), continuando a valer como folga.
+--
+-- Depois desta migração `especial` é sempre `false`: nenhum caminho a escreve
+-- como `true` e nenhum leitor a honra. Remover a coluna exige mexer em todas as
+-- consultas da escala e fica para a etapa 2, junto com a retirada da própria
+-- cópia semanal.
+--
+-- ## Efeito
+--
+-- A escala passa a mostrar exatamente o horário da ficha. Nenhum dado de cadastro
+-- é tocado, e nenhum dia de descanso é perdido.
+
+-- 1. As exceções de HORÁRIO saem: eram elas que sobrepunham a ficha.
+DELETE FROM "escala_entries" WHERE "especial" = true AND "folga" = false;
+
+-- 2. As folgas concedidas ficam, como entrada comum (não perdem o descanso).
+UPDATE "escala_entries" SET "especial" = false WHERE "especial" = true;

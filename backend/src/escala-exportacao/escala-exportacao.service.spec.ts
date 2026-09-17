@@ -106,7 +106,8 @@ function criarServico(cenario: {
       findMany: ({ where }: { where?: { especial?: boolean } } = {}) =>
         Promise.resolve(
           (cenario.escala ?? []).filter(
-            (e) => where?.especial === undefined || e.especial === where.especial,
+            (e) =>
+              where?.especial === undefined || e.especial === where.especial,
           ),
         ),
     },
@@ -171,7 +172,9 @@ describe('EscalaExportacaoService.escalaDoDia', () => {
 
   it('aplica o feriado: horário de domingo e nome no cabeçalho', async () => {
     const service = criarServico({
-      feriados: [{ data: new Date('2026-07-21T00:00:00.000Z'), nome: 'Padroeira' }],
+      feriados: [
+        { data: new Date('2026-07-21T00:00:00.000Z'), nome: 'Padroeira' },
+      ],
     });
 
     const escala = await service.escalaDoDia('2026-07-21');
@@ -191,7 +194,7 @@ describe('EscalaExportacaoService.escalaDoDia', () => {
     expect(escala.totais.ferias).toBe(1);
   });
 
-  it('a exceção de horário do dia da semana prevalece', async () => {
+  it('um resquício de exceção NÃO muda o horário da ficha', async () => {
     const service = criarServico({
       escala: [
         {
@@ -208,8 +211,11 @@ describe('EscalaExportacaoService.escalaDoDia', () => {
 
     const escala = await service.escalaDoDia('2026-07-21'); // terça
 
-    expect(escala.secoes[0].linhas[0].entrada).toBe('13:00');
-    expect(escala.secoes[0].linhas[0].horarioEspecial).toBe(true);
+    // A ficha diz 07:00–15:20, e é ela que vale (ADR 0026). A linha `especial`
+    // de 13:00 é ignorada — antes ela prevalecia, e era a origem do "horário que
+    // aparece na escala e não existe na ficha".
+    expect(escala.secoes[0].linhas[0].entrada).toBe('07:00');
+    expect(escala.secoes[0].linhas[0].saida).toBe('15:20');
   });
 
   it('marca a falta do dia mantendo o turno que ficou descoberto', async () => {
@@ -280,10 +286,12 @@ describe('EscalaExportacaoService.escalaDaSemana', () => {
 
     const escala = await service.escalaDaSemana('2026-07-22');
 
-    expect(escala.secoes[0].pessoas.map((p) => p.nome)).toEqual(['Ana', 'Zeca']);
+    expect(escala.secoes[0].pessoas.map((p) => p.nome)).toEqual([
+      'Ana',
+      'Zeca',
+    ]);
   });
 });
-
 
 /**
  * Um fiscal tem DUAS identidades: a ficha (`Colaborador.id`) e o registro legado
@@ -328,9 +336,10 @@ describe('EscalaExportacaoService · as duas identidades de um fiscal', () => {
     expect(escala.secoes[0].linhas[0].status).toBe('FOLGA');
   });
 
-  it('aplica ao dono certo uma exceção de horário sem vínculo na linha', async () => {
-    // Antes, uma exceção sem `colaboradorId` era descartada "para não aplicar no
-    // palpite". Não é palpite: o vínculo Fiscal → ficha diz de quem ela é.
+  it('exceção sem vínculo na linha também é ignorada', async () => {
+    // Este caso já custou duas correções: primeiro a exceção era descartada, depois
+    // passou a ser aplicada ao dono certo pelo vínculo Fiscal → ficha. Agora ela
+    // não se aplica a ninguém — o horário é o da ficha, e ponto (ADR 0026).
     const service = criarServico({
       ...FISCAL_COM_VINCULO,
       escala: [
@@ -348,8 +357,7 @@ describe('EscalaExportacaoService · as duas identidades de um fiscal', () => {
 
     const escala = await service.escalaDoDia('2026-07-21'); // terça
 
-    expect(escala.secoes[0].linhas[0].entrada).toBe('13:00');
-    expect(escala.secoes[0].linhas[0].horarioEspecial).toBe(true);
+    expect(escala.secoes[0].linhas[0].entrada).toBe('07:00');
   });
 
   it('a folga da ficha continua valendo, e a linha velha não soma um segundo dia', async () => {

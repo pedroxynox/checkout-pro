@@ -1,14 +1,18 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { EscalaEntry as EscalaEntryPrisma } from '@prisma/client';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
-import { CadastrarEscalaDto, EscalaEntryDto } from './dto/fiscais.dto';
+import { CadastrarEscalaDto } from './dto/fiscais.dto';
 import { EscalaEfetiva, ItemEscalaConsolidada } from './escala.domain';
 import { EscalaService } from './escala.service';
 
 /**
- * Controller da escala de trabalho (Req 4.3): cadastro de escala geral e de
- * horário especial individual (administrativo — gerente), além da resolução e
- * consolidação da escala efetiva (visualização — liberada ao fiscal).
+ * Controller da escala de trabalho (Req 4.3): cadastro da escala geral
+ * (administrativo — gerente) e resolução/consolidação da escala efetiva
+ * (visualização — liberada ao fiscal).
+ *
+ * **Não existe mais rota de horário especial.** Ela gravava uma exceção por dia
+ * da semana que prevalecia sobre a ficha, sem validade e sem nenhuma tela que a
+ * exibisse ou apagasse. O horário passou a ser sempre o da ficha (ADR 0026).
  */
 @Controller('escala')
 export class EscalaController {
@@ -19,19 +23,6 @@ export class EscalaController {
   @Funcionalidade('ESCALA_EDITAR')
   async cadastrar(@Body() dto: CadastrarEscalaDto): Promise<EscalaEntryPrisma> {
     return this.escalaService.cadastrarEscala(dto);
-  }
-
-  /** Define um horário especial individual que prevalece (Req 4.3.5). */
-  @Post(':funcionarioId/especial')
-  @Funcionalidade('ESCALA_EDITAR')
-  async definirEspecial(
-    @Param('funcionarioId') funcionarioId: string,
-    @Body() dto: EscalaEntryDto,
-  ): Promise<EscalaEntryPrisma> {
-    return this.escalaService.definirHorarioEspecial(funcionarioId, {
-      funcionarioId,
-      ...dto,
-    });
   }
 
   /**

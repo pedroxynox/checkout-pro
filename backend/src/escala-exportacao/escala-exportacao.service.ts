@@ -31,7 +31,6 @@ import {
   carregarFiscalIdsPorColaborador,
   identidadesDaFicha,
 } from '../fiscais/identidades.consulta';
-import { carregarHorariosEspeciais } from './escala-especiais.consulta';
 import {
   FichaColaboradorEscala,
   FuncaoEscala,
@@ -228,14 +227,12 @@ export class EscalaExportacaoService {
     const fim = new Date(dia);
     fim.setUTCDate(fim.getUTCDate() + 1);
 
-    const [fichas, ancoraDomingo, feriados, especiais, fiscalIds] =
-      await Promise.all([
-        this.fichas(),
-        this.ancora(),
-        carregarMapaDeFeriados(this.prisma, dia, fim),
-        carregarHorariosEspeciais(this.prisma),
-        carregarFiscalIdsPorColaborador(this.prisma),
-      ]);
+    const [fichas, ancoraDomingo, feriados, fiscalIds] = await Promise.all([
+      this.fichas(),
+      this.ancora(),
+      carregarMapaDeFeriados(this.prisma, dia, fim),
+      carregarFiscalIdsPorColaborador(this.prisma),
+    ]);
     const ids = fichas.map((f) => f.colaboradorId);
     const [ocorrencias, deFerias] = await Promise.all([
       this.ocorrencias(ids, dia, fim),
@@ -261,8 +258,6 @@ export class EscalaExportacaoService {
             dia,
             identidadesDaFicha(ficha.colaboradorId, fiscalIds),
           ) ?? false,
-        especial:
-          especiais.get(`${ficha.colaboradorId}|${dia.getUTCDay()}`) ?? null,
         ocorrencia: ocorrencias.get(`${ficha.colaboradorId}|${iso}`) ?? null,
       }),
     );
@@ -320,14 +315,12 @@ export class EscalaExportacaoService {
     const fimExclusivo = new Date(diaUTC(diasISO[6]));
     fimExclusivo.setUTCDate(fimExclusivo.getUTCDate() + 1);
 
-    const [fichas, ancoraDomingo, feriados, especiais, fiscalIds] =
-      await Promise.all([
-        this.fichas(),
-        this.ancora(),
-        carregarMapaDeFeriados(this.prisma, inicio, fimExclusivo),
-        carregarHorariosEspeciais(this.prisma),
-        carregarFiscalIdsPorColaborador(this.prisma),
-      ]);
+    const [fichas, ancoraDomingo, feriados, fiscalIds] = await Promise.all([
+      this.fichas(),
+      this.ancora(),
+      carregarMapaDeFeriados(this.prisma, inicio, fimExclusivo),
+      carregarFiscalIdsPorColaborador(this.prisma),
+    ]);
     const ids = fichas.map((f) => f.colaboradorId);
     const ocorrencias = await this.ocorrencias(ids, inicio, fimExclusivo);
     // Férias são por dia: um conjunto por dia da semana.
@@ -374,8 +367,6 @@ export class EscalaExportacaoService {
               dia,
               identidadesDaFicha(ficha.colaboradorId, fiscalIds),
             ) ?? false,
-          especial:
-            especiais.get(`${ficha.colaboradorId}|${dia.getUTCDay()}`) ?? null,
           ocorrencia:
             ocorrencias.get(`${ficha.colaboradorId}|${d.dataISO}`) ?? null,
         });

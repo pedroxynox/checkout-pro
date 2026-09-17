@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **214 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **213 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -213,7 +213,6 @@
 | Método | Rota | Handler | Permissão |
 |---|---|---|---|
 | POST | `/escala` | `cadastrar` | `ESCALA_EDITAR` |
-| POST | `/escala/:funcionarioId/especial` | `definirEspecial` | `ESCALA_EDITAR` |
 | GET | `/escala/consolidada/:diaSemana` | `consolidada` | `ESCALA_VISUALIZAR` |
 | GET | `/escala/:funcionarioId/efetiva` | `efetiva` | `ESCALA_VISUALIZAR` |
 | GET | `/fiscais/painel` | `painel` | `FISCAIS_STATUS` |

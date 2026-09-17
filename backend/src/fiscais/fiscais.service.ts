@@ -230,33 +230,6 @@ export class FiscaisService {
   ) {}
 
   /**
-   * Exceções de horário de um dia da semana, por `Colaborador.id`.
-   *
-   * Mesma consulta que a escala publicada faz (`EscalaEntry.especial` com
-   * `colaboradorId` preenchido): são as entradas que existem justamente para
-   * prevalecer sobre o turno do cadastro. Entradas sem `colaboradorId` ficam de
-   * fora — sem a ficha não há como saber de quem é a exceção, e aplicá-la no
-   * palpite seria pior do que ignorá-la.
-   */
-  private async especiaisPorColaborador(
-    diaSemana: number,
-  ): Promise<Map<string, { entrada: string | null; folga: boolean }>> {
-    const entries = await this.prisma.escalaEntry.findMany({
-      where: { diaSemana, especial: true, colaboradorId: { not: null } },
-      select: { colaboradorId: true, entrada: true, folga: true },
-    });
-    const mapa = new Map<string, { entrada: string | null; folga: boolean }>();
-    for (const e of entries) {
-      if (!e.colaboradorId) continue;
-      mapa.set(e.colaboradorId, {
-        entrada: e.entrada ?? null,
-        folga: e.folga,
-      });
-    }
-    return mapa;
-  }
-
-  /**
    * Regras de jornada do colaborador (contrato atribuído) para o cálculo.
    * `undefined` quando não há serviço — o `calcularJornadaDia` cai no padrão.
    */
@@ -891,13 +864,13 @@ export class FiscaisService {
           )
         : null;
       // Quando as duas discordam vale a mais TARDIA: assim a correção do
-      // desencontro nunca cria uma falta que antes não existia. A exceção do
-      // gestor vence a comparação; ficha sem turno no dia não é cobrada.
+      // desencontro nunca cria uma falta que antes não existia. Ficha sem turno
+      // no dia não é cobrada. Não há mais exceção de horário a considerar: o
+      // horário é sempre o da ficha (ADR 0026).
       const entrada = entradaEsperadaConservadora({
         daEscala: entradaDaEscala,
         daFicha,
         temFicha: ficha != null,
-        especial: item.efetiva.especial,
         ehFeriado,
       });
       if (!entrada) return [];
@@ -919,34 +892,24 @@ export class FiscaisService {
       where: { ativo: true, funcao: { in: FUNCOES_PONTO_NAO_FISCAL } },
       orderBy: { nome: 'asc' },
     });
-    // Exceções de horário do dia da semana (`EscalaEntry.especial`), a mesma
-    // fonte que a escala publicada consulta. O ramo dos fiscais já as recebia
-    // pela escala consolidada; o dos operadores as ignorava por completo — então
-    // a detecção esperava a pessoa no horário do turno padrão, e não no que o
-    // gestor combinou com ela. Duas horas depois disso nasce uma falta.
-    const especiais = await this.especiaisPorColaborador(diaSemana);
-
     const dosOperadores: EscaladoDia[] = colaboradores.flatMap((c) => {
-      const especial = especiais.get(c.id) ?? null;
-      // Mesma precedência de `montarLinhaEscala`: a exceção vence o turno E a
-      // folga da ficha — é assim que se convoca alguém no seu dia de descanso.
-      // Uma exceção marcada como folga é uma dispensa, e sai da lista.
-      const entrada = especial
-        ? especial.folga
-          ? null
-          : especial.entrada
-        : entradaEsperadaNoDia(
-            {
-              folgaDiaSemana: c.folgaDiaSemana,
-              grupoDomingo: c.grupoDomingo,
-              entradaSemana: c.entradaSemana,
-              entradaFds: c.entradaFds,
-              entradaDom: c.entradaDom,
-            },
-            inicio,
-            ancoraDomingo,
-            ehFeriado,
-          );
+      // O horário esperado é o da FICHA, e só ele (ADR 0026). Havia aqui uma
+      // consulta às exceções de horário da escala semanal, que venciam o turno do
+      // cadastro e até a folga da ficha. Elas deixaram de existir: sem validade,
+      // sem tela e invisíveis à ficha, faziam a detecção cobrar um horário que o
+      // colaborador não via em lugar nenhum.
+      const entrada = entradaEsperadaNoDia(
+        {
+          folgaDiaSemana: c.folgaDiaSemana,
+          grupoDomingo: c.grupoDomingo,
+          entradaSemana: c.entradaSemana,
+          entradaFds: c.entradaFds,
+          entradaDom: c.entradaDom,
+        },
+        inicio,
+        ancoraDomingo,
+        ehFeriado,
+      );
       if (!entrada) return [];
       return [
         {

@@ -20,7 +20,6 @@ describe('entradaEsperadaConservadora', () => {
         daFicha: '07:00',
         temFicha: true,
         ehFeriado: false,
-        especial: false,
       }),
     ).toBe('07:00');
   });
@@ -35,7 +34,6 @@ describe('entradaEsperadaConservadora', () => {
         daFicha: '07:00',
         temFicha: true,
         ehFeriado: false,
-        especial: false,
       }),
     ).toBe('07:00');
   });
@@ -51,22 +49,23 @@ describe('entradaEsperadaConservadora', () => {
         daFicha: '06:50',
         temFicha: true,
         ehFeriado: false,
-        especial: false,
       }),
     ).toBe('07:00');
   });
 
-  it('a EXCEÇÃO do gestor vence a comparação', () => {
-    // Uma exceção é o combinado mais recente e mais específico sobre o dia.
-    // Compará-la com o turno padrão da ficha desfaria o que o gestor decidiu —
-    // inclusive uma convocação para um dia que na ficha seria de descanso.
+  /**
+   * A exceção de horário deixou de existir (ADR 0026): a função não recebe mais
+   * esse sinal, e uma hora mais tardia na escala só vence pela regra
+   * conservadora — nunca por ser "uma decisão do gestor". Aqui a escala às 10:00
+   * vence as 07:00 da ficha porque é a mais tardia, e não porque é exceção.
+   */
+  it('sem exceção: a mais tardia vence, e é só isso', () => {
     expect(
       entradaEsperadaConservadora({
         daEscala: '10:00',
         daFicha: '07:00',
         temFicha: true,
         ehFeriado: false,
-        especial: true,
       }),
     ).toBe('10:00');
   });
@@ -82,7 +81,6 @@ describe('entradaEsperadaConservadora', () => {
         daFicha: null,
         temFicha: true,
         ehFeriado: false,
-        especial: false,
       }),
     ).toBeNull();
   });
@@ -97,7 +95,6 @@ describe('entradaEsperadaConservadora', () => {
         daFicha: null,
         temFicha: false,
         ehFeriado: false,
-        especial: false,
       }),
     ).toBe('07:00');
   });
@@ -109,7 +106,6 @@ describe('entradaEsperadaConservadora', () => {
         daFicha: '08:00',
         temFicha: true,
         ehFeriado: false,
-        especial: false,
       }),
     ).toBe('08:00');
   });
@@ -123,7 +119,6 @@ describe('entradaEsperadaConservadora', () => {
         daFicha: '07:00',
         temFicha: true,
         ehFeriado: false,
-        especial: false,
       }),
     ).toBe('07:00');
     expect(
@@ -132,7 +127,6 @@ describe('entradaEsperadaConservadora', () => {
         daFicha: 'xx:yy',
         temFicha: true,
         ehFeriado: false,
-        especial: false,
       }),
     ).toBe('07:00');
   });
@@ -147,7 +141,6 @@ describe('entradaEsperadaConservadora', () => {
         daEscala: '10:00',
         daFicha: '06:30',
         temFicha: true,
-        especial: false,
         ehFeriado: true,
       }),
     ).toBe('06:30');
@@ -161,7 +154,6 @@ describe('entradaEsperadaConservadora', () => {
         daEscala: '10:00',
         daFicha: null,
         temFicha: true,
-        especial: false,
         ehFeriado: true,
       }),
     ).toBe('10:00');
@@ -181,7 +173,6 @@ describe('entradaEsperadaConservadora', () => {
           daEscala,
           daFicha,
           temFicha: true,
-          especial: false,
           ehFeriado: false,
         });
         // Não cobrar é sempre seguro; se cobra, não pode ser mais cedo.

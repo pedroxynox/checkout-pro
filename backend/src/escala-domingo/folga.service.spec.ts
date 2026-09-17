@@ -121,12 +121,19 @@ describe('FolgaService', () => {
     expect(await service.ehFolga(TERCA, ['fiscal-2'])).toBe(true);
   });
 
-  it('uma CONVOCAÇÃO por exceção vence a folga da ficha', async () => {
-    // O gestor chamou a pessoa no dia em que ela folgaria, gravando uma exceção
-    // individual. Se a folga continuasse valendo aqui, a convocação se perdia em
-    // todo lugar que consulta esta regra: a pessoa não entrava na lista de
-    // esperados (ninguém cobrava o ponto dela) e, se a falta fosse gravada por
-    // outro caminho, a revalidação a apagaria a cada cinco minutos, em laço.
+  /**
+   * A CONVOCAÇÃO por exceção deixou de existir (ADR 0026).
+   *
+   * Ela dependia da exceção de HORÁRIO para funcionar: chamar alguém no descanso
+   * só faz sentido se houver uma hora para ela cumprir. Com a exceção de horário
+   * removida, uma "convocação" deixaria a pessoa esperada e **sem hora** — o
+   * caminho mais curto para uma falta automática indevida.
+   *
+   * Agora a ficha decide sozinha: no dia de folga dela, é folga. É o mesmo viés
+   * conservador do resto da regra — entre deixar de cobrar o ponto de alguém e
+   * marcar falta em quem estava descansando, o segundo erro é muito mais grave.
+   */
+  it('um resquício de exceção NÃO convoca: a folga da ficha vale', async () => {
     const service = criarServico({
       colaboradores: [{ id: 'col-3', folgaDiaSemana: 2, grupoDomingo: null }],
       escala: [
@@ -140,7 +147,7 @@ describe('FolgaService', () => {
       ],
     });
 
-    expect(await service.ehFolga(TERCA, ['col-3'])).toBe(false);
+    expect(await service.ehFolga(TERCA, ['col-3'])).toBe(true);
   });
 
   it('uma exceção marcada como FOLGA é dispensa, e continua sendo folga', async () => {
@@ -195,9 +202,7 @@ describe('FolgaService', () => {
      * aparecia de folga nos dois dias.
      */
     const cenarioYannelyt = {
-      colaboradores: [
-        { id: 'col-yan', folgaDiaSemana: 4, grupoDomingo: null },
-      ],
+      colaboradores: [{ id: 'col-yan', folgaDiaSemana: 4, grupoDomingo: null }],
       escala: [
         {
           funcionarioId: 'fiscal-antigo-yan',
@@ -221,9 +226,15 @@ describe('FolgaService', () => {
       expect(await service.ehFolga(QUINTA, ['col-yan'])).toBe(true);
     });
 
-    it('mas uma folga CONCEDIDA à mão ainda vence a ficha', async () => {
-      // A separação que a regra faz: a folga geral é derivada da ficha (não
-      // vota contra ela), a especial é uma decisão individual do gestor (vence).
+    /**
+     * A folga CONCEDIDA à mão pela escala semanal também deixou de vencer a ficha
+     * (ADR 0026): a ficha é a única fonte. Quando a ficha afirma um dia, ela
+     * decide — inclusive contra uma linha antiga que dizia outro dia.
+     *
+     * A migração `9zzr` preserva essas linhas como folga COMUM, então elas
+     * continuam valendo onde sempre valeram: quando a ficha é omissa.
+     */
+    it('e uma folga concedida na escala não vence a ficha', async () => {
       const service = criarServico({
         colaboradores: [
           { id: 'col-yan', folgaDiaSemana: 4, grupoDomingo: null },
@@ -239,7 +250,7 @@ describe('FolgaService', () => {
         ],
       });
 
-      expect(await service.ehFolga(QUARTA, ['col-yan'])).toBe(true);
+      expect(await service.ehFolga(QUARTA, ['col-yan'])).toBe(false);
     });
 
     it('reconhece a ficha mesmo quando só a identidade de fiscal é conhecida na escala', async () => {
@@ -272,7 +283,9 @@ describe('FolgaService', () => {
 
     it('não aponta quem tem o dia preenchido', async () => {
       const service = criarServico({
-        colaboradores: [{ id: 'col-ok', folgaDiaSemana: 3, grupoDomingo: null }],
+        colaboradores: [
+          { id: 'col-ok', folgaDiaSemana: 3, grupoDomingo: null },
+        ],
       });
       const consultor = await service.consultor([QUARTA]);
 

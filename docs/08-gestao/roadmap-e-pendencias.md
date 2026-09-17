@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** prioridades, pendências de infraestrutura, áreas ocultas e dívidas técnicas
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** prioridades, pendências de infraestrutura, áreas ocultas e dívidas técnicas
 
 # Roadmap e pendências
 
@@ -89,6 +89,30 @@ defeito de produto.
 11. **Multi-tenancy parqueado.** Quando for retomado: introduzir `lojaId`,
     isolamento por linha/RLS e testes de vazamento entre lojas. Feriados por
     localização/unidade dependem disso.
+
+### Horário e escala: etapa 2 (ADR 0026)
+
+A **etapa 1** já está feita: o horário exibido é sempre o da ficha, a exceção de
+horário da escala semanal foi removida e os dados antigos foram limpos (ver
+[ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md)).
+
+Ficou para a etapa 2, na ordem:
+
+1. **A detecção de falta passa a ler a ficha.** Hoje ela lê a cópia semanal
+   (`EscalaEntry`) com uma regra conservadora — quando as duas discordam, vale a
+   hora mais tardia, para nunca criar uma falta que antes não existia. Trocar a
+   fonte exige **rodar o diagnóstico antes** (`npm run integridade`) e conferir
+   quem seria cobrado mais cedo.
+2. **Retirar a cópia semanal.** Com todos os leitores na ficha, `EscalaEntry` deixa
+   de ter função e a coluna `especial` (hoje sempre `false`) pode ser removida.
+3. **A escala semanal derivada ignora o horário de domingo da ficha.**
+   `gerarEscalaSemanalFiscal` só gera domingo quando é o dia de folga, então a cópia
+   semanal nunca recebe `entradaDom`. Corrigir isso **sem** o rodízio G1/G2/G3 faria
+   todo fiscal ser esperado em todo domingo — por isso depende do item 1.
+4. **Se o negócio precisar de horário pontual ou convocação**, construir como
+   recurso de primeira classe: com **data de validade**, com **tela para ver e
+   desfazer**, e vinculado à ficha. O mecanismo antigo não tinha nenhuma das três
+   coisas, e foi por isso que virou um horário fantasma.
 
 ### Dívidas técnicas recorrentes (das seções "Riscos" do Atlas)
 

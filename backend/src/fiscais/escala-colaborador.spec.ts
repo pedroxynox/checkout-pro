@@ -133,7 +133,6 @@ describe('escalaConsolidada — duplicadas', () => {
     const consolidada = escalaConsolidada(entries, 3);
     const efetiva = resolverEscalaEfetiva(
       entries.find((e) => !e.especial) ?? null,
-      null,
     );
 
     expect(consolidada[0].efetiva).not.toBe('FOLGA');
@@ -145,7 +144,13 @@ describe('escalaConsolidada — duplicadas', () => {
     ).toBe('07:00');
   });
 
-  it('a exceção continua prevalecendo sobre a geral', () => {
+  /**
+   * A exceção de horário deixou de existir (ADR 0026). Um resquício na tabela é
+   * IGNORADO: quem decide o horário é a ficha, e a entrada geral é o que ela
+   * gera. Sem este teste, uma linha antiga voltaria a mandar no horário de
+   * alguém sem ninguém perceber.
+   */
+  it('um resquício de exceção é ignorado: vale a entrada geral', () => {
     const entries = [
       entrada({ id: 'e1', entrada: '07:00' }),
       entrada({ id: 'e2', entrada: '10:00', especial: true }),
@@ -154,7 +159,7 @@ describe('escalaConsolidada — duplicadas', () => {
     const [item] = escalaConsolidada(entries, 3);
 
     expect(item.efetiva === 'FOLGA' ? null : item.efetiva.entrada).toBe(
-      '10:00',
+      '07:00',
     );
   });
 });

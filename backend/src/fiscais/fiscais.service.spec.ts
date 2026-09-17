@@ -693,7 +693,12 @@ describe('FiscaisService e EscalaService', () => {
     expect(dom).toBe('FOLGA');
   });
 
-  it('horário especial prevalece sobre a regra geral (Req 4.3.5)', async () => {
+  /**
+   * Não há mais como sobrepor o horário: o serviço não expõe nenhum caminho para
+   * gravar uma exceção, e cadastrar o mesmo dia duas vezes SUBSTITUI a entrada em
+   * vez de acrescentar uma segunda (ADR 0026).
+   */
+  it('não existe caminho para sobrepor o horário da escala geral', async () => {
     const prisma = criarPrisma();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const escala = new EscalaService(prisma as any);
@@ -704,15 +709,10 @@ describe('FiscaisService e EscalaService', () => {
       saida: '16:00',
       intervaloMin: 60,
     });
-    await escala.definirHorarioEspecial('func-2', {
-      funcionarioId: 'func-2',
-      diaSemana: 3,
-      entrada: '10:00',
-      saida: '18:00',
-      intervaloMin: 30,
-    });
     const efetiva = await escala.resolverEscalaEfetiva('func-2', 3);
-    expect((efetiva as { entrada: string }).entrada).toBe('10:00');
+    expect((efetiva as { entrada: string }).entrada).toBe('08:00');
+    // Não há mais nenhum caminho para sobrepor esse horário.
+    expect('definirHorarioEspecial' in escala).toBe(false);
   });
 
   it('escala manual grava o vínculo colaboradorId (Fase 4 · Opção A)', async () => {
@@ -733,13 +733,13 @@ describe('FiscaisService e EscalaService', () => {
     expect((geral as { colaboradorId: string | null }).colaboradorId).toBe(
       'colab-1',
     );
-    const especial = await escala.definirHorarioEspecial('f1', {
+    const outroDia = await escala.cadastrarEscala({
       funcionarioId: 'f1',
       diaSemana: 2,
       entrada: '10:00',
       saida: '18:00',
     });
-    expect((especial as { colaboradorId: string | null }).colaboradorId).toBe(
+    expect((outroDia as { colaboradorId: string | null }).colaboradorId).toBe(
       'colab-1',
     );
   });

@@ -20,11 +20,14 @@ export interface LinhaEscala {
   /** Turno do cadastro (ABERTURA/INTERMEDIARIO/FECHAMENTO/APOIO) ou null. */
   turno: string | null;
   status: StatusEscala;
-  /** Turno do dia ("HH:mm"); vem preenchido também quando a pessoa faltou. */
+  /**
+   * Turno do dia ("HH:mm"); vem preenchido também quando a pessoa faltou.
+   *
+   * Vem **sempre** da ficha do colaborador (ADR 0026): não existe mais exceção
+   * de horário na escala semanal que pudesse sobrepô-la.
+   */
   entrada: string | null;
   saida: string | null;
-  /** true quando o horário do dia vem de uma exceção individual. */
-  horarioEspecial: boolean;
 }
 
 /** As pessoas de uma função, na ordem de leitura. */

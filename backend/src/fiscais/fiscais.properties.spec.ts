@@ -132,24 +132,16 @@ describe('Fiscais e Escala — testes de propriedade', () => {
         especial: fc.constant(especial),
       });
 
+    // Sem exceção de horário (ADR 0026): a escala efetiva é a entrada geral,
+    // ou FOLGA quando não há entrada ou ela é uma folga.
     fc.assert(
-      fc.property(
-        fc.option(entryArb(false), { nil: null }),
-        fc.option(entryArb(true), { nil: null }),
-        (geral, especial) => {
-          const efetiva = resolverEscalaEfetiva(geral, especial);
-          if (especial && !especial.folga) {
-            return efetiva === especial;
-          }
-          if (especial && especial.folga) {
-            return efetiva === 'FOLGA';
-          }
-          if (geral && !geral.folga) {
-            return efetiva === geral;
-          }
-          return efetiva === 'FOLGA';
-        },
-      ),
+      fc.property(fc.option(entryArb(false), { nil: null }), (geral) => {
+        const efetiva = resolverEscalaEfetiva(geral);
+        if (geral && !geral.folga) {
+          return efetiva === geral;
+        }
+        return efetiva === 'FOLGA';
+      }),
       { numRuns: NUM_RUNS },
     );
   });

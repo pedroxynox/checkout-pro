@@ -366,9 +366,6 @@ function LinhaPrevia({ linha }: { linha: LinhaEscala }): React.ReactElement {
         <Text style={styles.linhaNome} numberOfLines={1}>
           {linha.nome}
         </Text>
-        {linha.horarioEspecial ? (
-          <Text style={styles.linhaSub}>Horário especial</Text>
-        ) : null}
       </View>
       {linha.status === 'TRABALHA' ? (
         <Text style={styles.linhaHora}>{horario ?? '—'}</Text>

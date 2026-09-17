@@ -22,7 +22,6 @@ import {
   LinhaEscala,
   montarLinhaEscala,
 } from '../escala-exportacao/escala-publicada.domain';
-import { carregarHorariosEspeciais } from '../escala-exportacao/escala-especiais.consulta';
 
 /**
  * Estado de uma célula da grade semanal. `FERIAS` existe porque a grade é um
@@ -352,15 +351,13 @@ export class OperadorTurnoService {
   }> {
     const inicio = dias[0];
     const fimExclusivo = addDias(dias[dias.length - 1], 1);
-    const [ancoraDomingo, especiais, consultorFolga, mapaFeriados] =
-      await Promise.all([
-        this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
-        carregarHorariosEspeciais(this.prisma),
-        this.folga ? this.folga.consultor(dias) : null,
-        this.feriados
-          ? this.feriados.mapaNoPeriodo(inicio, fimExclusivo)
-          : new Map<number, string>(),
-      ]);
+    const [ancoraDomingo, consultorFolga, mapaFeriados] = await Promise.all([
+      this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
+      this.folga ? this.folga.consultor(dias) : null,
+      this.feriados
+        ? this.feriados.mapaNoPeriodo(inicio, fimExclusivo)
+        : new Map<number, string>(),
+    ]);
     // Férias por dia: um período pode cobrir só parte do intervalo, então a
     // pergunta é feita dia a dia (como já fazia a escala publicada).
     const feriasPorDia = new Map<number, Set<string>>();
@@ -382,8 +379,6 @@ export class OperadorTurnoService {
           deFerias:
             feriasPorDia.get(dia.getTime())?.has(ficha.colaboradorId) ?? false,
           deFolga: consultorFolga?.ehFolga(dia, [ficha.colaboradorId]) ?? false,
-          especial:
-            especiais.get(`${ficha.colaboradorId}|${dia.getUTCDay()}`) ?? null,
           ocorrencia: ehAtestado == null ? null : { ehAtestado },
         }),
       grupoFolgaDomingo: (dia) =>

@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/colaboradores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `mobile/src/screens/colaboradores/`
 
 # Área: `colaboradores`
 
@@ -101,6 +101,11 @@ Módulo do backend relacionado: [`colaboradores`](../03-atlas-backend/colaborado
 ## 10. Riscos, dívidas e pendências
 - 🔧 `PerfilColaboradorScreen.tsx` e `FeedforwardSecao.tsx` são grandes (>800
   linhas); candidatos a quebrar em componentes menores.
+- ✅ **O cartão "Escala" do perfil mostra o horário de DOMINGO e o grupo do
+  rodízio** (ADR 0026). Antes exibia só Seg–Qui e Sex–Sáb, embora o formulário de
+  edição já tivesse o horário de domingo (abaixo do grupo) — e é esse horário que
+  decide **domingo e feriado** na escala. Quem consultava a ficha via dois horários
+  e a escala usava um terceiro. O cartão também escreve a regra do feriado.
 - ⚠️ A ficha é alcançada de **quatro** telas (Colaboradores, Escalas, Contratos e
   Jornada da equipe). Toda entrada nova precisa conferir `COLABORADORES_PERFIL`
   antes de navegar, senão abre um caminho lateral para um dado confidencial.

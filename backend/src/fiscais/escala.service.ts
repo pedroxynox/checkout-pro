@@ -227,33 +227,11 @@ export class EscalaService {
   }
 
   /**
-   * Define um horário especial individual para um funcionário em um dia
-   * (Req 4.3.5), marcado como especial para prevalecer sobre a regra geral.
-   */
-  async definirHorarioEspecial(
-    funcionarioId: string,
-    entry: EscalaEntryInput,
-  ): Promise<EscalaEntryPrisma> {
-    const colaboradorId = await this.colaboradorIdDoFuncionario(funcionarioId);
-    return this.prisma.escalaEntry.create({
-      data: {
-        funcionarioId,
-        // Vínculo com a ficha canônica (Fase 4 · Opção A).
-        colaboradorId,
-        diaSemana: entry.diaSemana,
-        entrada: entry.entrada ?? null,
-        saida: entry.saida ?? null,
-        intervaloMin: entry.intervaloMin ?? 0,
-        folga: entry.folga ?? false,
-        especial: true,
-      },
-    });
-  }
-
-  /**
-   * Resolve a escala efetiva de um funcionário em um dia (Req 4.3.5): o horário
-   * especial prevalece sobre a regra geral; na ausência de ambos, retorna
-   * folga.
+   * Resolve a escala efetiva de um funcionário em um dia: a entrada GERAL do dia
+   * (derivada da ficha) ou folga, quando não há entrada.
+   *
+   * Antes existia aqui a prevalência do **horário especial**. Ela foi removida
+   * pela ADR 0026: o horário é sempre o da ficha.
    */
   async resolverEscalaEfetiva(
     funcionarioId: string,
@@ -262,19 +240,17 @@ export class EscalaService {
     const entries = await this.prisma.escalaEntry.findMany({
       where: { funcionarioId, diaSemana },
     });
+    // `find` = a PRIMEIRA entrada, o mesmo critério de `escalaConsolidada`: com
+    // critérios opostos, a escala efetiva de uma pessoa dependia de qual dos
+    // dois leitores perguntava.
     const geral = entries.find((e) => !e.especial) ?? null;
-    const especial = entries.find((e) => e.especial) ?? null;
-    return resolverEscalaEfetiva(
-      geral as EscalaEntry | null,
-      especial as EscalaEntry | null,
-    );
+    return resolverEscalaEfetiva(geral as EscalaEntry | null);
   }
 
   /**
    * Escala consolidada por dia da semana (Req 4.3.6), com entrada, saída,
-   * intervalo e folga de cada funcionário, aplicando a prevalência do horário
-   * especial. Resolve o **nome** do funcionário (fiscal/operador/usuário) para
-   * exibição, com fallback para o próprio id.
+   * intervalo e folga de cada funcionário. Resolve o **nome** do funcionário
+   * (fiscal/operador/usuário) para exibição, com fallback para o próprio id.
    */
   async escalaConsolidada(
     diaSemana: number,

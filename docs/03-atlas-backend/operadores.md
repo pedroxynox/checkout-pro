@@ -1,6 +1,13 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `backend/src/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/operadores/`
 
 # Módulo: `operadores`
+> **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
+> (`EscalaEntry.especial`) foi **removida**: o horário é sempre o da ficha.
+> Com ela saíram a **convocação** e a **folga concedida** que dependiam do
+> mesmo campo. Os trechos abaixo que descrevem esse mecanismo valem apenas
+> como histórico. Ver
+> [ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md).
+
 
 ## 1. Propósito
 Gestão da operação de frente de caixa: **ausências** (faltas) dos operadores e
@@ -198,8 +205,9 @@ Delegam às funções puras homônimas do domínio.
   aplicava ao turno. O quadro não a conhecia — num feriado ele mostrava o horário
   de dia útil, e o operador que lesse a tela de gestão veria uma hora de entrada
   diferente da que estava na escala que ele recebeu.
-- **EXCEÇÃO DE HORÁRIO** (`EscalaEntry.especial`) prevalece sobre o turno do
-  cadastro, inclusive sobre a folga da ficha — é assim que se convoca alguém no
+- ~~**EXCEÇÃO DE HORÁRIO**~~ — **removida pela ADR 0026**: o horário é sempre o da
+  ficha. O texto a seguir é histórico. A exceção prevalecia sobre o turno do
+  cadastro, inclusive sobre a folga da ficha — era assim que se convocava alguém no
   seu dia de descanso. O quadro ignorava as exceções por completo. A leitura é a
   **consulta compartilhada** `carregarHorariosEspeciais`: o quadro tinha uma cópia
   idêntica dela, e depois do trabalho de unificar a *decisão* em

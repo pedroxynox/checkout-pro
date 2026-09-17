@@ -1,9 +1,16 @@
 /**
  * Lógica de domínio **pura** da escala de trabalho (Req 4.3).
  *
- * Concentra a resolução da escala efetiva por funcionário/dia, na qual um
- * horário especial individual prevalece sobre a regra geral do turno
- * (Req 4.3.5), e a consolidação da escala por dia da semana (Req 4.3.6).
+ * Concentra a resolução da escala efetiva por funcionário/dia e a consolidação
+ * da escala por dia da semana (Req 4.3.6).
+ *
+ * ## O que saiu daqui (ADR 0026)
+ *
+ * Havia uma **regra de prevalência**: uma entrada marcada como `especial`
+ * sobrepunha a entrada geral do dia. Foi removida — o horário é sempre o da
+ * ficha, e a entrada geral é o que a ficha gera. A coluna `especial` continua no
+ * banco, mas é sempre `false`: nenhum caminho a escreve como `true` e nenhum
+ * leitor a honra.
  *
  * Por serem puras e determinísticas, podem ser exercitadas por testes de
  * propriedade (fast-check) sem qualquer infraestrutura.
@@ -32,23 +39,14 @@ function entryParaEfetiva(entry: EscalaEntry | null): EscalaEfetiva {
 }
 
 /**
- * Resolve a escala efetiva de um funcionário em um dia (Req 4.3.5):
- *
- * - quando existe um horário **especial** individual para o dia, ele prevalece
- *   sobre a regra geral do turno;
- * - caso contrário, aplica a regra geral (ou folga, quando não há regra geral
- *   ou ela é uma folga).
+ * Resolve a escala efetiva de um funcionário em um dia: a entrada geral do turno
+ * (derivada da ficha) ou folga, quando não há entrada ou ela é uma folga.
  *
  * @param geral entrada geral do turno (ou `null`).
- * @param especial entrada especial individual (ou `null`).
  */
 export function resolverEscalaEfetiva(
   geral: EscalaEntry | null,
-  especial: EscalaEntry | null,
 ): EscalaEfetiva {
-  if (especial) {
-    return entryParaEfetiva(especial);
-  }
   return entryParaEfetiva(geral);
 }
 
@@ -60,43 +58,36 @@ export interface ItemEscalaConsolidada {
 
 /**
  * Consolida a escala de um dia da semana (Req 4.3.6): para cada funcionário com
- * entrada naquele dia, resolve a escala efetiva aplicando a regra de
- * prevalência do horário especial. O resultado é ordenado por `funcionarioId`
- * para ser determinístico.
+ * entrada naquele dia, resolve a escala efetiva. O resultado é ordenado por
+ * `funcionarioId` para ser determinístico.
+ *
+ * Entradas marcadas como `especial` são **ignoradas** (ADR 0026): elas não são
+ * mais criadas e as antigas foram apagadas, mas ignorá-las explicitamente evita
+ * que um resquício volte a decidir o horário de alguém.
  */
 export function escalaConsolidada(
   entries: readonly EscalaEntry[],
   diaSemana: number,
 ): ItemEscalaConsolidada[] {
-  const doDia = entries.filter((e) => e.diaSemana === diaSemana);
-  const porFuncionario = new Map<
-    string,
-    { geral: EscalaEntry | null; especial: EscalaEntry | null }
-  >();
+  const doDia = entries.filter((e) => e.diaSemana === diaSemana && !e.especial);
+  const porFuncionario = new Map<string, EscalaEntry>();
 
   for (const e of doDia) {
-    const atual = porFuncionario.get(e.funcionarioId) ?? {
-      geral: null,
-      especial: null,
-    };
     // PRIMEIRA entrada ganha, não a última. Não deveria haver duplicadas (a
-    // escrita agora substitui em vez de acrescentar), mas as antigas existem —
-    // e `resolverEscalaEfetiva`, que lê a mesma tabela, sempre usou
+    // escrita substitui em vez de acrescentar), mas as antigas existem — e
+    // `resolverEscalaEfetiva`, que lê a mesma tabela, sempre usou
     // `entries.find(...)`, ou seja a primeira. Com critérios opostos, a escala
     // efetiva de uma pessoa dependia de qual dos dois leitores perguntava.
     // `npm run integridade` aponta as duplicadas que ainda existirem.
-    if (e.especial) {
-      atual.especial ??= e;
-    } else {
-      atual.geral ??= e;
+    if (!porFuncionario.has(e.funcionarioId)) {
+      porFuncionario.set(e.funcionarioId, e);
     }
-    porFuncionario.set(e.funcionarioId, atual);
   }
 
   return Array.from(porFuncionario.entries())
-    .map(([funcionarioId, { geral, especial }]) => ({
+    .map(([funcionarioId, geral]) => ({
       funcionarioId,
-      efetiva: resolverEscalaEfetiva(geral, especial),
+      efetiva: resolverEscalaEfetiva(geral),
     }))
     .sort((a, b) => a.funcionarioId.localeCompare(b.funcionarioId));
 }

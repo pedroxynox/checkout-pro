@@ -1939,6 +1939,11 @@ export interface PerfilColaborador {
     saidaSemana: string | null;
     entradaFds: string | null;
     saidaFds: string | null;
+    /** Horário de DOMINGO — e também o de FERIADO (ADR 0026). */
+    entradaDom: string | null;
+    saidaDom: string | null;
+    /** Grupo do rodízio de domingo (G1/G2/G3); `null` = fora do rodízio. */
+    grupoDomingo: string | null;
     folgaDiaSemana: number | null;
   };
   /** Vínculo com a conta de acesso do app (online/offline + jornada de hoje). */

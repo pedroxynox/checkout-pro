@@ -51,7 +51,6 @@ function montar(parcial: Partial<ParamsMontar> = {}): LinhaEscala {
     ehFeriado: false,
     deFerias: false,
     deFolga: false,
-    especial: null,
     ocorrencia: null,
     ...parcial,
   });
@@ -82,20 +81,19 @@ describe('montarLinhaEscala', () => {
     expect(linha.entrada).toBeNull();
   });
 
-  it('horário especial prevalece sobre o turno do cadastro', () => {
-    const linha = montar({
-      especial: { entrada: '10:00', saida: '18:00', folga: false },
-    });
-    expect(linha.entrada).toBe('10:00');
-    expect(linha.saida).toBe('18:00');
-    expect(linha.horarioEspecial).toBe(true);
-  });
-
-  it('folga especial vira FOLGA mesmo em dia útil', () => {
-    const linha = montar({
-      especial: { entrada: null, saida: null, folga: true },
-    });
-    expect(linha.status).toBe('FOLGA');
+  /**
+   * A regressão que a ADR 0026 encerra. Antes existia um "horário especial" por
+   * dia da semana que prevalecia sobre a ficha — sem validade, invisível no app
+   * e impossível de apagar por lá. O horário passou a vir SEMPRE da ficha, e não
+   * há mais nenhum parâmetro capaz de sobrepô-la.
+   */
+  it('o horário vem sempre da ficha: nada além dela pode sobrepô-lo', () => {
+    const linha = montar({});
+    expect(linha.entrada).toBe('07:00');
+    expect(linha.saida).toBe('15:20');
+    // A própria assinatura da função já não aceita uma exceção de horário: o
+    // único caminho para o turno do dia é a ficha.
+    expect(Object.keys(linha)).not.toContain('horarioEspecial');
   });
 
   it('falta mantém o horário previsto ao lado', () => {
