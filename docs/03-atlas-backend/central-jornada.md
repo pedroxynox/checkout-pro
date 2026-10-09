@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/central-jornada/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `backend/src/central-jornada/`
 
 # Módulo: `central-jornada`
 
@@ -25,7 +25,7 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `central-jornada.controller.ts` | Rotas HTTP do portal | 100 |
-| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 2126 |
+| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 2152 |
 | `central-jornada.module.ts` | Ligações (DI) do módulo | 25 |
 | `dto/central-jornada.dto.ts` | Validação de entrada (marcar débito) | 7 |
 
@@ -46,7 +46,7 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 | `GET /central-jornada/marcacoes-invalidas` | `CENTRAL_JORNADA` | Relatório de ajuste do ponto: dia a dia, quantas marcações faltam e **quais**. |
 | `GET /central-jornada/exportacao` | `CENTRAL_JORNADA` | Dados do ciclo para revisão antes do fechamento (uma linha por dia relevante). |
 | `GET /central-jornada/comparativos` | `CENTRAL_JORNADA` | Totais do time dos últimos `qtd` ciclos (1..12). |
-| `GET /central-jornada/pessoa/:id` | `CENTRAL_JORNADA` | Detalhe diário de um colaborador no ciclo (drill-down). |
+| `GET /central-jornada/pessoa/:id` | `CENTRAL_JORNADA` | Detalhe diário de um colaborador no ciclo (drill-down), com o resumo atual dele. |
 | `POST /central-jornada/ausencia/:id/debito` | `CENTRAL_JORNADA` | Marca/desmarca uma falta como débito de horas (marcar é recusado em domingo/feriado). |
 
 ## 5. Serviços e funções
@@ -63,6 +63,13 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 #### `detalhePessoa(colaboradorId, deslocamento = 0)`
 Carrega **só** os dados daquela pessoa (não o ciclo inteiro) e devolve o detalhe
 diário — o drill-down abre rápido mesmo com muitos colaboradores.
+- **Devolve:** `{ periodo, resumo, dias }`. O `resumo` é o **mesmo
+  `CentralPessoaResumo`** da card da Central, calculado na hora (`null` quando a
+  ficha não está na Central — inativa ou de função fora do ponto).
+- **Por que o `resumo`:** antes a rota devolvia só os dias e a tela de detalhe
+  montava o cabeçalho com a cópia recebida na navegação. Excluído um atestado na
+  escala, os dias mudavam, mas o chip "Atestado" e os contadores do topo ficavam
+  com o valor antigo, como se o atestado continuasse lá.
 
 #### `inconsistenciasCiclo(deslocamento = 0)`
 Varre o dia a dia de cada pessoa e devolve a lista achatada dos problemas:
@@ -480,7 +487,7 @@ regra 16 e [`compensacao-horas`](compensacao-horas.md).
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito), **atraso em feriado pelo turno de domingo**, o **dia escalado sem registro** (`FALTA_NAO_REGISTRADA`: domingo pelo rodízio, e as guardas que evitam apontar folga — sem grupo, sem `entradaDom`, folga da ficha, folga só na escala semanal, dia não terminado — mais a prova de que não mexe nos totais) e o **ponto em dia de folga** (`PONTO_EM_FOLGA`: conta como trabalho normal, **não** vira TAC nem toca os contadores, aparece no painel, e dia normal não é apontado) | 39 |
+| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito), **atraso em feriado pelo turno de domingo**, o **dia escalado sem registro** (`FALTA_NAO_REGISTRADA`: domingo pelo rodízio, e as guardas que evitam apontar folga — sem grupo, sem `entradaDom`, folga da ficha, folga só na escala semanal, dia não terminado — mais a prova de que não mexe nos totais) e o **ponto em dia de folga** (`PONTO_EM_FOLGA`: conta como trabalho normal, **não** vira TAC nem toca os contadores, aparece no painel, e dia normal não é apontado) e o **resumo atual no detalhe** (`detalhePessoa`: excluído o atestado, o dia e os totais voltam ao normal; resumo nulo para quem não está na Central) | 42 |
 | `marcacoes-invalidas.service.spec.ts` | Relatório de marcações faltantes: entrada esquecida, encerramento, as duas do intervalo, totais, ordenação, sem turno — e os dias que **não** entram (não retorno do intervalo, jornada curta válida, dia completo, dia sem registro) | 12 |
 | `rankings.service.spec.ts` | Base dos rankings: **detalhe do mesmo tamanho que o contador** de cada card, faltas sem atestado, atestados à parte (contados por documento), atrasos com minutos e turno, TAC com motivos, conflitos, pessoas zeradas e igualdade com `resumoCiclo` | 10 |
 | `agrupar-atestados.spec.ts` | Agrupamento por documento e por bloco de dias consecutivos: 3+2 dias = 2 atestados, dias não contíguos, virada de mês e o total de dias preservado | 12 |
@@ -491,7 +498,7 @@ regra 16 e [`compensacao-horas`](compensacao-horas.md).
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `central-jornada.service.ts` (2126 linhas) concentra carga, cálculo e
+- 🔧 `central-jornada.service.ts` (2152 linhas) concentra carga, cálculo e
   agregação; os tipos de resposta (`Central*`) e o cálculo diário podem ser
   extraídos conforme crescer.
 - 🔧 **Duas respostas para "o que falta no dia".** O painel de inconsistências

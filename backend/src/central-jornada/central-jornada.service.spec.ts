@@ -475,6 +475,66 @@ describe('CentralJornadaService.resumoCiclo', () => {
     expect(domingo?.debito).toBe(false); // não aparece debitado na tela
   });
 
+  /**
+   * O detalhe devolve o RESUMO atual da pessoa, não só os dias. Antes a tela
+   * montava o cabeçalho com a cópia recebida na navegação: excluído o atestado na
+   * escala, o chip "Atestado" continuava lá. Aqui o atestado existe na primeira
+   * leitura e some na segunda (foi excluído), e o resumo tem de acompanhar.
+   */
+  it('detalhe devolve o resumo atual: excluído o atestado, o dia e os totais voltam ao normal', async () => {
+    const ausencias: Record<string, unknown>[] = [
+      {
+        id: 'at1',
+        pessoaId: 'c1',
+        colaboradorId: 'c1',
+        data: dia('2026-07-03'), // sexta (base 8h)
+        debitoHoras: false,
+        motivoJustificativa: 'ATESTADO_MEDICO',
+        atestadoId: 'doc1',
+      },
+    ];
+    const service = montarComAusencia(ausencias[0]);
+    // A mesma fonte é relida a cada chamada: esvaziá-la simula a exclusão.
+    const prisma = (
+      service as unknown as {
+        prisma: { ausencia: { findMany: jest.Mock } };
+      }
+    ).prisma;
+    prisma.ausencia.findMany.mockImplementation(async () => [...ausencias]);
+
+    const antes = await service.detalhePessoa('c1', 0);
+    expect(antes.resumo?.colaboradorId).toBe('c1');
+    expect(antes.resumo?.nome).toBe('Ana');
+    expect(antes.resumo?.atestados).toBe(1);
+    expect(antes.resumo?.horasAtestadoMs).toBe(H8);
+    expect(antes.dias.find((d) => d.data.startsWith('2026-07-03'))?.tipo).toBe(
+      'ATESTADO',
+    );
+
+    ausencias.length = 0; // atestado excluído (os dias criados por ele somem)
+
+    const depois = await service.detalhePessoa('c1', 0);
+    expect(depois.resumo?.atestados).toBe(0);
+    expect(depois.resumo?.horasAtestadoMs).toBe(0);
+    expect(depois.resumo?.faltas).toBe(0);
+    expect(
+      depois.dias.find((d) => d.data.startsWith('2026-07-03'))?.tipo,
+    ).not.toBe('ATESTADO');
+  });
+
+  it('detalhe de quem não está na Central devolve resumo nulo', async () => {
+    const service = montarComAusencia({
+      id: 'x1',
+      pessoaId: 'c1',
+      colaboradorId: 'c1',
+      data: dia('2026-07-03'),
+      debitoHoras: false,
+      motivoJustificativa: null,
+    });
+    const det = await service.detalhePessoa('desconhecido', 0);
+    expect(det.resumo).toBeNull();
+  });
+
   it('recusa marcar débito em falta de domingo e de feriado', async () => {
     const ausencia = {
       id: 'z1',

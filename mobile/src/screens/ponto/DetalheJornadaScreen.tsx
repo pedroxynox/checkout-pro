@@ -5,13 +5,16 @@
  * débito. Fica em tela própria para não pesar a Central: o backend carrega
  * apenas os dados desta pessoa.
  */
-import { useRoute } from "@react-navigation/native";
+import { useFocusEffect, useRoute } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ApiError } from "../../api/client";
 import { centralJornadaService } from "../../api/services";
-import { CentralDiaDetalhe } from "../../api/services/centralJornada";
+import {
+  CentralDiaDetalhe,
+  CentralPessoaResumo,
+} from "../../api/services/centralJornada";
 import { useAuth } from "../../auth/AuthContext";
 import {
   Cartao,
@@ -88,11 +91,35 @@ export function DetalheJornadaScreen(): React.ReactElement {
   const route = useRoute<RouteProp<RootStackParamList, "DetalheJornada">>();
   const { podeAcessar } = useAuth();
   const podeMarcarDebito = podeAcessar("OPERADORES_AUSENCIAS");
-  const { colaboradorId, ciclo, pessoa } = route.params;
+  const { colaboradorId, ciclo } = route.params;
 
-  const detalhe = useRequisicao<{ dias: CentralDiaDetalhe[] } | null>(
+  const detalhe = useRequisicao<{
+    resumo: CentralPessoaResumo | null;
+    dias: CentralDiaDetalhe[];
+  } | null>(
     () => centralJornadaService.pessoa(colaboradorId, ciclo),
     [colaboradorId, ciclo],
+  );
+
+  // O cabeçalho usa o resumo que VEM DO SERVIDOR junto com os dias. O da
+  // navegação é só uma cópia do momento em que se tocou na card: serve para a
+  // tela não abrir vazia, mas fica velha — excluído um atestado na escala, o chip
+  // "Atestado" continuava aqui mesmo depois de recarregar.
+  const pessoa = detalhe.dados?.resumo ?? route.params.pessoa;
+
+  // Ao VOLTAR para esta tela (ex.: foi à escala excluir um atestado e voltou),
+  // recarrega. Pula o primeiro foco: a carga inicial já é feita ao montar.
+  const recarregarAoVoltarRef = React.useRef<() => void>(() => undefined);
+  recarregarAoVoltarRef.current = detalhe.recarregar;
+  const primeiroFoco = React.useRef(true);
+  useFocusEffect(
+    React.useCallback(() => {
+      if (primeiroFoco.current) {
+        primeiroFoco.current = false;
+        return;
+      }
+      recarregarAoVoltarRef.current();
+    }, []),
   );
 
   async function alternarDebito(dia: CentralDiaDetalhe): Promise<void> {

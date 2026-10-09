@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/ponto/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `mobile/src/screens/ponto/`
 
 # Área: `ponto`
 
@@ -31,7 +31,7 @@ feriados).
 | `metricasResumo.ts` | Identidade das sete métricas do resumo (fonte única de card + ranking) | 153 |
 | `CartaoCompensacao.tsx` | Card-resumo "Compensação de horas" na Central: 50% em aberto, quanto **não cabe** no ciclo, quantas sugestões — e leva à tela | 178 |
 | `CompensacaoScreen.tsx` | Tela de compensação: carteira de 50%, dias mais fracos, liberações, coberturas de falta e o que já foi concedido | 803 |
-| `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 418 |
+| `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 445 |
 | `InconsistenciasScreen.tsx` | Problemas do ciclo agrupados por dia | 325 |
 | `MarcacoesInvalidasScreen.tsx` | Marcações que faltam registrar: quantas e quais, por dia; cada item abre o ajuste | 644 |
 | `filaCorrecao.ts` | Fila de correção (lógica pura): filtros, ordem de trabalho e próxima pendência | 118 |
@@ -108,7 +108,7 @@ Cada tela trata os estados **carregando / erro / vazio**.
 | Marcações inválidas | `centralJornadaService.marcacoesInvalidas(ciclo)` | `GET /central-jornada/marcacoes-invalidas` |
 | Ranking do time | `centralJornadaService.rankings(ciclo)` | `GET /central-jornada/rankings` |
 | Comparativo | `centralJornadaService.comparativos(qtd)` | `GET /central-jornada/comparativos` |
-| Detalhe por pessoa | `centralJornadaService.pessoa(id, ciclo)` | `GET /central-jornada/pessoa/:id` |
+| Detalhe por pessoa (dias + resumo atual) | `centralJornadaService.pessoa(id, ciclo)` | `GET /central-jornada/pessoa/:id` |
 | Marcar débito | `centralJornadaService.marcarDebito(id, debito)` | `POST /central-jornada/ausencia/:id/debito` |
 | Painel de compensação | `compensacaoHorasService.painel(ciclo)` | `GET /compensacao-horas` |
 | Conceder compensação | `compensacaoHorasService.aprovar(dados)` | `POST /compensacao-horas/aprovar` |
@@ -150,7 +150,15 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   negativo, via `formatarSaldo`). As **100% não entram** nesse saldo — seguem no
   chip `+100%` abaixo do nome —, porque nunca são debitadas e mascaravam quem
   estava devendo. `DetalheJornadaScreen` mostra o mesmo indicador, para as duas
-  telas não discordarem. O **"Saldo atual" do topo (time)** continua sendo o
+  telas não discordarem.
+- **O cabeçalho do detalhe vem do servidor, não da navegação.**
+  `DetalheJornadaScreen` usa o `resumo` devolvido por
+  `GET /central-jornada/pessoa/:id` (o mesmo cálculo da card). O `pessoa`
+  recebido na navegação só preenche a tela enquanto a resposta não chega. Além
+  disso, a tela **recarrega ao voltar** a ela (`useFocusEffect`, pulando o
+  primeiro foco). Antes o cabeçalho era a cópia do momento do toque e a tela não
+  recarregava: quem excluía um atestado na escala e voltava continuava vendo o
+  chip "Atestado" (e os contadores antigos), mesmo puxando para atualizar. O **"Saldo atual" do topo (time)** continua sendo o
   `totais.saldoMs` (50% positivas + 100%), que nunca foi a soma das cards.
 - **Domingo e feriado não entram no "Deve".** No detalhe do ciclo esses dias
   aparecem com `trabalhado` abaixo da `base` e ainda assim `devidas = 0` — não é

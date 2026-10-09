@@ -424,13 +424,22 @@ export const centralJornadaService = {
     });
   },
 
-  /** Detalhe diário de um colaborador no ciclo. */
+  /**
+   * Detalhe diário de um colaborador no ciclo, com o resumo ATUAL dele (os
+   * mesmos totais da card da Central). `resumo` é `null` quando a ficha não
+   * está na Central.
+   */
   pessoa(
     colaboradorId: string,
     ciclo = 0,
-  ): Promise<{ periodo: CentralPeriodo; dias: CentralDiaDetalhe[] }> {
+  ): Promise<{
+    periodo: CentralPeriodo;
+    resumo: CentralPessoaResumo | null;
+    dias: CentralDiaDetalhe[];
+  }> {
     return apiClient.get<{
       periodo: CentralPeriodo;
+      resumo: CentralPessoaResumo | null;
       dias: CentralDiaDetalhe[];
     }>(`/central-jornada/pessoa/${colaboradorId}`, { ciclo: String(ciclo) });
   },

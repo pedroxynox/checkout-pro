@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 134 arquivos, 1255 casos. **Mobile:** 39 arquivos, 294 casos. **Total: 1549 casos.**
+> **Backend:** 134 arquivos, 1257 casos. **Mobile:** 39 arquivos, 294 casos. **Total: 1551 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -33,7 +33,7 @@
 | `src/atestados/atestados.service.spec.ts` | 10 | 2 |
 | `src/central-jornada/agrupar-atestados.spec.ts` | 12 | 3 |
 | `src/central-jornada/central-jornada.controller.spec.ts` | 2 | 2 |
-| `src/central-jornada/central-jornada.service.spec.ts` | 40 | 5 |
+| `src/central-jornada/central-jornada.service.spec.ts` | 42 | 5 |
 | `src/central-jornada/compensacao-jornada.spec.ts` | 12 | 5 |
 | `src/central-jornada/marcacoes-invalidas.service.spec.ts` | 12 | 1 |
 | `src/central-jornada/rankings.service.spec.ts` | 10 | 1 |
