@@ -57,8 +57,7 @@ type RotaAtalho =
   | 'PainelVendas'
   | 'Checklist'
   | 'Indicadores'
-  | 'Operadores'
-  | 'Mensagens';
+  | 'Operadores';
 
 interface AcaoPrioritaria {
   prioridade: 'alta' | 'media';

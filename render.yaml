@@ -66,12 +66,6 @@ services:
       # (não versionar). Troque após o primeiro login.
       - key: SENHA_INICIAL
         sync: false
-      # Assistente de IA (Cluby): a chave é secreta — defina no painel do serviço.
-      - key: GEMINI_API_KEY
-        sync: false
-      - key: GEMINI_MODEL
-        value: gemini-2.5-flash
-
 
   # Site estático: versão WEB do app (Expo Web / React Native Web).
   # Útil para visualizar mudanças de layout rapidamente em qualquer navegador,

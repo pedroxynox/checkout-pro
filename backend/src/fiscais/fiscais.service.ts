@@ -48,7 +48,6 @@ import { FeriasService } from '../ferias/ferias.service';
 import { FolgaService } from '../escala-domingo/folga.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
-import { linhasDaSemana } from './turno-fiscal';
 import {
   carregarFiscaisComFicha,
   entradasPrevistasPorFiscal,
@@ -1687,21 +1686,6 @@ export class FiscaisService {
         critico,
       };
     });
-  }
-
-  /**
-   * Contexto de escala formatado para integração com Cluby (texto), montado a
-   * partir da FICHA de cada fiscal (ADR 0026) — a mesma fonte da escala publicada
-   * e da hora cobrada. Antes vinha da cópia semanal, e a assistente respondia
-   * horários que não estavam na ficha de ninguém.
-   */
-  async contextoEscala(): Promise<{ contexto: string }> {
-    const linhas: string[] = ['=== ESCALA DE FISCAIS ==='];
-    for (const f of await carregarFiscaisComFicha(this.prisma)) {
-      linhas.push(`\n${f.nome}:`);
-      linhas.push(...linhasDaSemana(f.ficha));
-    }
-    return { contexto: linhas.join('\n') };
   }
 
   /** Conta dias úteis (excluindo domingos e feriados) entre duas datas. */

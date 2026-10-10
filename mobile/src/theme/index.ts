@@ -136,7 +136,7 @@ export const tipografia = {
 
 /**
  * Sombra suave/premium (equivalente a box-shadow: 0 10px 30px rgba(15,23,42,.08)).
- * `cartao` é a sombra padrão; `flutuante` é mais difusa (FAB/Cluby).
+ * `cartao` é a sombra padrão; `flutuante` é mais difusa (botões e painéis flutuantes).
  */
 export const sombra = {
   cartao: {

@@ -31,7 +31,6 @@ import { FeriasModule } from './ferias/ferias.module';
 import { PontoModule } from './ponto/ponto.module';
 import { ChecklistModule } from './checklist/checklist.module';
 import { NotificacoesModule } from './notificacoes/notificacoes.module';
-import { AssistenteModule } from './assistente/assistente.module';
 import { DataInicialModule } from './data-inicial/data-inicial.module';
 import { EscalaDomingoModule } from './escala-domingo/escala-domingo.module';
 import { EscalaExportacaoModule } from './escala-exportacao/escala-exportacao.module';
@@ -79,7 +78,6 @@ import { AtestadosModule } from './atestados/atestados.module';
     PontoModule,
     ChecklistModule,
     NotificacoesModule,
-    AssistenteModule,
     AlertasModule,
     DataInicialModule,
     EscalaDomingoModule,

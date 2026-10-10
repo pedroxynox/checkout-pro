@@ -9,13 +9,21 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const CHAVE = '@cluby/notificacoes-lidas';
+const CHAVE = '@checkout-pro/notificacoes-lidas';
+/**
+ * Chave antiga, do tempo em que o app levava o nome da assistente de IA (já
+ * removida). Lida uma vez como reserva, para ninguém perder as marcas de
+ * "lida" na atualização; o primeiro salvamento a apaga.
+ */
+const CHAVE_LEGADA = '@cluby/notificacoes-lidas';
 const LIMITE = 800;
 
 /** Carrega os IDs de notificações já lidas (vazio em caso de erro). */
 export async function carregarLidas(): Promise<string[]> {
   try {
-    const bruto = await AsyncStorage.getItem(CHAVE);
+    const bruto =
+      (await AsyncStorage.getItem(CHAVE)) ??
+      (await AsyncStorage.getItem(CHAVE_LEGADA));
     return bruto ? (JSON.parse(bruto) as string[]) : [];
   } catch {
     return [];
@@ -26,6 +34,7 @@ export async function carregarLidas(): Promise<string[]> {
 export async function salvarLidas(ids: string[]): Promise<void> {
   try {
     await AsyncStorage.setItem(CHAVE, JSON.stringify(ids.slice(-LIMITE)));
+    await AsyncStorage.removeItem(CHAVE_LEGADA);
   } catch {
     // Persistência é best-effort; ignora falhas.
   }
@@ -39,6 +48,7 @@ export async function salvarLidas(ids: string[]): Promise<void> {
 export async function limparLidas(): Promise<void> {
   try {
     await AsyncStorage.removeItem(CHAVE);
+    await AsyncStorage.removeItem(CHAVE_LEGADA);
   } catch {
     // Persistência é best-effort; ignora falhas.
   }

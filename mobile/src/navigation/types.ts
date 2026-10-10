@@ -13,13 +13,14 @@ import type {
 export type MainTabParamList = {
   Inicio: undefined;
   Tarefas: undefined;
-  Mensagens: undefined;
+  /** Slot do botão central (Ponto): não é uma tela, abre o leitor de ponto. */
+  AtalhoPonto: undefined;
   Notificacoes: undefined;
   Perfil: undefined;
 };
 
 export type RootStackParamList = {
-  /** Contêiner das abas (Início/Tarefas/Mensagens/Perfil). */
+  /** Contêiner das abas (Início/Tarefas/Ponto/Notificações/Perfil). */
   Tabs: undefined;
   Home: undefined;
   Importacoes: undefined;

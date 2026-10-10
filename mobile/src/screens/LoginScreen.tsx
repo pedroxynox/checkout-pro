@@ -38,12 +38,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, {
-  Defs,
-  LinearGradient as SvgLinearGradient,
-  Path,
-  Stop,
-} from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { ApiError } from '../api/client';
@@ -72,36 +67,6 @@ const SEM_CONTORNO_WEB =
 const ALTURA_TELA = Dimensions.get('window').height;
 const ALTURA_TOPO = Math.min(Math.max(Math.round(ALTURA_TELA * 0.4), 350), 450);
 const ALTURA_ONDA = 42;
-
-/**
- * Estrela do Gemini (logo de 4 pontas em "sparkle") desenhada em SVG, com o
- * degradê característico (azul → roxo → coral). Usada no rodapé "Potenciado
- * pela Cluby" (a Cluby é movida pelo Gemini).
- */
-function EstrelaGemini({ size = 14 }: { size?: number }): React.ReactElement {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityLabel="Gemini">
-      <Defs>
-        <SvgLinearGradient
-          id="gemini"
-          x1="0"
-          y1="0"
-          x2="24"
-          y2="24"
-          gradientUnits="userSpaceOnUse"
-        >
-          <Stop offset="0" stopColor="#4796E3" />
-          <Stop offset="0.5" stopColor="#9177C7" />
-          <Stop offset="1" stopColor="#D96570" />
-        </SvgLinearGradient>
-      </Defs>
-      <Path
-        d="M12 0 C 12 6.6 17.4 12 24 12 C 17.4 12 12 17.4 12 24 C 12 17.4 6.6 12 0 12 C 6.6 12 12 6.6 12 0 Z"
-        fill="url(#gemini)"
-      />
-    </Svg>
-  );
-}
 
 /** Saudação conforme o horário do dispositivo. */
 function saudacaoPorHora(): string {
@@ -474,10 +439,6 @@ export function LoginScreen(): React.ReactElement {
 
             {/* Rodapé */}
             <View style={[styles.rodape, { marginBottom: insets.bottom + 8 }]}>
-              <View style={styles.cluby}>
-                <EstrelaGemini size={15} />
-                <Text style={styles.clubyTexto}>Potenciado pela Cluby</Text>
-              </View>
               <Text style={styles.slogan}>A gestão na palma da sua mão</Text>
               <Text style={styles.creditos}>
                 Check-out Pro · Versão {versao} · 2026
@@ -731,12 +692,6 @@ const styles = StyleSheet.create({
 
   // Rodapé
   rodape: { alignItems: 'center', marginTop: 8, gap: 6 },
-  cluby: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  clubyTexto: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 12,
-    color: cores.textoSecundario,
-  },
   slogan: {
     fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 13.5,

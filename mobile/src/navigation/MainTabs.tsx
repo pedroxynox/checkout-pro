@@ -135,7 +135,7 @@ export function MainTabs(): React.ReactElement {
         }}
       />
       <Tab.Screen
-        name="Mensagens"
+        name="AtalhoPonto"
         component={TelaVazia}
         options={{
           headerShown: false,
