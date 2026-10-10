@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `mobile/src/screens/indicadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `mobile/src/screens/indicadores/`
 
 # Área: `indicadores`
 
@@ -34,8 +34,8 @@ janela de retenção (padrão 24 meses), sempre com a meta que valia nele.
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `IndicadoresScreen.tsx` | Hub: seletor de mês, vendas, destaques, semáforos (inclusive **Cancelamentos Totais** e **Sacolas**) e painel de atenção | 879 |
-| `IndicadorDetalheScreen.tsx` | Detalhe de um indicador (meta, projeção, evolução mensal, tendência, ranking, cancelamentos) | 1044 |
+| `IndicadoresScreen.tsx` | Hub: seletor de mês, vendas, destaques, semáforos (inclusive **Cancelamentos Totais** e **Sacolas**) e painel de atenção | 898 |
+| `IndicadorDetalheScreen.tsx` | Detalhe de um indicador (meta, projeção, evolução mensal, tendência, ranking, cancelamentos) | 1052 |
 | `CancelamentosTotaisDetalheScreen.tsx` | Detalhe de **Cancelamentos Totais**, em 8 cartões: o mês (teto em R$ e excedente), composição itens × cupom, diagnóstico (causas + ações), cenário sem os maiores, quem concentra o valor, cupom (motivos + autorizações), perfil dos lançamentos e evolução mensal | 1002 |
 | `SacolasDetalheScreen.tsx` | Detalhe de **Sacolas**: teto de sacolas, projeção do fechamento, recebido × usado, dias de entrada (com o recebido do mês em fardos e entregas) e série do mês | 548 |
 | `PainelVendasScreen.tsx` | Painel de vendas (meta, projeção, comparativos, curva, heatmap, por hora) | 700 |
@@ -119,9 +119,16 @@ de [`insumos`](../03-atlas-backend/insumos.md).
   "R$ 350,00 acima do permitido". O percentual diz que há um problema; os reais
   dizem o tamanho dele — e é o número que se leva para uma conversa.
 - **A meta exibida vem do servidor** (`indicador.meta`), não de um padrão
-  espelhado no app. Editar o teto do mês em Metas muda o que se lê na card. É
-  justamente a divergência que as cinco cards de arrecadação ainda têm: elas
-  mostram `def.meta`, do código, e colorem pela meta do servidor.
+  espelhado no app. Editar o teto do mês em Metas muda o que se lê na card.
+- **As cinco cards de arrecadação também usam a meta do servidor**
+  (`resumo.meta`, a do mês da data). Antes o texto das cards em % mostrava
+  `def.meta`, o valor fixo de `utils/rotulos.ts`, e o `IndicadorDetalheScreen`
+  usava esse mesmo valor fixo no texto "Meta:", no selo de cor e na barra de
+  progresso — o gestor editava a meta em Centro de Controle ▸ Metas e nada mudava.
+  Agora o detalhe monta `defMeta` (a definição com `meta` trocada pela do
+  resumo); o valor fixo só aparece enquanto o resumo não chega.
+- **O hub recarrega ao voltar** (`useFocusEffect`, pulando o primeiro foco):
+  quem edita uma meta e volta ao painel já vê o valor novo.
 - **Mês sem venda registrada não mostra 0,00% e não recebe cor.** A card escreve
   "Sem venda registrada neste mês". É a correção do comportamento dos outros cinco
   indicadores, que devolvem 0% quando falta o arquivo de vendas e por isso pintam
@@ -233,6 +240,7 @@ de [`insumos`](../03-atlas-backend/insumos.md).
 | `IndicadoresScreen.test.tsx` | Card de Sacolas: valor **sempre** com o desvio até o piso, desvio negativo, mês sem entrada e sem venda explicados (nunca R$ 0,00), a **ausência** de fardos/entregas e do aviso de calendário (foram para o detalhe), degradação silenciosa e o mês pedido | 8 |
 | `SacolasDetalheScreen.test.tsx` | Detalhe de Sacolas: os fardos que **ainda cabem** em destaque, a fonte da venda esperada e quanto já é fato, o aviso de que a saída também pode ser vender mais, teto estourado mostrando a venda que faltaria (sem número negativo), a projeção com a suposição escrita, acúmulo × desperdício, o extrato de entradas e o **"Recebido no mês"** em fardos e entregas (com plural correto) | 10 |
 | `IndicadoresScreen.test.tsx` (2ª suíte) | Card de Cancelamentos Totais: valor no formato das vizinhas (`1,10% (meta ≤ 0,75%)`), a meta vinda **do servidor** e não de um padrão fixo, o excedente em R$, a **ausência** da explicação do teto na card, mês dentro do teto sem linha de excesso, mês sem venda explicado (nunca 0,00% verde), degradação silenciosa e o mês pedido | 8 |
+| `IndicadoresScreen.test.tsx` (3ª suíte) | Card de arrecadação em %: mostra a meta **do servidor** (editada em Metas), não o valor fixo do app | 1 |
 | `CancelamentosTotaisDetalheScreen.test.tsx` | Detalhe: teto em R$ e excedente, o aviso de que o teto não corresponde à soma dos tetos das partes, a composição com o % de cada parte sobre as vendas, causas e ações **no mesmo cartão**, a simulação dizendo o que bastaria tratar (e a sua ausência quando o mês está dentro), o ranking combinado com a divisão itens/cupom, motivos e autorizações reunidos com a ressalva dita **uma vez**, o mês sem venda, o perfil dos lançamentos e o início do histórico por extenso | 12 |
 
 ## 10. Riscos, dívidas e pendências

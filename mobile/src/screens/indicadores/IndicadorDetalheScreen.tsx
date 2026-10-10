@@ -588,10 +588,18 @@ export function IndicadorDetalheScreen({
     return filtrada.slice(0, 20);
   }, [foco, operadorNome, req.dados]);
 
+  // A meta que vale é a do SERVIDOR (`resumo.meta`): a do mês da data escolhida,
+  // definida em Centro de Controle ▸ Metas. Antes a tela usava só o valor fixo de
+  // `rotulos.ts`, então editar a meta não mudava nada aqui (texto, cor e barra).
+  // O valor fixo fica apenas enquanto o resumo não chega.
+  const defMeta: DefinicaoArrecadacao = resumo
+    ? { ...def, meta: resumo.meta }
+    : def;
+
   const metaTexto =
-    def.base === 'FIXA'
-      ? `Meta: ${formatarMoeda(def.meta)} (fixa)`
-      : `Meta: até ${formatarPercentual(def.meta)} das vendas`;
+    defMeta.base === 'FIXA'
+      ? `Meta: ${formatarMoeda(defMeta.meta)} (fixa)`
+      : `Meta: até ${formatarPercentual(defMeta.meta)} das vendas`;
 
   return (
     <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
@@ -607,7 +615,7 @@ export function IndicadorDetalheScreen({
           </View>
           {resumo
             ? (() => {
-                const c = avaliarCor(def, resumo, periodo);
+                const c = avaliarCor(defMeta, resumo, periodo);
                 return <Selo texto={c.rotulo} cor={c.cor} fundo={c.fundo} />;
               })()
             : null}
@@ -675,7 +683,7 @@ export function IndicadorDetalheScreen({
             </Cartao>
           ) : null}
 
-          <GraficoMeta def={def} resumo={resumo} periodo={periodo} />
+          <GraficoMeta def={defMeta} resumo={resumo} periodo={periodo} />
           {projecao ? <CardProjecao def={def} projecao={projecao} /> : null}
           {comparativo ? <CardComparativo comparativo={comparativo} /> : null}
           {historico ? (
