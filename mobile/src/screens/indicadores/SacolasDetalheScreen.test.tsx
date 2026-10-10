@@ -94,13 +94,13 @@ const DETALHE = {
 describe("SacolasDetalheScreen", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("destaca quantos fardos ainda cabem no mês", async () => {
+  it("destaca quantos fardos o mês ainda comporta", async () => {
     insumosService.detalheSacolas.mockResolvedValue(DETALHE);
     render(<SacolasDetalheScreen />);
 
-    await screen.findByText("Quantas sacolas ainda cabem");
+    await screen.findByText("Sacolas que o mês ainda comporta");
     expect(screen.getByText("7")).toBeTruthy();
-    expect(screen.getByText("fardos ainda cabem neste mês")).toBeTruthy();
+    expect(screen.getByText("fardos ainda podem ser recebidos neste mês")).toBeTruthy();
     expect(screen.getByText("(7.142 sacolas)")).toBeTruthy();
   });
 
@@ -108,7 +108,7 @@ describe("SacolasDetalheScreen", () => {
     insumosService.detalheSacolas.mockResolvedValue(DETALHE);
     render(<SacolasDetalheScreen />);
 
-    await screen.findByText("Quantas sacolas ainda cabem");
+    await screen.findByText("Sacolas que o mês ainda comporta");
     expect(
       screen.getByText(/realizado \+ estimativas dos dias que faltam/),
     ).toBeTruthy();
@@ -123,7 +123,7 @@ describe("SacolasDetalheScreen", () => {
     insumosService.detalheSacolas.mockResolvedValue(DETALHE);
     render(<SacolasDetalheScreen />);
 
-    await screen.findByText("Quantas sacolas ainda cabem");
+    await screen.findByText("Sacolas que o mês ainda comporta");
     expect(screen.getByText(/a saída também pode ser vender mais/)).toBeTruthy();
   });
 
@@ -144,7 +144,7 @@ describe("SacolasDetalheScreen", () => {
 
     await screen.findByText(/já recebeu mais sacolas do que a venda esperada/);
     expect(screen.getByText("R$ 2.600.000,00")).toBeTruthy();
-    expect(screen.queryByText("fardos ainda cabem neste mês")).toBeNull();
+    expect(screen.queryByText("fardos ainda podem ser recebidos neste mês")).toBeNull();
   });
 
   it("projeta o fechamento e mostra a suposição por escrito", async () => {
