@@ -1451,16 +1451,29 @@ export class CentralJornadaService {
     };
   }
 
-  /** Detalhe diário de um colaborador no ciclo (drill-down). */
+  /**
+   * Detalhe diário de um colaborador no ciclo (drill-down).
+   *
+   * Devolve também o `resumo` ATUAL da pessoa (os mesmos totais da card da
+   * Central). Antes a tela de detalhe montava o cabeçalho com a cópia do resumo
+   * recebida na navegação: excluir um atestado (ou mudar uma falta) fazia a lista
+   * de dias mudar, mas o chip "Atestado" e os contadores do topo ficavam
+   * congelados com o valor antigo. `resumo` é `null` quando a ficha não está na
+   * Central (inativa ou de função fora do ponto).
+   */
   async detalhePessoa(
     colaboradorId: string,
     deslocamento = 0,
-  ): Promise<{ periodo: CentralPeriodo; dias: CentralDiaDetalhe[] }> {
+  ): Promise<{
+    periodo: CentralPeriodo;
+    resumo: CentralPessoaResumo | null;
+    dias: CentralDiaDetalhe[];
+  }> {
     // Carrega SÓ os dados desta pessoa (não o ciclo inteiro) — o detalhe abre
     // rápido mesmo com muitos colaboradores.
     const dados = await this.carregarCicloDaPessoa(deslocamento, colaboradorId);
     const regras = await this.regrasDe(dados.pessoa?.tipoContratoJornadaId);
-    const { dias } = this.calcularPessoa(
+    const { resumo, dias } = this.calcularPessoa(
       dados.ids,
       dados.batidas,
       dados.ausencias,
@@ -1474,7 +1487,20 @@ export class CentralJornadaService {
       regras,
       this.compensacoesDe(dados.compensacoes, colaboradorId),
     );
-    return { periodo: this.montarPeriodo(dados.periodo, deslocamento), dias };
+    const pessoa = dados.pessoa;
+    return {
+      periodo: this.montarPeriodo(dados.periodo, deslocamento),
+      resumo: pessoa
+        ? {
+            colaboradorId: pessoa.id,
+            nome: pessoa.nome,
+            primeiroNome: primeiroNome(pessoa.nome),
+            funcao: pessoa.funcao,
+            ...resumo,
+          }
+        : null,
+      dias,
+    };
   }
 
   /** true se há duas batidas no mesmo dia próximas demais (possível duplicidade). */
