@@ -3,6 +3,7 @@ import { FeriadosModule } from '../feriados/feriados.module';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
 import { CicloFolhaModule } from '../ciclo-folha/ciclo-folha.module';
 import { TiposContratoModule } from '../tipos-contrato/tipos-contrato.module';
+import { FeriasModule } from '../ferias/ferias.module';
 import { CentralJornadaController } from './central-jornada.controller';
 import { CentralJornadaService } from './central-jornada.service';
 
@@ -17,6 +18,8 @@ import { CentralJornadaService } from './central-jornada.service';
     EscalaDomingoModule,
     CicloFolhaModule,
     TiposContratoModule,
+    // Férias: quem está de férias não é apontado como falta.
+    FeriasModule,
   ],
   controllers: [CentralJornadaController],
   providers: [CentralJornadaService],

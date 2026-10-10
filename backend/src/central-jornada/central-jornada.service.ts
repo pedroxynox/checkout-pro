@@ -40,6 +40,8 @@ import {
 } from '../ponto/sugestao-folga.domain';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
+import { FeriasService } from '../ferias/ferias.service';
+import { PeriodoFerias, estaDeFerias } from '../ferias/ferias.domain';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
 import {
   CompensacaoAplicada,
@@ -699,7 +701,22 @@ export class CentralJornadaService {
     // Regras por tipo de contrato (data-driven). Opcional: sem ele, o cálculo
     // usa o contrato padrão (6x1), preservando o comportamento vigente.
     @Optional() private readonly tiposContrato?: TiposContratoService,
+    // Férias. Quem está de férias sai da escala e não gera falta automática;
+    // sem isto a Central ainda apontava o dia como "faltou (não registrada)",
+    // porque a ficha diz que a pessoa trabalharia. Opcional: sem ele, ninguém
+    // é tratado como de férias (comportamento antigo).
+    @Optional() private readonly ferias?: FeriasService,
   ) {}
+
+  /** Férias do intervalo por `colaboradorId` (vazio sem o serviço). */
+  private async feriasNoIntervalo(
+    inicio: Date,
+    fimExclusivo: Date,
+  ): Promise<Map<string, PeriodoFerias[]>> {
+    return this.ferias
+      ? this.ferias.periodosNoIntervalo(inicio, fimExclusivo)
+      : new Map<string, PeriodoFerias[]>();
+  }
 
   /** Regras do contrato (data-driven) ou o padrão quando não há serviço/id. */
   private async regrasDe(
@@ -741,6 +758,7 @@ export class CentralJornadaService {
       ancora,
       consultorFolga,
       compensacoes,
+      feriasPorColaborador,
     ] = await Promise.all([
       this.prisma.colaborador.findMany({
         where: {
@@ -794,6 +812,8 @@ export class CentralJornadaService {
       // serviço injetado, para não criar um ciclo de dependência com o módulo de
       // Compensação — que depende desta Central para saber o saldo de cada um.
       carregarCompensacoesAprovadas(this.prisma, inicio, fimExclusivo),
+      // Férias do ciclo inteiro, numa consulta só.
+      this.feriasNoIntervalo(inicio, fimExclusivo),
     ]);
 
     // Um fiscal bate ponto pela sua identidade de Fiscal (batida.pessoaId =
@@ -826,6 +846,7 @@ export class CentralJornadaService {
       ancora,
       consultorFolga,
       compensacoes,
+      feriasPorColaborador,
     };
   }
 
@@ -900,6 +921,7 @@ export class CentralJornadaService {
         ancora: null as AncoraDomingo | null,
         consultorFolga: null as ConsultorFolga | null,
         compensacoes: new Map<string, CompensacaoAplicada>(),
+        feriasPorColaborador: new Map<string, PeriodoFerias[]>(),
       };
     }
 
@@ -928,6 +950,7 @@ export class CentralJornadaService {
       ancora,
       consultorFolga,
       compensacoes,
+      feriasPorColaborador,
     ] = await Promise.all([
         this.prisma.batidaPonto.findMany({
           where: {
@@ -956,6 +979,7 @@ export class CentralJornadaService {
           ? this.folga.consultor(diasDoPeriodo(inicio, fimExclusivo))
           : null,
         carregarCompensacoesAprovadas(this.prisma, inicio, fimExclusivo),
+        this.feriasNoIntervalo(inicio, fimExclusivo),
       ]);
 
     return {
@@ -971,6 +995,7 @@ export class CentralJornadaService {
       ancora,
       consultorFolga,
       compensacoes,
+      feriasPorColaborador,
     };
   }
 
@@ -1022,6 +1047,11 @@ export class CentralJornadaService {
     // do ciclo usa isso para não construir o detalhe diário de todo mundo —
     // que só é necessário no drill-down por pessoa (detalhePessoa).
     coletarDias = true,
+    /**
+     * Períodos de férias da pessoa no ciclo. Um dia de férias não é dia
+     * escalado: sem batida e sem ausência, ele NÃO vira `FALTA_NAO_REGISTRADA`.
+     */
+    ferias: readonly PeriodoFerias[] = [],
   ): {
     resumo: Omit<
       CentralPessoaResumo,
@@ -1083,6 +1113,10 @@ export class CentralJornadaService {
 
     const escaladoNoDia = (dia: Date, ehFeriado: boolean): boolean => {
       if (!entradaEsperadaNoDia(ficha, dia, ancora, ehFeriado)) return false;
+      // De férias, a pessoa sai da escala (a mesma regra da escala do dia e da
+      // detecção automática de falta). Antes a Central só olhava a ficha e
+      // apontava "faltou (não registrada)" em todos os dias das férias.
+      if (estaDeFerias(ferias, dia)) return false;
       return !ehFolgaNoDia(dia);
     };
 
@@ -1400,6 +1434,7 @@ export class CentralJornadaService {
           this.compensacoesDe(dados.compensacoes, c.id),
           // Só totais: o resumo não precisa do detalhe diário de cada pessoa.
           false,
+          dados.feriasPorColaborador.get(c.id) ?? [],
         );
         return {
           colaboradorId: c.id,
@@ -1486,6 +1521,8 @@ export class CentralJornadaService {
       dados.consultorFolga,
       regras,
       this.compensacoesDe(dados.compensacoes, colaboradorId),
+      true,
+      dados.feriasPorColaborador.get(colaboradorId) ?? [],
     );
     const pessoa = dados.pessoa;
     return {
@@ -1542,6 +1579,8 @@ export class CentralJornadaService {
         dados.consultorFolga,
         regras,
         this.compensacoesDe(dados.compensacoes, c.id),
+        true,
+        dados.feriasPorColaborador.get(c.id) ?? [],
       );
 
       // Horas das batidas da pessoa por dia (para detectar duplicidade).
@@ -1707,6 +1746,8 @@ export class CentralJornadaService {
           dados.consultorFolga,
           regras,
           this.compensacoesDe(dados.compensacoes, c.id),
+          true,
+          dados.feriasPorColaborador.get(c.id) ?? [],
         );
 
         // Cada detalhe abaixo é a lista dos dias que geraram o contador
@@ -1830,6 +1871,8 @@ export class CentralJornadaService {
         dados.consultorFolga,
         regras,
         this.compensacoesDe(dados.compensacoes, c.id),
+        true,
+        dados.feriasPorColaborador.get(c.id) ?? [],
       );
 
       // Horas das batidas da pessoa por dia — o relatório mostra as marcações
@@ -1980,6 +2023,8 @@ export class CentralJornadaService {
         dados.consultorFolga,
         regras,
         this.compensacoesDe(dados.compensacoes, c.id),
+        true,
+        dados.feriasPorColaborador.get(c.id) ?? [],
       );
       pessoas.push({
         colaboradorId: c.id,

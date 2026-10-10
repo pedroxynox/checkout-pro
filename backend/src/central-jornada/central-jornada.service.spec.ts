@@ -1284,6 +1284,8 @@ describe('CentralJornadaService — dia escalado sem registro', () => {
     folgaDiaSemana?: number | null;
     folgaNaEscalaSemanal?: number;
     comFolgaService?: boolean;
+    /** Períodos de férias da ficha 'c1' (ISO inclusive). */
+    ferias?: { inicio: string; fim: string }[];
   }) {
     const ficha = {
       id: 'c1',
@@ -1329,11 +1331,30 @@ describe('CentralJornadaService — dia escalado sem registro', () => {
       opcoes.comFolgaService === false
         ? undefined
         : new FolgaService(prismaFake as never, undefined);
+    // Férias (FeriasService falso): uma consulta só, por colaboradorId.
+    const feriasFake = opcoes.ferias
+      ? {
+          periodosNoIntervalo: jest.fn().mockResolvedValue(
+            new Map([
+              [
+                'c1',
+                opcoes.ferias.map((f) => ({
+                  inicio: dia(f.inicio),
+                  fim: dia(f.fim),
+                })),
+              ],
+            ]),
+          ),
+        }
+      : undefined;
     return new CentralJornadaService(
       prismaFake as never,
       feriadosFake as never,
       ANCORA as never,
       folga as never,
+      undefined,
+      undefined,
+      feriasFake as never,
     );
   }
 
@@ -1368,6 +1389,49 @@ describe('CentralJornadaService — dia escalado sem registro', () => {
 
     expect(resumo.pessoas[0].faltas).toBe(0);
     expect(resumo.pessoas[0].horasDevidasMs).toBe(0);
+  });
+
+  /**
+   * FÉRIAS. A pessoa sai da escala do dia e não gera falta automática, mas a
+   * Central só olhava a ficha ("trabalha quarta às 07:00") e apontava
+   * "faltou (não registrada)" em todos os dias das férias.
+   */
+  describe('férias', () => {
+    // Qua 01/07: dia de trabalho pela ficha (folga fixa na segunda).
+    it('sem férias, o dia escalado sem ponto é apontado (controle)', async () => {
+      const d = await doDia(montar({}), '2026-07-01');
+      expect(d?.tipo).toBe('FALTA_NAO_REGISTRADA');
+    });
+
+    it('dia DENTRO das férias não é apontado como falta', async () => {
+      const service = montar({
+        ferias: [{ inicio: '2026-06-29', fim: '2026-07-03' }],
+      });
+      const d = await doDia(service, '2026-07-01');
+      expect(d?.tipo).toBe('SEM_REGISTRO');
+      expect(d?.entradaPrevista).toBeNull();
+      // Os extremos do período também são férias (inclusive).
+      expect((await doDia(service, '2026-06-29'))?.tipo).toBe('SEM_REGISTRO');
+      expect((await doDia(service, '2026-07-03'))?.tipo).toBe('SEM_REGISTRO');
+    });
+
+    it('dia FORA das férias continua apontado', async () => {
+      // Ter 07/07: já voltou das férias (terminaram em 03/07) e não bateu ponto.
+      const d = await doDia(
+        montar({ ferias: [{ inicio: '2026-06-29', fim: '2026-07-03' }] }),
+        '2026-07-07',
+      );
+      expect(d?.tipo).toBe('FALTA_NAO_REGISTRADA');
+    });
+
+    it('férias não mexem nos totais (não viram falta nem hora devida)', async () => {
+      const service = montar({
+        ferias: [{ inicio: '2026-06-29', fim: '2026-07-03' }],
+      });
+      const resumo = await service.resumoCiclo(0);
+      expect(resumo.pessoas[0].faltas).toBe(0);
+      expect(resumo.pessoas[0].horasDevidasMs).toBe(0);
+    });
   });
 
   it('domingo de FOLGA pelo rodízio: segue SEM_REGISTRO', async () => {

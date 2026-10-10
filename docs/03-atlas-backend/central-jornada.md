@@ -25,7 +25,7 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `central-jornada.controller.ts` | Rotas HTTP do portal | 100 |
-| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 2152 |
+| `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 2197 |
 | `central-jornada.module.ts` | Ligações (DI) do módulo | 25 |
 | `dto/central-jornada.dto.ts` | Validação de entrada (marcar débito) | 7 |
 
@@ -226,14 +226,15 @@ regra 16 e [`compensacao-horas`](compensacao-horas.md).
 - **Lê:** `Colaborador` (todos os tipos de contrato), `BatidaPonto`,
   `Ausencia`, `Fiscal`, `Usuario`, `IncidenciaEscala` (só os não-retornos do
   intervalo, no relatório de marcações inválidas), `CompensacaoHoras` (só as
-  `APROVADA`, via `carregarCompensacoesAprovadas`), feriados e âncora de domingo
+  `APROVADA`, via `carregarCompensacoesAprovadas`), férias do ciclo, feriados e âncora de domingo
   (via serviços).
 - **Escreve:** `Ausencia.debitoHoras` (marcar débito).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
 
 ## 9. Dependências
 - **Depende de:** `PrismaService`, `FeriadosService`, e (opcionais)
-  `EscalaDomingoService`, `CicloFolhaService`, `TiposContratoService`; reusa o
+  `EscalaDomingoService`, `CicloFolhaService`, `TiposContratoService`,
+  `FeriasService` (quem está de férias não é apontado como falta); reusa o
   domínio de [`ponto`](ponto.md) e o helper `mapearFiscalColaborador`.
 - **É usado por:** o app (portal gerencial da jornada), a exportação do ciclo e
   [`compensacao-horas`](compensacao-horas.md), que consome o saldo de 50% apurado
@@ -349,7 +350,7 @@ regra 16 e [`compensacao-horas`](compensacao-horas.md).
    fica fora de `DiaFaltaRanking`. É um pedido de decisão ao gestor: lançar a
    falta (ou não) pela escala do dia.
 
-   Três guardas, e as duas primeiras são o que impede o erro grave — apontar
+   Quatro guardas, e as três primeiras são o que impede o erro grave — apontar
    falta em quem estava descansando:
    - **tem turno previsto** (`entradaEsperadaNoDia`: ficha, rodízio de domingo,
      feriado). Sem `grupoDomingo`, sem âncora ou sem `entradaDom`, nenhum domingo
@@ -363,6 +364,11 @@ regra 16 e [`compensacao-horas`](compensacao-horas.md).
      para o gestor resolver, não lança falta em ninguém, e antes havia um dia em que
      o furo era engolido em silêncio. `@Optional()`: sem o serviço vale só a ficha,
      e o comportamento degrada em vez de quebrar;
+   - **não está de férias** ([`ferias`](ferias.md)). De férias a pessoa sai da
+     escala do dia e não gera falta automática; a Central, porém, só olhava a
+     ficha e apontava "faltou (não registrada)" em todos os dias das férias. Os
+     períodos do ciclo vêm de `FeriasService.periodosNoIntervalo` (uma consulta
+     só) e o dia de férias sai `SEM_REGISTRO`. `@Optional()`, como a folga;
    - **o dia já terminou.** Um dia em curso ou futuro sem batidas não é falta —
      a pessoa ainda pode entrar.
 
@@ -487,7 +493,7 @@ regra 16 e [`compensacao-horas`](compensacao-horas.md).
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito), **atraso em feriado pelo turno de domingo**, o **dia escalado sem registro** (`FALTA_NAO_REGISTRADA`: domingo pelo rodízio, e as guardas que evitam apontar folga — sem grupo, sem `entradaDom`, folga da ficha, folga só na escala semanal, dia não terminado — mais a prova de que não mexe nos totais) e o **ponto em dia de folga** (`PONTO_EM_FOLGA`: conta como trabalho normal, **não** vira TAC nem toca os contadores, aparece no painel, e dia normal não é apontado) e o **resumo atual no detalhe** (`detalhePessoa`: excluído o atestado, o dia e os totais voltam ao normal; resumo nulo para quem não está na Central) | 42 |
+| `central-jornada.service.spec.ts` | Resumo, inconsistências, exportação, 50% reais e `saldo50Ms` (só as 50%, com sinal), domingo/feriado sem hora devida (déficit e falta-débito), **atraso em feriado pelo turno de domingo**, o **dia escalado sem registro** (`FALTA_NAO_REGISTRADA`: domingo pelo rodízio, e as guardas que evitam apontar folga — sem grupo, sem `entradaDom`, folga da ficha, folga só na escala semanal, dia não terminado — mais a prova de que não mexe nos totais) e o **ponto em dia de folga** (`PONTO_EM_FOLGA`: conta como trabalho normal, **não** vira TAC nem toca os contadores, aparece no painel, e dia normal não é apontado) e o **resumo atual no detalhe** (`detalhePessoa`: excluído o atestado, o dia e os totais voltam ao normal; resumo nulo para quem não está na Central) e as **férias** (dia dentro do período não é apontado como falta, extremos inclusive, dia fora segue apontado, totais intactos) | 46 |
 | `marcacoes-invalidas.service.spec.ts` | Relatório de marcações faltantes: entrada esquecida, encerramento, as duas do intervalo, totais, ordenação, sem turno — e os dias que **não** entram (não retorno do intervalo, jornada curta válida, dia completo, dia sem registro) | 12 |
 | `rankings.service.spec.ts` | Base dos rankings: **detalhe do mesmo tamanho que o contador** de cada card, faltas sem atestado, atestados à parte (contados por documento), atrasos com minutos e turno, TAC com motivos, conflitos, pessoas zeradas e igualdade com `resumoCiclo` | 10 |
 | `agrupar-atestados.spec.ts` | Agrupamento por documento e por bloco de dias consecutivos: 3+2 dias = 2 atestados, dias não contíguos, virada de mês e o total de dias preservado | 12 |
@@ -498,7 +504,7 @@ regra 16 e [`compensacao-horas`](compensacao-horas.md).
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- 🔧 `central-jornada.service.ts` (2152 linhas) concentra carga, cálculo e
+- 🔧 `central-jornada.service.ts` (2197 linhas) concentra carga, cálculo e
   agregação; os tipos de resposta (`Central*`) e o cálculo diário podem ser
   extraídos conforme crescer.
 - 🔧 **Duas respostas para "o que falta no dia".** O painel de inconsistências
