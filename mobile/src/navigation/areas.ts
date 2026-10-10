@@ -67,6 +67,17 @@ export interface Area {
    * leitores de tela.
    */
   tituloCurto?: string;
+  /**
+   * Área **temporariamente fora da Home** (grade de acessos rápidos e menu
+   * lateral do desktop), sem deixar de existir.
+   *
+   * A rota, a tela e a `funcionalidade` exigida continuam as mesmas: a área
+   * segue alcançável por outros caminhos (ex.: um item no Centro de Controle,
+   * links internos e notificações). Diferente de `emBreve` (área inexistente
+   * ainda) e de `noCabecalho` (área que muda para o topo da Home). Remover esta
+   * marca devolve a área à Home, sem mais nada a mudar.
+   */
+  ocultoNaHome?: boolean;
 }
 
 export const AREAS: Area[] = [
@@ -97,6 +108,9 @@ export const AREAS: Area[] = [
     descricao: 'Informar e acompanhar acumulados',
     icone: 'cash-outline',
     funcionalidade: 'PAINEL_VENDAS_VISUALIZAR',
+    // Fora da Home por decisão de produto (temporária): o acesso passa a ser
+    // pelo Centro de Controle. Remover a marca para devolvê-la aos acessos.
+    ocultoNaHome: true,
   },
   {
     rota: 'Insumos',

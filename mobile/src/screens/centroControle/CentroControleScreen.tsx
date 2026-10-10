@@ -1,9 +1,10 @@
 /**
  * Centro de Controle — área de gestão (apenas gestor, OPERADORES_CRUD).
  *
- * Hub das ferramentas de gestão estrutural. Hoje: "Colaboradores" (cadastro e
- * edição). Pensado para crescer (metas, configurações) sem mexer nas seções
- * gerais do app.
+ * Hub das ferramentas de gestão estrutural (colaboradores, metas, vendas,
+ * acessos, importações, dados…). Pensado para crescer sem mexer nas seções
+ * gerais do app. Também abriga atalhos de áreas que saíram temporariamente da
+ * Home (hoje, o Painel de Vendas).
  */
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -42,10 +43,21 @@ const ITENS: ItemControle[] = [
     icone: 'calendar-outline',
     funcionalidade: 'ESCALA_DOMINGO_CONFIG',
   },
+  // As duas cards de vendas ficam lado a lado e com descrições que deixam
+  // clara a diferença: o Painel ACOMPANHA o realizado; a Central PLANEJA as
+  // estimativas. O Painel saiu temporariamente da Home (`ocultoNaHome` em
+  // `navigation/areas`) e é acessado por aqui.
+  {
+    rota: 'PainelVendas',
+    titulo: 'Painel de Vendas',
+    descricao: 'Acompanhar o vendido: dia, acumulado do mês e meta',
+    icone: 'stats-chart-outline',
+    funcionalidade: 'PAINEL_VENDAS_VISUALIZAR',
+  },
   {
     rota: 'CentralVendas',
     titulo: 'Central de Vendas',
-    descricao: 'Estimativas de venda por dia (a do mês é a soma das diárias)',
+    descricao: 'Planejar as estimativas de venda por dia (a do mês é a soma das diárias)',
     icone: 'cash-outline',
   },
   {
