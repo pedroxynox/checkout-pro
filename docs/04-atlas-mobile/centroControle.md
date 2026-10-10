@@ -1,13 +1,20 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `mobile/src/screens/centroControle/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `mobile/src/screens/centroControle/`
 
 # Área: `centroControle`
 
 ## 1. Propósito
 **Centro de Controle** — o hub de gestão do app: uma tela-índice com atalhos
 para as ferramentas de administração (colaboradores, metas, rodízio de domingo,
-central de vendas, check-outs, relatórios, acesso, permissões, importações,
-produtos pesados, tipos de contrato, insumos e o reinício de dados
-operacionais).
+painel de vendas, central de vendas, check-outs, relatórios, acesso,
+permissões, importações, produtos pesados, tipos de contrato, insumos e o
+reinício de dados operacionais).
+
+> **Painel de Vendas (2026-10-09):** saiu **temporariamente** dos "Acessos
+> rápidos" da Home (marca `ocultoNaHome` em `navigation/areas` — ver
+> [navegação §5.1](navegacao.md)) e passou a ter um card aqui, logo antes da
+> Central de Vendas. As descrições dos dois cards deixam clara a diferença: o
+> **Painel** *acompanha o vendido* (dia, acumulado do mês e meta); a **Central**
+> *planeja as estimativas* por dia (cuja soma é a meta).
 
 > **Como se chega:** pelo botão discreto **"Central"** no cabeçalho da tela
 > inicial, ao lado da identidade do usuário. O hub saiu dos "Acessos rápidos"
@@ -19,6 +26,11 @@ operacionais).
 - Cada card pode exigir uma funcionalidade extra (ex.: `ADMIN_DADOS`,
   `USUARIOS_CRUD`, `PERMISSOES_GERENCIAR`, `ESCALA_DOMINGO_CONFIG`,
   `IMPORTACOES`); os cards sem permissão não aparecem.
+- **Painel de Vendas** exige `PAINEL_VENDAS_VISUALIZAR` (a mesma permissão da
+  rota). ⚠️ O **supervisor** tem essa permissão, mas **não** abre o Centro de
+  Controle (`OPERADORES_CRUD`); enquanto o painel estiver fora da Home, ele chega
+  ao painel apenas pelos caminhos indiretos (cartão "Vendas do mês" em
+  Indicadores e notificações de vendas). Decisão de produto consciente.
 - **Relatórios** exige `COLABORADORES_PERFIL`: o PDF é montado a partir da ficha
   individual de cada operador, que é dado confidencial — ver
   [`colaboradores`](colaboradores.md).
@@ -27,7 +39,7 @@ operacionais).
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `CentroControleScreen.tsx` | Hub/índice de atalhos de gestão | 179 |
+| `CentroControleScreen.tsx` | Hub/índice de atalhos de gestão | 199 |
 | `CentralVendasScreen.tsx` | Estimativas de venda por dia do mês (a soma é a meta do mês) | 237 |
 | `ConfigEscalaDomingoScreen.tsx` | Configuração do rodízio de domingo (G1/G2/G3) | 268 |
 | `TiposContratoScreen.tsx` | CRUD dos tipos de contrato de jornada | 569 |
@@ -40,7 +52,8 @@ operacionais).
 1. **Hub:** `CentroControleScreen` monta os cards a partir de uma lista fixa
    (`ITENS`) e filtra por `podeAcessar(funcionalidade)`. Tocar em um card navega
    para a rota correspondente (algumas telas vivem em outras áreas, ex.: Metas,
-   Relatórios, Importações, Check-Outs, **Produtos pesados** — cuja carga do
+   Relatórios, Importações, Check-Outs, **Painel de Vendas** — tela da área
+   [`indicadores`](indicadores.md) —, **Produtos pesados** — cuja carga do
    arquivo `.txt` é feita pela tela `ProdutosPesadosCarga`, ver
    [`produtosPesados`](produtosPesados.md)).
 2. **Central de Vendas:** escolhe o mês, digita a estimativa por dia e salva; o
@@ -132,3 +145,6 @@ Módulos do backend relacionados:
   mas a proteção real fica no backend.
 - 📝 Os cards do hub apontam para rotas de outras áreas; manter a lista `ITENS`
   em sincronia com as rotas registradas em `AppNavigator`.
+- 🟡 O card **Painel de Vendas** existe aqui porque a área está `ocultoNaHome`.
+  Ao devolver o painel à Home, decidir se o card permanece (atalho duplicado) ou
+  sai.

@@ -3,7 +3,8 @@
  *
  * É a cara da "gestão inteligente": aparece acima de todas as áreas e mostra
  *  1. Saúde do negócio — nota 0–100 num **medidor circular**, com o porquê.
- *  2. Vendas de ontem — destaque (para perfis de gestão).
+ *  2. Vendas de ontem — destaque (para perfis de gestão). Hoje DESLIGADO por
+ *     `VENDAS_NA_HOME` (cartão, peso na nota e pontos de atenção).
  *  3. Pontos de atenção — prioridades **personalizadas por perfil**.
  *
  * Prioridades por perfil (a pedido):
@@ -35,6 +36,19 @@ import { cores, raio, tipografia } from '../../theme';
 import { formatarMoeda } from '../../utils/formato';
 import { ROTULO_TIPO_ARRECADACAO } from '../../utils/rotulos';
 import { CamposHome, QUEDA_VENDAS_RELEVANTE, temasDoPerfil } from './dadosDoDia';
+
+/**
+ * Interruptor (temporário, decisão de produto) das **vendas no Resumo do Dia**.
+ *
+ * Com `false`, as vendas saem por completo da Home:
+ *  - o cartão "Vendas de hoje/ontem" (valor, variação, ritmo da meta e link);
+ *  - as penalidades de vendas na nota de Saúde do Negócio (queda nas vendas e
+ *    projeção abaixo da meta) e os respectivos motivos;
+ *  - os pontos de atenção de vendas.
+ * O Painel de Vendas continua existindo (acesso pelo Centro de Controle).
+ * Para devolver tudo à Home, basta voltar para `true`.
+ */
+export const VENDAS_NA_HOME = false;
 
 /** Rotas para onde o atalho "Resolver" pode levar. */
 type RotaAtalho =
@@ -160,6 +174,7 @@ export function ResumoDoDia({ aoNavegar, dados }: Props): React.ReactElement {
   const coberturaCarregando = dados.opDia.carregando;
   // A nota de saúde, o resumo e os pontos de atenção agregam vários sinais;
   // ficam em esqueleto até todos os que os alimentam chegarem.
+  // Sem vendas na Home (`VENDAS_NA_HOME`), a nota não espera pelo painel.
   const nucleoCarregando =
     dados.ckAb.carregando ||
     dados.ckFe.carregando ||
@@ -168,8 +183,8 @@ export function ResumoDoDia({ aoNavegar, dados }: Props): React.ReactElement {
     dados.insumos.carregando ||
     dados.atencao.carregando ||
     dados.opDia.carregando ||
-    dados.painelHoje.carregando ||
-    dados.painelOntem.carregando;
+    (VENDAS_NA_HOME &&
+      (dados.painelHoje.carregando || dados.painelOntem.carregando));
 
   const horaAgora = new Date().getHours();
 
@@ -205,7 +220,14 @@ export function ResumoDoDia({ aoNavegar, dados }: Props): React.ReactElement {
   // carregado passa a contar como "ontem" — sem precisar recarregar nada. Só
   // volta a "hoje" quando o arquivo do novo dia for carregado.
   const vendasEhHoje = !!statusVendasHoje?.enviado && !!painelHoje;
-  const painelVendas = vendasEhHoje ? painelHoje : painelOntem;
+  // Com `VENDAS_NA_HOME` desligado, não há painel de referência: sem ele, os
+  // sinais de vendas (queda, meta abaixo, ritmo) ficam neutros e não pesam na
+  // nota nem geram pontos de atenção.
+  const painelVendas = VENDAS_NA_HOME
+    ? vendasEhHoje
+      ? painelHoje
+      : painelOntem
+    : null;
   const rotuloVendasCurto = vendasEhHoje ? 'hoje' : 'ontem';
 
   const vendasDia = painelVendas?.comparativos?.dia ?? null;
@@ -381,7 +403,7 @@ export function ResumoDoDia({ aoNavegar, dados }: Props): React.ReactElement {
 
       {/* Vendas do dia de referência (hoje se já carregado; senão, ontem) —
           destaque para perfis de gestão. Aparece assim que os dados chegam. */}
-      {temas.has('ventas') ? (
+      {VENDAS_NA_HOME && temas.has('ventas') ? (
         vendasCarregando ? (
           <Cartao estilo={styles.cartaoCompacto}>
             <Skeleton largura={110} altura={10} />
