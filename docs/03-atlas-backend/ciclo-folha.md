@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `backend/src/ciclo-folha/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `backend/src/ciclo-folha/`
 
 # Módulo: `ciclo-folha`
 
@@ -22,7 +22,7 @@ período; reabrir (com autorização) volta a permitir correções.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `ciclo-folha.controller.ts` | Rotas HTTP (status, eventos, intervalo, fechar, reabrir) | 93 |
-| `ciclo-folha.service.ts` | Regras de aplicação: estado, fechar/reabrir, guards, consulta de intervalo | 281 |
+| `ciclo-folha.service.ts` | Regras de aplicação: estado, fechar/reabrir, guards, consulta de intervalo | 304 |
 | `ciclo-folha.errors.ts` | Erros de domínio (mapeados para HTTP) | 39 |
 | `ciclo-folha.module.ts` | Ligações (DI) do módulo | 17 |
 | `dto/ciclo-folha.dto.ts` | Validação de entrada (deslocamento do ciclo, intervalo) | 23 |
@@ -61,6 +61,11 @@ período; reabrir (com autorização) volta a permitir correções.
 #### `fechar(deslocamento, usuario)`
 - **Efeitos:** faz `upsert` de `CicloFolha` para `FECHADO` (gravando quem/quando
   e zerando a marca de reabertura anterior) e registra um evento `FECHADO`.
+- **Antes de travar, encerra as pendências do ciclo:** faltas e não-retornos ainda
+  `PENDENTE` no período viram "não justificada" (autor: o sistema), pela mesma
+  função do cron diário (`common/encerrar-pendencias.ts` — ver
+  [`operadores`](operadores.md)). Não mexe no débito. Best-effort: uma falha aqui
+  não impede o fechamento.
 
 #### `reabrir(deslocamento, usuario)`
 - **Efeitos:** exige que o ciclo esteja `FECHADO`; volta a `ABERTO`, grava quem
@@ -140,7 +145,7 @@ que ele toca) —, reaproveitadas aqui.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `ciclo-folha.service.spec.ts` | Estado, fechar/reabrir, o guard de um dia (com o ciclo nomeado), `exigirCiclosAbertos` (período que começa, termina ou cabe num ciclo fechado; período invertido) e `consultarIntervalo` (travessia, reparto de dias, estado real, invertido) | 14 |
+| `ciclo-folha.service.spec.ts` | Estado, fechar/reabrir, o guard de um dia (com o ciclo nomeado), `exigirCiclosAbertos` (período que começa, termina ou cabe num ciclo fechado; período invertido) e `consultarIntervalo` (travessia, reparto de dias, estado real, invertido), e o **encerramento das pendências ao fechar** (só o ciclo, sem débito; uma falha não impede o fechamento) | 16 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

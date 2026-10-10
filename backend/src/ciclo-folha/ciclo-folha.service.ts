@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
 import {
@@ -10,6 +10,7 @@ import {
   rotuloPeriodoFolha,
 } from '../common/datas';
 import { CicloFechadoError, CicloNaoFechadoError } from './ciclo-folha.errors';
+import { encerrarPendencias } from '../common/encerrar-pendencias';
 
 /** Período do ciclo (serializável) exposto ao app. */
 export interface PeriodoCiclo {
@@ -65,6 +66,8 @@ export interface IntervaloCiclosView {
  */
 @Injectable()
 export class CicloFolhaService {
+  private readonly logger = new Logger(CicloFolhaService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /** Resolve o período (âncora inicio/fim) a partir de um deslocamento. */
@@ -112,6 +115,26 @@ export class CicloFolhaService {
   ): Promise<EstadoCicloFolha> {
     const p = this.periodoDe(deslocamento);
     const agora = new Date();
+    // Fechar o ciclo encerra as pendências que ainda restam nele (faltas e
+    // não-retornos sem análise) como "não justificadas", ANTES de travar o
+    // período: depois de fechado, nada mais se edita ali. Best-effort — uma falha
+    // aqui não pode impedir o fechamento (as pendências só continuam pendentes).
+    try {
+      const r = await encerrarPendencias(
+        this.prisma,
+        { desde: p.inicio, ate: p.fimExclusivo },
+        agora,
+      );
+      if (r.faltas + r.naoRetornos > 0) {
+        this.logger.log(
+          `Fechamento do ciclo encerrou ${r.faltas} falta(s) e ${r.naoRetornos} não-retorno(s) pendentes.`,
+        );
+      }
+    } catch (erro) {
+      this.logger.warn(
+        `Falha ao encerrar as pendências do ciclo: ${String(erro)}`,
+      );
+    }
     await this.prisma.cicloFolha.upsert({
       where: { inicio: p.inicio },
       create: {

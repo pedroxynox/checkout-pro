@@ -1674,3 +1674,107 @@ describe('CentralJornadaService — ponto em dia de folga', () => {
     expect(seg?.pontoEmFolga).toBeUndefined();
   });
 });
+
+/**
+ * Débito num dia "faltou (não registrada)". O dono do projeto excluía a falta na
+ * escala e depois não conseguia lançá-la como débito na Central: sem `Ausencia`
+ * não havia onde ligar o débito.
+ */
+describe('CentralJornadaService.lancarFaltaComDebito', () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-07-10T12:00:00.000Z'));
+  });
+  afterAll(() => jest.useRealTimers());
+
+  function montar(opcoes: { batida?: boolean; ausencia?: boolean } = {}) {
+    const prismaFake = {
+      colaborador: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'c1', tipoContratoJornadaId: null }),
+      },
+      batidaPonto: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue(opcoes.batida ? { id: 'b1' } : null),
+      },
+      ausencia: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue(opcoes.ausencia ? { id: 'a1' } : null),
+        update: jest.fn(
+          async ({ data }: { data: Record<string, unknown> }) => ({
+            id: 'a1',
+            ...data,
+          }),
+        ),
+        create: jest.fn(
+          async ({ data }: { data: Record<string, unknown> }) => ({
+            id: 'nova',
+            ...data,
+          }),
+        ),
+      },
+    };
+    const feriadosFake = { ehFeriado: jest.fn().mockResolvedValue(false) };
+    const service = new CentralJornadaService(
+      prismaFake as never,
+      feriadosFake as never,
+    );
+    return { service, prismaFake, feriadosFake };
+  }
+  const AUTOR = { id: 'u1', nome: 'Gestor' };
+
+  it('cria a falta já debitada e não justificada (manual, não automática)', async () => {
+    const { service, prismaFake } = montar();
+    await service.lancarFaltaComDebito('c1', '2026-07-01', AUTOR); // quarta
+
+    const data = prismaFake.ausencia.create.mock.calls[0][0].data;
+    expect(data).toMatchObject({
+      pessoaId: 'c1',
+      colaboradorId: 'c1',
+      data: dia('2026-07-01'),
+      debitoHoras: true,
+      statusJustificativa: 'INJUSTIFICADA',
+      justificadaPorNome: 'Gestor',
+      registradaPorNome: 'Gestor',
+    });
+    // Manual: a auto-cura do ponto só apaga faltas `automatica`.
+    expect(data.automatica).toBeUndefined();
+  });
+
+  it('se o dia já tem falta, só liga o débito nela', async () => {
+    const { service, prismaFake } = montar({ ausencia: true });
+    await service.lancarFaltaComDebito('c1', '2026-07-01', AUTOR);
+    expect(prismaFake.ausencia.update).toHaveBeenCalledWith({
+      where: { id: 'a1' },
+      data: { debitoHoras: true },
+    });
+    expect(prismaFake.ausencia.create).not.toHaveBeenCalled();
+  });
+
+  it('recusa domingo, feriado, dia com ponto e dia que não terminou', async () => {
+    await expect(
+      montar().service.lancarFaltaComDebito('c1', '2026-07-05', AUTOR), // domingo
+    ).rejects.toThrow(/Domingo/);
+
+    const comFeriado = montar();
+    comFeriado.feriadosFake.ehFeriado.mockResolvedValue(true);
+    await expect(
+      comFeriado.service.lancarFaltaComDebito('c1', '2026-07-01', AUTOR),
+    ).rejects.toThrow(/Feriado/);
+
+    await expect(
+      montar({ batida: true }).service.lancarFaltaComDebito(
+        'c1',
+        '2026-07-01',
+        AUTOR,
+      ),
+    ).rejects.toThrow(/ponto/);
+
+    await expect(
+      montar().service.lancarFaltaComDebito('c1', '2026-07-10', AUTOR), // hoje
+    ).rejects.toThrow(/já terminou/);
+  });
+});

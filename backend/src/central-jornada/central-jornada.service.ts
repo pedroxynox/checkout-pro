@@ -47,8 +47,10 @@ import {
   CompensacaoAplicada,
   carregarCompensacoesAprovadas,
 } from '../compensacao-horas/compensacao-horas.consulta';
+import { montarDadosJustificativa } from '../common/justificativas';
 import {
   agoraNaBrasilia,
+  diaCivilBrasilia,
   inicioDoDia,
   inicioDoProximoDia,
   periodoFolhaDeslocado,
@@ -2178,6 +2180,87 @@ export class CentralJornadaService {
     return this.prisma.ausencia.update({
       where: { id: ausenciaId },
       data: { debitoHoras: debito },
+    });
+  }
+
+  /**
+   * Lança como DÉBITO um dia em que a pessoa faltou e não há falta gravada
+   * (`FALTA_NAO_REGISTRADA` na tela) — tipicamente porque a falta foi excluída
+   * na escala. Antes, sem `Ausencia`, não havia o que debitar: excluída a
+   * falta, o gestor não conseguia mais lançá-la como débito na Central.
+   *
+   * Cria uma falta MANUAL (não `automatica`, então a auto-cura não a apaga)
+   * já confirmada como "não justificada" pelo gestor, com o débito ligado. Se o
+   * dia já tem uma falta (de qualquer origem), apenas liga o débito nela.
+   * Mesmas guardas de `marcarDebito`: ciclo aberto, sem domingo/feriado.
+   * Recusa dia de hoje/futuro e dia com ponto (não é falta).
+   */
+  async lancarFaltaComDebito(
+    colaboradorId: string,
+    dataIso: string,
+    autor: { id?: string | null; nome?: string | null } = {},
+  ): Promise<Ausencia> {
+    const dia = inicioDoDia(new Date(`${dataIso.slice(0, 10)}T00:00:00.000Z`));
+    if (Number.isNaN(dia.getTime())) {
+      throw new BadRequestException('Data inválida.');
+    }
+    if (dia.getTime() >= diaCivilBrasilia().getTime()) {
+      throw new BadRequestException(
+        'Só é possível lançar débito de um dia que já terminou.',
+      );
+    }
+    const colaborador = await this.prisma.colaborador.findUnique({
+      where: { id: colaboradorId },
+      select: { id: true, tipoContratoJornadaId: true },
+    });
+    if (!colaborador) {
+      throw new NotFoundException('Colaborador não encontrado.');
+    }
+    if (this.cicloFolha) {
+      await this.cicloFolha.exigirCicloAberto(dia);
+    }
+    const ehFeriado = await this.feriados.ehFeriado(dia);
+    const regras = await this.regrasDe(colaborador.tipoContratoJornadaId);
+    if (diaPagaAdicional100(dia.getUTCDay(), ehFeriado, regras)) {
+      throw new BadRequestException(
+        ehFeriado
+          ? 'Feriado não gera hora devida: a falta fica apenas como ausência.'
+          : 'Domingo não gera hora devida: a falta fica apenas como ausência.',
+      );
+    }
+    const doDia = {
+      data: dia,
+      OR: [{ colaboradorId }, { pessoaId: colaboradorId }],
+    };
+    const batida = await this.prisma.batidaPonto.findFirst({
+      where: doDia,
+      select: { id: true },
+    });
+    if (batida) {
+      throw new BadRequestException(
+        'Há ponto registrado neste dia: não é uma falta.',
+      );
+    }
+    const existente = await this.prisma.ausencia.findFirst({
+      where: doDia,
+      select: { id: true },
+    });
+    if (existente) {
+      return this.prisma.ausencia.update({
+        where: { id: existente.id },
+        data: { debitoHoras: true },
+      });
+    }
+    return this.prisma.ausencia.create({
+      data: {
+        pessoaId: colaboradorId,
+        colaboradorId,
+        data: dia,
+        debitoHoras: true,
+        registradaPorId: autor.id ?? null,
+        registradaPorNome: autor.nome ?? null,
+        ...montarDadosJustificativa({ status: 'INJUSTIFICADA' }, autor),
+      },
     });
   }
 

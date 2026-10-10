@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `backend/src/common/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `backend/src/common/`
 
 # Módulo: `common`
 
@@ -32,7 +32,8 @@ justificativas), CORS e opções de upload.
 | `errors/erro-dominio.ts` | Base `ErroDominio` com `statusHttp` próprio | 15 |
 | `datas.ts` | Utilidades puras de período (UTC, folha 26→25, Brasília) + sequência, duração e vigência de dias | 273 |
 | `numeros.ts` | `arredondar` e `parseValor` (monetário) | 37 |
-| `justificativas.ts` | Peso e montagem dos campos de justificativa (ADR 0009) | 156 |
+| `justificativas.ts` | Peso e montagem dos campos de justificativa (ADR 0009) + regra do encerramento automático | 209 |
+| `encerrar-pendencias.ts` | Grava o encerramento automático (faltas + não-retornos PENDENTES de uma janela) | 77 |
 | `risco-ocorrencias.ts` | Pontuação de risco partilhada por faltas e não-retornos | 42 |
 | `relogio.ts` | Relógio injetável (`RELOGIO`, `RelogioSistema`) | 21 |
 | `cors.ts` | Origens de CORS a partir do ambiente | 15 |
@@ -127,6 +128,17 @@ fornece:
   por faltas (`operadores`) e não-retornos (`incidencias`); PENDENTE limpa tudo,
   INJUSTIFICADA descarta o motivo, `agora` é injetável. Além dos enums
   `StatusJustificativa`/`MotivoJustificativa` e das constantes de peso (ver ADR 0009).
+  **Encerramento automático:** `DIAS_ENCERRAMENTO_AUTOMATICO` (3),
+  `AUTOR_ENCERRAMENTO_AUTOMATICO`, `corteEncerramentoAutomatico(hoje)` (corte
+  exclusivo: a ocorrência do dia D fecha em D+3) e
+  `dadosEncerramentoAutomatico(agora?)` (INJUSTIFICADA com o sistema como autor;
+  **não** mexe no débito).
+- **`encerrar-pendencias.ts`:** `encerrarPendencias(prisma, janela, agora?)` — o
+  único lugar que grava o encerramento. Função livre (e não serviço) porque tem
+  dois chamadores que não podem depender um do outro: o cron de
+  [`operadores`](operadores.md) e o fechamento de [`ciclo-folha`](ciclo-folha.md).
+  Só toca `PENDENTE`, só o não-retorno entre as incidências e aceita intervalos a
+  excluir (os ciclos fechados).
 
 ## 7. Estados e enums
 - `StatusJustificativa`: `PENDENTE` · `JUSTIFICADA` · `INJUSTIFICADA`.

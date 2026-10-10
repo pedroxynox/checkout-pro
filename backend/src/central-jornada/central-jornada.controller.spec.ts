@@ -36,3 +36,13 @@ describe('CentralJornadaController — permissão do relatório de marcações i
     expect(decidirAutorizacao('SUPERVISOR', 'CENTRAL_JORNADA')).toBe(true);
   });
 });
+
+describe('CentralJornadaController — permissão do débito em dia sem falta', () => {
+  it('lançar débito num dia "faltou (não registrada)" tem a mesma alçada do débito', () => {
+    const funcionalidade = Reflect.getMetadata(
+      FUNCIONALIDADE_KEY,
+      CentralJornadaController.prototype.lancarFaltaComDebito,
+    );
+    expect(funcionalidade).toEqual(['CENTRAL_JORNADA']);
+  });
+});

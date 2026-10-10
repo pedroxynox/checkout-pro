@@ -31,7 +31,7 @@ feriados).
 | `metricasResumo.ts` | Identidade das sete métricas do resumo (fonte única de card + ranking) | 153 |
 | `CartaoCompensacao.tsx` | Card-resumo "Compensação de horas" na Central: 50% em aberto, quanto **não cabe** no ciclo, quantas sugestões — e leva à tela | 178 |
 | `CompensacaoScreen.tsx` | Tela de compensação: carteira de 50%, dias mais fracos, liberações, coberturas de falta e o que já foi concedido | 803 |
-| `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 445 |
+| `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 467 |
 | `InconsistenciasScreen.tsx` | Problemas do ciclo agrupados por dia | 325 |
 | `MarcacoesInvalidasScreen.tsx` | Marcações que faltam registrar: quantas e quais, por dia; cada item abre o ajuste | 644 |
 | `filaCorrecao.ts` | Fila de correção (lógica pura): filtros, ordem de trabalho e próxima pendência | 118 |
@@ -110,6 +110,7 @@ Cada tela trata os estados **carregando / erro / vazio**.
 | Comparativo | `centralJornadaService.comparativos(qtd)` | `GET /central-jornada/comparativos` |
 | Detalhe por pessoa (dias + resumo atual) | `centralJornadaService.pessoa(id, ciclo)` | `GET /central-jornada/pessoa/:id` |
 | Marcar débito | `centralJornadaService.marcarDebito(id, debito)` | `POST /central-jornada/ausencia/:id/debito` |
+| Débito em dia sem falta | `centralJornadaService.lancarFaltaComDebito(id, data)` | `POST /central-jornada/pessoa/:id/debito` |
 | Painel de compensação | `compensacaoHorasService.painel(ciclo)` | `GET /compensacao-horas` |
 | Conceder compensação | `compensacaoHorasService.aprovar(dados)` | `POST /compensacao-horas/aprovar` |
 | Descartar sugestão | `compensacaoHorasService.recusar(id, data, motivo?)` | `POST /compensacao-horas/recusar` |
@@ -151,6 +152,10 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   chip `+100%` abaixo do nome —, porque nunca são debitadas e mascaravam quem
   estava devendo. `DetalheJornadaScreen` mostra o mesmo indicador, para as duas
   telas não discordarem.
+- **Débito também no dia "Faltou (não registrada)".** Esse dia não tem falta
+  gravada (ex.: ela foi excluída na escala), e antes não havia como debitá-lo. O
+  botão **Débito** aparece também nele (fora de domingo/feriado) e cria a falta já
+  debitada. O texto do dia passou a orientar para esse botão.
 - **O cabeçalho do detalhe vem do servidor, não da navegação.**
   `DetalheJornadaScreen` usa o `resumo` devolvido por
   `GET /central-jornada/pessoa/:id` (o mesmo cálculo da card). O `pessoa`

@@ -262,6 +262,13 @@ export function JustificativasLista({
           </Text>
         ))}
       </View>
+      {/* Regra do servidor (common/justificativas): o que fica 3 dias pendente é
+          encerrado pelo sistema como "não justificada". Avisar aqui evita a
+          surpresa de ver a pendência sumir sozinha. */}
+      <Text style={styles.avisoEncerramento}>
+        Pendências sem análise por 3 dias são encerradas automaticamente como
+        não justificadas. Ainda dá para justificá-las depois, com o ciclo aberto.
+      </Text>
 
       {req.carregando ? (
         <Carregando />
@@ -415,6 +422,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   chipAtivo: { backgroundColor: cores.primaria, color: cores.textoInverso },
+  avisoEncerramento: {
+    ...tipografia.legenda,
+    color: cores.textoSecundario,
+    marginBottom: espacamento.sm,
+  },
   topo: { flexDirection: 'row', alignItems: 'flex-start', gap: espacamento.sm },
   flex1: { flex: 1 },
   nome: { ...tipografia.corpo, fontWeight: '600', color: cores.texto },

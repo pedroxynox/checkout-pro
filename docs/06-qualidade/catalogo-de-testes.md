@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 134 arquivos, 1261 casos. **Mobile:** 39 arquivos, 295 casos. **Total: 1556 casos.**
+> **Backend:** 135 arquivos, 1278 casos. **Mobile:** 39 arquivos, 295 casos. **Total: 1573 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -32,8 +32,8 @@
 | `src/atestados/atestados.domain.spec.ts` | 13 | 5 |
 | `src/atestados/atestados.service.spec.ts` | 10 | 2 |
 | `src/central-jornada/agrupar-atestados.spec.ts` | 12 | 3 |
-| `src/central-jornada/central-jornada.controller.spec.ts` | 2 | 2 |
-| `src/central-jornada/central-jornada.service.spec.ts` | 46 | 6 |
+| `src/central-jornada/central-jornada.controller.spec.ts` | 3 | 3 |
+| `src/central-jornada/central-jornada.service.spec.ts` | 49 | 7 |
 | `src/central-jornada/compensacao-jornada.spec.ts` | 12 | 5 |
 | `src/central-jornada/marcacoes-invalidas.service.spec.ts` | 12 | 1 |
 | `src/central-jornada/rankings.service.spec.ts` | 10 | 1 |
@@ -41,7 +41,7 @@
 | `src/checklist/checklist.controller.spec.ts` | 5 | 1 |
 | `src/checklist/checklist.properties.spec.ts` | 5 | 1 |
 | `src/checklist/checklist.service.spec.ts` | 8 | 2 |
-| `src/ciclo-folha/ciclo-folha.service.spec.ts` | 14 | 3 |
+| `src/ciclo-folha/ciclo-folha.service.spec.ts` | 16 | 3 |
 | `src/colaboradores/colaboradores.adicionar-identificador.spec.ts` | 4 | 1 |
 | `src/colaboradores/colaboradores.promocao-acesso.spec.ts` | 6 | 2 |
 | `src/colaboradores/colaboradores.turno-obrigatorio.spec.ts` | 9 | 5 |
@@ -110,6 +110,7 @@
 | `src/operadores/ausencia-a-prazo-vinculo.spec.ts` | 1 | 1 |
 | `src/operadores/ausencia-a-prazo.spec.ts` | 3 | 1 |
 | `src/operadores/coerencia-quadro-escala.spec.ts` | 10 | 1 |
+| `src/operadores/encerramento-automatico.spec.ts` | 11 | 3 |
 | `src/operadores/falta-em-folga.spec.ts` | 3 | 1 |
 | `src/operadores/listar-ausencias-ficha.spec.ts` | 1 | 1 |
 | `src/operadores/marcar-periodo-justificado.spec.ts` | 1 | 1 |

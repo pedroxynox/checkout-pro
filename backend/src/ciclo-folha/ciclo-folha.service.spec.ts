@@ -103,6 +103,23 @@ function montar() {
   };
 }
 
+/** `montar` + as tabelas de pendências (faltas e não-retornos). */
+function montarComPendencias() {
+  const prisma = {
+    ausencia: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+    incidenciaEscala: {
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+  };
+  const base = montar();
+  // O serviço guarda o Prisma falso; acrescenta as duas tabelas a ele.
+  Object.assign(
+    (base.service as unknown as { prisma: Record<string, unknown> }).prisma,
+    prisma,
+  );
+  return { ...base, prisma };
+}
+
 describe('CicloFolhaService', () => {
   it('um ciclo sem registro está ABERTO', async () => {
     const { service } = montar();
@@ -119,6 +136,31 @@ describe('CicloFolhaService', () => {
     expect(eventos).toContainEqual(
       expect.objectContaining({ tipo: 'FECHADO', por: 'u1' }),
     );
+  });
+
+  it('fechar encerra as pendências do ciclo como não justificadas (sem débito)', async () => {
+    const { service, prisma } = montarComPendencias();
+    await service.fechar(0, USUARIO);
+
+    const falta = prisma.ausencia.updateMany.mock.calls[0][0];
+    expect(falta.where.statusJustificativa).toBe('PENDENTE');
+    // Só o ciclo que está fechando (26/06–25/07).
+    expect(falta.where.data).toEqual({
+      gte: dia('2026-06-26'),
+      lt: dia('2026-07-26'),
+    });
+    expect(falta.data.statusJustificativa).toBe('INJUSTIFICADA');
+    expect(falta.data).not.toHaveProperty('debitoHoras');
+    expect(prisma.incidenciaEscala.updateMany.mock.calls[0][0].where.tipo).toBe(
+      'NAO_RETORNO_INTERVALO',
+    );
+  });
+
+  it('uma falha ao encerrar as pendências não impede o fechamento', async () => {
+    const { service, prisma } = montarComPendencias();
+    prisma.ausencia.updateMany.mockRejectedValue(new Error('banco fora'));
+    const estado = await service.fechar(0, USUARIO);
+    expect(estado.status).toBe('FECHADO');
   });
 
   it('bloqueia (409) uma data de um ciclo fechado e libera as demais', async () => {
