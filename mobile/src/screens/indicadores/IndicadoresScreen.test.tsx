@@ -11,6 +11,11 @@ import { render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
 import { IndicadoresScreen } from "./IndicadoresScreen";
 
+// Sem NavigationContainer no teste: o recarregar-ao-voltar vira um no-op.
+jest.mock("@react-navigation/native", () => ({
+  useFocusEffect: () => undefined,
+}));
+
 jest.mock("../../api/services", () => ({
   arrecadacaoService: {
     resumo: jest.fn(),
@@ -337,5 +342,37 @@ describe("IndicadoresScreen — card de Cancelamentos Totais", () => {
     expect(arrecadacaoService.cancelamentosTotais).toHaveBeenCalledWith(
       expect.stringMatching(/^\d{4}-\d{2}$/),
     );
+  });
+});
+
+describe("IndicadoresScreen — meta editada em Centro de Controle ▸ Metas", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  /**
+   * A card de um indicador em % mostrava a meta FIXA do app (0,75% para
+   * Cancelamento de Itens), e não a do mês salva pelo gestor. Editar a meta não
+   * mudava nada no painel.
+   */
+  it("mostra a meta que vem do servidor, não o valor fixo do app", async () => {
+    preparar();
+    arrecadacaoService.resumo.mockImplementation(async (tipo: string) =>
+      tipo === "CANCELAMENTO_ITENS"
+        ? {
+            ...RESUMO_ARRECADACAO,
+            tipo,
+            titulo: "Cancelamento de Itens",
+            base: "VENDAS",
+            sentido: "MENOR_MELHOR",
+            meta: 1.2, // editada pelo gestor (o padrão do app é 0,75)
+            percentualMes: 0.9,
+          }
+        : RESUMO_ARRECADACAO,
+    );
+
+    render(<IndicadoresScreen navigation={navigation} route={{} as never} />);
+
+    await screen.findByText("Cancelamento de Itens");
+    expect(screen.getByText("0,90% (meta ≤ 1,20%)")).toBeTruthy();
+    expect(screen.queryByText("0,90% (meta ≤ 0,75%)")).toBeNull();
   });
 });

@@ -17,7 +17,8 @@
  * com a meta que valia naquele mês.
  */
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
   arrecadacaoService,
@@ -108,7 +109,10 @@ function valorMesTexto(def: DefinicaoArrecadacao, resumo: ResumoArrecadacao): st
   if (def.base === 'FIXA') {
     return `${formatarMoeda(resumo.totalMes)} / ${formatarMoeda(resumo.meta)}`;
   }
-  return `${formatarPercentual(resumo.percentualMes ?? 0)} (meta ≤ ${formatarPercentual(def.meta)})`;
+  // A meta vem do SERVIDOR (`resumo.meta`, a do mês em Centro de Controle ▸
+  // Metas). Antes o texto usava `def.meta`, o valor fixo de `rotulos.ts`: o
+  // gestor editava a meta e a card continuava mostrando a antiga.
+  return `${formatarPercentual(resumo.percentualMes ?? 0)} (meta ≤ ${formatarPercentual(resumo.meta)})`;
 }
 
 /**
@@ -209,6 +213,21 @@ export function IndicadoresScreen({
     }));
     return { saude, vendas, destaques, painel, sacolas, cancelamentosTotais };
   }, [data, anoMes]);
+
+  // Ao VOLTAR a esta tela (ex.: editou uma meta e voltou), recarrega. Pula o
+  // primeiro foco: a carga inicial já é feita pelo useRequisicao ao montar.
+  const recarregarAoVoltar = useRef<() => void>(() => undefined);
+  recarregarAoVoltar.current = req.recarregar;
+  const primeiroFoco = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (primeiroFoco.current) {
+        primeiroFoco.current = false;
+        return;
+      }
+      recarregarAoVoltar.current();
+    }, []),
+  );
 
   const saude = req.dados?.saude ?? [];
   const vendas: ResumoVendas | null = req.dados?.vendas ?? null;
