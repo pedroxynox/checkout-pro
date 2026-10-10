@@ -1,9 +1,76 @@
 # Registro de Mudanças — Check-out PRO
 
 > Histórico cronológico das entregas e decisões do projeto. O estado consolidado
-> atual fica em `PROJECT_UNDERSTANDING.md`; este arquivo registra **o que mudou e
+> atual fica em [Roadmap e pendências](roadmap-e-pendencias.md) e
+> [Estado e métricas](estado-e-metricas.md); este arquivo registra **o que mudou e
 > por quê**. Entradas antigas são preservadas como histórico, mas uma regra
 > posterior substitui a anterior quando houver evolução explícita.
+
+---
+
+## Remoção da assistente de IA (Cluby) e revisão da documentação (2026-10-10)
+
+O app **deixou de ter qualquer recurso de inteligência artificial**, por decisão
+do dono do projeto. Saíram:
+
+- **Backend:** o módulo `assistente` inteiro (chat, cliente do Google Gemini,
+  instruções do modelo, cron de limpeza das conversas e os procedimentos guiados
+  com as suas imagens em `/assets`); a rota `GET /fiscais/contexto-escala`, que só
+  servia à assistente; as variáveis `GEMINI_API_KEY` e `GEMINI_MODEL`.
+- **Banco:** a tabela `mensagens_assistente` (migração `9zzs_remover_assistente`);
+  o Reset Operacional passou a apagar 16 entidades.
+- **App:** o chat (que já não estava montado em nenhuma aba), o contexto da
+  assistente, os componentes `MarkdownTexto`/`ProcedimentoView` e o rodapé
+  "Potenciado pela Cluby" do login.
+- **Ação manual após o deploy:** apagar `GEMINI_API_KEY` e `GEMINI_MODEL` do painel
+  do serviço no Render.
+
+Na mesma entrega, a documentação foi revisada contra o código: contagens de linhas
+e de testes do Atlas, arquivos e rotas que já não existiam (exceções de horário,
+`POST /escala`), a referência manual de API duplicada e desatualizada
+(`api-detalhada.md`, removida em favor da gerada), o roadmap (banco e Pre-Deploy
+já resolvidos), os steering e as regras de negócio que ainda não citavam as
+entregas abaixo.
+
+---
+
+## Resumo das entregas de 20/07 a 10/10/2026
+
+Consolidado dos PRs mesclados nesse período (detalhe em cada ADR e no Atlas).
+
+- **Atestados e férias (#328–#339, #363–#364, #368, #387–#391, #418, #421):**
+  atestado com CID e regra do INSS ([ADR 0016](../02-arquitetura/decisoes/0016-atestados-cid-e-regra-inss.md)),
+  só pelo fluxo próprio, contado por documento, com exclusão que devolve a falta
+  anterior; férias como inativação não rígida
+  ([ADR 0015](../02-arquitetura/decisoes/0015-ferias-inativacao-nao-rigida.md)),
+  respeitadas no Quadro, na cobertura e na Central de Jornada.
+- **Faltas e não-retornos (#330, #342–#344, #362, #375, #422):** excluir o que foi
+  lançado por engano, auto-cura do que deixou de ser verdade, nada de falta em dia
+  de folga e, por fim, **encerramento automático em 3 dias** como não justificado.
+- **Central de Jornada (#349–#360, #371, #399):** 50% reais do momento, domingo e
+  feriado sem hora devida, relatório de marcações inválidas, ranking do time e o dia
+  escalado sem registro (`FALTA_NAO_REGISTRADA`); **compensação de horas** com tela
+  própria (#404, #407 — [ADR 0021](../02-arquitetura/decisoes/0021-compensacao-de-horas.md)).
+- **Ponto (#346–#347, #373, #397–#402):** aviso de atraso de 1h, TAC pelo dia de
+  Brasília, jornada do feriado de 7h20, ponto em dia de folga aceito
+  ([ADR 0019](../02-arquitetura/decisoes/0019-ponto-em-dia-de-folga.md)) e mudança de
+  função que preserva o ponto ([ADR 0020](../02-arquitetura/decisoes/0020-mudanca-de-funcao-preserva-o-ponto.md)).
+- **Escala (#361, #374, #376, #392–#396, #403, #408, #413–#415):** publicação em PDF
+  e imagem 4K; a folga e o horário são **da ficha**
+  ([ADR 0023](../02-arquitetura/decisoes/0023-folga-a-ficha-manda.md),
+  [ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md)) e a
+  Conferência de escala.
+- **Indicadores e metas (#365, #367, #384, #405–#406, #410–#412, #420):** histórico
+  de 24 meses, meta de vendas derivada das estimativas
+  ([ADR 0017](../02-arquitetura/decisoes/0017-meta-de-vendas-derivada-das-estimativas.md)),
+  indicadores Sacolas ([ADR 0022](../02-arquitetura/decisoes/0022-indicador-sacolas-venda-por-sacola.md))
+  e Cancelamentos Totais ([ADR 0025](../02-arquitetura/decisoes/0025-cancelamentos-totais-indicador-calculado.md)),
+  e as cards passando a usar a meta do mês editada em Metas.
+- **Contratos (#409):** o contrato de experiência é da pessoa
+  ([ADR 0024](../02-arquitetura/decisoes/0024-contrato-de-experiencia-e-da-pessoa.md)).
+- **Home, acessos e notificações (#331, #334, #348, #366, #370, #372, #419):**
+  Centro de Controle no cabeçalho, permissão própria para Colaboradores, janela de
+  200 notificações e vendas temporariamente fora da Home.
 
 ---
 

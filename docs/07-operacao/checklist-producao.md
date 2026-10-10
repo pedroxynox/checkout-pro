@@ -3,8 +3,8 @@
 Guia de prontidão para colocar (e manter) a aplicação em produção com segurança.
 Marque cada item antes de liberar um deploy para os usuários finais.
 
-> Contexto: API NestJS (`backend/`) hospedada no Render, com PostgreSQL gerenciado
-> e assistente de IA via Google Gemini. Operação com ~15 fiscais simultâneos.
+> Contexto: API NestJS (`backend/`) hospedada no Render, com PostgreSQL
+> gerenciado. Operação com ~15 fiscais simultâneos.
 
 ---
 
@@ -20,21 +20,16 @@ Sem estes itens a aplicação **não sobe** ou fica insegura/instável:
 - [ ] **`CORS_ORIGINS`** definido com as origens permitidas (ex.:
       `https://checkout-pro-web.onrender.com`), separadas por vírgula. Se vazio, a
       API reflete a origem da requisição — inadequado para produção.
-- [ ] **`GEMINI_API_KEY`** definido (assistente Cluby). Sem ela, o assistente
-      responde "não configurado".
 - [ ] **`SENHA_INICIAL`** definido no painel do serviço (não versionado; no
       `render.yaml` está como `sync: false`). É a senha inicial dos usuários do
       seed — troque após o primeiro login.
 - [ ] **Migrações aplicadas** via `prisma migrate deploy`. Já configuradas como
-      **Pre-Deploy Command** no `render.yaml` (`npx prisma migrate deploy && npx
-      prisma db seed`), garantindo o schema atualizado antes de a nova versão
+      **Pre-Deploy Command** no `render.yaml` (`npx prisma migrate deploy`; o seed
+      roda só uma vez, à mão, em banco novo), garantindo o schema atualizado antes de a nova versão
       entrar no ar.
 
 ## 2. Infra de produção
 
-- [ ] **Plano pago do Gemini:** a cota gratuita (~20 req/min) é insuficiente para
-      ~15 fiscais simultâneos (gera `RESOURCE_EXHAUSTED`). Ativar faturamento no
-      Google AI Studio.
 - [x] **PostgreSQL persistente:** migrado para o plano pago `basic-256mb` (jul/2026),
       sem a expiração de ~30 dias do plano free. O backend fixa o pool de conexões
       via `DATABASE_CONNECTION_LIMIT` (padrão `10`) para respeitar o limite modesto

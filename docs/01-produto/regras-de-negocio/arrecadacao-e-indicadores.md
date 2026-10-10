@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** regras de negócio de arrecadação e indicadores
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** regras de negócio de arrecadação e indicadores
 
 # Arrecadação e indicadores
 
@@ -19,6 +19,17 @@ O sistema acompanha cinco tipos de arrecadação/indicador por operador:
 - **Cancelamento de itens**
 - **Cancelamento de cupom**
 - **Devoluções**
+
+Além deles, há indicadores **calculados**, sem arquivo próprio:
+
+- **Cancelamentos Totais** — itens + cupom somados, sobre as vendas, com **teto
+  próprio** (não é a soma dos tetos das duas partes); um mês sem venda registrada
+  não aparece como 0% verde ([ADR 0025](../../02-arquitetura/decisoes/0025-cancelamentos-totais-indicador-calculado.md)).
+- **Sacolas** — venda em R$ por sacola recebida, regra em
+  [Estoque, insumos e requisições](estoque-insumos-e-requisicoes.md).
+
+As metas exibidas nas cards e no detalhe são **sempre as do mês**, vindas do
+servidor (editadas em Centro de Controle ▸ Metas).
 
 Cada tipo tem uma **base** e um **sentido**:
 

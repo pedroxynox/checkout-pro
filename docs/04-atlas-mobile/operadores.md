@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `mobile/src/screens/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/screens/operadores/`
 
 # Área: `operadores`
 
@@ -23,7 +23,7 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1937 |
+| `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1941 |
 | `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 470 |
 | `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 480 |
 | `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID), ver os **em curso e programados** (com filtro para incluir os encerrados) **e excluir** um lançado por engano | 625 |

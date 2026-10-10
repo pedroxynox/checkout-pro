@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `mobile/src/navigation/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/navigation/`
 
 # Navegação
 
@@ -11,11 +11,13 @@ como cada **área** é liberada conforme o perfil/permissão do usuário. Usa o
 ## 2. Inventário
 | Arquivo | Símbolo | O que faz | Linhas |
 |---|---|---|---|
-| `RootNavigator.tsx` | `RootNavigator` | Decide entre login e app conforme o `AuthContext`; monta `NavigationContainer`, tema, `linking` (URLs na web) e os provedores de Notificações/Assistente. | 107 |
+| `RootNavigator.tsx` | `RootNavigator` | Decide entre login e app conforme o `AuthContext`; monta `NavigationContainer`, tema, `linking` (URLs na web) e o provedor de Notificações. | 103 |
 | `MainTabs.tsx` | `MainTabs` | Barra de abas inferior (Início, Tarefas, Ponto central, Notificações, Perfil), com selos de pendências/não lidas. | 206 |
-| `AppNavigator.tsx` | `AppNavigator` | Pilha de telas de módulo; cada rota só entra na pilha se `podeAcessar(funcionalidade)`. | 414 |
+| `AppNavigator.tsx` | `AppNavigator` | Pilha de telas de módulo; cada rota só entra na pilha se `podeAcessar(funcionalidade)`. | 454 |
 | `areas.ts` | `AREAS`, `Area` | Catálogo das áreas funcionais (rota, ícone, título, `funcionalidade` exigida, marcas `emBreve`, `noCabecalho` e `ocultoNaHome`) usado pela Home e pelo menu. | 201 |
-| `types.ts` | `RootStackParamList`, `MainTabParamList`, `RotaApp`, `PropsTela`, `PropsTabInicio` | Tipagem de todas as rotas e seus parâmetros. | 94 |
+| `types.ts` | `RootStackParamList`, `MainTabParamList`, `RotaApp`, `PropsTela`, `PropsTabInicio` | Tipagem de todas as rotas e seus parâmetros. | 153 |
+| `../screens/LoginScreen.tsx` | `LoginScreen` | Tela de login (fora das áreas): lembra o último usuário, biometria e mensagens de erro de credencial × conexão. | 731 |
+| `../screens/HomeScreen.tsx` | `HomeScreen` | Aba Início: Resumo do Dia no topo e a grade de "Acessos rápidos" com as áreas permitidas ao perfil. | 594 |
 
 ## 3. Fluxo de login → app
 1. `App.tsx` monta os provedores globais (`AuthProvider`,
@@ -23,8 +25,8 @@ como cada **área** é liberada conforme o perfil/permissão do usuário. Usa o
 2. `RootNavigator` lê o `AuthContext`:
    - **Restaurando a sessão** (`carregando`): mostra `Carregando`.
    - **Não autenticado**: renderiza a `LoginScreen`.
-   - **Autenticado**: envolve o app em `NotificacoesProvider` +
-     `AssistenteProvider` e renderiza o `AppNavigator`, com o `ToastNotificacao`
+   - **Autenticado**: envolve o app em `NotificacoesProvider` e
+     renderiza o `AppNavigator`, com o `ToastNotificacao`
      por cima.
 3. O login autentica no backend (`acessosService.login`), salva o token no
    armazenamento seguro e carrega a identidade (`acessosService.eu`). Ao expirar

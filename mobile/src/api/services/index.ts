@@ -65,7 +65,6 @@ export { permissoesService } from './permissoes';
 export { checkoutsService } from './checkouts';
 export type { FotoAvaria } from './checkouts';
 export { notificacoesService } from './notificacoes';
-export { assistenteService } from './assistente';
 export { configSistemaService } from './configSistema';
 export type {
   DataInicialResposta,

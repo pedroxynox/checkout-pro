@@ -3,7 +3,7 @@
 
 # Dicionário de Dados
 
-> Detalhe campo a campo das **56 tabelas**. Fonte: `backend/prisma/schema.prisma`.
+> Detalhe campo a campo das **55 tabelas**. Fonte: `backend/prisma/schema.prisma`.
 
 ## `Usuario`
 
@@ -602,18 +602,6 @@ seguindo o padrão do schema (ADR 0005).
 | `plataforma` | `String?` |  |  |
 | `criadoEm` | `DateTime` |  |  |
 | `atualizadoEm` | `DateTime` |  |  |
-
-## `MensagemAssistente`
-
-convenção da API Gemini: 'user' (pergunta) ou 'model' (resposta).
-
-| Campo | Tipo | Chave | Descrição |
-|---|---|---|---|
-| `id` | `String` | PK |  |
-| `usuarioId` | `String` |  |  |
-| `papel` | `String` |  |  |
-| `conteudo` | `String` |  |  |
-| `criadaEm` | `DateTime` |  |  |
 
 ## `PedidoRecorrente`
 

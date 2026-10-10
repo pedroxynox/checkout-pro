@@ -143,10 +143,4 @@ export class FiscaisController {
   previsaoExtras() {
     return this.service.previsaoExtras();
   }
-
-  /** Contexto de escala para integração com Cluby. */
-  @Get('contexto-escala')
-  async contextoEscala() {
-    return this.service.contextoEscala();
-  }
 }

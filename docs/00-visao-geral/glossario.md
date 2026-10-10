@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** termos de negócio e de sistema do Check-out PRO
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** termos de negócio e de sistema do Check-out PRO
 
 # Glossário
 
@@ -31,6 +31,12 @@ Dicionário rápido dos termos do **negócio** (o supermercado) e do **sistema**
 | **Turno** | O horário-base da pessoa: Abertura, Intermediário, Fechamento ou Apoio. Obrigatório para fiscal e operador. |
 | **Rodízio de domingo** | A alternância que define quais grupos folgam e quais trabalham a cada domingo (regra 2x1, em três grupos). |
 | **Escala de domingo** | A configuração e o cálculo desse rodízio (âncora, ordem dos grupos). |
+| **Férias** | Período em que a pessoa sai da escala sem ser desligada: não é esperada, não gera falta e não aparece como falta na Central de Jornada. |
+| **Atestado** | Documento médico com período e CID (ou "sem CID"). Gera dias abonados identificados como atestado e soma dias por CID para a regra do INSS (mais de 15 dias em 60). |
+| **Encerramento automático** | Falta ou não retorno que fica 3 dias sem análise é encerrado pelo sistema como **não justificado** e sai da lista de pendências. Não liga o débito de horas. |
+| **Débito (de horas)** | Lançar uma falta como horas que a pessoa deve; abate as extras de 50%. Sempre decisão do gestor; domingo e feriado nunca geram débito. |
+| **Compensação de horas** | A pessoa usa o próprio saldo de 50% para trabalhar menos (ou folgar) num dia combinado e aprovado. |
+| **Conferência de escala** | Diagnóstico que compara a ficha de cada pessoa com a escala semanal e aponta divergências. |
 | **Feedforward** | Acompanhamento de desenvolvimento do colaborador — orientação voltada ao futuro, não à punição. |
 | **Incidência (de escala)** | Um evento disciplinar/operacional registrado por data (ex.: não retorno do intervalo, atraso, advertência). |
 | **Advertência / suspensão** | Sanções disciplinares. A advertência automática por falta não justificada precisa de aprovação do gestor. |
@@ -40,15 +46,16 @@ Dicionário rápido dos termos do **negócio** (o supermercado) e do **sistema**
 | **Fechamento (do dia)** | O resumo consolidado do dia (arrecadações + vendas + checklists), concluído de forma idempotente (sem duplicar). |
 | **Foto do mês (indicadores)** | O resultado congelado de um mês fechado por indicador (total, meta do mês e semáforo). É o que o histórico lê: um mês fechado não muda mais de valor. |
 | **Janela de retenção (indicadores)** | Os últimos 24 meses de histórico dos indicadores. Ao entrar um mês novo, o mais antigo é apagado — inclusive os lançamentos daquele mês. |
+| **Cancelamentos Totais** | Indicador calculado: cancelamento de itens + cupom somados, sobre as vendas, com teto próprio. |
+| **Sacolas (indicador)** | Quanto a loja vende, em R$, por sacola que entra no estoque (maior é melhor). |
+| **Produtos pesados** | Catálogo de códigos da balança, consultado por nome ou código. |
 | **Insumo** | Material de consumo da operação (ex.: bobina de papel, sacola, álcool). O saldo nunca pode ficar negativo. |
 | **Fardo / bobina** | Unidades de estoque de insumos: o **fardo** é a embalagem com várias unidades; a **bobina** é o rolo (ex.: papel do caixa) consumido aos poucos. |
 | **Requisição** | Pedido de reposição de insumo, criado e aprovado por um gestor (nada é reposto automaticamente). |
 | **Checklist** | Conferência de abertura e de fechamento da loja, com foto e verificação anti-fraude, dentro de uma janela de horário. |
 | **Indicador de Quebra** | Área (hoje **oculta**) prevista para registrar perdas/quebras de mercadoria. |
 | **Alertas de Fila** | Área (hoje **oculta**) prevista para avisos de fila nos caixas. |
-| **Normativas** | Área (hoje **oculta**) prevista para procedimentos e documentos; em escala, dependerá de busca inteligente (RAG). |
-| **Cluby** | A assistente com inteligência artificial (Google Gemini) que resume o dia e responde perguntas. Os procedimentos guiados estão desativados. |
-| **RAG** | *Retrieval-Augmented Generation* — técnica de IA que responde consultando uma base de documentos própria. Necessária para as Normativas em escala. |
+| **Normativas** | Área (hoje **oculta**) prevista para procedimentos e documentos. Como o produto não usa IA, se for concluída será uma biblioteca de documentos com busca comum. |
 | **Notificação push** | Aviso que chega ao celular mesmo com o app fechado. No Android exige a configuração do **FCM**. |
 | **FCM** | *Firebase Cloud Messaging* — serviço do Google necessário para entregar as notificações no Android. |
 | **Expo / EAS** | Plataforma usada para construir e distribuir o app (o **APK** do Android). |

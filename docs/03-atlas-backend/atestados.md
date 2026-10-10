@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `backend/src/atestados/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/atestados/`
 
 # Módulo: `atestados`
 
@@ -25,13 +25,13 @@ e avisar a gestão quando o mesmo CID passa do limite do **INSS**. Também
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `atestados.domain.ts` | Regras puras: CID, dias, regra do INSS (15/60) e alçada da exclusão | 191 |
+| `atestados.domain.ts` | Regras puras: CID, dias, regra do INSS (15/60) e alçada da exclusão | 184 |
 | `atestados.service.ts` | Lançar, listar, histórico por CID, excluir e avisos | 593 |
 | `atestados.controller.ts` | Rotas HTTP (lançar, autocompletar CID, listar, histórico, excluir) | 96 |
 | `atestados.errors.ts` | Erros de domínio (mapeados para HTTP) | 74 |
 | `atestados.module.ts` | Ligações (DI) do módulo | 19 |
 | `cid10.catalogo.ts` | Catálogo CID-10 curado (autocompletar) | 177 |
-| `atestados.domain.spec.ts` | Testes do domínio (CID, dias, INSS) | 105 |
+| `atestados.domain.spec.ts` | Testes do domínio (CID, dias, INSS) | 119 |
 | `dto/atestados.dto.ts` | Validação de entrada das rotas | — |
 
 ## 4. Endpoints (rotas HTTP)

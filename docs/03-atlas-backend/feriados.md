@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/feriados/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/feriados/`
 
 # Módulo: `feriados`
 
@@ -21,7 +21,7 @@ o rodízio por grupos.
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
 | `feriados.controller.ts` | Rotas HTTP (listar/criar/remover) | 61 |
-| `feriados.service.ts` | Regras de aplicação e persistência (Prisma) | 146 |
+| `feriados.service.ts` | Regras de aplicação e persistência (Prisma) | 136 |
 | `feriados.consulta.ts` | **A única** resolução de "que dias são feriado" no período (compartilhada com a escala publicada) | 60 |
 | `feriados.domain.ts` | Regras puras: feriados nacionais e Páscoa | 88 |
 | `feriados.module.ts` | Ligações (DI); exporta o serviço | 15 |

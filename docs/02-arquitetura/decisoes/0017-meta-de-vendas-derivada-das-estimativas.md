@@ -1,5 +1,7 @@
 # ADR 0017 — Meta de vendas derivada das estimativas diárias
 
+> **Nota (2026-10-10):** a assistente de IA (Cluby) foi **removida do produto**. As menções a ela abaixo são o registro histórico do contexto desta decisão; a decisão continua valendo para os demais consumidores.
+
 - **Status:** Aceito
 - **Data:** 2026-09-15
 - **Contexto:** A meta mensal de vendas era um número **digitado** pelo gestor, e

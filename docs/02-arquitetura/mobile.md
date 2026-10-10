@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** arquitetura — mobile (Expo/React Native)
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** arquitetura — mobile (Expo/React Native)
 
 # Mobile (Expo / React Native)
 
@@ -43,7 +43,7 @@ Usa `@react-navigation` combinando **pilha** (native-stack) e **abas**
 
 - **`RootNavigator`** decide entre **login** e **app autenticado** conforme o
   `AuthContext`; monta o `NavigationContainer`, o tema, o `linking` (URLs na
-  web) e os provedores de Notificações/Assistente.
+  web) e o provedor de Notificações.
 - **`MainTabs`** — cinco posições na barra inferior: **Início**, **Tarefas**
   (selo de pendências do [`usePulsoDoDia`](#4-carregamento-de-dados-userequisicao)),
   **Ponto** (botão central elevado que abre direto o leitor), **Notificações**
@@ -97,8 +97,8 @@ de **Tarefas**.
 
 - **Base URL** de `EXPO_PUBLIC_API_URL` (padrão de dev `http://localhost:3000`).
 - Cabeçalho **`Authorization: Bearer <token>`** lido do `tokenStorage`.
-- Serialização JSON, upload `multipart/form-data` e **timeout** (60s, para
-  tolerar cold start).
+- Serialização JSON, upload `multipart/form-data` e **timeout** (60s, folga
+  para uploads e redes lentas da loja).
 - Mapeamento de erros para **`ApiError`** (`status`, `corpo`, `naoAutorizado`),
   com `message` já na mensagem em pt-BR devolvida pela API.
 

@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `backend/src/config/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/config/`
 
 # Módulo: `config`
 
@@ -19,7 +19,7 @@ falha rápido (no boot) se algo essencial estiver ausente ou fora do formato.
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `env.validation.ts` | Esquema das variáveis + `validateEnv` (falha rápida) | 134 |
+| `env.validation.ts` | Esquema das variáveis + `validateEnv` (falha rápida) | 130 |
 
 ## 4. Endpoints (rotas HTTP)
 **Não expõe rotas HTTP.** Fornece a função `validateEnv`, usada na opção
@@ -50,7 +50,6 @@ configurado impede o start em vez de falhar silenciosamente depois.
     aplicado em [`prisma`](prisma.md));
   - `HORARIO_FIM_DO_DIA` (`HH:mm`, padrão `22:50`);
   - `JWT_SECRET` (obrigatória em produção) · `JWT_EXPIRES_IN`;
-  - `GEMINI_API_KEY` (opcional) · `GEMINI_MODEL` (padrão `gemini-2.5-flash`);
   - `CORS_ORIGINS` (lista separada por vírgula);
   - `RETENCAO_INATIVOS_MESES` (≥ 1, padrão `3`).
   - `RETENCAO_INDICADORES_MESES` (≥ 1, padrão `24`) — janela móvel do Histórico
@@ -64,7 +63,7 @@ configurado impede o start em vez de falhar silenciosamente depois.
 - **Depende de:** `class-validator`, `class-transformer`.
 - **É usado por:** o `AppModule` (via `ConfigModule.forRoot({ validate })`); os
   valores validados alimentam [`common`](common.md) (segredo JWT, CORS),
-  [`assistente`](assistente.md) (Gemini), [`alertas`](alertas.md)
+  [`alertas`](alertas.md)
   (`HORARIO_FIM_DO_DIA`), [`storage`](storage.md) e [`prisma`](prisma.md)
   (`DATABASE_URL` e `DATABASE_CONNECTION_LIMIT`).
 

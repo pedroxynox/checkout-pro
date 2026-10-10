@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `mobile/src/screens/ponto/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/screens/ponto/`
 
 # Área: `ponto`
 
@@ -30,12 +30,12 @@ feriados).
 | `RankingTimeScreen.tsx` | Ranking do time numa métrica do resumo (uma tela para as sete) | 549 |
 | `metricasResumo.ts` | Identidade das sete métricas do resumo (fonte única de card + ranking) | 153 |
 | `CartaoCompensacao.tsx` | Card-resumo "Compensação de horas" na Central: 50% em aberto, quanto **não cabe** no ciclo, quantas sugestões — e leva à tela | 178 |
-| `CompensacaoScreen.tsx` | Tela de compensação: carteira de 50%, dias mais fracos, liberações, coberturas de falta e o que já foi concedido | 803 |
+| `CompensacaoScreen.tsx` | Tela de compensação: carteira de 50%, dias mais fracos, liberações, coberturas de falta e o que já foi concedido | 808 |
 | `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 467 |
-| `InconsistenciasScreen.tsx` | Problemas do ciclo agrupados por dia | 325 |
+| `InconsistenciasScreen.tsx` | Problemas do ciclo agrupados por dia | 330 |
 | `MarcacoesInvalidasScreen.tsx` | Marcações que faltam registrar: quantas e quais, por dia; cada item abre o ajuste | 644 |
 | `filaCorrecao.ts` | Fila de correção (lógica pura): filtros, ordem de trabalho e próxima pendência | 118 |
-| `ExportarCicloScreen.tsx` | Revisão dos totais e fechar/reabrir o ciclo | 246 |
+| `ExportarCicloScreen.tsx` | Revisão dos totais e fechar/reabrir o ciclo | 248 |
 | `FeriadosScreen.tsx` | Feriados nacionais (automáticos) + estaduais/municipais (manuais) | 214 |
 | `leitorAoVivo.tsx` / `leitorAoVivo.native.tsx` | Leitor ao vivo (câmera): vazio na web, ML Kit no APK | 23 / 325 |
 | `leitorComprovante.ts` / `leitorComprovante.native.ts` | Captura de foto: nula na web, câmera no APK | 15 / 33 |
@@ -381,7 +381,7 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
 |---|---|---|
 | `RegistroPontoScreen.test.tsx` | Busca, jornada, registro manual, limite de 4, erro de duplicidade, leitura do comprovante e o **modo correção** (abre na pessoa/dia pedidos, sugestão do turno sem registrar sozinho, próxima pendência, permanência no dia incompleto, fim da fila, voltar à lista e pessoa não localizada) | 13 |
 | `ExportarCicloScreen.test.tsx` | Revisão (totais) e fechamento do ciclo com confirmação | 2 |
-| `InconsistenciasScreen.test.tsx` | Agrupamento por dia e filtro por pessoa | 2 |
+| `InconsistenciasScreen.test.tsx` | Agrupamento por dia e filtro por pessoa | 3 |
 | `MarcacoesInvalidasScreen.test.tsx` | O que falta em cada dia (já expandido), horas registradas + turno, motivo da conferência, resumo, filtros por pessoa e por marcação, recolher dia, estado vazio, aviso dos não-retornos deixados fora, abertura do ajuste na pessoa/dia do item, filtros levados para a fila, item não tocável sem acesso ao ponto e guarda do primeiro foco | 13 |
 | `filaCorrecao.test.ts` | Identidade do item, filtros, ordem de trabalho e próxima pendência (mesmo dia ainda incompleto, item seguinte, volta ao topo, respeito aos filtros e fim da fila) | 10 |
 | `CartaoCompensacao.test.tsx` | Card-resumo: invisível (e sem consultar o servidor) para quem não pode conceder, 50% em aberto + o que **não cabe** no ciclo, contagem de sugestões no plural certo ("3 sugestões", nunca "3 sugestãoões") e no singular, a frase de propósito quando não há sugestões, **toque leva à tela** `Compensacao`, e nenhuma lista ou botão de ação na card | 7 |

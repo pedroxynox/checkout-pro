@@ -70,20 +70,6 @@ export class EnvironmentVariables {
   @IsOptional()
   JWT_EXPIRES_IN?: string;
 
-  // Chave da API do Google Gemini (assistente de IA / chat flutuante). Obtida
-  // gratuitamente no Google AI Studio. Opcional: sem ela, o assistente
-  // responde com uma mensagem amigável de "não configurado".
-  @IsString()
-  @IsOptional()
-  GEMINI_API_KEY?: string;
-
-  // Modelo Gemini usado pelo assistente. Padrão: gemini-2.5-flash (rápido e
-  // com camada gratuita ativa; o gemini-2.0-flash foi descontinuado em
-  // jun/2026 e ficou sem cota gratuita).
-  @IsString()
-  @IsOptional()
-  GEMINI_MODEL = 'gemini-2.5-flash';
-
   // Lista de origens permitidas para CORS (separadas por vírgula). Ex.:
   // "https://checkout-pro-web.onrender.com". Se vazio, em dev reflete a origem.
   @IsString()

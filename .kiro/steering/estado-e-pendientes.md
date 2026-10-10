@@ -1,25 +1,26 @@
 # Check-out PRO — Estado actual y pendientes (handoff)
 
-> Continuidad operativa del repositorio. Leer junto con `PROJECT_UNDERSTANDING.md` (snapshot canónico) y `.kiro/steering/arquitetura.md` (mapa técnico). Actualizado: **2026-07-15**.
+> Continuidad operativa del repositorio. Leer junto con [`docs/README.md`](../../docs/README.md) (índice de la documentación) y `.kiro/steering/arquitetura.md` (mapa técnico). Actualizado: **2026-10-10**.
+>
+> **Números** (suites, casos, rutas, tablas, migraciones): no se repiten aquí. La fuente única es [`docs/08-gestao/estado-e-metricas.md`](../../docs/08-gestao/estado-e-metricas.md), generada por `npm run docs:gen`.
 
 ## Estado verificable
 
-- Rama base auditada: `main` en `e8c32be` (merge de PR #235).
-- Todo lo descrito como entregado está **mergeado en `main`**; el deploy de ese commit no fue confirmado desde esta sesión.
-- Última migration: `9zq_alerta_tac_enviado`.
-- Backend: build OK; **71 suites / 411 tests**.
-- Mobile: type-check + lint OK; **23 suites / 85 tests**.
-- ESLint focalizado TAC: OK.
-- Prettier: los cuatro archivos históricos ya fueron formateados en PR aislado. Prettier 3.9.5 marca 9 archivos de dominio por deriva de versión; el CI los normaliza con `eslint --fix` (no bloquea).
+- Todo lo descrito como entregado está **mergeado en `main`**; el deploy de cada commit debe confirmarse por logs y `/health/ready`.
+- Última migration: `9zzs_remover_assistente`. La siguiente debe ordenar después de `9zzs`.
+- **El app no tiene IA.** La asistente Cluby (Google Gemini) fue retirada por completo en oct/2026: módulo backend, chat del app, tabla `mensagens_assistente`, imágenes de procedimientos y las variables `GEMINI_API_KEY`/`GEMINI_MODEL`.
+- En el sandbox de Kiro no hay acceso al registro npm: los tests se validan en el CI del PR. Para comandos de Node, vaciar `NODE_OPTIONS`.
 
-## Entregas recientes
+## Entregas recientes (resumen)
 
-- **#211–#214:** auditoría de seguridad/privacidad, validación de uploads/entradas, atomicidad de ausencias y monitoreo de dependencias.
-- **#223:** mejoras de rendimiento/UX en contexto de notificaciones y sello de estado.
-- **#224–#225:** Central de Jornada, Relógio Ponto, feriados y contrato 6x1–2x1 (backend + app).
-- **#226 y #232:** Dependabot ajustado para evitar ruido, majors y paquetes controlados por Expo/NestJS.
-- **#234:** TAC en tiempo real para supervisión/gerencia y jornada consciente de feriados.
-- **#235:** alertas preventivos TAC (1h30/1h40), deduplicación compartida entre batida y cron.
+- **#422:** faltas y no-retornos PENDIENTES se cierran solos como "no justificada" a los 3 días (cron 03:00, aviso único 08:00); cerrar el ciclo de folha cierra los pendientes; débito en día "faltou (não registrada)".
+- **#421:** la Central de Jornada respeta las vacaciones (día de férias no es falta).
+- **#420:** indicadores y detalle usan la meta del mes editada en Metas.
+- **#418:** el detalle de la jornada refleja la exclusión de un atestado.
+- **#413–#415:** el horario es el de la ficha (ADR 0026) y Conferencia de escala.
+- **#403–#412:** compensación de horas (ADR 0021), indicador Sacolas (ADR 0022), Cancelamentos Totais (ADR 0025), contrato de experiencia de la persona (ADR 0024).
+
+Histórico completo en [`docs/08-gestao/historico-de-mudancas.md`](../../docs/08-gestao/historico-de-mudancas.md).
 
 ## Reglas críticas que no deben cambiarse sin decisión de producto
 
@@ -29,60 +30,57 @@
 - Domingo/feriado: carga 7h20 y extras 100%; seg–qui 7h, sex–sáb 8h.
 - Avisos TAC solo a `SUPERVISOR`, `GERENTE`, `ADMINISTRADOR`.
 - Envío best-effort: nunca bloquear la batida.
-- Dedupe por persona/día/etapa PERSISTENTE (tabla `AlertaTacEnviado`): reserva atómica por índice único antes de notificar; sobrevive a reinicios y coordina múltiples instancias; el fallo libera la reserva (retry). TAC diario: la unicidad incluye el día.
+- Dedupe por persona/día/etapa PERSISTENTE (tabla `AlertaTacEnviado`).
 
 ### Central de Jornada
-- Ciclo 26→25; contrato `SEIS_X_UM_DOIS_X_UM`.
-- Incluye operador, supervisor y fiscal.
+- Ciclo 26→25; incluye operador, supervisor y fiscal.
 - Saldo = extras 50 + extras 100 − horas devidas.
-- Falta puede convertirse en débito; comparativo hasta 12 ciclos.
+- Falta puede convertirse en débito (decisión del gestor; el cierre automático nunca pone débito).
+
+### Escala, faltas y justificativas
+- El horario y la folga son los de la **ficha** (ADR 0023 y 0026).
+- Vacaciones y atestados sacan a la persona de la escala y no generan falta.
+- Pendientes de escala se cierran solos a los 3 días (`DIAS_ENCERRAMENTO_AUTOMATICO`).
 
 ### Feriados/contratos
 - Nacionales automáticos; estatales/municipales manuales; Carnaval/Corpus Christi no automáticos.
-- `SEIS_X_UM_DOIS_X_UM` gobierna la jornada; no es el estado del contrato de experiencia.
-- La experiencia se calcula para operadores activos: hasta 90 días, alerta en los 5 días previos y efectivación automática el día 91.
-- El cron de experiencia notifica actualmente a `FISCAL`, `SUPERVISOR`, `GERENTE` y `ADMINISTRADOR`.
+- La experiencia: hasta 90 días, alerta en los 5 días previos y efectivación automática el día 91.
 
 ## Infraestructura
 
-- API: `https://checkout-pro-api.onrender.com`.
-- Web: `https://checkout-pro-web.onrender.com`.
-- PostgreSQL Render: tratar el plan gratuito/no persistente como riesgo de pérdida/indisponibilidad.
-- Variables esenciales: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGINS`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `SENHA_INICIAL`, `RETENCAO_INATIVOS_MESES`; mobile: `EXPO_PUBLIC_API_URL`.
-- Push real ya existe en backend mediante Expo Push Service y tokens persistidos. Para Android con app cerrado: configurar FCM en Expo/EAS y recompilar/publicar APK.
-- Mover `prisma migrate deploy` a Pre-Deploy. Start Command debe abrir el servidor directamente; no dejarlo esperando un advisory lock.
-- Verificar `/health/ready` y logs; nunca inferir deploy por el merge.
+- API: `https://checkout-pro-api.onrender.com` · Web: `https://checkout-pro-web.onrender.com`.
+- Render: banco `basic-256mb` (persistente) y web `starter` (no hiberna) desde jul/2026 (ADR 0013).
+- `prisma migrate deploy` corre en **Pre-Deploy** (`render.yaml`); el Start Command abre el servidor directo.
+- Variables: ver [`docs/07-operacao/variaveis-de-ambiente.md`](../../docs/07-operacao/variaveis-de-ambiente.md). Mobile: `EXPO_PUBLIC_API_URL`.
+- Push real existe en backend (Expo Push Service). Para Android con app cerrado: configurar FCM en Expo/EAS y recompilar/publicar APK.
+- Archivos subidos (fotos de checklist) aún en disco efímero: migrar a storage de objetos (S3).
+- Tras el deploy de la remoción de la Cluby: **borrar `GEMINI_API_KEY` y `GEMINI_MODEL` del panel del Render** (ya no se usan).
 
 ## Pendientes priorizados
 
+Lista completa y comentada en [`docs/08-gestao/roadmap-e-pendencias.md`](../../docs/08-gestao/roadmap-e-pendencias.md).
+
 ### P0 — antes de operación/entrega estable
 1. Configurar FCM y generar/publicar APK nuevo.
-2. Validar OCR/ML Kit con comprobantes reales en Android y afinar parser con muestras reales.
-3. Migrar PostgreSQL Render a plan persistente/estable.
-4. Configurar migrations en Pre-Deploy y ensayar deploy/rollback.
-5. Activar tier pago Gemini para concurrencia multiusuario.
+2. Validar OCR/ML Kit con comprobantes reales en Android.
+3. Ensayar deploy y rollback de una migration.
 
 ### P1 — producto
-6. Decidir terminar o retirar Alertas de Fila, Normativas e Indicador de Quebra (hoy ocultos).
-7. Normativas: diseñar ingestión/RAG con pgvector + object storage antes de reactivar.
-8. Preparar `reset:cliente` + seed mínimo, sin datos demo/piloto, antes de entregar.
+4. Decidir terminar o retirar Alertas de Fila, Normativas e Indicador de Quebra (hoy ocultos).
+5. Preparar `reset:cliente` + seed mínimo, sin datos demo/piloto.
 
 ### P2 — deuda/evolución
-9. **Hecho.** Deduplicación TAC persistente (tabla `AlertaTacEnviado`, migración `9zq`): garantía entre reinicios y múltiples instancias vía índice único.
-10. **Hecho.** Formateados en PR aislado los cuatro archivos Prettier históricos
-   (`alertas.service.spec.ts`, `fiscais.service.ts`, `insumos.service.ts`,
-   `test/helpers/fake-prisma.ts`). Pendiente menor: decidir si se normalizan los
-   9 archivos de dominio que Prettier 3.9.5 marca por deriva de versión.
-11. Multi-tenancy sigue parqueado hasta estabilizar una tienda. Plan futuro: `lojaId`, RLS y tests de aislamiento.
+6. Retirar `EscalaEntry` (etapa 3 de la ADR 0026).
+7. Storage de objetos para archivos subidos.
+8. Multi-tenancy sigue parqueado hasta estabilizar una tienda.
 
 ## Flujo de trabajo
 
 - Rama nueva desde `main` actualizada; un PR por lote lógico.
-- Commits/PRs en portugués; respuesta al usuario en español.
-- GitHub: usar el power/herramientas autenticadas; no `git push` desde bash.
-- No ejecutar lint backend con `--fix` para validar: puede alterar archivos ajenos. Usar ESLint focalizado o revisar el diff inmediatamente.
-- No afirmar “en producción” sin logs/commit de deploy.
-- Nueva migration debe ordenar después de `9zq_alerta_tac_enviado`.
+- Commits/PRs y documentación en portugués; respuesta al usuario en español, simple y resumida.
+- Regla de documentación: `.kiro/steering/documentacao.md` (`npm run docs:gen` + `npm run docs:check`).
+- No ejecutar lint backend con `--fix` para validar: puede alterar archivos ajenos.
+- No afirmar "en producción" sin logs/commit de deploy.
 
 ## Verificación antes de publicar
 
@@ -90,10 +88,3 @@
 - Mobile: type-check, lint, tests y export web cuando el cambio afecte bundle/navegación.
 - Revisar `git diff --check`, diff completo y estado de Git.
 - Si toca DB: ensayar migration en PostgreSQL descartable y documentar rollback/compatibilidad.
-
-## Decisiones vigentes
-
-- Objetivo: app de una tienda 100% operativa antes de escalar.
-- Multi-tenancy no es prioridad actual.
-- Merge, deploy y configuración externa son estados diferentes.
-- `PROJECT_UNDERSTANDING.md` es la fuente canónica; este archivo solo mantiene el handoff operativo.

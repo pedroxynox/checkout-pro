@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** como App, Backend e Banco se conectam + índice "quero fazer X → veja Y"
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** como App, Backend e Banco se conectam + índice "quero fazer X → veja Y"
 
 # Mapa do projeto
 
@@ -20,8 +20,7 @@ O projeto é um **monorepo** (um único repositório) com três peças principai
   segurança.
 - **Banco de dados** — PostgreSQL, onde tudo fica guardado.
 
-Além disso, o backend fala com **serviços externos**: o banco, a IA (Google
-Gemini) e o serviço de push (Expo Push Service, que no Android depende do FCM).
+Além disso, o backend fala com **serviços externos**: o banco e o serviço de push (Expo Push Service, que no Android depende do FCM).
 
 ```mermaid
 flowchart TB
@@ -43,7 +42,6 @@ flowchart TB
     end
 
     DB[("PostgreSQL")]
-    GEMINI["Google Gemini<br/>(Cluby)"]
     PUSH["Expo Push Service<br/>(Android exige FCM)"]
 
     U --> UI
@@ -56,7 +54,6 @@ flowchart TB
     SVC --> DOM
     SVC --> DB
     CRON --> SVC
-    SVC --> GEMINI
     SVC --> PUSH
     PUSH -.-> U
 ```
@@ -72,8 +69,7 @@ flowchart TB
    de negócio, delega ao **domínio puro** (funções determinísticas e testáveis).
 4. Os **crons** rodam tarefas periódicas (por exemplo, avaliar risco de TAC a
    cada minuto).
-5. O Backend guarda tudo no **PostgreSQL** e integra a **IA (Gemini)** e o
-   **push** (que chega ao celular do usuário).
+5. O Backend guarda tudo no **PostgreSQL** e envia o **push** (que chega ao celular do usuário).
 
 Detalhes de arquitetura estão na [Visão de arquitetura](../02-arquitetura/visao-geral.md);
 o mapa técnico rápido, no steering [`arquitetura.md`](../../.kiro/steering/arquitetura.md).

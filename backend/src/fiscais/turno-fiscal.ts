@@ -4,14 +4,14 @@
  * ## Por que este arquivo existe
  *
  * A hora esperada de um fiscal era lida da `EscalaEntry` (a cópia semanal) por
- * sete caminhos diferentes: a equipe do dia, a escala consolidada, o lembrete de
- * dez minutos, a saudação de entrada, o ranking de pontualidade, os alertas
- * semanais e o contexto da assistente. Cada um relia a tabela do seu jeito, e
- * quando a cópia ficava velha os sete passavam a afirmar uma hora que a pessoa
+ * vários caminhos diferentes: a equipe do dia, a escala consolidada, o
+ * lembrete de dez minutos, a saudação de entrada, o ranking de pontualidade e
+ * os alertas semanais. Cada um relia a tabela do seu jeito, e quando a cópia
+ * ficava velha todos passavam a afirmar uma hora que a pessoa
  * não via na sua ficha.
  *
  * A ADR 0026 encerra isso: **a ficha manda**. Para que "a ficha manda" não se
- * transforme em sete implementações da mesma frase, a leitura mora aqui — um
+ * transforme em várias implementações da mesma frase, a leitura mora aqui — um
  * módulo puro, sem Prisma e sem Nest. Cada chamador faz as suas três consultas
  * (fiscais, contas, fichas) e passa os arrays; a junção e a resolução do turno
  * são as mesmas para todos.
@@ -180,49 +180,4 @@ export function dataDeReferencia(diaSemana: number): Date {
   const domingo = Date.UTC(2024, 0, 7); // 07/01/2024 foi um domingo.
   const dow = ((diaSemana % 7) + 7) % 7;
   return new Date(domingo + dow * 24 * 60 * 60 * 1000);
-}
-
-/** Nomes dos dias da semana, na ordem de `Date.getUTCDay()` (0 = domingo). */
-export const NOMES_DOS_DIAS = [
-  'Domingo',
-  'Segunda',
-  'Terça',
-  'Quarta',
-  'Quinta',
-  'Sexta',
-  'Sábado',
-] as const;
-
-/**
- * A semana de trabalho de uma ficha, em linhas de texto legível — o formato que
- * a assistente e a integração com a Cluby usam para responder "que horário essa
- * pessoa faz?".
- *
- * Segunda a sábado saem do turno da própria ficha. O **domingo** recebe um
- * tratamento à parte porque não é um dia fixo: quem está num grupo do rodízio
- * trabalha em alguns domingos e folga em outros, e essa alternância depende de
- * uma data concreta. Afirmar "Domingo: FOLGA" para essas pessoas seria mentir em
- * um domingo de cada três; a linha diz o horário e avisa que ele depende do
- * rodízio.
- */
-export function linhasDaSemana(ficha: FichaEscalaTurno): string[] {
-  const linhas: string[] = [];
-  for (let dia = 1; dia <= 6; dia++) {
-    const turno = turnoDoDia(ficha, dataDeReferencia(dia), null);
-    linhas.push(
-      turno.entrada
-        ? `  ${NOMES_DOS_DIAS[dia]}: ${turno.entrada} - ${turno.saida ?? '?'}`
-        : `  ${NOMES_DOS_DIAS[dia]}: FOLGA`,
-    );
-  }
-  linhas.push(`  ${NOMES_DOS_DIAS[0]}: ${descricaoDoDomingo(ficha)}`);
-  return linhas;
-}
-
-/** O domingo da ficha em uma frase: folga fixa, rodízio, ou sem horário. */
-function descricaoDoDomingo(ficha: FichaEscalaTurno): string {
-  if (ficha.folgaDiaSemana === 0) return 'FOLGA';
-  if (!ficha.grupoDomingo) return 'FOLGA (fora do rodízio)';
-  if (!ficha.entradaDom) return `sem horário de domingo na ficha`;
-  return `${ficha.entradaDom} - ${ficha.saidaDom ?? '?'} nos domingos do grupo ${ficha.grupoDomingo}`;
 }

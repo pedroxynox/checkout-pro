@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/alertas/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/alertas/`
 
 # Módulo: `alertas`
 
@@ -23,7 +23,7 @@ fechamento nos horários-limite da operação, e a **saudação diária** motiva
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `alertas.service.ts` | Cron jobs de checklist/fechamento e regra de disparo | 259 |
-| `saudacao-diaria.service.ts` | Cron da saudação diária (fiscais e gestores) | 205 |
+| `saudacao-diaria.service.ts` | Cron da saudação diária (fiscais e gestores) | 249 |
 | `saudacao-diaria.domain.ts` | Regras puras: monta título e mensagem da saudação | 65 |
 | `alertas.module.ts` | Ligações (DI); fornece o relógio injetável (`RELOGIO`) | 31 |
 

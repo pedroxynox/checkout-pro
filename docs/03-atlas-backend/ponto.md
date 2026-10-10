@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-27 · **Cobre:** `backend/src/ponto/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/ponto/`
 
 # Módulo: `ponto`
 
@@ -30,17 +30,17 @@ automaticamente faltas e não-retornos do intervalo.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `ponto.controller.ts` | Rotas HTTP (OCR, pessoas, dia, batidas, histórico TAC) | 122 |
-| `ponto.service.ts` | Regras de aplicação: persistência, classificação, avisos de TAC | 1437 |
-| `ponto.domain.ts` | Regras puras: classificação e cálculo da jornada/TAC | 410 |
-| `ponto.errors.ts` | Erros de domínio (mapeados para HTTP) | 94 |
-| `ponto.module.ts` | Ligações (DI) do módulo | 45 |
+| `ponto.service.ts` | Regras de aplicação: persistência, classificação, avisos de TAC | 1644 |
+| `ponto.domain.ts` | Regras puras: classificação e cálculo da jornada/TAC | 583 |
+| `ponto.errors.ts` | Erros de domínio (mapeados para HTTP) | 101 |
+| `ponto.module.ts` | Ligações (DI) do módulo | 49 |
 | `ponto-ocr.service.ts` | Leitura do comprovante + memória de aliases (nome→pessoa) | 285 |
 | `ponto-ocr.parser.ts` | Regras puras: extrai nome/data/hora do texto lido | 354 |
 | `ponto-nome-match.ts` | Regras puras: similaridade de nomes (Levenshtein) | 93 |
 | `ponto-alertas.service.ts` | Cron (1 min): verifica riscos de TAC (dia civil de Brasília) | 58 |
-| `ponto-deteccao-automatica.service.ts` | Cron (5 min): **revalidação** das ocorrências automáticas, alerta de atraso (1h), falta automática (2h) e não-retorno | 639 |
+| `ponto-deteccao-automatica.service.ts` | Cron (5 min): **revalidação** das ocorrências automáticas, alerta de atraso (1h), falta automática (2h) e não-retorno | 930 |
 | `deteccao-automatica.domain.ts` | Regras puras: estado do escalado sem batida | 71 |
-| `revalidacao-automatica.domain.ts` | Regras puras: quando uma ocorrência automática **deixa de ser verdade** | 136 |
+| `revalidacao-automatica.domain.ts` | Regras puras: quando uma ocorrência automática **deixa de ser verdade** | 157 |
 | `marcacoes-invalidas.domain.ts` | Regras puras: quantas marcações faltam no dia e **quais** | 303 |
 | `pessoas-ponto.ts` | Funções (não-fiscais) que batem ponto | 15 |
 | `sugestao-folga.domain.ts` | Regras puras: **sugere o novo dia de folga** a partir do que a pessoa realmente trabalhou | 137 |
@@ -79,7 +79,8 @@ automaticamente faltas e não-retornos do intervalo.
   recusa do retorno após o intervalo máximo.
 - **Erros possíveis:** `LimiteBatidasDiaError`, `BatidaDuplicadaError`,
   `RetornoAposLimiteIntervaloError`, `HoraForaDoDiaError`, `HoraFuturaError`,
-  `PessoaPontoNaoEncontradaError`, `PessoaPontoInativaError`, `PontoEmFolgaError`.
+  `PessoaPontoNaoEncontradaError`, `PessoaPontoInativaError`. (Bater ponto em dia
+  de folga **não** é mais recusado — ver a regra de ponto em folga, ADR 0019.)
 
 #### `editarBatida(id, dto)` / `removerBatida(id)`
 Corrigem a hora/tipo ou removem a batida em transação atômica, reclassificam o
@@ -540,7 +541,7 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `ponto.domain.spec.ts` | Classificação e cálculo da jornada/TAC (funções puras) e o **descarte de marcações repetidas**: cópia exata, dentro da janela, grupo inteiro, determinismo, o contrapeso das marcações legítimas — e que a jornada de um dia duplicado é igual à de um dia normal | 46 |
+| `ponto.domain.spec.ts` | Classificação e cálculo da jornada/TAC (funções puras) e o **descarte de marcações repetidas**: cópia exata, dentro da janela, grupo inteiro, determinismo, o contrapeso das marcações legítimas — e que a jornada de um dia duplicado é igual à de um dia normal | 53 |
 | `mudanca-de-funcao.spec.ts` | **O histórico sobrevive à mudança de função:** o Relógio Ponto encontra as batidas da identidade antiga, a reanotação é recusada como duplicada, o limite de 4 conta a pessoa, e a degradação sem ficha resolvível | 6 |
 | `ponto.service.spec.ts` | Alertas de TAC, validações de pessoa/data/hora, transação, ponte de fiscal e o **ponto em dia de folga** (permite, avisa uma vez por pessoa/dia, e não avisa em dia normal) | 44 |
 | `sugestao-folga.domain.spec.ts` | A sugestão do novo dia de folga — e sobretudo os casos em que ela **se cala**: uma semana só, folga cumprida em alguma semana, dois candidatos, domingo (rodízio) | 8 |
@@ -553,11 +554,12 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 | `deteccao-exclusao-gestor.spec.ts` | A exclusão do gestor prevalece (não recria) e o aviso de atraso respeita a ausência do dia | 8 |
 | `deteccao-vigilancia-fora-da-escala.spec.ts` | **Quem bateu ponto sem estar na escala é vigiado:** registra o não-retorno (inclusive com a escala vazia), **nunca** cobra atraso nem falta, não duplica quem já está na escala (batida sob a ficha) e ignora a batida sem ficha | 4 |
 | `deteccao-alerta-atraso.spec.ts` | O aviso de 1h: envia uma vez, respeita a reserva do dia, não antecipa — e **reserva as duas identidades** (o mesmo atraso não é avisado por duas chaves) | 5 |
+| `ponto-remover-nao-retorno.spec.ts` | Registrar o retorno do intervalo remove o não-retorno **automático** do dia (nunca o manual do gestor) | 3 |
 | `deteccao-autocura-nao-retorno.spec.ts` | Auto-cura do não-retorno no ciclo: remove quando a pessoa fechou o intervalo, mantém enquanto não voltou, registra quando ainda não existe | 3 |
 | `marcacoes-invalidas.domain.spec.ts` | Quantas marcações faltam e quais: entrada esquecida, ajustes por duração, sem turno, bordas e 4 propriedades invariantes (fast-check) | 25 |
 | `deteccao-falta-a-prazo.spec.ts` | Ausência a prazo (chave dupla) não vira falta automática duplicada | 3 |
-| `ponto-alertas.service.spec.ts` | Cron periódico de riscos de TAC | 1 |
-| `contrato-6x1-congelado.spec.ts` | Congela as cargas e os limites de TAC do 6x1 (regra não muda sem intenção) | 6 |
+| `ponto-alertas.service.spec.ts` | Cron periódico de riscos de TAC | 2 |
+| `contrato-6x1-congelado.spec.ts` | Congela as cargas e os limites de TAC do 6x1 (regra não muda sem intenção) | 5 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

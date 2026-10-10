@@ -33,15 +33,9 @@ indica as que impedem o start quando `NODE_ENV=production`.
 | `HORARIO_FIM_DO_DIA` | Horário de "fim do dia" para alertas de importações pendentes. | `22:50` | `HH:mm` (regex `([01]\d\|2[0-3]):[0-5]\d`) | Não |
 | `JWT_SECRET` | Segredo de assinatura dos tokens JWT (autenticação). | — (em dev, gera-se um segredo aleatório efêmero por processo) | Texto — use valor longo e aleatório (`openssl rand -hex 32`) | ✅ **Sim** |
 | `JWT_EXPIRES_IN` | Expiração do token de acesso. | — (no `.env.example` e no `render.yaml`: `30d`) | Texto (ex.: `8h`, `30m`, `30d`) | Não |
-| `GEMINI_API_KEY` | Chave da API do Google Gemini (assistente de IA / chat flutuante). Sem ela, o assistente responde "não configurado". | — | Texto | Não* |
-| `GEMINI_MODEL` | Modelo Gemini usado pelo assistente. | `gemini-2.5-flash` | Texto | Não |
 | `CORS_ORIGINS` | Lista de origens permitidas para CORS, separadas por vírgula. Se vazio, em dev a origem da requisição é refletida. | — | Texto (ex.: `https://checkout-pro-web.onrender.com`) | Recomendada** |
 | `RETENCAO_INATIVOS_MESES` | Janela de retenção (meses) dos colaboradores desligados antes da purga mensal apagar ficha e histórico de RRHH. | `3` | Inteiro ≥ 1 (convertido de string) | Não |
 | `RETENCAO_INDICADORES_MESES` | Janela móvel (meses) do Histórico de Indicadores. Todo dia 1º a foto do mês que fechou é congelada e o que ficou fora da janela é **apagado** (lançamentos, vendas e fotos). | `24` | Inteiro ≥ 1 (convertido de string) | Não |
-
-\* `GEMINI_API_KEY` é opcional para a API subir, mas **necessária** para o
-assistente funcionar. Veja também a nota de cota no
-[Checklist de produção](checklist-producao.md).
 
 \** `CORS_ORIGINS` não é validada como obrigatória, mas em produção deve ser
 definida para restringir quem chama a API pelo navegador (ver `main.ts`).
@@ -96,7 +90,7 @@ Valores por perfil de build (`mobile/eas.json`):
 | Segredo | Onde | Para quê |
 |---|---|---|
 | `EXPO_TOKEN` | Secret do repositório GitHub | Autenticar o EAS Build no workflow `build-apk.yml` (nunca no código). |
-| `JWT_SECRET`, `GEMINI_API_KEY`, `SENHA_INICIAL` | Painel do serviço no Render | Definidos como secretos/gerados no `render.yaml` (`generateValue`/`sync: false`). Ver [`deploy.md`](deploy.md). |
+| `JWT_SECRET`, `SENHA_INICIAL` | Painel do serviço no Render | Definidos como secretos/gerados no `render.yaml` (`generateValue`/`sync: false`). Ver [`deploy.md`](deploy.md). |
 
 ---
 
@@ -109,5 +103,5 @@ Bloqueiam o start da API quando `NODE_ENV=production` (checagem explícita em
 - ✅ `DATABASE_URL`
 
 Fortemente recomendadas para produção correta e segura (ver
-[Checklist de produção](checklist-producao.md)): `CORS_ORIGINS`,
-`GEMINI_API_KEY` e `SENHA_INICIAL`.
+[Checklist de produção](checklist-producao.md)): `CORS_ORIGINS` e
+`SENHA_INICIAL`.

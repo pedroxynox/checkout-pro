@@ -50,7 +50,7 @@ O reinício é disparado por um endpoint + botão de administrador restrito ao p
 3. QUANDO o reinício operacional é executado, O Modulo_ResetOperacional DEVE apagar todos os registros das entidades `movimentos_estoque`, `requisicoes` e `sugestoes_pedido`, e DEVE definir `insumos.saldo = 0` para todos os insumos.
 4. QUANDO o reinício operacional é executado, O Modulo_ResetOperacional DEVE apagar todos os registros das entidades `movimentos_lote_apae` e `lotes_apae`.
 5. QUANDO o reinício operacional é executado, O Modulo_ResetOperacional DEVE apagar todos os registros de jornada e escala por data das entidades `registros_ponto_fiscal`, `ausencias` e `incidencias_escala`.
-6. QUANDO o reinício operacional é executado, O Modulo_ResetOperacional DEVE apagar todos os registros das entidades `notificacoes`, `mensagens_assistente`, `fechamentos_concluidos` e `checklists`.
+6. QUANDO o reinício operacional é executado, O Modulo_ResetOperacional DEVE apagar todos os registros das entidades `notificacoes`, `fechamentos_concluidos` e `checklists`. *(Atualizado em 2026-10-10: `mensagens_assistente` saiu junto com a assistente de IA.)*
 7. QUANDO o reinício operacional é executado, O Modulo_ResetOperacional DEVE apagar todos os registros das entidades de fluxo legado `registros_operacionais` e `registros_importacao`.
 
 ### Requirement 3 — Escopo dos dados a conservar (Dados_de_Cadastro)

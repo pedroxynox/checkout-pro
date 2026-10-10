@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** regras de negócio de visão e alcance do produto
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** regras de negócio de visão e alcance do produto
 
 # Check-out PRO — Visão e alcance
 
@@ -8,8 +8,7 @@ O **Check-out PRO** é um sistema de **gestão inteligente da frente de caixa de
 supermercado**. Ele reúne, num único lugar, o dia a dia de quem cuida dos caixas:
 o controle de pessoas, o registro de ponto e jornada, a escala de trabalho, os
 indicadores de arrecadação, as vendas, o estoque de insumos, os checklists de
-abertura/fechamento e a disciplina da equipe — tudo com avisos automáticos e um
-assistente de IA para tirar dúvidas.
+abertura/fechamento e a disciplina da equipe — tudo com avisos automáticos.
 
 O produto é entregue em duas frentes que conversam entre si:
 
@@ -64,18 +63,30 @@ Detalhe em [`colaboradores`](../03-atlas-backend/colaboradores.md).
 O **Relógio de Ponto** por leitura do comprovante (a hora que vale é a do
 comprovante), o cálculo da jornada com horas extras 50%/100%, o controle de
 **TAC**, a detecção automática de faltas e não-retornos e o portal gerencial que
-consolida tudo no **ciclo de folha 26→25**. Regras em
+consolida tudo no **ciclo de folha 26→25**. Inclui a **compensação de horas**
+(a pessoa usa o próprio saldo de 50% para sair mais cedo ou folgar —
+[ADR 0021](../02-arquitetura/decisoes/0021-compensacao-de-horas.md)) e o **débito** de uma falta,
+sempre decidido pelo gestor. Regras em
 [Ponto, jornada e TAC](regras-de-negocio/ponto-jornada-e-tac.md).
 
 ### 3.4 Escala e rodízio de domingo
-A escala semanal por turno e o **rodízio de domingo 2x1** entre os grupos
-G1/G2/G3 (dois trabalham, um folga). Regras em
+A escala semanal por turno — com horário e folga **da ficha** de cada pessoa
+([ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md)) — e o **rodízio de domingo 2x1**
+entre os grupos G1/G2/G3 (dois trabalham, um folga). Também vivem aqui as
+**férias** (a pessoa sai da escala e não gera falta —
+[ADR 0015](../02-arquitetura/decisoes/0015-ferias-inativacao-nao-rigida.md)), os **atestados** com CID e a
+regra do INSS ([ADR 0016](../02-arquitetura/decisoes/0016-atestados-cid-e-regra-inss.md)), a
+**Conferência de escala** (diagnóstico ficha × escala) e as faltas/não-retornos,
+que se **encerram sozinhos** como não justificados após 3 dias sem análise. Regras em
 [Escala e rodízio de domingo](regras-de-negocio/escala-e-rodizio-domingo.md).
 
 ### 3.5 Indicadores e arrecadação
 A importação dos arquivos de **troco solidário, recargas, cancelamentos e
-devoluções** por operador, os totais, o ranking, as metas mensais e a camada de
-inteligência (tendência, projeção, **destaques do mês** e anomalias). Regras em
+devoluções** por operador, os totais, o ranking, as metas mensais (editadas no
+Centro de Controle), os indicadores **calculados** — **Cancelamentos Totais**
+([ADR 0025](../02-arquitetura/decisoes/0025-cancelamentos-totais-indicador-calculado.md)) e **Sacolas**
+(venda por sacola, [ADR 0022](../02-arquitetura/decisoes/0022-indicador-sacolas-venda-por-sacola.md)) — e a
+camada de inteligência (tendência, projeção, **destaques do mês** e anomalias). Regras em
 [Arrecadação e indicadores](regras-de-negocio/arrecadacao-e-indicadores.md).
 
 ### 3.6 Vendas
@@ -87,7 +98,9 @@ horária, heatmap, avisos de recorde/queda/meta em risco). Detalhe em
 ### 3.7 Estoque e insumos
 O almoxarifado da operação: saldo por movimentos, retirada de **fardos** de
 sacolas, consumo de bobinas, **pedidos recorrentes** inteligentes e o fluxo de
-**requisições** (fiscal solicita, gestor aprova). Regras em
+**requisições** (fiscal solicita, gestor aprova). Inclui o catálogo de
+**produtos pesados** da balança, com busca por nome ou código
+([ADR 0014](../02-arquitetura/decisoes/0014-produtos-pesados-catalogo-e-busca.md)). Regras em
 [Estoque, insumos e requisições](regras-de-negocio/estoque-insumos-e-requisicoes.md).
 
 ### 3.8 Checklists e fechamento do dia
@@ -97,8 +110,9 @@ arquivos resolvidos + vendas). Regras em
 [Checklist e fechamento](regras-de-negocio/checklist-e-fechamento.md).
 
 ### 3.9 Contratos
-O **contrato de experiência (45 + 45 dias)** dos operadores, com estado sempre
-derivado da admissão e das decisões, e o catálogo **data-driven** de tipos de
+O **contrato de experiência (45 + 45 dias)**, que acompanha a **pessoa** desde a
+admissão ([ADR 0024](../02-arquitetura/decisoes/0024-contrato-de-experiencia-e-da-pessoa.md)), com estado
+sempre derivado da admissão e das decisões, e o catálogo **data-driven** de tipos de
 contrato de jornada. Regras em
 [Contratos e jornada](regras-de-negocio/contratos-e-jornada.md).
 
@@ -112,12 +126,6 @@ as **solicitações automáticas de advertência** por falta não justificada e 
 O serviço **transversal** de avisos, em duplo canal (push + in-app) e em tempo
 real, que respeita a Central de Permissões para decidir quem recebe cada aviso.
 Detalhe em [`notificacoes`](../03-atlas-backend/notificacoes.md).
-
-### 3.12 Assistente Cluby
-A **"Cluby"**, um assistente de IA em chat flutuante que ajuda a equipe em gestão
-de supermercado, respondendo com base em conhecimento geral e no **contexto real
-da loja** (escala, indicadores e vendas). A conversa é isolada por usuário
-e efêmera (24h). Detalhe em [`assistente`](../03-atlas-backend/assistente.md).
 
 ## 4. Princípios de produto
 

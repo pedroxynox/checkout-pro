@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/screens/notificacoes/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/screens/notificacoes/`
 
 # Área: `notificacoes`
 
@@ -22,7 +22,7 @@ lista já chega limitada.
 |---|---|---|
 | `NotificacoesScreen.tsx` | Lista/central de notificações | 560 |
 | `classificarNotificacao.ts` | Classifica a notificação por palavras‑chave (rota/módulo/ícone/ação) | 170 |
-| `NotificacoesScreen.test.tsx` | Testes de agrupamento, título, navegação e limpeza | 110 |
+| `NotificacoesScreen.test.tsx` | Testes de agrupamento, título, navegação e limpeza | 99 |
 
 ## 4. Fluxo do usuário
 1. Ao focar a tela, zera o badge da aba e recarrega o histórico do backend.

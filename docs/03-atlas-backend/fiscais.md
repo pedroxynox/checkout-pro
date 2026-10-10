@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-18 · **Cobre:** `backend/src/fiscais/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/fiscais/`
 
 # Módulo: `fiscais`
 > **ADR 0026 — a ficha é a única fonte do horário.** Em duas etapas:
@@ -32,24 +32,25 @@ os alertas automáticos e a **escala de trabalho** (apenas a geral, derivada da 
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `fiscais.controller.ts` | Rotas de status/jornada/painel do fiscal | 134 |
-| `fiscais.service.ts` | Regras de aplicação: status, jornada, extras, painel | 1785 |
+| `fiscais.controller.ts` | Rotas de status/jornada/painel do fiscal | 146 |
+| `fiscais.service.ts` | Regras de aplicação: status, jornada, extras, painel | 1765 |
 | `fiscais.domain.ts` | Regras puras: status atual, jornada, transições | 150 |
 | `fiscais.errors.ts` | Erros de domínio (mapeados para HTTP) | 47 |
-| `fiscais.eventos.ts` | Barramento de eventos de status (produtor↔gateway) | 38 |
-| `fiscais.gateway.ts` | Gateway WebSocket do painel em tempo real | 92 |
+| `fiscais.eventos.ts` | Barramento de eventos de status (produtor↔gateway) | 44 |
+| `fiscais.module.ts` | Ligações (DI) do módulo | 53 |
+| `fiscais.gateway.ts` | Gateway WebSocket do painel em tempo real | 93 |
 | `fiscais-horario.service.ts` | Cron: lembretes de horário aos fiscais (turno e conta resolvidos pela ficha) | 194 |
-| `fiscais-alertas.service.ts` | Cron: alertas de intervalo longo e cobertura | 416 |
+| `fiscais-alertas.service.ts` | Cron: alertas de intervalo longo e cobertura | 414 |
 | `escala.controller.ts` | Rota da escala consolidada (só leitura) | 39 |
 | `conferencia-escala.service.ts` | **Conferência de escala**: monta o diagnóstico das fichas para a API (só leitura) | 101 |
 | `escala.service.ts` | Escala consolidada de um dia, resolvida na ficha | 159 |
 | `escala.domain.ts` | Regras puras: formas da resposta + geração da cópia semanal a partir da ficha | 116 |
 | `colaborador-vinculo.ts` | Regra pura: mapeia fiscal → colaborador (ficha) | 84 |
 | `identidades.consulta.ts` | **A única** carga das identidades de uma pessoa (ficha + ids de fiscal), nos dois sentidos | 85 |
-| `integridade-vinculo.ts` | Regra pura: detecta vínculos órfãos fiscal ↔ ficha | 96 |
-| `integridade-escala.ts` | Regra pura do diagnóstico: lacunas da ficha + distância até a cópia semanal | 476 |
-| `turno-fiscal.ts` | **Regra pura do turno**: junta fiscal + conta + ficha, e resolve o horário do dia | 229 |
-| `turno-fiscal.consulta.ts` | A **única** carga do trio `Fiscal` + `Usuario` + `Colaborador` para resolver turnos | 84 |
+| `integridade-vinculo.ts` | Regra pura: detecta vínculos órfãos fiscal ↔ ficha | 85 |
+| `integridade-escala.ts` | Regra pura do diagnóstico: lacunas da ficha + distância até a cópia semanal | 481 |
+| `turno-fiscal.ts` | **Regra pura do turno**: junta fiscal + conta + ficha, e resolve o horário do dia | 183 |
+| `turno-fiscal.consulta.ts` | A **única** carga do trio `Fiscal` + `Usuario` + `Colaborador` para resolver turnos | 88 |
 | `dto/fiscais.dto.ts` | Validação de entrada (status e escala) | 59 |
 
 ## 4. Endpoints (rotas HTTP)
@@ -59,9 +60,7 @@ os alertas automáticos e a **escala de trabalho** (apenas a geral, derivada da 
 
 | Método + Rota | Permissão | O que faz |
 |---|---|---|
-| `POST /escala` | `ESCALA_EDITAR` | Cadastra a escala geral de um funcionário num dia. |
 | `GET /escala/consolidada/:diaSemana` | `ESCALA_VISUALIZAR` | Escala consolidada do dia (domingo vem do rodízio). |
-| `GET /escala/:funcionarioId/efetiva` | `ESCALA_VISUALIZAR` | Escala efetiva do funcionário no dia. |
 | `GET /fiscais/painel` | `FISCAIS_STATUS` | Painel de todos os fiscais com o status atual. |
 | `GET /fiscais/conferencia-escala` | `OPERADORES_CRUD` | **Conferência de escala**: onde a ficha e a escala semanal discordam, e quem seria afetado pela etapa 2. Só leitura. |
 | `GET /fiscais/eu` | — (autenticado) | Resumo do próprio fiscal (status + jornada); null se não for fiscal. |
@@ -74,7 +73,6 @@ os alertas automáticos e a **escala de trabalho** (apenas a geral, derivada da 
 | `GET /fiscais/eu/historico-semanal` | — (autenticado) | Histórico dos últimos 7 dias do próprio fiscal. |
 | `GET /fiscais/ranking-mes` | `FISCAIS_JORNADA` | Ranking de pontualidade do mês. |
 | `GET /fiscais/previsao-extras` | `FISCAIS_JORNADA` | Previsão de horas extras do mês. |
-| `GET /fiscais/contexto-escala` | — (autenticado) | Contexto de escala formatado (integração Cluby). |
 
 ## 5. Serviços e funções
 
@@ -182,10 +180,9 @@ Os demais: log de tempos por
 fiscal; jornada de equipe (todos os escalados, com atraso e falta); e o
 acumulado de horas extras do mês (extra 50% em dias comuns e 100% aos domingos).
 
-#### `folgaHoje()` · `historicoSemanal(usuarioId)` · `rankingMes()` · `previsaoExtras()` · `contextoEscala()`
+#### `folgaHoje()` · `historicoSemanal(usuarioId)` · `rankingMes()` · `previsaoExtras()`
 Consultas de apoio: quem está de folga hoje; histórico de 7 dias do próprio
-fiscal; ranking de pontualidade; previsão de extras; e o texto de contexto para
-integração com o Cluby.
+fiscal; ranking de pontualidade; e previsão de extras.
 
 #### `reescreverRegistrosDoDia(cliente, ..., colaboradorId?)` / `publicarStatusDoDia(...)`
 Ponte batidas → status: reescreve o log do dia dentro da transação das batidas
@@ -228,7 +225,6 @@ Bastava um `select` esquecido para um deles resolver um turno pela metade.
 - `dataDeReferencia(diaSemana)` — um dia civil qualquer com aquele dia da semana,
   para as consultas que só conhecem "quinta" e não uma data. Deixa explícito que ali
   não há feriado nem rodízio a considerar.
-- `linhasDaSemana(ficha)` — a semana em texto, para a assistente e a Cluby.
 
 ### Coerência ficha ↔ escala semanal — **Conferência de escala**
 

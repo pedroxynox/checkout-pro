@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** prioridades, pendências de infraestrutura, áreas ocultas e dívidas técnicas
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** prioridades, pendências de infraestrutura, áreas ocultas e dívidas técnicas
 
 # Roadmap e pendências
 
@@ -37,24 +37,22 @@ defeito de produto.
 2. **Validar o OCR/ML Kit com comprovantes reais.** O leitor do comprovante do
    ponto no aparelho (ML Kit) precisa ser testado em um **Android real**, com
    fotos verdadeiras, e o interpretador (parser) ajustado com amostras reais.
-3. **Banco de dados em plano estável.** O PostgreSQL no plano gratuito do Render
-   é um **risco operacional** (pode expirar/ficar indisponível). Migrar para um
-   plano **pago/persistente** de baixo custo.
-4. **Migrações no Pre-Deploy.** Rodar `prisma migrate deploy` na etapa de
-   **Pre-Deploy**, e não no Start Command (para que um advisory lock não impeça o
-   servidor de abrir a porta). Ensaiar o procedimento completo de deploy e
-   rollback.
-5. **Plano de IA (Gemini) para uso multiusuário.** A cota gratuita do Gemini não
-   é adequada para concorrência sustentada. Habilitar um **tier pago** antes do
-   uso intensivo. Enquanto a Cluby estiver desativada, considerar **remover a
-   variável `GEMINI_API_KEY`** do painel do Render para encerrar qualquer custo
-   de IA.
+3. **Ensaiar deploy e rollback.** As migrações já rodam no **Pre-Deploy**
+   (`preDeployCommand: npx prisma migrate deploy` no `render.yaml`) e o Start
+   Command abre o servidor direto (`node dist/main.js`). Falta **ensaiar** o
+   procedimento completo, incluindo o rollback de uma migração.
+
+> **Concluídos e retirados desta lista:** o PostgreSQL saiu do plano gratuito para
+> o `basic-256mb` persistente e o serviço web para o `starter`, que não hiberna
+> (jul/2026, [ADR 0013](../02-arquitetura/decisoes/0013-infra-paga-e-pool-de-conexoes.md));
+> e o item do plano pago do Gemini deixou de existir — a assistente de IA (Cluby)
+> foi **removida do produto** em out/2026, junto com a variável `GEMINI_API_KEY`.
 
 ---
 
 ## P1 — Decisões de produto
 
-6. **Definir o rumo das três áreas ocultas.** Hoje estão escondidas do menu
+4. **Definir o rumo das três áreas ocultas.** Hoje estão escondidas do menu
    (marcadas como "em breve"): **Alertas de Fila**, **Normativas** e **Indicador
    de Quebra**. É preciso decidir, para cada uma, se **conclui** ou **retira**.
    São apenas telas de placeholder (`EmDesenvolvimento`), sem backend; ao
@@ -64,11 +62,12 @@ defeito de produto.
      [Alertas de Fila](../04-atlas-mobile/alertasFila.md) ·
      [Normativas](../04-atlas-mobile/normativas.md) ·
      [Indicador de Quebra](../04-atlas-mobile/quebra.md).
-7. **Normativas em escala exigem RAG.** Para as Normativas funcionarem de verdade
-   (busca e consulta de documentos/procedimentos), é preciso construir a
-   ingestão/**RAG** com **pgvector** e **object storage**. Não reativar o piloto
-   codificado à mão como se fosse solução de escala.
-8. **Preparar a entrega ao cliente.** Criar um `reset:cliente` + seed mínimo
+5. **Normativas sem IA.** O produto não usa mais inteligência artificial (a
+   Cluby foi removida), então a ideia antiga de busca por IA (RAG/pgvector) saiu de
+   cena. Se as Normativas forem concluídas, o caminho é uma **biblioteca de
+   documentos** com busca comum por título/palavra e arquivos num **storage de
+   objetos**.
+6. **Preparar a entrega ao cliente.** Criar um `reset:cliente` + seed mínimo
    (separado do seed de demonstração) e retirar os dados do piloto **antes da
    entrega**.
 
@@ -76,17 +75,17 @@ defeito de produto.
 
 ## P2 — Dívidas técnicas e evolução
 
-9. **Concluído — deduplicação persistente dos alertas de TAC.** Antes dependia da
+7. **Concluído — deduplicação persistente dos alertas de TAC.** Antes dependia da
    memória do processo (um reinício ou uma segunda instância podiam reenviar o
    mesmo aviso). Agora a tabela `AlertaTacEnviado` (migração `9zq`) faz reserva
    atômica por índice único `(pessoaId, dia, etapa)`: sobrevive a reinícios e
    coordena múltiplas instâncias.
-10. **Concluído (parcial) — formatação Prettier.** Os quatro arquivos históricos
+8. **Concluído (parcial) — formatação Prettier.** Os quatro arquivos históricos
     foram formatados em PR isolado. Fica como dívida menor decidir se
     normalizamos os **9 arquivos de domínio** que o Prettier 3.9.5 aponta por
     deriva de versão (o CI os normaliza no ato via `eslint --fix`, sem quebrar a
     validação).
-11. **Multi-tenancy parqueado.** Quando for retomado: introduzir `lojaId`,
+9. **Multi-tenancy parqueado.** Quando for retomado: introduzir `lojaId`,
     isolamento por linha/RLS e testes de vazamento entre lojas. Feriados por
     localização/unidade dependem disso.
 
@@ -142,9 +141,8 @@ Padrões que aparecem em vários módulos e merecem atenção contínua:
   [`central-jornada`](../03-atlas-backend/central-jornada.md),
   [`ponto`](../03-atlas-backend/ponto.md),
   [`operadores`](../03-atlas-backend/operadores.md),
-  [`colaboradores`](../03-atlas-backend/colaboradores.md),
-  [`incidencias`](../03-atlas-backend/incidencias.md) e
-  [`assistente`](../03-atlas-backend/assistente.md).
+  [`colaboradores`](../03-atlas-backend/colaboradores.md) e
+  [`incidencias`](../03-atlas-backend/incidencias.md).
 - **Fuso de Brasília fixo (UTC−3).** Vários módulos assumem o offset fixo (correto
   desde o fim do horário de verão em 2019, mas quebraria se ele voltasse) — ver
   [`common`](../03-atlas-backend/common.md), [`ponto`](../03-atlas-backend/ponto.md),
@@ -156,7 +154,6 @@ Padrões que aparecem em vários módulos e merecem atenção contínua:
   [`feedforward`](../03-atlas-backend/feedforward.md).
 - **Cobertura de teste ausente em alguns pontos.** Sem specs dedicados, por
   exemplo, em [`storage`](../03-atlas-backend/storage.md) (I/O do disco local),
-  [`assistente`](../03-atlas-backend/assistente.md) (montagem de contexto),
   [`usuarios`](../03-atlas-backend/usuarios.md) e
   [`permissoes`](../03-atlas-backend/permissoes.md).
 - **Armazenamento de arquivos não durável.** O `LocalDiskStorage` grava em disco

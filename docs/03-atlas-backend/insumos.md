@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/insumos/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/insumos/`
 
 # Módulo: `insumos`
 
@@ -43,6 +43,8 @@ aprovação do gestor.
 | Método + Rota | Permissão | O que faz |
 |---|---|---|
 | `GET /insumos` | `INSUMOS` | Lista insumos ativos com o resumo de estoque (saldo, consumo/entrada da semana, semanas restantes). |
+| `GET /insumos/indicador-sacolas?anoMes=` | `INDICADORES_VISUALIZAR` | Indicador SACOLAS do mês: venda por sacola recebida contra a meta (ADR 0022). |
+| `GET /insumos/indicador-sacolas/detalhe?anoMes=` | `INDICADORES_VISUALIZAR` | Detalhe do indicador: teto, entradas do mês, consumo, série diária e projeção. |
 | `GET /insumos/proativo` | `INSUMOS` | Painel proativo: nível, dias até ruptura e sugestão de reposição. |
 | `POST /insumos/consumo-embalagem` | `INSUMOS` | Registra consumo em embalagens inteiras (converte para unidade base). |
 | `GET /insumos/:id/analise` | `INSUMOS` | Consumo por dia (últimos ~30 dias) vs. venda diária + resumo semana/mês. |

@@ -10,11 +10,6 @@ import { origensCorsDoAmbiente } from './common/cors';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Serve as imagens dos procedimentos guiados (passo a passo das normativas)
-  // como arquivos estáticos em /assets. Ficam versionadas no repositório
-  // (backend/assets), portanto persistem entre os deploys do Render.
-  app.useStaticAssets(join(__dirname, '..', 'assets'), { prefix: '/assets/' });
-
   // Serve os arquivos ENVIADOS pelos usuários (ex.: as FOTOS dos checklists),
   // gravados em disco pelo LocalDiskStorage sob STORAGE_DIR e expostos no
   // prefixo STORAGE_PUBLIC_URL (padrão "/arquivos"). Sem este registro, a URL
@@ -32,8 +27,9 @@ async function bootstrap(): Promise<void> {
   }
 
   // Cabeçalhos de segurança HTTP (helmet). CORP definido como "cross-origin"
-  // para que as imagens estáticas em /assets possam ser carregadas pelo app
-  // web hospedado em outro domínio (ex.: checkout-pro-web.onrender.com).
+  // para que os arquivos enviados (ex.: fotos dos checklists em /arquivos)
+  // possam ser carregados pelo app web hospedado em outro domínio (ex.:
+  // checkout-pro-web.onrender.com).
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
   // Habilita CORS para que a versão WEB (rodando em outro domínio, ex.:

@@ -3,7 +3,7 @@
 
 # Modelo de Dados (Prisma)
 
-> Fonte: `backend/prisma/schema.prisma`. Total: **56 tabelas** e **30 tipos (enums)**.
+> Fonte: `backend/prisma/schema.prisma`. Total: **55 tabelas** e **30 tipos (enums)**.
 
 Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dicionario-de-dados.md).
 
@@ -51,7 +51,6 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `ExclusaoOcorrenciaAutomatica` | 8 | (uma decisão por pessoa/tipo/dia), então cada novo dia recomeça do zero. |
 | `Notificacao` | 9 | — |
 | `PushToken` | 6 | seguindo o padrão do schema (ADR 0005). |
-| `MensagemAssistente` | 5 | convenção da API Gemini: 'user' (pergunta) ou 'model' (resposta). |
 | `PedidoRecorrente` | 8 | confirma ou ajusta antes de virar requisição/entrada. |
 | `SugestaoPedido` | 10 | confirmar (vira entrada) ou ignorar. |
 | `MetaIndicador` | 6 | editar via app sem redeploy. Quando não existe registro, usa-se o default. |

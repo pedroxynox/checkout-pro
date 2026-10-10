@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/tipos-contrato/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/tipos-contrato/`
 
 # Módulo: `tipos-contrato`
 
@@ -24,7 +24,7 @@ tocar no código.
 |---|---|---|
 | `tipos-contrato.controller.ts` | Rotas HTTP do catálogo | 71 |
 | `tipos-contrato.service.ts` | Regras de aplicação: CRUD, validação, cache | 284 |
-| `tipos-contrato.adapter.ts` | Regras puras: modelo (min) → `RegrasContrato` (ms) | 40 |
+| `tipos-contrato.adapter.ts` | Regras puras: modelo (min) → `RegrasContrato` (ms) | 47 |
 | `tipos-contrato.module.ts` | Ligações (DI) do módulo | 15 |
 | `dto/tipos-contrato.dto.ts` | Validação de entrada das rotas | 189 |
 

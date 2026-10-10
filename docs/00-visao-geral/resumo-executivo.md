@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** visão de negócio do Check-out PRO
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** visão de negócio do Check-out PRO
 
 # Resumo executivo
 
@@ -51,8 +51,7 @@ Pensando no dia da loja, o sistema atua em cinco frentes:
   que a loja abriu e fechou como deveria.
 
 - **Comunicação.** Avisos aparecem dentro do app, em tempo real, e também como
-  notificação no celular. Existe ainda uma assistente com inteligência
-  artificial (**Cluby**) que resume o dia.
+  notificação no celular.
 
 O resultado prático é **menos retrabalho manual, mais controle e decisões
 apoiadas em dados** — a gestão para de correr atrás de informação e passa a ser
@@ -68,8 +67,10 @@ avisada quando precisa agir.
   em atender várias lojas.
 - As pendências mais importantes são de **infraestrutura e configuração**, não de
   falhas do produto — por exemplo: ativar as notificações no Android (Firebase),
-  colocar o banco de dados num plano estável e definir o rumo de três áreas ainda
-  ocultas (Alertas de Fila, Normativas e Indicador de Quebra).
+  validar a leitura do comprovante de ponto em aparelhos reais e definir o rumo
+  de três áreas ainda ocultas (Alertas de Fila, Normativas e Indicador de Quebra).
+- O app **não tem recursos de inteligência artificial**: a antiga assistente
+  (Cluby) foi retirada em outubro de 2026.
 
 O detalhamento de prioridades e pendências está em
 [Roadmap e pendências](../08-gestao/roadmap-e-pendencias.md). Os números

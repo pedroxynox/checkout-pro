@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/escala-domingo/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/escala-domingo/`
 
 # Módulo: `escala-domingo`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -30,8 +30,8 @@ do ciclo e calcula, de forma determinística, qual grupo folga em cada domingo.
 |---|---|---|
 | `escala-domingo.controller.ts` | Rotas HTTP (ler e definir a âncora) | 39 |
 | `escala-domingo.service.ts` | Lê/grava a âncora no `ConfigSistema` e monta o preview | 143 |
-| `escala-domingo.domain.ts` | Regras puras: rodízio, folga, turno esperado e atraso | 198 |
-| `folga.service.ts` | **Regra única de folga**: ficha + escala semanal, para todo o sistema | 142 |
+| `escala-domingo.domain.ts` | Regras puras: rodízio, folga, turno esperado e atraso | 249 |
+| `folga.service.ts` | **Regra única de folga**: ficha + escala semanal, para todo o sistema | 218 |
 | `escala-domingo.module.ts` | Ligações (DI); exporta os dois serviços | 23 |
 | `dto/escala-domingo.dto.ts` | Validação de entrada do `PUT` | 28 |
 
@@ -267,7 +267,7 @@ Deixar de cobrar é reversível; impedir alguém de registrar trabalho, não.
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `escala-domingo.domain.spec.ts` | Rodízio, folga, turno esperado, **turno de feriado (horário de domingo, folga inalterada)** e atraso (funções puras) | 37 |
-| `folga.service.spec.ts` | Regra única: folga da ficha valendo contra a escala que escala (o caso real), folga da escala valendo sem a ficha, resolução pelas duas identidades, pessoa desconhecida, rodízio de domingo (com e sem âncora) e o consultor de vários dias | 10 |
+| `folga.service.spec.ts` | Regra única: folga da ficha valendo contra a escala que escala (o caso real), folga da escala valendo sem a ficha, resolução pelas duas identidades, pessoa desconhecida, rodízio de domingo (com e sem âncora) e o consultor de vários dias | 20 |
 
 > Contagem sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

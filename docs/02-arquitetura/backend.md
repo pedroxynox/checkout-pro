@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** arquitetura — backend (NestJS)
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** arquitetura — backend (NestJS)
 
 # Backend (NestJS)
 
@@ -127,8 +127,8 @@ No arranque, além de montar o `AppModule`, o backend:
   desligado.
 - Registra o **`ValidationPipe` global** (`whitelist`, `forbidNonWhitelisted`,
   `transform`): DTOs são a fronteira de entrada.
-- Serve **estáticos**: `/assets` (imagens dos procedimentos guiados, versionadas)
-  e o storage de uploads (fotos de checklist) sob o prefixo público configurado.
+- Serve **estáticos**: o storage de uploads (fotos de checklist) sob o prefixo
+  público configurado.
 - Escuta em `0.0.0.0` na porta de `PORT` (compatível com provedores como Render).
 
 ## 6. Agendamentos (cron)

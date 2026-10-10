@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** regras de negócio de escala e rodízio de domingo
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** regras de negócio de escala e rodízio de domingo
 
 # Escala e rodízio de domingo
 
@@ -19,11 +19,13 @@ dia:
 
 **Regras-chave:**
 
-1. **O cadastro é a fonte única da escala** (Opção A): a escala semanal geral é
-   gerada a partir do cadastro do colaborador. Editar o cadastro **regenera** a
-   escala preservando as exceções.
-2. **Horário especial prevalece** sobre a escala geral (a "escala efetiva" do dia
-   usa o horário especial quando existe).
+1. **O cadastro (a ficha) é a fonte única da escala** (Opção A): horário e folga
+   de cada dia saem da ficha do colaborador
+   ([ADR 0023](../../02-arquitetura/decisoes/0023-folga-a-ficha-manda.md) e
+   [ADR 0026](../../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md)).
+2. **Não existe mais "horário especial"** que sobreponha a ficha: as exceções por
+   dia da semana foram retiradas (ADR 0026). Para mudar o horário de alguém, edita-se
+   a ficha.
 3. **Colaborador inativo sai do quadro**; reativar recria a escala a partir do
    cadastro.
 4. A **escala consolidada** do dia mostra todos os escalados; **no domingo**, os

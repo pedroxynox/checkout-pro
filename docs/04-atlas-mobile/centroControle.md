@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `mobile/src/screens/centroControle/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/screens/centroControle/`
 
 # Área: `centroControle`
 
@@ -44,7 +44,7 @@ reinício de dados operacionais).
 | `ConfigEscalaDomingoScreen.tsx` | Configuração do rodízio de domingo (G1/G2/G3) | 268 |
 | `TiposContratoScreen.tsx` | CRUD dos tipos de contrato de jornada | 569 |
 | `InsumosDadosScreen.tsx` | Zerar estoque de insumos e limpar requisições | 214 |
-| `ReiniciarDadosScreen.tsx` | Reinício operacional (apaga dados de movimento) | 197 |
+| `ReiniciarDadosScreen.tsx` | Reinício operacional (apaga dados de movimento) | 196 |
 | `CentroControleScreen.test.tsx` | Testes de visibilidade do card de reinício | 44 |
 | `ReiniciarDadosScreen.test.tsx` | Testes da confirmação "ZERAR" | 58 |
 

@@ -37,7 +37,6 @@ const ROTULO_ENTIDADE: Record<string, string> = {
   registros_arrecadacao: 'Arrecadação',
   arrecadacao_sem_movimento: 'Arrecadação sem movimento',
   notificacoes: 'Notificações',
-  mensagens_assistente: 'Mensagens do assistente',
   fechamentos_concluidos: 'Fechamentos concluídos',
   checklists: 'Checklists',
 };

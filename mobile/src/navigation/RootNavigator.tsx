@@ -13,7 +13,6 @@ import React from 'react';
 import { View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
 import { Carregando, ToastNotificacao } from '../components';
-import { AssistenteProvider } from '../assistente/AssistenteContext';
 import { NotificacoesProvider } from '../notificacoes/NotificacoesContext';
 import { LoginScreen } from '../screens/LoginScreen';
 import { cores } from '../theme';
@@ -46,7 +45,7 @@ const linking: LinkingOptions<RootStackParamList> = {
         screens: {
           Inicio: '',
           Tarefas: 'tarefas',
-          Mensagens: 'mensagens',
+          AtalhoPonto: 'atalho-ponto',
           Notificacoes: 'notificacoes',
           Perfil: 'perfil',
         },
@@ -91,10 +90,8 @@ export function RootNavigator(): React.ReactElement {
     <NavigationContainer theme={temaNavegacao} linking={linking}>
       {autenticado ? (
         <NotificacoesProvider>
-          <AssistenteProvider>
-            <AppNavigator />
-            <ToastNotificacao />
-          </AssistenteProvider>
+          <AppNavigator />
+          <ToastNotificacao />
         </NotificacoesProvider>
       ) : (
         <LoginScreen />

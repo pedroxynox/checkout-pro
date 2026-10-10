@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-16 · **Cobre:** `backend/src/metas/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/metas/`
 
 # Módulo: `metas`
 
@@ -128,8 +128,7 @@ de Controle.
 ## 9. Dependências
 - **Depende de:** `PrismaService`.
 - **É usado por:** `arrecadacao` (via `ArrecadacaoService.metaDe`), `vendas` (via
-  `VendasService.painelResumo`/avisos), `assistente` (contexto de vendas do
-  Cluby) e [`insumos`](insumos.md) (o indicador SACOLAS resolve a sua meta aqui);
+  `VendasService.painelResumo`/avisos) e [`insumos`](insumos.md) (o indicador SACOLAS resolve a sua meta aqui);
   exporta o `MetasService`.
 
 ## 10. Regras de negócio-chave

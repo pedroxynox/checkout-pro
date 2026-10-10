@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/colaboradores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/colaboradores/`
 
 # Módulo: `colaboradores`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -30,14 +30,14 @@ base do **Perfil Inteligente** do colaborador (score, indicadores e insígnias).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `colaboradores.controller.ts` | Rotas HTTP do cadastro e do perfil | 234 |
-| `colaboradores.service.ts` | Regras de aplicação: CRUD, conta de acesso, escala | 840 |
-| `colaboradores.domain.ts` | Regras puras: normalização e turno obrigatório | 17 |
+| `colaboradores.service.ts` | Regras de aplicação: CRUD, conta de acesso, escala | 920 |
+| `colaboradores.domain.ts` | Regras puras: normalização e turno obrigatório | 38 |
 | `colaboradores.errors.ts` | Erros de domínio (mapeados para HTTP) | 111 |
 | `colaboradores.module.ts` | Ligações (DI) do módulo | 39 |
-| `perfil-colaborador.service.ts` | Monta o Perfil Inteligente (dados → indicadores) | 832 |
+| `perfil-colaborador.service.ts` | Monta o Perfil Inteligente (dados → indicadores) | 844 |
 | `perfil-colaborador.domain.ts` | Regras puras: score, ranking, resumo, insígnias | 661 |
 | `purga-inativos.service.ts` | Purga mensal de inativos (retenção) | 146 |
-| `dto/colaboradores.dto.ts` | Validação de entrada das rotas | 241 |
+| `dto/colaboradores.dto.ts` | Validação de entrada das rotas | 233 |
 
 ## 4. Endpoints (rotas HTTP)
 > Lista canônica em [API HTTP → `colaboradores`](../05-referencia-dados/api-http.md).
@@ -207,7 +207,7 @@ totais de arrecadação. Roda no cron mensal (dia 1º) e sob demanda.
 |---|---|---|
 | `colaboradores.turno-obrigatorio.spec.ts` | Turno obrigatório para fiscal/operador | 9 |
 | `colaboradores.adicionar-identificador.spec.ts` | Associação de código solto (idempotência/conflito) | 4 |
-| `colaboradores.promocao-acesso.spec.ts` | Promoção operador→fiscal cria o login | 3 |
+| `colaboradores.promocao-acesso.spec.ts` | Promoção operador→fiscal cria o login | 6 |
 | `perfil-colaborador.service.spec.ts` | Montagem do Perfil Inteligente | 8 |
 | `perfil-colaborador.properties.spec.ts` | Propriedades do score/ranking (property-based) | 17 |
 | `perfil-colaborador.medalhas.spec.ts` | Regras de insígnias/medalhas | 8 |
