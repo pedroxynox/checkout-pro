@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `backend/src/operadores/`
 
 # Módulo: `operadores`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -35,7 +35,8 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 | `marcar-periodo-justificado.ts` | Primitiva compartilhada: falta justificada dia a dia (a prazo + atestado) | 72 |
 | `operadores.domain.ts` | Regras puras: unicidade, turno, relatório, analítica | 517 |
 | `operadores.errors.ts` | Erros de domínio (mapeados para HTTP) | 104 |
-| `operadores.module.ts` | Ligações (DI) do módulo | 32 |
+| `operadores.module.ts` | Ligações (DI) do módulo | 48 |
+| `encerramento-automatico.service.ts` | Crons: encerra as pendências de escala após 3 dias e avisa na véspera | 130 |
 | `operador-turno.controller.ts` | Rotas do Quadro de Operadores | 70 |
 | `operador-turno.service.ts` | Grade semanal, roster do dia, ao vivo, analítica | 958 |
 | `dto/operadores.dto.ts` | Validação de entrada das rotas | 121 |
@@ -237,6 +238,27 @@ Delegam às funções puras homônimas do domínio.
   de folga e o rodízio de domingo, superestimando a cobertura — num alerta, o
   pior erro possível, porque ele deixava de disparar quando devia.
 
+### `EncerramentoAutomaticoService` (crons)
+O gestor não precisa mais decidir falta por falta. A regra pura vive em
+[`common/justificativas`](common.md) e a gravação em
+`common/encerrar-pendencias.ts` (partilhada com o fechamento do
+[ciclo de folha](ciclo-folha.md)).
+- **`encerrarDiario()` — 03:00 Brasília.** Faltas e não-retornos de intervalo
+  ainda `PENDENTE` há **3 dias** (o do dia D fecha em D+3) viram
+  `INJUSTIFICADA`, com `justificadaPorNome = "Encerramento automático"` e
+  `justificadaPorId` nulo. Não toca ciclos de folha **fechados**, nem
+  advertência/suspensão (que também têm status de justificativa).
+- **`avisarDiario()` — 08:00 Brasília.** **Um** aviso à gestão
+  (`OPERADORES_AUSENCIAS`) com quantas pendências encerram na próxima
+  madrugada; nenhum aviso quando são zero.
+- **O que não muda:** o peso no score (PENDENTE e INJUSTIFICADA já pesavam 1 —
+  ADR 0009) e o **débito de horas**, que segue sendo decisão do gestor na
+  [Central de Jornada](central-jornada.md). A ocorrência encerrada pode ser
+  reaberta ou justificada enquanto o ciclo estiver aberto. A auto-cura do ponto
+  continua apagando a falta automática encerrada se ela deixar de ser verdade
+  (não depende do status).
+- Best-effort: os crons registram a falha e nunca derrubam o processo.
+
 ## 6. Lógica de domínio (funções puras)
 - `nomeDuplicado(...)` → unicidade de nome de operador (Req 6.1.3).
 - `ausenciaDuplicada(...)` → no máximo uma ausência por (pessoa, dia civil UTC).
@@ -334,6 +356,7 @@ Delegam às funções puras homônimas do domínio.
 | `falta-em-folga.spec.ts` | Recusa falta em dia de folga; marca normalmente em dia de trabalho; e o contrapeso: **ausência a prazo segue cobrindo a folga** | 3 |
 | `quadro-folga-escala.spec.ts` | O quadro mostra FOLGA quando só a escala semanal marca folga; a folga vence uma falta já gravada; TRABALHA quando nenhuma fonte diz folga; e a grade usa a mesma regra | 4 |
 | `quadro-ferias-escala.spec.ts` | Quem está de férias sai do roster do dia (inclusive no domingo) e dos totais; as férias vencem uma falta gravada; fora do período segue normal; sem o serviço de férias nada é excluído; a grade marca **FERIAS** só no dia coberto (sem apagar a linha da semana) e não conta férias na cobertura; o tablero ao vivo não espera quem está de férias; e o **aviso de cobertura** não conta quem está de férias nem grita quando ninguém era esperado | 14 |
+| `encerramento-automatico.spec.ts` | Regra pura (D fecha em D+3, hora ignorada, autor = sistema, **sem débito**), a gravação (só PENDENTE, só não-retorno entre as incidências, fora dos ciclos fechados, janela do fechamento) e os crons (corte do dia, aviso único da véspera, sem aviso quando zero, nunca derruba o processo) | 11 |
 | `coerencia-quadro-escala.spec.ts` | **Coerência entre telas:** para o mesmo dia e pessoa, o Quadro e a [escala publicada](escala-exportacao.md) dizem o mesmo — e desde a extensão comparam também o **horário**, não só o estado (trabalho, folga da ficha, folga da escala semanal com a ficha omissa e como exceção, **ficha afirmando outro dia**, férias, falta, atestado, **feriado** e **horário de exceção**). É o teste que faltava: achou a divergência de folga e, quando passou a comparar horários, os desvios de feriado e de exceção | 10 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).

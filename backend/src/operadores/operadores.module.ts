@@ -9,6 +9,7 @@ import { OperadoresController } from './operadores.controller';
 import { OperadoresService } from './operadores.service';
 import { OperadorTurnoController } from './operador-turno.controller';
 import { OperadorTurnoService } from './operador-turno.service';
+import { EncerramentoAutomaticoService } from './encerramento-automatico.service';
 
 /**
  * Modulo_Operadores: cadastro de operadores e unicidade de nome (Req 6.1),
@@ -34,7 +35,13 @@ import { OperadorTurnoService } from './operador-turno.service';
     // o quadro mostrava o horário de dia útil, divergindo da escala publicada.
     FeriadosModule,
   ],
-  providers: [OperadoresService, OperadorTurnoService],
+  // EncerramentoAutomaticoService: crons que encerram as pendências de escala
+  // (faltas e não-retornos) depois de 3 dias sem análise.
+  providers: [
+    OperadoresService,
+    OperadorTurnoService,
+    EncerramentoAutomaticoService,
+  ],
   controllers: [OperadoresController, OperadorTurnoController],
   exports: [OperadoresService],
 })

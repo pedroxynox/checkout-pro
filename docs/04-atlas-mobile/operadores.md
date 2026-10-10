@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `mobile/src/screens/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `mobile/src/screens/operadores/`
 
 # Área: `operadores`
 
@@ -24,7 +24,7 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1937 |
-| `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 458 |
+| `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 470 |
 | `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 480 |
 | `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID), ver os **em curso e programados** (com filtro para incluir os encerrados) **e excluir** um lançado por engano | 625 |
 
@@ -59,7 +59,10 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
    baixo), dia recorrente e tendência; o painel abre um modal com o mês inteiro
    e drill-down por colaborador (com advertência por falta não justificada).
 4. **Justificativas:** `JustificativasLista` reúne faltas e não-retornos dos
-   últimos 30 dias; permite justificar (motivo), marcar como não justificada ou
+   últimos 30 dias. Um aviso abaixo dos filtros explica que **pendências sem
+   análise por 3 dias são encerradas automaticamente** como não justificadas
+   (aparecem "· por Encerramento automático" e ainda podem ser justificadas com o
+   ciclo aberto — ver [`operadores`](../03-atlas-backend/operadores.md)). A lista permite justificar (motivo), marcar como não justificada ou
    reabrir, mostrando quem registrou/justificou. Os motivos **não** incluem
    "atestado médico" (mesma regra do card de ausências a prazo): atestado entra só
    pelo card **Atestados**, com CID e período. Abonar por aqui criava um atestado

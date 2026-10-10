@@ -9,7 +9,14 @@ import {
   Query,
 } from '@nestjs/common';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
-import { MarcarDebitoDto } from './dto/central-jornada.dto';
+import {
+  UsuarioAtual,
+  UsuarioAutenticado,
+} from '../common/decorators/usuario-atual.decorator';
+import {
+  LancarFaltaDebitoDto,
+  MarcarDebitoDto,
+} from './dto/central-jornada.dto';
 import {
   CentralExportacao,
   CentralInconsistencias,
@@ -96,5 +103,23 @@ export class CentralJornadaController {
   @Funcionalidade('CENTRAL_JORNADA')
   marcarDebito(@Param('id') id: string, @Body() dto: MarcarDebitoDto) {
     return this.service.marcarDebito(id, dto.debito);
+  }
+
+  /**
+   * Lança como débito um dia em que a pessoa faltou sem falta gravada
+   * ("faltou, não registrada" — ex.: a falta foi excluída na escala).
+   */
+  @Post('pessoa/:id/debito')
+  @HttpCode(HttpStatus.OK)
+  @Funcionalidade('CENTRAL_JORNADA')
+  lancarFaltaComDebito(
+    @Param('id') id: string,
+    @Body() dto: LancarFaltaDebitoDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ) {
+    return this.service.lancarFaltaComDebito(id, dto.data, {
+      id: usuario.sub,
+      nome: usuario.nome ?? null,
+    });
   }
 }

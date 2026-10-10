@@ -444,6 +444,17 @@ export const centralJornadaService = {
     }>(`/central-jornada/pessoa/${colaboradorId}`, { ciclo: String(ciclo) });
   },
 
+  /**
+   * Lança como débito um dia "faltou (não registrada)" — sem falta gravada,
+   * por exemplo porque ela foi excluída na escala. `data` = AAAA-MM-DD.
+   */
+  lancarFaltaComDebito(colaboradorId: string, data: string): Promise<unknown> {
+    return apiClient.post<unknown>(
+      `/central-jornada/pessoa/${colaboradorId}/debito`,
+      { data: data.slice(0, 10) },
+    );
+  },
+
   /** Marca/desmarca uma falta como débito de horas. */
   marcarDebito(ausenciaId: string, debito: boolean): Promise<unknown> {
     return apiClient.post<unknown>(

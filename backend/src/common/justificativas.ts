@@ -154,3 +154,56 @@ export function montarDadosJustificativa(
     justificadaEm: agora,
   };
 }
+
+// --------------------------------------------------------------------------
+// Encerramento automático das pendências
+// --------------------------------------------------------------------------
+
+/**
+ * Dias que uma falta ou não-retorno pode ficar PENDENTE antes de o sistema
+ * encerrá-la sozinho como "não justificada". A ocorrência do dia D fecha no dia
+ * D+3. É o tempo de o gestor conversar com a pessoa enquanto ainda se lembra.
+ */
+export const DIAS_ENCERRAMENTO_AUTOMATICO = 3;
+
+/**
+ * Nome gravado em `justificadaPorNome` quando quem encerrou foi o sistema. É o
+ * que a lista de justificativas mostra ("· por Encerramento automático"), para
+ * não se confundir com uma decisão do gestor. `justificadaPorId` fica nulo.
+ */
+export const AUTOR_ENCERRAMENTO_AUTOMATICO = 'Encerramento automático';
+
+const UM_DIA_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Corte (exclusivo) do encerramento: ocorrências com `data` ANTES dele já
+ * passaram do prazo. Com `hoje` = D+3, o corte é D+1 — então D entra e D+1 não.
+ * `hoje` é o dia civil de Brasília (meia-noite UTC).
+ */
+export function corteEncerramentoAutomatico(hoje: Date): Date {
+  const dia = Date.UTC(
+    hoje.getUTCFullYear(),
+    hoje.getUTCMonth(),
+    hoje.getUTCDate(),
+  );
+  return new Date(dia - (DIAS_ENCERRAMENTO_AUTOMATICO - 1) * UM_DIA_MS);
+}
+
+/**
+ * Campos gravados ao encerrar automaticamente. É uma INJUSTIFICADA comum (o
+ * peso no score não muda: PENDENTE e INJUSTIFICADA já pesam 1 — ADR 0009), só
+ * que com o sistema como autor. **Não mexe no débito de horas**: lançar ou não
+ * a falta como débito continua sendo decisão do gestor na Central de Jornada.
+ */
+export function dadosEncerramentoAutomatico(
+  agora: Date = new Date(),
+): DadosJustificativaPersistir {
+  return montarDadosJustificativa(
+    {
+      status: 'INJUSTIFICADA',
+      observacao: `Encerrada automaticamente após ${DIAS_ENCERRAMENTO_AUTOMATICO} dias sem análise.`,
+    },
+    { id: null, nome: AUTOR_ENCERRAMENTO_AUTOMATICO },
+    agora,
+  );
+}

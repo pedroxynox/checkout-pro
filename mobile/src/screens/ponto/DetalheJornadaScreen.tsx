@@ -122,6 +122,17 @@ export function DetalheJornadaScreen(): React.ReactElement {
     }, []),
   );
 
+  // Dia "faltou (não registrada)": não há falta gravada (ex.: foi excluída na
+  // escala), então o débito cria a falta já debitada. Antes não havia como.
+  async function lancarDebitoSemFalta(dia: CentralDiaDetalhe): Promise<void> {
+    try {
+      await centralJornadaService.lancarFaltaComDebito(colaboradorId, dia.data);
+      detalhe.recarregar();
+    } catch (e) {
+      notificar("Erro", e instanceof ApiError ? e.message : "Falha ao salvar.");
+    }
+  }
+
   async function alternarDebito(dia: CentralDiaDetalhe): Promise<void> {
     if (!dia.ausenciaId) return;
     try {
@@ -294,8 +305,8 @@ export function DetalheJornadaScreen(): React.ReactElement {
                   <Text style={styles.diaFaltaNaoRegistrada}>
                     ⚠️ Estava escalado
                     {d.entradaPrevista ? ` (turno ${d.entradaPrevista})` : ""} e
-                    não há ponto nem falta lançada. Lance a falta pela escala do
-                    dia se ele realmente não trabalhou.
+                    não há ponto nem falta lançada. Se ele realmente não
+                    trabalhou, toque em Débito para descontar as horas.
                   </Text>
                 )}
                 {d.pontoEmFolga && (
@@ -334,6 +345,17 @@ export function DetalheJornadaScreen(): React.ReactElement {
                     >
                       {d.debito ? "Débito ✓" : "Débito"}
                     </Text>
+                  </Pressable>
+                )}
+              {podeMarcarDebito &&
+                d.tipo === "FALTA_NAO_REGISTRADA" &&
+                aceitaDebito(d) && (
+                  <Pressable
+                    onPress={() => void lancarDebitoSemFalta(d)}
+                    style={styles.debitoBtn}
+                    accessibilityLabel="Lançar como débito"
+                  >
+                    <Text style={styles.debitoBtnTexto}>Débito</Text>
                   </Pressable>
                 )}
             </View>
