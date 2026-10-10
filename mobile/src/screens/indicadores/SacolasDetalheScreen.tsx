@@ -10,8 +10,8 @@
  *
  *     indicador = venda ÷ sacolas ≥ meta   ⟺   sacolas ≤ venda ÷ meta
  *
- * Ou seja: existe um **teto de sacolas** que o mês suporta. "Ainda cabem 7
- * fardos" é acionável; "o indicador está em R$ 22" não é.
+ * Ou seja: existe um **teto de sacolas** que o mês suporta. "Ainda podem ser
+ * recebidos 7 fardos" é acionável; "o indicador está em R$ 22" não é.
  *
  * ## A ordem dos blocos, e por quê
  *
@@ -230,14 +230,15 @@ export function SacolasDetalheScreen(): React.ReactElement {
             )}
           </Cartao>
 
-          {/* ===== 2. O TETO: quantas sacolas ainda cabem ===== */}
+          {/* ===== 2. O TETO: quantas sacolas o mês ainda comporta ===== */}
           {d.teto ? (
-            <Cartao titulo="Quantas sacolas ainda cabem">
+            <Cartao titulo="Sacolas que o mês ainda comporta">
               {d.teto.tetoEstourado ? (
                 <>
                   <Text style={styles.tetoEstourado}>
                     O mês já recebeu mais sacolas do que a venda esperada
-                    sustenta. Não cabe mais nenhum fardo sem ficar abaixo da meta.
+                    sustenta. Nenhum fardo adicional pode ser recebido sem
+                    ficar abaixo da meta.
                   </Text>
                   <Linha
                     rotulo="Para as sacolas já recebidas ficarem na meta"
@@ -257,7 +258,7 @@ export function SacolasDetalheScreen(): React.ReactElement {
                       {formatarNumero(d.teto.podemEntrarFardos)}
                     </Text>
                     <Text style={styles.tetoLabel}>
-                      fardos ainda cabem neste mês
+                      fardos ainda podem ser recebidos neste mês
                     </Text>
                     <Text style={styles.tetoSub}>
                       ({formatarNumero(d.teto.podemEntrarSacolas)} sacolas)
