@@ -223,6 +223,32 @@ export class FeriasService {
     return new Set(ferias.map((f) => f.colaboradorId));
   }
 
+  /**
+   * Períodos de férias que tocam o intervalo `[inicio, fimExclusivo)`,
+   * agrupados por `colaboradorId`. Uma consulta só para o intervalo inteiro —
+   * é o que a Central de Jornada usa para não apontar falta em quem está de
+   * férias (consultar dia a dia seriam ~30 consultas por ciclo).
+   */
+  async periodosNoIntervalo(
+    inicio: Date,
+    fimExclusivo: Date,
+  ): Promise<Map<string, { inicio: Date; fim: Date }[]>> {
+    const ferias = await this.prisma.feriasColaborador.findMany({
+      where: {
+        inicio: { lt: fimExclusivo },
+        fim: { gte: inicioDoDia(inicio) },
+      },
+      select: { colaboradorId: true, inicio: true, fim: true },
+    });
+    const porColaborador = new Map<string, { inicio: Date; fim: Date }[]>();
+    for (const f of ferias) {
+      const lista = porColaborador.get(f.colaboradorId) ?? [];
+      lista.push({ inicio: f.inicio, fim: f.fim });
+      porColaborador.set(f.colaboradorId, lista);
+    }
+    return porColaborador;
+  }
+
   /** Remove um período de férias. 404 se não existir. */
   async removerFerias(id: string): Promise<void> {
     const existe = await this.prisma.feriasColaborador.findUnique({

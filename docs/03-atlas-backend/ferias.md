@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `backend/src/ferias/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `backend/src/ferias/`
 
 # Módulo: `ferias`
 
@@ -24,7 +24,7 @@ gera falta automática — mas continua `ativo` (não é desligamento).
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `ferias.controller.ts` | Rotas HTTP (registrar/listar/remover) | 77 |
-| `ferias.service.ts` | Regras de aplicação: período, sobreposição, duração, avisos | 235 |
+| `ferias.service.ts` | Regras de aplicação: período, sobreposição, duração, avisos e períodos de um intervalo | 261 |
 | `ferias.domain.ts` | Regras puras: está de férias, sobreposição, validação, duração, encerrada | 117 |
 | `ferias.errors.ts` | Erros de domínio (mapeados para HTTP) | 49 |
 | `ferias.module.ts` | Ligações (DI); exporta o `FeriasService` | 20 |
@@ -83,6 +83,14 @@ grade semanal a **marcam** como férias.
 com `Fiscal.id`) precisa converter — é por isso que `escaladosDoDia` filtra por
 `colaboradorId` e não por `pessoaId`.
 
+#### `periodosNoIntervalo(inicio, fimExclusivo)`
+Devolve os períodos que tocam o intervalo, agrupados por `colaboradorId`
+(`Map<colaboradorId, { inicio, fim }[]>`), numa **consulta só**. Existe para a
+[Central de Jornada](central-jornada.md), que avalia o ciclo inteiro (~30 dias):
+consultar `colaboradoresDeFeriasNoDia` dia a dia seriam ~30 consultas por
+requisição. A decisão "está de férias no dia" continua sendo a função pura
+`estaDeFerias`, aplicada pelo consumidor.
+
 #### `removerFerias(id)`
 Remove um período (404 `FeriasNaoEncontradaError` se não existir).
 
@@ -121,7 +129,7 @@ função pura `estaDeFerias`, nunca persistido como flag.
 
 ## 9. Dependências
 - **Depende de:** `PrismaService`, `NotificacoesService` (avisos, opcional).
-- **É usado por** (todos os consumidores de `colaboradoresDeFeriasNoDia`):
+- **É usado por** (todos os consumidores do dado de férias):
   - [`fiscais`](fiscais.md) — `escaladosDoDia` e a escala consolidada excluem quem
     está de férias; por consequência, a detecção automática de falta
     ([`ponto`](ponto.md)) também não marca falta de quem está de férias, pois ela
@@ -133,7 +141,11 @@ função pura `estaDeFerias`, nunca persistido como flag.
   - [`escala-exportacao`](escala-exportacao.md) — a escala publicada, onde as
     férias viram o status `FERIAS`;
   - [`ponto`](ponto.md) — a revalidação das ocorrências automáticas usa "de
-    férias no dia" como motivo para remover uma falta já lançada.
+    férias no dia" como motivo para remover uma falta já lançada;
+  - [`central-jornada`](central-jornada.md) — via `periodosNoIntervalo` (não
+    `colaboradoresDeFeriasNoDia`): o dia de férias não é apontado como "faltou
+    (não registrada)". **Foi o que faltava:** a pessoa saía da escala, mas a
+    Central só olhava a ficha e acusava falta em todos os dias das férias.
 
 ## 10. Regras de negócio-chave
 1. **Inativação NÃO rígida:** férias não alteram `ativo` nem geram falta; apenas
