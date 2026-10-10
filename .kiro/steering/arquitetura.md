@@ -1,6 +1,6 @@
 # Arquitetura — Check-out PRO
 
-> Mapa técnico rápido. Snapshot funcional completo: `PROJECT_UNDERSTANDING.md`. Estado/pendientes: `.kiro/steering/estado-e-pendientes.md`. Atualizado: **16/07/2026**.
+> Mapa técnico rápido. Visão completa: [`docs/README.md`](../../docs/README.md) (o snapshot antigo em espanhol ficou em `docs/_legado/`). Estado/pendientes: `.kiro/steering/estado-e-pendientes.md`. Atualizado: **10/10/2026**.
 
 ## Visão geral
 
@@ -12,7 +12,6 @@ mobile/  Expo SDK 52 + React Native 0.76 + web estática
 backend/ NestJS 10 + Prisma 5 + cron
    │
    ├── PostgreSQL
-   ├── Google Gemini
    └── Expo Push Service (Android exige FCM no projeto EAS)
 ```
 
@@ -51,7 +50,7 @@ Deploy conhecido: API e web no Render. Código mergeado não equivale a deploy c
 | Pessoas | `operadores`, `fiscais`, `incidencias`, `advertencias`, `contratos`, `feedforward` |
 | Jornada | `ponto`, `central-jornada`, `feriados`, `escala-domingo`, `ciclo-folha` |
 | Administração | `data-inicial`, `reset-operacional` |
-| IA/infra | `assistente`, `common`, `config`, `prisma`, `storage` |
+| Infra | `common`, `config`, `prisma`, `storage` |
 
 ## Fluxos principais
 
@@ -87,7 +86,7 @@ Parâmetros vindos do **tipo de contrato** do colaborador (data-driven, tabela `
   - 4 batidas: jornada completa com intervalo.
 - **Datas:** rejeita hora futura, fora do dia e anterior à data inicial do sistema. Cada jornada fica limitada ao dia; turnos que cruzam a meia-noite não são tratados.
 - **Duplicados:** batidas iguais ou a menos de 2 min são recusadas; o registro é idempotente por `clienteId` (a fila offline reenvia sem duplicar).
-- **Folga:** bloqueia bater ponto em dia de folga (folga fixa da semana ou domingo pelo rodízio de grupos).
+- **Folga:** bater ponto em dia de folga é **aceito** e apontado como problema de cadastro (`PONTO_EM_FOLGA`), não de conduta ([ADR 0019](../../docs/02-arquitetura/decisoes/0019-ponto-em-dia-de-folga.md)). A folga vem da ficha (ADR 0023).
 - **Ausências:** cruza batidas com faltas/atestados; sinaliza conflito quando há ponto e ausência no mesmo dia.
 - **Leitor (OCR):** a memória "nome lido → pessoa" é apoio, não confirmação: uma seleção isolada não substitui uma associação já aprendida (exige confirmações repetidas). A busca de pessoas para bater ponto inclui fiscais e operadores ativos.
 - **Sem conexão:** a batida é guardada na fila offline do app e sincronizada ao reconectar, preservando a hora do comprovante e sem duplicar (idempotência por `clienteId`).
@@ -117,29 +116,28 @@ Para Android fechado, FCM + APK recompilado continuam obrigatórios.
 ## Banco e migrations
 
 - Prisma schema: `backend/prisma/schema.prisma`.
-- Última migration: `9zx_ciclo_folha`.
-- Próxima deve ordenar depois de `9zx` (o prefixo `9zu` foi usado por duas migrations — Check-Outs e eventos de TAC —, o que é inofensivo: o Prisma ordena pelo nome completo).
+- Última migration: `9zzs_remover_assistente`. Lista sempre atual em [`docs/05-referencia-dados/migracoes.md`](../../docs/05-referencia-dados/migracoes.md).
+- A próxima deve ordenar depois de `9zzs` (o Prisma ordena pelo nome completo; prefixos repetidos como `9zu` são inofensivos).
 - Preferir migrations aditivas e compatíveis durante rolling deploy.
-- `prisma migrate deploy` deve rodar no Pre-Deploy, não no Start Command.
+- `prisma migrate deploy` roda no **Pre-Deploy** (`render.yaml`); o Start Command abre o servidor direto.
 - `reset-operacional` é função de negócio controlada; não substitui migration nem deve ser executada automaticamente em produção.
 
 ## Integrações e configuração
 
-- Backend: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGINS`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `JWT_EXPIRES_IN`, `HORARIO_FIM_DO_DIA`, `SENHA_INICIAL`, `RETENCAO_INATIVOS_MESES`.
+- Backend: `DATABASE_URL`, `DATABASE_CONNECTION_LIMIT`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGINS`, `HORARIO_FIM_DO_DIA`, `SENHA_INICIAL`, `RETENCAO_INATIVOS_MESES`, `RETENCAO_INDICADORES_MESES`. Detalhe em [`variaveis-de-ambiente.md`](../../docs/07-operacao/variaveis-de-ambiente.md).
 - Mobile: `EXPO_PUBLIC_API_URL`.
 - Android push: credenciais FCM no Expo/EAS.
-- Render DB deve estar em plano persistente para operação real.
+- Render: banco `basic-256mb` (persistente) e web `starter` desde jul/2026 (ADR 0013).
 
 ## Qualidade atual
 
-- Backend: build OK; 76 suítes / 514 testes.
-- Mobile: type-check + lint OK; 25 suítes / 97 testes.
+- Números (suítes, casos, rotas, tabelas): **só** em [`docs/08-gestao/estado-e-metricas.md`](../../docs/08-gestao/estado-e-metricas.md), gerado por `npm run docs:gen`.
 - CI normaliza formatação via `eslint --fix`. Ver steering de estado.
 
 ## Áreas deliberadamente incompletas
 
 - Alertas de Fila, Normativas e Indicador de Quebra: ocultas por `emBreve`.
-- Normativas em escala: requerem RAG + pgvector + object storage.
+- Normativas: sem IA; se concluídas, biblioteca de documentos com busca comum + object storage.
 - Multi-tenancy: parqueado (feriados por localização/unidade dependem disso).
 - Push Android: backend pronto; falta FCM + novo APK.
 - Retirada completa da tabela fiscal legada (`RegistroPontoFiscal`): a unificação com as batidas foi feita no cálculo de horas extras; a remoção total da tabela segue como follow-up.
@@ -149,7 +147,7 @@ Para Android fechado, FCM + APK recompilado continuam obrigatórios.
 1. Identificar regra fonte e perfis afetados.
 2. Preservar separação controller/service/domain.
 3. Atualizar espelhos de tipo/permissão backend↔mobile.
-4. Se houver schema, criar migration posterior a `9zx` e validar em PostgreSQL.
+4. Se houver schema, criar migration posterior a `9zzs` e validar em PostgreSQL.
 5. Rodar build/tests/type-check/lint focalizado.
-6. Revisar diff e atualizar docs canônicas.
+6. Revisar diff e atualizar docs canônicas (regra em `documentacao.md`; `npm run docs:check` passa).
 7. Publicar por branch/PR; confirmar deploy separadamente.

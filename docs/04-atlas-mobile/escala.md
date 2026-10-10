@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-18 · **Cobre:** `mobile/src/screens/escala/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/screens/escala/`
 
 # Área: `escala`
 
@@ -31,7 +31,7 @@ Publicar a escala: gerar a escala do **dia** ou da **semana**, com todo o time, 
 Utilidades que fazem o trabalho pesado (fora da área, porque são puras):
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `utils/escalaLayout.ts` | Desenho da escala (dia e semana) como **SVG**, no tamanho final | 770 |
+| `utils/escalaLayout.ts` | Desenho da escala (dia e semana) como **SVG**, no tamanho final | 1038 |
 | `utils/imagemEscala.ts` | Converte o SVG em **PNG** e dispara o download | 121 |
 | `utils/logoEscala.ts` | Logo do rodapé como data URI (ponto único de troca) | 17 |
 

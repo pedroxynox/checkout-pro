@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/incidencias/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/incidencias/`
 
 # Módulo: `incidencias`
 
@@ -23,7 +23,7 @@ do ponto dos fiscais e gerar analítica, ranking e o panorama de sanções.
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
-| `incidencias.controller.ts` | Rotas HTTP (registrar/editar/justificar/remover/listar/sugestões/ranking/sanções) | 122 |
+| `incidencias.controller.ts` | Rotas HTTP (registrar/editar/justificar/remover/listar/sugestões/ranking/sanções) | 128 |
 | `incidencias.service.ts` | Regras de aplicação, persistência (Prisma) e avisos | 865 |
 | `incidencias.domain.ts` | Regras puras: metadados de tipo, detecção, analítica, sanções | 638 |
 | `incidencias.errors.ts` | Erros de domínio (mapeados para HTTP) | 56 |
@@ -174,8 +174,8 @@ disciplinares; a segunda foca no não-retorno e devolve também os não justific
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `incidencias.service.spec.ts` | Registro/duplicata/derivação/sugestão, `funcionarioId` só p/ fiscal e somas ponderadas | 12 |
-| `incidencias.properties.spec.ts` | Propriedades: horário, detecção, analítica e timeline (property-based) | 6 |
+| `incidencias.service.spec.ts` | Registro/duplicata/derivação/sugestão, `funcionarioId` só p/ fiscal e somas ponderadas | 14 |
+| `incidencias.properties.spec.ts` | Propriedades: horário, detecção, analítica e timeline (property-based) | 5 |
 | `incidencias.sancoes.spec.ts` | Disciplina progressiva e panorama de sanções | 7 |
 | `incidencias.tipos.spec.ts` | Metadados de tipo (partições, disciplinares, legado) | 7 |
 | `incidencias.justificativa.spec.ts` | Justificativa/abono e soma ponderada | 4 |

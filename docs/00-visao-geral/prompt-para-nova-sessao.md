@@ -1,11 +1,11 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** prompt de abertura para novas sessões do Kiro
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** prompt de abertura para novas sessões do Kiro
 
 # Prompt para uma nova sessão do Kiro
 
 Este documento guarda o **prompt de abertura** a ser colado no início de qualquer
 sessão nova do Kiro (ou de outra IA/pessoa) que for **mexer no código**. Ele faz
 a sessão entender o projeto pela documentação e seguir as regras — sem precisar
-ler os 122 documentos um a um (a documentação é em camadas: primeiro o mapa,
+ler todos os documentos um a um (a documentação é em camadas: primeiro o mapa,
 depois o detalhe do que se vai tocar).
 
 > A regra completa que a sessão deve seguir vive em

@@ -12,7 +12,7 @@ Para cada falha, anote: ambiente (web/APK), perfil, data/hora, colaborador de te
 
 - [ ] API e web respondem; `GET /health/ready` confirma conexão com o banco.
 - [ ] O commit/deploy testado foi identificado nos logs do Render.
-- [ ] Migrations foram aplicadas até `9zq_alerta_tac_enviado`.
+- [ ] Migrations foram aplicadas até a última de [Migrações](../05-referencia-dados/migracoes.md).
 - [ ] Existem usuários de QA para IMPORTADOR, FISCAL, SUPERVISOR, GERENTE e ADMINISTRADOR.
 - [ ] Existem colaboradores de teste nas funções operador, fiscal e supervisor, com escala e data de admissão.
 - [ ] Há arquivos `.txt` de teste de vendas/arrecadação e comprovantes de ponto sem dados pessoais reais.
@@ -191,12 +191,10 @@ Preparar jornadas controladas; validar tanto o disparo após batida quanto o cro
 - [ ] Token inválido/falha do Expo não quebra o fluxo que originou a notificação.
 - [ ] Se FCM ou novo APK ainda não estiverem disponíveis, marcar como **bloqueado por configuração externa**, não como backend ausente.
 
-## 12. Cluby
+## 12. Áreas ocultas
 
-- [ ] Chat abre, mantém conversa e renderiza markdown.
-- [ ] Sem `GEMINI_API_KEY`, mostra indisponibilidade/configuração ausente sem quebrar o app.
-- [ ] Sob limite de cota, resposta é tratada; para teste multiusuário usar tier pago.
-- [ ] Normativas/procedimentos em escala continuam ocultos/desativados até existir RAG + storage.
+- [ ] Normativas, Alertas de Fila e Indicador de Quebra continuam ocultos (marca `emBreve`).
+- [ ] Nenhuma tela mostra chat, assistente ou qualquer recurso de IA.
 
 ## 13. Administração e segurança operacional
 
@@ -225,5 +223,5 @@ Preparar jornadas controladas; validar tanto o disparo após batida quanto o cro
 ### Critério de saída
 
 - Nenhum erro crítico/alto aberto nos fluxos de login, persistência, ponto/TAC, jornada, importação/fechamento ou permissões.
-- Bloqueios externos (FCM/APK, plano Render, Gemini) registrados com responsável e prazo.
+- Bloqueios externos (FCM/APK, plano Render) registrados com responsável e prazo.
 - Commit implantado, migration aplicada e resultado das suítes automáticas anexados ao registro da entrega.

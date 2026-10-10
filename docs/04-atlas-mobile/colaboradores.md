@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `mobile/src/screens/colaboradores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/screens/colaboradores/`
 
 # Área: `colaboradores`
 
@@ -25,7 +25,7 @@ próprias (ajustáveis na Central de Permissões):
 |---|---|---|
 | `ColaboradoresScreen.tsx` | Lista/hub de colaboradores | 345 |
 | `GestaoColaboradoresScreen.tsx` | Formulário de cadastro/edição | 711 |
-| `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 907 |
+| `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 938 |
 | `SancoesScreen.tsx` | Lista de sanções/advertências | 588 |
 | `RegistrarSancaoModal.tsx` | Modal para registrar sanção | 460 |
 | `FeedforwardSecao.tsx` | Seção de feedforward (acompanhamento) | 833 |

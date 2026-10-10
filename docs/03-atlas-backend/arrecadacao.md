@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/arrecadacao/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/arrecadacao/`
 
 # Módulo: `arrecadacao`
 
@@ -35,17 +35,17 @@ entra em `TIPOS_ARRECADACAO`. Ver
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `arrecadacao.controller.ts` | Rotas HTTP (upload, resumo, ranking, inteligência, histórico) | 253 |
+| `arrecadacao.controller.ts` | Rotas HTTP (upload, resumo, ranking, inteligência, histórico) | 300 |
 | `arrecadacao.service.ts` | Regras de aplicação: importação, totais, ranking, metas | 563 |
 | `indicadores-inteligente.service.ts` | Inteligência: tendência, projeção, destaques, anomalias | 766 |
 | `indicadores-resumo.service.ts` | Resumo diário automático (cron 08:00) | 122 |
-| `historico-indicadores.service.ts` | Histórico mensal: foto do mês, série de 24 meses e limpeza da janela (cron dia 1º) | 478 |
-| `historico-indicadores.domain.ts` | Regras puras: aritmética de "AAAA-MM", semáforo do mês, variação e evolução por sentido | 211 |
-| `cancelamentos-totais.service.ts` | Indicador calculado: mês, detalhe e histórico dos cancelamentos somados | 449 |
-| `cancelamentos-totais.domain.ts` | Regras puras do indicador calculado: avaliação, composição, concentração, simulação, perfil e **diagnóstico** | 686 |
+| `historico-indicadores.service.ts` | Histórico mensal: foto do mês, série de 24 meses e limpeza da janela (cron dia 1º) | 480 |
+| `historico-indicadores.domain.ts` | Regras puras: aritmética de "AAAA-MM", semáforo do mês, variação e evolução por sentido | 234 |
+| `cancelamentos-totais.service.ts` | Indicador calculado: mês, detalhe e histórico dos cancelamentos somados | 514 |
+| `cancelamentos-totais.domain.ts` | Regras puras do indicador calculado: avaliação, composição, concentração, simulação, perfil e **diagnóstico** | 844 |
 | `arrecadacao.parser.ts` | Lê o `.txt` por cabeçalho (nome/valor/qtd/motivo) | 152 |
 | `arrecadacao.domain.ts` | Regras puras: tipos, config de indicadores, utilitários de período | 87 |
-| `arrecadacao.module.ts` | Ligações (DI) do módulo | 45 |
+| `arrecadacao.module.ts` | Ligações (DI) do módulo | 49 |
 | `dto/arrecadacao.dto.ts` | Validação de entrada das rotas | 140 |
 
 ## 4. Endpoints (rotas HTTP)

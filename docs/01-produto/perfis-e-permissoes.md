@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** regras de negócio de perfis e permissões
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** regras de negócio de perfis e permissões
 
 # Perfis e permissões
 
@@ -130,10 +130,6 @@ observações.
 | `NORMATIVAS` — normativas *(em construção)* | ✅ | ✅ | ✅ | ✅ | — |
 | `PERMISSOES_GERENCIAR` — Central de Permissões 🔒 | ✅ | — | — | — | — |
 | `ADMIN_DADOS` — zerar/limpar dados, tipos de contrato 🔒 | ✅ | — | — | — | — |
-
-> O **assistente Cluby** não usa `@Funcionalidade`: fica disponível a **qualquer
-> usuário autenticado**, com a conversa isolada por usuário. Ver
-> [`assistente`](../03-atlas-backend/assistente.md).
 
 ## 3. Como a autorização funciona (resumo)
 

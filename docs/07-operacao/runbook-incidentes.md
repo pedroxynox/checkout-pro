@@ -100,32 +100,7 @@ O que fazer quando algo falha em produção. Cada cenário segue o formato
 
 ---
 
-## 5. Assistente (Gemini) respondendo 503 / instável
-
-- **Sintoma:** o chat do assistente demora e depois falha, ou avisa que está
-  sobrecarregado; em picos, erro de limite.
-- **Diagnóstico:**
-  - O cliente Gemini já faz **reintento automático com backoff** para respostas
-    **429** (limite) e **503** (sobrecarga), respeitando o `retryDelay`
-    sugerido, e cada tentativa tem timeout. Falha persistente indica cota
-    esgotada ou instabilidade do provedor.
-  - A cota **gratuita** (~20 req/min) é insuficiente para ~15 fiscais
-    simultâneos e gera `RESOURCE_EXHAUSTED`.
-  - Se `GEMINI_API_KEY` não estiver definida, o assistente responde
-    "não configurado" (não é 503).
-- **Ação:**
-  1. Confirme `GEMINI_API_KEY` definida no painel do serviço (secreta,
-     `sync: false`).
-  2. Para 429/`RESOURCE_EXHAUSTED` recorrente, **ative o faturamento** no Google
-     AI Studio (sair da cota gratuita).
-  3. Para 503 esporádico, aguarde: o reintento automático costuma resolver;
-     verifique o status do provedor se persistir.
-  4. Confira o `GEMINI_MODEL` (padrão `gemini-2.5-flash`) — modelos
-     descontinuados perdem cota.
-
----
-
-## 6. CI do guardião da documentação falhando
+## 5. CI do guardião da documentação falhando
 
 - **Sintoma:** o workflow **Guardião da Documentação** (`docs.yml`) falha no
   push/PR e bloqueia o merge.

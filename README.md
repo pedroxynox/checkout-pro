@@ -2,8 +2,7 @@
 
 Aplicação **web e Android** para gestão da frente de caixa de supermercado.
 Reúne operação diária, pessoas, ponto e jornada, escala, indicadores, vendas,
-estoque, checklists, contratos, disciplina, notificações e a assistente de
-IA **Cluby** — num **monorepo** com backend **NestJS** e app **Expo/React
+estoque, checklists, contratos, disciplina e notificações — num **monorepo** com backend **NestJS** e app **Expo/React
 Native**.
 
 > UI, domínio e código em **português do Brasil**.
@@ -71,8 +70,7 @@ scripts/        # Gerador (docs:gen) e guardião (docs:check) da documentação
 ```
 
 Arquitetura em uma linha: o app fala com a API por **HTTPS + JWT** (e Socket.IO
-para tempo real); a API acessa o **PostgreSQL** via Prisma e integra **Gemini**
-e **push**. Detalhe em [Arquitetura](docs/02-arquitetura/visao-geral.md).
+para tempo real); a API acessa o **PostgreSQL** via Prisma e envia **push**. Detalhe em [Arquitetura](docs/02-arquitetura/visao-geral.md).
 
 ---
 

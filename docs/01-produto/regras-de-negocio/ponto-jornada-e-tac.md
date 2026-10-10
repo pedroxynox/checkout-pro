@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-27 · **Cobre:** regras de negócio de ponto, jornada e TAC
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** regras de negócio de ponto, jornada e TAC
 
 # Ponto, jornada e TAC
 
@@ -123,6 +123,23 @@ O sistema cruza a **escala do dia** com o Relógio de Ponto e, de forma defensiv
     o **intervalo máximo do contrato da pessoa** (3h no 6x1);
 15. **bater ponto remove a falta automática** do dia (as faltas lançadas
     manualmente permanecem).
+
+Complementos (vigentes desde set–out/2026):
+
+- **A ocorrência automática se desfaz sozinha** quando deixa de ser verdade no
+  ciclo aberto: a pessoa bateu ponto, voltou do intervalo, entrou de férias, tem
+  atestado ou ausência a prazo, ou era a folga dela. Quem está de **férias** nem é
+  esperado, nem na escala nem na Central de Jornada.
+- **Encerramento automático (3 dias).** Falta ou não-retorno que fica **3 dias
+  pendente** é encerrado pelo sistema como **não justificado** (autor:
+  "Encerramento automático") e sai da lista de pendências. Às 08:00 a gestão recebe
+  **um** aviso do que encerra no dia seguinte. Fechar o ciclo de folha encerra o que
+  restar nele. Nada muda no score (pendente e não justificada já pesavam igual) e a
+  ocorrência pode ser reaberta/justificada com o ciclo aberto.
+- **O débito de horas é sempre decisão do gestor**, na Central de Jornada — o
+  encerramento automático nunca o liga. Um dia "faltou (não registrada)" (sem falta
+  gravada, por exemplo porque foi excluída na escala) também pode ser debitado.
+  Domingo e feriado nunca geram débito.
 
 ## 5. Ciclo de folha 26→25
 

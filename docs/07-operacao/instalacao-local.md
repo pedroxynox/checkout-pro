@@ -79,7 +79,6 @@ PostgreSQL. As demais variáveis têm padrões seguros para dev:
   em dev/teste o boot não a exige, mas as migrações precisam dela).
 - `JWT_SECRET` — em dev pode ficar vazio (gera-se um segredo aleatório efêmero
   por processo). **Em produção é obrigatório.**
-- `GEMINI_API_KEY` — opcional; sem ela o assistente responde "não configurado".
 
 > Os valores de `backend/.env.example` já trazem comentários explicando cada
 > variável. Consulte-os antes de alterar.

@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/contratos/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/contratos/`
 
 # Módulo: `contratos`
 
@@ -24,7 +24,7 @@ carteira, e avisa os gestores quando um contrato está prestes a vencer.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `contratos.controller.ts` | Rotas HTTP (listar, resumo, detalhe, admissão, decisão) | 99 |
-| `contratos.service.ts` | Regras de aplicação: Prisma + delega a decisão ao domínio | 402 |
+| `contratos.service.ts` | Regras de aplicação: Prisma + delega a decisão ao domínio | 459 |
 | `contratos.domain.ts` | Regras puras: deriva estado, urgência, alerta e carteira | 326 |
 | `contratos.errors.ts` | Erros de domínio (mapeados para HTTP) | 60 |
 | `contratos.module.ts` | Ligações (DI) do módulo | 22 |

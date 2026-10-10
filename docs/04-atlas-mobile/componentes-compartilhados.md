@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `mobile/src/components/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/components/`
 
 # Componentes compartilhados
 
@@ -33,11 +33,10 @@ as telas importam de `../../components`.
 | `SeletorPeriodo.tsx` | `SeletorPeriodo` | Período (início + fim) com **contador de dias ao vivo** e campo **Duração (dias)** editável: mexer nas datas atualiza a contagem, digitar a duração reposiciona o fim. Mover o início **preserva a duração** (desloca a janela). Avisa acima de `limiteAviso` dias e aceita um `avisoExtra` independente da duração (ex.: ciclo de folha), ambos sem bloquear. | 163 |
 | `Graficos.tsx` | `GraficoPizza`, `GraficoBarrasVerticais`, `montarFatias`, `CORES_GRAFICO`; tipos `FatiaGrafico`, `BarraVertical` | Gráficos sem dependências externas além de `react-native-svg`: pizza (rosca) interativa com legenda e barras verticais. | 337 |
 | `LeitorCodigoBarras.tsx` | `LeitorCodigoBarras` | Modal de leitura de código de barras via `expo-camera`, com entrada manual como alternativa. | 177 |
-| `MarkdownTexto.tsx` | `MarkdownTexto` | Renderizador leve de Markdown (negrito, listas, títulos) para as respostas da assistente. | 134 |
-| `ProcedimentoView.tsx` | `ProcedimentoView` | Procedimento guiado: passo a passo em Markdown intercalado com as fotos do manual. | 90 |
 | `ToastNotificacao.tsx` | `ToastNotificacao` | Toast no topo com a última notificação recebida via WebSocket; some sozinho ou ao toque. | 94 |
 | `DialogHost.tsx` | `DialogHost` | Host único das janelas de confirmação/aviso, montado na raiz; escuta `utils/dialogos`. | 203 |
 | `EmDesenvolvimento.tsx` | `EmDesenvolvimento` | Placeholder "em breve" para áreas ainda não construídas. | 66 |
+| `Skeleton.tsx` | `Skeleton` | Placeholder de carregamento (retângulo cinza no lugar do conteúdo), usado no Resumo do Dia. | 44 |
 
 ## 3. Como usar / convenções
 - **Importação:** sempre por `../../components` (barril `index.ts`), não pelo
@@ -75,8 +74,7 @@ as telas importam de `../../components`.
   abas) e `react-native-svg` (gráficos).
 - **Câmera:** `expo-camera` no `LeitorCodigoBarras`.
 - **Contextos:** `ToastNotificacao` consome `NotificacoesContext`; `DialogHost`
-  escuta `utils/dialogos`; `ProcedimentoView` monta URLs de imagem a partir de
-  `API_BASE_URL`.
+  escuta `utils/dialogos`.
 - **Montagem na raiz:** `DialogHost` é montado em `App.tsx`; `ToastNotificacao`
   em `RootNavigator` (dentro do app autenticado).
 
@@ -95,9 +93,6 @@ Total: **25 casos** em 3 arquivos. Os componentes puramente visuais (ex.:
 ## 6. Riscos e dívidas
 - 🔧 `Graficos.tsx` (337 linhas) e `DialogHost.tsx` (203 linhas) concentram
   muita lógica visual; candidatos a serem quebrados se crescerem mais.
-- ⚠️ `MarkdownTexto` é um renderizador **propositalmente mínimo** (negrito,
-  listas e títulos). Markdown mais rico (tabelas, links, código) não é
-  suportado — adequado só às respostas da assistente.
 - ⚠️ `LeitorCodigoBarras` depende de hardware de câmera; a **entrada manual** é
   o caminho garantido em web/emulador (e nos testes).
 - ⚠️ `SeletorData` **não tem `dataMaxima`**, então `SeletorPeriodo` também não

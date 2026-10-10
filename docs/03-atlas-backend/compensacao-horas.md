@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/compensacao-horas/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/compensacao-horas/`
 
 # Módulo: `compensacao-horas`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -46,9 +46,9 @@ as horas ou empurra o problema para o mês seguinte). Ver
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
 | `compensacao-horas.domain.ts` | Motor puro: a conta contínua, a janela do turno, a alocação, os textos | 631 |
-| `compensacao-horas.service.ts` | Junta os ingredientes (jornada, escala, férias, feriados, venda) e grava a decisão | 1083 |
+| `compensacao-horas.service.ts` | Junta os ingredientes (jornada, escala, férias, feriados, venda) e grava a decisão | 1078 |
 | `compensacao-horas.controller.ts` | Rotas HTTP + permissão | 88 |
-| `compensacao-horas.consulta.ts` | A única leitura das compensações aprovadas (função livre) | 77 |
+| `compensacao-horas.consulta.ts` | A única leitura das compensações aprovadas (função livre) | 80 |
 | `compensacao-horas.module.ts` | Ligações (DI) do módulo | 39 |
 | `dto/compensacao-horas.dto.ts` | Validação de entrada | 92 |
 
@@ -59,7 +59,7 @@ as horas ou empurra o problema para o mês seguinte). Ver
 > funciona, mas transforma qualquer erro de ordem de inicialização num
 > `undefined` silencioso **dentro do cálculo de horas** — o pior lugar possível
 > para uma dependência frágil. Mesmo padrão de
-> `feriados/feriados.consulta.ts` e `escala-exportacao/escala-especiais.consulta.ts`.
+> `feriados/feriados.consulta.ts`.
 
 ## 4. Endpoints (rotas HTTP)
 

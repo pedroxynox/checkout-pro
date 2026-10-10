@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `backend/src/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/operadores/`
 
 # Módulo: `operadores`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -30,16 +30,16 @@ visual, turnos e cobertura) e a **analítica inteligente de faltas**.
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `operadores.controller.ts` | Rotas de ausências/justificativa/contagem | 197 |
-| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 685 |
-| `marcar-periodo-justificado.ts` | Primitiva compartilhada: falta justificada dia a dia (a prazo + atestado) | 72 |
+| `operadores.controller.ts` | Rotas de ausências/justificativa/contagem | 247 |
+| `operadores.service.ts` | Regras de aplicação: ausências, avisos, período | 697 |
+| `marcar-periodo-justificado.ts` | Primitiva compartilhada: falta justificada dia a dia (a prazo + atestado) | 78 |
 | `operadores.domain.ts` | Regras puras: unicidade, turno, relatório, analítica | 517 |
-| `operadores.errors.ts` | Erros de domínio (mapeados para HTTP) | 104 |
+| `operadores.errors.ts` | Erros de domínio (mapeados para HTTP) | 141 |
 | `operadores.module.ts` | Ligações (DI) do módulo | 48 |
 | `encerramento-automatico.service.ts` | Crons: encerra as pendências de escala após 3 dias e avisa na véspera | 130 |
 | `operador-turno.controller.ts` | Rotas do Quadro de Operadores | 70 |
-| `operador-turno.service.ts` | Grade semanal, roster do dia, ao vivo, analítica | 958 |
-| `dto/operadores.dto.ts` | Validação de entrada das rotas | 121 |
+| `operador-turno.service.ts` | Grade semanal, roster do dia, ao vivo, analítica | 980 |
+| `dto/operadores.dto.ts` | Validação de entrada das rotas | 144 |
 
 ## 4. Endpoints (rotas HTTP)
 > Lista canônica em [API HTTP → `operadores`](../05-referencia-dados/api-http.md).
@@ -348,13 +348,13 @@ O gestor não precisa mais decidir falta por falta. A regra pura vive em
 | `remover-ausencia-periodo.spec.ts` | Anular a prazo (só `aPrazo`, ambas as chaves, preserva atestado) | 4 |
 | `marcar-periodo-justificado.spec.ts` | Primitiva compartilhada: cria por dia e converte sem duplicar | 1 |
 | `operadores.properties.spec.ts` | Unicidade, relatório e turno (property-based) | 5 |
-| `operadores.justificativa.spec.ts` | Taxa ponderada e justificativa com auditoria | 6 |
+| `operadores.justificativa.spec.ts` | Taxa ponderada e justificativa com auditoria | 8 |
 | `ausencia-a-prazo.spec.ts` | Proteção da falta a prazo (fiscal x gestão) | 3 |
-| `operador-turno.roster-turno.spec.ts` | Turno do cadastro no roster do dia + grade distingue ATESTADO de FALTA | 3 |
+| `operador-turno.roster-turno.spec.ts` | Turno do cadastro no roster do dia + grade distingue ATESTADO de FALTA | 5 |
 | `operadores.controller.spec.ts` | Contagem por turno e exclusão de falta restrita à gestão | 3 |
 | `listar-ausencias-ficha.spec.ts` | Nome da falta resolvido pela ficha canônica (A.3) | 1 |
 | `falta-em-folga.spec.ts` | Recusa falta em dia de folga; marca normalmente em dia de trabalho; e o contrapeso: **ausência a prazo segue cobrindo a folga** | 3 |
-| `quadro-folga-escala.spec.ts` | O quadro mostra FOLGA quando só a escala semanal marca folga; a folga vence uma falta já gravada; TRABALHA quando nenhuma fonte diz folga; e a grade usa a mesma regra | 4 |
+| `quadro-folga-escala.spec.ts` | O quadro mostra FOLGA quando só a escala semanal marca folga; a folga vence uma falta já gravada; TRABALHA quando nenhuma fonte diz folga; e a grade usa a mesma regra | 5 |
 | `quadro-ferias-escala.spec.ts` | Quem está de férias sai do roster do dia (inclusive no domingo) e dos totais; as férias vencem uma falta gravada; fora do período segue normal; sem o serviço de férias nada é excluído; a grade marca **FERIAS** só no dia coberto (sem apagar a linha da semana) e não conta férias na cobertura; o tablero ao vivo não espera quem está de férias; e o **aviso de cobertura** não conta quem está de férias nem grita quando ninguém era esperado | 14 |
 | `encerramento-automatico.spec.ts` | Regra pura (D fecha em D+3, hora ignorada, autor = sistema, **sem débito**), a gravação (só PENDENTE, só não-retorno entre as incidências, fora dos ciclos fechados, janela do fechamento) e os crons (corte do dia, aviso único da véspera, sem aviso quando zero, nunca derruba o processo) | 11 |
 | `coerencia-quadro-escala.spec.ts` | **Coerência entre telas:** para o mesmo dia e pessoa, o Quadro e a [escala publicada](escala-exportacao.md) dizem o mesmo — e desde a extensão comparam também o **horário**, não só o estado (trabalho, folga da ficha, folga da escala semanal com a ficha omissa e como exceção, **ficha afirmando outro dia**, férias, falta, atestado, **feriado** e **horário de exceção**). É o teste que faltava: achou a divergência de folga e, quando passou a comparar horários, os desvios de feriado e de exceção | 10 |

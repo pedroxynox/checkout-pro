@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `backend/src/central-jornada/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/central-jornada/`
 
 # Módulo: `central-jornada`
 
@@ -26,7 +26,7 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
 |---|---|---|
 | `central-jornada.controller.ts` | Rotas HTTP do portal | 125 |
 | `central-jornada.service.ts` | Regras de aplicação: carga do ciclo, cálculo e agregação | 2280 |
-| `central-jornada.module.ts` | Ligações (DI) do módulo | 25 |
+| `central-jornada.module.ts` | Ligações (DI) do módulo | 28 |
 | `dto/central-jornada.dto.ts` | Validação de entrada (marcar débito; débito em dia sem falta) | 16 |
 
 > Não há arquivo `*.domain.ts` próprio: a única função pura do módulo

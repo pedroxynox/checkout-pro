@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `mobile/src/screens/centroDeMando/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/screens/centroDeMando/`
 
 # Área: `centroDeMando`
 
@@ -36,7 +36,7 @@ e os **pontos de atenção** priorizados por perfil — além de alimentar os
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `ResumoDoDia.tsx` | Bloco "Hoje" no topo da Home (saúde, vendas — hoje desligadas por `VENDAS_NA_HOME` —, cobertura, atenção) | 770 |
+| `ResumoDoDia.tsx` | Bloco "Hoje" no topo da Home (saúde, vendas — hoje desligadas por `VENDAS_NA_HOME` —, cobertura, atenção) | 769 |
 | `dadosDoDia.ts` | Fonte ÚNICA e compartilhada dos sinais do dia: busca deduplicada (cache com TTL), carga progressiva por campo (`useDadosDaHome`) e contagem de pendências (`calcularPendencias`) | 475 |
 | `usePulsoDoDia.ts` | Hook que conta pendências por módulo (selos do menu), lendo de `dadosDoDia` | 111 |
 

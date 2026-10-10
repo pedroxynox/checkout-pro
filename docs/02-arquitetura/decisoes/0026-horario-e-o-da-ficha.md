@@ -1,6 +1,8 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-18 · **Cobre:** `backend/src/escala-exportacao/`, `backend/src/escala-domingo/folga.service.ts`, `backend/src/fiscais/`, `backend/src/operadores/operador-turno.service.ts`, `backend/src/compensacao-horas/`, `backend/src/alertas/saudacao-diaria.service.ts`, `backend/src/assistente/assistente.service.ts`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/escala-exportacao/`, `backend/src/escala-domingo/folga.service.ts`, `backend/src/fiscais/`, `backend/src/operadores/operador-turno.service.ts`, `backend/src/compensacao-horas/`, `backend/src/alertas/saudacao-diaria.service.ts`
 
 # ADR 0026 — O horário é o da ficha; nada na escala o sobrepõe
+
+> **Nota (2026-10-10):** a assistente de IA (Cluby) foi **removida do produto**. As menções a ela abaixo são o registro histórico do contexto desta decisão; a decisão continua valendo para os demais consumidores.
 
 ## Contexto
 
@@ -168,7 +170,7 @@ para evitar. A Conferência de escala aponta essas fichas como lacuna.
   tela, na prática nada que o gestor usava foi perdido — mas se o negócio precisar
   disso, tem de ser construído como recurso de primeira classe: **com data de
   validade, com tela para ver e desfazer, e vinculado à ficha**. Ficou registrado
-  em [Roadmap e pendências](../08-gestao/roadmap-e-pendencias.md).
+  em [Roadmap e pendências](../../08-gestao/roadmap-e-pendencias.md).
 - **A coluna `especial` continua no banco**, sempre `false`, e a tabela
   `EscalaEntry` também — ver "O que a etapa 2 não fez". A diferença é que nenhuma
   das duas decide mais um horário.

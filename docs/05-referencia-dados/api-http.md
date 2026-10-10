@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **213 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **208 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -53,15 +53,6 @@
 | GET | `/arrecadacao/painel-atencao` | `painelAtencao` | `INDICADORES_VISUALIZAR` |
 | GET | `/arrecadacao/cancelamentos-totais` | `cancelamentosTotaisIndicador` | `INDICADORES_VISUALIZAR` |
 | GET | `/arrecadacao/cancelamentos-totais/detalhe` | `cancelamentosTotaisDetalhe` | `INDICADORES_VISUALIZAR` |
-
-## `assistente`
-
-| Método | Rota | Handler | Permissão |
-|---|---|---|---|
-| GET | `/assistente/status` | `status` | `—` |
-| GET | `/assistente/conversa` | `conversa` | `—` |
-| POST | `/assistente/mensagem` | `enviar` | `—` |
-| DELETE | `/assistente/conversa` | `limpar` | `—` |
 
 ## `atestados`
 
@@ -226,7 +217,6 @@
 | GET | `/fiscais/eu/historico-semanal` | `historicoSemanal` | `—` |
 | GET | `/fiscais/ranking-mes` | `rankingMes` | `FISCAIS_JORNADA` |
 | GET | `/fiscais/previsao-extras` | `previsaoExtras` | `FISCAIS_JORNADA` |
-| GET | `/fiscais/contexto-escala` | `contextoEscala` | `—` |
 
 ## `incidencias`
 

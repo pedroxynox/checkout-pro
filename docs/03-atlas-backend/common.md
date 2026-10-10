@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `backend/src/common/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/common/`
 
 # Módulo: `common`
 
@@ -178,7 +178,7 @@ fornece:
 | `guards/perfil.guard.spec.ts` | Autorização por funcionalidade (gerente/fiscal) | 5 |
 | `filters/dominio-exception.filter.spec.ts` | Tradução de erros de domínio/HTTP/desconhecido (a tabela deixou de cobrir os erros do extinto `lote-apae`) | 3 |
 | `datas.spec.ts` | Ciclo de folha 26→25, fim do dia em Brasília, sequência de dias, `contarDiasCorridos` (extremos, feriados, virada de ano/bissexto, invertido), `ciclosDoIntervalo` (reparto entre ciclos, três ciclos, dia 25 vs 26, virada de ano) e `diaDentroDoPeriodo` (extremos inclusive, fora do período, hora ignorada) | 28 |
-| `risco-ocorrencias.spec.ts` | Pontuação de risco partilhada (limiares + monotonia, fast-check) | 6 |
+| `risco-ocorrencias.spec.ts` | Pontuação de risco partilhada (limiares + monotonia, fast-check) | 5 |
 | `justificativas.spec.ts` | Peso/soma ponderada e montagem dos campos de justificativa (fast-check) | 9 |
 | `cors.spec.ts` | Resolução de `CORS_ORIGINS` | 5 |
 | `config/jwt-secret.spec.ts` | Segredo configurado/obrigatório/efêmero | 4 |

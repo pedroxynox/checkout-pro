@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 135 arquivos, 1278 casos. **Mobile:** 39 arquivos, 295 casos. **Total: 1573 casos.**
+> **Backend:** 134 arquivos, 1275 casos. **Mobile:** 39 arquivos, 295 casos. **Total: 1570 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -27,7 +27,6 @@
 | `src/arrecadacao/historico-indicadores.domain.spec.ts` | 25 | 7 |
 | `src/arrecadacao/historico-indicadores.service.spec.ts` | 15 | 4 |
 | `src/arrecadacao/indicadores-inteligente.destaques.spec.ts` | 3 | 2 |
-| `src/assistente/gemini.client.spec.ts` | 3 | 1 |
 | `src/atestados/atestado-converte-e-desfaz.spec.ts` | 12 | 3 |
 | `src/atestados/atestados.domain.spec.ts` | 13 | 5 |
 | `src/atestados/atestados.service.spec.ts` | 10 | 2 |

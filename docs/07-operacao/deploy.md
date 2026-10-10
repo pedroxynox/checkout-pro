@@ -53,9 +53,7 @@ Já declaradas no `render.yaml`:
 | `JWT_SECRET` | `generateValue: true` (gerado automaticamente pelo Render) |
 | `JWT_EXPIRES_IN` | `30d` |
 | `HORARIO_FIM_DO_DIA` | `22:50` |
-| `GEMINI_MODEL` | `gemini-2.5-flash` |
 | `SENHA_INICIAL` | `sync: false` → **definir manualmente no painel** (secreta) |
-| `GEMINI_API_KEY` | `sync: false` → **definir manualmente no painel** (secreta) |
 
 E no serviço estático `checkout-pro-web`: `EXPO_PUBLIC_API_URL =
 https://checkout-pro-api.onrender.com`.
@@ -65,7 +63,7 @@ https://checkout-pro-api.onrender.com`.
 1. No Render, crie um **Blueprint** apontando para este repositório; ele lê o
    `render.yaml` e provisiona banco, API e site estático.
 2. No painel do serviço `checkout-pro-api`, defina os segredos marcados como
-   `sync: false`: **`SENHA_INICIAL`** e **`GEMINI_API_KEY`**.
+   `sync: false`: **`SENHA_INICIAL`**.
 3. Aguarde o build e o deploy. Confirme a saúde em
    `https://checkout-pro-api.onrender.com/health` e a prontidão do banco em
    `/health/ready`.
@@ -94,8 +92,6 @@ automaticamente. Não é preciso rodar o seed novamente.
   é apagado a cada deploy mesmo no plano pago (não há *Render Disk* montado).
   As fotos de checklist gravadas por `LocalDiskStorage` se perdem entre deploys
   — migrar para um storage de objetos (S3-compatível) é a próxima prioridade.
-- **Cota do Gemini:** a camada gratuita é insuficiente para ~15 fiscais
-  simultâneos; avalie faturamento.
 - **Serviço web duplicado:** manter apenas um serviço web (ver checklist).
 - **Health check de readiness:** opcionalmente apontar o health check do Render
   para `/health/ready` (checa o banco) em vez do liveness simples.

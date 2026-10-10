@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-17 · **Cobre:** `backend/src/escala-exportacao/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/escala-exportacao/`
 
 # Módulo: `escala-exportacao`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -41,10 +41,9 @@ mesma pessoa no mesmo feriado. Módulos separados, **regra única**.
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
 | `escala-exportacao.controller.ts` | Rotas do dia e da semana | 46 |
-| `escala-exportacao.service.ts` | Junta ficha + rodízio + feriado + férias + ausências, e aponta quem está **sem folga na ficha** | 409 |
-| `escala-publicada.domain.ts` | Regras puras: precedência do estado, ordem, agrupamento, semana | 252 |
-| `escala-especiais.consulta.ts` | **A única** leitura das exceções de horário (compartilhada com o Quadro), resolvendo o dono das linhas sem vínculo | 82 |
-| `escala-exportacao.module.ts` | Ligações (DI) do módulo | 21 |
+| `escala-exportacao.service.ts` | Junta ficha + rodízio + feriado + férias + ausências, e aponta quem está **sem folga na ficha** | 400 |
+| `escala-publicada.domain.ts` | Regras puras: precedência do estado, ordem, agrupamento, semana | 253 |
+| `escala-exportacao.module.ts` | Ligações (DI) do módulo | 23 |
 | `dto/escala-exportacao.dto.ts` | Validação da data de referência | 13 |
 
 ## 4. Endpoints (rotas HTTP)
@@ -211,9 +210,11 @@ que a equipe recebe.
 - ✅ **Feriado e exceção de horário têm uma fonte só.** Conviviam duas resoluções
   de feriado (um `feriadosDoPeriodo` privado aqui, com chave `yyyy-mm-dd`, e
   `FeriadosService.mapaNoPeriodo`, com chave timestamp) e duas cópias **idênticas**
-  de `especiais()` (aqui e no [Quadro](operadores.md)). Hoje há uma implementação
-  de cada, em `carregarMapaDeFeriados` e `carregarHorariosEspeciais`, e todos os
-  chamadores passam por elas.
+  de `especiais()` (aqui e no [Quadro](operadores.md)). Hoje o feriado tem uma
+  implementação só, `carregarMapaDeFeriados`, e todos os chamadores passam por ela.
+  As **exceções de horário deixaram de existir** com a
+  [ADR 0026](../02-arquitetura/decisoes/0026-horario-e-o-da-ficha.md) (o horário é o
+  da ficha), e com elas `escala-especiais.consulta.ts` e `carregarHorariosEspeciais`.
 
   **Por que função livre e não serviço injetado.** O único ingrediente das duas é o
   Prisma, que é dependência obrigatória de todos os chamadores. Injetar

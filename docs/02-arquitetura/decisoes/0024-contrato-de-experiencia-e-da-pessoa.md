@@ -27,7 +27,7 @@ banco, intactas — apenas inalcançáveis por aquela tela. Era a diferença ent
 perder um dado e esconder um dado, e o efeito na tela é o mesmo para quem olha.
 
 O filtro não era um descuido: o escopo "operadores" está escrito no
-[ADR 0008](0008-contratos-de-experiencia.md), na documentação do módulo e num
+[ADR 0008](0008-contratos-experiencia-estado-derivado.md), na documentação do módulo e num
 comentário do próprio serviço — a premissa era que o contrato de experiência é
 "coisa da frente de caixa".
 

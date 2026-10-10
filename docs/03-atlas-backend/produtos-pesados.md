@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `backend/src/produtos-pesados/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/produtos-pesados/`
 
 # Módulo: `produtos-pesados`
 
@@ -21,11 +21,11 @@ arquivo `.txt` exportado do ERP.
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `produtos-pesados.parser.ts` | Regras puras: `parseProdutosPesados` + `normalizarTexto` | 113 |
-| `produtos-pesados.service.ts` | Carga (substituição total), listagem e status | 138 |
+| `produtos-pesados.parser.ts` | Regras puras: `parseProdutosPesados` + `normalizarTexto` | 118 |
+| `produtos-pesados.service.ts` | Carga (substituição total), listagem e status | 135 |
 | `produtos-pesados.controller.ts` | Rotas HTTP (consulta + upload) | 66 |
 | `produtos-pesados.module.ts` | Ligações (DI) do módulo | 13 |
-| `produtos-pesados.parser.spec.ts` | Testes do parser (dominio puro) | 72 |
+| `produtos-pesados.parser.spec.ts` | Testes do parser (dominio puro) | 76 |
 
 ## 4. Endpoints (rotas HTTP)
 > Lista canônica em [API HTTP → `produtos-pesados`](../05-referencia-dados/api-http.md).

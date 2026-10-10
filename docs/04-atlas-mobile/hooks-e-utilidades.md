@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-09-15 · **Cobre:** `mobile/src/hooks/`, `mobile/src/utils/`, `mobile/src/api/`, `mobile/src/auth/`, `mobile/src/theme/`, `mobile/src/offline/`, `mobile/src/push/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/hooks/`, `mobile/src/utils/`, `mobile/src/api/`, `mobile/src/auth/`, `mobile/src/theme/`, `mobile/src/offline/`, `mobile/src/push/`
 
 # Hooks e utilidades
 
@@ -24,6 +24,8 @@ o acesso a dados, permissões, persistência e formatação em pt-BR.
 | `api/services/*` | `*Service` (via `services/index.ts`) | Serviços por módulo sobre o `apiClient`. |
 | `screens/centroDeMando/usePulsoDoDia.ts` | `usePulsoDoDia` | Contagem de pendências por módulo (Home/Tarefas). |
 | `offline/*` | `OfflineProvider`, `useOfflineContexto`, `OfflineStore`, fila, sincronização | Cache de leitura + fila de ações offline. |
+| `config/ConfigSistemaContext.tsx` | `ConfigSistemaProvider`, `useConfigSistema`, `DATA_INICIAL_PADRAO` | Busca a Data_Inicial_Sistema ao autenticar e a expõe como limite inferior dos seletores de data. |
+| `notificacoes/NotificacoesContext.tsx` | `NotificacoesProvider`, `useNotificacoes` | Notificações em tempo real (WebSocket), contador de não lidas e toast — ver [`notificacoes`](notificacoes.md). |
 | `push/push.ts` | `registrarPush`, `removerPushRegistrado` | Registro de token de push (Expo). |
 | `theme/index.ts` | `cores`, `espacamento`, `tipografia`, `raio`, `sombra`, `coresParaStatus`, ... | Tema visual centralizado. |
 | `utils/formato.ts` | `formatarMoeda`, `formatarData`, `hojeISO`, `mascaraDataBR`, `contarDiasCorridos`, `deslocarDiasISO`, `isoParaDiaMes`, ... | Formatação e datas em pt-BR + aritmética de períodos. |
@@ -163,8 +165,8 @@ literal nas telas** — sempre via tema.
 ### 6.1 `apiClient` e `ApiError`
 `client.ts` encapsula o `fetch` adicionando: `API_BASE_URL`, cabeçalho
 `Authorization: Bearer <token>` (lido do `tokenStorage`), serialização de JSON,
-upload `multipart/form-data`, timeout (`TIMEOUT_REQUISICAO_MS` = 60s, para
-tolerar cold start) e o mapeamento de erros para `ApiError`. O `ApiError` expõe
+upload `multipart/form-data`, timeout (`TIMEOUT_REQUISICAO_MS` = 60s, folga
+para uploads e redes lentas) e o mapeamento de erros para `ApiError`. O `ApiError` expõe
 `status`, `corpo` e `naoAutorizado` (401), e sua `message` já vem na **mensagem
 em pt-BR devolvida pela API** (aceita `{ mensagem }` e `{ message }`). Métodos:
 `get/post/put/patch/delete/upload`.
