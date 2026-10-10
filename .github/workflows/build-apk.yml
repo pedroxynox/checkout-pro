@@ -52,7 +52,7 @@ jobs:
         working-directory: mobile
 
       - name: Subir APK a GitHub
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: checkout-pro-apk
           path: mobile/app.apk
