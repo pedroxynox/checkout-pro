@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** `mobile/src/screens/centroDeMando/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `mobile/src/screens/centroDeMando/`
 
 # Área: `centroDeMando`
 
@@ -12,6 +12,20 @@ e os **pontos de atenção** priorizados por perfil — além de alimentar os
 > **removido** do topo. Os demais blocos (saúde do negócio, vendas, cobertura e
 > pontos de atenção) permanecem.
 
+> **Vendas temporariamente fora da Home (2026-10-09).** Por decisão de produto,
+> o interruptor `VENDAS_NA_HOME` (em `ResumoDoDia.tsx`) está **desligado**
+> (`false`). Com ele desligado, as vendas saem por completo do Resumo do Dia:
+> - o cartão **"Vendas de hoje/ontem"** (valor, variação, ritmo da meta e link
+>   "Ver Painel de Vendas") não é exibido;
+> - a nota de **Saúde do Negócio** deixa de aplicar as penalidades de vendas
+>   (queda nas vendas e projeção abaixo da meta) e os respectivos motivos;
+> - os **pontos de atenção** de vendas não são gerados;
+> - a nota não espera pelo carregamento do painel de vendas.
+>
+> O Painel de Vendas continua existindo e passa a ser acessado pelo
+> [Centro de Controle](centroControle.md). Para devolver tudo à Home, basta
+> voltar o interruptor para `true`.
+
 ## 2. Quem usa (perfis)
 - Perfis de gestão e operação com pessoas (gerente, gerente desenvolvedor,
   supervisor, fiscal) veem o resumo completo (mesma nota de saúde para todos).
@@ -22,7 +36,7 @@ e os **pontos de atenção** priorizados por perfil — além de alimentar os
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `ResumoDoDia.tsx` | Bloco "Hoje" no topo da Home (saúde, vendas, cobertura, atenção) | 748 |
+| `ResumoDoDia.tsx` | Bloco "Hoje" no topo da Home (saúde, vendas — hoje desligadas por `VENDAS_NA_HOME` —, cobertura, atenção) | 770 |
 | `dadosDoDia.ts` | Fonte ÚNICA e compartilhada dos sinais do dia: busca deduplicada (cache com TTL), carga progressiva por campo (`useDadosDaHome`) e contagem de pendências (`calcularPendencias`) | 475 |
 | `usePulsoDoDia.ts` | Hook que conta pendências por módulo (selos do menu), lendo de `dadosDoDia` | 111 |
 
@@ -44,8 +58,9 @@ e os **pontos de atenção** priorizados por perfil — além de alimentar os
 3. Calcula por **regras (sem IA)** a nota de saúde (0–100) com penalidades por
    categoria e teto por categoria, e o "porquê" da nota.
 4. Mostra vendas do dia de referência (hoje se o arquivo já foi carregado;
-   senão, ontem), a cobertura do turno e os 3 pontos de atenção prioritários,
-   cada um com um botão **"Resolver"** que navega para o módulo.
+   senão, ontem) — **somente com `VENDAS_NA_HOME` ligado** —, a cobertura do
+   turno e os 3 pontos de atenção prioritários, cada um com um botão
+   **"Resolver"** que navega para o módulo.
 5. As contagens de pendências por módulo (via `calcularPendencias`) alimentam os
    **selos** do menu, a aba Tarefas e o selo da barra de abas.
 
@@ -74,6 +89,12 @@ Módulos do backend relacionados:
 - A carga de arquivos é verificada no **dia anterior** (os arquivos do dia só
   chegam à noite), evitando falso alarme durante o dia.
 - Vendas: usa "hoje" se o arquivo do dia já foi carregado; senão, "ontem".
+- **`VENDAS_NA_HOME`** (constante exportada, hoje `false`): quando desligada, o
+  painel de referência é tratado como ausente (`null`). Assim, os sinais de
+  vendas (`vendasCairam`, `metaAbaixo`, ritmo da meta) ficam neutros — não pesam
+  na nota, não viram motivo nem ponto de atenção — e o cartão de vendas não é
+  renderizado. As buscas de vendas em `dadosDoDia` permanecem (são reaproveitadas
+  pelos selos de pendência e pela aba Tarefas).
 - Nota de saúde por regras, com penalidades limitadas por categoria (teto), para
   não "despencar" a 0 por acúmulo de pequenas pendências.
 - `useDadosDaHome`/`usePulsoDoDia` só chamam os serviços que o perfil precisa ou
@@ -103,7 +124,10 @@ Módulos do backend relacionados:
 Não se aplica (nenhum arquivo de teste nesta área).
 
 ## 10. Riscos, dívidas e pendências
-- 🔧 `ResumoDoDia.tsx` ainda é grande (748 linhas), concentrando regras de
+- 🟡 Vendas **temporariamente desligadas** na Home (`VENDAS_NA_HOME = false`).
+  Enquanto desligadas, a nota de Saúde do Negócio não reflete vendas; ao
+  religar, as penalidades de vendas voltam a valer.
+- 🔧 `ResumoDoDia.tsx` ainda é grande (770 linhas), concentrando regras de
   negócio, cálculo da nota e UI; forte candidato a extrair regras puras
   (testáveis) e subcomponentes. A busca de dados já saiu para `dadosDoDia`.
 - ✅ A busca de dados de `ResumoDoDia` e `usePulsoDoDia` foi **unificada** em

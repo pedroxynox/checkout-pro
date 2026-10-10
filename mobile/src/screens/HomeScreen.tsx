@@ -111,6 +111,9 @@ export function HomeScreen({
       // Áreas marcadas com `noCabecalho` viram um botão discreto no topo (ver
       // `areasDoCabecalho`) e saem da grade/menu lateral.
       !a.noCabecalho &&
+      // Áreas `ocultoNaHome` saem temporariamente da Home (seguem acessíveis
+      // por outros caminhos, ex.: o Centro de Controle).
+      !a.ocultoNaHome &&
       podeAcessar(a.funcionalidade) &&
       // "Importações" saiu da Home para quem tem o Centro de Controle (agora ela
       // vive lá dentro). O importador (sem Centro de Controle) continua vendo a

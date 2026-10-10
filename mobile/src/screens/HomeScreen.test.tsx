@@ -84,9 +84,15 @@ describe('HomeScreen — navegação por perfil (Tarefa 21.1)', () => {
     // o Centro de Controle quando o usuário tem acesso ao Centro de Controle, e
     // as marcadas com `noCabecalho`, que viram botão no topo.
     for (const area of AREAS.filter(
-      (a) => !a.emBreve && !a.noCabecalho && a.rota !== 'Importacoes',
+      (a) =>
+        !a.emBreve && !a.noCabecalho && !a.ocultoNaHome && a.rota !== 'Importacoes',
     )) {
       expect(screen.getByText(area.titulo)).toBeTruthy();
+    }
+    // Áreas `ocultoNaHome` (hoje, o Painel de Vendas) saem temporariamente da
+    // Home — o acesso passa a ser pelo Centro de Controle.
+    for (const area of AREAS.filter((a) => a.ocultoNaHome)) {
+      expect(screen.queryByText(area.titulo)).toBeNull();
     }
     // Importações não aparece mais na Home para o gerente (vive no Centro de
     // Controle); Gerenciar dados deixou de existir (ações movidas para lá).

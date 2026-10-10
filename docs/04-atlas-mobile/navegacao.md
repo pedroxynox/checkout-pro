@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `mobile/src/navigation/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-09 · **Cobre:** `mobile/src/navigation/`
 
 # Navegação
 
@@ -14,7 +14,7 @@ como cada **área** é liberada conforme o perfil/permissão do usuário. Usa o
 | `RootNavigator.tsx` | `RootNavigator` | Decide entre login e app conforme o `AuthContext`; monta `NavigationContainer`, tema, `linking` (URLs na web) e os provedores de Notificações/Assistente. | 107 |
 | `MainTabs.tsx` | `MainTabs` | Barra de abas inferior (Início, Tarefas, Ponto central, Notificações, Perfil), com selos de pendências/não lidas. | 206 |
 | `AppNavigator.tsx` | `AppNavigator` | Pilha de telas de módulo; cada rota só entra na pilha se `podeAcessar(funcionalidade)`. | 414 |
-| `areas.ts` | `AREAS`, `Area` | Catálogo das áreas funcionais (rota, ícone, título, `funcionalidade` exigida, marca `emBreve`) usado pela Home e pelo menu. | 191 |
+| `areas.ts` | `AREAS`, `Area` | Catálogo das áreas funcionais (rota, ícone, título, `funcionalidade` exigida, marcas `emBreve`, `noCabecalho` e `ocultoNaHome`) usado pela Home e pelo menu. | 201 |
 | `types.ts` | `RootStackParamList`, `MainTabParamList`, `RotaApp`, `PropsTela`, `PropsTabInicio` | Tipagem de todas as rotas e seus parâmetros. | 94 |
 
 ## 3. Fluxo de login → app
@@ -51,7 +51,7 @@ O coração da navegação por perfil está em duas peças que se combinam:
 ### 5.1 `areas.ts` — catálogo de áreas
 Cada `Area` aponta para uma `rota`, um `icone`, um `titulo`/`descricao` e a
 `funcionalidade` exigida. A Home percorre `AREAS` e exibe **apenas** as áreas
-cuja funcionalidade o usuário pode acessar. Duas marcas mudam **onde** (ou se) a
+cuja funcionalidade o usuário pode acessar. Três marcas mudam **onde** (ou se) a
 área aparece, sem tocar em permissão nem em rota:
 
 - **`emBreve: true`** (Alertas de Fila, Normativas, Indicador de Quebra) — a área
@@ -63,8 +63,17 @@ cuja funcionalidade o usuário pode acessar. Duas marcas mudam **onde** (ou se) 
   por leitores de tela. Remover a marca devolve a área à grade, sem mais nada a
   mudar.
 
-A diferença entre as duas: `emBreve` esconde algo que **não existe ainda**;
-`noCabecalho` apenas **muda de lugar** algo que existe e é alcançável.
+- **`ocultoNaHome: true`** (hoje só o **Painel de Vendas**, desde 2026-10-09) —
+  a área sai **temporariamente** dos "Acessos rápidos" e do menu lateral do
+  desktop, sem ir para lugar nenhum da Home. A rota, a tela e a permissão
+  continuam as mesmas; a área segue alcançável por outros caminhos (no caso do
+  painel, um card no [Centro de Controle](centroControle.md), o cartão de vendas
+  em Indicadores e as notificações). Remover a marca devolve a área à grade.
+
+A diferença entre elas: `emBreve` esconde algo que **não existe ainda**;
+`noCabecalho` apenas **muda de lugar** algo que existe e é alcançável;
+`ocultoNaHome` **tira da Home** algo que existe e continua alcançável por fora
+dela.
 
 ### 5.2 `podeAcessar` — a regra de exibição
 Vem do `AuthContext` (`podeAcessar(funcionalidade)`). A fonte de verdade são as
