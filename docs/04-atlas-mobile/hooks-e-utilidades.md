@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/hooks/`, `mobile/src/utils/`, `mobile/src/api/`, `mobile/src/auth/`, `mobile/src/theme/`, `mobile/src/offline/`, `mobile/src/push/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-14 · **Cobre:** `mobile/src/hooks/`, `mobile/src/utils/`, `mobile/src/api/`, `mobile/src/auth/`, `mobile/src/theme/`, `mobile/src/offline/`, `mobile/src/push/`
 
 # Hooks e utilidades
 
@@ -34,6 +34,7 @@ o acesso a dados, permissões, persistência e formatação em pt-BR.
 | `utils/dialogos.ts` | `confirmar`, `notificar`, `registrarOuvinteDialogo` | API de diálogos consumida pelo `DialogHost`. |
 | `utils/impressao.ts` | `imprimirRelatorio` | Impressão/PDF (web via iframe, nativo via `expo-print`). |
 | `utils/relatorioPerfil.ts` | `htmlRelatorio`, `htmlPaginaOperador`, `svgBarras`, `htmlPizza`, ... | Geração pura do relatório de perfil em HTML/SVG. |
+| `utils/relatorioFeedforward.ts` | `htmlRodadaFeedforward`, `htmlHistoricoFeedforward`, `htmlFormularioFeedforward`, `resumoHistorico`, `PERGUNTAS_FEEDFORWARD`, ... | Geração pura dos documentos impressos do feedforward (A4). |
 | `utils/escalaLayout.ts` | `svgEscalaDia`, `svgEscalaSemana`, `htmlDeImpressao`, `nomeArquivoEscala` | Desenho puro da escala publicada em SVG, no tamanho final (ver [`escala`](escala.md)). |
 | `utils/imagemEscala.ts` | `suportaImagemPng`, `baixarEscalaComoPng` | Converte o SVG da escala em PNG 4K e baixa (só onde há `canvas`). |
 | `utils/logoEscala.ts` | `LOGO_ESCALA_DATA_URI` | Logo do rodapé da escala como data URI (ponto único de troca). |
@@ -137,12 +138,20 @@ Publica um "pedido" para o [`DialogHost`](componentes-compartilhados.md#2-invent
 (único, montado no `App.tsx`), que os exibe um de cada vez (fila). O tom
 (sucesso/erro) do `notificar` é inferido do título.
 
-### 4.3 Impressão e relatório (`impressao.ts`, `relatorioPerfil.ts`)
+### 4.3 Impressão e relatório (`impressao.ts`, `relatorioPerfil.ts`, `relatorioFeedforward.ts`)
 `imprimirRelatorio(html)` abre a folha de impressão/PDF — na web via `iframe`
 oculto (aguardando o `load` para não sair em branco), no nativo via
 `expo-print`. `relatorioPerfil.ts` é **puro**: monta o HTML/SVG do perfil do
 colaborador (A4, um por página, com barras e pizza espelhando a tela), portanto
 é totalmente testável.
+
+`relatorioFeedforward.ts` também é **puro** e monta os três documentos do
+feedforward em A4: `htmlRodadaFeedforward` (uma rodada, com assinaturas),
+`htmlHistoricoFeedforward` (capa com `resumoHistorico` + uma rodada por página)
+e `htmlFormularioFeedforward` (formulário em branco para responder à mão). É a
+**fonte única** das perguntas (`PERGUNTAS_FEEDFORWARD`) e dos rótulos do
+semáforo (`ROTULO_SITUACAO_FEEDFORWARD`) usados pela tela. Todo texto passa por
+`esc` (de `relatorioPerfil`), inclusive a URL da foto.
 
 ### 4.4 Demais utilidades
 - `rotulos.ts`: rótulos legíveis de enums (`ROTULO_TIPO_ARRECADACAO`,
@@ -215,11 +224,12 @@ credencial, o app segue normal (o aviso ainda chega in-app/WebSocket).
 | `utils/formato.test.ts` | Formatação/máscaras/conversões pt-BR, "hoje" no fuso de Brasília e a aritmética de períodos (`contarDiasCorridos`, `deslocarDiasISO`, `isoParaDiaMes`) | 25 |
 | `utils/periodoMensal.test.ts` | Mês de Brasília, deslocamento, rótulo, último dia e distância em meses | 9 |
 | `utils/relatorioPerfil.test.ts` | HTML/SVG do relatório de perfil | 12 |
+| `utils/relatorioFeedforward.test.ts` | Documentos do feedforward (rodada, histórico, formulário em branco): conteúdo, páginas A4, foto, quebras de linha e HTML escapado | 14 |
 | `offline/fila.test.ts` | Ordenação e last-write-wins | 6 |
 | `offline/sincronizacao.test.tsx` | Drenagem da fila, conflitos e rejeições | 7 |
 | `hooks/useAvisoCicloFolha.test.ts` | Sem aviso num ciclo aberto; travessia com os dias de cada ciclo; a redação distinta quando o backend bloqueia e quando permite; não consulta se inativo ou invertido; falha silenciosa | 7 |
 
-Total: **66 casos** em 6 arquivos. Os demais hooks (`useRequisicao`, `useAuth`,
+Total: **80 casos** em 7 arquivos. Os demais hooks (`useRequisicao`, `useAuth`,
 `usePulsoDoDia`) e o `apiClient` não têm teste unitário dedicado — são exercidos
 indiretamente pelos testes de tela e pela lógica pura acima.
 

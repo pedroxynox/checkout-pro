@@ -25,10 +25,10 @@ próprias (ajustáveis na Central de Permissões):
 |---|---|---|
 | `ColaboradoresScreen.tsx` | Lista/hub de colaboradores | 345 |
 | `GestaoColaboradoresScreen.tsx` | Formulário de cadastro/edição | 711 |
-| `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 938 |
+| `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 945 |
 | `SancoesScreen.tsx` | Lista de sanções/advertências | 588 |
 | `RegistrarSancaoModal.tsx` | Modal para registrar sanção | 460 |
-| `FeedforwardSecao.tsx` | Seção de feedforward (acompanhamento) | 953 |
+| `FeedforwardSecao.tsx` | Seção de feedforward (acompanhamento + impressão) | 985 |
 | `ModalRevisarPonto.tsx` | Modal de revisão de um ponto do feedforward (resultado + observação) | 149 |
 
 ## 4. Fluxo do usuário
@@ -100,6 +100,13 @@ e [`feedforward`](../03-atlas-backend/feedforward.md).
   - **Foto da rodada já salva:** "Tirar foto" / "Da galeria" enviam ou trocam a
     foto do formulário. Resolve o caso em que a foto falhava ao criar a rodada
     e não havia como reenviá-la.
+  - **Impressão / PDF** (disponível a quem visualiza): "Imprimir formulário"
+    (formulário em branco, já com nome/matrícula/cargo, para o colaborador
+    responder à mão), "Imprimir histórico" (capa com resumo + uma rodada por
+    página; só aparece se houver rodadas) e o ícone de impressora em cada rodada
+    (uma página com a foto do formulário e campos de assinatura). O HTML vem de
+    `utils/relatorioFeedforward.ts`; o perfil passa `colaborador` (nome,
+    matrícula, função) para o cabeçalho.
 
 ## 7. Lógica pura / utilidades
 - Conversões e validações de horário/data usadas pelo formulário.
@@ -116,6 +123,7 @@ e [`feedforward`](../03-atlas-backend/feedforward.md).
 | `ColaboradoresScreen.test.tsx` | Lista, busca e navegação | 3 |
 | `GestaoColaboradoresScreen.test.tsx` | Formulário e envio de senha por função | 2 |
 | `PerfilColaboradorScreen.test.tsx` | Render do perfil (score/indicadores) | 3 |
+| `FeedforwardSecao.test.tsx` | Feedforward: permissões, revisão com observação, remoção com confirmação, foto em rodada salva e impressão (formulário, histórico e rodada) | 18 |
 
 ## 10. Riscos, dívidas e pendências
 - 🔧 `PerfilColaboradorScreen.tsx` e `FeedforwardSecao.tsx` são grandes (>800

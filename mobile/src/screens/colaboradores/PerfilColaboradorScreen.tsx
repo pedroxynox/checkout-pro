@@ -669,7 +669,14 @@ export function PerfilColaboradorScreen({
           )}
 
           {/* Feedforward (acompanhamento de desenvolvimento) — só supervisor/gerente */}
-          <FeedforwardSecao colaboradorId={colaboradorId} />
+          <FeedforwardSecao
+            colaboradorId={colaboradorId}
+            colaborador={{
+              nome: p.colaborador.nome,
+              matricula: p.colaborador.matricula,
+              funcao: p.colaborador.funcao,
+            }}
+          />
 
           {/* Escala / folga */}
           <Cartao titulo="Escala">
