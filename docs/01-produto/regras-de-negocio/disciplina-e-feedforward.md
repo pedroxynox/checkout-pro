@@ -73,7 +73,9 @@ prazo** e nota de evolução.
 17. **Semáforo pelo prazo:** um ponto pendente vira **`PROXIMO`** a ≤ 3 dias do
     prazo e **`VENCIDO`** no dia ou depois; um ponto revisado
     (`ATINGIDO`/`NAO_ATINGIDO`) sai do semáforo de prazo.
-18. **Aviso diário de prazo vencido** à liderança (sem duplicar no mesmo dia).
+18. **Aviso de prazo vencido** à liderança no dia do prazo e, enquanto o ponto
+    continuar pendente, **a cada 7 dias** — um único aviso por colaborador por
+    dia, reunindo todos os pontos dele.
 19. **A foto do formulário só aceita imagem** (validação de tipo no upload).
 20. **Só rodada de colaborador existente** é criada (evita rodadas órfãs).
 21. **Gerir feedforward** exige `FEEDFORWARD_GERIR`; **acompanhar** exige

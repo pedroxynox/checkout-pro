@@ -61,3 +61,29 @@ export function pontoVencido(
 ): boolean {
   return status === 'PENDENTE' && diffEmDias(hoje, prazo) <= 0;
 }
+
+/**
+ * Intervalo (dias) entre os lembretes de um ponto que venceu e continua
+ * pendente. Evita avisar a liderança todos os dias sobre o mesmo ponto.
+ */
+export const INTERVALO_LEMBRETE_DIAS = 7;
+
+/** Dias de atraso de um ponto em `hoje` (0 no dia do prazo; nunca negativo). */
+export function diasDeAtraso(prazo: Date, hoje: Date): number {
+  return Math.max(0, diffEmDias(prazo, hoje));
+}
+
+/**
+ * true quando o cron deve avisar sobre o ponto em `hoje`: só para pontos
+ * PENDENTES, **no dia em que o prazo vence** e, se continuarem pendentes, a
+ * cada `INTERVALO_LEMBRETE_DIAS` dias depois (7, 14, 21… dias de atraso).
+ * Antes o aviso se repetia diariamente até alguém revisar o ponto.
+ */
+export function deveAvisarPonto(
+  status: StatusPontoFeedforward,
+  prazo: Date,
+  hoje: Date,
+): boolean {
+  if (!pontoVencido(status, prazo, hoje)) return false;
+  return diasDeAtraso(prazo, hoje) % INTERVALO_LEMBRETE_DIAS === 0;
+}
