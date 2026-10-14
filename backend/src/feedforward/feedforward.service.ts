@@ -5,7 +5,8 @@ import { inicioDoDia } from '../common/datas';
 import {
   SituacaoPontoFeedforward,
   StatusPontoFeedforward,
-  pontoVencido,
+  deveAvisarPonto,
+  diasDeAtraso,
   situacaoPonto,
 } from './feedforward.domain';
 import { CriarFeedforwardDto } from './dto/feedforward.dto';
@@ -51,6 +52,8 @@ export interface PontoVencido {
   nome: string;
   descricao: string;
   prazo: Date;
+  /** Dias de atraso em `hoje` (0 = vence hoje). */
+  diasAtraso: number;
 }
 
 type FeedforwardComPontos = Feedforward & { pontos: FeedforwardPonto[] };
@@ -159,8 +162,9 @@ export class FeedforwardService {
   }
 
   /**
-   * Pontos PENDENTES cujo prazo já venceu (hoje ou antes) — consumido pelo
-   * cron para avisar supervisores e gerentes. Traz o nome do colaborador.
+   * Pontos PENDENTES vencidos que devem ser avisados **hoje** — no dia em que o
+   * prazo vence e, se continuarem pendentes, a cada 7 dias (regra pura
+   * `deveAvisarPonto`). Consumido pelo cron; traz o nome do colaborador.
    */
   async pontosVencidosDoDia(hoje: Date = new Date()): Promise<PontoVencido[]> {
     const dia = inicioDoDia(hoje);
@@ -168,9 +172,9 @@ export class FeedforwardService {
       where: { status: 'PENDENTE', prazo: { lte: dia } },
       orderBy: { prazo: 'asc' },
     });
-    // Filtro defensivo pela regra do domínio (fonte única da verdade).
+    // A regra do domínio decide quais avisar hoje (fonte única da verdade).
     const vencidos = pontos.filter((p) =>
-      pontoVencido('PENDENTE', p.prazo, hoje),
+      deveAvisarPonto('PENDENTE', p.prazo, hoje),
     );
     if (vencidos.length === 0) return [];
 
@@ -186,17 +190,8 @@ export class FeedforwardService {
       nome: nome.get(p.colaboradorId) ?? p.colaboradorId,
       descricao: p.descricao,
       prazo: p.prazo,
+      diasAtraso: diasDeAtraso(p.prazo, hoje),
     }));
-  }
-
-  /** Destinatários do aviso de acompanhamento: supervisores e gerentes. */
-  async destinatariosAcompanhamento(): Promise<{ id: string }[]> {
-    return this.prisma.usuario.findMany({
-      where: {
-        perfil: { in: ['SUPERVISOR', 'GERENTE', 'ADMINISTRADOR'] },
-      },
-      select: { id: true },
-    });
   }
 
   // -------------------------------------------------------------------------

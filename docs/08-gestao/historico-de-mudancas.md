@@ -18,6 +18,12 @@ Evolução da seção de Feedforward do perfil do colaborador, entregue em parte
   ponto exibe quem revisou, quando e a observação; a rodada pode ser **removida**
   pelo app (com confirmação); a foto do formulário pode ser **enviada ou trocada**
   numa rodada já salva (antes, se o envio falhasse, não havia como reenviar).
+- **Parte 2 — avisos sem repetição:** o aviso de prazo vencido saía **todos os
+  dias** até alguém revisar o ponto. Agora sai no dia do prazo e, se o ponto
+  continuar pendente, a cada 7 dias (`deveAvisarPonto`), com **um aviso por
+  colaborador** reunindo os pontos dele. Removido o método sem uso
+  `destinatariosAcompanhamento()` (critério de destinatário unificado pela
+  permissão `FEEDFORWARD_VISUALIZAR`).
 
 ---
 

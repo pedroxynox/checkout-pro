@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** `backend/src/feedforward/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-14 · **Cobre:** `backend/src/feedforward/`
 
 # Módulo: `feedforward`
 
@@ -22,9 +22,9 @@ e avisa a liderança quando vencem.
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
 | `feedforward.controller.ts` | Rotas HTTP (listar/criar/foto/revisar/remover) | 117 |
-| `feedforward.service.ts` | Regras de aplicação e persistência (Prisma) | 237 |
-| `feedforward-alertas.service.ts` | Cron diário de avisos de prazo vencido | 66 |
-| `feedforward.domain.ts` | Regras puras: semáforo e ponto vencido | 63 |
+| `feedforward.service.ts` | Regras de aplicação e persistência (Prisma) | 232 |
+| `feedforward-alertas.service.ts` | Cron diário de avisos de prazo vencido (um aviso por colaborador) | 93 |
+| `feedforward.domain.ts` | Regras puras: semáforo, ponto vencido e cadência dos avisos | 89 |
 | `feedforward.module.ts` | Ligações (DI); exporta o serviço | 19 |
 | `dto/feedforward.dto.ts` | Validação de entrada das rotas | 81 |
 
@@ -65,17 +65,19 @@ Marca o ponto como `ATINGIDO`/`NAO_ATINGIDO` com auditoria (quem/quando);
 Remove a rodada e seus pontos em cascata; `NotFoundException` se não existir.
 
 #### `pontosVencidosDoDia(hoje?)`
-Pontos `PENDENTE` com prazo vencido (filtrados pela regra pura `pontoVencido`),
-com o nome do colaborador — consumido pelo cron de avisos.
-
-#### `destinatariosAcompanhamento()`
-Usuários com perfil `SUPERVISOR`/`GERENTE`/`ADMINISTRADOR` (apoio à notificação).
+Pontos `PENDENTE` vencidos que devem ser avisados **hoje** (filtrados pela regra
+pura `deveAvisarPonto`), com o nome do colaborador e os `diasAtraso` — consumido
+pelo cron de avisos.
 
 ### `FeedforwardAlertasService`
-- `verificarPrazos(hoje?)` (`@Cron` 08:00 BRT): busca os pontos vencidos e avisa
-  os destinatários com `FEEDFORWARD_VISUALIZAR`; usa um `Set` em memória para não
-  duplicar o aviso no mesmo dia; defensivo (falha isolada não derruba os demais).
+- `verificarPrazos(hoje?)` (`@Cron` 08:00 BRT): busca os pontos a avisar hoje,
+  **agrupa por colaborador** e envia **um aviso por colaborador** aos
+  destinatários com `FEEDFORWARD_VISUALIZAR`; usa um `Set` em memória
+  (`colaboradorId:dia`) para não duplicar no mesmo dia; defensivo (falha isolada
+  não derruba os demais).
 - `resetarDiario()` (`@Cron` 00:00 BRT): limpa o cache de anti-duplicação.
+- `mensagemAviso(pontos)` (função exportada): monta o texto — "vence hoje" no dia
+  do prazo, "venceu há N dias" nos lembretes, ou a lista quando há vários pontos.
 
 ## 6. Lógica de domínio (funções puras)
 - `diffEmDias(de, ate)` → diferença em dias civis (UTC, date-only).
@@ -83,7 +85,12 @@ Usuários com perfil `SUPERVISOR`/`GERENTE`/`ADMINISTRADOR` (apoio à notificaç
   já revisado; senão `VENCIDO` (prazo hoje/passado), `PROXIMO` (≤
   `ANTECEDENCIA_ALERTA_DIAS = 3` dias) ou `EM_DIA`.
 - `pontoVencido(status, prazo, hoje)` → verdadeiro só para `PENDENTE` com prazo
-  hoje ou passado (gatilho do aviso).
+  hoje ou passado.
+- `diasDeAtraso(prazo, hoje)` → dias desde o prazo (0 no próprio dia; nunca
+  negativo).
+- `deveAvisarPonto(status, prazo, hoje)` → gatilho do aviso: ponto vencido **no
+  dia do prazo** e depois a cada `INTERVALO_LEMBRETE_DIAS = 7` dias de atraso
+  (7, 14, 21…). Antes o aviso se repetia **todos os dias** até a revisão.
 
 ## 7. Estados e enums
 - `StatusPontoFeedforward`: `PENDENTE` · `ATINGIDO` · `NAO_ATINGIDO` (transição
@@ -107,8 +114,9 @@ Usuários com perfil `SUPERVISOR`/`GERENTE`/`ADMINISTRADOR` (apoio à notificaç
 2. **Semáforo pelo prazo:** pendente vira `PROXIMO` a ≤ 3 dias e `VENCIDO` no dia/depois.
 3. **Ponto revisado sai do semáforo de prazo** (reflete o status atingido/não).
 4. **Só a rodada de colaborador existente** é criada (evita rodadas órfãs).
-5. **Aviso diário de prazo vencido** à liderança, sem duplicar no mesmo dia e sem
-   derrubar o processo em caso de falha.
+5. **Aviso de prazo vencido** à liderança no dia do prazo e, se o ponto continuar
+   pendente, **a cada 7 dias**; um aviso por colaborador por dia, sem duplicar e
+   sem derrubar o processo em caso de falha.
 6. **Foto só aceita imagem** (validação de mimetype no upload).
 
 ## 11. Testes
@@ -121,8 +129,8 @@ Usuários com perfil `SUPERVISOR`/`GERENTE`/`ADMINISTRADOR` (apoio à notificaç
 ## 12. Riscos, dívidas e pendências
 - ⚠️ O anti-duplicação de avisos é um `Set` **em memória** (resetado à
   meia-noite): em múltiplas instâncias, cada uma teria seu próprio cache.
-- 🔧 `destinatariosAcompanhamento()` (perfis SUPERVISOR/GERENTE/ADMINISTRADOR)
-  coexiste com o alerta que usa `destinatariosComPermissao('FEEDFORWARD_VISUALIZAR')`;
-  vale unificar o critério de destinatário conforme evoluir.
-- 🔧 Só o domínio (semáforo) tem testes; o serviço e o cron dependem de
-  verificação por integração.
+- ✅ Critério de destinatário unificado: o método sem uso
+  `destinatariosAcompanhamento()` (por perfil) foi removido; o aviso usa só
+  `destinatariosComPermissao('FEEDFORWARD_VISUALIZAR')`.
+- 🔧 Só o domínio (semáforo) tem testes; `deveAvisarPonto`/`diasDeAtraso`, o
+  serviço e o cron ainda dependem de verificação por integração.
