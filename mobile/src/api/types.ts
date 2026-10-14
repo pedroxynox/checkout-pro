@@ -2251,6 +2251,13 @@ export interface PontoFeedforward {
   revisadoPorNome: string | null;
   revisadoEm: string | null;
   observacaoRevisao: string | null;
+  /** Prazo antes da primeira prorrogação (ISO; null = nunca prorrogado). */
+  prazoOriginal?: string | null;
+  /** Quantas vezes o prazo foi prorrogado. */
+  prorrogacoes?: number;
+  prorrogadoPorNome?: string | null;
+  prorrogadoEm?: string | null;
+  motivoProrrogacao?: string | null;
 }
 
 /** Uma rodada de feedforward (uma conversa/formulário). */

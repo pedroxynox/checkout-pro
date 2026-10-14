@@ -1418,6 +1418,15 @@ model FeedforwardPonto {
   revisadoPorNome   String?
   revisadoEm        DateTime?
   observacaoRevisao String?
+  /// Prazo definido na rodada, antes da primeira prorrogação (null = nunca prorrogado).
+  prazoOriginal     DateTime?
+  /// Quantas vezes o prazo foi prorrogado.
+  prorrogacoes      Int                    @default(0)
+  /// Auditoria da última prorrogação (quem, quando e por quê).
+  prorrogadoPorId   String?
+  prorrogadoPorNome String?
+  prorrogadoEm      DateTime?
+  motivoProrrogacao String?
   criadoEm          DateTime               @default(now())
   atualizadoEm      DateTime               @default(now()) @updatedAt
 

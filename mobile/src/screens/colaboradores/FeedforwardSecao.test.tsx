@@ -6,6 +6,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { FeedforwardSecao } from './FeedforwardSecao';
+import { prazoMinimoProrrogacao, somarDiasISO } from './ModalRevisarPonto';
 
 jest.mock('../../api/services', () => ({
   feedforwardService: {
@@ -14,8 +15,19 @@ jest.mock('../../api/services', () => ({
     enviarFoto: jest.fn(),
     revisarPonto: jest.fn(),
     remover: jest.fn(),
+    editar: jest.fn(),
+    adicionarPonto: jest.fn(),
+    editarPonto: jest.fn(),
+    prorrogarPonto: jest.fn(),
+    removerPonto: jest.fn(),
   },
 }));
+
+// "Hoje" determinístico (prazos mínimos e padrões dependem dele).
+jest.mock('../../utils/formato', () => {
+  const real = jest.requireActual('../../utils/formato');
+  return { ...real, hojeISO: () => '2026-10-14' };
+});
 
 // Permissões controláveis por teste.
 const mockPermissoes: Record<string, boolean> = {
@@ -94,6 +106,11 @@ beforeEach(() => {
   feedforwardService.revisarPonto.mockResolvedValue({});
   feedforwardService.remover.mockResolvedValue(undefined);
   feedforwardService.enviarFoto.mockResolvedValue(RODADAS[0]);
+  feedforwardService.editar.mockResolvedValue(RODADAS[0]);
+  feedforwardService.adicionarPonto.mockResolvedValue({});
+  feedforwardService.editarPonto.mockResolvedValue({});
+  feedforwardService.prorrogarPonto.mockResolvedValue({});
+  feedforwardService.removerPonto.mockResolvedValue(undefined);
   confirmar.mockResolvedValue(true);
 });
 
@@ -137,7 +154,7 @@ describe('FeedforwardSecao — permissões e listagem', () => {
     ).toBeNull();
     expect(screen.queryByText('Da galeria')).toBeNull();
     fireEvent.press(screen.getByText('Agilizar o atendimento'));
-    expect(screen.queryByText('Revisar ponto')).toBeNull();
+    expect(screen.queryByText('Acompanhar ponto')).toBeNull();
     // A impressão continua disponível para quem só visualiza.
     expect(screen.getByText('Imprimir histórico')).toBeTruthy();
   });
@@ -147,7 +164,7 @@ describe('FeedforwardSecao — revisão de ponto', () => {
   it('abre o modal, envia o resultado com observação e recarrega', async () => {
     renderizar();
     fireEvent.press(await screen.findByText('Agilizar o atendimento'));
-    expect(screen.getByText('Revisar ponto')).toBeTruthy();
+    expect(screen.getByText('Acompanhar ponto')).toBeTruthy();
 
     fireEvent.press(screen.getByText('Não atingido'));
     fireEvent.changeText(
@@ -185,7 +202,7 @@ describe('FeedforwardSecao — revisão de ponto', () => {
   it('ponto já revisado não abre o modal', async () => {
     renderizar();
     fireEvent.press(await screen.findByText('Conferir o troco'));
-    expect(screen.queryByText('Revisar ponto')).toBeNull();
+    expect(screen.queryByText('Acompanhar ponto')).toBeNull();
   });
 
   it('falha na revisão avisa o usuário e mantém o modal aberto', async () => {
@@ -320,5 +337,254 @@ describe('FeedforwardSecao — impressão', () => {
         'Não foi possível abrir a impressão do feedforward.',
       ),
     );
+  });
+});
+
+describe('FeedforwardSecao — cargo e prorrogação exibidos', () => {
+  it('mostra o cargo da rodada', async () => {
+    renderizar();
+    expect(
+      await screen.findByText('Cargo na data: Operador(a) de caixa'),
+    ).toBeTruthy();
+  });
+
+  it('mostra quantas vezes o ponto foi prorrogado, o prazo original e o motivo', async () => {
+    feedforwardService.doColaborador.mockResolvedValue([
+      {
+        ...RODADAS[0],
+        pontos: [
+          {
+            ...RODADAS[0].pontos[0],
+            prorrogacoes: 2,
+            prazoOriginal: '2026-10-10T00:00:00.000Z',
+            prorrogadoPorNome: 'Bia',
+            motivoProrrogacao: 'Férias no período',
+          },
+        ],
+      },
+    ]);
+    renderizar();
+    expect(
+      await screen.findByText(
+        /Prorrogado 2x · prazo original 10\/10\/2026 · por Bia/,
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText(/Motivo: Férias no período/)).toBeTruthy();
+  });
+});
+
+describe('FeedforwardSecao — prorrogar ponto', () => {
+  it('prorroga com o prazo padrão (1 semana após o mínimo) e motivo', async () => {
+    renderizar();
+    fireEvent.press(await screen.findByText('Agilizar o atendimento'));
+    fireEvent.press(screen.getByText('Prorrogar'));
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Por que precisa de mais tempo…'),
+      ' Precisa de mais prática ',
+    );
+    fireEvent.press(screen.getByText('Prorrogar prazo'));
+    // prazo atual 01/11 → mínimo 02/11 → padrão 08/11
+    await waitFor(() =>
+      expect(feedforwardService.prorrogarPonto).toHaveBeenCalledWith(
+        'p1',
+        '2026-11-08',
+        'Precisa de mais prática',
+      ),
+    );
+    await waitFor(() =>
+      expect(feedforwardService.doColaborador).toHaveBeenCalledTimes(2),
+    );
+  });
+
+  it('permite avançar o novo prazo pelo seletor de data', async () => {
+    renderizar();
+    fireEvent.press(await screen.findByText('Agilizar o atendimento'));
+    fireEvent.press(screen.getByText('Prorrogar'));
+    fireEvent.press(screen.getByLabelText('Próximo dia'));
+    fireEvent.press(screen.getByText('Prorrogar prazo'));
+    await waitFor(() =>
+      expect(feedforwardService.prorrogarPonto).toHaveBeenCalledWith(
+        'p1',
+        '2026-11-09',
+        undefined,
+      ),
+    );
+  });
+
+  it('erro do servidor é mostrado ao usuário', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { ApiError } = require('../../api/client');
+    feedforwardService.prorrogarPonto.mockRejectedValue(
+      new ApiError(400, 'O novo prazo deve ser uma data futura.'),
+    );
+    renderizar();
+    fireEvent.press(await screen.findByText('Agilizar o atendimento'));
+    fireEvent.press(screen.getByText('Prorrogar'));
+    fireEvent.press(screen.getByText('Prorrogar prazo'));
+    await waitFor(() =>
+      expect(notificar).toHaveBeenCalledWith(
+        'Erro',
+        'O novo prazo deve ser uma data futura.',
+      ),
+    );
+  });
+});
+
+describe('FeedforwardSecao — editar e remover ponto', () => {
+  it('salva a nova descrição do ponto', async () => {
+    renderizar();
+    fireEvent.press(await screen.findByText('Agilizar o atendimento'));
+    fireEvent.press(screen.getByText('Editar'));
+    fireEvent.changeText(
+      screen.getByDisplayValue('Agilizar o atendimento'),
+      '  Atender com mais agilidade ',
+    );
+    fireEvent.press(screen.getByText('Salvar descrição'));
+    await waitFor(() =>
+      expect(feedforwardService.editarPonto).toHaveBeenCalledWith(
+        'p1',
+        'Atender com mais agilidade',
+      ),
+    );
+  });
+
+  it('descrição curta demais não é enviada', async () => {
+    renderizar();
+    fireEvent.press(await screen.findByText('Agilizar o atendimento'));
+    fireEvent.press(screen.getByText('Editar'));
+    fireEvent.changeText(screen.getByDisplayValue('Agilizar o atendimento'), ' a ');
+    fireEvent.press(screen.getByText('Salvar descrição'));
+    expect(notificar).toHaveBeenCalledWith(
+      'Descrição inválida',
+      'Descreva o ponto a melhorar.',
+    );
+    expect(feedforwardService.editarPonto).not.toHaveBeenCalled();
+  });
+
+  it('remove o ponto depois de confirmar', async () => {
+    renderizar();
+    fireEvent.press(await screen.findByText('Agilizar o atendimento'));
+    fireEvent.press(screen.getByText('Editar'));
+    fireEvent.press(screen.getByText('Remover este ponto'));
+    await waitFor(() =>
+      expect(feedforwardService.removerPonto).toHaveBeenCalledWith('p1'),
+    );
+    expect(confirmar).toHaveBeenCalledWith(
+      'Remover ponto',
+      expect.stringContaining('Agilizar o atendimento'),
+      'Remover',
+    );
+  });
+
+  it('não remove o ponto se cancelar a confirmação', async () => {
+    confirmar.mockResolvedValue(false);
+    renderizar();
+    fireEvent.press(await screen.findByText('Agilizar o atendimento'));
+    fireEvent.press(screen.getByText('Editar'));
+    fireEvent.press(screen.getByText('Remover este ponto'));
+    await waitFor(() => expect(confirmar).toHaveBeenCalled());
+    expect(feedforwardService.removerPonto).not.toHaveBeenCalled();
+  });
+});
+
+describe('FeedforwardSecao — editar rodada', () => {
+  it('salva os dados editados e os novos pontos', async () => {
+    renderizar();
+    fireEvent.press(
+      await screen.findByLabelText('Editar esta rodada de feedforward'),
+    );
+    expect(screen.getByText('Editar rodada')).toBeTruthy();
+
+    fireEvent.changeText(
+      screen.getByDisplayValue('Simpatia com os clientes'),
+      '  Muito simpática  ',
+    );
+    fireEvent.press(screen.getByLabelText('Nota 2'));
+    fireEvent.press(screen.getByText('Adicionar ponto'));
+    fireEvent.changeText(
+      screen.getByPlaceholderText('O que precisa melhorar…'),
+      ' Organizar a gaveta ',
+    );
+    fireEvent.press(screen.getByText('Salvar alterações'));
+
+    await waitFor(() =>
+      expect(feedforwardService.editar).toHaveBeenCalledWith('r1', {
+        data: '2026-10-01',
+        evolucaoNota: 2,
+        pontosFortes: 'Muito simpática',
+        oportunidades: '',
+        compromissoFinal: '',
+      }),
+    );
+    await waitFor(() =>
+      expect(feedforwardService.adicionarPonto).toHaveBeenCalledWith('r1', {
+        descricao: 'Organizar a gaveta',
+        prazo: '2026-11-13', // hoje + 30 dias
+      }),
+    );
+    await waitFor(() =>
+      expect(feedforwardService.doColaborador).toHaveBeenCalledTimes(2),
+    );
+    expect(screen.queryByText('Editar rodada')).toBeNull();
+  });
+
+  it('"Sem nota" remove a nota e pontos novos vazios são ignorados', async () => {
+    renderizar();
+    fireEvent.press(
+      await screen.findByLabelText('Editar esta rodada de feedforward'),
+    );
+    fireEvent.press(screen.getByText('Sem nota'));
+    fireEvent.press(screen.getByText('Adicionar ponto'));
+    fireEvent.press(screen.getByText('Salvar alterações'));
+    await waitFor(() =>
+      expect(feedforwardService.editar).toHaveBeenCalledWith(
+        'r1',
+        expect.objectContaining({ evolucaoNota: null }),
+      ),
+    );
+    expect(feedforwardService.adicionarPonto).not.toHaveBeenCalled();
+  });
+
+  it('falha ao salvar avisa e mantém o modal aberto', async () => {
+    feedforwardService.editar.mockRejectedValue(new Error('x'));
+    renderizar();
+    fireEvent.press(
+      await screen.findByLabelText('Editar esta rodada de feedforward'),
+    );
+    fireEvent.press(screen.getByText('Salvar alterações'));
+    await waitFor(() =>
+      expect(notificar).toHaveBeenCalledWith('Erro', 'Falha ao salvar.'),
+    );
+    expect(screen.getByText('Editar rodada')).toBeTruthy();
+  });
+
+  it('sem FEEDFORWARD_GERIR não mostra o botão de editar', async () => {
+    mockPermissoes.FEEDFORWARD_GERIR = false;
+    renderizar();
+    await screen.findByText('Agilizar o atendimento');
+    expect(
+      screen.queryByLabelText('Editar esta rodada de feedforward'),
+    ).toBeNull();
+  });
+});
+
+describe('ModalRevisarPonto — regras de data', () => {
+  it('somarDiasISO soma dias (com virada de mês/ano)', () => {
+    expect(somarDiasISO('2026-10-14', 1)).toBe('2026-10-15');
+    expect(somarDiasISO('2026-12-31T00:00:00.000Z', 1)).toBe('2027-01-01');
+    expect(somarDiasISO('2026-03-01', -1)).toBe('2026-02-28');
+  });
+
+  it('prazo mínimo é o maior entre (prazo atual + 1) e amanhã', () => {
+    // prazo futuro → dia seguinte ao prazo
+    expect(prazoMinimoProrrogacao('2026-11-01T00:00:00.000Z', '2026-10-14')).toBe(
+      '2026-11-02',
+    );
+    // prazo vencido → amanhã
+    expect(prazoMinimoProrrogacao('2026-10-01T00:00:00.000Z', '2026-10-14')).toBe(
+      '2026-10-15',
+    );
+    // prazo hoje → amanhã
+    expect(prazoMinimoProrrogacao('2026-10-14', '2026-10-14')).toBe('2026-10-15');
   });
 });

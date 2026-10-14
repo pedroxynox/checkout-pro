@@ -62,7 +62,7 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `ColaboradorIdentificador` | 5 | — |
 | `DecisaoContrato` | 9 | decisões + `dataAdmissao`; nada de estado redundante persistido. |
 | `Feedforward` | 14 | Uma rodada de feedforward (uma conversa/formulário) de um colaborador. |
-| `FeedforwardPonto` | 13 | colaborador define; ao vencer sem revisão, avisa supervisores e gerentes. |
+| `FeedforwardPonto` | 19 | colaborador define; ao vencer sem revisão, avisa supervisores e gerentes. |
 | `IncidenciaEscala` | 25 | pode ser detectado do ponto (RegistroPontoFiscal). |
 | `ProdutoPesado` | 9 | futura (a foto exige um storage de objetos/S3, ainda não disponível). |
 | `CompensacaoHoras` | 22 | converte para ms na fronteira. |

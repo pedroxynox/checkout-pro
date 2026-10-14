@@ -9,7 +9,8 @@ melhorar com prazo e nota de evolução — com um "semáforo" que sinaliza os p
 e avisa a liderança quando vencem.
 
 ## 2. Responsabilidades e limites
-- **Faz:** CRUD das rodadas e dos pontos a melhorar; upload da foto do
+- **Faz:** CRUD das rodadas e dos pontos a melhorar (inclusive edição da rodada e
+  prorrogação de prazo com auditoria); upload da foto do
   formulário; revisão dos pontos (atingido/não atingido) com auditoria; cálculo
   do semáforo (em dia/próximo/vencido); cron diário que avisa a liderança sobre
   prazos vencidos.
@@ -21,12 +22,13 @@ e avisa a liderança quando vencem.
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
-| `feedforward.controller.ts` | Rotas HTTP (listar/criar/foto/revisar/remover) | 117 |
-| `feedforward.service.ts` | Regras de aplicação e persistência (Prisma) | 232 |
+| `feedforward.controller.ts` | Rotas HTTP (rodada: listar/criar/editar/foto/remover; ponto: adicionar/editar/prorrogar/revisar/remover) | 179 |
+| `feedforward.service.ts` | Regras de aplicação e persistência (Prisma) | 360 |
 | `feedforward-alertas.service.ts` | Cron diário de avisos de prazo vencido (um aviso por colaborador) | 93 |
-| `feedforward.domain.ts` | Regras puras: semáforo, ponto vencido e cadência dos avisos | 89 |
+| `feedforward.domain.ts` | Regras puras: semáforo, ponto vencido, cadência dos avisos, prorrogação e travas de edição | 150 |
+| `feedforward.errors.ts` | Erros de domínio (`PontoJaRevisadoError` 409, `ProrrogacaoInvalidaError` 400) | 34 |
 | `feedforward.module.ts` | Ligações (DI); exporta o serviço | 19 |
-| `dto/feedforward.dto.ts` | Validação de entrada das rotas | 81 |
+| `dto/feedforward.dto.ts` | Validação de entrada das rotas | 134 |
 
 ## 4. Endpoints (rotas HTTP)
 > A lista canônica está na [API HTTP → `feedforward`](../05-referencia-dados/api-http.md#feedforward).
@@ -36,7 +38,12 @@ e avisa a liderança quando vencem.
 | `GET /feedforward/colaborador/:colaboradorId` | `FEEDFORWARD_VISUALIZAR` | Histórico de rodadas do colaborador. |
 | `POST /feedforward` | `FEEDFORWARD_GERIR` | Cria uma rodada (com os pontos a melhorar). |
 | `POST /feedforward/:id/foto` | `FEEDFORWARD_GERIR` | Envia a foto do formulário (valida imagem). |
+| `PATCH /feedforward/:id` | `FEEDFORWARD_GERIR` | Edita a rodada (data, textos e nota; campos ausentes não mudam). |
+| `POST /feedforward/:id/pontos` | `FEEDFORWARD_GERIR` | Adiciona um ponto a melhorar a uma rodada existente. |
+| `PATCH /feedforward/ponto/:pontoId` | `FEEDFORWARD_GERIR` | Edita a descrição de um ponto **pendente**. |
+| `PATCH /feedforward/ponto/:pontoId/prorrogar` | `FEEDFORWARD_GERIR` | Prorroga o prazo de um ponto **pendente** (com motivo e auditoria). |
 | `PATCH /feedforward/ponto/:pontoId/revisar` | `FEEDFORWARD_GERIR` | Revisa um ponto (atingido/não atingido). |
+| `DELETE /feedforward/ponto/:pontoId` | `FEEDFORWARD_GERIR` | Remove um ponto **pendente**. |
 | `DELETE /feedforward/:id` | `FEEDFORWARD_GERIR` | Remove a rodada (e seus pontos, em cascata). |
 
 ## 5. Serviços e funções
@@ -60,6 +67,29 @@ e o semáforo calculado.
 #### `revisarPonto(pontoId, status, autor?, observacao?)`
 Marca o ponto como `ATINGIDO`/`NAO_ATINGIDO` com auditoria (quem/quando);
 `NotFoundException` se o ponto não existir.
+
+#### `editar(id, dto)`
+Atualiza só os campos enviados: `data` (normalizada ao início do dia), textos
+(vazio/`null` limpa — `normalizarTextoEdicao`) e `evolucaoNota` (`null` remove).
+Não mexe nos pontos nem no cargo registrado. `NotFoundException` se não existir.
+
+#### `adicionarPonto(feedforwardId, { descricao, prazo })`
+Cria um ponto `PENDENTE` na rodada, herdando o `colaboradorId`;
+`NotFoundException` se a rodada não existir.
+
+#### `editarPonto(pontoId, descricao)`
+Corrige a descrição de um ponto **pendente**; `PontoJaRevisadoError` (409) se já
+revisado; `NotFoundException` se não existir.
+
+#### `prorrogarPonto(pontoId, novoPrazo, autor?, motivo?, hoje?)`
+Valida com `validarProrrogacao` e grava o novo prazo. Na **primeira** prorrogação
+guarda o `prazoOriginal`; sempre incrementa `prorrogacoes` e registra quem,
+quando e o motivo da última. Como o prazo muda, o semáforo e o cron de avisos
+passam a usar o novo prazo automaticamente.
+
+#### `removerPonto(pontoId)`
+Remove um ponto **pendente**; pontos revisados são histórico
+(`PontoJaRevisadoError`).
 
 #### `remover(id)`
 Remove a rodada e seus pontos em cascata; `NotFoundException` se não existir.
@@ -91,10 +121,18 @@ pelo cron de avisos.
 - `deveAvisarPonto(status, prazo, hoje)` → gatilho do aviso: ponto vencido **no
   dia do prazo** e depois a cada `INTERVALO_LEMBRETE_DIAS = 7` dias de atraso
   (7, 14, 21…). Antes o aviso se repetia **todos os dias** até a revisão.
+- `garantirPontoPendente(status)` → lança `PontoJaRevisadoError` (409) se o ponto
+  já foi revisado — trava de editar/prorrogar/remover ponto.
+- `validarProrrogacao(status, prazoAtual, novoPrazo, hoje)` → exige ponto
+  pendente, novo prazo **posterior ao atual** e **futuro** (a partir de amanhã;
+  "hoje" já nasceria vencido); senão `ProrrogacaoInvalidaError` (400).
+- `normalizarTextoEdicao(valor)` → `undefined` = não mexer; `null`/vazio =
+  limpar; texto = sem espaços nas pontas.
 
 ## 7. Estados e enums
 - `StatusPontoFeedforward`: `PENDENTE` · `ATINGIDO` · `NAO_ATINGIDO` (transição
-  `PENDENTE → ATINGIDO/NAO_ATINGIDO` ao revisar).
+  `PENDENTE → ATINGIDO/NAO_ATINGIDO` ao revisar). A prorrogação **não** muda o
+  status: o ponto continua `PENDENTE` com novo prazo.
 - `SituacaoPontoFeedforward` (derivada, não persistida): `EM_DIA` · `PROXIMO` ·
   `VENCIDO` · `ATINGIDO` · `NAO_ATINGIDO`.
 
@@ -118,11 +156,16 @@ pelo cron de avisos.
    pendente, **a cada 7 dias**; um aviso por colaborador por dia, sem duplicar e
    sem derrubar o processo em caso de falha.
 6. **Foto só aceita imagem** (validação de mimetype no upload).
+7. **Ponto revisado é histórico:** não pode ser editado, prorrogado nem removido
+   (409). A rodada inteira ainda pode ser removida.
+8. **Prorrogar estende, não encurta:** o novo prazo é posterior ao atual e
+   futuro; o prazo original e a auditoria (quem/quando/motivo) ficam gravados.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `feedforward.domain.spec.ts` | Semáforo (`situacaoPonto`), ponto vencido, `diasDeAtraso` e cadência dos avisos (`deveAvisarPonto`: no prazo e a cada 7 dias, inclusive propriedade em 60 dias) | 17 |
+| `feedforward.domain.spec.ts` | Semáforo (`situacaoPonto`), ponto vencido, `diasDeAtraso`, cadência dos avisos (`deveAvisarPonto`, inclusive propriedade em 60 dias), trava de ponto revisado, `validarProrrogacao` e `normalizarTextoEdicao` | 26 |
+| `feedforward.service.spec.ts` | Wiring com Prisma mockado: `editar` (campos parciais, limpar texto, remover nota), `adicionarPonto`, `editarPonto`, `prorrogarPonto` (prazo original, auditoria, contador, recusas) e `removerPonto`; mapeamento da prorrogação no histórico | 17 |
 | `feedforward-alertas.service.spec.ts` | Cron: destinatários por permissão, um aviso por colaborador, anti-duplicação no dia, reset, defensivo (sem pontos/destinatários/serviço, falha isolada) e texto (`mensagemAviso`) | 12 |
 
 > Contagem sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
@@ -133,5 +176,8 @@ pelo cron de avisos.
 - ✅ Critério de destinatário unificado: o método sem uso
   `destinatariosAcompanhamento()` (por perfil) foi removido; o aviso usa só
   `destinatariosComPermissao('FEEDFORWARD_VISUALIZAR')`.
-- 🔧 Domínio e cron têm testes unitários; o `FeedforwardService` (Prisma)
-  ainda depende de verificação por integração.
+- 🔧 Domínio, cron e serviço (com Prisma mockado) têm testes unitários; `criar`,
+  `definirFoto` e `pontosVencidosDoDia` ainda dependem de verificação por
+  integração.
+- ℹ️ `revisarPonto` não bloqueia re-revisão pela API (a tela só oferece revisar
+  pontos pendentes); corrigir uma revisão errada continua possível por ali.

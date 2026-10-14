@@ -80,6 +80,12 @@ prazo** e nota de evolução.
 20. **Só rodada de colaborador existente** é criada (evita rodadas órfãs).
 21. **Gerir feedforward** exige `FEEDFORWARD_GERIR`; **acompanhar** exige
     `FEEDFORWARD_VISUALIZAR` (supervisor, gerente e administrador).
+22. **Prorrogar um ponto** (em vez de marcá-lo "não atingido") só é possível
+    enquanto ele está pendente; o novo prazo precisa ser posterior ao atual e
+    futuro. O prazo original, quantas vezes foi prorrogado e o motivo ficam
+    registrados.
+23. **Ponto revisado é histórico:** não pode ser editado, prorrogado nem
+    removido. A rodada (data, textos e nota) pode ser editada a qualquer tempo.
 
 ## 4. Como os três se conectam
 

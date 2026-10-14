@@ -79,3 +79,56 @@ export class RevisarPontoDto {
   @MaxLength(500, { message: 'A observação é muito longa (máx. 500).' })
   observacao?: string;
 }
+
+/**
+ * Edita os dados de uma rodada. Campos ausentes não mudam; texto vazio (ou
+ * `null`) limpa o campo; `evolucaoNota: null` remove a nota.
+ */
+export class EditarFeedforwardDto {
+  @IsOptional()
+  @IsDateString({}, { message: 'A data deve ser uma data válida (ISO 8601).' })
+  data?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  pontosFortes?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  oportunidades?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  compromissoFinal?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  evolucaoNota?: number | null;
+}
+
+/** Edita a descrição de um ponto pendente. */
+export class EditarPontoDto {
+  @IsString()
+  @MinLength(2, { message: 'Descreva o ponto a melhorar.' })
+  @MaxLength(300, { message: 'A descrição é muito longa (máx. 300).' })
+  descricao!: string;
+}
+
+/** Prorroga o prazo de um ponto pendente. */
+export class ProrrogarPontoDto {
+  @IsDateString(
+    {},
+    { message: 'O novo prazo deve ser uma data válida (ISO 8601).' },
+  )
+  prazo!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500, { message: 'O motivo é muito longo (máx. 500).' })
+  motivo?: string;
+}

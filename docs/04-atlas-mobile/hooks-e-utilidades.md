@@ -224,12 +224,12 @@ credencial, o app segue normal (o aviso ainda chega in-app/WebSocket).
 | `utils/formato.test.ts` | Formatação/máscaras/conversões pt-BR, "hoje" no fuso de Brasília e a aritmética de períodos (`contarDiasCorridos`, `deslocarDiasISO`, `isoParaDiaMes`) | 25 |
 | `utils/periodoMensal.test.ts` | Mês de Brasília, deslocamento, rótulo, último dia e distância em meses | 9 |
 | `utils/relatorioPerfil.test.ts` | HTML/SVG do relatório de perfil | 12 |
-| `utils/relatorioFeedforward.test.ts` | Documentos do feedforward (rodada, histórico, formulário em branco): conteúdo, páginas A4, foto, quebras de linha e HTML escapado | 14 |
+| `utils/relatorioFeedforward.test.ts` | Documentos do feedforward (rodada, histórico, formulário em branco): conteúdo, páginas A4, foto, prorrogação, quebras de linha e HTML escapado | 15 |
 | `offline/fila.test.ts` | Ordenação e last-write-wins | 6 |
 | `offline/sincronizacao.test.tsx` | Drenagem da fila, conflitos e rejeições | 7 |
 | `hooks/useAvisoCicloFolha.test.ts` | Sem aviso num ciclo aberto; travessia com os dias de cada ciclo; a redação distinta quando o backend bloqueia e quando permite; não consulta se inativo ou invertido; falha silenciosa | 7 |
 
-Total: **80 casos** em 7 arquivos. Os demais hooks (`useRequisicao`, `useAuth`,
+Total: **81 casos** em 7 arquivos. Os demais hooks (`useRequisicao`, `useAuth`,
 `usePulsoDoDia`) e o `apiClient` não têm teste unitário dedicado — são exercidos
 indiretamente pelos testes de tela e pela lógica pura acima.
 

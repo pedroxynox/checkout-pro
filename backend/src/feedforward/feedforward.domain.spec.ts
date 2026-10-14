@@ -3,9 +3,16 @@ import {
   deveAvisarPonto,
   diasDeAtraso,
   diffEmDias,
+  garantirPontoPendente,
+  normalizarTextoEdicao,
   pontoVencido,
   situacaoPonto,
+  validarProrrogacao,
 } from './feedforward.domain';
+import {
+  PontoJaRevisadoError,
+  ProrrogacaoInvalidaError,
+} from './feedforward.errors';
 
 const HOJE = new Date(Date.UTC(2026, 6, 15)); // 15/07/2026
 const D = (dia: number): Date => new Date(Date.UTC(2026, 6, dia));
@@ -109,5 +116,79 @@ describe('feedforward.domain — deveAvisarPonto (cadência dos avisos)', () => 
       if (deveAvisarPonto('PENDENTE', prazo, hoje)) diasComAviso.push(i);
     }
     expect(diasComAviso).toEqual([0, 7, 14, 21, 28, 35, 42, 49, 56]);
+  });
+});
+
+describe('feedforward.domain — garantirPontoPendente', () => {
+  it('aceita ponto pendente', () => {
+    expect(() => garantirPontoPendente('PENDENTE')).not.toThrow();
+  });
+
+  it('recusa ponto já revisado com PontoJaRevisadoError (409)', () => {
+    for (const s of ['ATINGIDO', 'NAO_ATINGIDO'] as const) {
+      let erro: unknown;
+      try {
+        garantirPontoPendente(s);
+      } catch (e) {
+        erro = e;
+      }
+      expect(erro).toBeInstanceOf(PontoJaRevisadoError);
+      expect((erro as PontoJaRevisadoError).statusHttp).toBe(409);
+    }
+  });
+});
+
+describe('feedforward.domain — validarProrrogacao', () => {
+  it('aceita um novo prazo posterior ao atual e futuro', () => {
+    expect(() =>
+      validarProrrogacao('PENDENTE', D(10), D(25), HOJE),
+    ).not.toThrow();
+    // prazo ainda no futuro, estendido
+    expect(() =>
+      validarProrrogacao('PENDENTE', D(20), D(21), HOJE),
+    ).not.toThrow();
+  });
+
+  it('recusa ponto já revisado', () => {
+    expect(() => validarProrrogacao('ATINGIDO', D(10), D(25), HOJE)).toThrow(
+      PontoJaRevisadoError,
+    );
+  });
+
+  it('recusa novo prazo igual ou anterior ao atual', () => {
+    expect(() => validarProrrogacao('PENDENTE', D(20), D(20), HOJE)).toThrow(
+      ProrrogacaoInvalidaError,
+    );
+    expect(() => validarProrrogacao('PENDENTE', D(20), D(18), HOJE)).toThrow(
+      /posterior ao prazo atual \(20\/07\/2026\)/,
+    );
+  });
+
+  it('recusa novo prazo hoje ou no passado', () => {
+    expect(() => validarProrrogacao('PENDENTE', D(1), D(15), HOJE)).toThrow(
+      /data futura/,
+    );
+    expect(() => validarProrrogacao('PENDENTE', D(1), D(10), HOJE)).toThrow(
+      ProrrogacaoInvalidaError,
+    );
+  });
+
+  it('recusa data inválida', () => {
+    expect(() =>
+      validarProrrogacao('PENDENTE', D(1), new Date('x'), HOJE),
+    ).toThrow(/prazo válido/);
+  });
+
+  it('ProrrogacaoInvalidaError responde 400', () => {
+    expect(new ProrrogacaoInvalidaError('x').statusHttp).toBe(400);
+  });
+});
+
+describe('feedforward.domain — normalizarTextoEdicao', () => {
+  it('undefined = não mexer; null/vazio = limpar; texto = sem espaços', () => {
+    expect(normalizarTextoEdicao(undefined)).toBeUndefined();
+    expect(normalizarTextoEdicao(null)).toBeNull();
+    expect(normalizarTextoEdicao('   ')).toBeNull();
+    expect(normalizarTextoEdicao('  Bom atendimento ')).toBe('Bom atendimento');
   });
 });

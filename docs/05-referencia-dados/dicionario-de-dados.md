@@ -814,6 +814,12 @@ colaborador define; ao vencer sem revisão, avisa supervisores e gerentes.
 | `revisadoPorNome` | `String?` |  |  |
 | `revisadoEm` | `DateTime?` |  |  |
 | `observacaoRevisao` | `String?` |  |  |
+| `prazoOriginal` | `DateTime?` |  | Prazo definido na rodada, antes da primeira prorrogação (null = nunca prorrogado). |
+| `prorrogacoes` | `Int` |  | Quantas vezes o prazo foi prorrogado. |
+| `prorrogadoPorId` | `String?` |  | Auditoria da última prorrogação (quem, quando e por quê). |
+| `prorrogadoPorNome` | `String?` |  |  |
+| `prorrogadoEm` | `DateTime?` |  |  |
+| `motivoProrrogacao` | `String?` |  |  |
 | `criadoEm` | `DateTime` |  |  |
 | `atualizadoEm` | `DateTime` |  |  |
 | `feedforward` | `Feedforward` | relação |  |

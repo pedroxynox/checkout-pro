@@ -181,6 +181,25 @@ describe('relatorioFeedforward — rodada', () => {
     expect(html).toContain('&lt;script&gt;');
   });
 
+  it('mostra a prorrogação do ponto (vezes, prazo original e motivo escapado)', () => {
+    const html = htmlPaginaRodada(
+      rodada({
+        pontos: [
+          ponto({
+            prorrogacoes: 1,
+            prazoOriginal: '2026-10-20T00:00:00.000Z',
+            motivoProrrogacao: 'Férias <b>coletivas</b>',
+          }),
+        ],
+      }),
+      COLAB,
+    );
+    expect(html).toContain('Prorrogado 1x');
+    expect(html).toContain('prazo original 20/10/2026');
+    expect(html).toContain('motivo: Férias &lt;b&gt;coletivas&lt;/b&gt;');
+    expect(htmlPaginaRodada(rodada(), COLAB)).not.toContain('Prorrogado');
+  });
+
   it('preserva as quebras de linha dos textos', () => {
     const html = htmlPaginaRodada(
       rodada({ pontosFortes: 'Linha 1\nLinha 2' }),
