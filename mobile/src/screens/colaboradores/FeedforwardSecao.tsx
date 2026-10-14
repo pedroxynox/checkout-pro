@@ -45,35 +45,19 @@ import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, formatarDataHora, hojeISO } from '../../utils/formato';
+import { imprimirRelatorio } from '../../utils/impressao';
+import {
+  ColaboradorImpressao,
+  PERGUNTAS_FEEDFORWARD,
+  ROTULO_SITUACAO_FEEDFORWARD,
+  htmlFormularioFeedforward,
+  htmlHistoricoFeedforward,
+  htmlRodadaFeedforward,
+} from '../../utils/relatorioFeedforward';
 import { ModalRevisarPonto } from './ModalRevisarPonto';
 
 /** Perguntas do formulário (referência para guiar a conversa — não editáveis). */
-const PERGUNTAS_REFERENCIA: { secao: string; itens: string[] }[] = [
-  {
-    secao: '1. Autoavaliação',
-    itens: [
-      'Qual foi sua principal conquista desde nossa última conversa?',
-      'Qual comportamento seu mais contribuiu para esse resultado?',
-      'Qual é seu maior desafio hoje?',
-      'O que depende exclusivamente de você para superar esse desafio?',
-    ],
-  },
-  {
-    secao: '2. Olhando para o futuro',
-    itens: [
-      'Como você deseja ser reconhecido pela equipe nos próximos 90 dias?',
-      'Qual hábito você precisa desenvolver para alcançar esse objetivo?',
-      'Qual hábito você precisa reduzir ou eliminar?',
-    ],
-  },
-  {
-    secao: '3. Cliente e equipe',
-    itens: [
-      'O que você pode fazer para proporcionar uma experiência ainda melhor aos clientes?',
-      'Como você pode contribuir mais com seus colegas de trabalho?',
-    ],
-  },
-];
+const PERGUNTAS_REFERENCIA = PERGUNTAS_FEEDFORWARD;
 
 const COR_SITUACAO: Record<SituacaoPontoFeedforward, string> = {
   EM_DIA: cores.verde,
@@ -82,13 +66,7 @@ const COR_SITUACAO: Record<SituacaoPontoFeedforward, string> = {
   ATINGIDO: cores.verde,
   NAO_ATINGIDO: cores.vermelho,
 };
-const ROTULO_SITUACAO: Record<SituacaoPontoFeedforward, string> = {
-  EM_DIA: 'No prazo',
-  PROXIMO: 'Vence em breve',
-  VENCIDO: 'Prazo vencido',
-  ATINGIDO: 'Atingido',
-  NAO_ATINGIDO: 'Não atingido',
-};
+const ROTULO_SITUACAO = ROTULO_SITUACAO_FEEDFORWARD;
 
 type UnidadePrazo = 'dias' | 'semanas' | 'meses';
 
@@ -190,8 +168,11 @@ function Estrelas({
 
 export function FeedforwardSecao({
   colaboradorId,
+  colaborador,
 }: {
   colaboradorId: string;
+  /** Identificação impressa nos documentos (nome, matrícula, função). */
+  colaborador?: ColaboradorImpressao;
 }): React.ReactElement | null {
   const { podeAcessar } = useAuth();
   const podeVer = podeAcessar('FEEDFORWARD_VISUALIZAR');
@@ -213,6 +194,18 @@ export function FeedforwardSecao({
   if (!podeVer) return null;
 
   const rodadas = req.dados ?? [];
+
+  const ident: ColaboradorImpressao = colaborador ?? { nome: 'Colaborador(a)' };
+  const opcoesImpressao = { urlFoto };
+
+  /** Abre a impressão/PDF de um documento já montado em HTML. */
+  const imprimir = async (html: string): Promise<void> => {
+    try {
+      await imprimirRelatorio(html);
+    } catch {
+      notificar('Erro', 'Não foi possível abrir a impressão do feedforward.');
+    }
+  };
 
   const revisarPonto = (ponto: PontoFeedforward): void => {
     if (!podeGerir || ponto.status !== 'PENDENTE') return;
@@ -267,6 +260,30 @@ export function FeedforwardSecao({
         />
       )}
 
+      {/* Impressão: formulário em branco (papel) e histórico completo */}
+      <View style={styles.impressaoLinha}>
+        <Botao
+          titulo="Imprimir formulário"
+          variante="secundario"
+          aoPressionar={() =>
+            void imprimir(htmlFormularioFeedforward(colaborador ?? null))
+          }
+          estilo={styles.botaoFlex}
+        />
+        {rodadas.length > 0 ? (
+          <Botao
+            titulo="Imprimir histórico"
+            variante="secundario"
+            aoPressionar={() =>
+              void imprimir(
+                htmlHistoricoFeedforward(rodadas, ident, opcoesImpressao),
+              )
+            }
+            estilo={styles.botaoFlex}
+          />
+        ) : null}
+      </View>
+
       {req.carregando ? (
         <Carregando />
       ) : req.erro ? (
@@ -282,6 +299,16 @@ export function FeedforwardSecao({
               <Text style={styles.rodadaData}>{formatarData(r.data)}</Text>
               <View style={styles.rodadaTopoDireita}>
                 {r.evolucaoNota != null && <Estrelas nota={r.evolucaoNota} />}
+                <Pressable
+                  onPress={() =>
+                    void imprimir(htmlRodadaFeedforward(r, ident, opcoesImpressao))
+                  }
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Imprimir esta rodada de feedforward"
+                >
+                  <Ionicons name="print-outline" size={18} color={cores.primaria} />
+                </Pressable>
                 {podeGerir ? (
                   <Pressable
                     onPress={() => void removerRodada(r)}
@@ -762,6 +789,11 @@ function ModalNovaRodada({
 
 const styles = StyleSheet.create({
   botaoNovo: { marginBottom: espacamento.md },
+  impressaoLinha: {
+    flexDirection: 'row',
+    gap: espacamento.sm,
+    marginBottom: espacamento.sm,
+  },
   vazio: {
     ...tipografia.legenda,
     color: cores.textoSecundario,

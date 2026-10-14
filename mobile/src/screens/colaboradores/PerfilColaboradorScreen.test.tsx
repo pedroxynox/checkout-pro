@@ -22,6 +22,11 @@ jest.mock('../../api/services', () => ({
   feedforwardService: { doColaborador: jest.fn().mockResolvedValue([]) },
 }));
 
+// A seção Feedforward importa a impressão (expo-print): mock leve.
+jest.mock('../../utils/impressao', () => ({
+  imprimirRelatorio: jest.fn(() => Promise.resolve()),
+}));
+
 // Permissão controlável por teste: `mockAuth.permitir` alimenta `podeAcessar`
 // (usado para `OPERADORES_AUSENCIAS`).
 const mockAuth = { permitir: true };

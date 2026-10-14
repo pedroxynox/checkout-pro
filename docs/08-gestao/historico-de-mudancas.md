@@ -24,6 +24,14 @@ Evolução da seção de Feedforward do perfil do colaborador, entregue em parte
   colaborador** reunindo os pontos dele. Removido o método sem uso
   `destinatariosAcompanhamento()` (critério de destinatário unificado pela
   permissão `FEEDFORWARD_VISUALIZAR`).
+- **Parte 3 — impressão:** a seção imprime/gera PDF de **uma rodada** (com foto
+  e campos de assinatura), do **histórico** completo (capa com resumo + uma
+  rodada por página) e do **formulário em branco** (já com nome, matrícula e
+  cargo) para o colaborador responder à mão. Gerador puro em
+  `utils/relatorioFeedforward.ts`, que passou a ser a fonte única das perguntas
+  e dos rótulos do semáforo. Novos testes: gerador de impressão, seção de
+  feedforward (permissões, revisão, remoção, foto e impressão), cadência dos
+  avisos e cron de avisos.
 
 ---
 

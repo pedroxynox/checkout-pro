@@ -122,7 +122,8 @@ pelo cron de avisos.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `feedforward.domain.spec.ts` | Semáforo (`situacaoPonto`) e gatilho de aviso (`pontoVencido`) | 7 |
+| `feedforward.domain.spec.ts` | Semáforo (`situacaoPonto`), ponto vencido, `diasDeAtraso` e cadência dos avisos (`deveAvisarPonto`: no prazo e a cada 7 dias, inclusive propriedade em 60 dias) | 17 |
+| `feedforward-alertas.service.spec.ts` | Cron: destinatários por permissão, um aviso por colaborador, anti-duplicação no dia, reset, defensivo (sem pontos/destinatários/serviço, falha isolada) e texto (`mensagemAviso`) | 12 |
 
 > Contagem sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
@@ -132,5 +133,5 @@ pelo cron de avisos.
 - ✅ Critério de destinatário unificado: o método sem uso
   `destinatariosAcompanhamento()` (por perfil) foi removido; o aviso usa só
   `destinatariosComPermissao('FEEDFORWARD_VISUALIZAR')`.
-- 🔧 Só o domínio (semáforo) tem testes; `deveAvisarPonto`/`diasDeAtraso`, o
-  serviço e o cron ainda dependem de verificação por integração.
+- 🔧 Domínio e cron têm testes unitários; o `FeedforwardService` (Prisma)
+  ainda depende de verificação por integração.

@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 134 arquivos, 1275 casos. **Mobile:** 39 arquivos, 295 casos. **Total: 1570 casos.**
+> **Backend:** 135 arquivos, 1297 casos. **Mobile:** 41 arquivos, 327 casos. **Total: 1624 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -70,7 +70,8 @@
 | `src/escala-exportacao/escala-exportacao.service.spec.ts` | 16 | 4 |
 | `src/escala-exportacao/escala-publicada.domain.spec.ts` | 13 | 5 |
 | `src/fechamento/fechamento.domain.spec.ts` | 5 | 1 |
-| `src/feedforward/feedforward.domain.spec.ts` | 7 | 2 |
+| `src/feedforward/feedforward-alertas.service.spec.ts` | 12 | 2 |
+| `src/feedforward/feedforward.domain.spec.ts` | 17 | 4 |
 | `src/feriados/feriados.domain.spec.ts` | 4 | 1 |
 | `src/ferias/ferias.domain.spec.ts` | 13 | 7 |
 | `src/ferias/ferias.service.spec.ts` | 14 | 1 |
@@ -162,6 +163,7 @@
 | `src/screens/centroControle/CentroControleScreen.test.tsx` | 2 | 1 |
 | `src/screens/centroControle/ReiniciarDadosScreen.test.tsx` | 2 | 1 |
 | `src/screens/colaboradores/ColaboradoresScreen.test.tsx` | 3 | 1 |
+| `src/screens/colaboradores/FeedforwardSecao.test.tsx` | 18 | 5 |
 | `src/screens/colaboradores/GestaoColaboradoresScreen.test.tsx` | 2 | 1 |
 | `src/screens/colaboradores/PerfilColaboradorScreen.test.tsx` | 3 | 2 |
 | `src/screens/contratos/ContratosScreen.test.tsx` | 8 | 2 |
@@ -190,4 +192,5 @@
 | `src/utils/escalaLayout.test.ts` | 25 | 4 |
 | `src/utils/formato.test.ts` | 25 | 6 |
 | `src/utils/periodoMensal.test.ts` | 9 | 5 |
+| `src/utils/relatorioFeedforward.test.ts` | 14 | 4 |
 | `src/utils/relatorioPerfil.test.ts` | 12 | 9 |
