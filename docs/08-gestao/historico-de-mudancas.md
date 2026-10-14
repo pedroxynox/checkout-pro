@@ -8,6 +8,19 @@
 
 ---
 
+## Feedforward — melhorias por etapas (2026-10-14)
+
+Evolução da seção de Feedforward do perfil do colaborador, entregue em partes.
+
+- **Parte 1 — correções:** a revisão de um ponto passou a usar um modal próprio
+  (`ModalRevisarPonto`), pois o `Alert.alert` não funcionava no navegador e
+  impedia revisar pela versão web; a revisão agora aceita **observação** e o
+  ponto exibe quem revisou, quando e a observação; a rodada pode ser **removida**
+  pelo app (com confirmação); a foto do formulário pode ser **enviada ou trocada**
+  numa rodada já salva (antes, se o envio falhasse, não havia como reenviar).
+
+---
+
 ## Remoção da assistente de IA (Cluby) e revisão da documentação (2026-10-10)
 
 O app **deixou de ter qualquer recurso de inteligência artificial**, por decisão

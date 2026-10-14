@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/screens/colaboradores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-14 · **Cobre:** `mobile/src/screens/colaboradores/`
 
 # Área: `colaboradores`
 
@@ -28,7 +28,8 @@ próprias (ajustáveis na Central de Permissões):
 | `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 938 |
 | `SancoesScreen.tsx` | Lista de sanções/advertências | 588 |
 | `RegistrarSancaoModal.tsx` | Modal para registrar sanção | 460 |
-| `FeedforwardSecao.tsx` | Seção de feedforward (acompanhamento) | 833 |
+| `FeedforwardSecao.tsx` | Seção de feedforward (acompanhamento) | 953 |
+| `ModalRevisarPonto.tsx` | Modal de revisão de um ponto do feedforward (resultado + observação) | 149 |
 
 ## 4. Fluxo do usuário
 1. **Lista:** abre `ColaboradoresScreen`, com busca por nome/matrícula e filtros.
@@ -52,8 +53,14 @@ Cada tela trata os estados **carregando / erro / vazio**.
 | Editar/promover | `colaboradoresService.editar(id, input)` | `PATCH /colaboradores/:id` |
 | Perfil (exige `COLABORADORES_PERFIL`) | `colaboradoresService.perfil(...)` | `GET /colaboradores/:id/perfil` |
 | Contas de acesso | `colaboradoresService.listarLogins()` | `GET /colaboradores/logins` |
+| Feedforward: histórico | `feedforwardService.doColaborador(id)` | `GET /feedforward/colaborador/:colaboradorId` |
+| Feedforward: nova rodada | `feedforwardService.criar(input)` | `POST /feedforward` |
+| Feedforward: enviar/trocar foto | `feedforwardService.enviarFoto(id, imagem)` | `POST /feedforward/:id/foto` |
+| Feedforward: revisar ponto | `feedforwardService.revisarPonto(id, status, obs?)` | `PATCH /feedforward/ponto/:pontoId/revisar` |
+| Feedforward: remover rodada | `feedforwardService.remover(id)` | `DELETE /feedforward/:id` |
 
-Módulo do backend relacionado: [`colaboradores`](../03-atlas-backend/colaboradores.md).
+Módulos do backend relacionados: [`colaboradores`](../03-atlas-backend/colaboradores.md)
+e [`feedforward`](../03-atlas-backend/feedforward.md).
 
 ## 6. Estado local e regras de UI
 - O formulário guarda os campos em memória e valida no cliente: horários no
@@ -81,6 +88,18 @@ Módulo do backend relacionado: [`colaboradores`](../03-atlas-backend/colaborado
   90 dias, o próximo marco e, quando aplicável, "Efetivado por decurso". Na
   Fase 3 removeu-se o aviso legado de "decisão em atraso" — o ciclo é automático
   e nunca deixa marcos pendentes.
+- **Seção "Feedforward"** (visível com `FEEDFORWARD_VISUALIZAR`; ações exigem
+  `FEEDFORWARD_GERIR`):
+  - **Revisar ponto** abre o `ModalRevisarPonto` (resultado "Atingido"/"Não
+    atingido" + observação opcional de até 500 caracteres). Substituiu o
+    `Alert.alert`, que **não funciona no navegador** — antes, na versão web, não
+    havia como revisar um ponto.
+  - Ponto revisado mostra **quem revisou, quando** e a **observação**.
+  - **Remover rodada** pelo ícone de lixeira, sempre com confirmação (remove
+    também os pontos e a foto vinculados).
+  - **Foto da rodada já salva:** "Tirar foto" / "Da galeria" enviam ou trocam a
+    foto do formulário. Resolve o caso em que a foto falhava ao criar a rodada
+    e não havia como reenviá-la.
 
 ## 7. Lógica pura / utilidades
 - Conversões e validações de horário/data usadas pelo formulário.
