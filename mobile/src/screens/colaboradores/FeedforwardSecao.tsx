@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useMemo, useState } from 'react';
 import {
-  Alert,
   Image,
   Modal,
   Pressable,
@@ -44,8 +43,9 @@ import {
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
-import { notificar } from '../../utils/dialogos';
-import { formatarData, hojeISO } from '../../utils/formato';
+import { confirmar, notificar } from '../../utils/dialogos';
+import { formatarData, formatarDataHora, hojeISO } from '../../utils/formato';
+import { ModalRevisarPonto } from './ModalRevisarPonto';
 
 /** Perguntas do formulário (referência para guiar a conversa — não editáveis). */
 const PERGUNTAS_REFERENCIA: { secao: string; itens: string[] }[] = [
@@ -126,6 +126,37 @@ function urlFoto(caminho: string): string {
   return `${API_BASE_URL.replace(/\/$/, '')}${caminho}`;
 }
 
+/**
+ * Pede a permissão e abre a câmera ou a galeria. Devolve a imagem escolhida
+ * ou `null` (cancelado / sem permissão — neste caso já avisa o usuário).
+ */
+async function selecionarImagem(
+  origem: 'camera' | 'galeria',
+): Promise<ImagemSelecionada | null> {
+  const permissao =
+    origem === 'camera'
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permissao.granted) {
+    notificar('Permissão necessária', 'Conceda o acesso para anexar a foto.');
+    return null;
+  }
+  const res =
+    origem === 'camera'
+      ? await ImagePicker.launchCameraAsync({ quality: 0.6 })
+      : await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.6,
+        });
+  if (res.canceled || !res.assets?.[0]) return null;
+  const a = res.assets[0];
+  return {
+    uri: a.uri,
+    name: a.fileName ?? 'feedforward.jpg',
+    mimeType: a.mimeType ?? 'image/jpeg',
+  };
+}
+
 /** Estrelas 1–5 (leitura ou edição). */
 function Estrelas({
   nota,
@@ -173,6 +204,11 @@ export function FeedforwardSecao({
 
   const [modalAberto, setModalAberto] = useState(false);
   const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
+  const [pontoRevisando, setPontoRevisando] = useState<PontoFeedforward | null>(
+    null,
+  );
+  /** Rodada com uma ação em andamento (envio de foto ou remoção). */
+  const [ocupadoId, setOcupadoId] = useState<string | null>(null);
 
   if (!podeVer) return null;
 
@@ -180,33 +216,44 @@ export function FeedforwardSecao({
 
   const revisarPonto = (ponto: PontoFeedforward): void => {
     if (!podeGerir || ponto.status !== 'PENDENTE') return;
-    Alert.alert(
-      'Revisar ponto',
-      ponto.descricao,
-      [
-        {
-          text: 'Atingido',
-          onPress: () => void aplicarRevisao(ponto.id, 'ATINGIDO'),
-        },
-        {
-          text: 'Não atingido',
-          onPress: () => void aplicarRevisao(ponto.id, 'NAO_ATINGIDO'),
-        },
-        { text: 'Cancelar', style: 'cancel' },
-      ],
-      { cancelable: true },
-    );
+    setPontoRevisando(ponto);
   };
 
-  const aplicarRevisao = async (
-    pontoId: string,
-    status: 'ATINGIDO' | 'NAO_ATINGIDO',
-  ): Promise<void> => {
+  const removerRodada = async (r: RodadaFeedforward): Promise<void> => {
+    const ok = await confirmar(
+      'Remover feedforward',
+      `Remover a rodada de ${formatarData(r.data)}? Os pontos a melhorar e a foto também serão removidos. Esta ação não pode ser desfeita.`,
+      'Remover',
+    );
+    if (!ok) return;
+    setOcupadoId(r.id);
     try {
-      await feedforwardService.revisarPonto(pontoId, status);
+      await feedforwardService.remover(r.id);
       req.recarregar();
     } catch (e) {
-      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao revisar.');
+      notificar('Erro', e instanceof ApiError ? e.message : 'Falha ao remover.');
+    } finally {
+      setOcupadoId(null);
+    }
+  };
+
+  const enviarFotoRodada = async (
+    r: RodadaFeedforward,
+    origem: 'camera' | 'galeria',
+  ): Promise<void> => {
+    const imagem = await selecionarImagem(origem);
+    if (!imagem) return;
+    setOcupadoId(r.id);
+    try {
+      await feedforwardService.enviarFoto(r.id, imagem);
+      req.recarregar();
+    } catch (e) {
+      notificar(
+        'Erro',
+        e instanceof ApiError ? e.message : 'Falha ao enviar a foto.',
+      );
+    } finally {
+      setOcupadoId(null);
     }
   };
 
@@ -233,7 +280,20 @@ export function FeedforwardSecao({
           <View key={r.id} style={styles.rodada}>
             <View style={styles.rodadaTopo}>
               <Text style={styles.rodadaData}>{formatarData(r.data)}</Text>
-              {r.evolucaoNota != null && <Estrelas nota={r.evolucaoNota} />}
+              <View style={styles.rodadaTopoDireita}>
+                {r.evolucaoNota != null && <Estrelas nota={r.evolucaoNota} />}
+                {podeGerir ? (
+                  <Pressable
+                    onPress={() => void removerRodada(r)}
+                    disabled={ocupadoId === r.id}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remover esta rodada de feedforward"
+                  >
+                    <Ionicons name="trash-outline" size={18} color={cores.vermelho} />
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
             {r.liderNome ? (
               <Text style={styles.rodadaLider}>Líder: {r.liderNome}</Text>
@@ -256,6 +316,38 @@ export function FeedforwardSecao({
                   <Text style={styles.ampliarSeloTexto}>Toque para ampliar</Text>
                 </View>
               </Pressable>
+            ) : null}
+
+            {/* Enviar (ou trocar) a foto de uma rodada já salva */}
+            {podeGerir ? (
+              <View style={styles.fotoAcoes}>
+                <Ionicons name="camera-outline" size={15} color={cores.primaria} />
+                <Text style={styles.fotoAcoesRotulo}>
+                  {ocupadoId === r.id
+                    ? 'Aguarde…'
+                    : r.fotoUrl
+                      ? 'Trocar foto:'
+                      : 'Sem foto do formulário:'}
+                </Text>
+                {ocupadoId !== r.id ? (
+                  <>
+                    <Pressable
+                      onPress={() => void enviarFotoRodada(r, 'camera')}
+                      hitSlop={6}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.fotoAcoesLink}>Tirar foto</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => void enviarFotoRodada(r, 'galeria')}
+                      hitSlop={6}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.fotoAcoesLink}>Da galeria</Text>
+                    </Pressable>
+                  </>
+                ) : null}
+              </View>
             ) : null}
 
             {r.pontosFortes ? (
@@ -295,6 +387,19 @@ export function FeedforwardSecao({
                           {ROTULO_SITUACAO[p.situacao]}
                         </Text>
                       </Text>
+                      {p.status !== 'PENDENTE' &&
+                      (p.revisadoPorNome || p.revisadoEm) ? (
+                        <Text style={styles.pontoRevisao}>
+                          Revisado
+                          {p.revisadoPorNome ? ` por ${p.revisadoPorNome}` : ''}
+                          {p.revisadoEm ? ` em ${formatarDataHora(p.revisadoEm)}` : ''}
+                        </Text>
+                      ) : null}
+                      {p.observacaoRevisao ? (
+                        <Text style={styles.pontoObservacao}>
+                          “{p.observacaoRevisao}”
+                        </Text>
+                      ) : null}
                     </View>
                     {podeGerir && p.status === 'PENDENTE' ? (
                       <Ionicons
@@ -335,6 +440,17 @@ export function FeedforwardSecao({
           ) : null}
         </Pressable>
       </Modal>
+
+      {pontoRevisando && (
+        <ModalRevisarPonto
+          ponto={pontoRevisando}
+          aoFechar={() => setPontoRevisando(null)}
+          aoRevisado={() => {
+            setPontoRevisando(null);
+            req.recarregar();
+          }}
+        />
+      )}
 
       {modalAberto && (
         <ModalNovaRodada
@@ -382,28 +498,8 @@ function ModalNovaRodada({
   };
 
   const escolherFoto = async (origem: 'camera' | 'galeria'): Promise<void> => {
-    const permissao =
-      origem === 'camera'
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissao.granted) {
-      notificar('Permissão necessária', 'Conceda o acesso para anexar a foto.');
-      return;
-    }
-    const res =
-      origem === 'camera'
-        ? await ImagePicker.launchCameraAsync({ quality: 0.6 })
-        : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            quality: 0.6,
-          });
-    if (res.canceled || !res.assets?.[0]) return;
-    const a = res.assets[0];
-    setFoto({
-      uri: a.uri,
-      name: a.fileName ?? 'feedforward.jpg',
-      mimeType: a.mimeType ?? 'image/jpeg',
-    });
+    const imagem = await selecionarImagem(origem);
+    if (imagem) setFoto(imagem);
   };
 
   const registrar = async (): Promise<void> => {
@@ -428,7 +524,7 @@ function ModalNovaRodada({
         } catch {
           notificar(
             'Atenção',
-            'A rodada foi salva, mas a foto não pôde ser enviada. Tente reenviá-la.',
+            'A rodada foi salva, mas a foto não pôde ser enviada. Reenvie-a pela opção "Tirar foto" ou "Da galeria" na própria rodada.',
           );
         }
       }
@@ -683,7 +779,31 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  rodadaTopoDireita: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacamento.sm,
+  },
   rodadaData: { ...tipografia.rotulo, fontWeight: '700', color: cores.texto },
+  fotoAcoes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: espacamento.sm,
+    marginTop: espacamento.xs,
+  },
+  fotoAcoesRotulo: { ...tipografia.legenda, color: cores.textoSecundario },
+  fotoAcoesLink: {
+    ...tipografia.legenda,
+    color: cores.primaria,
+    fontWeight: '700',
+  },
+  pontoRevisao: { ...tipografia.legenda, color: cores.textoSecundario },
+  pontoObservacao: {
+    ...tipografia.legenda,
+    color: cores.texto,
+    fontStyle: 'italic',
+  },
   rodadaLider: { ...tipografia.legenda, color: cores.textoSecundario },
   estrelas: { flexDirection: 'row', gap: 2 },
   fotoWrap: {
