@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 136 arquivos, 1323 casos. **Mobile:** 41 arquivos, 343 casos. **Total: 1666 casos.**
+> **Backend:** 136 arquivos, 1323 casos. **Mobile:** 42 arquivos, 359 casos. **Total: 1682 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -164,7 +164,7 @@
 | `src/screens/centroControle/CentroControleScreen.test.tsx` | 2 | 1 |
 | `src/screens/centroControle/ReiniciarDadosScreen.test.tsx` | 2 | 1 |
 | `src/screens/colaboradores/ColaboradoresScreen.test.tsx` | 3 | 1 |
-| `src/screens/colaboradores/FeedforwardSecao.test.tsx` | 33 | 10 |
+| `src/screens/colaboradores/FeedforwardSecao.test.tsx` | 37 | 11 |
 | `src/screens/colaboradores/GestaoColaboradoresScreen.test.tsx` | 2 | 1 |
 | `src/screens/colaboradores/PerfilColaboradorScreen.test.tsx` | 3 | 2 |
 | `src/screens/contratos/ContratosScreen.test.tsx` | 8 | 2 |
@@ -193,5 +193,6 @@
 | `src/utils/escalaLayout.test.ts` | 25 | 4 |
 | `src/utils/formato.test.ts` | 25 | 6 |
 | `src/utils/periodoMensal.test.ts` | 9 | 5 |
-| `src/utils/relatorioFeedforward.test.ts` | 15 | 4 |
+| `src/utils/relatorioFeedforward.test.ts` | 16 | 4 |
 | `src/utils/relatorioPerfil.test.ts` | 12 | 9 |
+| `src/utils/resumoFeedforward.test.ts` | 11 | 2 |

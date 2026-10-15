@@ -35,6 +35,7 @@ o acesso a dados, permissões, persistência e formatação em pt-BR.
 | `utils/impressao.ts` | `imprimirRelatorio` | Impressão/PDF (web via iframe, nativo via `expo-print`). |
 | `utils/relatorioPerfil.ts` | `htmlRelatorio`, `htmlPaginaOperador`, `svgBarras`, `htmlPizza`, ... | Geração pura do relatório de perfil em HTML/SVG. |
 | `utils/relatorioFeedforward.ts` | `htmlRodadaFeedforward`, `htmlHistoricoFeedforward`, `htmlFormularioFeedforward`, `resumoHistorico`, `PERGUNTAS_FEEDFORWARD`, ... | Geração pura dos documentos impressos do feedforward (A4). |
+| `utils/resumoFeedforward.ts` | `evolucaoFeedforward`, `diasEntreISO`, `textoPrazo` | Cálculo puro do resumo de evolução do feedforward ("hoje" por parâmetro). |
 | `utils/escalaLayout.ts` | `svgEscalaDia`, `svgEscalaSemana`, `htmlDeImpressao`, `nomeArquivoEscala` | Desenho puro da escala publicada em SVG, no tamanho final (ver [`escala`](escala.md)). |
 | `utils/imagemEscala.ts` | `suportaImagemPng`, `baixarEscalaComoPng` | Converte o SVG da escala em PNG 4K e baixa (só onde há `canvas`). |
 | `utils/logoEscala.ts` | `LOGO_ESCALA_DATA_URI` | Logo do rodapé da escala como data URI (ponto único de troca). |
@@ -224,12 +225,13 @@ credencial, o app segue normal (o aviso ainda chega in-app/WebSocket).
 | `utils/formato.test.ts` | Formatação/máscaras/conversões pt-BR, "hoje" no fuso de Brasília e a aritmética de períodos (`contarDiasCorridos`, `deslocarDiasISO`, `isoParaDiaMes`) | 25 |
 | `utils/periodoMensal.test.ts` | Mês de Brasília, deslocamento, rótulo, último dia e distância em meses | 9 |
 | `utils/relatorioPerfil.test.ts` | HTML/SVG do relatório de perfil | 12 |
-| `utils/relatorioFeedforward.test.ts` | Documentos do feedforward (rodada, histórico, formulário em branco): conteúdo, páginas A4, foto, prorrogação, quebras de linha e HTML escapado | 15 |
+| `utils/relatorioFeedforward.test.ts` | Documentos do feedforward (rodada, histórico, formulário em branco): conteúdo, páginas A4, foto, prorrogação, atingimento/média na capa, quebras de linha e HTML escapado | 16 |
+| `utils/resumoFeedforward.test.ts` | Resumo de evolução: ordem cronológica, nota (tendência, média), % de atingimento só de revisados, próximo prazo e textos de prazo | 11 |
 | `offline/fila.test.ts` | Ordenação e last-write-wins | 6 |
 | `offline/sincronizacao.test.tsx` | Drenagem da fila, conflitos e rejeições | 7 |
 | `hooks/useAvisoCicloFolha.test.ts` | Sem aviso num ciclo aberto; travessia com os dias de cada ciclo; a redação distinta quando o backend bloqueia e quando permite; não consulta se inativo ou invertido; falha silenciosa | 7 |
 
-Total: **81 casos** em 7 arquivos. Os demais hooks (`useRequisicao`, `useAuth`,
+Total: **93 casos** em 8 arquivos. Os demais hooks (`useRequisicao`, `useAuth`,
 `usePulsoDoDia`) e o `apiClient` não têm teste unitário dedicado — são exercidos
 indiretamente pelos testes de tela e pela lógica pura acima.
 

@@ -28,10 +28,11 @@ próprias (ajustáveis na Central de Permissões):
 | `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 945 |
 | `SancoesScreen.tsx` | Lista de sanções/advertências | 588 |
 | `RegistrarSancaoModal.tsx` | Modal para registrar sanção | 460 |
-| `FeedforwardSecao.tsx` | Seção de feedforward (acompanhamento + impressão) | 999 |
+| `FeedforwardSecao.tsx` | Seção de feedforward (acompanhamento + impressão) | 1002 |
 | `ModalRevisarPonto.tsx` | Modal do ponto: revisar, prorrogar ou editar/remover | 291 |
 | `ModalEditarRodada.tsx` | Modal de edição da rodada (data, nota, textos e novos pontos) | 250 |
 | `EstrelasFeedforward.tsx` | Estrelas 1–5 da nota (leitura/edição, com rótulo acessível) | 48 |
+| `ResumoFeedforward.tsx` | Resumo de evolução no topo da seção de feedforward | 148 |
 
 ## 4. Fluxo do usuário
 1. **Lista:** abre `ColaboradoresScreen`, com busca por nome/matrícula e filtros.
@@ -109,6 +110,12 @@ e [`feedforward`](../03-atlas-backend/feedforward.md).
     (inclusive "Sem nota"), textos (apagar limpa o campo) e **novos pontos**
     (descrição + prazo; linhas vazias são ignoradas). Os pontos existentes são
     geridos pelo modal do ponto.
+  - **Resumo de evolução** no topo (`ResumoFeedforward`, só com rodadas):
+    nº de rodadas, **% de atingimento** (atingidos ÷ revisados — pendente não
+    conta contra), **última nota** com seta de tendência e média, pendentes
+    (vencidos em vermelho), sequência das notas, última conversa ("há N dias")
+    e o **próximo acompanhamento** (pendente de prazo mais próximo, com cor do
+    semáforo). Cálculo puro em `utils/resumoFeedforward.ts`.
   - A rodada mostra o **cargo na data** da conversa; o ponto prorrogado mostra
     "Prorrogado Nx · prazo original … · por …" e o motivo (também no impresso).
   - Ponto revisado mostra **quem revisou, quando** e a **observação**.
@@ -140,7 +147,7 @@ e [`feedforward`](../03-atlas-backend/feedforward.md).
 | `ColaboradoresScreen.test.tsx` | Lista, busca e navegação | 3 |
 | `GestaoColaboradoresScreen.test.tsx` | Formulário e envio de senha por função | 2 |
 | `PerfilColaboradorScreen.test.tsx` | Render do perfil (score/indicadores) | 3 |
-| `FeedforwardSecao.test.tsx` | Feedforward: permissões, revisão com observação, remoção com confirmação, foto em rodada salva, impressão, cargo, prorrogação (prazo padrão/seletor/erro), editar/remover ponto, editar rodada (campos, nota, novos pontos, falha) e regras de data do modal | 33 |
+| `FeedforwardSecao.test.tsx` | Feedforward: permissões, revisão com observação, remoção com confirmação, foto em rodada salva, impressão, cargo, prorrogação (prazo padrão/seletor/erro), editar/remover ponto, editar rodada (campos, nota, novos pontos, falha), regras de data do modal e resumo de evolução | 37 |
 
 ## 10. Riscos, dívidas e pendências
 - 🔧 `PerfilColaboradorScreen.tsx` e `FeedforwardSecao.tsx` são grandes (>800

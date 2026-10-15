@@ -40,6 +40,11 @@ Evolução da seção de Feedforward do perfil do colaborador, entregue em parte
   auditoria da última prorrogação). Ponto já revisado é histórico (409). A
   rodada mostra o **cargo na data**. Seis rotas novas e testes de domínio,
   serviço (Prisma mockado), tela e impressão.
+- **Parte 5 — resumo de evolução:** o topo da seção mostra rodadas, % de pontos
+  atingidos (entre os revisados), última nota com tendência e média, pendentes e
+  vencidos, sequência das notas, última conversa e o próximo acompanhamento.
+  Cálculo puro em `utils/resumoFeedforward.ts`; a capa do histórico impresso
+  ganhou o % de atingimento e a média da nota. Sem mudança no backend.
 
 ---
 

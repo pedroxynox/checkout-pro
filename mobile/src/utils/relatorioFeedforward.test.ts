@@ -224,6 +224,32 @@ describe('relatorioFeedforward — histórico', () => {
     expect(html).toContain('<strong>2</strong>Rodadas');
   });
 
+  it('a capa traz o % de atingimento (revisados) e a média da nota', () => {
+    const html = htmlHistoricoFeedforward(
+      [
+        rodada({
+          id: 'r2',
+          evolucaoNota: 5,
+          pontos: [
+            ponto({ id: 'a', status: 'ATINGIDO', situacao: 'ATINGIDO' }),
+            ponto({ id: 'b', status: 'NAO_ATINGIDO', situacao: 'NAO_ATINGIDO' }),
+          ],
+        }),
+        rodada({ id: 'r1', evolucaoNota: 4 }),
+      ],
+      COLAB,
+    );
+    expect(html).toContain('<strong>50%</strong>Atingimento (revisados)');
+    expect(html).toContain('<strong>4.5</strong>Média da nota');
+    // sem revisões e sem notas → traço
+    const vazio = htmlHistoricoFeedforward(
+      [rodada({ evolucaoNota: null, pontos: [ponto()] })],
+      COLAB,
+    );
+    expect(vazio).toContain('<strong>—</strong>Atingimento (revisados)');
+    expect(vazio).toContain('<strong>—</strong>Média da nota');
+  });
+
   it('sem rodadas, mostra só a capa com aviso', () => {
     const html = htmlHistoricoFeedforward([], COLAB);
     expect(html.match(/class="pagina"/g)).toHaveLength(1);
