@@ -173,7 +173,7 @@ Abstract 3D environment for corporate motion graphics: deep navy blue void (#0A2
 | Print | Tela do app | O que deve aparecer | Vai depois do clipe |
 |---|---|---|---|
 | `p1` | Checklist | Card de abertura "feito no prazo" | 05 |
-| `p2` | Ponto | Jornada do dia com as batidas | 06 |
+| `p2` | Jornada da equipe | Cards com as batidas e a carga do dia (rolar para esconder o resumo do topo) | 06 |
 | `p3` | Ranking — TAC | "Ninguém tem dias em TAC neste ciclo" (prevenção) | 08 |
 | `p4` | Fechamento | "Tudo pronto!" | 12 |
 | `p5` | Centro de Controle (celular) | Lista de ferramentas de gestão | 15 |
@@ -181,7 +181,22 @@ Abstract 3D environment for corporate motion graphics: deep navy blue void (#0A2
 - **Celular (`p1`–`p4`):** print no APK Android, na maior resolução; recorte a
   barra de status se houver notificações pessoais.
 
-### 5.2 Imagens de tela (print dentro do aparelho)
+### 5.2 Anonimizar os prints (obrigatório quando aparecem nomes)
+
+Os prints reais mostram **nomes de colaboradores**. Antes de usá-los, no modo
+**imagem**, adicione o print e troque cada nome real por um nome fictício
+(ex.: Ana Souza, Carla Mendes, Juliana Costa, Rafael Lima):
+
+```text
+Edit the attached screenshot @p1: replace each person name with a fictional name — "<nome real 1>" becomes "Ana Souza", "<nome real 2>" becomes "Carla Mendes". Use exactly the same font, size, weight and color. Keep every other word, number, icon, color and layout exactly the same.
+```
+
+Salve como `p1-anon` (e assim por diante) e **confira com zoom** que nenhum nome
+real sobrou. No Checklist, as áreas de foto aparecem vazias no print; podem ser
+preenchidas com `@loja-dia` acrescentando ao prompt: *"Fill both empty gray photo
+areas with the photo @loja-dia, cropped to fit, with the same rounded corners."*
+
+### 5.3 Imagens de tela (print dentro do aparelho)
 
 No modo **imagem**, adicione o print e as referências indicadas e use o prompt.
 Salve o resultado como `t1` … `t5`. **Amplie e confira** se todas as letras e
@@ -192,7 +207,7 @@ números do print ficaram iguais; se algo mudou, gere de novo.
 Place the attached app screenshot @p1 exactly as it is onto the screen of the smartphone @celular. The phone stands upright, slightly angled, centered on the deep navy background of @espaco-3d with soft light and faint particles. Keep every word, number, icon and color of the screenshot unchanged and sharp. 16:9 frame.
 ```
 
-### 5.3 Clipes de tela (4 s cada)
+### 5.4 Clipes de tela (4 s cada)
 
 Modo **vídeo**, Omni Flash, **4 s**, com a imagem `t1`…`t5` como **frame
 inicial**. O mesmo prompt para os cinco:
