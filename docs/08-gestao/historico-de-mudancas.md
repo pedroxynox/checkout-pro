@@ -45,6 +45,11 @@ Evolução da seção de Feedforward do perfil do colaborador, entregue em parte
   vencidos, sequência das notas, última conversa e o próximo acompanhamento.
   Cálculo puro em `utils/resumoFeedforward.ts`; a capa do histórico impresso
   ganhou o % de atingimento e a média da nota. Sem mudança no backend.
+- **Parte 6 — organização do código:** `FeedforwardSecao.tsx` (~1000 linhas) foi
+  dividida em `RodadaFeedforwardItem`, `ModalNovaRodada` e `feedforwardApoio.ts`;
+  a seção passou a só orquestrar (≈260 linhas). Sem mudança de comportamento.
+  O fluxo de **criar rodada**, que não tinha teste, ganhou cobertura (nota,
+  textos, prazo, foto com falha, erro), além do cálculo de prazo.
 
 ---
 

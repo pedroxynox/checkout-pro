@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 136 arquivos, 1323 casos. **Mobile:** 42 arquivos, 359 casos. **Total: 1682 casos.**
+> **Backend:** 136 arquivos, 1323 casos. **Mobile:** 43 arquivos, 369 casos. **Total: 1692 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -164,9 +164,10 @@
 | `src/screens/centroControle/CentroControleScreen.test.tsx` | 2 | 1 |
 | `src/screens/centroControle/ReiniciarDadosScreen.test.tsx` | 2 | 1 |
 | `src/screens/colaboradores/ColaboradoresScreen.test.tsx` | 3 | 1 |
-| `src/screens/colaboradores/FeedforwardSecao.test.tsx` | 37 | 11 |
+| `src/screens/colaboradores/FeedforwardSecao.test.tsx` | 42 | 12 |
 | `src/screens/colaboradores/GestaoColaboradoresScreen.test.tsx` | 2 | 1 |
 | `src/screens/colaboradores/PerfilColaboradorScreen.test.tsx` | 3 | 2 |
+| `src/screens/colaboradores/feedforwardApoio.test.ts` | 5 | 2 |
 | `src/screens/contratos/ContratosScreen.test.tsx` | 8 | 2 |
 | `src/screens/escala/ConferenciaEscalaScreen.test.tsx` | 7 | 1 |
 | `src/screens/escala/EscalaScreen.test.tsx` | 10 | 2 |
