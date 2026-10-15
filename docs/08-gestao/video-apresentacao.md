@@ -25,8 +25,16 @@ reais do app · narração em off (pt-BR) · plano **Google AI Pro**.
   crescente → fechamento calmo.
 - **Duração:** 2 min 40 s. Problema e solução nos primeiros 40 s (quando a
   diretoria decide se continua assistindo).
-- **Voz:** a narração é gerada pelo Flow dentro de cada clipe. Todo prompt traz
-  **a mesma descrição de voz**; se um clipe sair com voz diferente, gere de novo.
+- **Voz:** a narração é gerada pelo Flow dentro de cada clipe. Para manter a
+  mesma voz, crie uma voz personalizada no Flow (Omni Flash → Ingredientes →
+  **Adicionar → Vozes → Criar voz**), chamada `Narradora`, a partir de uma voz
+  feminina madura e calma em português do Brasil, e acrescente `@Voice: Narradora`
+  ao prompt de cada clipe ([ajuda do Flow](https://support.google.com/flow/answer/16353334?hl=es)).
+  A referência de voz só funciona em gerações **com ingredientes**; se um clipe
+  sair com voz diferente, gere de novo.
+- **Arquivos com nome:** imagens feitas no app Gemini não ficam no Flow. Baixe,
+  renomeie o arquivo (`fiscal.png`…) e suba ao projeto do Flow; o `@` busca
+  pelo nome.
 - **Sem trilha musical:** cada clipe geraria uma música diferente e os cortes
   ficariam evidentes. O vídeo usa voz + som ambiente.
 
