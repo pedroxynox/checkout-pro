@@ -588,3 +588,49 @@ describe('ModalRevisarPonto — regras de data', () => {
     expect(prazoMinimoProrrogacao('2026-10-14', '2026-10-14')).toBe('2026-10-15');
   });
 });
+
+describe('FeedforwardSecao — resumo de evolução', () => {
+  it('mostra rodadas, atingimento, última nota, pendentes e o próximo acompanhamento', async () => {
+    renderizar();
+    expect(await screen.findByTestId('resumo-feedforward')).toBeTruthy();
+    expect(screen.getByText('Rodadas')).toBeTruthy();
+    // 1 atingido de 1 revisado
+    expect(screen.getByText('100%')).toBeTruthy();
+    expect(screen.getByText('1 de 1 revisados')).toBeTruthy();
+    expect(screen.getByText('4/5')).toBeTruthy();
+    expect(screen.getByText('Média 4.0')).toBeTruthy();
+    // hoje (mock) 14/10 → última conversa 01/10, há 13 dias
+    expect(screen.getByText('Última conversa: 01/10/2026 (há 13 dias)')).toBeTruthy();
+    // próximo pendente vence 01/11 → em 18 dias
+    expect(screen.getByText('01/11/2026 · em 18 dias')).toBeTruthy();
+  });
+
+  it('mostra a tendência e a sequência das notas quando há mais de uma', async () => {
+    feedforwardService.doColaborador.mockResolvedValue([
+      { ...RODADAS[0], id: 'r2', data: '2026-10-01T00:00:00.000Z', evolucaoNota: 5 },
+      { ...RODADAS[0], id: 'r1', data: '2026-07-01T00:00:00.000Z', evolucaoNota: 3 },
+    ]);
+    renderizar();
+    expect(await screen.findByText('Evolução da nota: 3 → 5')).toBeTruthy();
+    expect(screen.getByLabelText('Nota subiu')).toBeTruthy();
+  });
+
+  it('sem pendentes avisa que não há acompanhamento', async () => {
+    feedforwardService.doColaborador.mockResolvedValue([
+      { ...RODADAS[0], pontos: [RODADAS[0].pontos[1]] },
+    ]);
+    renderizar();
+    expect(
+      await screen.findByText('Nenhum ponto pendente de acompanhamento.'),
+    ).toBeTruthy();
+  });
+
+  it('sem rodadas não mostra o resumo', async () => {
+    feedforwardService.doColaborador.mockResolvedValue([]);
+    renderizar();
+    await screen.findByText(
+      'Ainda não há feedforward registrado para este colaborador.',
+    );
+    expect(screen.queryByTestId('resumo-feedforward')).toBeNull();
+  });
+});

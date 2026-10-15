@@ -251,7 +251,15 @@ export function htmlHistoricoFeedforward(
     rodadas.length > 0
       ? `<p class="meta">De ${esc(formatarData(rodadas[rodadas.length - 1].data))} a ${esc(formatarData(rodadas[0].data))}</p>`
       : '';
-  const cartoes = `<div class="resumo"><div><strong>${s.rodadas}</strong>Rodadas</div><div><strong>${s.pontos}</strong>Pontos a melhorar</div><div><strong>${s.atingidos}</strong>Atingidos</div><div><strong>${s.naoAtingidos}</strong>Não atingidos</div><div><strong>${s.pendentes}</strong>Pendentes</div><div><strong>${s.vencidos}</strong>Com prazo vencido</div></div>`;
+  const revisados = s.atingidos + s.naoAtingidos;
+  const taxa = revisados ? `${Math.round((s.atingidos / revisados) * 100)}%` : '—';
+  const notas = rodadas
+    .map((r) => r.evolucaoNota)
+    .filter((n): n is number => n != null);
+  const media = notas.length
+    ? (notas.reduce((t, n) => t + n, 0) / notas.length).toFixed(1)
+    : '—';
+  const cartoes = `<div class="resumo"><div><strong>${s.rodadas}</strong>Rodadas</div><div><strong>${s.pontos}</strong>Pontos a melhorar</div><div><strong>${s.atingidos}</strong>Atingidos</div><div><strong>${s.naoAtingidos}</strong>Não atingidos</div><div><strong>${s.pendentes}</strong>Pendentes</div><div><strong>${s.vencidos}</strong>Com prazo vencido</div><div><strong>${taxa}</strong>Atingimento (revisados)</div><div><strong>${media}</strong>Média da nota</div></div>`;
   const capa = `<div class="pagina">${cabecalho('Histórico de feedforward', c, periodo)}${cartoes}${
     rodadas.length === 0
       ? '<p class="vazio">Nenhuma rodada de feedforward registrada.</p>'

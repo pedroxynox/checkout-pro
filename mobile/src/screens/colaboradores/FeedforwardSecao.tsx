@@ -58,6 +58,7 @@ import {
 import { Estrelas } from './EstrelasFeedforward';
 import { ModalEditarRodada } from './ModalEditarRodada';
 import { ModalRevisarPonto } from './ModalRevisarPonto';
+import { ResumoFeedforward } from './ResumoFeedforward';
 
 /** Perguntas do formulário (referência para guiar a conversa — não editáveis). */
 const PERGUNTAS_REFERENCIA = PERGUNTAS_FEEDFORWARD;
@@ -227,6 +228,8 @@ export function FeedforwardSecao({
 
   return (
     <Cartao titulo="Feedforward">
+      {!req.carregando && !req.erro ? <ResumoFeedforward rodadas={rodadas} /> : null}
+
       {podeGerir && (
         <Botao
           titulo="Nova rodada de feedforward"
