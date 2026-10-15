@@ -130,7 +130,10 @@ function tabelaPontos(r: RodadaFeedforward): string {
       const obs = p.observacaoRevisao
         ? `<div class="obs">“${textoMultilinha(p.observacaoRevisao)}”</div>`
         : '';
-      return `<tr><td>${esc(p.descricao)}${revisao}${obs}</td><td class="nowrap">${esc(formatarData(p.prazo))}</td><td class="nowrap"><span class="bolinha" style="background:${COR_SITUACAO[p.situacao]}"></span>${esc(ROTULO_SITUACAO_FEEDFORWARD[p.situacao])}</td></tr>`;
+      const prorrogado = p.prorrogacoes
+        ? `<div class="rev">Prorrogado ${p.prorrogacoes}x${p.prazoOriginal ? ` · prazo original ${esc(formatarData(p.prazoOriginal))}` : ''}${p.motivoProrrogacao ? ` · motivo: ${esc(p.motivoProrrogacao)}` : ''}</div>`
+        : '';
+      return `<tr><td>${esc(p.descricao)}${prorrogado}${revisao}${obs}</td><td class="nowrap">${esc(formatarData(p.prazo))}</td><td class="nowrap"><span class="bolinha" style="background:${COR_SITUACAO[p.situacao]}"></span>${esc(ROTULO_SITUACAO_FEEDFORWARD[p.situacao])}</td></tr>`;
     })
     .join('');
   return `<section class="bloco"><h3>Pontos a melhorar (com prazo)</h3><table class="pontos"><thead><tr><th>Ponto</th><th>Prazo</th><th>Situação</th></tr></thead><tbody>${linhas}</tbody></table></section>`;

@@ -53,7 +53,10 @@ import {
   htmlFormularioFeedforward,
   htmlHistoricoFeedforward,
   htmlRodadaFeedforward,
+  rotuloCargo,
 } from '../../utils/relatorioFeedforward';
+import { Estrelas } from './EstrelasFeedforward';
+import { ModalEditarRodada } from './ModalEditarRodada';
 import { ModalRevisarPonto } from './ModalRevisarPonto';
 
 /** Perguntas do formulário (referência para guiar a conversa — não editáveis). */
@@ -135,37 +138,6 @@ async function selecionarImagem(
   };
 }
 
-/** Estrelas 1–5 (leitura ou edição). */
-function Estrelas({
-  nota,
-  aoMudar,
-}: {
-  nota: number | null;
-  aoMudar?: (n: number) => void;
-}): React.ReactElement {
-  return (
-    <View style={styles.estrelas}>
-      {[1, 2, 3, 4, 5].map((n) => {
-        const cheia = (nota ?? 0) >= n;
-        const estrela = (
-          <Ionicons
-            name={cheia ? 'star' : 'star-outline'}
-            size={aoMudar ? 28 : 16}
-            color={cheia ? '#F5A623' : cores.textoSecundario}
-          />
-        );
-        return aoMudar ? (
-          <Pressable key={n} onPress={() => aoMudar(n)} hitSlop={6}>
-            {estrela}
-          </Pressable>
-        ) : (
-          <View key={n}>{estrela}</View>
-        );
-      })}
-    </View>
-  );
-}
-
 export function FeedforwardSecao({
   colaboradorId,
   colaborador,
@@ -186,6 +158,9 @@ export function FeedforwardSecao({
   const [modalAberto, setModalAberto] = useState(false);
   const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
   const [pontoRevisando, setPontoRevisando] = useState<PontoFeedforward | null>(
+    null,
+  );
+  const [rodadaEditando, setRodadaEditando] = useState<RodadaFeedforward | null>(
     null,
   );
   /** Rodada com uma ação em andamento (envio de foto ou remoção). */
@@ -299,6 +274,16 @@ export function FeedforwardSecao({
               <Text style={styles.rodadaData}>{formatarData(r.data)}</Text>
               <View style={styles.rodadaTopoDireita}>
                 {r.evolucaoNota != null && <Estrelas nota={r.evolucaoNota} />}
+                {podeGerir ? (
+                  <Pressable
+                    onPress={() => setRodadaEditando(r)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Editar esta rodada de feedforward"
+                  >
+                    <Ionicons name="create-outline" size={18} color={cores.primaria} />
+                  </Pressable>
+                ) : null}
                 <Pressable
                   onPress={() =>
                     void imprimir(htmlRodadaFeedforward(r, ident, opcoesImpressao))
@@ -324,6 +309,11 @@ export function FeedforwardSecao({
             </View>
             {r.liderNome ? (
               <Text style={styles.rodadaLider}>Líder: {r.liderNome}</Text>
+            ) : null}
+            {r.cargo ? (
+              <Text style={styles.rodadaLider}>
+                Cargo na data: {rotuloCargo(r.cargo)}
+              </Text>
             ) : null}
 
             {r.fotoUrl ? (
@@ -422,6 +412,20 @@ export function FeedforwardSecao({
                           {p.revisadoEm ? ` em ${formatarDataHora(p.revisadoEm)}` : ''}
                         </Text>
                       ) : null}
+                      {p.prorrogacoes ? (
+                        <Text style={styles.pontoRevisao}>
+                          Prorrogado {p.prorrogacoes}x
+                          {p.prazoOriginal
+                            ? ` · prazo original ${formatarData(p.prazoOriginal)}`
+                            : ''}
+                          {p.prorrogadoPorNome ? ` · por ${p.prorrogadoPorNome}` : ''}
+                        </Text>
+                      ) : null}
+                      {p.motivoProrrogacao ? (
+                        <Text style={styles.pontoObservacao}>
+                          Motivo: {p.motivoProrrogacao}
+                        </Text>
+                      ) : null}
                       {p.observacaoRevisao ? (
                         <Text style={styles.pontoObservacao}>
                           “{p.observacaoRevisao}”
@@ -467,6 +471,17 @@ export function FeedforwardSecao({
           ) : null}
         </Pressable>
       </Modal>
+
+      {rodadaEditando && (
+        <ModalEditarRodada
+          rodada={rodadaEditando}
+          aoFechar={() => setRodadaEditando(null)}
+          aoSalvo={() => {
+            setRodadaEditando(null);
+            req.recarregar();
+          }}
+        />
+      )}
 
       {pontoRevisando && (
         <ModalRevisarPonto
@@ -837,7 +852,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   rodadaLider: { ...tipografia.legenda, color: cores.textoSecundario },
-  estrelas: { flexDirection: 'row', gap: 2 },
   fotoWrap: {
     marginTop: espacamento.sm,
     borderRadius: raio.md,

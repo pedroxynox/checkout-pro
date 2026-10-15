@@ -32,6 +32,14 @@ Evolução da seção de Feedforward do perfil do colaborador, entregue em parte
   e dos rótulos do semáforo. Novos testes: gerador de impressão, seção de
   feedforward (permissões, revisão, remoção, foto e impressão), cadência dos
   avisos e cron de avisos.
+- **Parte 4 — edição, prorrogação e cargo:** a rodada pode ser **editada**
+  (data, nota, textos) e receber **novos pontos**; um ponto pendente pode ter a
+  descrição corrigida, ser **removido** ou ter o prazo **prorrogado** (novo prazo
+  posterior ao atual e futuro, com motivo). Migração `9zzt_feedforward_prorrogacao`
+  (colunas aditivas em `feedforward_pontos`: prazo original, contador e
+  auditoria da última prorrogação). Ponto já revisado é histórico (409). A
+  rodada mostra o **cargo na data**. Seis rotas novas e testes de domínio,
+  serviço (Prisma mockado), tela e impressão.
 
 ---
 

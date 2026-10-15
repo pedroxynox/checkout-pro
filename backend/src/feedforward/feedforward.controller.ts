@@ -27,12 +27,20 @@ import {
   PontoFeedforwardView,
   RodadaFeedforward,
 } from './feedforward.service';
-import { CriarFeedforwardDto, RevisarPontoDto } from './dto/feedforward.dto';
+import {
+  CriarFeedforwardDto,
+  EditarFeedforwardDto,
+  EditarPontoDto,
+  PontoFeedforwardDto,
+  ProrrogarPontoDto,
+  RevisarPontoDto,
+} from './dto/feedforward.dto';
 
 /**
  * Controller do Feedforward (acompanhamento de desenvolvimento no perfil do
  * colaborador). A visualização exige `FEEDFORWARD_VISUALIZAR` e a gestão
- * (criar rodada, enviar foto, revisar ponto, remover) exige `FEEDFORWARD_GERIR`
+ * (criar/editar rodada, enviar foto, adicionar/editar/prorrogar/revisar/remover
+ * ponto, remover rodada) exige `FEEDFORWARD_GERIR`
  * — ambos liberados a supervisores e gerentes.
  */
 @Controller('feedforward')
@@ -105,6 +113,60 @@ export class FeedforwardController {
       { id: usuario?.sub, nome: usuario?.nome ?? usuario?.login },
       dto.observacao,
     );
+  }
+
+  /** Edita os dados de uma rodada (data, textos e nota). */
+  @Patch(':id')
+  @Funcionalidade('FEEDFORWARD_GERIR')
+  editar(
+    @Param('id') id: string,
+    @Body() dto: EditarFeedforwardDto,
+  ): Promise<RodadaFeedforward> {
+    return this.service.editar(id, dto);
+  }
+
+  /** Adiciona um ponto a melhorar (com prazo) a uma rodada existente. */
+  @Post(':id/pontos')
+  @Funcionalidade('FEEDFORWARD_GERIR')
+  adicionarPonto(
+    @Param('id') id: string,
+    @Body() dto: PontoFeedforwardDto,
+  ): Promise<PontoFeedforwardView> {
+    return this.service.adicionarPonto(id, dto);
+  }
+
+  /** Edita a descrição de um ponto pendente. */
+  @Patch('ponto/:pontoId')
+  @Funcionalidade('FEEDFORWARD_GERIR')
+  editarPonto(
+    @Param('pontoId') pontoId: string,
+    @Body() dto: EditarPontoDto,
+  ): Promise<PontoFeedforwardView> {
+    return this.service.editarPonto(pontoId, dto.descricao);
+  }
+
+  /** Prorroga o prazo de um ponto pendente (com auditoria). */
+  @Patch('ponto/:pontoId/prorrogar')
+  @Funcionalidade('FEEDFORWARD_GERIR')
+  prorrogarPonto(
+    @Param('pontoId') pontoId: string,
+    @Body() dto: ProrrogarPontoDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ): Promise<PontoFeedforwardView> {
+    return this.service.prorrogarPonto(
+      pontoId,
+      dto.prazo,
+      { id: usuario?.sub, nome: usuario?.nome ?? usuario?.login },
+      dto.motivo,
+    );
+  }
+
+  /** Remove um ponto pendente. */
+  @Delete('ponto/:pontoId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Funcionalidade('FEEDFORWARD_GERIR')
+  async removerPonto(@Param('pontoId') pontoId: string): Promise<void> {
+    await this.service.removerPonto(pontoId);
   }
 
   /** Remove uma rodada de feedforward (e seus pontos). */

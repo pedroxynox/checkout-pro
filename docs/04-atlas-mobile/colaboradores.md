@@ -28,8 +28,10 @@ próprias (ajustáveis na Central de Permissões):
 | `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 945 |
 | `SancoesScreen.tsx` | Lista de sanções/advertências | 588 |
 | `RegistrarSancaoModal.tsx` | Modal para registrar sanção | 460 |
-| `FeedforwardSecao.tsx` | Seção de feedforward (acompanhamento + impressão) | 985 |
-| `ModalRevisarPonto.tsx` | Modal de revisão de um ponto do feedforward (resultado + observação) | 149 |
+| `FeedforwardSecao.tsx` | Seção de feedforward (acompanhamento + impressão) | 999 |
+| `ModalRevisarPonto.tsx` | Modal do ponto: revisar, prorrogar ou editar/remover | 291 |
+| `ModalEditarRodada.tsx` | Modal de edição da rodada (data, nota, textos e novos pontos) | 250 |
+| `EstrelasFeedforward.tsx` | Estrelas 1–5 da nota (leitura/edição, com rótulo acessível) | 48 |
 
 ## 4. Fluxo do usuário
 1. **Lista:** abre `ColaboradoresScreen`, com busca por nome/matrícula e filtros.
@@ -58,6 +60,11 @@ Cada tela trata os estados **carregando / erro / vazio**.
 | Feedforward: enviar/trocar foto | `feedforwardService.enviarFoto(id, imagem)` | `POST /feedforward/:id/foto` |
 | Feedforward: revisar ponto | `feedforwardService.revisarPonto(id, status, obs?)` | `PATCH /feedforward/ponto/:pontoId/revisar` |
 | Feedforward: remover rodada | `feedforwardService.remover(id)` | `DELETE /feedforward/:id` |
+| Feedforward: editar rodada | `feedforwardService.editar(id, input)` | `PATCH /feedforward/:id` |
+| Feedforward: novo ponto numa rodada | `feedforwardService.adicionarPonto(id, ponto)` | `POST /feedforward/:id/pontos` |
+| Feedforward: editar ponto | `feedforwardService.editarPonto(id, descricao)` | `PATCH /feedforward/ponto/:pontoId` |
+| Feedforward: prorrogar ponto | `feedforwardService.prorrogarPonto(id, prazo, motivo?)` | `PATCH /feedforward/ponto/:pontoId/prorrogar` |
+| Feedforward: remover ponto | `feedforwardService.removerPonto(id)` | `DELETE /feedforward/ponto/:pontoId` |
 
 Módulos do backend relacionados: [`colaboradores`](../03-atlas-backend/colaboradores.md)
 e [`feedforward`](../03-atlas-backend/feedforward.md).
@@ -90,10 +97,20 @@ e [`feedforward`](../03-atlas-backend/feedforward.md).
   e nunca deixa marcos pendentes.
 - **Seção "Feedforward"** (visível com `FEEDFORWARD_VISUALIZAR`; ações exigem
   `FEEDFORWARD_GERIR`):
-  - **Revisar ponto** abre o `ModalRevisarPonto` (resultado "Atingido"/"Não
-    atingido" + observação opcional de até 500 caracteres). Substituiu o
+  - **Tocar num ponto pendente** abre o `ModalRevisarPonto` ("Acompanhar
+    ponto"), com três modos: **Revisar** (resultado "Atingido"/"Não atingido" +
+    observação de até 500 caracteres), **Prorrogar** (novo prazo + motivo; o
+    seletor não deixa escolher antes de `prazoMinimoProrrogacao` = o maior entre
+    prazo atual + 1 e amanhã, e sugere uma semana depois disso) e **Editar**
+    (corrige a descrição ou remove o ponto, com confirmação). Substituiu o
     `Alert.alert`, que **não funciona no navegador** — antes, na versão web, não
     havia como revisar um ponto.
+  - **Editar rodada** pelo ícone de lápis (`ModalEditarRodada`): data, nota
+    (inclusive "Sem nota"), textos (apagar limpa o campo) e **novos pontos**
+    (descrição + prazo; linhas vazias são ignoradas). Os pontos existentes são
+    geridos pelo modal do ponto.
+  - A rodada mostra o **cargo na data** da conversa; o ponto prorrogado mostra
+    "Prorrogado Nx · prazo original … · por …" e o motivo (também no impresso).
   - Ponto revisado mostra **quem revisou, quando** e a **observação**.
   - **Remover rodada** pelo ícone de lixeira, sempre com confirmação (remove
     também os pontos e a foto vinculados).
@@ -123,7 +140,7 @@ e [`feedforward`](../03-atlas-backend/feedforward.md).
 | `ColaboradoresScreen.test.tsx` | Lista, busca e navegação | 3 |
 | `GestaoColaboradoresScreen.test.tsx` | Formulário e envio de senha por função | 2 |
 | `PerfilColaboradorScreen.test.tsx` | Render do perfil (score/indicadores) | 3 |
-| `FeedforwardSecao.test.tsx` | Feedforward: permissões, revisão com observação, remoção com confirmação, foto em rodada salva e impressão (formulário, histórico e rodada) | 18 |
+| `FeedforwardSecao.test.tsx` | Feedforward: permissões, revisão com observação, remoção com confirmação, foto em rodada salva, impressão, cargo, prorrogação (prazo padrão/seletor/erro), editar/remover ponto, editar rodada (campos, nota, novos pontos, falha) e regras de data do modal | 33 |
 
 ## 10. Riscos, dívidas e pendências
 - 🔧 `PerfilColaboradorScreen.tsx` e `FeedforwardSecao.tsx` são grandes (>800

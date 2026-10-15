@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **208 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **213 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -182,6 +182,11 @@
 | POST | `/feedforward` | `criar` | `FEEDFORWARD_GERIR` |
 | POST | `/feedforward/:id/foto` | `enviarFoto` | `FEEDFORWARD_GERIR` |
 | PATCH | `/feedforward/ponto/:pontoId/revisar` | `revisarPonto` | `FEEDFORWARD_GERIR` |
+| PATCH | `/feedforward/:id` | `editar` | `FEEDFORWARD_GERIR` |
+| POST | `/feedforward/:id/pontos` | `adicionarPonto` | `FEEDFORWARD_GERIR` |
+| PATCH | `/feedforward/ponto/:pontoId` | `editarPonto` | `FEEDFORWARD_GERIR` |
+| PATCH | `/feedforward/ponto/:pontoId/prorrogar` | `prorrogarPonto` | `FEEDFORWARD_GERIR` |
+| DELETE | `/feedforward/ponto/:pontoId` | `removerPonto` | `FEEDFORWARD_GERIR` |
 | DELETE | `/feedforward/:id` | `remover` | `FEEDFORWARD_GERIR` |
 
 ## `feriados`

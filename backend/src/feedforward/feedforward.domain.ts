@@ -1,4 +1,8 @@
 import { inicioDoDia } from '../common/datas';
+import {
+  PontoJaRevisadoError,
+  ProrrogacaoInvalidaError,
+} from './feedforward.errors';
 
 /**
  * Domínio puro do Feedforward (sem I/O). Concentra a regra do "semáforo" de um
@@ -86,4 +90,61 @@ export function deveAvisarPonto(
 ): boolean {
   if (!pontoVencido(status, prazo, hoje)) return false;
   return diasDeAtraso(prazo, hoje) % INTERVALO_LEMBRETE_DIAS === 0;
+}
+
+/** dd/mm/aaaa (UTC, date-only) — para mensagens de erro. */
+function dataBR(d: Date): string {
+  const iso = inicioDoDia(d).toISOString();
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+}
+
+/**
+ * Garante que o ponto ainda está PENDENTE — só pontos pendentes podem ser
+ * editados, prorrogados ou removidos (o resultado revisado é histórico).
+ */
+export function garantirPontoPendente(status: StatusPontoFeedforward): void {
+  if (status !== 'PENDENTE') throw new PontoJaRevisadoError();
+}
+
+/**
+ * Valida uma prorrogação de prazo:
+ *  - o ponto precisa estar PENDENTE;
+ *  - o novo prazo precisa ser **posterior ao prazo atual** (prorrogar é
+ *    estender; para encurtar, edite e registre outra rodada);
+ *  - o novo prazo precisa ser **futuro** (a partir de amanhã) — um prazo
+ *    "hoje" já nasceria vencido e geraria aviso no mesmo dia.
+ */
+export function validarProrrogacao(
+  status: StatusPontoFeedforward,
+  prazoAtual: Date,
+  novoPrazo: Date,
+  hoje: Date,
+): void {
+  garantirPontoPendente(status);
+  if (Number.isNaN(novoPrazo.getTime())) {
+    throw new ProrrogacaoInvalidaError('Informe um novo prazo válido.');
+  }
+  if (diffEmDias(prazoAtual, novoPrazo) <= 0) {
+    throw new ProrrogacaoInvalidaError(
+      `O novo prazo deve ser posterior ao prazo atual (${dataBR(prazoAtual)}).`,
+    );
+  }
+  if (diffEmDias(hoje, novoPrazo) <= 0) {
+    throw new ProrrogacaoInvalidaError(
+      'O novo prazo deve ser uma data futura (a partir de amanhã).',
+    );
+  }
+}
+
+/**
+ * Normaliza um texto opcional de edição: `undefined` = não mexer; `null` ou
+ * só espaços = limpar (grava `null`); senão, o texto sem espaços nas pontas.
+ */
+export function normalizarTextoEdicao(
+  valor: string | null | undefined,
+): string | null | undefined {
+  if (valor === undefined) return undefined;
+  if (valor === null) return null;
+  const t = valor.trim();
+  return t.length > 0 ? t : null;
 }

@@ -25,6 +25,15 @@ export interface CriarFeedforwardInput {
   pontos?: PontoNovoFeedforward[];
 }
 
+/** Dados editáveis de uma rodada (todos opcionais). */
+export interface EditarFeedforwardInput {
+  data?: string;
+  pontosFortes?: string;
+  oportunidades?: string;
+  compromissoFinal?: string;
+  evolucaoNota?: number | null;
+}
+
 export const feedforwardService = {
   /** Histórico de rodadas de um colaborador (mais recentes primeiro). */
   doColaborador(colaboradorId: string): Promise<RodadaFeedforward[]> {
@@ -70,5 +79,45 @@ export const feedforwardService = {
   /** Remove uma rodada de feedforward. */
   remover(id: string): Promise<void> {
     return apiClient.delete<void>(`/feedforward/${id}`);
+  },
+
+  /**
+   * Edita os dados de uma rodada (data, textos e nota). Campos ausentes não
+   * mudam; texto vazio limpa; `evolucaoNota: null` remove a nota.
+   */
+  editar(id: string, input: EditarFeedforwardInput): Promise<RodadaFeedforward> {
+    return apiClient.patch<RodadaFeedforward>(`/feedforward/${id}`, input);
+  },
+
+  /** Adiciona um ponto a melhorar a uma rodada existente. */
+  adicionarPonto(
+    id: string,
+    ponto: PontoNovoFeedforward,
+  ): Promise<PontoFeedforward> {
+    return apiClient.post<PontoFeedforward>(`/feedforward/${id}/pontos`, ponto);
+  },
+
+  /** Edita a descrição de um ponto pendente. */
+  editarPonto(pontoId: string, descricao: string): Promise<PontoFeedforward> {
+    return apiClient.patch<PontoFeedforward>(`/feedforward/ponto/${pontoId}`, {
+      descricao,
+    });
+  },
+
+  /** Prorroga o prazo de um ponto pendente (novo prazo futuro e posterior). */
+  prorrogarPonto(
+    pontoId: string,
+    prazo: string,
+    motivo?: string,
+  ): Promise<PontoFeedforward> {
+    return apiClient.patch<PontoFeedforward>(
+      `/feedforward/ponto/${pontoId}/prorrogar`,
+      { prazo, motivo },
+    );
+  },
+
+  /** Remove um ponto pendente. */
+  removerPonto(pontoId: string): Promise<void> {
+    return apiClient.delete<void>(`/feedforward/ponto/${pontoId}`);
   },
 };
