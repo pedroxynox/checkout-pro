@@ -77,8 +77,10 @@ Fonte: [Gestionar tus puntos de Google Flow](https://support.google.com/flow/ans
 - Omni Flash, 10 s: **15 pontos em 720p** e **7 em 360p**, por vídeo gerado
   (um pedido pode gerar 2 vídeos).
 - Interpolação para **1080p é gratuita** no Pro; 4K não está disponível.
+- Omni Flash, 6 s: **10 pontos em 720p** e **5 em 360p**.
 - **Estratégia:** testar enquadramento em 360p, gerar a versão final em 720p e
-  interpolar para 1080p. 16 clipes × ~2 tentativas finais ≈ 500–1.000 pontos.
+  interpolar para 1080p. 11 clipes de 10 s + 5 de 6 s × ~2 tentativas finais
+  ≈ 430–860 pontos.
 
 ### O que o vídeo **não** pode afirmar (fidelidade ao produto)
 
@@ -115,7 +117,6 @@ STYLE: Premium corporate product film. Photorealistic 3D environments blended wi
 | Ambiente da loja (sem marca) | Vermelho `#C8102E` + branco |
 | Identidade do app | Azul-marinho `#0A2540` → `#0F4C81` |
 | Status ok / atenção / crítico | `#10B981` / `#F59E0B` / `#EF4444` |
-| Tela a substituir (chroma) | Verde puro `#00FF00` — **só** na tela do aparelho, nunca no cenário |
 | Ato 1 | Tons frios e dessaturados |
 
 ---
@@ -133,7 +134,7 @@ antes de cada prompt. São 10 imagens.
 | R3 | Ficha da GERENTE | 12, 15 |
 | R4 | Frente de caixa (dia) | 01, 05, 08 |
 | R5 | Frente de caixa (noite) | 12 |
-| R6 | Smartphone padrão com tela verde | 04, 05, 06, 08, 12 |
+| R6 | Smartphone padrão | 04, 05, 06, 08, 12 |
 | R7 | Relógio de ponto e comprovante | 03, 06 |
 | R8 | Almoxarifado | 11 |
 | R9 | Escritório da gerência | 02, 15 |
@@ -172,7 +173,7 @@ The same supermarket front-end at night after closing: most overhead lights dimm
 **R6 — Smartphone padrão**
 ```text
 [STYLE BLOCK]
-Product photo of a sleek modern smartphone with thin bezels, matte dark graphite frame, no brand marks. The screen is solid flat chroma green (#00FF00), evenly lit, matte, with no reflections or glare. Front view, plain light-gray background.
+Product photo of a sleek modern smartphone with thin bezels, matte dark graphite frame, no brand marks. The screen is turned off, glossy black with a subtle reflection. Front view, plain light-gray background.
 ```
 
 **R7 — Relógio de ponto**
@@ -190,7 +191,7 @@ Clean, well-organized supermarket stockroom: metal shelves with rolls of plastic
 **R9 — Escritório da gerência**
 ```text
 [STYLE BLOCK]
-Bright modern management office with a glass wall overlooking a supermarket checkout area. A large wall-mounted screen showing solid flat chroma green (#00FF00), evenly lit, no reflections. White desk, minimal decor, no logos.
+Bright modern management office with a glass wall overlooking a supermarket checkout area. A large wall-mounted screen showing a softly blurred navy-blue dashboard with no readable text. White desk, minimal decor, no logos.
 ```
 
 **R10 — Espaço 3D**
@@ -201,45 +202,62 @@ Abstract 3D environment for motion graphics: deep navy blue void (#0A2540) with 
 
 ---
 
-## 5. Telas do app (como fica a tela "vazia")
+## 5. Telas do app (prints)
 
 O Flow **não consegue mostrar as telas reais** do app: ele inventa a interface e
-deforma letras e números. Por isso:
+deforma letras e números. Por isso as telas entram como **prints (capturas de
+tela) do app**, montados na edição — nunca gerados pelo Flow.
 
-1. **Nos clipes com celular ou monitor em close** (04, 05, 06, 08, 12, 15), o
-   prompt pede a tela em **verde puro (chroma)**. Na edição, aplica-se o
-   *chroma key* e coloca-se por baixo a **gravação real** da tela do app.
-2. **Nos clipes 3D abstratos** (03, 07, 09, 10, 13, 14, 16), a interface é
-   simbólica (cartões e ícones sem texto) e **não** é substituída; os títulos
-   entram por cima na edição.
-3. **Para o chroma funcionar**, os prompts pedem que o aparelho fique **parado
-   e de frente** por 3–5 s. Movimento de câmera durante a tela exige
-   *tracking* na edição (DaVinci Resolve ou After Effects; no CapCut, use o
-   rastreamento de movimento e ajuste à mão).
+### 5.1 Como funciona
 
-### 5.1 Como gravar as telas
+1. **Nos clipes com pessoa usando o celular** (05, 06, 08, 12, 15), o Flow gera
+   só **6 s** de cena, com a tela **virada para a pessoa** (a câmera não vê o
+   conteúdo). Os **4 s finais** são o **inserto do print**, feito no editor.
+2. **No clipe 04** a tela aparece apenas como um brilho azul desfocado; o
+   destaque é o logo.
+3. **Nos clipes 3D** (03, 07, 09, 10, 13, 14, 16), a interface é simbólica
+   (cartões e ícones sem texto). Prints são opcionais, como cartão flutuante
+   nos 2–3 s finais (§5.3).
+4. **Não use o print como imagem inicial no Flow:** ao animar, o modelo
+   deforma o texto do print.
 
-- **Celular:** grave no APK Android com o gravador de tela do próprio aparelho
-  (vertical, 1080 × 2340 ou maior). A leitura do comprovante (clipe 06) só
-  existe no APK.
-- **Monitor da parede (clipe 15):** grave a versão web no navegador em tela
-  cheia, 1920 × 1080.
+### 5.2 Como montar o inserto do print (CapCut ou similar)
+
+Padrão único para todos os insertos, para o vídeo ficar consistente:
+
+- **Fundo:** a imagem `espaco-3d` (R10), levemente desfocada.
+- **Print:** cantos arredondados, sombra suave, ocupando ~70% da altura.
+- **Entrada:** sobe de baixo com leve desfoque de movimento (0,5 s).
+- **Movimento:** zoom lento de 100% → 108% durante o inserto.
+- **Destaque (opcional):** um anel ou retângulo branco suave sobre o elemento
+  principal (ex.: o card "no prazo").
+- **Título:** texto curto em branco, no canto inferior esquerdo.
+
+### 5.3 Lista de prints
+
+| Print | Tela do app | O que deve aparecer | Clipe |
+|---|---|---|---|
+| P1 | Checklist | Card de abertura "feito no prazo" | 05 |
+| P2 | Ponto | Jornada do dia com as batidas preenchidas | 06 |
+| P3 | Jornada de equipe | Card com risco de TAC destacado | 08 |
+| P4 | Fechamento | "Tudo pronto!" com a barra completa | 12 |
+| P5 | Centro de Controle ou Painel de Vendas (web) | Visão geral | 15 |
+| P6 *(opcional)* | Jornada de equipe | Equipe com estados (trabalhando/intervalo) | 07 |
+| P7 *(opcional)* | Escala | Escala do dia/semana | 09 |
+| P8 *(opcional)* | Painel de Vendas / Indicadores | Curva horária ou semáforos | 10 |
+| P9 *(opcional)* | Insumos | Estoque e pedido da semana | 11 |
+
+### 5.4 Como tirar os prints
+
+- **Celular:** print no APK Android (botão de energia + volume), na maior
+  resolução do aparelho. Recorte a barra de status (hora, bateria) se tiver
+  notificações pessoais.
+- **Web (P5):** navegador em tela cheia, 1920 × 1080, zoom 100%.
 - **Dados fictícios (LGPD):** o `backend/prisma/seed.ts` cadastra **nomes de
-  colaboradores reais**. **Não grave com esse banco.** Use um ambiente de
+  colaboradores reais**. **Não tire prints com esse banco.** Use um ambiente de
   demonstração com nomes e números fictícios.
-- Grave **6–8 s** de cada tela (sobra para cortar), com movimentos lentos de
-  rolagem e toques visíveis.
-
-### 5.2 Lista de gravações
-
-| Clipe | Tela do app | O que mostrar |
-|---|---|---|
-| 04 | Home | Cabeçalho azul e grade de acessos rápidos; rolagem suave. |
-| 05 | Checklist | Card de abertura passando a "feito no prazo". |
-| 06 | Ponto | Jornada do dia com as batidas preenchidas. |
-| 08 | Jornada de equipe / alerta | Card em risco de TAC destacado. |
-| 12 | Fechamento + Home | "Tudo pronto!" e a nota de Saúde do Negócio. |
-| 15 | Centro de Controle / Painel de Vendas (web) | Visão geral, sem dados sensíveis. |
+- Confira cada print: sem nomes reais, sem marca do supermercado, sem erros na
+  tela.
 
 ---
 
@@ -292,13 +310,13 @@ AUDIO: ticking that accelerates, low tension drone, deep thud at the end. No mus
 **Referências:** R6, R10
 ```text
 [STYLE BLOCK]
-SCENE: 3D reveal in the navy void. A sleek modern smartphone rises into frame and rotates toward the camera; its screen is solid flat chroma green (#00FF00), evenly lit, no reflections. No other green in the scene.
+SCENE: 3D reveal in the navy void. A sleek modern smartphone rises into frame and rotates toward the camera; its screen glows with a soft, out-of-focus navy-blue light, no readable content.
 ACTION: 0-4s: the phone rises and slowly turns to face the camera. 4-6s: a thin red-and-white light ribbon sweeps around it. 6-10s: the phone holds perfectly still, centered and facing the camera, slightly to the left, leaving clean empty space on the right for a logo.
 CAMERA: smooth short orbit, then locked-off hold for the last 4 seconds.
 AUDIO: soft whoosh, crystalline chime, rising bass swell. No music, no voice.
 ```
 **Narração:** "O Check-out PRO reúne toda a frente de caixa num só lugar. No celular e no navegador."
-**Edição:** chroma → gravação da **Home**. Inserir `mobile/assets/Logo.png` à direita (6–10 s).
+**Edição:** inserir `mobile/assets/Logo.png` à direita (6–10 s).
 
 ### Clipe 05 — Checklist de abertura (0:40–0:50)
 
@@ -306,12 +324,13 @@ AUDIO: soft whoosh, crystalline chime, rising bass swell. No music, no voice.
 ```text
 [STYLE BLOCK] [FISCAL]
 SCENE: Morning, bright checkout area, lanes ready and clean, red and white tones.
-ACTION: 0-3s: FISCAL raises her smartphone and points it at the row of checkouts as if taking a photo; soft white flash. 3-8s: over-the-shoulder close-up: she holds the phone still, screen facing the camera; the screen is solid flat chroma green (#00FF00), evenly lit, no reflections. 8-10s: she lowers the phone with a slight smile; rack focus to the lanes.
-CAMERA: medium shot, then steady over-the-shoulder close-up, then rack focus.
+DURATION: 6 seconds.
+ACTION: 0-3s: FISCAL raises her smartphone, its back facing the camera, and points it at the row of checkouts as if taking a photo; soft white flash. 3-6s: she looks at the screen (screen facing her, not visible to the camera), a soft navy glow lights her face, she smiles slightly.
+CAMERA: medium shot from the front, slow push-in.
 AUDIO: camera shutter, soft confirmation chime, morning store ambience. No music, no voice.
 ```
 **Narração:** "A abertura é comprovada por foto, no horário certo. Sem papel, sem dúvida."
-**Edição:** chroma → gravação do **Checklist**. Texto: "Checklist com foto".
+**Edição:** 0–6 s clipe do Flow; 6–10 s inserto do print **P1** (§5.2). Texto: "Checklist com foto".
 
 ### Clipe 06 — Ponto pelo comprovante (0:50–1:00)
 
@@ -319,12 +338,13 @@ AUDIO: camera shutter, soft confirmation chime, morning store ambience. No music
 ```text
 [STYLE BLOCK] [FISCAL]
 SCENE: Wall-mounted employee time clock near the staff entrance, and a clean white counter beside it.
-ACTION: 0-3s: macro shot, the time clock prints a small thermal paper receipt; FISCAL tears it off. 3-5s: she places the receipt on the counter and photographs it with her smartphone; a glowing scan line passes over the receipt. 5-10s: top-down shot: the phone lies flat and still on the counter next to the receipt, screen up; the screen is solid flat chroma green (#00FF00), evenly lit; small glowing particles drift from the receipt into the phone.
-CAMERA: macro, then locked-off top-down shot.
+DURATION: 6 seconds.
+ACTION: 0-3s: macro shot, the time clock prints a small thermal paper receipt; FISCAL tears it off. 3-6s: she places the receipt on the counter and photographs it with her smartphone held above it, back of the phone facing the camera; a glowing scan line passes over the receipt.
+CAMERA: macro, then medium side shot.
 AUDIO: thermal printer whir, paper tear, digital scan sweep. No music, no voice.
 ```
 **Narração:** "O ponto vem do comprovante do relógio. O aplicativo lê a foto e calcula a jornada."
-**Edição:** chroma → gravação do **Ponto** (jornada do dia). Texto: "Leitura automática do comprovante".
+**Edição:** 0–6 s clipe do Flow; 6–10 s inserto do print **P2**. Texto: "Leitura automática do comprovante".
 
 ### Clipe 07 — Equipe em tempo real (1:00–1:10)
 
@@ -345,12 +365,13 @@ AUDIO: subtle UI ticks, soft ambient pad. No music, no voice.
 ```text
 [STYLE BLOCK] [SUPERVISOR]
 SCENE: Supermarket aisle next to the checkout area, customers softly blurred in the background.
-ACTION: 0-3s: SUPERVISOR walks briskly holding his smartphone; he stops when it chimes. 3-7s: close-up over his shoulder: he holds the phone still, screen facing the camera; the screen is solid flat chroma green (#00FF00), evenly lit, no reflections. 7-10s: he looks toward a checkout lane where a cashier is still working, nods with decision and walks toward her.
-CAMERA: smooth tracking shot, then steady over-the-shoulder close-up, then wide.
+DURATION: 6 seconds.
+ACTION: 0-2s: SUPERVISOR walks briskly holding his smartphone; he stops when it chimes and looks at the screen (screen facing him, not visible to the camera). 2-6s: he looks up toward a checkout lane where a cashier is still working, nods with decision and walks toward her.
+CAMERA: smooth front tracking shot, then wide.
 AUDIO: soft in-app alert tone, footsteps, store ambience. No music, no voice.
 ```
 **Narração:** "Se uma jornada se aproxima do limite, o sistema avisa. A supervisão age antes do problema."
-**Edição:** chroma → gravação do **alerta de risco de TAC** dentro do app. Texto: "Alerta de risco de TAC".
+**Edição:** 0–6 s clipe do Flow; 6–10 s inserto do print **P3**. Texto: "Alerta de risco de TAC".
 
 ### Clipe 09 — Escala e rodízio de domingos (1:20–1:30)
 
@@ -397,12 +418,13 @@ AUDIO: cardboard handling, soft UI ticks, stockroom ambience. No music, no voice
 ```text
 [STYLE BLOCK] [GERENTE]
 SCENE: Night, supermarket checkout area, last customer leaving through the glass doors.
-ACTION: 0-2s: GERENTE stands by the checkouts holding her smartphone. 2-6s: close-up: she holds the phone still, screen facing the camera; the screen is solid flat chroma green (#00FF00), evenly lit, no reflections. 6-10s: she exhales calmly and puts the phone in her blazer pocket; the overhead lights switch off row by row, mirroring the opening scene.
-CAMERA: medium shot, steady close-up, then wide static shot.
+DURATION: 6 seconds.
+ACTION: 0-3s: GERENTE stands by the checkouts looking at her smartphone (screen facing her, not visible to the camera), soft navy glow on her face. 3-6s: she exhales calmly and puts the phone in her blazer pocket; the overhead lights switch off row by row, mirroring the opening scene.
+CAMERA: medium shot, then wide static shot.
 AUDIO: soft completion chime, lights clicking off, quiet store. No music, no voice.
 ```
 **Narração:** "No fim do dia, um resumo mostra o que foi concluído e o que falta. Nada fica para trás."
-**Edição:** chroma → gravação do **Fechamento** ("Tudo pronto!") e da **Saúde do Negócio**. Texto: "Fechamento do dia".
+**Edição:** 0–6 s clipe do Flow; 6–10 s inserto do print **P4**. Texto: "Fechamento do dia".
 
 ### Clipe 13 — Arquitetura (2:00–2:10)
 
@@ -435,13 +457,14 @@ AUDIO: soft gate clicks, cascading positive ticks, resolved tone. No music, no v
 **Referências:** R2, R3, R9
 ```text
 [STYLE BLOCK] [GERENTE] [SUPERVISOR]
-SCENE: Bright modern management office with a glass wall overlooking the busy, organized checkout area with customers. A large wall-mounted screen shows solid flat chroma green (#00FF00), evenly lit, no reflections.
-ACTION: 0-5s: locked-off shot: GERENTE and SUPERVISOR stand side by side, slightly to the side of the wall screen so it stays fully visible; she points at it, he nods, both relaxed. 5-10s: camera slowly moves past them toward the glass, revealing the checkouts running smoothly.
-CAMERA: locked-off for 5 seconds, then slow push forward.
+SCENE: Bright modern management office with a glass wall overlooking the busy, organized checkout area with customers. A large wall-mounted screen shows a softly blurred navy-blue dashboard with no readable text.
+DURATION: 6 seconds.
+ACTION: 0-3s: GERENTE and SUPERVISOR stand side by side in front of the wall screen; she points at it, he nods, both relaxed. 3-6s: camera slowly moves past them toward the glass, revealing the checkouts running smoothly.
+CAMERA: slow push forward.
 AUDIO: calm office ambience, muffled store sounds. No music, no voice.
 ```
 **Narração:** "Menos retrabalho, mais controle, decisões com dados. A gestão deixa de buscar informação e passa a ser avisada."
-**Edição:** chroma → gravação web do **Centro de Controle / Painel de Vendas** (0–5 s).
+**Edição:** 0–6 s clipe do Flow; 6–10 s inserto do print **P5**.
 
 ### Clipe 16 — Assinatura (2:30–2:40)
 
@@ -461,9 +484,9 @@ AUDIO: final chime and a resolving bass note. No music, no voice.
 ## 7. Ordem de trabalho
 
 1. **Imagens de referência** R1–R10 (§4) — escolher e guardar as melhores.
-2. **Gravações das telas** (§5.2) num ambiente com dados fictícios.
-3. **Clipes** 01–16 no Flow (Omni Flash, 10 s, 16:9), com as referências.
-4. **Edição:** chroma key + gravações, títulos, narração (uma voz), trilha e
+2. **Prints do app** (§5.3) num ambiente com dados fictícios.
+3. **Clipes** 01–16 no Flow (Omni Flash, 16:9; 6 s nos clipes 05, 06, 08, 12 e 15; 10 s nos demais), com as referências.
+4. **Edição:** insertos dos prints (§5.2), títulos, narração (uma voz), trilha e
    correção de cor.
 5. **Revisão final:** conferir a tabela "O que o vídeo não pode afirmar" (§2) e
    que não aparece nenhuma marca do supermercado nem nome real.
