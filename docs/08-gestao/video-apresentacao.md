@@ -56,9 +56,10 @@ reais do app · narração em off (pt-BR) · plano **Google AI Pro**.
    fachada ou sinalização legível. Os prompts já trazem essa trava.
 3. **Telas do app:** só aparecem pelos **prints reais** (§5). O Flow nunca
    desenha a interface: ele deforma letras e números.
-4. **Dados fictícios (LGPD):** o `backend/prisma/seed.ts` cadastra **nomes de
-   colaboradores reais**. Tire os prints num ambiente de demonstração com nomes
-   e números fictícios.
+4. **Nomes reais nos prints (LGPD):** por decisão do dono do projeto, os prints
+   usam dados reais. Antes de exibir o vídeo fora da empresa (ex.: investidores),
+   obtenha a **autorização por escrito** dos colaboradores cujos nomes aparecem,
+   ou anonimize os prints (§5.2).
 5. **Prompts em inglês** (o modelo responde melhor); a fala da narração vai em
    português, entre aspas.
 
@@ -181,7 +182,7 @@ Abstract 3D environment for corporate motion graphics: deep navy blue void (#0A2
 - **Celular (`p1`–`p4`):** print no APK Android, na maior resolução; recorte a
   barra de status se houver notificações pessoais.
 
-### 5.2 Anonimizar os prints (obrigatório quando aparecem nomes)
+### 5.2 Anonimizar os prints (opcional)
 
 Os prints reais mostram **nomes de colaboradores**. Antes de usá-los, no modo
 **imagem**, adicione o print e troque cada nome real por um nome fictício
