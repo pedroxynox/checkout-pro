@@ -28,7 +28,10 @@ próprias (ajustáveis na Central de Permissões):
 | `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 945 |
 | `SancoesScreen.tsx` | Lista de sanções/advertências | 588 |
 | `RegistrarSancaoModal.tsx` | Modal para registrar sanção | 460 |
-| `FeedforwardSecao.tsx` | Seção de feedforward (acompanhamento + impressão) | 1002 |
+| `FeedforwardSecao.tsx` | Seção de feedforward: orquestra (carrega, modais, remover, foto, impressão) | 263 |
+| `RodadaFeedforwardItem.tsx` | Exibição de uma rodada e dos seus pontos (semáforo, revisão, prorrogação) | 287 |
+| `ModalNovaRodada.tsx` | Modal de criação de uma rodada (perguntas, nota, textos, pontos com prazo, foto) | 429 |
+| `feedforwardApoio.ts` | Apoio: cores do semáforo, URL da foto, seleção de imagem, rascunho e `calcularPrazoISO` | 96 |
 | `ModalRevisarPonto.tsx` | Modal do ponto: revisar, prorrogar ou editar/remover | 291 |
 | `ModalEditarRodada.tsx` | Modal de edição da rodada (data, nota, textos e novos pontos) | 250 |
 | `EstrelasFeedforward.tsx` | Estrelas 1–5 da nota (leitura/edição, com rótulo acessível) | 48 |
@@ -147,11 +150,16 @@ e [`feedforward`](../03-atlas-backend/feedforward.md).
 | `ColaboradoresScreen.test.tsx` | Lista, busca e navegação | 3 |
 | `GestaoColaboradoresScreen.test.tsx` | Formulário e envio de senha por função | 2 |
 | `PerfilColaboradorScreen.test.tsx` | Render do perfil (score/indicadores) | 3 |
-| `FeedforwardSecao.test.tsx` | Feedforward: permissões, revisão com observação, remoção com confirmação, foto em rodada salva, impressão, cargo, prorrogação (prazo padrão/seletor/erro), editar/remover ponto, editar rodada (campos, nota, novos pontos, falha), regras de data do modal e resumo de evolução | 37 |
+| `FeedforwardSecao.test.tsx` | Feedforward: permissões, nova rodada (nota, textos, prazo em dias/semanas, foto com falha, erro, perguntas), revisão com observação, remoção com confirmação, foto em rodada salva, impressão, cargo, prorrogação (prazo padrão/seletor/erro), editar/remover ponto, editar rodada (campos, nota, novos pontos, falha), regras de data do modal e resumo de evolução | 42 |
+| `feedforwardApoio.test.ts` | Rascunho padrão e `calcularPrazoISO` (dias/semanas/meses, quantidade inválida, data exata, virada do ano) | 5 |
 
 ## 10. Riscos, dívidas e pendências
-- 🔧 `PerfilColaboradorScreen.tsx` e `FeedforwardSecao.tsx` são grandes (>800
-  linhas); candidatos a quebrar em componentes menores.
+- 🔧 `PerfilColaboradorScreen.tsx` é grande (>900 linhas); candidato a quebrar
+  em componentes menores.
+- ✅ `FeedforwardSecao.tsx` (antes ~1000 linhas) foi dividida: a seção só
+  orquestra; exibição em `RodadaFeedforwardItem`/`ResumoFeedforward`, formulários
+  em `ModalNovaRodada`/`ModalEditarRodada`/`ModalRevisarPonto` e apoio puro em
+  `feedforwardApoio.ts`. Comportamento e textos mantidos (mesmos testes).
 - ✅ **O cartão "Escala" do perfil mostra o horário de DOMINGO e o grupo do
   rodízio** (ADR 0026). Antes exibia só Seg–Qui e Sex–Sáb, embora o formulário de
   edição já tivesse o horário de domingo (abaixo do grupo) — e é esse horário que

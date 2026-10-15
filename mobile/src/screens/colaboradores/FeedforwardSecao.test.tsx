@@ -634,3 +634,108 @@ describe('FeedforwardSecao — resumo de evolução', () => {
     expect(screen.queryByTestId('resumo-feedforward')).toBeNull();
   });
 });
+
+describe('FeedforwardSecao — nova rodada', () => {
+  beforeEach(() => {
+    feedforwardService.doColaborador.mockResolvedValue([]);
+    feedforwardService.criar.mockResolvedValue({ id: 'nova' });
+  });
+
+  async function abrir(): Promise<void> {
+    renderizar();
+    fireEvent.press(await screen.findByText('Nova rodada de feedforward'));
+    expect(screen.getAllByText('Nova rodada de feedforward').length).toBe(2);
+  }
+
+  it('registra a rodada com nota, textos e ponto com prazo "em 30 dias"', async () => {
+    await abrir();
+    fireEvent.press(screen.getByLabelText('Nota 4'));
+    fireEvent.changeText(
+      screen.getByPlaceholderText('O que o colaborador faz bem…'),
+      '  Simpatia ',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText('O que precisa melhorar…'),
+      ' Agilizar o caixa ',
+    );
+    expect(screen.getByText('Vence em 13/11/2026')).toBeTruthy();
+    fireEvent.press(screen.getByText('Salvar feedforward'));
+
+    await waitFor(() =>
+      expect(feedforwardService.criar).toHaveBeenCalledWith({
+        colaboradorId: 'c1',
+        data: '2026-10-14',
+        pontosFortes: 'Simpatia',
+        oportunidades: undefined,
+        compromissoFinal: undefined,
+        evolucaoNota: 4,
+        pontos: [{ descricao: 'Agilizar o caixa', prazo: '2026-11-13' }],
+      }),
+    );
+    expect(feedforwardService.enviarFoto).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(notificar).toHaveBeenCalledWith(
+        'Feedforward registrado',
+        'A rodada foi salva com sucesso.',
+      ),
+    );
+    await waitFor(() =>
+      expect(feedforwardService.doColaborador).toHaveBeenCalledTimes(2),
+    );
+  });
+
+  it('prazo em semanas e pontos vazios são ignorados', async () => {
+    await abrir();
+    fireEvent.changeText(screen.getByDisplayValue('30'), '2');
+    fireEvent.press(screen.getByText('semanas'));
+    expect(screen.getByText('Vence em 28/10/2026')).toBeTruthy();
+    fireEvent.press(screen.getByText('Salvar feedforward'));
+    await waitFor(() =>
+      expect(feedforwardService.criar).toHaveBeenCalledWith(
+        expect.objectContaining({ pontos: [], evolucaoNota: undefined }),
+      ),
+    );
+  });
+
+  it('envia a foto escolhida após criar; se falhar, avisa mas mantém a rodada', async () => {
+    ImagePicker.launchImageLibraryAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: 'file:///f.jpg', fileName: 'f.jpg', mimeType: 'image/jpeg' }],
+    });
+    feedforwardService.enviarFoto.mockRejectedValueOnce(new Error('upload'));
+    await abrir();
+    fireEvent.press(screen.getByText('Da galeria'));
+    await waitFor(() => expect(screen.getByText('Trocar (foto)')).toBeTruthy());
+    fireEvent.press(screen.getByText('Salvar feedforward'));
+    await waitFor(() =>
+      expect(feedforwardService.enviarFoto).toHaveBeenCalledWith(
+        'nova',
+        expect.objectContaining({ uri: 'file:///f.jpg' }),
+      ),
+    );
+    await waitFor(() =>
+      expect(notificar).toHaveBeenCalledWith('Atenção', expect.stringContaining('foto')),
+    );
+    expect(notificar).toHaveBeenCalledWith(
+      'Feedforward registrado',
+      'A rodada foi salva com sucesso.',
+    );
+  });
+
+  it('falha ao criar avisa e mantém o modal aberto', async () => {
+    feedforwardService.criar.mockRejectedValue(new Error('x'));
+    await abrir();
+    fireEvent.press(screen.getByText('Salvar feedforward'));
+    await waitFor(() =>
+      expect(notificar).toHaveBeenCalledWith('Erro', 'Falha ao registrar.'),
+    );
+    expect(screen.getByText('Salvar feedforward')).toBeTruthy();
+  });
+
+  it('mostra as perguntas de referência ao expandir', async () => {
+    await abrir();
+    expect(screen.queryByText(/Qual foi sua principal conquista/)).toBeNull();
+    fireEvent.press(screen.getByText('Perguntas do formulário (referência)'));
+    expect(screen.getByText(/Qual foi sua principal conquista/)).toBeTruthy();
+  });
+});
