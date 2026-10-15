@@ -87,12 +87,9 @@ export function ResumoFeedforward({
           detalhe={e.mediaNota == null ? undefined : `Média ${e.mediaNota.toFixed(1)}`}
           extra={
             tendencia ? (
-              <Ionicons
-                name={tendencia.nome}
-                size={16}
-                color={tendencia.cor}
-                accessibilityLabel={tendencia.rotulo}
-              />
+              <View accessible accessibilityLabel={tendencia.rotulo}>
+                <Ionicons name={tendencia.nome} size={16} color={tendencia.cor} />
+              </View>
             ) : null
           }
         />

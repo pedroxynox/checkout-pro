@@ -32,7 +32,7 @@ próprias (ajustáveis na Central de Permissões):
 | `ModalRevisarPonto.tsx` | Modal do ponto: revisar, prorrogar ou editar/remover | 291 |
 | `ModalEditarRodada.tsx` | Modal de edição da rodada (data, nota, textos e novos pontos) | 250 |
 | `EstrelasFeedforward.tsx` | Estrelas 1–5 da nota (leitura/edição, com rótulo acessível) | 48 |
-| `ResumoFeedforward.tsx` | Resumo de evolução no topo da seção de feedforward | 148 |
+| `ResumoFeedforward.tsx` | Resumo de evolução no topo da seção de feedforward | 145 |
 
 ## 4. Fluxo do usuário
 1. **Lista:** abre `ColaboradoresScreen`, com busca por nome/matrícula e filtros.
