@@ -76,6 +76,7 @@ Um documento por **área de tela** do app. Índice em
 - [Roadmap e pendências](08-gestao/roadmap-e-pendencias.md)
 - [Histórico de mudanças](08-gestao/historico-de-mudancas.md)
 - [Auditorias](08-gestao/auditorias/)
+- [Vídeo de apresentação](08-gestao/video-apresentacao.md) — roteiro, narração e prompts (Google Flow) do vídeo institucional.
 
 ---
 
