@@ -69,6 +69,17 @@ com telas reais do app + animação 3D · narração em off (pt-BR).
    referência indicadas (§4) como *Ingredients*.
 6. **Variações:** gere 2–4 versões por clipe e escolha a melhor.
 
+### 2.1 Orçamento no plano Google AI Pro
+
+Fonte: [Gestionar tus puntos de Google Flow](https://support.google.com/flow/answer/16526234?hl=es) (consultado em 2026-10-15).
+
+- O plano Pro dá **1.000 pontos/mês** + **50 pontos/dia** (os diários não acumulam).
+- Omni Flash, 10 s: **15 pontos em 720p** e **7 em 360p**, por vídeo gerado
+  (um pedido pode gerar 2 vídeos).
+- Interpolação para **1080p é gratuita** no Pro; 4K não está disponível.
+- **Estratégia:** testar enquadramento em 360p, gerar a versão final em 720p e
+  interpolar para 1080p. 16 clipes × ~2 tentativas finais ≈ 500–1.000 pontos.
+
 ### O que o vídeo **não** pode afirmar (fidelidade ao produto)
 
 | Não dizer/mostrar | Por quê |
