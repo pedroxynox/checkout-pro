@@ -174,13 +174,12 @@ Abstract 3D environment for corporate motion graphics: deep navy blue void (#0A2
 |---|---|---|---|
 | `p1` | Checklist | Card de abertura "feito no prazo" | 05 |
 | `p2` | Ponto | Jornada do dia com as batidas | 06 |
-| `p3` | Jornada de equipe | Uma pessoa com risco de TAC | 08 |
+| `p3` | Ranking — TAC | "Ninguém tem dias em TAC neste ciclo" (prevenção) | 08 |
 | `p4` | Fechamento | "Tudo pronto!" | 12 |
-| `p5` | Centro de Controle (web) | Visão geral | 15 |
+| `p5` | Centro de Controle (celular) | Lista de ferramentas de gestão | 15 |
 
 - **Celular (`p1`–`p4`):** print no APK Android, na maior resolução; recorte a
   barra de status se houver notificações pessoais.
-- **Web (`p5`):** navegador em tela cheia, 1920 × 1080, zoom 100%.
 
 ### 5.2 Imagens de tela (print dentro do aparelho)
 
@@ -188,14 +187,9 @@ No modo **imagem**, adicione o print e as referências indicadas e use o prompt.
 Salve o resultado como `t1` … `t5`. **Amplie e confira** se todas as letras e
 números do print ficaram iguais; se algo mudou, gere de novo.
 
-**`t1` a `t4`** (trocar `@p1` por `@p2`, `@p3`, `@p4`):
+**`t1` a `t5`** (trocar `@p1` por `@p2` … `@p5`):
 ```text
 Place the attached app screenshot @p1 exactly as it is onto the screen of the smartphone @celular. The phone stands upright, slightly angled, centered on the deep navy background of @espaco-3d with soft light and faint particles. Keep every word, number, icon and color of the screenshot unchanged and sharp. 16:9 frame.
-```
-
-**`t5`:**
-```text
-Place the attached web screenshot @p5 exactly as it is onto the screen of a sleek modern thin-bezel monitor with no brand marks. The monitor is centered, slightly angled, on the deep navy background of @espaco-3d with soft light and faint particles. Keep every word, number, icon and color of the screenshot unchanged and sharp. 16:9 frame.
 ```
 
 ### 5.3 Clipes de tela (4 s cada)
@@ -301,15 +295,15 @@ AUDIO: subtle interface ticks, soft ambient pad. No music.
 AVOID: readable text, logos, subtitles.
 ```
 
-### Clipe 08 — Aviso antes do limite · 6 s → depois tela `t3`
+### Clipe 08 — Jornada sob controle · 6 s → depois tela `t3`
 
 ```text
 Premium corporate product film, photorealistic, soft cinematic light, shallow depth of field, 16:9.
 SCENE: Supermarket aisle next to the checkouts of @loja-dia, customers softly blurred. @supervisor holds the smartphone @celular.
-ACTION: 0-2s: he walks briskly; the phone chimes, he stops and looks at the screen (screen facing him, not visible to the camera). 2-6s: he looks up toward a checkout lane where a cashier is still working, nods with decision and walks toward her.
+ACTION: 0-3s: he walks calmly along the checkouts and glances at the phone (screen facing him, not visible to the camera). 3-6s: he looks up at the team working at the lanes, gives a small satisfied nod and keeps walking.
 CAMERA: smooth front tracking shot, then wide.
-VOICE-OVER: a mature, calm, confident female narrator speaking Brazilian Portuguese, warm studio voice, unhurried pace, says: "Se uma jornada se aproxima do limite, a supervisão é avisada."
-AUDIO: soft app alert tone, footsteps, store ambience. No music. The man does not speak.
+VOICE-OVER: a mature, calm, confident female narrator speaking Brazilian Portuguese, warm studio voice, unhurried pace, says: "A supervisão acompanha cada jornada, e o TAC fica sob controle."
+AUDIO: footsteps, store ambience. No music. The man does not speak.
 AVOID: logos, readable text, visible phone screen content, subtitles.
 ```
 
