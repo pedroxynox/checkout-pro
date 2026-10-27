@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** como App, Backend e Banco se conectam + índice "quero fazer X → veja Y"
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-27 · **Cobre:** como App, Backend e Banco se conectam + índice "quero fazer X → veja Y"
 
 # Mapa do projeto
 
@@ -132,3 +132,4 @@ sequenceDiagram
 | Esquema e migrações do banco | `backend/prisma/` |
 | Documentação | `docs/` |
 | Handoff técnico e estado operacional | `.kiro/steering/` |
+| Skills de terceiros do Kiro ([inventário](prompt-para-nova-sessao.md#skills-instaladas)) | `.kiro/skills/` |

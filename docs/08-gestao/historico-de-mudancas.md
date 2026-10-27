@@ -8,6 +8,21 @@
 
 ---
 
+## Skills do Kiro instaladas no repositório (2026-10-27)
+
+- Seis pacotes de skills de terceiros (padrão Agent Skills) em `.kiro/skills/`:
+  Caveman, Humanizer, Superpowers, Emil Kowalski, Impeccable e Taste Skill.
+  São cópias fiéis do upstream, com a licença de cada pacote; inventário, origem
+  e o que ficou de fora em
+  [Prompt para nova sessão](../00-visao-geral/prompt-para-nova-sessao.md#skills-instaladas).
+- Novo steering `.kiro/steering/skills.md`: as regras do projeto prevalecem sobre
+  as skills (idioma, branch + PR, specs em `.kiro/specs/`).
+- O `.gitignore` passa a ignorar os artefatos locais `.superpowers/` e
+  `.taste-skill/`; o `.gitattributes` marca as skills como vendorizadas.
+- Nenhuma mudança no backend nem no app.
+
+---
+
 ## Feedforward — melhorias por etapas (2026-10-14)
 
 Evolução da seção de Feedforward do perfil do colaborador, entregue em partes.

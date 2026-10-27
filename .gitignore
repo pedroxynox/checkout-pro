@@ -46,3 +46,7 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# Artefatos locais das skills do Kiro (.kiro/skills/)
+.superpowers/
+.taste-skill/
