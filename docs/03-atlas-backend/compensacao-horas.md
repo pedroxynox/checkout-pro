@@ -46,7 +46,7 @@ as horas ou empurra o problema para o mês seguinte). Ver
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
 | `compensacao-horas.domain.ts` | Motor puro: a conta contínua, a janela do turno, a alocação, os textos | 631 |
-| `compensacao-horas.service.ts` | Junta os ingredientes (jornada, escala, férias, feriados, venda) e grava a decisão | 1078 |
+| `compensacao-horas.service.ts` | Junta os ingredientes (jornada, escala, férias, feriados, venda) e grava a decisão | 1135 |
 | `compensacao-horas.controller.ts` | Rotas HTTP + permissão | 88 |
 | `compensacao-horas.consulta.ts` | A única leitura das compensações aprovadas (função livre) | 80 |
 | `compensacao-horas.module.ts` | Ligações (DI) do módulo | 39 |
@@ -222,7 +222,10 @@ Ver [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
 3. **Domingo e feriado estão fora por ARITMÉTICA, não só por política.** Ali o
    excedente é de 100%, e 100% **nunca** é debitada (regra 6 da Central): liberar
    um domingo não reduziria o saldo de 50% em nada — seria uma compensação que
-   não compensa.
+   não compensa. Quais dias pagam 100% vem do **contrato do dia**
+   (`diaPagaAdicional100`): a data sai da lista quando é 100% para todos, e
+   `permitido` recusa a liberação de quem tem aquele dia a 100% no contrato dele.
+   No 6x1 é exatamente domingo e feriado, como antes.
 4. **A compensação tem de cair no ciclo aberto.** Se as 9h de 50% são do ciclo
    que fecha no dia 25 e a pessoa é liberada no dia 28, o sistema **não zerou
    nada**: a loja paga as 9h e a pessoa começa o ciclo seguinte devendo. Piorou

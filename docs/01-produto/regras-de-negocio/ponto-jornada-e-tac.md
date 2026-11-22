@@ -44,11 +44,13 @@ extras e o TAC:
 7. **O intervalo não conta como jornada.**
 8. **Horas extras** são o que excede a jornada esperada do dia:
    - **50%** em dias comuns;
-   - **100%** aos domingos e feriados (ver [Escala e rodízio de
-     domingo](escala-e-rodizio-domingo.md) e o tratamento de feriados a 100%).
+   - **100%** nos dias que o contrato marca (o domingo) e no feriado quando o
+     contrato marca o chip "Feriado" (todos os contratos de hoje) — ver [Escala e
+     rodízio de domingo](escala-e-rodizio-domingo.md).
 9. A **jornada esperada** depende do contrato de jornada da pessoa (ver
    [Contratos e jornada](contratos-e-jornada.md)); no padrão vigente, a
-   referência dos fiscais é Seg–Qui 7h, Sex–Sáb 8h e Domingo 7h20.
+   referência dos fiscais é Seg–Qui 7h, Sex–Sáb 8h e Domingo 7h20. O feriado tem
+   carga própria no contrato (7h20 no 6x1).
 
 ## 3. TAC — o que é, oficialmente
 
@@ -76,16 +78,16 @@ regra manda:
 | Regra | O sistema verifica? |
 |---|---|
 | A · intervalo mínimo de 1h | ✅ sim — `intervaloMinimoMs`, gera TAC |
-| D · horas extras | ⚠️ sim, mas com **outro número**: o app aponta TAC acima de **1h50**, e a regra oficial é **2 horas** |
+| D · horas extras | ⚠️ sim, com o limite **do contrato**: no 6x1 o app aponta TAC acima de **1h50** (a regra oficial é **2 horas**); no 5x2 informado pelo dono, acima de **1h10** |
 | B · interjornada 11h | ❌ não existe |
 | C · pausa de 15 min em 5h | ❌ não existe |
 | E · 6 dias consecutivos | ❌ não existe |
-| F · limite diário de 10h | ❌ não existe |
+| F · limite diário de 10h | ⚠️ só nos contratos com **teto diário** (`limiteTrabalhoDiaMin`; 10h no 5x2): acima dele é TAC. O 6x1 não tem teto e não verifica |
 | G · 2 domingos consecutivos | ⚠️ o rodízio de 3 grupos **evita por construção** (cada grupo folga 1 domingo em 3), mas **nada verifica** — se a âncora ou os grupos ficarem errados, ninguém é avisado |
 | H · 35h após o repouso | ❌ não existe |
 
 **Além disso, o sistema tem um gatilho que NÃO está na lista oficial:** intervalo
-**acima de 3 horas** é tratado como TAC. Na prática isso descreve "saiu e não
+**acima do máximo do contrato** (3h no 6x1, 2h50 no 5x2) é tratado como TAC. Na prática isso descreve "saiu e não
 voltou", que é conduta e não excesso de jornada — provavelmente pertence às
 **incidências**, não ao TAC.
 
@@ -96,17 +98,25 @@ voltou", que é conduta e não excesso de jornada — provavelmente pertence às
 
 ### 3.2 Como o TAC é acionado hoje no código
 
-O **TAC** sinaliza quando a jornada saiu dos parâmetros aceitáveis. Hoje ele é
-acionado quando:
+O **TAC** sinaliza quando a jornada saiu dos parâmetros aceitáveis. Os números
+são os **do contrato daquele dia** (no 6x1: 1h50, 1h e 3h). Hoje ele é acionado
+quando:
 
-10. as **horas extras passam de 1h50**; **ou**
-11. o **intervalo é menor que 1 hora**; **ou**
-12. o **intervalo passa de 3 horas**.
+10. as **horas extras passam do limite do contrato**; **ou**
+11. o **intervalo é menor que o mínimo do contrato**; **ou**
+12. o **intervalo passa do máximo do contrato**.
+
+Nos contratos com teto diário (5x2: 10h), também quando o **trabalho do dia passa
+do teto**. Os motivos citam os números do contrato ("Excedeu 1h10 de horas
+extras", "Trabalhou 10h30, acima do limite de 10h no dia"); no 6x1 o texto é o de
+sempre.
 
 ### 3.3 Escalada de aviso e o intervalo máximo
 
-- A supervisão é avisada em **etapas monotônicas**: risco a **1h30** → risco a
-  **1h40** → **TAC** (só a etapa mais grave é anunciada).
+- A supervisão é avisada em **etapas monotônicas**: **1º aviso** → **2º aviso**
+  → **TAC** (só a etapa mais grave é anunciada). Os minutos dos avisos são os do
+  contrato do dia (1h30 e 1h40 no 6x1) e a mensagem diz quanto falta para o
+  limite ("Faltam 20 minutos para o limite de TAC" no 6x1).
 - **Cada etapa é avisada uma única vez por pessoa/dia**, com dedup persistente
   que sobrevive a reinícios e coordena instâncias.
 - **Retorno após o intervalo máximo é recusado** — o dia é tratado como "não

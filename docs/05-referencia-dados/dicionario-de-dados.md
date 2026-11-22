@@ -683,6 +683,12 @@ valores de hoje, sem mudança de comportamento.
 | `intervaloMinimoEntreBatidasMin` | `Int` |  |  |
 | `intervaloObrigatorio` | `Boolean` |  | Quando true, encerrar a jornada sem intervalo é TAC (intervalo obrigatório). |
 | `trabalhaDomingo` | `Boolean` |  | o colaborador com este contrato não trabalha domingo (grupoDomingo = null). |
+| `cargaFeriadoMin` | `Int` |  | era 7h20 fixo no código para todos os contratos. |
+| `feriadoAdicional100` | `Boolean` |  | O feriado paga 100% (e não gera débito)? Chip "Feriado" nos dias a 100%. |
+| `limiteTrabalhoDiaMin` | `Int?` |  | Teto de horas TRABALHADAS no dia (minutos); acima é TAC. Null = sem teto. |
+| `folgasPorSemana` | `Int` |  | Folgas por semana (6x1 = 1; 5x2 = 2): máximo de folgas fixas na ficha. |
+| `folgasFixasPadrao` | `Int[]` |  | Folgas de quem não tem grupo e deixou a ficha vazia (0=domingo … 6=sábado). |
+| `permiteFolgaSabado` | `Boolean` |  | O sábado pode ser folga fixa (só para quem não tem grupo). |
 | `colaboradores` | `Colaborador[]` |  | Colaboradores que usam este contrato (para bloquear a remoção quando em uso). |
 | `jornadaVigencias` | `JornadaVigencia[]` |  | decidindo os dias daquele período. |
 | `criadoEm` | `DateTime` |  |  |

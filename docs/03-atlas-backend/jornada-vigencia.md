@@ -24,8 +24,8 @@ spec [`jornada-5x2`](../../.kiro/specs/jornada-5x2/design.md)).
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
-| `jornada-vigencia.domain.ts` | Domínio puro: `vigenciaNoDia`, `previstoNoDia`, `folgasFixasEfetivas`, `avisosDaVigencia`, `validarVigencia`, `textoDuracao` | 450 |
-| `jornada-vigencia.service.ts` | `consultor(dias)` em lote (`previsto`, `ehFolga`, `semFolgaNaFicha`) e `folgasNoPeriodo` | 330 |
+| `jornada-vigencia.domain.ts` | Domínio puro: `vigenciaNoDia`, `previstoNoDia`, `folgasFixasEfetivas`, `avisosDaVigencia`, `validarVigencia` (e reexporta `textoDuracao`) | 441 |
+| `jornada-vigencia.service.ts` | `consultor(dias)` em lote (`previsto`, `ehFolga`, `semFolgaNaFicha`) e `folgasNoPeriodo` | 332 |
 | `folga.service.ts` | **Regra única de folga**: fachada do consultor (veio de `escala-domingo`) | 60 |
 | `jornada-vigencia.module.ts` | DI; importa `TiposContratoModule` e `EscalaDomingoModule`; exporta `JornadaVigenciaService` e `FolgaService` | 18 |
 
@@ -84,7 +84,11 @@ de domingo.
 - `validarVigencia(entrada, limites)` — erros que bloqueiam: grupo inválido, folgas
   fixas com grupo, folga repetida/inválida/acima do máximo, sábado sem permissão,
   horário fora de `HH:mm`, saída ≤ entrada, dia repetido.
-- `textoDuracao(min)` — "8h48", "2h", "50 min".
+- `textoDuracao(min)` — "8h48", "2h", "50 min". Mora em
+  [`common/duracao.ts`](common.md) e é reexportado aqui.
+- Folgas padrão: com ficha vazia e sem grupo, `previstoNoDia`, `avisosDaVigencia`
+  e `semFolgaNaFicha` usam `regras.folgasFixasPadrao` do contrato da vigência
+  (Fase 2).
 
 ## 7. Estados e enums
 - `RegimeJornada` (só no domínio): `LEGADO_6X1` (sem vigência no dia) · `SEMANAL`.
@@ -138,7 +142,8 @@ de domingo.
 - 🔧 Comparação feita na Fase 1b: 155 leituras (Central, escala, quadro, exportação,
   compensação, perfil, incidências, ponto) sobre um banco com 8 pessoas e um ciclo
   inteiro, com `main` e com a branch — resultado idêntico.
-- 🔧 Rodízio de folgas (Fase 3) e folgas padrão do contrato (Fase 2) entram pelo
-  contexto de `previstoNoDia` (`folgasDoGrupo`, `folgasFixasPadrao`).
+- 🔧 O rodízio de folgas (Fase 3) entra pelo contexto de `previstoNoDia`
+  (`folgasDoGrupo`). As folgas padrão do contrato já vêm de `RegrasContrato`
+  (Fase 2).
 - 🔧 O consultor carrega todas as fichas, como o `FolgaService`; as tabelas são
   pequenas (uma linha por pessoa e mudança).

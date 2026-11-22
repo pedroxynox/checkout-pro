@@ -13,7 +13,8 @@ automaticamente faltas e não-retornos do intervalo.
   jornada do dia com adicional 50%/100%; classifica cada batida
   (entrada → saída p/ intervalo → retorno → encerramento); interpreta o texto
   do comprovante (nome/data/hora) e sugere o colaborador; avisa a supervisão nos
-  riscos de TAC (1h30 → 1h40 → TAC); marca faltas automáticas (2h sem batida) e
+  riscos de TAC (1º aviso → 2º aviso → TAC, em minutos do contrato do dia;
+  1h30 → 1h40 → TAC no 6x1); marca faltas automáticas (2h sem batida) e
   não-retorno do intervalo (acima do intervalo máximo do **contrato da pessoa**,
   3h no 6x1); sincroniza o status do fiscal e remove a falta automática quando a
   pessoa bate ponto; analisa **quantas marcações faltam num dia e quais**
@@ -30,8 +31,8 @@ automaticamente faltas e não-retornos do intervalo.
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `ponto.controller.ts` | Rotas HTTP (OCR, pessoas, dia, batidas, histórico TAC) | 122 |
-| `ponto.service.ts` | Regras de aplicação: persistência, classificação, avisos de TAC | 1644 |
-| `ponto.domain.ts` | Regras puras: classificação e cálculo da jornada/TAC | 583 |
+| `ponto.service.ts` | Regras de aplicação: persistência, classificação, avisos de TAC | 1684 |
+| `ponto.domain.ts` | Regras puras: classificação e cálculo da jornada/TAC | 697 |
 | `ponto.errors.ts` | Erros de domínio (mapeados para HTTP) | 101 |
 | `ponto.module.ts` | Ligações (DI) do módulo | 49 |
 | `ponto-ocr.service.ts` | Leitura do comprovante + memória de aliases (nome→pessoa) | 285 |
@@ -90,15 +91,23 @@ correção ou reincidência). Exigem data permitida e ciclo aberto.
 #### `jornadaDoDia(pessoaId, tipoPessoa, data)`
 Lê as batidas do dia, resolve feriado e regras do contrato, e delega o cálculo
 ao domínio puro (`calcularJornadaDia`). Devolve a jornada serializável + batidas
-com o tipo canônico.
+com o tipo canônico. A jornada traz `regrasResumo` (spec `jornada-5x2`, R2.5): os
+limites do contrato **daquele dia** em minutos (`limiteExtrasMin`,
+`primeiroAvisoMin`, `segundoAvisoMin`, `intervaloMinimoMin`,
+`intervaloMaximoMin`, `limiteTrabalhoDiaMin`), para o app parar de escrever
+"1h50/1h/3h" fixos.
 
 #### `buscarPessoas(busca?)`
 Junta fiscais (tabela `Fiscal` com ficha canônica ativa) e colaboradores
 não-fiscais ativos, com busca por nome sem acento; devolve até 20 pessoas.
 
 #### `avisarAlertaTacSeNecessario(...)` / `historicoTac(...)`
-Avisa a supervisão/gerência nas etapas 1h30/1h40/TAC (no máximo uma vez por
-pessoa/dia, com reserva atômica em `AlertaTacEnviado`). O verificador (a cada
+Avisa a supervisão/gerência no 1º aviso, no 2º aviso e no TAC (no máximo uma vez
+por pessoa/dia, com reserva atômica em `AlertaTacEnviado`). As etapas usam os
+avisos do contrato do dia (`avisosDoResumo(regrasResumo)`), e a frase cita esses
+minutos e a diferença até o limite (`textoAvisoPreventivoTac`); no 6x1 sai a de
+sempre: "atingiu 1h30 de horas extras hoje. Faltam 20 minutos para o limite de
+TAC." Os valores do enum `EtapaAlertaTac` não mudaram no banco. O verificador (a cada
 minuto) agrupa as batidas pelo **dia civil de Brasília** (`diaCivilBrasilia`) —
 antes usava o dia UTC (`inicioDoDia(new Date())`), que entre 21h e 23h59 locais
 já aponta o dia seguinte e fazia o TAC deixar de ser avisado na sobra de jornada
@@ -275,8 +284,9 @@ da remoção imediata que o `PontoService` já faz na batida normal.
   → tempo trabalhado (intervalo não conta), intervalo, extras 50/100, status,
   alerta iminente, TAC e motivos, o que falta para o dia e o sinalizador
   `naoRetornoIntervalo` (saiu para o intervalo e não voltou dentro do máximo).
-- `diaPagaAdicional100(diaSemana, ehFeriado, regras)` → true no domingo (pelo
-  contrato) e em **todo feriado**. Responde a duas perguntas com a mesma regra:
+- `diaPagaAdicional100(diaSemana, ehFeriado, regras)` → true nos dias marcados
+  no contrato (domingo no 6x1) e no **feriado quando o contrato marca
+  `feriadoAdicional100`** (todos os contratos de hoje). Responde a duas perguntas com a mesma regra:
   o que passa da carga-base é extra de **100%** (não de 50%) e o que falta para
   a carga-base **não vira hora devida** — domingo e feriado pagam a carga
   cumprida. A isenção no feriado é deliberada: as horas são pagas a 100% e o
@@ -284,19 +294,28 @@ da remoção imediata que o `PontoService` já faz na batida normal.
   Usado por `calcularJornadaDia` (adicional) e pela
   [`central-jornada`](central-jornada.md) (isenção de débito).
 - `cargaBaseDoDia(diaSemana, ehFeriado, regras)` → a **jornada esperada** do dia.
-  Num feriado devolve `regras.cargaFeriadoMs` (**7h20**, a jornada de um domingo),
-  caia o feriado em que dia da semana cair; nos demais dias, a carga do próprio
+  Num feriado devolve `regras.cargaFeriadoMs` (coluna `cargaFeriadoMin` do
+  contrato; **7h20** no 6x1), caia o feriado em que dia da semana cair; nos demais dias, a carga do próprio
   dia. Fonte única dos dois chamadores (o cálculo do dia e a base dos dias de
   ausência/atestado), que antes tinham cópias da regra.
   Ver [ADR 0018](../02-arquitetura/decisoes/0018-feriado-jornada-do-dia-real.md).
 - **`cargaFeriadoMs` é um valor PRÓPRIO, não `cargaBaseMs(0)`.** É a distinção que
   fecha um bug de folha: quem folga fixo no domingo tem a carga de domingo do seu
   contrato em **zero**, e ler a jornada do feriado dali fazia o dia esperar zero
-  hora — a jornada inteira virava extra a 100% e o dia caía em TAC. A jornada de um
-  feriado é 7h20 para todos, inclusive para quem nunca trabalha domingo.
+  hora — a jornada inteira virava extra a 100% e o dia caía em TAC. A jornada do
+  feriado é a do contrato (7h20 no 6x1), inclusive para quem nunca trabalha
+  domingo.
 - `batidaDuplicada(horaMs, existentes, minimo)` → detecta batidas próximas demais.
-- `etapaAlertaTac(extrasMs, tac)` → devolve só a etapa mais grave (`RISCO_1H30`,
-  `RISCO_1H40`, `TAC`).
+- `etapaAlertaTac(extrasMs, tac, regras?)` → devolve só a etapa mais grave
+  (`RISCO_1H30` = 1º aviso, `RISCO_1H40` = 2º aviso, `TAC`), com os minutos de
+  aviso do contrato (sem regras, os do 6x1).
+- `resumoDasRegras(regras)`, `avisosDoResumo(resumo)` e
+  `textoAvisoPreventivoTac(nome, avisoMin, limiteMin)` → o resumo em minutos do
+  `regrasResumo`, a volta para as etapas e a frase do aviso.
+- **Motivos de TAC com os números do contrato** (R2.5): "Excedeu {limite} de
+  horas extras", "Intervalo abaixo de {mínimo}", "Intervalo acima de {máximo}" e,
+  com teto diário (`limiteTrabalhoDiaMs`), "Trabalhou {X}, acima do limite de {Y}
+  no dia". No 6x1 o texto é idêntico ao de antes (teste em `ponto.domain.spec`).
 - `tipoPorOrdem(indice)`, `statusFiscalDeTipoBatida(tipo)`,
   `statusFiscalDeJornada(status)` → mapeamentos determinísticos.
 - OCR (`ponto-ocr.parser.ts`): `interpretarComprovante`, `extrairNomeDetalhe`,
@@ -438,8 +457,10 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
    de carregamento; o "agora" é deslocado para Brasília (UTC−3 fixo).
 2. **Máximo de 4 batidas por dia** e **anti-duplicidade** (< 2 min entre batidas).
 3. **Idempotência por `clienteId`**: reenvios da fila offline não duplicam.
-4. **O intervalo não conta como jornada**; TAC quando extras > 1h50, intervalo
-   < 1h ou > 3h.
+4. **O intervalo não conta como jornada**; TAC quando extras > limite do
+   contrato, intervalo abaixo do mínimo ou acima do máximo, ou trabalho acima do
+   teto diário (quando o contrato tem). No 6x1: 1h50, 1h, 3h e sem teto; no 5x2
+   informado pelo dono: 1h10, intervalo máximo 2h50 e teto de 10h.
 5. **Retorno após o intervalo máximo é recusado** — o dia vira "não retorno".
 6. **Bater ponto em dia de FOLGA é permitido — e avisa a supervisão.** Era
    recusado (409 `PontoEmFolgaError`, hoje removido) até se perceber que a
@@ -478,12 +499,13 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 10. **Cada etapa de TAC é avisada uma vez** (dedup persistente que sobrevive a
    reinícios e coordena instâncias).
 11. **O adicional é decidido pelo dia, tudo ou nada:** domingo e feriado pagam
-   100% sobre o que passa da carga-base; todos os demais dias (inclusive
+   100% sobre o que passa da carga-base (o feriado, quando o contrato marca o chip
+   "Feriado"); todos os demais dias (inclusive
    **sábado**) pagam 50%. Nos dias de 100% não há hora devida — ver
    `diaPagaAdicional100` e a regra 4 da
    [`central-jornada`](central-jornada.md).
-12. **A jornada de um feriado é 7h20** — a de um domingo —, em qualquer dia da
-   semana em que ele caia (`cargaBaseDoDia`). Nos demais dias vale a carga do
+12. **A jornada de um feriado é a do contrato** (`cargaFeriadoMin`; 7h20 no 6x1),
+   em qualquer dia da semana em que ele caia (`cargaBaseDoDia`). Nos demais dias vale a carga do
    próprio dia: dom 7h20 · seg-qui 7h · sex-sáb 8h no 6x1. O teto de extras é
    **1h50 em todos os dias**, então num feriado o TAC começa em 9h10 trabalhadas.
    Ela vem de um **valor próprio** (`cargaFeriadoMs`) e **não** da carga de
@@ -556,9 +578,9 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `ponto.domain.spec.ts` | Classificação e cálculo da jornada/TAC (funções puras) e o **descarte de marcações repetidas**: cópia exata, dentro da janela, grupo inteiro, determinismo, o contrapeso das marcações legítimas — e que a jornada de um dia duplicado é igual à de um dia normal | 53 |
+| `ponto.domain.spec.ts` | Classificação e cálculo da jornada/TAC (funções puras), o **descarte de marcações repetidas** (cópia exata, janela, grupo, determinismo, contrapeso) e as **regras do 5x2**: motivos com os números do contrato (6x1 idêntico), teto diário, intervalo de 2h50, feriado com carga própria e 100% opcional, resumo e frase do aviso | 60 |
 | `mudanca-de-funcao.spec.ts` | **O histórico sobrevive à mudança de função:** o Relógio Ponto encontra as batidas da identidade antiga, a reanotação é recusada como duplicada, o limite de 4 conta a pessoa, e a degradação sem ficha resolvível | 6 |
-| `ponto.service.spec.ts` | Alertas de TAC, validações de pessoa/data/hora, transação, ponte de fiscal e o **ponto em dia de folga** (permite, avisa uma vez por pessoa/dia, e não avisa em dia normal) | 44 |
+| `ponto.service.spec.ts` | Alertas de TAC (frases do 6x1 iguais; etapas e frase com os avisos de outro contrato), validações de pessoa/data/hora, transação, ponte de fiscal e o **ponto em dia de folga** (permite, avisa uma vez por pessoa/dia, e não avisa em dia normal) | 46 |
 | `sugestao-folga.domain.spec.ts` | A sugestão do novo dia de folga — e sobretudo os casos em que ela **se cala**: uma semana só, folga cumprida em alguma semana, dois candidatos, domingo (rodízio) | 8 |
 | `ponto-ocr.parser.spec.ts` | Extração de nome/data/hora do comprovante | 17 |
 | `ponto-ocr.service.spec.ts` | Só pessoas ativas nas sugestões e memória de aliases | 7 |
@@ -574,7 +596,7 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 | `marcacoes-invalidas.domain.spec.ts` | Quantas marcações faltam e quais: entrada esquecida, ajustes por duração, sem turno, bordas e 4 propriedades invariantes (fast-check) | 25 |
 | `deteccao-falta-a-prazo.spec.ts` | Ausência a prazo (chave dupla) não vira falta automática duplicada | 3 |
 | `ponto-alertas.service.spec.ts` | Cron periódico de riscos de TAC | 2 |
-| `contrato-6x1-congelado.spec.ts` | Congela as cargas e os limites de TAC do 6x1 (regra não muda sem intenção) | 5 |
+| `contrato-6x1-congelado.spec.ts` | Congela as cargas, os limites de TAC e os campos da Fase 2 do 6x1; prova que carga e 100% pelo contrato dão os números fixos de `jornadaEsperadaMs`/`isDomingo` | 7 |
 | `pausa-transicao-jornada.spec.ts` | Pausa de transição: sem pausa marca falta/avisa TAC/avisa ponto em folga; com pausa não faz nada disso, grava o ponto e segue vigiando o não-retorno | 10 |
 | `contrato-do-dia.spec.ts` | O ponto pergunta pelo contrato do dia das batidas e calcula com ele (6x1 em 20/11, 5x2 em 25/11) | 1 |
 

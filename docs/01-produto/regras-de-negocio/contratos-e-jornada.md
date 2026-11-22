@@ -59,7 +59,9 @@ da data de admissão e das decisões registradas. Os estados possíveis:
 
 Os **tipos de contrato de jornada** formam um catálogo **editável pela gestão**,
 sem tocar no código. Cada tipo define os parâmetros de jornada — carga base por
-dia, intervalos, limites de extras e de TAC — que o cálculo da jornada consome
+dia, carga do feriado, dias a 100% (inclusive o feriado), intervalos, limites de
+extras e de TAC, 1º e 2º aviso, teto de horas no dia, folgas por semana, folgas
+padrão e se o sábado pode ser folga — que o cálculo da jornada consome
 (ver [Ponto, jornada e TAC](ponto-jornada-e-tac.md)).
 
 **Regras-chave:**
@@ -74,12 +76,21 @@ dia, intervalos, limites de extras e de TAC — que o cálculo da jornada consom
     apenas desativá-lo. Um contrato que está no **histórico da jornada** de alguém
     (vigência, [ADR 0027](../../02-arquitetura/decisoes/0027-vigencia-da-jornada.md))
     também conta como em uso: ele decide os dias daquele período e só pode ser
-    desativado.
+    desativado. **As regras de cálculo de um contrato em uso também não mudam**
+    (mudariam dias já calculados): duplica-se o contrato, ajusta-se a cópia e ela
+    é aplicada com vigência. Nome, descrição e ativo continuam editáveis. O
+    padrão conta sempre como em uso.
 13. **Coerência dos limites** é validada no servidor: intervalo mínimo menor que o
-    máximo e limites crescentes (risco 1h30 ≤ risco 1h40 ≤ limite de extras — ver
-    o TAC em [Ponto, jornada e TAC](ponto-jornada-e-tac.md)).
+    máximo; limites crescentes (1º aviso ≤ 2º aviso ≤ limite de extras — ver o TAC
+    em [Ponto, jornada e TAC](ponto-jornada-e-tac.md)); folgas padrão sem
+    repetição, no máximo as folgas por semana, e sábado só se o contrato permitir.
 14. **Só o administrador** (`ADMIN_DADOS`) mexe no catálogo, pois ele afeta o
     cálculo de horas e a folha.
+
+O administrador também pode **duplicar** um contrato (a cópia nasce inativa) e
+**escolher o padrão**. A troca do padrão é recusada enquanto houver batida sem
+ficha de colaborador, porque o padrão decide todos os dias dessas batidas. Um
+contrato novo nasce com **2 folgas por semana** e feriado de 7h20 a 100%.
 
 ## 3. Vigência: cada dia com o contrato que valia nele
 

@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 145 arquivos, 1395 casos. **Mobile:** 43 arquivos, 369 casos. **Total: 1764 casos.**
+> **Backend:** 145 arquivos, 1419 casos. **Mobile:** 43 arquivos, 369 casos. **Total: 1788 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -32,7 +32,7 @@
 | `src/atestados/atestados.service.spec.ts` | 10 | 2 |
 | `src/central-jornada/agrupar-atestados.spec.ts` | 12 | 3 |
 | `src/central-jornada/central-jornada.controller.spec.ts` | 3 | 3 |
-| `src/central-jornada/central-jornada.service.spec.ts` | 49 | 7 |
+| `src/central-jornada/central-jornada.service.spec.ts` | 50 | 7 |
 | `src/central-jornada/compensacao-jornada.spec.ts` | 12 | 5 |
 | `src/central-jornada/marcacoes-invalidas.service.spec.ts` | 12 | 1 |
 | `src/central-jornada/rankings.service.spec.ts` | 10 | 1 |
@@ -130,7 +130,7 @@
 | `src/operadores/quadro-folga-escala.spec.ts` | 5 | 1 |
 | `src/operadores/remover-ausencia-periodo.spec.ts` | 4 | 1 |
 | `src/operadores/vigencia-quadro.spec.ts` | 2 | 1 |
-| `src/ponto/contrato-6x1-congelado.spec.ts` | 5 | 1 |
+| `src/ponto/contrato-6x1-congelado.spec.ts` | 7 | 1 |
 | `src/ponto/contrato-do-dia.spec.ts` | 1 | 1 |
 | `src/ponto/deteccao-alerta-atraso.spec.ts` | 5 | 2 |
 | `src/ponto/deteccao-autocura-nao-retorno.spec.ts` | 3 | 1 |
@@ -147,8 +147,8 @@
 | `src/ponto/ponto-ocr.parser.spec.ts` | 17 | 1 |
 | `src/ponto/ponto-ocr.service.spec.ts` | 7 | 2 |
 | `src/ponto/ponto-remover-nao-retorno.spec.ts` | 3 | 1 |
-| `src/ponto/ponto.domain.spec.ts` | 53 | 9 |
-| `src/ponto/ponto.service.spec.ts` | 44 | 4 |
+| `src/ponto/ponto.domain.spec.ts` | 60 | 10 |
+| `src/ponto/ponto.service.spec.ts` | 46 | 4 |
 | `src/ponto/revalidacao-automatica.domain.spec.ts` | 16 | 4 |
 | `src/ponto/sugestao-folga.domain.spec.ts` | 8 | 1 |
 | `src/produtos-pesados/produtos-pesados.parser.spec.ts` | 7 | 2 |
@@ -156,8 +156,8 @@
 | `src/requisicoes/requisicoes.service.spec.ts` | 3 | 1 |
 | `src/reset-operacional/reset-operacional.domain.spec.ts` | 8 | 3 |
 | `src/reset-operacional/reset-operacional.properties.spec.ts` | 3 | 1 |
-| `src/tipos-contrato/tipos-contrato.adapter.spec.ts` | 5 | 1 |
-| `src/tipos-contrato/tipos-contrato.service.spec.ts` | 13 | 1 |
+| `src/tipos-contrato/tipos-contrato.adapter.spec.ts` | 7 | 1 |
+| `src/tipos-contrato/tipos-contrato.service.spec.ts` | 23 | 2 |
 
 ## Mobile (Jest + Testing Library)
 

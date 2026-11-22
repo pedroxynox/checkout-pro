@@ -75,21 +75,27 @@ prevista é o código de hoje com os dados de hoje (design §1).
 
 ## Fase 2 — Tipo de contrato 5x2
 
-- [ ] 2.1 Prisma: campos da design §2.2; migração `9zzv_contrato_5x2` com os
+Dois PRs: **2a — backend** (branch `feat/contrato-5x2`) e **2b — app**.
+
+- [x] 2.1 Prisma: campos da design §2.2; migração `9zzv_contrato_5x2` com os
   valores do 6x1 (feriado 440, `feriadoAdicional100` true, limite diário null…).
   _(R2.1–R2.3, R2.6, R2.7)_
-- [ ] 2.2 Adapter e `RegrasContrato`: carga de feriado do banco,
+- [x] 2.2 Adapter e `RegrasContrato`: carga de feriado do banco,
   `feriadoAdicional100`, `limiteTrabalhoDiaMs`; `diaPagaAdicional100` novo. _(R2.1, R2.2)_
-- [ ] 2.3 TAC: motivo de limite diário; textos a partir dos números (idênticos para
+- [x] 2.3 TAC: motivo de limite diário; textos a partir dos números (idênticos para
   o 6x1); `etapaAlertaTac` com as regras; mensagens e rótulos dos avisos. _(R2.3–R2.5)_
-- [ ] 2.4 Remover valores fixos do caminho de cálculo: `CARGA_FERIADO_MS` no
+- [x] 2.4 Remover valores fixos do caminho de cálculo: `CARGA_FERIADO_MS` no
   adapter, `jornadaEsperadaMs`/`isDomingo` em `fiscais.service` e
   `fiscais-alertas`, domingo fixo em `compensacao-horas.service`,
-  `INTERVALO_MINIMO_ENTRE_BATIDAS_MS` em `DUPLICADA`. _(R2.10)_
-- [ ] 2.5 Trava de regras de contrato em uso (`emUso`), `POST /duplicar`,
+  `INTERVALO_MINIMO_ENTRE_BATIDAS_MS` em `DUPLICADA`. _(R2.10)_ — o domingo fixo
+  do app fica para a 2b; o limiar de 7h da "folga sugerida" é decisão pendente 2.
+- [x] 2.5 Trava de regras de contrato em uso (`emUso`), `POST /duplicar`,
   `PATCH /padrao`; validação de coerência ampliada (avisos ≤ limite; folgas fixas
-  padrão ≤ `folgasPorSemana`; sábado só com permissão). _(R2.8, R2.9)_
-- [ ] 2.6 `JornadaPontoView.regrasResumo` e textos do `RegistroPontoScreen`. _(R2.5)_
+  padrão ≤ `folgasPorSemana`; sábado só com permissão). _(R2.8, R2.9)_ — a troca
+  do padrão é recusada enquanto houver batida sem ficha (o padrão decide todos os
+  dias delas).
+- [~] 2.6 `JornadaPontoView.regrasResumo` e textos do `RegistroPontoScreen`. _(R2.5)_
+  — `regrasResumo` no backend (2a); os textos do app ficam para a 2b.
 - [ ] 2.7 Tela `TiposContratoScreen`: campos novos, chip Feriado, "1º/2º aviso",
   travas, Duplicar, Tornar padrão. _(R2.1–R2.9)_
 - [ ] 2.8 (Dono) Criar o(s) contrato(s) 5x2 44h. Valores informados: carga 8h48
@@ -97,8 +103,10 @@ prevista é o código de hoje com os dados de hoje (design §1).
   de extras 70 min, limite diário 600 min, intervalo máximo 170 min, 2 folgas por
   semana; avisos de TAC e intervalo mínimo conforme cada contrato (decisões 14
   e 15). _(R2)_
-- [ ] 2.9 Atlas `tipos-contrato`, `ponto`; regras `ponto-jornada-e-tac` e
-  `contratos-e-jornada`; `docs:gen`. _(RT.5)_
+- [~] 2.9 Atlas `tipos-contrato`, `ponto`; regras `ponto-jornada-e-tac` e
+  `contratos-e-jornada`; `docs:gen`. _(RT.5)_ — backend feito na 2a (também
+  `fiscais`, `compensacao-horas`, `central-jornada`, `common`,
+  `jornada-vigencia`); Atlas do app na 2b.
 
 ## Fase 3 — Rodízio de folgas
 
