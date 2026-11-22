@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { FeriadosModule } from '../feriados/feriados.module';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
+import { JornadaVigenciaModule } from '../jornada-vigencia/jornada-vigencia.module';
 import { CicloFolhaModule } from '../ciclo-folha/ciclo-folha.module';
 import { TiposContratoModule } from '../tipos-contrato/tipos-contrato.module';
 import { FeriasModule } from '../ferias/ferias.module';
@@ -16,6 +17,7 @@ import { CentralJornadaService } from './central-jornada.service';
   imports: [
     FeriadosModule,
     EscalaDomingoModule,
+    JornadaVigenciaModule,
     CicloFolhaModule,
     TiposContratoModule,
     // Férias: quem está de férias não é apontado como falta.

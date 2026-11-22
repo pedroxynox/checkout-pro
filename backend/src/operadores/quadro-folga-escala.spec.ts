@@ -1,5 +1,5 @@
 import { OperadorTurnoService } from './operador-turno.service';
-import { FolgaService } from '../escala-domingo/folga.service';
+import { folgaDeTeste } from '../../test/helpers/jornada-de-teste';
 
 /**
  * O Quadro de Operadores concorda com a escala publicada sobre o que é FOLGA.
@@ -86,7 +86,7 @@ describe('OperadorTurnoService — FOLGA pela regra única', () => {
       },
     };
 
-    const folga = new FolgaService(prismaFake as never, undefined);
+    const folga = folgaDeTeste(prismaFake as never, undefined);
     // Ordem: prisma, notificacoes, escalaDomingo, folga.
     return new OperadorTurnoService(
       prismaFake as never,

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
+import { JornadaVigenciaModule } from '../jornada-vigencia/jornada-vigencia.module';
 import { FeriasModule } from '../ferias/ferias.module';
 import { EscalaExportacaoController } from './escala-exportacao.controller';
 import { EscalaExportacaoService } from './escala-exportacao.service';
@@ -15,7 +16,7 @@ import { EscalaExportacaoService } from './escala-exportacao.service';
  * opcional degradar para "nenhum feriado existe". `PrismaService` é global.
  */
 @Module({
-  imports: [EscalaDomingoModule, FeriasModule],
+  imports: [EscalaDomingoModule, JornadaVigenciaModule, FeriasModule],
   controllers: [EscalaExportacaoController],
   providers: [EscalaExportacaoService],
   exports: [EscalaExportacaoService],

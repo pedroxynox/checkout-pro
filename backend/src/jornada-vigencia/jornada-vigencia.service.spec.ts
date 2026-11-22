@@ -1,17 +1,60 @@
 import {
+  GrupoDomingo,
+  ehDiaDeFolga,
   entradaEsperadaNoDia,
   saidaEsperadaNoDia,
 } from '../escala-domingo/escala-domingo.domain';
-import { FolgaService } from '../escala-domingo/folga.service';
 import { REGRAS_PADRAO, RegrasContrato } from '../ponto/ponto.domain';
 import { JornadaVigenciaService } from './jornada-vigencia.service';
 
 /**
  * `JornadaVigenciaService`: carrega em lote e responde a jornada prevista. O
  * teste central compara, sobre OS MESMOS dados, o consultor com o que o sistema
- * usa hoje (`FolgaService` + `entradaEsperadaNoDia`/`saidaEsperadaNoDia`): sem
- * vigência, tem de dar igual em todas as pessoas e dias.
+ * usava antes da vigência (a regra de folga do `FolgaService`, congelada abaixo,
+ * + `entradaEsperadaNoDia`/`saidaEsperadaNoDia`): sem vigência, tem de dar
+ * igual em todas as pessoas e dias.
  */
+
+/**
+ * O `FolgaService.consultor().ehFolga` de ANTES da vigência da jornada (commit
+ * f3ebcdc), copiado sem mudanças de regra. Hoje o `FolgaService` delega ao
+ * consultor; esta cópia é a referência que não pode ser alterada junto com ele.
+ */
+function folgaAntiga(
+  fichas: readonly {
+    id: string;
+    folgaDiaSemana: number | null;
+    grupoDomingo: string | null;
+  }[],
+  escala: readonly {
+    funcionarioId: string;
+    colaboradorId: string | null;
+    diaSemana: number;
+    folga: boolean;
+  }[],
+  ancora: { data: Date; ordem: readonly GrupoDomingo[] } | null,
+) {
+  const porId = new Map(fichas.map((f) => [f.id, f]));
+  const folgaGeral = new Set<string>();
+  for (const e of escala) {
+    if (!e.folga) continue;
+    for (const id of [e.funcionarioId, e.colaboradorId]) {
+      if (id) folgaGeral.add(`${e.diaSemana}|${id}`);
+    }
+  }
+  return (dia: Date, ids: readonly (string | null | undefined)[]): boolean => {
+    const conhecidos = ids.filter((id): id is string => !!id);
+    const ficha = conhecidos.map((id) => porId.get(id)).find((f) => f);
+    const ancoraDoDia = dia.getUTCDay() === 0 ? ancora : null;
+    if (ficha && ficha.folgaDiaSemana != null) {
+      return ehDiaDeFolga(ficha, dia, ancoraDoDia);
+    }
+    for (const id of conhecidos) {
+      if (folgaGeral.has(`${dia.getUTCDay()}|${id}`)) return true;
+    }
+    return ficha ? ehDiaDeFolga(ficha, dia, ancoraDoDia) : false;
+  };
+}
 
 const CONTRATO_6X1 = 'contrato-6x1';
 const CONTRATO_5X2 = 'contrato-5x2';
@@ -147,15 +190,14 @@ function montar(
     tiposContrato as never,
     escalaDomingo as never,
   );
-  const folga = new FolgaService(prisma as never, escalaDomingo as never);
-  return { service, folga, prisma, tiposContrato };
+  return { service, prisma, tiposContrato };
 }
 
 describe('JornadaVigenciaService.consultor — sem vigência é o sistema de hoje', () => {
-  it('folga = FolgaService; entrada/saída = funções de hoje, em todas as pessoas e dias', async () => {
-    const { service, folga } = montar();
+  it('folga = regra antiga; entrada/saída = funções de hoje, em todas as pessoas e dias', async () => {
+    const { service } = montar();
     const consultor = await service.consultor(DIAS);
-    const folgaHoje = await folga.consultor(DIAS);
+    const folgaHoje = folgaAntiga(FICHAS, ESCALA, ANCORA);
     const identidades: string[][] = [
       ['ana'],
       ['bia'],
@@ -169,7 +211,8 @@ describe('JornadaVigenciaService.consultor — sem vigência é o sistema de hoj
         const ficha = FICHAS.find((f) => ids.includes(f.id))!;
         expect(p).not.toBeNull();
         expect(p!.regime).toBe('LEGADO_6X1');
-        expect(p!.folga).toBe(folgaHoje.ehFolga(d, ids));
+        expect(p!.folga).toBe(folgaHoje(d, ids));
+        expect(consultor.ehFolga(d, ids)).toBe(folgaHoje(d, ids));
         expect(p!.entrada).toBe(entradaEsperadaNoDia(ficha, d, ANCORA, false));
         expect(p!.saida).toBe(saidaEsperadaNoDia(ficha, d, ANCORA, false));
       }
@@ -194,6 +237,26 @@ describe('JornadaVigenciaService.consultor — sem vigência é o sistema de hoj
     expect(prisma.jornadaVigencia.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.escalaEntry.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.feriado.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('ehFolga sem ficha: vale a escala semanal pelas outras identidades', async () => {
+    const { service } = montar();
+    const consultor = await service.consultor(DIAS);
+    const sexta = dia('2026-11-27');
+    expect(consultor.previsto(['fiscal-caio'], sexta)).toBeNull();
+    expect(consultor.ehFolga(sexta, ['fiscal-caio'])).toBe(true);
+    expect(consultor.ehFolga(sexta, ['fiscal-caio'])).toBe(
+      folgaAntiga(FICHAS, ESCALA, ANCORA)(sexta, ['fiscal-caio']),
+    );
+    expect(consultor.ehFolga(dia('2026-11-26'), ['fiscal-caio'])).toBe(false);
+  });
+
+  it('semFolgaNaFicha: ficha sem dia de folga (legado)', async () => {
+    const { service } = montar();
+    const consultor = await service.consultor(DIAS);
+    expect(consultor.semFolgaNaFicha(['fiscal-caio', 'caio'])).toBe(true);
+    expect(consultor.semFolgaNaFicha(['ana'])).toBe(false);
+    expect(consultor.semFolgaNaFicha(['ninguem'])).toBe(false);
   });
 
   it('pessoa desconhecida → null; dia não carregado → erro', async () => {
@@ -277,36 +340,32 @@ describe('JornadaVigenciaService.consultor — com vigência', () => {
   });
 });
 
-describe('JornadaVigenciaService.regrasNoDia', () => {
-  const vigencia = {
-    id: 'v',
-    colaboradorId: 'ana',
+describe('JornadaVigenciaService.consultor — semFolgaNaFicha com vigência', () => {
+  const base = {
+    colaboradorId: 'caio',
     vigenteDesde: dia('2026-11-23'),
     tipoContratoJornadaId: CONTRATO_5X2,
-    grupo: null,
-    folgasFixas: [],
     disponibilidade: [],
   };
 
-  it('antes da vigência, o contrato da ficha; a partir dela, o da vigência', async () => {
-    const { service, tiposContrato } = montar({ vigencias: [vigencia] });
-    expect(await service.regrasNoDia('ana', dia('2026-11-22'))).toBe(
-      REGRAS_PADRAO,
-    );
-    expect(tiposContrato.regrasDoContrato).toHaveBeenLastCalledWith(
-      CONTRATO_6X1,
-    );
-    expect(await service.regrasNoDia('ana', dia('2026-11-23'))).toBe(
-      REGRAS_5X2,
-    );
-    expect(await service.regrasNoDia('ana', dia('2027-01-10'))).toBe(
-      REGRAS_5X2,
-    );
-  });
-
-  it('sem pessoa, o contrato padrão', async () => {
-    const { service, tiposContrato } = montar();
-    await service.regrasNoDia(null, dia('2026-11-23'));
-    expect(tiposContrato.regrasDoContrato).toHaveBeenCalledWith(null);
+  it('a vigência do último dia decide: sem grupo e sem folgas fixas = sem folga', async () => {
+    const semNada = montar({
+      vigencias: [{ ...base, id: 'v1', grupo: null, folgasFixas: [] }],
+    });
+    expect(
+      (await semNada.service.consultor(DIAS)).semFolgaNaFicha(['caio']),
+    ).toBe(true);
+    const comFolga = montar({
+      vigencias: [{ ...base, id: 'v2', grupo: null, folgasFixas: [6, 0] }],
+    });
+    expect(
+      (await comFolga.service.consultor(DIAS)).semFolgaNaFicha(['caio']),
+    ).toBe(false);
+    const comGrupo = montar({
+      vigencias: [{ ...base, id: 'v3', grupo: 'G2', folgasFixas: [] }],
+    });
+    expect(
+      (await comGrupo.service.consultor(DIAS)).semFolgaNaFicha(['caio']),
+    ).toBe(false);
   });
 });

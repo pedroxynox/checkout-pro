@@ -33,7 +33,10 @@ import {
   descreverFaltantes,
   horaMarcacaoHHmm,
 } from '../ponto/marcacoes-invalidas.domain';
-import { ConsultorFolga, FolgaService } from '../escala-domingo/folga.service';
+import {
+  ConsultorFolga,
+  FolgaService,
+} from '../jornada-vigencia/folga.service';
 import {
   sugerirFolgaPorBatidas,
   textoSugestaoFolga,

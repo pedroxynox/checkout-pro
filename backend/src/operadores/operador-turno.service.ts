@@ -10,7 +10,7 @@ import {
 } from './operadores.domain';
 import { StatusJustificativa } from '../common/justificativas';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
-import { FolgaService } from '../escala-domingo/folga.service';
+import { FolgaService } from '../jornada-vigencia/folga.service';
 import { FeriasService } from '../ferias/ferias.service';
 import { FeriadosService } from '../feriados/feriados.service';
 import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';

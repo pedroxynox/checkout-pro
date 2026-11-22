@@ -12,8 +12,9 @@
  *   a ficha passar a decidir sozinha (ADR 0023).
  */
 import { PrismaService } from '../prisma/prisma.service';
-import { EscalaDomingoService } from './escala-domingo.service';
+import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { FolgaService } from './folga.service';
+import { folgaDeTeste } from '../../test/helpers/jornada-de-teste';
 
 const TERCA = new Date('2026-07-21T00:00:00.000Z'); // diaSemana 2
 const QUARTA = new Date('2026-07-22T00:00:00.000Z'); // diaSemana 3
@@ -61,7 +62,7 @@ function criarServico(cenario: Cenario = {}): FolgaService {
     obterAncora: () => Promise.resolve(cenario.ancora ?? null),
   } as unknown as EscalaDomingoService;
 
-  return new FolgaService(prisma, escalaDomingo);
+  return folgaDeTeste(prisma, escalaDomingo);
 }
 
 describe('FolgaService', () => {

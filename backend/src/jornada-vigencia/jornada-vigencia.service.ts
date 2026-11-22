@@ -40,6 +40,20 @@ export interface ConsultorJornada {
     dia: Date,
     ehFeriado?: boolean,
   ): JornadaPrevista | null;
+
+  /**
+   * A pessoa descansa no dia? É `previsto(...).folga`, com um caso a mais
+   * herdado do `FolgaService`: quem não tem ficha entre os `ids` (fiscal sem
+   * vínculo) ainda folga se a escala semanal legada disser.
+   */
+  ehFolga(dia: Date, ids: readonly (string | null | undefined)[]): boolean;
+
+  /**
+   * Quem, entre os `ids`, está **sem folga nenhuma** na própria jornada. No
+   * regime legado: ficha sem `folgaDiaSemana`. Com vigência (a do último dia
+   * carregado): sem grupo e sem folgas fixas. Pessoa sem ficha → false.
+   */
+  semFolgaNaFicha(ids: readonly (string | null | undefined)[]): boolean;
 }
 
 /** Colunas da ficha que formam o regime legado (6x1). */
@@ -111,11 +125,10 @@ export class JornadaVigenciaService {
       .sort((a, b) => a - b)
       .map((t) => new Date(t));
     if (diasCivis.length === 0) {
-      return {
-        previsto: () => {
-          throw new Error('Consultor da jornada sem dias carregados.');
-        },
+      const semDias = (): never => {
+        throw new Error('Consultor da jornada sem dias carregados.');
       };
+      return { previsto: semDias, ehFolga: semDias, semFolgaNaFicha: semDias };
     }
     const primeiro = diasCivis[0];
     const ultimo = diasCivis[diasCivis.length - 1];
@@ -211,70 +224,61 @@ export class JornadaVigenciaService {
     const ancoraDomingo: { data: Date; ordem: readonly GrupoDomingo[] } | null =
       ancora ? { data: ancora.data, ordem: ancora.ordem } : null;
 
+    const exigirCarregado = (dia: Date): number => {
+      const chave = inicioDoDia(dia).getTime();
+      if (!carregados.has(chave)) {
+        throw new Error(
+          `Dia ${inicioDoDia(dia).toISOString().slice(0, 10)} fora dos dias carregados no consultor da jornada.`,
+        );
+      }
+      return chave;
+    };
+    const pessoaDe = (
+      conhecidos: readonly string[],
+    ): JornadaDaPessoa | undefined => {
+      for (const id of conhecidos) {
+        const pessoa = pessoas.get(id);
+        if (pessoa) return pessoa;
+      }
+      return undefined;
+    };
+    const conhecidosDe = (ids: readonly (string | null | undefined)[]) =>
+      ids.filter((id): id is string => !!id);
+    const naEscalaSemanal = (conhecidos: readonly string[], dow: number) =>
+      conhecidos.some((id) => folgaNaEscala.has(`${dow}|${id}`));
+
+    const previsto: ConsultorJornada['previsto'] = (ids, dia, ehFeriado) => {
+      const chave = exigirCarregado(dia);
+      const conhecidos = conhecidosDe(ids);
+      const pessoa = pessoaDe(conhecidos);
+      if (!pessoa) return null;
+      const dow = dia.getUTCDay();
+      return previstoNoDia(pessoa, dia, {
+        regras,
+        ehFeriado: ehFeriado ?? feriados.has(chave),
+        // O rodízio antigo só existe no domingo; nos outros dias a âncora não
+        // muda nada e nem é carregada.
+        ancoraDomingo: dow === 0 ? ancoraDomingo : null,
+        folgaNaEscalaSemanal: naEscalaSemanal(conhecidos, dow),
+        // Fase 3 (rodízio de folgas) e Fase 2 (folgas padrão do contrato)
+        // entram aqui; até lá, grupo não afirma e não há padrão.
+      });
+    };
+
     return {
-      previsto: (ids, dia, ehFeriado) => {
-        const chave = inicioDoDia(dia).getTime();
-        if (!carregados.has(chave)) {
-          throw new Error(
-            `Dia ${inicioDoDia(dia).toISOString().slice(0, 10)} fora dos dias carregados no consultor da jornada.`,
-          );
-        }
-        const conhecidos = ids.filter((id): id is string => !!id);
-        let pessoa: JornadaDaPessoa | undefined;
-        for (const id of conhecidos) {
-          pessoa = pessoas.get(id);
-          if (pessoa) break;
-        }
-        if (!pessoa) return null;
-        const dow = dia.getUTCDay();
-        return previstoNoDia(pessoa, dia, {
-          regras,
-          ehFeriado: ehFeriado ?? feriados.has(chave),
-          // O rodízio antigo só existe no domingo; nos outros dias a âncora não
-          // muda nada e nem é carregada.
-          ancoraDomingo: dow === 0 ? ancoraDomingo : null,
-          folgaNaEscalaSemanal: conhecidos.some((id) =>
-            folgaNaEscala.has(`${dow}|${id}`),
-          ),
-          // Fase 3 (rodízio de folgas) e Fase 2 (folgas padrão do contrato)
-          // entram aqui; até lá, grupo não afirma e não há padrão.
-        });
+      previsto,
+      ehFolga: (dia, ids) => {
+        const p = previsto(ids, dia);
+        if (p) return p.folga;
+        return naEscalaSemanal(conhecidosDe(ids), dia.getUTCDay());
+      },
+      semFolgaNaFicha: (ids) => {
+        const pessoa = pessoaDe(conhecidosDe(ids));
+        if (!pessoa) return false;
+        const vigente = vigenciaNoDia(pessoa.vigencias, ultimo);
+        if (!vigente) return pessoa.legado.folgaDiaSemana == null;
+        return !vigente.grupo && vigente.folgasFixas.length === 0;
       },
     };
-  }
-
-  /**
-   * Regras do contrato que decide o dia da pessoa: o da vigência daquele dia
-   * ou, antes da primeira vigência, o da ficha legada. Sem pessoa, o padrão.
-   * Substitui `TiposContratoService.regrasDoColaborador`, que olhava só a ficha
-   * atual — e por isso reescrevia o passado quando o contrato mudava.
-   */
-  async regrasNoDia(
-    colaboradorId: string | null | undefined,
-    dia: Date,
-  ): Promise<RegrasContrato> {
-    if (!colaboradorId) return this.tiposContrato.regrasDoContrato(null);
-    const [ficha, linhas] = await Promise.all([
-      this.prisma.colaborador.findUnique({
-        where: { id: colaboradorId },
-        select: { tipoContratoJornadaId: true },
-      }),
-      this.prisma.jornadaVigencia.findMany({
-        where: { colaboradorId, vigenteDesde: { lte: inicioDoDia(dia) } },
-        select: { id: true, vigenteDesde: true, tipoContratoJornadaId: true },
-      }),
-    ]);
-    const vigencia = vigenciaNoDia(
-      linhas.map((l) => ({
-        ...l,
-        grupo: null,
-        folgasFixas: [],
-        disponibilidade: new Map(),
-      })),
-      dia,
-    );
-    return this.tiposContrato.regrasDoContrato(
-      vigencia?.tipoContratoJornadaId ?? ficha?.tipoContratoJornadaId ?? null,
-    );
   }
 }

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CentralJornadaModule } from '../central-jornada/central-jornada.module';
 import { CicloFolhaModule } from '../ciclo-folha/ciclo-folha.module';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
+import { JornadaVigenciaModule } from '../jornada-vigencia/jornada-vigencia.module';
 import { FeriadosModule } from '../feriados/feriados.module';
 import { FeriasModule } from '../ferias/ferias.module';
 import { TiposContratoModule } from '../tipos-contrato/tipos-contrato.module';
@@ -27,6 +28,7 @@ import { CompensacaoHorasService } from './compensacao-horas.service';
   imports: [
     CentralJornadaModule,
     EscalaDomingoModule,
+    JornadaVigenciaModule,
     FeriadosModule,
     FeriasModule,
     CicloFolhaModule,

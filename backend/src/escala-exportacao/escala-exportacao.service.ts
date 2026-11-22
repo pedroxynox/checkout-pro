@@ -26,7 +26,10 @@ import {
 } from '../escala-domingo/escala-domingo.domain';
 import { carregarMapaDeFeriados } from '../feriados/feriados.consulta';
 import { FeriasService } from '../ferias/ferias.service';
-import { ConsultorFolga, FolgaService } from '../escala-domingo/folga.service';
+import {
+  ConsultorFolga,
+  FolgaService,
+} from '../jornada-vigencia/folga.service';
 import {
   carregarFiscalIdsPorColaborador,
   identidadesDaFicha,

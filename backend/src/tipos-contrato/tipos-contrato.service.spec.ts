@@ -79,6 +79,16 @@ function montar() {
     jornadaVigencia: {
       // Idem, para o "em uso" pelo histórico da jornada (spec jornada-5x2).
       count: jest.fn(() => Promise.resolve(0)),
+      // Vigência do dia em `regrasDoColaborador`; por padrão, nenhuma.
+      findFirst: jest.fn(
+        (): Promise<{ tipoContratoJornadaId: string } | null> =>
+          Promise.resolve(null),
+      ),
+      // Todas as vigências da pessoa em `resolvedorDeRegras`; por padrão, nenhuma.
+      findMany: jest.fn(
+        (): Promise<{ vigenteDesde: Date; tipoContratoJornadaId: string }[]> =>
+          Promise.resolve([]),
+      ),
     },
   };
   const service = new TiposContratoService(prisma as unknown as PrismaService);
@@ -166,6 +176,93 @@ describe('TiposContratoService', () => {
     expect(prisma.tipoContratoJornada.delete).toHaveBeenCalledWith({
       where: { id: 'livre' },
     });
+  });
+
+  it('regras do colaborador num dia: a vigência do dia vence a ficha', async () => {
+    const { service, store, prisma } = montar();
+    store.push({
+      ...dto6x1(),
+      id: 'ficha',
+      nome: 'Da ficha',
+      ativo: true,
+      padrao: false,
+      limiteExtrasMin: 110,
+    });
+    store.push({
+      ...dto6x1(),
+      id: 'novo',
+      nome: '5x2',
+      ativo: true,
+      padrao: false,
+      limiteExtrasMin: 70,
+    });
+    (
+      prisma as unknown as { colaborador: Record<string, jest.Mock> }
+    ).colaborador.findUnique = jest.fn(() =>
+      Promise.resolve({ tipoContratoJornadaId: 'ficha' }),
+    );
+    const dia = new Date('2026-11-23T15:00:00.000Z');
+
+    // Sem vigência até o dia: contrato da ficha.
+    expect((await service.regrasDoColaborador('c1', dia)).limiteExtrasMs).toBe(
+      110 * 60_000,
+    );
+    // Com vigência: o contrato dela; a busca usa o dia civil.
+    prisma.jornadaVigencia.findFirst.mockResolvedValueOnce({
+      tipoContratoJornadaId: 'novo',
+    });
+    expect((await service.regrasDoColaborador('c1', dia)).limiteExtrasMs).toBe(
+      70 * 60_000,
+    );
+    expect(prisma.jornadaVigencia.findFirst).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: {
+          colaboradorId: 'c1',
+          vigenteDesde: { lte: new Date('2026-11-23T00:00:00.000Z') },
+        },
+        orderBy: { vigenteDesde: 'desc' },
+      }),
+    );
+  });
+
+  it('resolvedorDeRegras: cada dia com o contrato da vigência daquele dia', async () => {
+    const { service, store, prisma } = montar();
+    for (const [id, limite] of [
+      ['ficha', 110],
+      ['44h', 70],
+      ['42h', 60],
+    ] as const) {
+      store.push({
+        ...dto6x1(),
+        id,
+        nome: id,
+        ativo: true,
+        padrao: false,
+        limiteExtrasMin: limite,
+      });
+    }
+    (
+      prisma as unknown as { colaborador: Record<string, jest.Mock> }
+    ).colaborador.findUnique = jest.fn(() =>
+      Promise.resolve({ tipoContratoJornadaId: 'ficha' }),
+    );
+    prisma.jornadaVigencia.findMany.mockResolvedValueOnce([
+      {
+        vigenteDesde: new Date('2026-12-16T00:00:00Z'),
+        tipoContratoJornadaId: '42h',
+      },
+      {
+        vigenteDesde: new Date('2026-11-23T00:00:00Z'),
+        tipoContratoJornadaId: '44h',
+      },
+    ]);
+    const regras = await service.resolvedorDeRegras('c1');
+    const limite = (iso: string) =>
+      regras(new Date(`${iso}T12:00:00Z`)).limiteExtrasMs / 60_000;
+    expect(limite('2026-11-22')).toBe(110);
+    expect(limite('2026-11-23')).toBe(70);
+    expect(limite('2026-12-15')).toBe(70);
+    expect(limite('2026-12-16')).toBe(60);
   });
 
   it('falha ao editar um contrato inexistente', async () => {

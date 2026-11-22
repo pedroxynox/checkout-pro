@@ -1,8 +1,8 @@
-import { FolgaService } from '../escala-domingo/folga.service';
 import {
   CentralDiaDetalhe,
   CentralJornadaService,
 } from './central-jornada.service';
+import { folgaDeTeste } from '../../test/helpers/jornada-de-teste';
 
 /**
  * Teste do resumo do ciclo (26→25) da Central de Jornada, cobrindo: dia normal,
@@ -1330,7 +1330,7 @@ describe('CentralJornadaService — dia escalado sem registro', () => {
     const folga =
       opcoes.comFolgaService === false
         ? undefined
-        : new FolgaService(prismaFake as never, undefined);
+        : folgaDeTeste(prismaFake as never, undefined);
     // Férias (FeriasService falso): uma consulta só, por colaboradorId.
     const feriasFake = opcoes.ferias
       ? {
@@ -1590,7 +1590,7 @@ describe('CentralJornadaService — ponto em dia de folga', () => {
     const folga =
       opcoes.comFolgaService === false
         ? undefined
-        : new FolgaService(prismaFake as never, undefined);
+        : folgaDeTeste(prismaFake as never, undefined);
     return new CentralJornadaService(
       prismaFake as never,
       feriadosFake as never,

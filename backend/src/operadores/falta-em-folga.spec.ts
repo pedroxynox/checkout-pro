@@ -1,6 +1,6 @@
 import { OperadoresService } from './operadores.service';
 import { FaltaEmDiaDeFolgaError } from './operadores.errors';
-import { FolgaService } from '../escala-domingo/folga.service';
+import { folgaDeTeste } from '../../test/helpers/jornada-de-teste';
 
 /**
  * Falta NÃO se marca em dia de folga.
@@ -65,7 +65,7 @@ describe('OperadoresService — falta em dia de folga', () => {
       $transaction: (fn: (tx: any) => any) => fn(prismaFake),
     };
 
-    const folga = new FolgaService(prismaFake as never, undefined);
+    const folga = folgaDeTeste(prismaFake as never, undefined);
 
     // Ordem do construtor: prisma, notificacoes, validacaoData, cicloFolha, folga.
     const service = new OperadoresService(

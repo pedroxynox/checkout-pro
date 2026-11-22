@@ -1,8 +1,8 @@
 import { EscalaExportacaoService } from '../escala-exportacao/escala-exportacao.service';
-import { FolgaService } from '../escala-domingo/folga.service';
 import { FeriadosService } from '../feriados/feriados.service';
 import { EscalaService } from './escala.service';
 import { FiscaisService } from './fiscais.service';
+import { folgaDeTeste } from '../../test/helpers/jornada-de-teste';
 
 /**
  * COERÊNCIA entre a TERCEIRA fonte de "quem trabalha hoje" e a escala publicada.
@@ -199,7 +199,7 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
       usuario: { findMany: () => Promise.resolve([]) },
     };
 
-    const folga = new FolgaService(prismaFake as never, undefined);
+    const folga = folgaDeTeste(prismaFake as never, undefined);
     const feriados = new FeriadosService(prismaFake as never);
     // O serviço REAL da escala consolidada, sobre o mesmo Prisma falso. Antes
     // havia aqui um dublê que devolvia a hora da cópia semanal — e com ele o
@@ -364,7 +364,7 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
       folgaOperador: 3,
       especialOperador: { diaSemana: 3, entrada: '10:00', saida: '18:00' },
     });
-    const folga = new FolgaService(
+    const folga = folgaDeTeste(
       // Reaproveita o mesmo Prisma falso do cenário, via o serviço já montado.
       (escalados as unknown as { prisma: unknown }).prisma as never,
       undefined,
@@ -417,7 +417,7 @@ describe('Coerência: escaladosDoDia × Escala publicada', () => {
           saida: null,
         },
       ]);
-    const folga = new FolgaService(prisma as never, undefined);
+    const folga = folgaDeTeste(prisma as never, undefined);
 
     expect(await folga.ehFolga(QUARTA, ['col-erick'])).toBe(false);
   });

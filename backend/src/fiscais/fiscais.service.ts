@@ -45,7 +45,7 @@ import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { FeriadosService } from '../feriados/feriados.service';
 import { EscalaService } from './escala.service';
 import { FeriasService } from '../ferias/ferias.service';
-import { FolgaService } from '../escala-domingo/folga.service';
+import { FolgaService } from '../jornada-vigencia/folga.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
 import {
@@ -221,15 +221,28 @@ export class FiscaisService {
   ) {}
 
   /**
-   * Regras de jornada do colaborador (contrato atribuído) para o cálculo.
-   * `undefined` quando não há serviço — o `calcularJornadaDia` cai no padrão.
+   * Regras de jornada do colaborador NO DIA (vigência da jornada daquele dia ou
+   * a ficha antes dela — ADR 0027). `undefined` quando não há serviço — o
+   * `calcularJornadaDia` cai no padrão.
    */
   private async regrasDe(
-    colaboradorId?: string | null,
+    colaboradorId: string | null | undefined,
+    dia: Date,
   ): Promise<RegrasContrato | undefined> {
     return this.tiposContrato
-      ? this.tiposContrato.regrasDoColaborador(colaboradorId ?? null)
+      ? this.tiposContrato.regrasDoColaborador(colaboradorId ?? null, dia)
       : undefined;
+  }
+
+  /**
+   * Regras de MUITOS dias da mesma pessoa (relatórios do mês), carregadas uma
+   * vez. Sem serviço, todo dia cai no padrão.
+   */
+  private async regrasPorDia(
+    colaboradorId: string | null | undefined,
+  ): Promise<(dia: Date) => RegrasContrato | undefined> {
+    if (!this.tiposContrato) return () => undefined;
+    return this.tiposContrato.resolvedorDeRegras(colaboradorId ?? null);
   }
 
   /**
@@ -576,7 +589,7 @@ export class FiscaisService {
         let desde: string | null;
         if (batidas.length > 0) {
           // Fonte canônica: batidas do Relógio Ponto + regras do contrato.
-          const regras = await this.regrasDe(col?.colaboradorId ?? null);
+          const regras = await this.regrasDe(col?.colaboradorId ?? null, dia);
           const j = calcularJornadaDia(
             batidas,
             limitePonto,
@@ -693,7 +706,7 @@ export class FiscaisService {
         .sort((a, b) => primeiraMarcacao(a.id) - primeiraMarcacao(b.id))
         .map(async (f) => {
           const col = mapaCol.get(f.id);
-          const regras = await this.regrasDe(col?.colaboradorId ?? null);
+          const regras = await this.regrasDe(col?.colaboradorId ?? null, dia);
           const batidas = batidasPorFiscal.get(f.id);
           if (batidas && batidas.length > 0) {
             const j = calcularJornadaDia(
@@ -1064,7 +1077,7 @@ export class FiscaisService {
             porPessoa.get(b.id)![0].hora.getTime(),
         )
         .map(async (c) => {
-          const regras = await this.regrasDe(c.id);
+          const regras = await this.regrasDe(c.id, dia);
           const j = calcularJornadaDia(
             porPessoa.get(c.id)!,
             limite,
@@ -1265,7 +1278,7 @@ export class FiscaisService {
 
     const dosFiscais: ItemHorasExtras[] = await Promise.all(
       fiscais.map(async (f) => {
-        const regras = await this.regrasDe(
+        const regrasDoDia = await this.regrasPorDia(
           mapaCol.get(f.id)?.colaboradorId ?? null,
         );
         const regDias = registrosPorFiscalDia.get(f.id);
@@ -1286,7 +1299,7 @@ export class FiscaisService {
             feriadoSet.has(diaDate.getTime()),
             agoraPonto,
             agoraReal,
-            regras,
+            regrasDoDia(diaDate),
           );
           horasExtras50Ms += e.horasExtras50Ms;
           horasExtras100Ms += e.horasExtras100Ms;
@@ -1419,7 +1432,7 @@ export class FiscaisService {
       colaboradores
         .filter((c) => porPessoaDia.has(c.id))
         .map(async (c) => {
-          const regras = await this.regrasDe(c.id);
+          const regrasDoDia = await this.regrasPorDia(c.id);
           let horasExtras50Ms = 0;
           let horasExtras100Ms = 0;
           const mapaPessoa = porPessoaDia.get(c.id)!;
@@ -1433,7 +1446,7 @@ export class FiscaisService {
               feriadoSet.has(diaDate.getTime()),
               agoraPonto,
               agoraReal,
-              regras,
+              regrasDoDia(diaDate),
             );
             horasExtras50Ms += e.horasExtras50Ms;
             horasExtras100Ms += e.horasExtras100Ms;

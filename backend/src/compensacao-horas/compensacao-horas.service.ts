@@ -32,7 +32,7 @@ import {
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { FeriasService } from '../ferias/ferias.service';
-import { FolgaService } from '../escala-domingo/folga.service';
+import { FolgaService } from '../jornada-vigencia/folga.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import {
   GrupoDomingo,
