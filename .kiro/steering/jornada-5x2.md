@@ -19,7 +19,8 @@ até **22/11** continuam no **6x1** para sempre, por meio de **vigências**.
   *jornada prevista do dia* (vigência daquele dia). Ver `design.md` §1 e §3.
 - **Passado imutável:** dias até 22/11 dão os mesmos números de antes, mesmo
   depois de correções. Ciclo de folha fechado não aceita vigência nova.
-- **Pausa de transição:** `PAUSA_TRANSICAO_JORNADA=true` em produção suspende
+- **Pausa de transição — ATIVA em produção desde 22/11/2026 16:06 (Brasília).**
+  `PAUSA_TRANSICAO_JORNADA=true` suspende
   falta automática, avisos de atraso/TAC/ponto em folga e alertas de fiscais
   baseados no horário antigo. O ponto continua funcionando. Só desligar depois
   das Fases 1–4 e das vigências de 23/11 carregadas.
