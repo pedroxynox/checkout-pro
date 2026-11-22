@@ -36,7 +36,7 @@ import {
   motivoParaRemoverNaoRetorno,
 } from './revalidacao-automatica.domain';
 import { FeriasService } from '../ferias/ferias.service';
-import { FolgaService } from '../escala-domingo/folga.service';
+import { FolgaService } from '../jornada-vigencia/folga.service';
 import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 
 /** Autor "sistema" das marcações automáticas (auditoria). */

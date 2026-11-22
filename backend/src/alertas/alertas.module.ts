@@ -4,6 +4,7 @@ import { RELOGIO, RelogioSistema } from '../common/relogio';
 import { ArrecadacaoModule } from '../arrecadacao/arrecadacao.module';
 import { FechamentoModule } from '../fechamento/fechamento.module';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
+import { JornadaVigenciaModule } from '../jornada-vigencia/jornada-vigencia.module';
 import { AlertasService } from './alertas.service';
 import { SaudacaoDiariaService } from './saudacao-diaria.service';
 
@@ -20,6 +21,8 @@ import { SaudacaoDiariaService } from './saudacao-diaria.service';
     ArrecadacaoModule,
     FechamentoModule,
     NotificacoesModule,
+    // Turno do dia pela vigência da jornada (saudação de entrada dos fiscais).
+    JornadaVigenciaModule,
   ],
   providers: [
     AlertasService,

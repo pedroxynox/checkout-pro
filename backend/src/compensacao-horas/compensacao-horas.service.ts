@@ -31,8 +31,12 @@ import {
 } from '../central-jornada/central-jornada.service';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
+import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.service';
 import { FeriasService } from '../ferias/ferias.service';
-import { FolgaService } from '../escala-domingo/folga.service';
+import {
+  ConsultorFolga,
+  FolgaService,
+} from '../jornada-vigencia/folga.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import {
   GrupoDomingo,
@@ -251,15 +255,20 @@ export class CompensacaoHorasService {
     @Optional() private readonly ferias?: FeriasService,
     @Optional() private readonly cicloFolha?: CicloFolhaService,
     @Optional() private readonly tiposContrato?: TiposContratoService,
+    // Vigência da jornada (ADR 0027): turno de cada dia. Opcional e no fim: sem
+    // ele, vale a ficha.
+    @Optional() private readonly jornada?: JornadaVigenciaService,
   ) {}
 
-  /** Regras do contrato (data-driven) ou o padrão. */
-  private async regrasDe(
-    tipoContratoJornadaId?: string | null,
-  ): Promise<RegrasContrato> {
-    return this.tiposContrato
-      ? this.tiposContrato.regrasDoContrato(tipoContratoJornadaId ?? null)
-      : REGRAS_PADRAO;
+  /**
+   * Regras do contrato da pessoa por dia (vigência da jornada daquele dia ou a
+   * ficha antes dela), carregadas uma vez. Sem serviço de contratos, o padrão.
+   */
+  private async regrasPorDia(
+    colaboradorId: string,
+  ): Promise<(dia: Date) => RegrasContrato> {
+    if (!this.tiposContrato) return () => REGRAS_PADRAO;
+    return this.tiposContrato.resolvedorDeRegras(colaboradorId);
   }
 
   /** "terça 22/09" — o rótulo do dia como o gestor o diria. */
@@ -324,15 +333,21 @@ export class CompensacaoHorasService {
     const resumo = await this.central.resumoCiclo(deslocamento);
     const [
       feriadoMap,
-      consultorFolga,
+      consultorJornada,
+      consultorFolgaDaFicha,
       ancora,
       feriasPorDia,
       ausencias,
       movimento,
     ] = await Promise.all([
       carregarMapaDeFeriados(this.prisma, inicio, fimExclusivo),
-      this.folga.consultor(candidatas),
-      this.escalaDomingo?.obterAncora() ?? Promise.resolve(null),
+      // Com a jornada prevista, folga e turno vêm dela, numa carga só; sem ela,
+      // a regra de folga e a âncora do domingo, como antes.
+      this.jornada ? this.jornada.consultor(candidatas) : null,
+      this.jornada ? null : this.folga.consultor(candidatas),
+      this.jornada
+        ? null
+        : (this.escalaDomingo?.obterAncora() ?? Promise.resolve(null)),
       Promise.all(
         candidatas.map(
           (d) =>
@@ -359,16 +374,36 @@ export class CompensacaoHorasService {
       ancora ? { data: ancora.data, ordem: ancora.ordem } : null;
 
     const fichaPorId = new Map(fichas.map((f) => [f.id, f]));
-    const regrasPorId = new Map<string, RegrasContrato>();
+    // Regras por pessoa E por dia: a compensação de um dia usa o contrato que
+    // vale naquele dia (ADR 0027).
+    const regrasPorId = new Map<string, (dia: Date) => RegrasContrato>();
     await Promise.all(
       fichas.map(async (f) => {
-        regrasPorId.set(f.id, await this.regrasDe(f.tipoContratoJornadaId));
+        regrasPorId.set(f.id, await this.regrasPorDia(f.id));
       }),
     );
-    const regrasDoId = (id: string): RegrasContrato =>
-      regrasPorId.get(id) ?? REGRAS_PADRAO;
-
+    const regrasDoId = (id: string, dia: Date): RegrasContrato =>
+      regrasPorId.get(id)?.(dia) ?? REGRAS_PADRAO;
+    const consultorFolga: ConsultorFolga =
+      consultorJornada ?? (consultorFolgaDaFicha as ConsultorFolga);
     const idsPorFicha = await this.carregarIdentidades(fichas);
+    // Turno do dia: a jornada prevista quando há o serviço; senão, a ficha.
+    const turnoDoDia = (
+      ficha: FichaEscalaCompleta,
+      dia: Date,
+    ): { entrada: string | null; saida: string | null } => {
+      const previsto = consultorJornada?.previsto(
+        idsPorFicha.get(ficha.id) ?? [ficha.id],
+        dia,
+        false,
+      );
+      if (previsto) return { entrada: previsto.entrada, saida: previsto.saida };
+      return {
+        entrada: this.entradaDoDia(ficha, dia, ancoraDomingo),
+        saida: this.saidaDoDia(ficha, dia, ancoraDomingo),
+      };
+    };
+
     const feriasNoDia = new Map<number, Set<string>>(
       candidatas.map((d, i) => [d.getTime(), feriasPorDia[i]]),
     );
@@ -403,7 +438,7 @@ export class CompensacaoHorasService {
         return false;
       }
       if (feriasNoDia.get(dia.getTime())?.has(ficha.id)) return false;
-      return this.entradaDoDia(ficha, dia, ancoraDomingo) != null;
+      return turnoDoDia(ficha, dia).entrada != null;
     };
 
     const ausenciaNoDia = new Set<string>();
@@ -491,15 +526,16 @@ export class CompensacaoHorasService {
       },
       cargaDoDia: (colaboradorId, data) =>
         fichaPorId.has(colaboradorId)
-          ? cargaBaseDoDia(data.getUTCDay(), false, regrasDoId(colaboradorId))
+          ? cargaBaseDoDia(
+              data.getUTCDay(),
+              false,
+              regrasDoId(colaboradorId, data),
+            )
           : 0,
       turno: (colaboradorId, data) => {
         const ficha = fichaPorId.get(colaboradorId);
         if (!ficha) return { entrada: null, saida: null };
-        return {
-          entrada: this.entradaDoDia(ficha, data, ancoraDomingo),
-          saida: this.saidaDoDia(ficha, data, ancoraDomingo),
-        };
+        return turnoDoDia(ficha, data);
       },
       vendaNaFaixa: (diaSemana, inicioMin, fimMin) =>
         vendaMediaNaFaixa(
@@ -509,7 +545,7 @@ export class CompensacaoHorasService {
         ),
       disponiveisNoDia: (funcao, data) =>
         disponiveis.get(`${funcao}|${data.getTime()}`) ?? 0,
-      regras: (colaboradorId) => regrasDoId(colaboradorId),
+      regras: (colaboradorId, data) => regrasDoId(colaboradorId, data),
     };
 
     const liberacoesDominio = alocarLiberacoes(pessoas, datasComMovimento, ctx);
@@ -607,7 +643,10 @@ export class CompensacaoHorasService {
       );
     }
 
-    const regras = await this.regrasDe(ficha.tipoContratoJornadaId);
+    // O contrato DAQUELE dia (vigência da jornada ou a ficha antes dela).
+    const regras = this.tiposContrato
+      ? await this.tiposContrato.regrasDoColaborador(ficha.id, data)
+      : REGRAS_PADRAO;
     const mapaFeriado = await carregarMapaDeFeriados(
       this.prisma,
       data,
@@ -961,7 +1000,7 @@ export class CompensacaoHorasService {
     fichaPorId: Map<string, FichaEscalaCompleta>,
     idsPorFicha: Map<string, string[]>,
     feriadoMap: Map<number, string>,
-    regrasDoId: (id: string) => RegrasContrato,
+    regrasDoId: (id: string, dia: Date) => RegrasContrato,
   ): Map<string, FaltaCobrivel[]> {
     const porPessoa = new Map<string, FaltaCobrivel[]>();
     const fichaPorIdentidade = new Map<string, string>();
@@ -985,7 +1024,7 @@ export class CompensacaoHorasService {
 
       const dia = inicioDoDia(a.data);
       const ehFeriado = feriadoMap.has(dia.getTime());
-      const regras = regrasDoId(colaboradorId);
+      const regras = regrasDoId(colaboradorId, dia);
       if (diaPagaAdicional100(dia.getUTCDay(), ehFeriado, regras)) continue;
 
       const lista = porPessoa.get(colaboradorId) ?? [];

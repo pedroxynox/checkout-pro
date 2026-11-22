@@ -6,6 +6,7 @@ import { OperadoresModule } from '../operadores/operadores.module';
 import { IncidenciasModule } from '../incidencias/incidencias.module';
 import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
+import { JornadaVigenciaModule } from '../jornada-vigencia/jornada-vigencia.module';
 import { CicloFolhaModule } from '../ciclo-folha/ciclo-folha.module';
 import { TiposContratoModule } from '../tipos-contrato/tipos-contrato.module';
 import { FeriasModule } from '../ferias/ferias.module';
@@ -31,6 +32,7 @@ import { PontoOcrService } from './ponto-ocr.service';
     IncidenciasModule,
     DataInicialModule,
     EscalaDomingoModule,
+    JornadaVigenciaModule,
     CicloFolhaModule,
     TiposContratoModule,
     // Férias: a revalidação das ocorrências automáticas usa "de férias no dia"

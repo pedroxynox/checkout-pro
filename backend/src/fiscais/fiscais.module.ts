@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
+import { JornadaVigenciaModule } from '../jornada-vigencia/jornada-vigencia.module';
 import { FeriadosModule } from '../feriados/feriados.module';
 import { CicloFolhaModule } from '../ciclo-folha/ciclo-folha.module';
 import { TiposContratoModule } from '../tipos-contrato/tipos-contrato.module';
@@ -33,6 +34,7 @@ import { FiscalStatusEventos } from './fiscais.eventos';
     NotificacoesModule,
     DataInicialModule,
     EscalaDomingoModule,
+    JornadaVigenciaModule,
     FeriadosModule,
     CicloFolhaModule,
     TiposContratoModule,

@@ -551,6 +551,7 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
    apareceu, escalado ou não. Misturar as duas produz os dois piores erros
    possíveis — cobrar atraso de quem estava de folga, ou marcar falta de quem está
    batendo ponto.
+- **Vigência da jornada ([ADR 0027](../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)).** O cálculo do dia (registrar, jornada do dia, reclassificar) pede as **regras do contrato daquele dia** (`regrasDoColaborador(colaboradorId, dia)`); a folga do ponto em dia de folga vem do `FolgaService`, que segue a vigência. Com vigência, vale a do dia; sem ela, a ficha, como antes. Quando o `JornadaVigenciaService` não é injetado (testes unitários antigos), o serviço reproduz a regra anterior.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
@@ -575,6 +576,7 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 | `ponto-alertas.service.spec.ts` | Cron periódico de riscos de TAC | 2 |
 | `contrato-6x1-congelado.spec.ts` | Congela as cargas e os limites de TAC do 6x1 (regra não muda sem intenção) | 5 |
 | `pausa-transicao-jornada.spec.ts` | Pausa de transição: sem pausa marca falta/avisa TAC/avisa ponto em folga; com pausa não faz nada disso, grava o ponto e segue vigiando o não-retorno | 10 |
+| `contrato-do-dia.spec.ts` | O ponto pergunta pelo contrato do dia das batidas e calcula com ele (6x1 em 20/11, 5x2 em 25/11) | 1 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

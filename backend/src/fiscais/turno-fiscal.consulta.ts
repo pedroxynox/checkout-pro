@@ -11,6 +11,7 @@
  */
 
 import { PrismaService } from '../prisma/prisma.service';
+import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
 import {
   FiscalComFicha,
@@ -85,4 +86,45 @@ export async function entradasPrevistasPorFiscal(
     if (porDia.size > 0) out.set(f.fiscalId, porDia);
   }
   return out;
+}
+
+/**
+ * Entrada prevista de um fiscal numa DATA: quem tem vigência da jornada naquele
+ * dia (ADR 0027) recebe a entrada da vigência — no 5x2 as folgas giram e o dia
+ * da semana não basta; os demais, o retrato por dia da semana de
+ * `entradasPrevistasPorFiscal`, exatamente como antes.
+ *
+ * `dias` são as datas que o relatório vai consultar (a jornada prevista é
+ * carregada para elas de uma vez).
+ */
+export async function previsorDeEntradasDosFiscais(
+  prisma: PrismaService,
+  jornada: JornadaVigenciaService | undefined,
+  dias: readonly Date[],
+  incluirInativos = true,
+): Promise<(fiscalId: string, dia: Date) => string | null> {
+  const porDiaDaSemana = await entradasPrevistasPorFiscal(
+    prisma,
+    incluirInativos,
+  );
+  const doRetrato = (fiscalId: string, dia: Date): string | null =>
+    porDiaDaSemana.get(fiscalId)?.get(dia.getUTCDay()) ?? null;
+  if (!jornada || dias.length === 0) return doRetrato;
+
+  const fichaDoFiscal = new Map(
+    (await carregarFiscaisComFicha(prisma, incluirInativos)).map((f) => [
+      f.fiscalId,
+      f.colaboradorId,
+    ]),
+  );
+  const consultor = await jornada.consultor(dias);
+  return (fiscalId, dia) => {
+    const colaboradorId = fichaDoFiscal.get(fiscalId);
+    const previsto = colaboradorId
+      ? consultor.previsto([colaboradorId, fiscalId], dia, false)
+      : null;
+    return previsto?.regime === 'SEMANAL'
+      ? previsto.entrada
+      : doRetrato(fiscalId, dia);
+  };
 }

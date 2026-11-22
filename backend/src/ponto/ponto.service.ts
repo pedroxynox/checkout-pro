@@ -27,7 +27,7 @@ import { FeriadosService } from '../feriados/feriados.service';
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { ehDiaDeFolga } from '../escala-domingo/escala-domingo.domain';
-import { FolgaService } from '../escala-domingo/folga.service';
+import { FolgaService } from '../jornada-vigencia/folga.service';
 import {
   nomeDiaSemana,
   sugerirFolgaPorBatidas,
@@ -512,9 +512,11 @@ export class PontoService {
     // enquanto o erro de cadastro seguia invisível. O aviso sai depois do commit.
     const emFolga = await this.ehPontoEmFolga(colaboradorId, dto.pessoaId, dia);
 
-    // Regras do contrato (para o limite de intervalo). Sem serviço, usa o padrão.
+    // Regras do contrato DO DIA (para o limite de intervalo): a vigência da
+    // jornada daquele dia, ou a ficha antes dela (ADR 0027). Sem serviço, usa o
+    // padrão.
     const regras = this.tiposContrato
-      ? await this.tiposContrato.regrasDoColaborador(colaboradorId)
+      ? await this.tiposContrato.regrasDoColaborador(colaboradorId, dia)
       : undefined;
     const maxIntervaloMs = regras?.intervaloMaximoMs ?? INTERVALO_MAXIMO_MS;
     const dadosBatida: Prisma.BatidaPontoUncheckedCreateInput = {
@@ -1473,12 +1475,14 @@ export class PontoService {
       ? await this.feriados.ehFeriado(dia)
       : false;
     const agora = agoraNaBrasilia();
-    // Regras do contrato do colaborador (o colaboradorId vem das batidas do
-    // dia). Sem o serviço, `regras` fica indefinido e o cálculo usa o padrão.
+    // Regras do contrato do colaborador NAQUELE dia (o colaboradorId vem das
+    // batidas do dia): corrigir hoje um dia antigo usa o contrato que valia
+    // nele (ADR 0027). Sem o serviço, `regras` fica indefinido e o cálculo usa
+    // o padrão.
     const colaboradorId =
       batidas.find((b) => b.colaboradorId)?.colaboradorId ?? null;
     const regras = this.tiposContrato
-      ? await this.tiposContrato.regrasDoColaborador(colaboradorId)
+      ? await this.tiposContrato.regrasDoColaborador(colaboradorId, dia)
       : undefined;
     const j = calcularJornadaDia(
       batidas.map((b) => ({ id: b.id, hora: b.hora })),
@@ -1520,17 +1524,18 @@ export class PontoService {
 
   /** Reatribui o tipo das batidas pela ordem usando o cliente transacional. */
   /**
-   * Regras de jornada do contrato do colaborador dono das batidas do dia (ou
-   * `undefined` quando não há serviço de contratos → usa o padrão). Usado para
-   * classificar corretamente (encerramento corrido x saída para intervalo).
+   * Regras de jornada do contrato do colaborador dono das batidas, no dia delas
+   * (ou `undefined` quando não há serviço de contratos → usa o padrão). Usado
+   * para classificar corretamente (encerramento corrido x saída para intervalo).
    */
   private async regrasDaPessoa(
     batidas: readonly { colaboradorId: string | null }[],
+    dia: Date,
   ): Promise<RegrasContrato | undefined> {
     if (!this.tiposContrato) return undefined;
     const colaboradorId =
       batidas.find((b) => b.colaboradorId)?.colaboradorId ?? null;
-    return this.tiposContrato.regrasDoColaborador(colaboradorId);
+    return this.tiposContrato.regrasDoColaborador(colaboradorId, dia);
   }
 
   private async reclassificarNoCliente(
@@ -1546,7 +1551,7 @@ export class PontoService {
     });
     // A classificação (2 batidas = encerramento corrido ou saída para intervalo)
     // depende do contrato do colaborador (intervalo obrigatório ou não).
-    const regras = await this.regrasDaPessoa(batidas);
+    const regras = await this.regrasDaPessoa(batidas, dia);
     const classificadas = classificarBatidas(
       batidas.map((b) => ({ id: b.id, hora: b.hora })),
       regras?.maxTrabalhoSemIntervaloMs,
@@ -1591,7 +1596,7 @@ export class PontoService {
     // Mesma regra dependente do contrato: para um contrato com intervalo
     // obrigatório, a 2ª batida vira "saída para intervalo" (status INTERVALO),
     // não um encerramento (FORA_EXPEDIENTE).
-    const regras = await this.regrasDaPessoa(batidas);
+    const regras = await this.regrasDaPessoa(batidas, dia);
     const classificadas = classificarBatidas(
       batidas.map((b) => ({ id: b.id, hora: b.hora })),
       regras?.maxTrabalhoSemIntervaloMs,

@@ -10,21 +10,24 @@ spec [`jornada-5x2`](../../.kiro/specs/jornada-5x2/design.md)).
 
 ## 2. Responsabilidades e limites
 - **Faz:** resolve a vigência de cada dia; responde a *jornada prevista do dia* em
-  lote; diz as regras do contrato do dia; confere uma vigência (avisos) e a valida
-  (erros).
+  lote; hospeda a **regra única de folga** (`FolgaService`, que é uma fachada do
+  consultor); dá a folga dia a dia de um período (`folgasNoPeriodo`); confere uma
+  vigência (avisos) e a valida (erros).
 - **Não faz:** calcular a jornada trabalhada (isso é [`ponto`](ponto.md)); configurar
   contratos ([`tipos-contrato`](tipos-contrato.md)) nem o rodízio
   ([`escala-domingo`](escala-domingo.md)).
-- **Estado atual (Fase 1a do spec):** ainda **ninguém consome** o consultor e não há
-  escrita de vigências. Os consumidores migram na Fase 1b; a escrita (`PUT/DELETE
-  /colaboradores/:id/jornada`) entra com a tela da ficha (Fase 4).
+- **Estado atual (Fase 1 do spec concluída):** todos os cálculos que decidem um dia
+  perguntam à jornada prevista (ver "É usado por"). Ainda **não há escrita de
+  vigências** pela API: ela entra com a tela da ficha (Fase 4). As regras do
+  contrato de um dia vêm de `TiposContratoService.regrasDoColaborador(id, dia)`.
 
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
 | `jornada-vigencia.domain.ts` | Domínio puro: `vigenciaNoDia`, `previstoNoDia`, `folgasFixasEfetivas`, `avisosDaVigencia`, `validarVigencia`, `textoDuracao` | 450 |
-| `jornada-vigencia.service.ts` | `consultor(dias)` em lote e `regrasNoDia` | 280 |
-| `jornada-vigencia.module.ts` | DI; importa `TiposContratoModule` e `EscalaDomingoModule` | 16 |
+| `jornada-vigencia.service.ts` | `consultor(dias)` em lote (`previsto`, `ehFolga`, `semFolgaNaFicha`) e `folgasNoPeriodo` | 330 |
+| `folga.service.ts` | **Regra única de folga**: fachada do consultor (veio de `escala-domingo`) | 60 |
+| `jornada-vigencia.module.ts` | DI; importa `TiposContratoModule` e `EscalaDomingoModule`; exporta `JornadaVigenciaService` e `FolgaService` | 18 |
 
 ## 4. Endpoints (rotas HTTP)
 Nenhum nesta fase.
@@ -44,10 +47,23 @@ Nenhum nesta fase.
 - **Erros possíveis:** lança se o dia não estiver entre os carregados (âncora,
   escala semanal e feriados só foram lidos para eles).
 
-### `JornadaVigenciaService.regrasNoDia(colaboradorId, dia)`
-Regras do contrato da vigência do dia ou, antes da primeira, do contrato da ficha;
-sem pessoa, o padrão. Substituirá `TiposContratoService.regrasDoColaborador`, que olha
-só a ficha atual.
+### `ConsultorJornada.ehFolga(dia, ids)` e `semFolgaNaFicha(ids)`
+`ehFolga` é `previsto(...).folga`, com o caso herdado do `FolgaService`: quem não tem
+ficha entre os `ids` ainda folga se a escala semanal legada disser.
+`semFolgaNaFicha`: no legado, ficha sem `folgaDiaSemana`; com vigência (a do último
+dia carregado), sem grupo e sem folgas fixas.
+
+### `JornadaVigenciaService.folgasNoPeriodo(ids, inicio, fim)`
+Para quem tem vigência que já começou até `fim`, devolve `dia → folga?` (carregando
+também a véspera e o dia seguinte, para a "emenda"). Quem não tem vigência fica fora
+do mapa e o chamador segue a folga fixa. Usado pelas analíticas de faltas, pelo perfil
+e pelas incidências.
+
+### `FolgaService`
+Fachada estável da regra única de folga (`consultor(dias)` e `ehFolga(dia, ids)`)
+sobre o consultor. No regime legado a regra é a de sempre (ADR 0023): a ficha que
+afirma folga decide sozinha; ficha omissa aceita a escala semanal; depois, o rodízio
+de domingo.
 
 ## 6. Lógica de domínio (funções puras)
 - `vigenciaNoDia(vigencias, dia)` — a de maior início que não passe do dia (hora
@@ -83,8 +99,15 @@ só a ficha atual.
 - **Depende de:** [`tipos-contrato`](tipos-contrato.md), [`escala-domingo`](escala-domingo.md)
   (âncora e funções de folga/horário), [`feriados`](feriados.md) (calendário),
   [`ponto`](ponto.md) (`RegrasContrato`, `cargaBaseDoDia`, `diaPagaAdicional100`).
-- **É usado por:** ninguém ainda (Fase 1b: ponto, detecção, fiscais, Central,
-  compensação, operadores, incidências, perfil, exportação de escala).
+- **É usado por:** [`central-jornada`](central-jornada.md) (cada dia do ciclo),
+  [`compensacao-horas`](compensacao-horas.md), [`fiscais`](fiscais.md) (escala
+  consolidada, equipe do dia, lembrete, relatórios de pontualidade),
+  [`escala-exportacao`](escala-exportacao.md), [`operadores`](operadores.md) (quadro e
+  analíticas), [`colaboradores`](colaboradores.md) (perfil),
+  [`incidencias`](incidencias.md), [`alertas`](alertas.md) (saudação) e, pelo
+  `FolgaService`, [`ponto`](ponto.md) (ponto em folga, detecção automática). Todos
+  injetam o serviço como `@Optional()` e reproduzem a regra anterior quando ele não
+  está presente (testes unitários antigos).
 
 ## 10. Regras de negócio-chave
 1. **Cada dia usa o que valia nele.** A vigência do dia decide contrato, folgas e
@@ -100,13 +123,21 @@ só a ficha atual.
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `jornada-vigencia.domain.spec.ts` | `vigenciaNoDia`; propriedade (500 casos) de que sem vigência o resultado é o de hoje, inclusive com vigências futuras; corte de 23/11; folgas fixas e padrão; grupo com e sem rodízio; feriado e domingo; avisos com a tolerância do contrato; validação; `textoDuracao` | 37 |
-| `jornada-vigencia.service.spec.ts` | Consultor igual ao `FolgaService` e às funções de horário sobre os mesmos dados; carga em lote; pessoa desconhecida e dia não carregado; vigência a partir da data; feriado do calendário × informado; `regrasNoDia` | 9 |
+| `jornada-vigencia.service.spec.ts` | Consultor igual à regra de folga **anterior** (congelada no próprio teste) e às funções de horário sobre os mesmos dados; `ehFolga` sem ficha; `semFolgaNaFicha` no legado e com vigência; carga em lote; pessoa desconhecida e dia não carregado; vigência a partir da data; feriado do calendário × informado | 10 |
+| `folga.service.spec.ts` | A regra única de folga (veio de `escala-domingo`), agora pela fachada: os mesmos 20 casos, sem mudar nenhuma expectativa | 20 |
+| `consumidores-puros.spec.ts` | `montarLinhaEscala` com o turno já resolvido; dias escalados e "emenda" pela folga do dia no 5x2; `folgasNoPeriodo` só para quem tem vigência | 7 |
 
 > Contagem sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
 ## 12. Riscos, dívidas e pendências
-- ⚠ **Ainda sem consumidores** (Fase 1b). Até lá, uma vigência gravada direto no banco
-  não teria efeito em nenhum cálculo — não gravar.
+- ⚠ **Ainda sem escrita pela API** (Fase 4). Uma vigência gravada direto no banco já
+  muda os cálculos daquela pessoa, mas grupo sem rodízio de folgas (Fase 3) não afirma
+  folga nem turno — não gravar à mão.
+- 🔧 Os consumidores aceitam o serviço como `@Optional()` e mantêm o caminho antigo para
+  os testes que não o injetam. Torná-lo obrigatório é parte da limpeza (Fase 7).
+- 🔧 Comparação feita na Fase 1b: 155 leituras (Central, escala, quadro, exportação,
+  compensação, perfil, incidências, ponto) sobre um banco com 8 pessoas e um ciclo
+  inteiro, com `main` e com a branch — resultado idêntico.
 - 🔧 Rodízio de folgas (Fase 3) e folgas padrão do contrato (Fase 2) entram pelo
   contexto de `previstoNoDia` (`folgasDoGrupo`, `folgasFixasPadrao`).
 - 🔧 O consultor carrega todas as fichas, como o `FolgaService`; as tabelas são

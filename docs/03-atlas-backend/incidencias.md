@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/incidencias/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/incidencias/`
 
 # Módulo: `incidencias`
 
@@ -170,6 +170,7 @@ disciplinares; a segunda foca no não-retorno e devolve também os não justific
 6. **Data não pode ser anterior à Data_Inicial_Sistema**.
 7. **Aviso ao cruzar o limite mensal** (`LIMITE_ALERTA_MES = 3`) e aviso imediato
    a toda a operação no não-retorno; avisos são best-effort (nunca bloqueiam o registro).
+- **Vigência da jornada ([ADR 0027](../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)).** Os **dias escalados** do resumo do colaborador usam a folga de cada dia de quem tem vigência (`folgasNoPeriodo`). Com vigência, vale a do dia; sem ela, a ficha, como antes. Quando o `JornadaVigenciaService` não é injetado (testes unitários antigos), o serviço reproduz a regra anterior.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |

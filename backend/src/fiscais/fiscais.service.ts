@@ -45,12 +45,13 @@ import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
 import { FeriadosService } from '../feriados/feriados.service';
 import { EscalaService } from './escala.service';
 import { FeriasService } from '../ferias/ferias.service';
-import { FolgaService } from '../escala-domingo/folga.service';
+import { FolgaService } from '../jornada-vigencia/folga.service';
+import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
 import {
   carregarFiscaisComFicha,
-  entradasPrevistasPorFiscal,
+  previsorDeEntradasDosFiscais,
 } from './turno-fiscal.consulta';
 import {
   agoraNaBrasilia,
@@ -218,18 +219,34 @@ export class FiscaisService {
     // Regra única de folga (ficha + escala semanal). Sem ela o serviço continua
     // funcionando com a regra antiga — cada fonte olhando só para si.
     @Optional() private readonly folga?: FolgaService,
+    // Vigência da jornada (ADR 0027): turno e folga do dia. Opcional e no fim:
+    // sem ele, valem a ficha e o `FolgaService`.
+    @Optional() private readonly jornada?: JornadaVigenciaService,
   ) {}
 
   /**
-   * Regras de jornada do colaborador (contrato atribuído) para o cálculo.
-   * `undefined` quando não há serviço — o `calcularJornadaDia` cai no padrão.
+   * Regras de jornada do colaborador NO DIA (vigência da jornada daquele dia ou
+   * a ficha antes dela — ADR 0027). `undefined` quando não há serviço — o
+   * `calcularJornadaDia` cai no padrão.
    */
   private async regrasDe(
-    colaboradorId?: string | null,
+    colaboradorId: string | null | undefined,
+    dia: Date,
   ): Promise<RegrasContrato | undefined> {
     return this.tiposContrato
-      ? this.tiposContrato.regrasDoColaborador(colaboradorId ?? null)
+      ? this.tiposContrato.regrasDoColaborador(colaboradorId ?? null, dia)
       : undefined;
+  }
+
+  /**
+   * Regras de MUITOS dias da mesma pessoa (relatórios do mês), carregadas uma
+   * vez. Sem serviço, todo dia cai no padrão.
+   */
+  private async regrasPorDia(
+    colaboradorId: string | null | undefined,
+  ): Promise<(dia: Date) => RegrasContrato | undefined> {
+    if (!this.tiposContrato) return () => undefined;
+    return this.tiposContrato.resolvedorDeRegras(colaboradorId ?? null);
   }
 
   /**
@@ -576,7 +593,7 @@ export class FiscaisService {
         let desde: string | null;
         if (batidas.length > 0) {
           // Fonte canônica: batidas do Relógio Ponto + regras do contrato.
-          const regras = await this.regrasDe(col?.colaboradorId ?? null);
+          const regras = await this.regrasDe(col?.colaboradorId ?? null, dia);
           const j = calcularJornadaDia(
             batidas,
             limitePonto,
@@ -693,7 +710,7 @@ export class FiscaisService {
         .sort((a, b) => primeiraMarcacao(a.id) - primeiraMarcacao(b.id))
         .map(async (f) => {
           const col = mapaCol.get(f.id);
-          const regras = await this.regrasDe(col?.colaboradorId ?? null);
+          const regras = await this.regrasDe(col?.colaboradorId ?? null, dia);
           const batidas = batidasPorFiscal.get(f.id);
           if (batidas && batidas.length > 0) {
             const j = calcularJornadaDia(
@@ -835,24 +852,32 @@ export class FiscaisService {
       where: { ativo: true, funcao: { in: FUNCOES_PONTO_NAO_FISCAL } },
       orderBy: { nome: 'asc' },
     });
+    // A jornada prevista do dia (ADR 0027): o turno e a folga da vigência
+    // daquele dia, ou da ficha antes dela. Uma carga só serve aos dois usos.
+    const consultorJornada = this.jornada
+      ? await this.jornada.consultor([inicio])
+      : null;
     const dosOperadores: EscaladoDia[] = colaboradores.flatMap((c) => {
-      // O horário esperado é o da FICHA, e só ele (ADR 0026). Havia aqui uma
-      // consulta às exceções de horário da escala semanal, que venciam o turno do
-      // cadastro e até a folga da ficha. Elas deixaram de existir: sem validade,
-      // sem tela e invisíveis à ficha, faziam a detecção cobrar um horário que o
-      // colaborador não via em lugar nenhum.
-      const entrada = entradaEsperadaNoDia(
-        {
-          folgaDiaSemana: c.folgaDiaSemana,
-          grupoDomingo: c.grupoDomingo,
-          entradaSemana: c.entradaSemana,
-          entradaFds: c.entradaFds,
-          entradaDom: c.entradaDom,
-        },
-        inicio,
-        ancoraDomingo,
-        ehFeriado,
-      );
+      // O horário esperado é o da FICHA (ou da vigência do dia), e só ele (ADR
+      // 0026). Havia aqui uma consulta às exceções de horário da escala semanal,
+      // que venciam o turno do cadastro e até a folga da ficha. Elas deixaram de
+      // existir: sem validade, sem tela e invisíveis à ficha, faziam a detecção
+      // cobrar um horário que o colaborador não via em lugar nenhum.
+      const previsto = consultorJornada?.previsto([c.id], inicio, ehFeriado);
+      const entrada = previsto
+        ? previsto.entrada
+        : entradaEsperadaNoDia(
+            {
+              folgaDiaSemana: c.folgaDiaSemana,
+              grupoDomingo: c.grupoDomingo,
+              entradaSemana: c.entradaSemana,
+              entradaFds: c.entradaFds,
+              entradaDom: c.entradaDom,
+            },
+            inicio,
+            ancoraDomingo,
+            ehFeriado,
+          );
       if (!entrada) return [];
       return [
         {
@@ -879,9 +904,9 @@ export class FiscaisService {
     // só a SUA fonte — os fiscais a escala, os operadores a ficha —, e quem
     // tinha as duas fontes em desacordo era escalado e acabava com falta
     // automática no próprio dia de descanso. Aqui as duas valem para todos.
-    const consultorFolga = this.folga
-      ? await this.folga.consultor([inicio])
-      : null;
+    const consultorFolga =
+      consultorJornada ??
+      (this.folga ? await this.folga.consultor([inicio]) : null);
 
     // Ordena por hora de entrada (mais cedo primeiro), depois por nome.
     return (
@@ -1064,7 +1089,7 @@ export class FiscaisService {
             porPessoa.get(b.id)![0].hora.getTime(),
         )
         .map(async (c) => {
-          const regras = await this.regrasDe(c.id);
+          const regras = await this.regrasDe(c.id, dia);
           const j = calcularJornadaDia(
             porPessoa.get(c.id)!,
             limite,
@@ -1265,7 +1290,7 @@ export class FiscaisService {
 
     const dosFiscais: ItemHorasExtras[] = await Promise.all(
       fiscais.map(async (f) => {
-        const regras = await this.regrasDe(
+        const regrasDoDia = await this.regrasPorDia(
           mapaCol.get(f.id)?.colaboradorId ?? null,
         );
         const regDias = registrosPorFiscalDia.get(f.id);
@@ -1286,7 +1311,7 @@ export class FiscaisService {
             feriadoSet.has(diaDate.getTime()),
             agoraPonto,
             agoraReal,
-            regras,
+            regrasDoDia(diaDate),
           );
           horasExtras50Ms += e.horasExtras50Ms;
           horasExtras100Ms += e.horasExtras100Ms;
@@ -1419,7 +1444,7 @@ export class FiscaisService {
       colaboradores
         .filter((c) => porPessoaDia.has(c.id))
         .map(async (c) => {
-          const regras = await this.regrasDe(c.id);
+          const regrasDoDia = await this.regrasPorDia(c.id);
           let horasExtras50Ms = 0;
           let horasExtras100Ms = 0;
           const mapaPessoa = porPessoaDia.get(c.id)!;
@@ -1433,7 +1458,7 @@ export class FiscaisService {
               feriadoSet.has(diaDate.getTime()),
               agoraPonto,
               agoraReal,
-              regras,
+              regrasDoDia(diaDate),
             );
             horasExtras50Ms += e.horasExtras50Ms;
             horasExtras100Ms += e.horasExtras100Ms;
@@ -1532,7 +1557,16 @@ export class FiscaisService {
     // hora diferente da que a detecção de falta cobra, o mesmo dia poderia ser
     // "pontual" aqui e "atrasado" lá. Feriado e rodízio de domingo não entram —
     // este é um retrato por dia da semana, e é assim que o painel o apresenta.
-    const escalaMap = await entradasPrevistasPorFiscal(this.prisma);
+    // Com vigência da jornada, a hora prevista é a da vigência de cada data.
+    const diasDoMes: Date[] = [];
+    for (let t = inicioMes.getTime(); t < fimMes.getTime(); t += 86_400_000) {
+      diasDoMes.push(new Date(t));
+    }
+    const entradaPrevistaEm = await previsorDeEntradasDosFiscais(
+      this.prisma,
+      this.jornada,
+      diasDoMes,
+    );
 
     // Agrupar primeiro DISPONIVEL por fiscal por dia.
     const primeiroDisponivel = new Map<
@@ -1552,16 +1586,12 @@ export class FiscaisService {
         }
       }
 
-      const escalaFiscal = escalaMap.get(fiscal.id);
-      if (!escalaFiscal) continue;
-
       let desvioTotal = 0;
       let diasContados = 0;
 
       for (const [diaKey, primeiraEntrada] of porDia.entries()) {
         const diaDate = new Date(diaKey);
-        const diaSemana = diaDate.getUTCDay();
-        const entradaPrevista = escalaFiscal.get(diaSemana);
+        const entradaPrevista = entradaPrevistaEm(fiscal.id, diaDate);
         if (!entradaPrevista) continue;
 
         const [h, m] = entradaPrevista.split(':').map(Number);

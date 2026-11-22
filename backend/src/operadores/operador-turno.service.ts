@@ -10,10 +10,11 @@ import {
 } from './operadores.domain';
 import { StatusJustificativa } from '../common/justificativas';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
-import { FolgaService } from '../escala-domingo/folga.service';
+import { FolgaService } from '../jornada-vigencia/folga.service';
 import { FeriasService } from '../ferias/ferias.service';
 import { FeriadosService } from '../feriados/feriados.service';
 import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
+import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.service';
 import {
   GrupoDomingo,
   grupoFolgaNoDomingo,
@@ -285,6 +286,9 @@ export class OperadorTurnoService {
     // enquanto a escala publicada mostrava o de domingo (a regra correta). Como
     // os demais, entra no fim da lista de parâmetros.
     @Optional() private readonly feriados?: FeriadosService,
+    // Vigência da jornada (ADR 0027): turno e folga de cada dia. Opcional e no
+    // fim: sem ele, valem a ficha e o `FolgaService`.
+    @Optional() private readonly jornada?: JornadaVigenciaService,
   ) {}
 
   /**
@@ -352,13 +356,17 @@ export class OperadorTurnoService {
   }> {
     const inicio = dias[0];
     const fimExclusivo = addDias(dias[dias.length - 1], 1);
-    const [ancoraDomingo, consultorFolga, mapaFeriados] = await Promise.all([
+    const [ancoraDomingo, consultorJornada, mapaFeriados] = await Promise.all([
       this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
-      this.folga ? this.folga.consultor(dias) : null,
+      this.jornada ? this.jornada.consultor(dias) : null,
       this.feriados
         ? this.feriados.mapaNoPeriodo(inicio, fimExclusivo)
         : new Map<number, string>(),
     ]);
+    // Com a jornada prevista, a folga vem dela; sem ela, do `FolgaService`.
+    const consultorFolga =
+      consultorJornada ??
+      (this.folga ? await this.folga.consultor(dias) : null);
     // Férias por dia: um período pode cobrir só parte do intervalo, então a
     // pergunta é feita dia a dia (como já fazia a escala publicada).
     const feriasPorDia = new Map<number, Set<string>>();
@@ -371,17 +379,27 @@ export class OperadorTurnoService {
       // ausência (com justificativa, CID e período do atestado) e passa só o que
       // muda o STATUS; quem decide se a falta se aplica é `montarLinhaEscala` —
       // falta em dia de folga não existe.
-      linha: (ficha, dia, ehAtestado) =>
-        montarLinhaEscala({
+      linha: (ficha, dia, ehAtestado) => {
+        const ehFeriado = mapaFeriados.has(dia.getTime());
+        const previsto = consultorJornada?.previsto(
+          [ficha.colaboradorId],
+          dia,
+          ehFeriado,
+        );
+        return montarLinhaEscala({
           ficha,
           dia,
           ancoraDomingo,
-          ehFeriado: mapaFeriados.has(dia.getTime()),
+          ehFeriado,
           deFerias:
             feriasPorDia.get(dia.getTime())?.has(ficha.colaboradorId) ?? false,
           deFolga: consultorFolga?.ehFolga(dia, [ficha.colaboradorId]) ?? false,
           ocorrencia: ehAtestado == null ? null : { ehAtestado },
-        }),
+          turnoPrevisto: previsto
+            ? { entrada: previsto.entrada, saida: previsto.saida }
+            : undefined,
+        });
+      },
       grupoFolgaDomingo: (dia) =>
         dia.getUTCDay() === 0 && ancoraDomingo
           ? grupoFolgaNoDomingo(dia, ancoraDomingo.data, ancoraDomingo.ordem)
@@ -755,6 +773,28 @@ export class OperadorTurnoService {
    * Analítica de faltas num período: total, ranking por operador e distribuição
    * por dia da semana (qual dia mais se falta). Resolve nomes dos operadores.
    */
+  /**
+   * Acrescenta a folga dia a dia de quem tem vigência da jornada (ADR 0027): no
+   * 5x2 são duas folgas que giram, e a folga fixa da ficha não descreve mais os
+   * dias escalados nem a "emenda". Quem não tem vigência segue a folga fixa.
+   */
+  private async comFolgaDoDia<T extends { id: string }>(
+    operadores: T[],
+    inicio: Date,
+    fim: Date,
+  ): Promise<(T & { ehFolga?: (dia: Date) => boolean })[]> {
+    if (!this.jornada) return operadores;
+    const folgas = await this.jornada.folgasNoPeriodo(
+      operadores.map((o) => o.id),
+      inicio,
+      fim,
+    );
+    return operadores.map((o) => {
+      const ehFolga = folgas.get(o.id);
+      return ehFolga ? { ...o, ehFolga } : o;
+    });
+  }
+
   async analiticaFaltas(inicio: Date, fim: Date): Promise<AnaliticaFaltas> {
     const operadores = (
       await this.prisma.colaborador.findMany({
@@ -808,7 +848,9 @@ export class OperadorTurnoService {
     const fimEscala = agora.getTime() < fim.getTime() ? agora : fim;
 
     return analisarFaltas({
-      operadores,
+      // Até o fim do período (não só até hoje): uma ausência a prazo futura
+      // também olha a véspera e o dia seguinte para a "emenda".
+      operadores: await this.comFolgaDoDia(operadores, inicio, fim),
       ausencias,
       ausenciasAnterior,
       inicio,
@@ -890,7 +932,9 @@ export class OperadorTurnoService {
     const fimEscala = agora.getTime() < fim.getTime() ? agora : fim;
 
     return analisarFaltas({
-      operadores,
+      // Até o fim do período (não só até hoje): uma ausência a prazo futura
+      // também olha a véspera e o dia seguinte para a "emenda".
+      operadores: await this.comFolgaDoDia(operadores, inicio, fim),
       ausencias: atuais.map((i) => ({
         pessoaId: i.colaboradorId,
         data: i.data,

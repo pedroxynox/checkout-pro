@@ -40,7 +40,7 @@ Requisitos: [`requirements.md`](requirements.md) · Design: [`design.md`](design
 Dois PRs. Nenhum muda número algum: enquanto ninguém tiver vigência, a jornada
 prevista é o código de hoje com os dados de hoje (design §1).
 
-**PR 1a — base** (feito; ver o PR `feat/jornada-vigencia-base`)
+**PR 1a — base** (PR #440)
 - [x] 1.1 Prisma: `JornadaVigencia`, `DisponibilidadeDia` e relações (design
   §2.1). Migração `9zzu_jornada_vigencia` (só cria as tabelas). Ensaiar em
   PostgreSQL descartável. _(R1.1, RT.3)_
@@ -50,21 +50,27 @@ prevista é o código de hoje com os dados de hoje (design §1).
   `folgasFixasEfetivas`, `avisosDaVigencia`, `validarVigencia`. _(R1.2, R4.6, RT.1)_
 - [x] 1.3 Testes: propriedade de regressão (sem vigência == funções atuais para
   fichas e datas aleatórias) e casos do regime SEMANAL e dos avisos. _(RT.2)_
-- [x] 1.4 `JornadaVigenciaService.consultor` (carga em lote) + `regrasNoDia`;
-  "contrato em uso" conta as vigências. _(R1.2)_
+- [x] 1.4 `JornadaVigenciaService.consultor` (carga em lote); "contrato em uso"
+  conta as vigências. _(R1.2)_
 - [x] 1.5 ADR 0027 "Vigência da jornada"; Atlas `jornada-vigencia` e
   `tipos-contrato`; `docs:gen`. _(RT.5)_
 
-**PR 1b — consumidores**
-- [ ] 1.6 `FolgaService` passa a perguntar ao consultor.
-- [ ] 1.7 Migrar os consumidores (design §10) para o consultor, um módulo por
+**PR 1b — consumidores** (branch `feat/jornada-vigencia-consumidores`)
+- [x] 1.6 `FolgaService` passa a perguntar ao consultor (mudou-se para
+  `jornada-vigencia`); `regrasDoColaborador` exige o dia.
+- [x] 1.7 Migrar os consumidores (design §10) para o consultor, um módulo por
   commit: ponto, detecção automática, fiscais (escala, alertas, horário,
   saudação), Central de Jornada, compensação, operadores (roster, analítica,
-  `contarDiasEscalados`, emenda), incidências, perfil, exportação de escala,
-  conferência. _(R1.2, R6.4)_
-- [ ] 1.8 Comparar a Central numa cópia do banco de produção (`main` × branch):
-  diferença vazia (design §9). _(R1.3, R6.1)_
-- [ ] 1.9 Atlas dos módulos tocados; regras de negócio (`contratos-e-jornada`,
+  `contarDiasEscalados`, emenda), incidências, perfil, exportação de escala.
+  _(R1.2, R6.4)_ — a Conferência de escala e a sugestão de nova folga ficam para a
+  Fase 5 (5.3 e 5.5), como previsto; `jornadaEsperadaMs` e o domingo fixo da
+  compensação, para a Fase 2 (2.4).
+- [~] 1.8 Comparar a Central numa cópia do banco de produção (`main` × branch):
+  diferença vazia (design §9). _(R1.3, R6.1)_ — feito num banco de ensaio
+  (PGlite, 8 pessoas, ciclo inteiro com folga fixa, ficha omissa, rodízio,
+  feriados, férias, faltas e atestados): 155 leituras idênticas. Falta repetir com
+  um export do banco de produção.
+- [x] 1.9 Atlas dos módulos tocados; regras de negócio (`contratos-e-jornada`,
   `escala-e-rodizio-domingo`); `docs:gen`. _(RT.5)_
 
 ## Fase 2 — Tipo de contrato 5x2

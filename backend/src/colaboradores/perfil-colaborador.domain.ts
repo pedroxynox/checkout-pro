@@ -316,15 +316,23 @@ export function metaIndividualDerivada(p: {
 }
 
 /**
- * Conta os dias de `[inicio, fim]` (inclusivo em ambos os extremos) cujo
- * dia-da-semana (UTC) difere de `folgaDiaSemana` (0=Dom..6=Sáb). Determinístico
- * e puro: percorre dia a dia em UTC, sem depender de fuso local nem de `Date.now`.
+ * Conta os dias de `[inicio, fim]` (inclusivo em ambos os extremos) que não são
+ * folga: os de dia-da-semana (UTC) diferente de `folgaDiaSemana` (0=Dom..6=Sáb)
+ * ou, quando se passa uma função, os dias em que ela diz "não folga".
+ * Determinístico e puro: percorre dia a dia em UTC, sem depender de fuso local
+ * nem de `Date.now`.
  */
 export function contarDiasEscalados(
-  folgaDiaSemana: number,
+  folgaDiaSemana: number | ((dia: Date) => boolean),
   inicio: Date,
   fim: Date,
 ): number {
+  // Com vigência da jornada (ADR 0027) a folga é a do dia — no 5x2 são duas
+  // por semana e elas giram; sem ela, a folga fixa da ficha.
+  const ehFolga =
+    typeof folgaDiaSemana === 'function'
+      ? folgaDiaSemana
+      : (dia: Date) => dia.getUTCDay() === folgaDiaSemana;
   let count = 0;
   const d = new Date(
     Date.UTC(
@@ -339,7 +347,7 @@ export function contarDiasEscalados(
     fim.getUTCDate(),
   );
   while (d.getTime() <= fimDia) {
-    if (d.getUTCDay() !== folgaDiaSemana) count += 1;
+    if (!ehFolga(d)) count += 1;
     d.setUTCDate(d.getUTCDate() + 1);
   }
   return count;

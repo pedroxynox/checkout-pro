@@ -7,6 +7,7 @@ import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { GrupoDomingo } from '../escala-domingo/escala-domingo.domain';
 import { FeriadosService } from '../feriados/feriados.service';
 import { FeriasService } from '../ferias/ferias.service';
+import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.service';
 
 /**
  * O que já se sabe sobre o dia, quando quem chama a escala consolidada resolveu
@@ -63,6 +64,10 @@ export class EscalaService {
     // Feriado segue o horário de DOMINGO da ficha (a mesma regra da escala
     // publicada e da jornada). Sem o serviço, o dia é tratado como normal.
     @Optional() private readonly feriados?: FeriadosService,
+    // Vigência da jornada (ADR 0027): numa data real, o turno é o da vigência
+    // daquele dia (ou da ficha antes dela). Opcional e no fim, como os demais:
+    // sem ele, o turno sai só da ficha.
+    @Optional() private readonly jornada?: JornadaVigenciaService,
   ) {}
 
   /**
@@ -113,10 +118,25 @@ export class EscalaService {
         ? await this.ferias.colaboradoresDeFeriasNoDia(dia.data)
         : new Set<string>();
 
+    // Numa data real, a jornada prevista do dia decide o turno (a vigência
+    // daquele dia ou, antes dela, a ficha). No dia "típico" da semana não há
+    // data para escolher vigência, e vale a ficha.
+    const consultor =
+      temDataReal && this.jornada
+        ? await this.jornada.consultor([dia.data])
+        : null;
+
     const itens: ItemEscalaConsolidadaComNome[] = [];
     for (const f of comFicha) {
       if (deFerias.has(f.colaboradorId)) continue;
-      const turno = turnoDoDia(f.ficha, dia.data, ancoraDomingo, ehFeriado);
+      const previsto = consultor?.previsto(
+        [f.colaboradorId, f.fiscalId],
+        dia.data,
+        ehFeriado,
+      );
+      const turno = previsto
+        ? { entrada: previsto.entrada, saida: previsto.saida }
+        : turnoDoDia(f.ficha, dia.data, ancoraDomingo, ehFeriado);
       const efetiva: EscalaEfetiva = turno.entrada
         ? {
             funcionarioId: f.fiscalId,

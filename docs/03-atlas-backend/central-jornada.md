@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/central-jornada/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/central-jornada/`
 
 # Módulo: `central-jornada`
 
@@ -498,6 +498,7 @@ regra 16 e [`compensacao-horas`](compensacao-horas.md).
    feriado **não desconta nada** — ali o excedente é 100%, que nunca é debitada
    (regra 6). Detalhe do motor de sugestão em
    [`compensacao-horas`](compensacao-horas.md).
+- **Vigência da jornada ([ADR 0027](../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)).** Cada dia do ciclo é calculado com a **jornada prevista daquele dia** (carga, folga, turno, 100%/débito e regras do contrato — `previstorDe`): corrigir hoje um dia antigo usa as regras de então. O débito de falta e as marcações inválidas também usam o contrato do dia. Com vigência, vale a do dia; sem ela, a ficha, como antes. Quando o `JornadaVigenciaService` não é injetado (testes unitários antigos), o serviço reproduz a regra anterior.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
@@ -509,6 +510,7 @@ regra 16 e [`compensacao-horas`](compensacao-horas.md).
 | `compensacao-jornada.spec.ts` | Compensação no cálculo da jornada: dia inteiro (consome as 50%, não é falta, sai como `COMPENSACAO`, nada em dia futuro nem em domingo), dia parcial (déficit **reclassificado** e não somado, excesso segue como dívida, sem atraso falso na entrada combinada) e as invariantes (o saldo 50% segue complementar aos chips, as 100% intactas) | 12 |
 | `saldo-time.spec.ts` | Regra do saldo do time (`contribuicaoSaldoTime`) | 4 |
 | `central-jornada.controller.spec.ts` | Permissão do débito de horas (inclusive em dia sem falta) e do relatório de marcações inválidas | 3 |
+| `vigencia-jornada.spec.ts` | O corte de 23/11: até 22/11 o 6x1 (carga 8h na sexta, 1h de extra), a partir de 23/11 o 5x2 (a folga antiga vira dia de 8h48), turno da disponibilidade no dia não cumprido, e igualdade exata com a Central antiga quando não há vigência | 5 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

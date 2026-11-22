@@ -261,6 +261,12 @@ export interface OperadorParaFaltas {
   nome: string;
   /** Dia de folga fixa (0=Dom..6=Sáb). */
   folgaDiaSemana: number;
+  /**
+   * Folga dia a dia, para quem tem vigência da jornada (ADR 0027): no 5x2 são
+   * duas folgas por semana e elas giram. Presente, decide os dias escalados e a
+   * "emenda"; ausente, vale a folga fixa acima (regime legado, como sempre).
+   */
+  ehFolga?: (dia: Date) => boolean;
 }
 
 export type RiscoFalta = NivelRisco;
@@ -309,8 +315,19 @@ function dowOffset(dow: number, delta: number): number {
   return (dow + delta + 7) % 7;
 }
 
-/** Conta dias escalados (dow != folga) em [inicio, fim] inclusivo. */
-function contarDiasEscalados(folga: number, inicio: Date, fim: Date): number {
+/**
+ * Conta dias escalados em [inicio, fim] inclusivo: os que não são folga. A
+ * folga é a fixa da ficha (`dow != folga`) ou, quando informada, a do dia.
+ */
+function contarDiasEscalados(
+  folga: number | ((dia: Date) => boolean),
+  inicio: Date,
+  fim: Date,
+): number {
+  const ehFolga =
+    typeof folga === 'function'
+      ? folga
+      : (dia: Date) => dia.getUTCDay() === folga;
   let count = 0;
   const d = new Date(
     Date.UTC(
@@ -325,10 +342,15 @@ function contarDiasEscalados(folga: number, inicio: Date, fim: Date): number {
     fim.getUTCDate(),
   );
   while (d.getTime() <= fimDia) {
-    if (d.getUTCDay() !== folga) count += 1;
+    if (!ehFolga(d)) count += 1;
     d.setUTCDate(d.getUTCDate() + 1);
   }
   return count;
+}
+
+/** O mesmo instante deslocado em dias inteiros. */
+function maisDias(dia: Date, n: number): Date {
+  return new Date(dia.getTime() + n * 86_400_000);
 }
 
 /**
@@ -398,7 +420,7 @@ export function analisarFaltas(params: {
   const porOperador: FaltasOperadorDetalhe[] = [];
   for (const op of operadores) {
     const diasEscalados = contarDiasEscalados(
-      op.folgaDiaSemana,
+      op.ehFolga ?? op.folgaDiaSemana,
       inicio,
       fimEscala,
     );
@@ -428,14 +450,18 @@ export function analisarFaltas(params: {
     // Quantidade "efetiva" (para o risco): justificadas contam proporcionalmente.
     const quantidadeEfetiva = Math.round(pesoTotal);
 
+    // "Emenda": falta na véspera ou no dia seguinte de uma folga. Com a folga
+    // fixa, isso é um dia da semana; com a folga do dia (5x2), olha-se o dia.
     const vespera = dowOffset(op.folgaDiaSemana, -1);
     const seguinte = dowOffset(op.folgaDiaSemana, 1);
+    const colada = op.ehFolga
+      ? (d: Date) => op.ehFolga!(maisDias(d, -1)) || op.ehFolga!(maisDias(d, 1))
+      : (d: Date) => d.getUTCDay() === vespera || d.getUTCDay() === seguinte;
     let faltasEmenda = 0;
     const contagemDow = new Array<number>(7).fill(0);
     for (const d of datas) {
-      const dow = d.getUTCDay();
-      contagemDow[dow] += 1;
-      if (dow === vespera || dow === seguinte) faltasEmenda += 1;
+      contagemDow[d.getUTCDay()] += 1;
+      if (colada(d)) faltasEmenda += 1;
     }
 
     let melhorDow = -1;

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { EscalaDomingoModule } from '../escala-domingo/escala-domingo.module';
+import { JornadaVigenciaModule } from '../jornada-vigencia/jornada-vigencia.module';
 import { CicloFolhaModule } from '../ciclo-folha/ciclo-folha.module';
 import { FeriasModule } from '../ferias/ferias.module';
 import { FeriadosModule } from '../feriados/feriados.module';
@@ -26,6 +27,7 @@ import { EncerramentoAutomaticoService } from './encerramento-automatico.service
     NotificacoesModule,
     DataInicialModule,
     EscalaDomingoModule,
+    JornadaVigenciaModule,
     CicloFolhaModule,
     // Férias (inativação não rígida): quem está de férias sai do quadro do dia.
     // Sem este import o quadro mostrava a pessoa como "Trabalha" durante as

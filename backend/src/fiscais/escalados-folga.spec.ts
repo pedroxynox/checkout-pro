@@ -1,5 +1,5 @@
 import { FiscaisService } from './fiscais.service';
-import { FolgaService } from '../escala-domingo/folga.service';
+import { folgaDeTeste } from '../../test/helpers/jornada-de-teste';
 
 /**
  * REGRESSÃO: `escaladosDoDia` respeita a folga pela regra única — e na ordem
@@ -101,7 +101,7 @@ describe('FiscaisService.escaladosDoDia — respeita a folga das duas fontes', (
         ]),
     };
 
-    const folga = new FolgaService(prismaFake as never, undefined);
+    const folga = folgaDeTeste(prismaFake as never, undefined);
 
     // Ordem do construtor: prisma, eventos, notificacoes, validacaoData,
     // feriados, cicloFolha, tiposContrato, escala, escalaDomingo, ferias, folga.

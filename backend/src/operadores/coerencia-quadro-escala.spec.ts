@@ -1,7 +1,7 @@
 import { EscalaExportacaoService } from '../escala-exportacao/escala-exportacao.service';
-import { FolgaService } from '../escala-domingo/folga.service';
 import { FeriadosService } from '../feriados/feriados.service';
 import { OperadorTurnoService } from './operador-turno.service';
+import { folgaDeTeste } from '../../test/helpers/jornada-de-teste';
 
 /**
  * COERÊNCIA entre as duas telas que respondem a mesma pergunta.
@@ -190,7 +190,7 @@ describe('Coerência: Quadro de Operadores × Escala publicada', () => {
         Promise.resolve(cenario.deFerias ? new Set(['c1']) : new Set<string>()),
     };
 
-    const folga = new FolgaService(prismaFake as never, undefined);
+    const folga = folgaDeTeste(prismaFake as never, undefined);
     // Feriados reais (Tiradentes e cia. vêm da regra, não do banco) — é o que
     // faz o cenário de feriado valer: as duas vistas têm de aplicar a MESMA
     // regra de "feriado segue o horário de domingo".

@@ -81,7 +81,19 @@ dia, intervalos, limites de extras e de TAC — que o cálculo da jornada consom
 14. **Só o administrador** (`ADMIN_DADOS`) mexe no catálogo, pois ele afeta o
     cálculo de horas e a folha.
 
-## 3. Como os dois se conectam ao colaborador
+## 3. Vigência: cada dia com o contrato que valia nele
+
+Desde o fim do 6x1 (spec `jornada-5x2`), a mudança de contrato, folgas ou horário de
+uma pessoa é gravada como uma **vigência** com data de início
+([ADR 0027](../../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)):
+
+15. **Cada dia é calculado com o contrato daquele dia.** Corrigir hoje uma batida de
+    20/11 usa o contrato de 20/11, não o de agora.
+16. **Os dias anteriores à primeira vigência seguem a ficha** (o 6x1), sem mudança.
+17. **Vigência em ciclo de folha fechado é recusada** (a escrita entra com a tela da
+    ficha).
+
+## 4. Como os dois se conectam ao colaborador
 
 - O **cadastro do colaborador** define a admissão (para o contrato de
   experiência) e o **tipo de contrato de jornada** atribuído (para o cálculo de

@@ -146,7 +146,9 @@ export function planoDoDia(
 }
 
 /** "HH:mm" → minutos desde a meia-noite; `null` se inválido. */
-export function horaParaMinutos(hhmm: string | null | undefined): number | null {
+export function horaParaMinutos(
+  hhmm: string | null | undefined,
+): number | null {
   if (!hhmm) return null;
   const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
   if (!m) return null;
@@ -343,8 +345,11 @@ export interface ContextoAlocacao {
   vendaNaFaixa(diaSemana: number, inicioMin: number, fimMin: number): number;
   /** Quantos da função estão disponíveis no dia, antes das compensações. */
   disponiveisNoDia(funcao: FuncaoCompensavel, data: Date): number;
-  /** Regras de jornada da pessoa (contrato). */
-  regras(colaboradorId: string): RegrasPlano;
+  /**
+   * Regras de jornada da pessoa (contrato) NAQUELE dia — a vigência da jornada
+   * do dia ou a ficha antes dela (ADR 0027).
+   */
+  regras(colaboradorId: string, data: Date): RegrasPlano;
 }
 
 /**
@@ -417,7 +422,7 @@ export function alocarLiberacoes(
     const plano = planoDoDia(
       cargaMs,
       pessoa.saldo50Ms,
-      ctx.regras(pessoa.colaboradorId),
+      ctx.regras(pessoa.colaboradorId, candidata.data),
     );
     const { entrada, saida } = ctx.turno(pessoa.colaboradorId, candidata.data);
     const janela = janelaDeTrabalho(entrada, saida, plano.presencaMs, (i, f) =>
@@ -566,7 +571,10 @@ export function textoLiberacao(s: SugestaoLiberacao): string {
 }
 
 /** Frase que justifica cobrir uma falta com horas de 50%. */
-export function textoCobertura(falta: FaltaCobrivel, saldoAntesMs: number): string {
+export function textoCobertura(
+  falta: FaltaCobrivel,
+  saldoAntesMs: number,
+): string {
   const dia = `${nomeDiaSemana(falta.diaSemana)} ${dataCurta(falta.data)}`;
   const situacao =
     falta.status === 'INJUSTIFICADA'

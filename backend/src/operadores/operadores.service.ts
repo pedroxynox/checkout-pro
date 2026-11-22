@@ -5,7 +5,7 @@ import { ehFaltaAutomaticaPendente } from '../ponto/revalidacao-automatica.domai
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
-import { FolgaService } from '../escala-domingo/folga.service';
+import { FolgaService } from '../jornada-vigencia/folga.service';
 import { inicioDoDia } from '../common/datas';
 import {
   AusenciaRegistro,

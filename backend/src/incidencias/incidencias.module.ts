@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { JornadaVigenciaModule } from '../jornada-vigencia/jornada-vigencia.module';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { DataInicialModule } from '../data-inicial/data-inicial.module';
 import { IncidenciasController } from './incidencias.controller';
@@ -15,7 +16,7 @@ import { IncidenciasService } from './incidencias.service';
  * o serviço para reuso pelo `ColaboradoresModule` (enriquecimento do perfil).
  */
 @Module({
-  imports: [NotificacoesModule, DataInicialModule],
+  imports: [NotificacoesModule, DataInicialModule, JornadaVigenciaModule],
   providers: [IncidenciasService],
   controllers: [IncidenciasController],
   exports: [IncidenciasService],

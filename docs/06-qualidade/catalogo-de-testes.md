@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 140 arquivos, 1372 casos. **Mobile:** 43 arquivos, 369 casos. **Total: 1741 casos.**
+> **Backend:** 145 arquivos, 1395 casos. **Mobile:** 43 arquivos, 369 casos. **Total: 1764 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -37,6 +37,7 @@
 | `src/central-jornada/marcacoes-invalidas.service.spec.ts` | 12 | 1 |
 | `src/central-jornada/rankings.service.spec.ts` | 10 | 1 |
 | `src/central-jornada/saldo-time.spec.ts` | 4 | 1 |
+| `src/central-jornada/vigencia-jornada.spec.ts` | 5 | 1 |
 | `src/checklist/checklist.controller.spec.ts` | 5 | 1 |
 | `src/checklist/checklist.properties.spec.ts` | 5 | 1 |
 | `src/checklist/checklist.service.spec.ts` | 8 | 2 |
@@ -67,7 +68,6 @@
 | `src/data-inicial/data-inicial.properties.spec.ts` | 2 | 1 |
 | `src/data-inicial/validacao-data.service.spec.ts` | 3 | 1 |
 | `src/escala-domingo/escala-domingo.domain.spec.ts` | 37 | 6 |
-| `src/escala-domingo/folga.service.spec.ts` | 20 | 4 |
 | `src/escala-exportacao/escala-exportacao.service.spec.ts` | 16 | 4 |
 | `src/escala-exportacao/escala-publicada.domain.spec.ts` | 13 | 5 |
 | `src/fechamento/fechamento.domain.spec.ts` | 5 | 1 |
@@ -94,6 +94,7 @@
 | `src/fiscais/integridade-vinculo.spec.ts` | 6 | 1 |
 | `src/fiscais/jornada-marcacoes.spec.ts` | 2 | 1 |
 | `src/fiscais/status-operador.spec.ts` | 2 | 1 |
+| `src/fiscais/vigencia-escala.spec.ts` | 5 | 2 |
 | `src/incidencias/incidencias.justificativa.spec.ts` | 4 | 3 |
 | `src/incidencias/incidencias.properties.spec.ts` | 6 | 1 |
 | `src/incidencias/incidencias.sancoes.spec.ts` | 7 | 2 |
@@ -105,8 +106,10 @@
 | `src/insumos/insumos.resumo.spec.ts` | 2 | 1 |
 | `src/insumos/insumos.service.spec.ts` | 12 | 1 |
 | `src/insumos/sacolas.domain.spec.ts` | 51 | 14 |
+| `src/jornada-vigencia/consumidores-puros.spec.ts` | 7 | 3 |
+| `src/jornada-vigencia/folga.service.spec.ts` | 20 | 4 |
 | `src/jornada-vigencia/jornada-vigencia.domain.spec.ts` | 22 | 6 |
-| `src/jornada-vigencia/jornada-vigencia.service.spec.ts` | 9 | 3 |
+| `src/jornada-vigencia/jornada-vigencia.service.spec.ts` | 10 | 3 |
 | `src/metas/metas.domain.spec.ts` | 16 | 6 |
 | `src/metas/metas.service.spec.ts` | 16 | 5 |
 | `src/notificacoes/notificacoes.properties.spec.ts` | 2 | 1 |
@@ -126,7 +129,9 @@
 | `src/operadores/quadro-ferias-escala.spec.ts` | 14 | 5 |
 | `src/operadores/quadro-folga-escala.spec.ts` | 5 | 1 |
 | `src/operadores/remover-ausencia-periodo.spec.ts` | 4 | 1 |
+| `src/operadores/vigencia-quadro.spec.ts` | 2 | 1 |
 | `src/ponto/contrato-6x1-congelado.spec.ts` | 5 | 1 |
+| `src/ponto/contrato-do-dia.spec.ts` | 1 | 1 |
 | `src/ponto/deteccao-alerta-atraso.spec.ts` | 5 | 2 |
 | `src/ponto/deteccao-autocura-nao-retorno.spec.ts` | 3 | 1 |
 | `src/ponto/deteccao-automatica.domain.spec.ts` | 8 | 4 |
@@ -152,7 +157,7 @@
 | `src/reset-operacional/reset-operacional.domain.spec.ts` | 8 | 3 |
 | `src/reset-operacional/reset-operacional.properties.spec.ts` | 3 | 1 |
 | `src/tipos-contrato/tipos-contrato.adapter.spec.ts` | 5 | 1 |
-| `src/tipos-contrato/tipos-contrato.service.spec.ts` | 11 | 1 |
+| `src/tipos-contrato/tipos-contrato.service.spec.ts` | 13 | 1 |
 
 ## Mobile (Jest + Testing Library)
 

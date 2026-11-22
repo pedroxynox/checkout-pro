@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, TipoContratoJornada } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { inicioDoDia } from '../common/datas';
 import { RegrasContrato, REGRAS_PADRAO } from '../ponto/ponto.domain';
 import { regrasContratoDeModelo } from './tipos-contrato.adapter';
 import {
@@ -228,18 +229,77 @@ export class TiposContratoService {
   }
 
   /**
-   * Regras de jornada do colaborador (pelo contrato atribuído) ou do padrão
-   * quando ele não tem contrato próprio. Ponto de entrada do cálculo por pessoa.
+   * Regras de jornada do colaborador **num dia**: o contrato da vigência da
+   * jornada daquele dia (spec `jornada-5x2`, ADR 0027) ou, antes da primeira
+   * vigência, o da ficha. Sem colaborador, o padrão.
+   *
+   * O dia é obrigatório de propósito: sem ele a pergunta era "qual o contrato
+   * agora?", e trocar o contrato de alguém reescrevia todos os dias passados.
    */
   async regrasDoColaborador(
-    colaboradorId?: string | null,
+    colaboradorId: string | null | undefined,
+    dia: Date,
   ): Promise<RegrasContrato> {
     if (!colaboradorId) return this.regrasDoContrato(null);
-    const colab = await this.prisma.colaborador.findUnique({
-      where: { id: colaboradorId },
-      select: { tipoContratoJornadaId: true },
-    });
-    return this.regrasDoContrato(colab?.tipoContratoJornadaId ?? null);
+    const [vigencia, colab] = await Promise.all([
+      this.prisma.jornadaVigencia.findFirst({
+        where: { colaboradorId, vigenteDesde: { lte: inicioDoDia(dia) } },
+        orderBy: { vigenteDesde: 'desc' },
+        select: { tipoContratoJornadaId: true },
+      }),
+      this.prisma.colaborador.findUnique({
+        where: { id: colaboradorId },
+        select: { tipoContratoJornadaId: true },
+      }),
+    ]);
+    return this.regrasDoContrato(
+      vigencia?.tipoContratoJornadaId ?? colab?.tipoContratoJornadaId ?? null,
+    );
+  }
+
+  /**
+   * Como `regrasDoColaborador`, mas para MUITOS dias da mesma pessoa: carrega a
+   * ficha e as vigências uma vez e devolve uma função síncrona `dia → regras`.
+   * Serve aos relatórios do mês, que antes resolviam o contrato uma vez e o
+   * aplicavam a todos os dias — exatamente o atalho que reescrevia o passado.
+   */
+  async resolvedorDeRegras(
+    colaboradorId: string | null | undefined,
+  ): Promise<(dia: Date) => RegrasContrato> {
+    if (!colaboradorId) {
+      const padrao = await this.regrasDoContrato(null);
+      return () => padrao;
+    }
+    const [vigencias, colab] = await Promise.all([
+      this.prisma.jornadaVigencia.findMany({
+        where: { colaboradorId },
+        select: { vigenteDesde: true, tipoContratoJornadaId: true },
+      }),
+      this.prisma.colaborador.findUnique({
+        where: { id: colaboradorId },
+        select: { tipoContratoJornadaId: true },
+      }),
+    ]);
+    const daFicha = await this.regrasDoContrato(
+      colab?.tipoContratoJornadaId ?? null,
+    );
+    const ordenadas = vigencias
+      .map((v) => ({
+        inicio: inicioDoDia(v.vigenteDesde).getTime(),
+        id: v.tipoContratoJornadaId,
+      }))
+      .sort((a, b) => b.inicio - a.inicio);
+    const porContrato = new Map<string, RegrasContrato>();
+    for (const v of ordenadas) {
+      if (!porContrato.has(v.id)) {
+        porContrato.set(v.id, await this.regrasDoContrato(v.id));
+      }
+    }
+    return (dia) => {
+      const alvo = inicioDoDia(dia).getTime();
+      const vigente = ordenadas.find((v) => v.inicio <= alvo);
+      return vigente ? porContrato.get(vigente.id)! : daFicha;
+    };
   }
 
   private async contratoPadrao(): Promise<TipoContratoJornada | null> {
