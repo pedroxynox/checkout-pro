@@ -343,8 +343,11 @@ export interface ContextoAlocacao {
   vendaNaFaixa(diaSemana: number, inicioMin: number, fimMin: number): number;
   /** Quantos da função estão disponíveis no dia, antes das compensações. */
   disponiveisNoDia(funcao: FuncaoCompensavel, data: Date): number;
-  /** Regras de jornada da pessoa (contrato). */
-  regras(colaboradorId: string): RegrasPlano;
+  /**
+   * Regras de jornada da pessoa (contrato) NAQUELE dia — a vigência da jornada
+   * do dia ou a ficha antes dela (ADR 0027).
+   */
+  regras(colaboradorId: string, data: Date): RegrasPlano;
 }
 
 /**
@@ -417,7 +420,7 @@ export function alocarLiberacoes(
     const plano = planoDoDia(
       cargaMs,
       pessoa.saldo50Ms,
-      ctx.regras(pessoa.colaboradorId),
+      ctx.regras(pessoa.colaboradorId, candidata.data),
     );
     const { entrada, saida } = ctx.turno(pessoa.colaboradorId, candidata.data);
     const janela = janelaDeTrabalho(entrada, saida, plano.presencaMs, (i, f) =>
