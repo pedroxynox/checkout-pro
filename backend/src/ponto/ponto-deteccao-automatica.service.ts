@@ -37,6 +37,7 @@ import {
 } from './revalidacao-automatica.domain';
 import { FeriasService } from '../ferias/ferias.service';
 import { FolgaService } from '../escala-domingo/folga.service';
+import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 
 /** Autor "sistema" das marcações automáticas (auditoria). */
 const AUTOR_SISTEMA = { id: 'sistema', nome: 'Detecção automática' };
@@ -206,6 +207,12 @@ export class PontoDeteccaoAutomaticaService {
       this.idsComExclusao('NAO_RETORNO_INTERVALO', dia),
     ]);
 
+    // Pausa de transição (fim do 6x1): a entrada prevista ainda vem da ficha
+    // antiga, então o atraso e a falta automática acusariam quem folga ou entra
+    // no horário NOVO. Só esses dois param; o não-retorno do intervalo não
+    // depende do horário e segue vigiado.
+    const pausaTransicao = pausaTransicaoJornadaAtiva();
+
     for (const escalado of aVigiar) {
       try {
         // As duas chaves nos DOIS lados: o escalado é identificado pelo id da
@@ -224,7 +231,7 @@ export class PontoDeteccaoAutomaticaService {
             naoRetornoRegistrado,
             excluidasNaoRetorno,
           );
-        } else {
+        } else if (!pausaTransicao) {
           // Sem batida: 1h de atraso → avisa (uma vez); 2h → falta automática.
           // Os estados são mutuamente exclusivos (ver `estadoSemBatida`), então
           // no máximo um dos dois age.

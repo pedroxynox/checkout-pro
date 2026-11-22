@@ -3,6 +3,7 @@ import { BatidaPonto, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { diaEncerradoEmBrasilia, inicioDoDia } from '../common/datas';
 import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
+import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 import {
   type EtapaAlertaTac,
   INTERVALO_MAXIMO_MS,
@@ -739,6 +740,10 @@ export class PontoService {
     resposta: JornadaDiaResposta,
   ): Promise<void> {
     if (!this.notificacoes) return;
+    // Pausa de transição (fim do 6x1): a jornada ainda é medida contra a carga
+    // do contrato antigo. Nada é reservado, então nada fica "já avisado" quando
+    // a pausa for desligada.
+    if (pausaTransicaoJornadaAtiva()) return;
 
     const chaveDia = dia.toISOString();
     const etapa = etapaAlertaTac(
@@ -877,6 +882,10 @@ export class PontoService {
     dia: Date,
   ): Promise<void> {
     if (!this.notificacoes) return;
+    // Pausa de transição (fim do 6x1): a folga do cadastro ainda é a antiga, e
+    // a folga antiga agora é dia de trabalho. Sai antes da trava para não deixar
+    // linha em `AvisoPontoEmFolga`.
+    if (pausaTransicaoJornadaAtiva()) return;
     try {
       await this.prisma.avisoPontoEmFolga.create({
         data: { pessoaId, colaboradorId, dia },

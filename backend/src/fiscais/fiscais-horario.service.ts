@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { inicioDoDia } from '../common/datas';
+import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
 import { carregarFiscaisComFicha } from './turno-fiscal.consulta';
@@ -56,6 +57,9 @@ export class FiscaisHorarioService {
   /** Verifica a cada minuto se algum fiscal precisa ser notificado. */
   @Cron('* * * * *', { timeZone: 'America/Sao_Paulo' })
   async verificarHorarios(): Promise<void> {
+    // Pausa de transição (fim do 6x1): a hora de entrada ainda é a da ficha
+    // antiga; o lembrete chegaria na hora errada ou no dia de folga novo.
+    if (pausaTransicaoJornadaAtiva()) return;
     // Reseta se mudou o dia (fallback caso o cron da meia-noite não rodou).
     const hoje = new Date().toDateString();
     if (hoje !== this.diaAtual) {

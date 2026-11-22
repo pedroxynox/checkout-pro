@@ -13,6 +13,7 @@ import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { FolgaService } from '../escala-domingo/folga.service';
 import { FeriasService } from '../ferias/ferias.service';
 import { FeriadosService } from '../feriados/feriados.service';
+import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 import {
   GrupoDomingo,
   grupoFolgaNoDomingo,
@@ -947,6 +948,9 @@ export class OperadorTurnoService {
   @Cron('0 7 * * *', { timeZone: 'America/Sao_Paulo' })
   async avisoCoberturaCritica(): Promise<void> {
     if (!this.notificacoes) return;
+    // Pausa de transição (fim do 6x1): o roster do dia ainda sai da folga e do
+    // horário antigos, então a contagem de quem está no caixa sairia errada.
+    if (pausaTransicaoJornadaAtiva()) return;
     try {
       // Reaproveita o roster do dia em vez de recontar por conta própria. A
       // contagem antiga (`escaladosNoDia` = ficha menos a folga da ficha, menos

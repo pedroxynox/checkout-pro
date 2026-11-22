@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/common/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/common/`
 
 # Módulo: `common`
 
@@ -37,6 +37,7 @@ justificativas), CORS e opções de upload.
 | `risco-ocorrencias.ts` | Pontuação de risco partilhada por faltas e não-retornos | 42 |
 | `relogio.ts` | Relógio injetável (`RELOGIO`, `RelogioSistema`) | 21 |
 | `cors.ts` | Origens de CORS a partir do ambiente | 15 |
+| `transicao-jornada.ts` | `pausaTransicaoJornadaAtiva()` — pausa de transição do fim do 6x1 | 26 |
 | `config/jwt-secret.ts` | Resolve o segredo JWT (exige em produção) | 40 |
 | `correlation-id.middleware.ts` | Id de correlação por requisição (`x-request-id`) | 43 |
 | `logging.interceptor.ts` | Uma linha de log por requisição HTTP | 71 |
@@ -87,6 +88,16 @@ fornece:
   **memoizado** por processo (compartilhado entre os `JwtModule`).
 - **`origensCorsDoAmbiente()`** — lista de `CORS_ORIGINS` (vírgula) ou `true`
   (reflete a origem) quando ausente.
+- **`pausaTransicaoJornadaAtiva()`** — `true` quando `PAUSA_TRANSICAO_JORNADA`
+  é exatamente `"true"`. Lida a cada chamada. Com ela ligada, os automatismos que
+  dependem da ficha antiga (folga fixa, horário Seg–Qui/Sex–Sáb/Dom, carga do 6x1)
+  ficam suspensos: falta automática e aviso de atraso ([`ponto`](ponto.md)),
+  avisos de TAC e de ponto em dia de folga ([`ponto`](ponto.md)), folga sugerida
+  e análise de padrões dos fiscais ([`fiscais`](fiscais.md)), cobertura baixa
+  ([`operadores`](operadores.md)), lembrete e saudação de entrada dos fiscais
+  ([`fiscais`](fiscais.md), [`alertas`](alertas.md)). O registro de ponto, o
+  não-retorno e a autocura continuam. O boot registra no log quando está ativa.
+  Ver [spec `jornada-5x2`](../../.kiro/specs/jornada-5x2/design.md) §8.
 
 ## 6. Lógica de domínio (funções puras)
 - **Períodos:** `diaDentroDoPeriodo(dia, inicio, fim)` — o dia cai no período,
@@ -182,6 +193,7 @@ fornece:
 | `justificativas.spec.ts` | Peso/soma ponderada e montagem dos campos de justificativa (fast-check) | 9 |
 | `cors.spec.ts` | Resolução de `CORS_ORIGINS` | 5 |
 | `config/jwt-secret.spec.ts` | Segredo configurado/obrigatório/efêmero | 4 |
+| `transicao-jornada.spec.ts` | Quando a pausa de transição liga, e que os crons de fiscais, cobertura, lembrete e saudação saem sem consultar nada com ela ligada | 10 |
 | `correlation-id.middleware.spec.ts` | Geração/reaproveitamento do `x-request-id` | 3 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).

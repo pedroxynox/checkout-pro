@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/operadores/`
 
 # Módulo: `operadores`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -237,6 +237,9 @@ Delegam às funções puras homônimas do domínio.
   ficha, menos a folga da ficha, menos as faltas) ignorava férias, a regra única
   de folga e o rodízio de domingo, superestimando a cobertura — num alerta, o
   pior erro possível, porque ele deixava de disparar quando devia.
+  Com a pausa de transição ligada (`PAUSA_TRANSICAO_JORNADA=true`, ver
+  [`common`](common.md)), `avisoCoberturaCritica()` não roda: o roster do dia
+  ainda sai da folga e do horário do 6x1.
 
 ### `EncerramentoAutomaticoService` (crons)
 O gestor não precisa mais decidir falta por falta. A regra pura vive em

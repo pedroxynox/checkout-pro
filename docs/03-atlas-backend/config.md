@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/config/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/config/`
 
 # Módulo: `config`
 
@@ -54,6 +54,10 @@ configurado impede o start em vez de falhar silenciosamente depois.
   - `RETENCAO_INATIVOS_MESES` (≥ 1, padrão `3`).
   - `RETENCAO_INDICADORES_MESES` (≥ 1, padrão `24`) — janela móvel do Histórico
     de Indicadores; o que sai da janela é apagado no dia 1º.
+  - `PAUSA_TRANSICAO_JORNADA` (`true` | `false`, opcional) — pausa de transição
+    do fim do 6x1 (ver [`common`](common.md)). Só aceita esses dois textos: um
+    valor digitado errado impede o boot em vez de deixar a pausa desligada em
+    silêncio.
 
 ## 8. Dados que o módulo toca
 - **Não toca banco.** Opera apenas sobre variáveis de ambiente.
@@ -79,7 +83,7 @@ configurado impede o start em vez de falhar silenciosamente depois.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `env.validation.spec.ts` | Padrões em dev e obrigatoriedade de `JWT_SECRET`/`DATABASE_URL` em produção | 4 |
+| `env.validation.spec.ts` | Padrões em dev, obrigatoriedade de `JWT_SECRET`/`DATABASE_URL` em produção e os valores aceitos/recusados de `PAUSA_TRANSICAO_JORNADA` | 10 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { RELOGIO, Relogio } from '../common/relogio';
 import { inicioDoDia } from '../common/datas';
+import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 import { montarSaudacaoDiaria } from './saudacao-diaria.domain';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
@@ -61,6 +62,9 @@ export class SaudacaoDiariaService {
   /** A cada minuto: saúda os fiscais que entram agora (hora de entrada). */
   @Cron('* * * * *', { timeZone: FUSO_BRASILIA })
   async saudarFiscais(): Promise<void> {
+    // Pausa de transição (fim do 6x1): a hora de entrada ainda é a da ficha
+    // antiga. A saudação dos gestores (06:50) não depende dela e continua.
+    if (pausaTransicaoJornadaAtiva()) return;
     const agora = this.relogio.agora();
     // Fallback de reset caso o cron da meia-noite não tenha rodado.
     const hojeStr = agora.toDateString();

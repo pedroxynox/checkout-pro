@@ -6,6 +6,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { origensCorsDoAmbiente } from './common/cors';
+import { pausaTransicaoJornadaAtiva } from './common/transicao-jornada';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -57,6 +58,13 @@ async function bootstrap(): Promise<void> {
   // que encaminham o tráfego para a porta definida na variável de ambiente PORT.
   await app.listen(port, '0.0.0.0');
   logger.log(`Backend Check-out PRO ouvindo na porta ${port}`);
+  // Deixa no log de cada boot se a pausa de transição está ligada, para que a
+  // operação confirme no Render sem precisar abrir o painel de variáveis.
+  if (pausaTransicaoJornadaAtiva()) {
+    logger.warn(
+      'Pausa de transição da jornada ATIVA (PAUSA_TRANSICAO_JORNADA=true): falta automática, avisos de atraso/TAC/ponto em folga e alertas de fiscais por horário estão suspensos.',
+    );
+  }
 }
 
 void bootstrap();
