@@ -89,6 +89,48 @@ export class CriarTipoContratoDto {
   @IsBoolean()
   trabalhaDomingo?: boolean;
 
+  // ── Contrato 5x2 (spec `jornada-5x2`, Fase 2) ──────────────────────────
+
+  /** Carga do FERIADO, própria do contrato (padrão 440 = 7h20). */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1440)
+  cargaFeriadoMin?: number;
+
+  /** O feriado paga 100% (chip "Feriado" nos dias com adicional). */
+  @IsOptional()
+  @IsBoolean()
+  feriadoAdicional100?: boolean;
+
+  /** Teto de horas trabalhadas no dia (TAC acima). `null` = sem verificação. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(1440)
+  limiteTrabalhoDiaMin?: number | null;
+
+  /** Folgas por semana (6x1 = 1; 5x2 = 2). */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(3)
+  folgasPorSemana?: number;
+
+  /** Folgas de quem não tem grupo e deixou a ficha vazia (0=domingo). */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(3)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  folgasFixasPadrao?: number[];
+
+  /** O sábado pode ser folga fixa (só para quem não tem grupo). */
+  @IsOptional()
+  @IsBoolean()
+  permiteFolgaSabado?: boolean;
+
   @IsOptional()
   @IsBoolean()
   ativo?: boolean;
@@ -176,6 +218,48 @@ export class AtualizarTipoContratoDto {
   @IsOptional()
   @IsBoolean()
   trabalhaDomingo?: boolean;
+
+  // ── Contrato 5x2 (spec `jornada-5x2`, Fase 2) ──────────────────────────
+
+  /** Carga do FERIADO, própria do contrato (padrão 440 = 7h20). */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1440)
+  cargaFeriadoMin?: number;
+
+  /** O feriado paga 100% (chip "Feriado" nos dias com adicional). */
+  @IsOptional()
+  @IsBoolean()
+  feriadoAdicional100?: boolean;
+
+  /** Teto de horas trabalhadas no dia (TAC acima). `null` = sem verificação. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(1440)
+  limiteTrabalhoDiaMin?: number | null;
+
+  /** Folgas por semana (6x1 = 1; 5x2 = 2). */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(3)
+  folgasPorSemana?: number;
+
+  /** Folgas de quem não tem grupo e deixou a ficha vazia (0=domingo). */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(3)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  folgasFixasPadrao?: number[];
+
+  /** O sábado pode ser folga fixa (só para quem não tem grupo). */
+  @IsOptional()
+  @IsBoolean()
+  permiteFolgaSabado?: boolean;
 
   @IsOptional()
   @IsBoolean()

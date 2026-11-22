@@ -17,7 +17,10 @@ import {
   AtualizarTipoContratoDto,
   CriarTipoContratoDto,
 } from './dto/tipos-contrato.dto';
-import { TiposContratoService } from './tipos-contrato.service';
+import {
+  TipoContratoComUso,
+  TiposContratoService,
+} from './tipos-contrato.service';
 
 /**
  * Tipos de contrato de jornada (Centro de Controle). Criar/editar/ativar as
@@ -29,11 +32,14 @@ import { TiposContratoService } from './tipos-contrato.service';
 export class TiposContratoController {
   constructor(private readonly service: TiposContratoService) {}
 
-  /** Lista os contratos. `incluirInativos=1` traz também os desativados. */
+  /**
+   * Lista os contratos. `incluirInativos=1` traz também os desativados. Cada
+   * um vem com `emUso` (as regras de um contrato em uso ficam travadas).
+   */
   @Get()
   listar(
     @Query('incluirInativos') incluirInativos?: string,
-  ): Promise<TipoContratoJornada[]> {
+  ): Promise<TipoContratoComUso[]> {
     const incluir = incluirInativos === '1' || incluirInativos === 'true';
     return this.service.listar(incluir);
   }
@@ -60,6 +66,21 @@ export class TiposContratoController {
     @Body() dto: AlternarAtivoDto,
   ): Promise<TipoContratoJornada> {
     return this.service.definirAtivo(id, dto.ativo);
+  }
+
+  /** Torna este o contrato padrão (o anterior deixa de ser). */
+  @Patch(':id/padrao')
+  definirPadrao(@Param('id') id: string): Promise<TipoContratoJornada> {
+    return this.service.definirPadrao(id);
+  }
+
+  /**
+   * Cria uma cópia inativa e editável. É como se mudam as regras de um
+   * contrato em uso (as dele ficam travadas).
+   */
+  @Post(':id/duplicar')
+  duplicar(@Param('id') id: string): Promise<TipoContratoJornada> {
+    return this.service.duplicar(id);
   }
 
   /** Remove um tipo de contrato (o padrão não pode ser removido). */
