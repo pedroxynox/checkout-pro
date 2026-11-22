@@ -14,7 +14,7 @@
 ## Estado verificable
 
 - Todo lo descrito como entregado está **mergeado en `main`**; el deploy de cada commit debe confirmarse por logs y `/health/ready`.
-- Última migration: `9zzt_feedforward_prorrogacao`. La siguiente debe ordenar después de `9zzt` (el spec jornada-5x2 reserva `9zzu`–`9zzw`).
+- Última migration: `9zzu_jornada_vigencia`. La siguiente debe ordenar después de `9zzu` (el spec jornada-5x2 reserva `9zzv` y `9zzw`).
 - **El app no tiene IA.** La asistente Cluby (Google Gemini) fue retirada por completo en oct/2026: módulo backend, chat del app, tabla `mensagens_assistente`, imágenes de procedimientos y las variables `GEMINI_API_KEY`/`GEMINI_MODEL`.
 - En el sandbox de Kiro no hay acceso al registro npm: los tests se validan en el CI del PR. Para comandos de Node, vaciar `NODE_OPTIONS`.
 

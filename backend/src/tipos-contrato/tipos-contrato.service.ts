@@ -185,6 +185,16 @@ export class TiposContratoService {
         `Este contrato está em uso por ${emUso} colaborador(es). Reatribua-os antes de remover (ou apenas desative o contrato).`,
       );
     }
+    // Uma vigência da jornada (spec jornada-5x2) também é uso: o contrato decide
+    // os dias daquele período, mesmo que hoje a pessoa esteja em outro.
+    const emVigencias = await this.prisma.jornadaVigencia.count({
+      where: { tipoContratoJornadaId: id },
+    });
+    if (emVigencias > 0) {
+      throw new BadRequestException(
+        `Este contrato está no histórico de jornada de ${emVigencias} vigência(s) e decide os dias desse período. Apenas desative o contrato.`,
+      );
+    }
     await this.prisma.tipoContratoJornada.delete({ where: { id } });
     this.invalidarCache();
   }

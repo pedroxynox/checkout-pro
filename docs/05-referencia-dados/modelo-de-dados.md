@@ -3,7 +3,7 @@
 
 # Modelo de Dados (Prisma)
 
-> Fonte: `backend/prisma/schema.prisma`. Total: **55 tabelas** e **30 tipos (enums)**.
+> Fonte: `backend/prisma/schema.prisma`. Total: **57 tabelas** e **30 tipos (enums)**.
 
 Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dicionario-de-dados.md).
 
@@ -55,8 +55,10 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `SugestaoPedido` | 10 | confirmar (vira entrada) ou ignorar. |
 | `MetaIndicador` | 6 | editar via app sem redeploy. Quando não existe registro, usa-se o default. |
 | `MetaMensal` | 6 | usa-se o valor padrão de CONFIG_METAS (e, para VENDAS, a config legada). |
-| `TipoContratoJornada` | 19 | valores de hoje, sem mudança de comportamento. |
-| `Colaborador` | 25 | — |
+| `TipoContratoJornada` | 20 | valores de hoje, sem mudança de comportamento. |
+| `Colaborador` | 26 | — |
+| `JornadaVigencia` | 14 | Assim corrigir hoje uma batida de um dia antigo usa as regras daquele dia. |
+| `DisponibilidadeDia` | 6 | sistema não cobra ponto). É o horário que a escala mostra e o ponto cobra. |
 | `Atestado` | 13 | o futuro (anexo do documento; depende de storage de objetos/S3). |
 | `FeriasColaborador` | 9 | — |
 | `ColaboradorIdentificador` | 5 | — |
@@ -98,10 +100,16 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `PedidoRecorrente` | `insumo` | `Insumo` |
 | `SugestaoPedido` | `insumo` | `Insumo` |
 | `TipoContratoJornada` | `colaboradores` | `Colaborador[]` |
+| `TipoContratoJornada` | `jornadaVigencias` | `JornadaVigencia[]` |
 | `Colaborador` | `tipoContratoJornada` | `TipoContratoJornada` |
 | `Colaborador` | `identificadores` | `ColaboradorIdentificador[]` |
 | `Colaborador` | `ferias` | `FeriasColaborador[]` |
 | `Colaborador` | `atestados` | `Atestado[]` |
+| `Colaborador` | `jornadaVigencias` | `JornadaVigencia[]` |
+| `JornadaVigencia` | `colaborador` | `Colaborador` |
+| `JornadaVigencia` | `tipoContratoJornada` | `TipoContratoJornada` |
+| `JornadaVigencia` | `disponibilidade` | `DisponibilidadeDia[]` |
+| `DisponibilidadeDia` | `vigencia` | `JornadaVigencia` |
 | `Atestado` | `colaborador` | `Colaborador` |
 | `FeriasColaborador` | `colaborador` | `Colaborador` |
 | `ColaboradorIdentificador` | `colaborador` | `Colaborador` |

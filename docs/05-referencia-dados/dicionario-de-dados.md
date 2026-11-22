@@ -3,7 +3,7 @@
 
 # Dicionário de Dados
 
-> Detalhe campo a campo das **55 tabelas**. Fonte: `backend/prisma/schema.prisma`.
+> Detalhe campo a campo das **57 tabelas**. Fonte: `backend/prisma/schema.prisma`.
 
 ## `Usuario`
 
@@ -684,6 +684,7 @@ valores de hoje, sem mudança de comportamento.
 | `intervaloObrigatorio` | `Boolean` |  | Quando true, encerrar a jornada sem intervalo é TAC (intervalo obrigatório). |
 | `trabalhaDomingo` | `Boolean` |  | o colaborador com este contrato não trabalha domingo (grupoDomingo = null). |
 | `colaboradores` | `Colaborador[]` |  | Colaboradores que usam este contrato (para bloquear a remoção quando em uso). |
+| `jornadaVigencias` | `JornadaVigencia[]` |  | decidindo os dias daquele período. |
 | `criadoEm` | `DateTime` |  |  |
 | `atualizadoEm` | `DateTime` |  |  |
 
@@ -716,6 +717,41 @@ valores de hoje, sem mudança de comportamento.
 | `identificadores` | `ColaboradorIdentificador[]` |  |  |
 | `ferias` | `FeriasColaborador[]` |  |  |
 | `atestados` | `Atestado[]` |  |  |
+| `jornadaVigencias` | `JornadaVigencia[]` |  |  |
+
+## `JornadaVigencia`
+
+Assim corrigir hoje uma batida de um dia antigo usa as regras daquele dia.
+
+| Campo | Tipo | Chave | Descrição |
+|---|---|---|---|
+| `id` | `String` | PK |  |
+| `colaboradorId` | `String` |  |  |
+| `colaborador` | `Colaborador` | relação |  |
+| `vigenteDesde` | `DateTime` |  | Dia civil de início (00:00 UTC, mesmo rótulo das demais datas de negócio). |
+| `tipoContratoJornadaId` | `String` |  | Regras do período. Restrict: contrato com vigência não pode ser apagado. |
+| `tipoContratoJornada` | `TipoContratoJornada` | relação |  |
+| `grupo` | `String?` |  | são as fixas abaixo (ou as padrão do contrato quando a lista está vazia). |
+| `folgasFixas` | `Int[]` |  | Dias de folga fixa (0=domingo … 6=sábado), só para quem não tem grupo. |
+| `disponibilidade` | `DisponibilidadeDia[]` |  |  |
+| `motivo` | `String?` |  |  |
+| `criadoPor` | `String?` |  |  |
+| `criadoEm` | `DateTime` |  |  |
+| `atualizadoPor` | `String?` |  |  |
+| `atualizadoEm` | `DateTime` |  |  |
+
+## `DisponibilidadeDia`
+
+sistema não cobra ponto). É o horário que a escala mostra e o ponto cobra.
+
+| Campo | Tipo | Chave | Descrição |
+|---|---|---|---|
+| `id` | `String` | PK |  |
+| `vigenciaId` | `String` |  |  |
+| `vigencia` | `JornadaVigencia` | relação |  |
+| `diaSemana` | `Int` |  | 0=domingo … 6=sábado (a tela mostra de segunda a domingo). |
+| `entrada` | `String` |  | são tratados). |
+| `saida` | `String` |  |  |
 
 ## `Atestado`
 
