@@ -342,6 +342,7 @@ O gestor não precisa mais decidir falta por falta. A regra pura vive em
    `ATESTADO_MEDICO` — atestado tem fluxo próprio (com CID e INSS). Abonar uma
    falta avulsa como atestado médico (na tela de Justificativas) continua
    permitido (é abono de uma ocorrência já existente, não um período novo).
+- **Vigência da jornada ([ADR 0027](../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)).** O quadro do dia usa **folga e turno da jornada prevista**; a analítica de faltas/não-retornos conta os dias escalados e a "emenda" pela **folga de cada dia** (`folgasNoPeriodo` → `OperadorParaFaltas.ehFolga`), porque no 5x2 são duas folgas que giram. Com vigência, vale a do dia; sem ela, a ficha, como antes. Quando o `JornadaVigenciaService` não é injetado (testes unitários antigos), o serviço reproduz a regra anterior.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
@@ -361,6 +362,7 @@ O gestor não precisa mais decidir falta por falta. A regra pura vive em
 | `quadro-ferias-escala.spec.ts` | Quem está de férias sai do roster do dia (inclusive no domingo) e dos totais; as férias vencem uma falta gravada; fora do período segue normal; sem o serviço de férias nada é excluído; a grade marca **FERIAS** só no dia coberto (sem apagar a linha da semana) e não conta férias na cobertura; o tablero ao vivo não espera quem está de férias; e o **aviso de cobertura** não conta quem está de férias nem grita quando ninguém era esperado | 14 |
 | `encerramento-automatico.spec.ts` | Regra pura (D fecha em D+3, hora ignorada, autor = sistema, **sem débito**), a gravação (só PENDENTE, só não-retorno entre as incidências, fora dos ciclos fechados, janela do fechamento) e os crons (corte do dia, aviso único da véspera, sem aviso quando zero, nunca derruba o processo) | 11 |
 | `coerencia-quadro-escala.spec.ts` | **Coerência entre telas:** para o mesmo dia e pessoa, o Quadro e a [escala publicada](escala-exportacao.md) dizem o mesmo — e desde a extensão comparam também o **horário**, não só o estado (trabalho, folga da ficha, folga da escala semanal com a ficha omissa e como exceção, **ficha afirmando outro dia**, férias, falta, atestado, **feriado** e **horário de exceção**). É o teste que faltava: achou a divergência de folga e, quando passou a comparar horários, os desvios de feriado e de exceção | 10 |
+| `vigencia-quadro.spec.ts` | Quadro e escala publicada com vigência: a folga antiga vira dia de trabalho no horário novo e a folga nova aparece nas duas telas | 2 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

@@ -146,7 +146,9 @@ export function planoDoDia(
 }
 
 /** "HH:mm" → minutos desde a meia-noite; `null` se inválido. */
-export function horaParaMinutos(hhmm: string | null | undefined): number | null {
+export function horaParaMinutos(
+  hhmm: string | null | undefined,
+): number | null {
   if (!hhmm) return null;
   const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
   if (!m) return null;
@@ -569,7 +571,10 @@ export function textoLiberacao(s: SugestaoLiberacao): string {
 }
 
 /** Frase que justifica cobrir uma falta com horas de 50%. */
-export function textoCobertura(falta: FaltaCobrivel, saldoAntesMs: number): string {
+export function textoCobertura(
+  falta: FaltaCobrivel,
+  saldoAntesMs: number,
+): string {
   const dia = `${nomeDiaSemana(falta.diaSemana)} ${dataCurta(falta.data)}`;
   const situacao =
     falta.status === 'INJUSTIFICADA'

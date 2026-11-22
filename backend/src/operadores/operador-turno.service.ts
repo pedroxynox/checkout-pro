@@ -365,7 +365,8 @@ export class OperadorTurnoService {
     ]);
     // Com a jornada prevista, a folga vem dela; sem ela, do `FolgaService`.
     const consultorFolga =
-      consultorJornada ?? (this.folga ? await this.folga.consultor(dias) : null);
+      consultorJornada ??
+      (this.folga ? await this.folga.consultor(dias) : null);
     // Férias por dia: um período pode cobrir só parte do intervalo, então a
     // pergunta é feita dia a dia (como já fazia a escala publicada).
     const feriasPorDia = new Map<number, Set<string>>();

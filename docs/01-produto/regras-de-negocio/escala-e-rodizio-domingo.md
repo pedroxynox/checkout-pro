@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** regras de negócio de escala e rodízio de domingo
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** regras de negócio de escala e rodízio de domingo
 
 # Escala e rodízio de domingo
 
@@ -73,7 +73,14 @@ As mesmas regras puras do rodízio alimentam o Relógio de Ponto e a apuração:
     excedente sobre a jornada esperada do dia entra como hora extra a 100%. Ver
     [Ponto, jornada e TAC](ponto-jornada-e-tac.md).
 
-## 5. Observações
+## 5. Vigência da jornada
+
+14. **A escala de um dia segue a vigência daquele dia**
+    ([ADR 0027](../../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)): quem passou
+    ao 5x2 é escalado pela disponibilidade e pelas folgas da vigência; antes do corte, e
+    para quem não tem vigência, valem a ficha e o rodízio de domingo acima.
+
+## 6. Observações
 
 - O rodízio assume **exatamente 3 grupos** (2x1); uma operação com número
   diferente de grupos exigiria revisar a regra.

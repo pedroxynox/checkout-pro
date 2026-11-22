@@ -69,7 +69,9 @@ só aparece no histórico ainda decide os dias daquele período.
   com cache; cai no contrato padrão do banco quando o id é ausente/desconhecido,
   e no `REGRAS_PADRAO` do código se nem o padrão existir.
 
-#### `regrasDoColaborador(colaboradorId?)`
+#### `regrasDoColaborador(colaboradorId, dia)` e `resolvedorDeRegras(colaboradorId)`
+- **O dia é obrigatório** ([ADR 0027](../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)): vale o contrato da vigência da jornada daquele dia; antes da primeira vigência, o da ficha. `resolvedorDeRegras` carrega tudo uma vez e devolve `dia → regras`, para os relatórios do mês.
+
 Resolve as regras pelo contrato atribuído ao colaborador (ou o padrão). É o
 ponto de entrada do cálculo por pessoa usado por [`ponto`](ponto.md) e
 [`central-jornada`](central-jornada.md).
@@ -133,7 +135,7 @@ Garante: carga base com 7 valores; dias com 100% entre 0 e 6; intervalo mínimo
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `tipos-contrato.service.spec.ts` | CRUD, coerência, proteção do padrão/em uso (fichas e vigências da jornada) e cache | 11 |
+| `tipos-contrato.service.spec.ts` | CRUD, coerência, proteção do padrão/em uso (fichas e vigências da jornada), cache, regras do colaborador **no dia** e o resolvedor por dia | 13 |
 | `tipos-contrato.adapter.spec.ts` | Conversão modelo (min) → `RegrasContrato` (ms) | 5 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).

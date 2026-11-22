@@ -256,13 +256,18 @@ rodízio vigente na data (Fase 3), folgas fixas junto com grupo.
     carregado; informado = o que o chamador já usa hoje (para não mudar quem hoje
     ignora feriado).
   - `vigencia(ids, dia)`.
-- `regrasNoDia(colaboradorId, dia)` — substitui `TiposContratoService.regrasDoColaborador`.
+- `folgasNoPeriodo(ids, inicio, fim)` — `dia → folga?` de quem tem vigência, para as
+  analíticas (dias escalados, "emenda").
+- As regras do contrato de um dia vêm de `TiposContratoService.regrasDoColaborador(id,
+  dia)` (o dia passou a ser obrigatório) e, para muitos dias, de `resolvedorDeRegras(id)`.
 - `listar(colaboradorId)` — histórico de vigências (Fase 4).
 - Escrita (`gravar`/`remover`) com `CicloFolhaService.exigirCicloAberto` e
   avisos — **Fase 4**, junto com a tela.
-- `FolgaService` passa a perguntar ao consultor (mantém a interface
-  `consultor(dias)`/`ehFolga`/`semFolgaNaFicha` para reduzir a mudança nos
-  consumidores).
+- `FolgaService` mudou-se para `jornada-vigencia` e pergunta ao consultor (mantém a
+  interface `consultor(dias)`/`ehFolga`/`semFolgaNaFicha`).
+- Os consumidores injetam o `JornadaVigenciaService` como `@Optional()` e, sem ele
+  (testes unitários antigos), reproduzem a regra anterior. Torná-lo obrigatório fica
+  para a Fase 7.
 
 ## 5. TAC e avisos (Fase 2)
 

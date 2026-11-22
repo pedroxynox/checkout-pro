@@ -129,6 +129,7 @@ Em `saudacao-diaria.domain.ts`:
 5. **Saudação personalizada por perfil e horário:** fiscais na entrada da
    escala; gestores às 06:50; determinística pelo domínio puro.
 6. **Best-effort na saudação:** uma falha individual nunca derruba o cron.
+- **Vigência da jornada ([ADR 0027](../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)).** A saudação de entrada dos fiscais usa o **turno da jornada prevista** do dia (o módulo passou a importar `JornadaVigenciaModule`; com isso o domingo de quem está no rodízio também é resolvido, o que antes não acontecia por falta da âncora). Com vigência, vale a do dia; sem ela, a ficha, como antes. Quando o `JornadaVigenciaService` não é injetado (testes unitários antigos), o serviço reproduz a regra anterior.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |

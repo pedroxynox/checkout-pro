@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/escala-exportacao/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/escala-exportacao/`
 
 # Módulo: `escala-exportacao`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -186,6 +186,7 @@ quem é a exceção, e aplicá-la por palpite colocaria o horário errado no doc
 que a equipe recebe.
 
 **Inativos não aparecem.** Só `Colaborador.ativo = true`.
+- **Vigência da jornada ([ADR 0027](../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)).** A escala do dia e a da semana pegam **folga e turno da jornada prevista** (`turnoPrevisto` em `montarLinhaEscala`). Com vigência, vale a do dia; sem ela, a ficha, como antes. Quando o `JornadaVigenciaService` não é injetado (testes unitários antigos), o serviço reproduz a regra anterior.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |

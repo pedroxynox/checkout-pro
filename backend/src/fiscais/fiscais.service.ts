@@ -864,18 +864,20 @@ export class FiscaisService {
       // existir: sem validade, sem tela e invisíveis à ficha, faziam a detecção
       // cobrar um horário que o colaborador não via em lugar nenhum.
       const previsto = consultorJornada?.previsto([c.id], inicio, ehFeriado);
-      const entrada = previsto ? previsto.entrada : entradaEsperadaNoDia(
-        {
-          folgaDiaSemana: c.folgaDiaSemana,
-          grupoDomingo: c.grupoDomingo,
-          entradaSemana: c.entradaSemana,
-          entradaFds: c.entradaFds,
-          entradaDom: c.entradaDom,
-        },
-        inicio,
-        ancoraDomingo,
-        ehFeriado,
-      );
+      const entrada = previsto
+        ? previsto.entrada
+        : entradaEsperadaNoDia(
+            {
+              folgaDiaSemana: c.folgaDiaSemana,
+              grupoDomingo: c.grupoDomingo,
+              entradaSemana: c.entradaSemana,
+              entradaFds: c.entradaFds,
+              entradaDom: c.entradaDom,
+            },
+            inicio,
+            ancoraDomingo,
+            ehFeriado,
+          );
       if (!entrada) return [];
       return [
         {

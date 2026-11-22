@@ -1,10 +1,6 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  UM_DIA_MS,
-  inicioDoDia,
-  inicioDoProximoDia,
-} from '../common/datas';
+import { UM_DIA_MS, inicioDoDia, inicioDoProximoDia } from '../common/datas';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import {
   GrupoDomingo,

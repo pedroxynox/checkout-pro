@@ -51,6 +51,19 @@ Spec: [`.kiro/specs/jornada-5x2/`](../../../.kiro/specs/jornada-5x2/requirements
 - A ficha legada vive no `Colaborador` enquanto existir alguém sem vigência e como
   história depois; sair da API e das telas é a Fase 7 do spec.
 
+## Atualização (Fase 1b, 22/11/2026)
+
+- Os consumidores passaram a perguntar à jornada prevista: Central de Jornada (cada
+  dia do ciclo), compensação, escala dos fiscais e equipe do dia, escala publicada,
+  quadro de operadores, lembrete e saudação de entrada, relatórios de pontualidade,
+  analíticas de faltas (dias escalados e "emenda"), perfil e incidências.
+- O `FolgaService` mudou-se para o módulo `jornada-vigencia` e virou fachada do
+  consultor; `TiposContratoService.regrasDoColaborador` passou a exigir o dia.
+- Os consumidores injetam o serviço como `@Optional()`; sem ele (testes unitários
+  antigos) reproduzem a regra anterior.
+- Prova de não regressão: além dos testes, 155 leituras dos serviços sobre um banco de
+  ensaio com um ciclo inteiro deram resultado idêntico em `main` e na branch.
+
 ## Alternativas consideradas
 
 - **Copiar a ficha para uma vigência "desde 1970"** (primeira versão do design).

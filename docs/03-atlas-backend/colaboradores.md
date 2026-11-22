@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/colaboradores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/colaboradores/`
 
 # Módulo: `colaboradores`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -201,6 +201,7 @@ totais de arrecadação. Roda no cron mensal (dia 1º) e sob demanda.
    permanece em `OPERADORES_AUSENCIAS` porque devolve só nome/matrícula/função/
    turno e alimenta os seletores de pessoa de ausências, atestados, férias,
    sanções e justificativas.
+- **Vigência da jornada ([ADR 0027](../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)).** No perfil, os **dias escalados** (taxa de faltas e score) e a "emenda" usam a folga de cada dia de quem tem vigência (`folgasNoPeriodo`). Com vigência, vale a do dia; sem ela, a ficha, como antes. Quando o `JornadaVigenciaService` não é injetado (testes unitários antigos), o serviço reproduz a regra anterior.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |

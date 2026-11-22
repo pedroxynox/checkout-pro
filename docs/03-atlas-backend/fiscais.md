@@ -405,6 +405,8 @@ casos de ficha vazia, preencher os horários **primeiro**.
    ausências do dia casa **as duas colunas** (`pessoaId` e `colaboradorId`): olhar
    só uma deixava passar as ausências gravadas pela ficha (atestado e ausência a
    prazo de fiscal), e a pessoa aparecia como se nada tivesse.
+- **Vigência da jornada ([ADR 0027](../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)).** A escala consolidada (numa data real), a equipe do dia (operadores/supervisores), o lembrete de entrada e os relatórios de pontualidade (`previsorDeEntradasDosFiscais`, por data) usam o **turno e a folga da jornada prevista**; as regras do contrato de cada dia vêm de `regrasDoColaborador(id, dia)`/`resolvedorDeRegras`. Com vigência, vale a do dia; sem ela, a ficha, como antes. Quando o `JornadaVigenciaService` não é injetado (testes unitários antigos), o serviço reproduz a regra anterior.
+
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
@@ -427,6 +429,7 @@ casos de ficha vazia, preencher os horários **primeiro**.
 | `integridade-escala.spec.ts` | **Diagnóstico das fichas**: **ficha vazia** (a pessoa fica fora do controle de ponto), horário pela metade, **rodízio de domingo sem horário** (falta entrada, saída ou ambas), ficha **sem dia de folga** que hoje descansa pela cópia, distância até a cópia semanal nos **dois sentidos**, folga divergente sem distância a medir, ficha sem cópia, duplicadas, inativos ignorados e cópia antiga ligada só pelo `funcionarioId` | 16 |
 | `escala-colaborador.spec.ts` | Geração da cópia semanal a partir da ficha (Seg–Qui, Sex–Sáb, folga, domingo) | 4 |
 | `integridade-vinculo.spec.ts` | Detecção de vínculos órfãos fiscal ↔ ficha (Fase 4) | 6 |
+| `vigencia-escala.spec.ts` | Equipe do dia e escala consolidada com vigência: antes do corte a ficha; depois, o horário e a folga da vigência; o legado segue igual; sem o serviço, tudo como antes | 5 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

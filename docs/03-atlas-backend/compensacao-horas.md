@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/compensacao-horas/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/compensacao-horas/`
 
 # Módulo: `compensacao-horas`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -273,6 +273,7 @@ Ver [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
     deixá-lo na média contaminaria a escolha com um dia que jamais será escolhido.
 17. **Nada é aplicado sozinho.** Toda compensação exige aprovação explícita:
     mexe em folha e no descanso de pessoas.
+- **Vigência da jornada ([ADR 0027](../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)).** A sugestão e a compensação manual usam as **regras do contrato daquele dia** (`resolvedorDeRegras`/`regrasDoColaborador` com o dia) e o turno da jornada prevista; `ContextoAlocacao.regras` recebe o dia. Com vigência, vale a do dia; sem ela, a ficha, como antes. Quando o `JornadaVigenciaService` não é injetado (testes unitários antigos), o serviço reproduz a regra anterior.
 
 ## 11. Testes
 
