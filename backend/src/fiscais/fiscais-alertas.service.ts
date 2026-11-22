@@ -18,7 +18,8 @@ import {
 } from '../common/datas';
 import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 import { FiscaisService } from './fiscais.service';
-import { entradasPrevistasPorFiscal } from './turno-fiscal.consulta';
+import { previsorDeEntradasDosFiscais } from './turno-fiscal.consulta';
+import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.service';
 
 /**
  * Serviço de alertas inteligentes para fiscais.
@@ -51,6 +52,9 @@ export class FiscaisAlertasService {
     // Feriado conta como domingo: fica de fora do acúmulo de extras "de dia
     // útil". Opcional para não quebrar instanciações sem o serviço.
     @Optional() private readonly feriados?: FeriadosService,
+    // Vigência da jornada (ADR 0027): a hora prevista de cada data. Opcional e
+    // no fim: sem ele, o retrato por dia da semana da ficha.
+    @Optional() private readonly jornada?: JornadaVigenciaService,
   ) {}
 
   /** Reseta caches diários à meia-noite. */
@@ -338,7 +342,19 @@ export class FiscaisAlertasService {
     // alerta acusa "atrasos frequentes": lê-lo de outra fonte que não a cobrada
     // faria o gestor conversar com alguém sobre um atraso que o sistema não
     // reconhece — ou deixar de conversar sobre um que reconhece.
-    const escalaMap = await entradasPrevistasPorFiscal(this.prisma);
+    const diasDaSemana: Date[] = [];
+    for (
+      let t = inicioDoDia(inicioSemana).getTime();
+      t < fimSemana.getTime();
+      t += 86_400_000
+    ) {
+      diasDaSemana.push(new Date(t));
+    }
+    const entradaPrevistaEm = await previsorDeEntradasDosFiscais(
+      this.prisma,
+      this.jornada,
+      diasDaSemana,
+    );
 
     // Agrupar registros por fiscal e dia.
     const porFiscalDia = new Map<
@@ -362,11 +378,8 @@ export class FiscaisAlertasService {
 
       let diasComIntervaloLongo = 0;
       let diasComAtraso = 0;
-      const escalaFiscal = escalaMap.get(fiscal.id);
-
       for (const [diaKey, regs] of mapaFiscal.entries()) {
         const diaDate = new Date(diaKey);
-        const diaSemana = diaDate.getUTCDay();
 
         // Verificar intervalo longo (>2h).
         const jornada = calcularJornada(
@@ -379,17 +392,15 @@ export class FiscaisAlertasService {
         }
 
         // Verificar atraso (primeiro DISPONIVEL > entrada + 15min).
-        if (escalaFiscal) {
-          const entradaPrevista = escalaFiscal.get(diaSemana);
-          if (entradaPrevista && regs.length > 0) {
-            const primeiro = regs[0];
-            if (primeiro.status === 'DISPONIVEL') {
-              const [h, m] = entradaPrevista.split(':').map(Number);
-              const previstoDate = new Date(diaDate);
-              previstoDate.setUTCHours(h, m + 15, 0, 0); // 15min de tolerância
-              if (primeiro.em > previstoDate) {
-                diasComAtraso++;
-              }
+        const entradaPrevista = entradaPrevistaEm(fiscal.id, diaDate);
+        if (entradaPrevista && regs.length > 0) {
+          const primeiro = regs[0];
+          if (primeiro.status === 'DISPONIVEL') {
+            const [h, m] = entradaPrevista.split(':').map(Number);
+            const previstoDate = new Date(diaDate);
+            previstoDate.setUTCHours(h, m + 15, 0, 0); // 15min de tolerância
+            if (primeiro.em > previstoDate) {
+              diasComAtraso++;
             }
           }
         }

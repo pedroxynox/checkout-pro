@@ -51,7 +51,7 @@ import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
 import {
   carregarFiscaisComFicha,
-  entradasPrevistasPorFiscal,
+  previsorDeEntradasDosFiscais,
 } from './turno-fiscal.consulta';
 import {
   agoraNaBrasilia,
@@ -1555,7 +1555,16 @@ export class FiscaisService {
     // hora diferente da que a detecção de falta cobra, o mesmo dia poderia ser
     // "pontual" aqui e "atrasado" lá. Feriado e rodízio de domingo não entram —
     // este é um retrato por dia da semana, e é assim que o painel o apresenta.
-    const escalaMap = await entradasPrevistasPorFiscal(this.prisma);
+    // Com vigência da jornada, a hora prevista é a da vigência de cada data.
+    const diasDoMes: Date[] = [];
+    for (let t = inicioMes.getTime(); t < fimMes.getTime(); t += 86_400_000) {
+      diasDoMes.push(new Date(t));
+    }
+    const entradaPrevistaEm = await previsorDeEntradasDosFiscais(
+      this.prisma,
+      this.jornada,
+      diasDoMes,
+    );
 
     // Agrupar primeiro DISPONIVEL por fiscal por dia.
     const primeiroDisponivel = new Map<
@@ -1575,16 +1584,12 @@ export class FiscaisService {
         }
       }
 
-      const escalaFiscal = escalaMap.get(fiscal.id);
-      if (!escalaFiscal) continue;
-
       let desvioTotal = 0;
       let diasContados = 0;
 
       for (const [diaKey, primeiraEntrada] of porDia.entries()) {
         const diaDate = new Date(diaKey);
-        const diaSemana = diaDate.getUTCDay();
-        const entradaPrevista = escalaFiscal.get(diaSemana);
+        const entradaPrevista = entradaPrevistaEm(fiscal.id, diaDate);
         if (!entradaPrevista) continue;
 
         const [h, m] = entradaPrevista.split(':').map(Number);
