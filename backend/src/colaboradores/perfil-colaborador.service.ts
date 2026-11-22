@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FiscaisService } from '../fiscais/fiscais.service';
 import { StatusFiscal } from '../fiscais/fiscais.domain';
@@ -21,6 +21,7 @@ import {
   ResumoContratoColaborador,
 } from '../contratos/contratos.service';
 import { MetasService } from '../metas/metas.service';
+import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.service';
 import { anoMesDe } from '../metas/metas.domain';
 import { ColaboradorNaoEncontradoError } from './colaboradores.errors';
 import {
@@ -190,7 +191,26 @@ export class PerfilColaboradorService {
     private readonly incidenciasService: IncidenciasService,
     private readonly metas: MetasService,
     private readonly contratosService: ContratosService,
+    // Vigência da jornada (ADR 0027): a folga dia a dia de quem já tem vigência
+    // (dias escalados e "emenda"). Opcional: sem ele, a folga fixa da ficha.
+    @Optional() private readonly jornada?: JornadaVigenciaService,
   ) {}
+
+  /**
+   * Folga da pessoa para as contas de dias escalados: a do dia (vigência da
+   * jornada) ou, sem vigência, o dia fixo da ficha (`-1` = sem folga).
+   */
+  private async folgaParaContagem(
+    id: string,
+    folgaDiaSemana: number | null,
+    inicio: Date,
+    fim: Date,
+  ): Promise<number | ((dia: Date) => boolean)> {
+    const doDia = this.jornada
+      ? (await this.jornada.folgasNoPeriodo([id], inicio, fim)).get(id)
+      : undefined;
+    return doDia ?? folgaDiaSemana ?? -1;
+  }
 
   async perfil(
     id: string,
@@ -359,9 +379,18 @@ export class PerfilColaboradorService {
     );
 
     // Faltas inteligentes (reaproveita a analítica de domínio para 1 pessoa).
+    // A folga das contas de "dias escalados": a do dia, com vigência da jornada.
+    // Do começo mais antigo usado nas contas (o período ou os 6 meses) até o
+    // fim do mês (os "dias úteis do mês" do score olham o mês inteiro).
+    const folgaContagem = await this.folgaParaContagem(
+      id,
+      colaborador.folgaDiaSemana ?? null,
+      inicioDia.getTime() < inicio6m.getTime() ? inicioDia : inicio6m,
+      fimDoMes(fim),
+    );
     const faltas = await this.faltasDoColaborador(
       id,
-      colaborador.folgaDiaSemana ?? -1,
+      folgaContagem,
       colaborador.nome,
       inicioDia,
       fim,
@@ -415,7 +444,7 @@ export class PerfilColaboradorService {
         })
       : await this.scoreDoOperador(
           id,
-          colaborador.folgaDiaSemana ?? -1,
+          folgaContagem,
           faltas.taxaPonderada,
           inicioDia,
           fim,
@@ -495,7 +524,7 @@ export class PerfilColaboradorService {
    */
   private async scoreDoOperador(
     id: string,
-    folga: number,
+    folga: number | ((dia: Date) => boolean),
     taxaFaltas: number,
     inicioDia: Date,
     fim: Date,
@@ -775,7 +804,7 @@ export class PerfilColaboradorService {
   /** Faltas inteligentes do colaborador (analítica + séries por mês/dia). */
   private async faltasDoColaborador(
     id: string,
-    folgaDiaSemana: number,
+    folga: number | ((dia: Date) => boolean),
     nome: string,
     inicio: Date,
     fim: Date,
@@ -808,7 +837,11 @@ export class PerfilColaboradorService {
     const agora = new Date();
     const fimEscala = agora.getTime() < fim.getTime() ? agora : fim;
     const analitica = analisarFaltas({
-      operadores: [{ id, nome, folgaDiaSemana }],
+      operadores: [
+        typeof folga === 'function'
+          ? { id, nome, folgaDiaSemana: -1, ehFolga: folga }
+          : { id, nome, folgaDiaSemana: folga },
+      ],
       ausencias,
       ausenciasAnterior,
       inicio,

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { JornadaVigenciaModule } from '../jornada-vigencia/jornada-vigencia.module';
 import { AcessosModule } from '../acessos/acessos.module';
 import { FiscaisModule } from '../fiscais/fiscais.module';
 import { IncidenciasModule } from '../incidencias/incidencias.module';
@@ -27,6 +28,7 @@ import { PurgaInativosService } from './purga-inativos.service';
     IncidenciasModule,
     ContratosModule,
     MetasModule,
+    JornadaVigenciaModule,
   ],
   providers: [
     ColaboradoresService,

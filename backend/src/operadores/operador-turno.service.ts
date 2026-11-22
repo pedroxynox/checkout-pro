@@ -772,6 +772,28 @@ export class OperadorTurnoService {
    * Analítica de faltas num período: total, ranking por operador e distribuição
    * por dia da semana (qual dia mais se falta). Resolve nomes dos operadores.
    */
+  /**
+   * Acrescenta a folga dia a dia de quem tem vigência da jornada (ADR 0027): no
+   * 5x2 são duas folgas que giram, e a folga fixa da ficha não descreve mais os
+   * dias escalados nem a "emenda". Quem não tem vigência segue a folga fixa.
+   */
+  private async comFolgaDoDia<T extends { id: string }>(
+    operadores: T[],
+    inicio: Date,
+    fim: Date,
+  ): Promise<(T & { ehFolga?: (dia: Date) => boolean })[]> {
+    if (!this.jornada) return operadores;
+    const folgas = await this.jornada.folgasNoPeriodo(
+      operadores.map((o) => o.id),
+      inicio,
+      fim,
+    );
+    return operadores.map((o) => {
+      const ehFolga = folgas.get(o.id);
+      return ehFolga ? { ...o, ehFolga } : o;
+    });
+  }
+
   async analiticaFaltas(inicio: Date, fim: Date): Promise<AnaliticaFaltas> {
     const operadores = (
       await this.prisma.colaborador.findMany({
@@ -825,7 +847,9 @@ export class OperadorTurnoService {
     const fimEscala = agora.getTime() < fim.getTime() ? agora : fim;
 
     return analisarFaltas({
-      operadores,
+      // Até o fim do período (não só até hoje): uma ausência a prazo futura
+      // também olha a véspera e o dia seguinte para a "emenda".
+      operadores: await this.comFolgaDoDia(operadores, inicio, fim),
       ausencias,
       ausenciasAnterior,
       inicio,
@@ -907,7 +931,9 @@ export class OperadorTurnoService {
     const fimEscala = agora.getTime() < fim.getTime() ? agora : fim;
 
     return analisarFaltas({
-      operadores,
+      // Até o fim do período (não só até hoje): uma ausência a prazo futura
+      // também olha a véspera e o dia seguinte para a "emenda".
+      operadores: await this.comFolgaDoDia(operadores, inicio, fim),
       ausencias: atuais.map((i) => ({
         pessoaId: i.colaboradorId,
         data: i.data,

@@ -1,6 +1,10 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { inicioDoDia, inicioDoProximoDia } from '../common/datas';
+import {
+  UM_DIA_MS,
+  inicioDoDia,
+  inicioDoProximoDia,
+} from '../common/datas';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import {
   GrupoDomingo,
@@ -280,5 +284,47 @@ export class JornadaVigenciaService {
         return !vigente.grupo && vigente.folgasFixas.length === 0;
       },
     };
+  }
+
+  /**
+   * "Esta pessoa folga neste dia?" para um PERÍODO, para quem tem vigência que
+   * já começou até `fim`. Quem não tem fica fora do mapa e o chamador segue a
+   * conta antiga (dia da semana ≠ folga fixa), que é a resposta de sempre para
+   * o regime legado — sem mudar nenhum número de quem ainda está no 6x1.
+   *
+   * Serve às analíticas (dias escalados, falta "emendada" à folga), que antes
+   * supunham uma folga fixa por semana.
+   */
+  async folgasNoPeriodo(
+    colaboradorIds: readonly string[],
+    inicio: Date,
+    fim: Date,
+  ): Promise<Map<string, (dia: Date) => boolean>> {
+    const out = new Map<string, (dia: Date) => boolean>();
+    if (colaboradorIds.length === 0) return out;
+    const comVigencia = await this.prisma.jornadaVigencia.findMany({
+      where: {
+        colaboradorId: { in: [...colaboradorIds] },
+        vigenteDesde: { lte: inicioDoDia(fim) },
+      },
+      select: { colaboradorId: true },
+      distinct: ['colaboradorId'],
+    });
+    if (comVigencia.length === 0) return out;
+    // Um dia antes e um depois: a "emenda" olha a véspera e o dia seguinte.
+    const dias: Date[] = [];
+    const ultimo = inicioDoProximoDia(inicioDoDia(fim));
+    for (
+      let t = inicioDoDia(inicio).getTime() - UM_DIA_MS;
+      t <= ultimo.getTime();
+      t += UM_DIA_MS
+    ) {
+      dias.push(new Date(t));
+    }
+    const consultor = await this.consultor(dias);
+    for (const { colaboradorId } of comVigencia) {
+      out.set(colaboradorId, (dia) => consultor.ehFolga(dia, [colaboradorId]));
+    }
+    return out;
   }
 }

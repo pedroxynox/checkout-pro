@@ -2,6 +2,7 @@ import { Injectable, Optional } from '@nestjs/common';
 import { IncidenciaEscala, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.service';
 import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { inicioDoDia, inicioDoMes, inicioDoProximoMes } from '../common/datas';
 import {
@@ -136,6 +137,9 @@ export class IncidenciasService {
     private readonly prisma: PrismaService,
     @Optional() private readonly notificacoes?: NotificacoesService,
     @Optional() private readonly validacaoData?: ValidacaoDataService,
+    // Vigência da jornada (ADR 0027): a folga dia a dia de quem já tem vigência
+    // (dias escalados). Opcional e no fim: sem ele, a folga fixa da ficha.
+    @Optional() private readonly jornada?: JornadaVigenciaService,
   ) {}
 
   /**
@@ -626,8 +630,13 @@ export class IncidenciasService {
     ]);
 
     const fimEscala = hoje.getTime() < fimExcl.getTime() ? hoje : fimExcl;
+    const folgaDoDia = this.jornada
+      ? (
+          await this.jornada.folgasNoPeriodo([colaboradorId], inicio, fimEscala)
+        ).get(colaboradorId)
+      : undefined;
     const diasEscalados = this.contarDiasEscalados(
-      colaborador?.folgaDiaSemana ?? -1,
+      folgaDoDia ?? colaborador?.folgaDiaSemana ?? -1,
       inicio,
       fimEscala,
     );
@@ -826,8 +835,19 @@ export class IncidenciasService {
     return (especial ?? geral)?.intervaloMin ?? 0;
   }
 
-  /** Conta dias escalados (dow != folga) em [inicio, fim] inclusivo (UTC). */
-  private contarDiasEscalados(folga: number, inicio: Date, fim: Date): number {
+  /**
+   * Conta dias escalados em [inicio, fim] inclusivo (UTC): os que não são folga
+   * — a fixa da ficha (`dow != folga`) ou a do dia (vigência da jornada).
+   */
+  private contarDiasEscalados(
+    folga: number | ((dia: Date) => boolean),
+    inicio: Date,
+    fim: Date,
+  ): number {
+    const ehFolga =
+      typeof folga === 'function'
+        ? folga
+        : (dia: Date) => dia.getUTCDay() === folga;
     let count = 0;
     const d = new Date(
       Date.UTC(
@@ -842,7 +862,7 @@ export class IncidenciasService {
       fim.getUTCDate(),
     );
     while (d.getTime() <= fimDia) {
-      if (d.getUTCDay() !== folga) count += 1;
+      if (!ehFolga(d)) count += 1;
       d.setUTCDate(d.getUTCDate() + 1);
     }
     return count;
