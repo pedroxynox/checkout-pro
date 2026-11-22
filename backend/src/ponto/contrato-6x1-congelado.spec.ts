@@ -10,7 +10,10 @@
 import {
   REGRAS_PADRAO,
   REGRAS_SEIS_X_UM_DOIS_X_UM,
+  cargaBaseDoDia,
+  diaPagaAdicional100,
 } from './ponto.domain';
+import { isDomingo, jornadaEsperadaMs } from '../fiscais/fiscais.domain';
 
 const MIN = 60_000;
 
@@ -50,5 +53,31 @@ describe('Contrato 6x1–2x1 (congela-regra)', () => {
 
   it('no 6x1 o intervalo NÃO é obrigatório (jornada curta encerra sem TAC)', () => {
     expect(REGRAS_SEIS_X_UM_DOIS_X_UM.intervaloObrigatorio).toBe(false);
+  });
+
+  it('campos da Fase 2 (jornada-5x2) com os valores de sempre', () => {
+    const r = REGRAS_SEIS_X_UM_DOIS_X_UM;
+    expect(r.cargaFeriadoMs).toBe(440 * MIN); // feriado 7h20
+    expect(r.feriadoAdicional100).toBe(true); // feriado a 100%
+    expect(r.limiteTrabalhoDiaMs).toBeNull(); // sem teto diário
+    expect(r.folgasPorSemana).toBe(1);
+    expect(r.folgasFixasPadrao).toEqual([]);
+    expect(r.permiteFolgaSabado).toBe(false);
+  });
+
+  it('a carga e o 100% pelo contrato dão os números fixos que os relatórios do log usavam', () => {
+    // `fiscais.service`/`fiscais-alertas` trocaram `jornadaEsperadaMs` e
+    // `isDomingo` pelas regras do contrato do dia (R2.10): no 6x1 o número
+    // tem de ser o mesmo, com e sem feriado.
+    for (let dia = 0; dia <= 6; dia++) {
+      for (const feriado of [false, true]) {
+        expect(cargaBaseDoDia(dia, feriado, REGRAS_SEIS_X_UM_DOIS_X_UM)).toBe(
+          feriado ? jornadaEsperadaMs(0) : jornadaEsperadaMs(dia),
+        );
+        expect(
+          diaPagaAdicional100(dia, feriado, REGRAS_SEIS_X_UM_DOIS_X_UM),
+        ).toBe(isDomingo(dia) || feriado);
+      }
+    }
   });
 });

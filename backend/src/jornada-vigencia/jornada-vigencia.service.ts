@@ -15,6 +15,7 @@ import {
   JornadaDaPessoa,
   JornadaPrevista,
   VigenciaJornada,
+  folgasFixasEfetivas,
   previstoNoDia,
   vigenciaNoDia,
 } from './jornada-vigencia.domain';
@@ -260,8 +261,7 @@ export class JornadaVigenciaService {
         // muda nada e nem é carregada.
         ancoraDomingo: dow === 0 ? ancoraDomingo : null,
         folgaNaEscalaSemanal: naEscalaSemanal(conhecidos, dow),
-        // Fase 3 (rodízio de folgas) e Fase 2 (folgas padrão do contrato)
-        // entram aqui; até lá, grupo não afirma e não há padrão.
+        // Fase 3 (rodízio de folgas) entra aqui; até lá, grupo não afirma.
       });
     };
 
@@ -277,7 +277,13 @@ export class JornadaVigenciaService {
         if (!pessoa) return false;
         const vigente = vigenciaNoDia(pessoa.vigencias, ultimo);
         if (!vigente) return pessoa.legado.folgaDiaSemana == null;
-        return !vigente.grupo && vigente.folgasFixas.length === 0;
+        if (vigente.grupo) return false;
+        return (
+          folgasFixasEfetivas(
+            vigente,
+            regras(vigente.tipoContratoJornadaId).folgasFixasPadrao,
+          ).length === 0
+        );
       },
     };
   }

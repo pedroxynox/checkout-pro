@@ -22,12 +22,48 @@ function modelo6x1(): TipoContratoJornada {
     intervaloMinimoEntreBatidasMin: 2,
     intervaloObrigatorio: false,
     trabalhaDomingo: true,
+    // Padrões da migração 9zzv: reproduzem o comportamento do 6x1.
+    cargaFeriadoMin: 440,
+    feriadoAdicional100: true,
+    limiteTrabalhoDiaMin: null,
+    folgasPorSemana: 1,
+    folgasFixasPadrao: [],
+    permiteFolgaSabado: false,
     criadoEm: new Date(),
     atualizadoEm: new Date(),
   };
 }
 
 describe('regrasContratoDeModelo', () => {
+  it('o 6x1 com os padrões da migração 9zzv é o comportamento de antes', () => {
+    const r = regrasContratoDeModelo(modelo6x1());
+    expect(r.cargaFeriadoMs).toBe(440 * MIN); // feriado 7h20, como era fixo
+    expect(r.feriadoAdicional100).toBe(true);
+    expect(r.limiteTrabalhoDiaMs).toBeNull();
+    expect(r.folgasPorSemana).toBe(1);
+    expect(r.folgasFixasPadrao).toEqual([]);
+    expect(r.permiteFolgaSabado).toBe(false);
+  });
+
+  it('5x2: carga de feriado própria, teto diário e folgas do contrato', () => {
+    const r = regrasContratoDeModelo({
+      ...modelo6x1(),
+      cargaBaseMinPorDia: [528, 528, 528, 528, 528, 528, 528],
+      cargaFeriadoMin: 480,
+      feriadoAdicional100: false,
+      limiteTrabalhoDiaMin: 600,
+      folgasPorSemana: 2,
+      folgasFixasPadrao: [6, 0],
+      permiteFolgaSabado: true,
+    });
+    expect(r.cargaFeriadoMs).toBe(480 * MIN);
+    expect(r.feriadoAdicional100).toBe(false);
+    expect(r.limiteTrabalhoDiaMs).toBe(600 * MIN);
+    expect(r.folgasPorSemana).toBe(2);
+    expect(r.folgasFixasPadrao).toEqual([6, 0]);
+    expect(r.permiteFolgaSabado).toBe(true);
+  });
+
   it('converte minutos em ms e reproduz a carga base do 6x1 por dia', () => {
     const r = regrasContratoDeModelo(modelo6x1());
     expect(r.cargaBaseMs(0)).toBe(440 * MIN); // domingo 7h20
