@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 136 arquivos, 1323 casos. **Mobile:** 43 arquivos, 369 casos. **Total: 1692 casos.**
+> **Backend:** 138 arquivos, 1339 casos. **Mobile:** 43 arquivos, 369 casos. **Total: 1708 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -57,6 +57,7 @@
 | `src/common/guards/perfil.guard.spec.ts` | 5 | 1 |
 | `src/common/justificativas.spec.ts` | 9 | 2 |
 | `src/common/risco-ocorrencias.spec.ts` | 5 | 4 |
+| `src/common/transicao-jornada.spec.ts` | 6 | 2 |
 | `src/compensacao-horas/compensacao-horas.domain.spec.ts` | 38 | 7 |
 | `src/config/env.validation.spec.ts` | 4 | 1 |
 | `src/contratos/contratos-alertas.service.spec.ts` | 5 | 1 |
@@ -133,6 +134,7 @@
 | `src/ponto/deteccao-vigilancia-fora-da-escala.spec.ts` | 4 | 1 |
 | `src/ponto/marcacoes-invalidas.domain.spec.ts` | 25 | 7 |
 | `src/ponto/mudanca-de-funcao.spec.ts` | 6 | 1 |
+| `src/ponto/pausa-transicao-jornada.spec.ts` | 10 | 3 |
 | `src/ponto/ponto-alertas.service.spec.ts` | 2 | 2 |
 | `src/ponto/ponto-nome-match.spec.ts` | 6 | 1 |
 | `src/ponto/ponto-ocr.parser.spec.ts` | 17 | 1 |

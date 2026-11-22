@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { diaCivilBrasilia } from '../common/datas';
+import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 import { PontoService } from './ponto.service';
 
 /**
@@ -25,6 +26,9 @@ export class PontoAlertasService {
   /** Verifica a cada minuto quem atingiu uma nova etapa de risco/TAC. */
   @Cron('* * * * *', { timeZone: 'America/Sao_Paulo' })
   async verificar(): Promise<void> {
+    // Pausa de transição (fim do 6x1): a carga do dia ainda é a do contrato
+    // antigo, então quase toda jornada nova pareceria risco de TAC.
+    if (pausaTransicaoJornadaAtiva()) return;
     // Dia CIVIL de Brasília (não o dia UTC): as batidas são rotuladas pela
     // meia-noite UTC do dia local, então `inicioDoDia(new Date())` erra entre
     // 21h e 23h59 locais (já é o dia UTC seguinte) — justo o horário de sobra

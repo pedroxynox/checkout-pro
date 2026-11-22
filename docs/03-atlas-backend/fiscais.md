@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/fiscais/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/fiscais/`
 
 # Módulo: `fiscais`
 > **ADR 0026 — a ficha é a única fonte do horário.** Em duas etapas:
@@ -324,7 +324,11 @@ casos de ficha vazia, preencher os horários **primeiro**.
 - `FiscalStatusEventos` — barramento (RxJS) que desacopla o serviço do gateway.
 - `FiscaisGateway` — WebSocket autenticado por JWT; faz broadcast das transições.
 - `FiscaisHorarioService` / `FiscaisAlertasService` — crons (fuso de Brasília)
-  de lembretes de horário, intervalo longo e cobertura.
+  de lembretes de horário, intervalo longo e cobertura. Com a pausa de transição
+  ligada (`PAUSA_TRANSICAO_JORNADA=true`, ver [`common`](common.md)), o lembrete
+  de 10 min, a folga sugerida por excesso de extras (22:00) e a análise semanal
+  de padrões (segunda 08:00) não rodam: todos medem contra o horário ou a carga
+  do 6x1. Intervalo longo e cobertura de fiscais continuam.
 
 ## 6. Lógica de domínio (funções puras)
 - `statusValido(v)` / `primeiroNome(nome)` — validação e exibição.

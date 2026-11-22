@@ -26,6 +26,21 @@ describe('validateEnv', () => {
     ).toThrow(/DATABASE_URL/);
   });
 
+  it.each(['true', 'false'])('aceita PAUSA_TRANSICAO_JORNADA=%s', (valor) => {
+    expect(validateEnv({ PAUSA_TRANSICAO_JORNADA: valor })).toMatchObject({
+      PAUSA_TRANSICAO_JORNADA: valor,
+    });
+  });
+
+  it.each(['sim', 'TRUE', '1', ' true'])(
+    'recusa PAUSA_TRANSICAO_JORNADA=%p (valor errado não pode desligar a pausa em silêncio)',
+    (valor) => {
+      expect(() => validateEnv({ PAUSA_TRANSICAO_JORNADA: valor })).toThrow(
+        /PAUSA_TRANSICAO_JORNADA/,
+      );
+    },
+  );
+
   it('passa quando NODE_ENV=production e as variáveis obrigatórias estão presentes', () => {
     const validated = validateEnv({
       NODE_ENV: 'production',

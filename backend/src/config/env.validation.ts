@@ -1,6 +1,7 @@
 import { plainToInstance, Type } from 'class-transformer';
 import {
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -95,6 +96,15 @@ export class EnvironmentVariables {
   @Min(1)
   @IsOptional()
   RETENCAO_INDICADORES_MESES = 24;
+
+  // Pausa de transição da jornada (fim do 6x1 → 5x2). "true" suspende a falta
+  // automática, os avisos de atraso/TAC/ponto em folga e os alertas de fiscais
+  // baseados no horário antigo; o ponto continua funcionando. Só aceita "true"
+  // ou "false": um valor digitado errado impede o boot em vez de deixar a pausa
+  // desligada sem ninguém perceber. Ver `common/transicao-jornada.ts`.
+  @IsIn(['true', 'false'])
+  @IsOptional()
+  PAUSA_TRANSICAO_JORNADA?: 'true' | 'false';
 }
 
 /**

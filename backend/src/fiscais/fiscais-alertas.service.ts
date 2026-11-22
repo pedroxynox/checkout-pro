@@ -16,6 +16,7 @@ import {
   diaEncerradoEmBrasilia,
   fimDoDiaBrasiliaEmUtc,
 } from '../common/datas';
+import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 import { FiscaisService } from './fiscais.service';
 import { entradasPrevistasPorFiscal } from './turno-fiscal.consulta';
 
@@ -216,6 +217,9 @@ export class FiscaisAlertasService {
    */
   @Cron('0 22 * * *', { timeZone: 'America/Sao_Paulo' })
   async verificarExtrasExcessivas(): Promise<void> {
+    // Pausa de transição (fim do 6x1): `jornadaEsperadaMs` é a carga do 6x1
+    // (7h/8h), então toda jornada de 5x2 contaria como extra.
+    if (pausaTransicaoJornadaAtiva()) return;
     const agoraReal = new Date();
     const agoraPonto = agoraNaBrasilia();
     const inicioMes = new Date(
@@ -316,6 +320,9 @@ export class FiscaisAlertasService {
    */
   @Cron('0 8 * * 1', { timeZone: 'America/Sao_Paulo' })
   async analisarPadroes(): Promise<void> {
+    // Pausa de transição (fim do 6x1): os atrasos seriam medidos contra a
+    // entrada da ficha antiga.
+    if (pausaTransicaoJornadaAtiva()) return;
     const agora = new Date();
     const inicioSemana = new Date(agora);
     inicioSemana.setDate(inicioSemana.getDate() - 7);

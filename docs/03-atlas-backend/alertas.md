@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/alertas/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/alertas/`
 
 # Módulo: `alertas`
 
@@ -78,8 +78,11 @@ Converte `"HH:mm"` na expressão cron `"m h * * *"`. Testável isoladamente.
   saudado cedo (evita reenvio mesmo em erro). A conta é resolvida pela **ficha
   canônica** (`colaboradorId` da escala → `Colaborador`), com fallback ao
   registro legado `Fiscal` (Fase 4 · Opção A · A.3).
+- Com a pausa de transição ligada (`PAUSA_TRANSICAO_JORNADA=true`, ver
+  [`common`](common.md)), `saudarFiscais()` não roda: a hora de entrada ainda é
+  a da ficha do 6x1.
 - `saudarGestores()` (cron **06:50**): saúda gerentes, gerentes desenvolvedores
-  e supervisores.
+  e supervisores. Não depende do horário e continua com a pausa.
 - `resetarDiario()` (cron **00:00**): zera o controle de "já saudado" do dia.
 - `resultadoOntem(agora)`: venda de ontem (R$) e variação vs. o mesmo dia da
   semana passada — base da mensagem. Entrega **best-effort** (falha nunca

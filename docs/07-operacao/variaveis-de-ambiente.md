@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-20 · **Cobre:** operação — variáveis de ambiente
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** operação — variáveis de ambiente
 
 # Variáveis de ambiente — Check-out PRO
 
@@ -36,6 +36,7 @@ indica as que impedem o start quando `NODE_ENV=production`.
 | `CORS_ORIGINS` | Lista de origens permitidas para CORS, separadas por vírgula. Se vazio, em dev a origem da requisição é refletida. | — | Texto (ex.: `https://checkout-pro-web.onrender.com`) | Recomendada** |
 | `RETENCAO_INATIVOS_MESES` | Janela de retenção (meses) dos colaboradores desligados antes da purga mensal apagar ficha e histórico de RRHH. | `3` | Inteiro ≥ 1 (convertido de string) | Não |
 | `RETENCAO_INDICADORES_MESES` | Janela móvel (meses) do Histórico de Indicadores. Todo dia 1º a foto do mês que fechou é congelada e o que ficou fora da janela é **apagado** (lançamentos, vendas e fotos). | `24` | Inteiro ≥ 1 (convertido de string) | Não |
+| `PAUSA_TRANSICAO_JORNADA` | Pausa de transição do fim do 6x1. `true` suspende a falta automática, os avisos de atraso, TAC e ponto em dia de folga e os alertas de fiscais/cobertura baseados no horário antigo; o ponto continua funcionando. Ligar durante a troca para o 5x2 e desligar quando as vigências estiverem carregadas ([spec `jornada-5x2`](../../.kiro/specs/jornada-5x2/design.md) §8). O log de boot avisa quando está ativa. | ausente (= desligada) | Exatamente `true` ou `false`; outro valor impede o boot | Não |
 
 \** `CORS_ORIGINS` não é validada como obrigatória, mas em produção deve ser
 definida para restringir quem chama a API pelo navegador (ver `main.ts`).

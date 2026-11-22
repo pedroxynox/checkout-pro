@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/ponto/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/ponto/`
 
 # Módulo: `ponto`
 
@@ -119,6 +119,20 @@ isolado se propague).
 ### `PontoAlertasService.verificar()` (cron 1 min)
 Recalcula a jornada de quem bateu ponto no dia e delega o aviso de TAC ao
 `PontoService` (dedup persistente e compartilhada com a batida).
+
+### Pausa de transição da jornada (fim do 6x1)
+Com `PAUSA_TRANSICAO_JORNADA=true` (ver [`common`](common.md)):
+- `avisarAlertaTacSeNecessario` não avisa nem reserva etapa, e o cron de TAC sai
+  sem recalcular ninguém — a carga ainda seria a do contrato 6x1;
+- `avisarPontoEmFolga` não avisa nem grava a trava — a folga do cadastro ainda é
+  a antiga;
+- a detecção automática não avisa atraso nem marca falta automática — a entrada
+  prevista ainda vem da ficha antiga. O **não-retorno do intervalo**, a
+  revalidação e a autocura continuam;
+- o registro de ponto não muda.
+
+Desligar só quando as vigências da jornada estiverem publicadas e carregadas
+([spec `jornada-5x2`](../../.kiro/specs/jornada-5x2/design.md) §8).
 
 ### `PontoDeteccaoAutomaticaService.verificar()` (cron 5 min)
 Primeiro **revalida** as ocorrências que já existem, depois cruza a escala do dia
@@ -560,6 +574,7 @@ QUAIS** — e alimenta o relatório de marcações inválidas da
 | `deteccao-falta-a-prazo.spec.ts` | Ausência a prazo (chave dupla) não vira falta automática duplicada | 3 |
 | `ponto-alertas.service.spec.ts` | Cron periódico de riscos de TAC | 2 |
 | `contrato-6x1-congelado.spec.ts` | Congela as cargas e os limites de TAC do 6x1 (regra não muda sem intenção) | 5 |
+| `pausa-transicao-jornada.spec.ts` | Pausa de transição: sem pausa marca falta/avisa TAC/avisa ponto em folga; com pausa não faz nada disso, grava o ponto e segue vigiando o não-retorno | 10 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
