@@ -25,6 +25,19 @@ de trabalho e o steering de estado) e cruza essas informações com as seções
 
 ---
 
+## Em andamento — Fim do 6x1 e jornada 5x2 (desde 22/11/2026)
+
+A EC 141/2026 acabou com a escala 6x1. A partir de **23/11/2026** a empresa opera
+em **5x2 com 44 h** e, em **16/12/2026**, passa a **42 h**. O trabalho segue o spec
+[`.kiro/specs/jornada-5x2/`](../../.kiro/specs/jornada-5x2/requirements.md):
+vigência da jornada por pessoa (os dias até 22/11 continuam no 6x1), contrato 5x2
+com regras de TAC próprias, rodízio de folgas G1/G2/G3, disponibilidade por dia
+na ficha e escala no modelo novo. Durante a transição, a pausa
+`PAUSA_TRANSICAO_JORNADA` suspende as detecções automáticas baseadas no horário
+antigo e o ciclo 26/10–25/11 não deve ser fechado antes das vigências.
+
+---
+
 ## P0 — Bloqueiam a operação/entrega estável
 
 Prioridade máxima; a maioria é de **infraestrutura e configuração**, não de

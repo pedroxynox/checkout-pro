@@ -116,8 +116,8 @@ Para Android fechado, FCM + APK recompilado continuam obrigatórios.
 ## Banco e migrations
 
 - Prisma schema: `backend/prisma/schema.prisma`.
-- Última migration: `9zzs_remover_assistente`. Lista sempre atual em [`docs/05-referencia-dados/migracoes.md`](../../docs/05-referencia-dados/migracoes.md).
-- A próxima deve ordenar depois de `9zzs` (o Prisma ordena pelo nome completo; prefixos repetidos como `9zu` são inofensivos).
+- Última migration: `9zzt_feedforward_prorrogacao`. Lista sempre atual em [`docs/05-referencia-dados/migracoes.md`](../../docs/05-referencia-dados/migracoes.md).
+- A próxima deve ordenar depois de `9zzt` (o Prisma ordena pelo nome completo; prefixos repetidos como `9zu` são inofensivos).
 - Preferir migrations aditivas e compatíveis durante rolling deploy.
 - `prisma migrate deploy` roda no **Pre-Deploy** (`render.yaml`); o Start Command abre o servidor direto.
 - `reset-operacional` é função de negócio controlada; não substitui migration nem deve ser executada automaticamente em produção.
@@ -147,7 +147,7 @@ Para Android fechado, FCM + APK recompilado continuam obrigatórios.
 1. Identificar regra fonte e perfis afetados.
 2. Preservar separação controller/service/domain.
 3. Atualizar espelhos de tipo/permissão backend↔mobile.
-4. Se houver schema, criar migration posterior a `9zzs` e validar em PostgreSQL.
+4. Se houver schema, criar migration posterior a `9zzt` e validar em PostgreSQL.
 5. Rodar build/tests/type-check/lint focalizado.
 6. Revisar diff e atualizar docs canônicas (regra em `documentacao.md`; `npm run docs:check` passa).
 7. Publicar por branch/PR; confirmar deploy separadamente.

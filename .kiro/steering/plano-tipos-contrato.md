@@ -1,5 +1,13 @@
 # Plano — Tipos de Contrato de Jornada (reelaboração)
 
+> **Atualização 22/11/2026:** o fim do 6x1 reorganizou este plano. O trabalho
+> segue o spec [`.kiro/specs/jornada-5x2/`](../specs/jornada-5x2/requirements.md):
+> as Fases 1, 2 (vigência), 3 e 4 abaixo foram absorvidas pelas Fases 1–2 dele.
+> Continuam valendo as decisões 1 (minutos fixos) e "avisos citam o número do
+> contrato". As duas decisões pendentes de TAC (1h50 × 2h; intervalo > 3h) valem
+> só para o 6x1: os contratos 5x2 usam os limites que o dono definiu (extras
+> 1h10, intervalo máximo 2h50, 10 h no dia).
+
 > Plano de trabalho **aprovado pelo dono do projeto**, a ser seguido por
 > qualquer sessão que continue este assunto. Vive aqui (e não numa conversa)
 > justamente para não se perder entre sessões.

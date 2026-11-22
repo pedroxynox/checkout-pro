@@ -4,10 +4,17 @@
 >
 > **Números** (suites, casos, rutas, tablas, migraciones): no se repiten aquí. La fuente única es [`docs/08-gestao/estado-e-metricas.md`](../../docs/08-gestao/estado-e-metricas.md), generada por `npm run docs:gen`.
 
+## En curso: fin del 6x1 → jornada 5x2 (desde 22/11/2026)
+
+- Spec: [`.kiro/specs/jornada-5x2/`](../specs/jornada-5x2/requirements.md); resumen y reglas de la transición en `.kiro/steering/jornada-5x2.md`.
+- Desde el **23/11/2026** la empresa opera en 5x2 (44 h); el **16/12/2026** pasa a 42 h. Los días hasta el 22/11 siguen en 6x1 mediante vigencias.
+- Las "Reglas críticas" de abajo describen el **6x1** y siguen valiendo para los días hasta el 22/11. Para los contratos 5x2 valen las del spec.
+- Mientras dure la transición: pausa `PAUSA_TRANSICAO_JORNADA=true` en producción, no cerrar el ciclo 26/10–25/11 y no editar el contrato 6x1 ni las fichas.
+
 ## Estado verificable
 
 - Todo lo descrito como entregado está **mergeado en `main`**; el deploy de cada commit debe confirmarse por logs y `/health/ready`.
-- Última migration: `9zzs_remover_assistente`. La siguiente debe ordenar después de `9zzs`.
+- Última migration: `9zzt_feedforward_prorrogacao`. La siguiente debe ordenar después de `9zzt` (el spec jornada-5x2 reserva `9zzu`–`9zzw`).
 - **El app no tiene IA.** La asistente Cluby (Google Gemini) fue retirada por completo en oct/2026: módulo backend, chat del app, tabla `mensagens_assistente`, imágenes de procedimientos y las variables `GEMINI_API_KEY`/`GEMINI_MODEL`.
 - En el sandbox de Kiro no hay acceso al registro npm: los tests se validan en el CI del PR. Para comandos de Node, vaciar `NODE_OPTIONS`.
 
