@@ -5,8 +5,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
 import {
   LIMITE_EXTRAS_MS,
+  REGRAS_PADRAO,
   RISCO_TAC_1H30_MS,
   RISCO_TAC_1H40_MS,
+  RegrasResumo,
+  resumoDasRegras,
 } from './ponto.domain';
 import { JornadaDiaResposta, PontoService } from './ponto.service';
 import { CicloFechadoError } from '../ciclo-folha/ciclo-folha.errors';
@@ -23,7 +26,11 @@ import {
 const DIA = new Date('2025-06-02T00:00:00.000Z');
 const OUTRO_DIA = new Date('2025-06-01T00:00:00.000Z');
 
-function resposta(horasExtrasMs: number, tac = false): JornadaDiaResposta {
+function resposta(
+  horasExtrasMs: number,
+  tac = false,
+  regrasResumo: RegrasResumo = resumoDasRegras(REGRAS_PADRAO),
+): JornadaDiaResposta {
   return {
     pessoaId: 'pessoa-1',
     tipoPessoa: 'FISCAL',
@@ -41,6 +48,7 @@ function resposta(horasExtrasMs: number, tac = false): JornadaDiaResposta {
       motivosTac: tac ? ['Excedeu 1h50 de horas extras'] : [],
       faltando: [],
       naoRetornoIntervalo: false,
+      regrasResumo,
     },
     batidas: [],
   };
@@ -198,6 +206,86 @@ describe('PontoService — alertas preventivos de TAC', () => {
     expect(notificacoes.notificarSupervisaoEGerencia).toHaveBeenNthCalledWith(
       3,
       expect.objectContaining({ titulo: '⚠️ TAC na jornada' }),
+    );
+  });
+
+  it('no 6x1 as frases dos avisos são as de sempre', async () => {
+    prisma.fiscal.findUnique.mockResolvedValue({ nome: 'Ana Souza' });
+    await service.avisarAlertaTacSeNecessario(
+      'pessoa-1',
+      'FISCAL',
+      DIA,
+      resposta(RISCO_TAC_1H30_MS),
+    );
+    await service.avisarAlertaTacSeNecessario(
+      'pessoa-1',
+      'FISCAL',
+      DIA,
+      resposta(RISCO_TAC_1H40_MS),
+    );
+
+    const mensagens = notificacoes.notificarSupervisaoEGerencia.mock.calls.map(
+      ([c]: [{ mensagem: string }]) => c.mensagem,
+    );
+    expect(mensagens).toEqual([
+      expect.stringMatching(
+        /atingiu 1h30 de horas extras hoje\. Faltam 20 minutos para o limite de TAC\.$/,
+      ),
+      expect.stringMatching(
+        /atingiu 1h40 de horas extras hoje\. Faltam 10 minutos para o limite de TAC\.$/,
+      ),
+    ]);
+  });
+
+  it('com outro contrato, as etapas e a frase seguem os avisos dele', async () => {
+    // Contrato com 1º aviso aos 50 min, 2º aos 60 e limite de 70 (5x2).
+    const doContrato = resumoDasRegras({
+      ...REGRAS_PADRAO,
+      riscoTac1h30Ms: 50 * 60_000,
+      riscoTac1h40Ms: 60 * 60_000,
+      limiteExtrasMs: 70 * 60_000,
+    });
+
+    await service.avisarAlertaTacSeNecessario(
+      'pessoa-1',
+      'FISCAL',
+      DIA,
+      resposta(49 * 60_000, false, doContrato),
+    );
+    expect(notificacoes.notificarSupervisaoEGerencia).not.toHaveBeenCalled();
+
+    // 55 min de extra: no 6x1 não avisaria (1º aviso só em 1h30).
+    await service.avisarAlertaTacSeNecessario(
+      'pessoa-1',
+      'FISCAL',
+      DIA,
+      resposta(55 * 60_000, false, doContrato),
+    );
+    await service.avisarAlertaTacSeNecessario(
+      'pessoa-1',
+      'FISCAL',
+      DIA,
+      resposta(60 * 60_000, false, doContrato),
+    );
+
+    expect(notificacoes.notificarSupervisaoEGerencia).toHaveBeenCalledTimes(2);
+    expect(notificacoes.notificarSupervisaoEGerencia).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        titulo: '⚠️ Risco de TAC',
+        mensagem: expect.stringMatching(
+          /atingiu 50 min de horas extras hoje\. Faltam 20 minutos para o limite de TAC\.$/,
+        ),
+      }),
+    );
+    expect(notificacoes.notificarSupervisaoEGerencia).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        titulo: '⚠️ Risco alto de TAC',
+        mensagem: expect.stringMatching(
+          /atingiu 1h de horas extras hoje\. Faltam 10 minutos para o limite de TAC\.$/,
+        ),
+      }),
     );
   });
 

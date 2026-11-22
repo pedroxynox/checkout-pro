@@ -7,15 +7,20 @@ import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 import {
   type EtapaAlertaTac,
   INTERVALO_MAXIMO_MS,
+  REGRAS_PADRAO,
   RegrasContrato,
+  type RegrasResumo,
   StatusJornadaPonto,
   TipoBatida,
+  avisosDoResumo,
   batidaDuplicada,
   calcularJornadaDia,
   classificarBatidas,
   etapaAlertaTac,
+  resumoDasRegras,
   statusFiscalDeJornada,
   statusFiscalDeTipoBatida,
+  textoAvisoPreventivoTac,
 } from './ponto.domain';
 import { FiscaisService } from '../fiscais/fiscais.service';
 import { StatusFiscal } from '../fiscais/fiscais.domain';
@@ -111,6 +116,11 @@ export interface JornadaView {
   faltando: string[];
   /** Saiu para o intervalo e não voltou dentro do máximo do contrato. */
   naoRetornoIntervalo: boolean;
+  /**
+   * Limites do contrato DESTE dia, em minutos (spec `jornada-5x2`, R2.5). O app
+   * os usa nos textos de TAC; também decidem as etapas dos avisos.
+   */
+  regrasResumo: RegrasResumo;
 }
 
 /** Resposta do dia: dados da pessoa, jornada calculada e batidas. */
@@ -721,7 +731,8 @@ export class PontoService {
   }
 
   /**
-   * Avisa a supervisão e a gerência nas etapas 1h30, 1h40 e TAC. Cada etapa é
+   * Avisa a supervisão e a gerência no 1º aviso, no 2º aviso (minutos de extra
+   * do contrato do dia; 1h30 e 1h40 no 6x1) e no TAC. Cada etapa é
    * enviada no máximo uma vez por pessoa/dia. Se a jornada saltar diretamente
    * para uma etapa maior, envia somente a etapa atual e marca as inferiores
    * como consumidas. Best-effort: uma falha nunca trava a batida.
@@ -748,9 +759,11 @@ export class PontoService {
     if (pausaTransicaoJornadaAtiva()) return;
 
     const chaveDia = dia.toISOString();
+    // As etapas usam os avisos DO CONTRATO do dia (decisão 14 do spec).
     const etapa = etapaAlertaTac(
       resposta.jornada.horasExtrasMs,
       resposta.jornada.tac,
+      avisosDoResumo(resposta.jornada.regrasResumo),
     );
     if (!etapa) return;
 
@@ -1039,6 +1052,7 @@ export class PontoService {
     const etapaAtual = etapaAlertaTac(
       resposta.jornada.horasExtrasMs,
       resposta.jornada.tac,
+      avisosDoResumo(resposta.jornada.regrasResumo),
     );
 
     let enviados: { etapa: EtapaAlertaTac }[];
@@ -1154,16 +1168,27 @@ export class PontoService {
     etapa: EtapaAlertaTac,
     resposta: JornadaDiaResposta,
   ): { titulo: string; mensagem: string } {
+    // Os minutos citados são os do contrato do dia; no 6x1 a frase é a de
+    // sempre ("atingiu 1h30… Faltam 20 minutos para o limite de TAC.").
+    const r = resposta.jornada.regrasResumo;
     if (etapa === 'RISCO_1H30') {
       return {
         titulo: '⚠️ Risco de TAC',
-        mensagem: `${nome} atingiu 1h30 de horas extras hoje. Faltam 20 minutos para o limite de TAC.`,
+        mensagem: textoAvisoPreventivoTac(
+          nome,
+          r.primeiroAvisoMin,
+          r.limiteExtrasMin,
+        ),
       };
     }
     if (etapa === 'RISCO_1H40') {
       return {
         titulo: '⚠️ Risco alto de TAC',
-        mensagem: `${nome} atingiu 1h40 de horas extras hoje. Faltam 10 minutos para o limite de TAC.`,
+        mensagem: textoAvisoPreventivoTac(
+          nome,
+          r.segundoAvisoMin,
+          r.limiteExtrasMin,
+        ),
       };
     }
     return {
@@ -1509,6 +1534,7 @@ export class PontoService {
         motivosTac: j.motivosTac,
         faltando: j.faltando,
         naoRetornoIntervalo: j.naoRetornoIntervalo,
+        regrasResumo: resumoDasRegras(regras ?? REGRAS_PADRAO),
       },
       batidas: batidas.map((b) => ({
         id: b.id,

@@ -3,6 +3,7 @@ import { ValidacaoDataService } from '../data-inicial/validacao-data.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsuarioAutenticado } from '../common/decorators/usuario-atual.decorator';
 import { JornadaDiaResposta, PontoService } from './ponto.service';
+import { REGRAS_PADRAO, resumoDasRegras } from './ponto.domain';
 
 /**
  * Regressão: o NÃO-RETORNO AUTOMÁTICO deve sumir quando a pessoa fecha o
@@ -41,6 +42,7 @@ describe('PontoService — remove o não-retorno automático ao registrar o reto
         motivosTac: [],
         faltando: [],
         naoRetornoIntervalo,
+        regrasResumo: resumoDasRegras(REGRAS_PADRAO),
       },
       batidas: tiposBatidas.map((tipo) => ({ tipo })) as never,
     };
