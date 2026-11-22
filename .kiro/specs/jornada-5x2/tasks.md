@@ -28,11 +28,12 @@ Requisitos: [`requirements.md`](requirements.md) · Design: [`design.md`](design
   para ele. _(RT.5)_ — PR #437.
 - [x] 0.2 Interruptor `PAUSA_TRANSICAO_JORNADA` (design §8): função pura,
   validação no boot, guarda em cada ponto da tabela, log ao subir, testes. _(R0.1–R0.3)_
-  — PR #438 (aguardando merge e deploy).
+  — PR #438 (mergeado e publicado em 22/11/2026).
 - [x] 0.3 Documentar a variável em `docs/07-operacao/variaveis-de-ambiente.md`,
   `backend/.env.example` e no Atlas dos módulos tocados. _(RT.5)_ — PR #438.
-- [ ] 0.4 (Dono) Ligar `PAUSA_TRANSICAO_JORNADA=true` no Render e confirmar no log
-  "Pausa de transição da jornada ATIVA". _(R0.1)_
+- [x] 0.4 (Dono) Ligar `PAUSA_TRANSICAO_JORNADA=true` no Render e confirmar no log
+  "Pausa de transição da jornada ATIVA". _(R0.1)_ — **ativa em produção desde
+  22/11/2026 às 16:06 (Brasília)**, confirmada no log de boot.
 
 ## Fase 1 — Vigência da jornada (sem mudança visível)
 
