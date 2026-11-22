@@ -14,6 +14,7 @@ import { FolgaService } from '../jornada-vigencia/folga.service';
 import { FeriasService } from '../ferias/ferias.service';
 import { FeriadosService } from '../feriados/feriados.service';
 import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
+import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.service';
 import {
   GrupoDomingo,
   grupoFolgaNoDomingo,
@@ -285,6 +286,9 @@ export class OperadorTurnoService {
     // enquanto a escala publicada mostrava o de domingo (a regra correta). Como
     // os demais, entra no fim da lista de parâmetros.
     @Optional() private readonly feriados?: FeriadosService,
+    // Vigência da jornada (ADR 0027): turno e folga de cada dia. Opcional e no
+    // fim: sem ele, valem a ficha e o `FolgaService`.
+    @Optional() private readonly jornada?: JornadaVigenciaService,
   ) {}
 
   /**
@@ -352,13 +356,16 @@ export class OperadorTurnoService {
   }> {
     const inicio = dias[0];
     const fimExclusivo = addDias(dias[dias.length - 1], 1);
-    const [ancoraDomingo, consultorFolga, mapaFeriados] = await Promise.all([
+    const [ancoraDomingo, consultorJornada, mapaFeriados] = await Promise.all([
       this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
-      this.folga ? this.folga.consultor(dias) : null,
+      this.jornada ? this.jornada.consultor(dias) : null,
       this.feriados
         ? this.feriados.mapaNoPeriodo(inicio, fimExclusivo)
         : new Map<number, string>(),
     ]);
+    // Com a jornada prevista, a folga vem dela; sem ela, do `FolgaService`.
+    const consultorFolga =
+      consultorJornada ?? (this.folga ? await this.folga.consultor(dias) : null);
     // Férias por dia: um período pode cobrir só parte do intervalo, então a
     // pergunta é feita dia a dia (como já fazia a escala publicada).
     const feriasPorDia = new Map<number, Set<string>>();
@@ -371,17 +378,27 @@ export class OperadorTurnoService {
       // ausência (com justificativa, CID e período do atestado) e passa só o que
       // muda o STATUS; quem decide se a falta se aplica é `montarLinhaEscala` —
       // falta em dia de folga não existe.
-      linha: (ficha, dia, ehAtestado) =>
-        montarLinhaEscala({
+      linha: (ficha, dia, ehAtestado) => {
+        const ehFeriado = mapaFeriados.has(dia.getTime());
+        const previsto = consultorJornada?.previsto(
+          [ficha.colaboradorId],
+          dia,
+          ehFeriado,
+        );
+        return montarLinhaEscala({
           ficha,
           dia,
           ancoraDomingo,
-          ehFeriado: mapaFeriados.has(dia.getTime()),
+          ehFeriado,
           deFerias:
             feriasPorDia.get(dia.getTime())?.has(ficha.colaboradorId) ?? false,
           deFolga: consultorFolga?.ehFolga(dia, [ficha.colaboradorId]) ?? false,
           ocorrencia: ehAtestado == null ? null : { ehAtestado },
-        }),
+          turnoPrevisto: previsto
+            ? { entrada: previsto.entrada, saida: previsto.saida }
+            : undefined,
+        });
+      },
       grupoFolgaDomingo: (dia) =>
         dia.getUTCDay() === 0 && ancoraDomingo
           ? grupoFolgaNoDomingo(dia, ancoraDomingo.data, ancoraDomingo.ordem)

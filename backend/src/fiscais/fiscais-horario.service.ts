@@ -6,6 +6,7 @@ import { inicioDoDia } from '../common/datas';
 import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
+import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.service';
 import { carregarFiscaisComFicha } from './turno-fiscal.consulta';
 
 /** Um fiscal com turno hoje: quem é, a que hora entra e por qual ficha avisar. */
@@ -44,6 +45,9 @@ export class FiscaisHorarioService {
     // Rodízio de domingo: sem a âncora não se afirma o turno de domingo.
     // Opcional para não obrigar os testes unitários a montar o grafo inteiro.
     @Optional() private readonly escalaDomingo?: EscalaDomingoService,
+    // Vigência da jornada (ADR 0027): o turno do dia. Opcional e no fim: sem
+    // ele, vale a ficha.
+    @Optional() private readonly jornada?: JornadaVigenciaService,
   ) {}
 
   /** Reseta os lembretes enviados a cada dia. */
@@ -153,14 +157,22 @@ export class FiscaisHorarioService {
         ? await this.escalaDomingo.obterAncora()
         : null;
     const diaCivil = inicioDoDia(diaEmBrasilia);
+    // A jornada prevista do dia (vigência ou, antes dela, a ficha). Sem feriado,
+    // como sempre neste cron (ver acima).
+    const consultor = this.jornada
+      ? await this.jornada.consultor([diaCivil])
+      : null;
 
     const out: TurnoDeHoje[] = [];
     for (const f of await carregarFiscaisComFicha(this.prisma)) {
-      const entrada = entradaEsperadaNoDia(
-        f.ficha,
-        diaCivil,
-        ancora ? { data: ancora.data, ordem: ancora.ordem } : null,
-      );
+      const entrada = consultor
+        ? (consultor.previsto([f.colaboradorId, f.fiscalId], diaCivil, false)
+            ?.entrada ?? null)
+        : entradaEsperadaNoDia(
+            f.ficha,
+            diaCivil,
+            ancora ? { data: ancora.data, ordem: ancora.ordem } : null,
+          );
       if (!entrada) continue;
       out.push({
         funcionarioId: f.fiscalId,

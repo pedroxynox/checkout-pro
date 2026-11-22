@@ -31,6 +31,10 @@ import {
   FolgaService,
 } from '../jornada-vigencia/folga.service';
 import {
+  ConsultorJornada,
+  JornadaVigenciaService,
+} from '../jornada-vigencia/jornada-vigencia.service';
+import {
   carregarFiscalIdsPorColaborador,
   identidadesDaFicha,
 } from '../fiscais/identidades.consulta';
@@ -115,6 +119,22 @@ export interface EscalaSemanaPublicada {
   semFolgaNoCadastro: PessoaSemFolga[];
 }
 
+/**
+ * Turno do dia pela jornada prevista (vigência da jornada, ADR 0027), ou
+ * `undefined` para `montarLinhaEscala` calcular da ficha como antes.
+ */
+function turnoDaJornada(
+  consultor: ConsultorJornada | null,
+  ids: readonly string[],
+  dia: Date,
+  ehFeriado: boolean,
+): { entrada: string | null; saida: string | null } | undefined {
+  const previsto = consultor?.previsto(ids, dia, ehFeriado);
+  return previsto
+    ? { entrada: previsto.entrada, saida: previsto.saida }
+    : undefined;
+}
+
 @Injectable()
 export class EscalaExportacaoService {
   constructor(
@@ -127,6 +147,9 @@ export class EscalaExportacaoService {
     // só na escala semanal (e não marcada como exceção) saía FOLGA no Quadro de
     // Operadores e TRABALHA aqui — a mesma classe de incoerência das férias.
     @Optional() private readonly folga?: FolgaService,
+    // Vigência da jornada (ADR 0027): turno e folga de cada dia. Opcional e no
+    // fim, como os demais: sem ele, valem a ficha e o `FolgaService`.
+    @Optional() private readonly jornada?: JornadaVigenciaService,
   ) {}
 
   /** Fichas ativas das funções escaladas, já no formato do domínio. */
@@ -244,9 +267,12 @@ export class EscalaExportacaoService {
         : Promise.resolve(new Set<string>()),
     ]);
 
-    const consultorFolga = this.folga
-      ? await this.folga.consultor([dia])
+    const consultorJornada = this.jornada
+      ? await this.jornada.consultor([dia])
       : null;
+    const consultorFolga: ConsultorFolga | null =
+      consultorJornada ??
+      (this.folga ? await this.folga.consultor([dia]) : null);
 
     const nomeFeriado = feriados.get(dia.getTime()) ?? null;
     const linhas: LinhaEscala[] = fichas.map((ficha) =>
@@ -262,6 +288,12 @@ export class EscalaExportacaoService {
             identidadesDaFicha(ficha.colaboradorId, fiscalIds),
           ) ?? false,
         ocorrencia: ocorrencias.get(`${ficha.colaboradorId}|${iso}`) ?? null,
+        turnoPrevisto: turnoDaJornada(
+          consultorJornada,
+          identidadesDaFicha(ficha.colaboradorId, fiscalIds),
+          dia,
+          nomeFeriado != null,
+        ),
       }),
     );
 
@@ -336,10 +368,15 @@ export class EscalaExportacaoService {
           : new Set<string>(),
       );
     }
-    // A regra de folga carrega os sete dias de uma vez.
-    const consultorFolga = this.folga
-      ? await this.folga.consultor(diasISO.map((iso) => diaUTC(iso)))
+    // A jornada prevista (ou só a regra de folga) carrega os sete dias de uma vez.
+    const consultorJornada = this.jornada
+      ? await this.jornada.consultor(diasISO.map((iso) => diaUTC(iso)))
       : null;
+    const consultorFolga: ConsultorFolga | null =
+      consultorJornada ??
+      (this.folga
+        ? await this.folga.consultor(diasISO.map((iso) => diaUTC(iso)))
+        : null);
 
     const dias: DiaSemanaEscala[] = diasISO.map((iso) => {
       const nome = feriados.get(diaUTC(iso).getTime()) ?? null;
@@ -372,6 +409,12 @@ export class EscalaExportacaoService {
             ) ?? false,
           ocorrencia:
             ocorrencias.get(`${ficha.colaboradorId}|${d.dataISO}`) ?? null,
+          turnoPrevisto: turnoDaJornada(
+            consultorJornada,
+            identidadesDaFicha(ficha.colaboradorId, fiscalIds),
+            dia,
+            d.ehFeriado,
+          ),
         });
         return {
           status: linha.status,

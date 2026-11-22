@@ -101,6 +101,11 @@ export function montarLinhaEscala(params: {
    */
   deFolga: boolean;
   ocorrencia: OcorrenciaDia | null;
+  /**
+   * Turno do dia já resolvido pela jornada prevista (vigência da jornada, ADR
+   * 0027). Ausente = calculado da ficha, como antes.
+   */
+  turnoPrevisto?: { entrada: string | null; saida: string | null };
 }): LinhaEscala {
   const {
     ficha,
@@ -110,6 +115,7 @@ export function montarLinhaEscala(params: {
     deFerias,
     deFolga,
     ocorrencia,
+    turnoPrevisto,
   } = params;
   const base = {
     colaboradorId: ficha.colaboradorId,
@@ -127,8 +133,12 @@ export function montarLinhaEscala(params: {
     return { ...base, status: 'FOLGA', entrada: null, saida: null };
   }
 
-  const entrada = entradaEsperadaNoDia(ficha, dia, ancoraDomingo, ehFeriado);
-  const saida = saidaEsperadaNoDia(ficha, dia, ancoraDomingo, ehFeriado);
+  const entrada = turnoPrevisto
+    ? turnoPrevisto.entrada
+    : entradaEsperadaNoDia(ficha, dia, ancoraDomingo, ehFeriado);
+  const saida = turnoPrevisto
+    ? turnoPrevisto.saida
+    : saidaEsperadaNoDia(ficha, dia, ancoraDomingo, ehFeriado);
 
   if (!entrada) {
     return { ...base, status: 'FOLGA', entrada: null, saida: null };

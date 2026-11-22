@@ -9,6 +9,7 @@ import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 import { montarSaudacaoDiaria } from './saudacao-diaria.domain';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
+import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.service';
 import { carregarFiscaisComFicha } from '../fiscais/turno-fiscal.consulta';
 
 /** Fuso de operação da loja. Os crons disparam no horário local de Brasília. */
@@ -50,6 +51,9 @@ export class SaudacaoDiariaService {
     @Inject(RELOGIO) private readonly relogio: Relogio,
     // Rodízio de domingo: sem a âncora não se afirma o turno de domingo.
     @Optional() private readonly escalaDomingo?: EscalaDomingoService,
+    // Vigência da jornada (ADR 0027): o turno do dia. Opcional e no fim: sem
+    // ele, vale a ficha.
+    @Optional() private readonly jornada?: JornadaVigenciaService,
   ) {}
 
   /** Reseta o controle de "já saudado" a cada dia. */
@@ -138,12 +142,20 @@ export class SaudacaoDiariaService {
       colaboradorId: string | null;
       entrada: string;
     }[] = [];
+    // A jornada prevista do dia (vigência ou, antes dela, a ficha). Sem
+    // feriado, como sempre nesta saudação.
+    const consultor = this.jornada
+      ? await this.jornada.consultor([diaCivil])
+      : null;
     for (const f of await carregarFiscaisComFicha(this.prisma)) {
-      const entrada = entradaEsperadaNoDia(
-        f.ficha,
-        diaCivil,
-        ancora ? { data: ancora.data, ordem: ancora.ordem } : null,
-      );
+      const entrada = consultor
+        ? (consultor.previsto([f.colaboradorId, f.fiscalId], diaCivil, false)
+            ?.entrada ?? null)
+        : entradaEsperadaNoDia(
+            f.ficha,
+            diaCivil,
+            ancora ? { data: ancora.data, ordem: ancora.ordem } : null,
+          );
       if (!entrada) continue;
       out.push({
         funcionarioId: f.fiscalId,

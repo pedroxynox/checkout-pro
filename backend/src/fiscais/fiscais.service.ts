@@ -46,6 +46,7 @@ import { FeriadosService } from '../feriados/feriados.service';
 import { EscalaService } from './escala.service';
 import { FeriasService } from '../ferias/ferias.service';
 import { FolgaService } from '../jornada-vigencia/folga.service';
+import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.service';
 import { EscalaDomingoService } from '../escala-domingo/escala-domingo.service';
 import { entradaEsperadaNoDia } from '../escala-domingo/escala-domingo.domain';
 import {
@@ -218,6 +219,9 @@ export class FiscaisService {
     // Regra única de folga (ficha + escala semanal). Sem ela o serviço continua
     // funcionando com a regra antiga — cada fonte olhando só para si.
     @Optional() private readonly folga?: FolgaService,
+    // Vigência da jornada (ADR 0027): turno e folga do dia. Opcional e no fim:
+    // sem ele, valem a ficha e o `FolgaService`.
+    @Optional() private readonly jornada?: JornadaVigenciaService,
   ) {}
 
   /**
@@ -848,13 +852,19 @@ export class FiscaisService {
       where: { ativo: true, funcao: { in: FUNCOES_PONTO_NAO_FISCAL } },
       orderBy: { nome: 'asc' },
     });
+    // A jornada prevista do dia (ADR 0027): o turno e a folga da vigência
+    // daquele dia, ou da ficha antes dela. Uma carga só serve aos dois usos.
+    const consultorJornada = this.jornada
+      ? await this.jornada.consultor([inicio])
+      : null;
     const dosOperadores: EscaladoDia[] = colaboradores.flatMap((c) => {
-      // O horário esperado é o da FICHA, e só ele (ADR 0026). Havia aqui uma
-      // consulta às exceções de horário da escala semanal, que venciam o turno do
-      // cadastro e até a folga da ficha. Elas deixaram de existir: sem validade,
-      // sem tela e invisíveis à ficha, faziam a detecção cobrar um horário que o
-      // colaborador não via em lugar nenhum.
-      const entrada = entradaEsperadaNoDia(
+      // O horário esperado é o da FICHA (ou da vigência do dia), e só ele (ADR
+      // 0026). Havia aqui uma consulta às exceções de horário da escala semanal,
+      // que venciam o turno do cadastro e até a folga da ficha. Elas deixaram de
+      // existir: sem validade, sem tela e invisíveis à ficha, faziam a detecção
+      // cobrar um horário que o colaborador não via em lugar nenhum.
+      const previsto = consultorJornada?.previsto([c.id], inicio, ehFeriado);
+      const entrada = previsto ? previsto.entrada : entradaEsperadaNoDia(
         {
           folgaDiaSemana: c.folgaDiaSemana,
           grupoDomingo: c.grupoDomingo,
@@ -892,9 +902,9 @@ export class FiscaisService {
     // só a SUA fonte — os fiscais a escala, os operadores a ficha —, e quem
     // tinha as duas fontes em desacordo era escalado e acabava com falta
     // automática no próprio dia de descanso. Aqui as duas valem para todos.
-    const consultorFolga = this.folga
-      ? await this.folga.consultor([inicio])
-      : null;
+    const consultorFolga =
+      consultorJornada ??
+      (this.folga ? await this.folga.consultor([inicio]) : null);
 
     // Ordena por hora de entrada (mais cedo primeiro), depois por nome.
     return (
