@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-07-19 · **Cobre:** regras de negócio de contratos de experiência e tipos de contrato de jornada
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** regras de negócio de contratos de experiência e tipos de contrato de jornada
 
 # Contratos e jornada
 
@@ -71,7 +71,10 @@ dia, intervalos, limites de extras e de TAC — que o cálculo da jornada consom
     colaborador tem um tipo de contrato **obrigatório**; sem escolha, recebe o
     padrão (Fase 0 do spec `solidez-contratos-jornada`).
 12. **Contrato em uso não é removido** — é preciso reatribuir os colaboradores ou
-    apenas desativá-lo.
+    apenas desativá-lo. Um contrato que está no **histórico da jornada** de alguém
+    (vigência, [ADR 0027](../../02-arquitetura/decisoes/0027-vigencia-da-jornada.md))
+    também conta como em uso: ele decide os dias daquele período e só pode ser
+    desativado.
 13. **Coerência dos limites** é validada no servidor: intervalo mínimo menor que o
     máximo e limites crescentes (risco 1h30 ≤ risco 1h40 ≤ limite de extras — ver
     o TAC em [Ponto, jornada e TAC](ponto-jornada-e-tac.md)).

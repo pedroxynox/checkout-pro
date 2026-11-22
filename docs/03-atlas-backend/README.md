@@ -5,7 +5,7 @@
 
 Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modulo.md`](./_modelo-modulo.md).
 
-**Cobertura:** 37/37 documentados (100%).
+**Cobertura:** 38/38 documentados (100%).
 
 | Item | Documento | Estado |
 |---|---|---|
@@ -33,6 +33,7 @@ Um documento por módulo do backend (`backend/src/`). Padrão em [`_modelo-modul
 | `fiscais` | [`fiscais`](./fiscais.md) | ✅ documentado |
 | `incidencias` | [`incidencias`](./incidencias.md) | ✅ documentado |
 | `insumos` | [`insumos`](./insumos.md) | ✅ documentado |
+| `jornada-vigencia` | [`jornada-vigencia`](./jornada-vigencia.md) | ✅ documentado |
 | `metas` | [`metas`](./metas.md) | ✅ documentado |
 | `notificacoes` | [`notificacoes`](./notificacoes.md) | ✅ documentado |
 | `operadores` | [`operadores`](./operadores.md) | ✅ documentado |

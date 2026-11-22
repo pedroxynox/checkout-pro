@@ -42,6 +42,7 @@ import { PermissoesModule } from './permissoes/permissoes.module';
 import { CheckoutsModule } from './checkouts/checkouts.module';
 import { CicloFolhaModule } from './ciclo-folha/ciclo-folha.module';
 import { TiposContratoModule } from './tipos-contrato/tipos-contrato.module';
+import { JornadaVigenciaModule } from './jornada-vigencia/jornada-vigencia.module';
 import { ProdutosPesadosModule } from './produtos-pesados/produtos-pesados.module';
 import { AtestadosModule } from './atestados/atestados.module';
 
@@ -90,6 +91,7 @@ import { AtestadosModule } from './atestados/atestados.module';
     CheckoutsModule,
     CicloFolhaModule,
     TiposContratoModule,
+    JornadaVigenciaModule,
     ProdutosPesadosModule,
     AtestadosModule,
   ],

@@ -37,31 +37,35 @@ Requisitos: [`requirements.md`](requirements.md) · Design: [`design.md`](design
 
 ## Fase 1 — Vigência da jornada (sem mudança visível)
 
-- [ ] 1.1 Prisma: `RegimeJornada`, `JornadaVigencia`, `DisponibilidadeDia` e
-  relações (design §2.1). Migração `9zzu_jornada_vigencia` com a vigência base
-  `LEGADO_6X1` (1970-01-01) para cada colaborador. Ensaiar em PostgreSQL
-  descartável. _(R1.1, R1.3, RT.3)_
-- [ ] 1.2 Domínio puro `jornada-vigencia.domain.ts`: `vigenciaNoDia`,
-  `previstoNoDia` (ramo LEGADO_6X1 delegando às funções atuais; ramo SEMANAL com
-  folgas fixas e disponibilidade; rodízio entra como parâmetro opcional),
-  `avisosDaVigencia`. _(R1.2, RT.1)_
-- [ ] 1.3 Teste de propriedade de regressão: LEGADO_6X1 == funções atuais para
-  fichas e datas aleatórias (folga, entrada, saída, carga, 100%). _(RT.2)_
-- [ ] 1.4 `JornadaVigenciaService.consultor` (carga em lote) + `regrasNoDia`;
-  `FolgaService` reimplementado como adaptador do consultor. _(R1.2)_
-- [ ] 1.5 Migrar os consumidores (design §10) para o consultor, um módulo por
+Dois PRs. Nenhum muda número algum: enquanto ninguém tiver vigência, a jornada
+prevista é o código de hoje com os dados de hoje (design §1).
+
+**PR 1a — base** (feito; ver o PR `feat/jornada-vigencia-base`)
+- [x] 1.1 Prisma: `JornadaVigencia`, `DisponibilidadeDia` e relações (design
+  §2.1). Migração `9zzu_jornada_vigencia` (só cria as tabelas). Ensaiar em
+  PostgreSQL descartável. _(R1.1, RT.3)_
+- [x] 1.2 Domínio puro `jornada-vigencia.domain.ts`: `vigenciaNoDia`,
+  `previstoNoDia` (regime legado delegando às funções atuais; regime SEMANAL com
+  folgas fixas e disponibilidade; grupo sem rodízio não afirma),
+  `folgasFixasEfetivas`, `avisosDaVigencia`, `validarVigencia`. _(R1.2, R4.6, RT.1)_
+- [x] 1.3 Testes: propriedade de regressão (sem vigência == funções atuais para
+  fichas e datas aleatórias) e casos do regime SEMANAL e dos avisos. _(RT.2)_
+- [x] 1.4 `JornadaVigenciaService.consultor` (carga em lote) + `regrasNoDia`;
+  "contrato em uso" conta as vigências. _(R1.2)_
+- [x] 1.5 ADR 0027 "Vigência da jornada"; Atlas `jornada-vigencia` e
+  `tipos-contrato`; `docs:gen`. _(RT.5)_
+
+**PR 1b — consumidores**
+- [ ] 1.6 `FolgaService` passa a perguntar ao consultor.
+- [ ] 1.7 Migrar os consumidores (design §10) para o consultor, um módulo por
   commit: ponto, detecção automática, fiscais (escala, alertas, horário,
   saudação), Central de Jornada, compensação, operadores (roster, analítica,
   `contarDiasEscalados`, emenda), incidências, perfil, exportação de escala,
   conferência. _(R1.2, R6.4)_
-- [ ] 1.6 Endpoints `GET/PUT/DELETE /colaboradores/:id/jornada` com
-  `exigirCicloAberto`, auditoria e avisos; cadastro/edição legados espelham na
-  vigência base; 409 para campos legados de quem tem vigência SEMANAL. _(R1.4–R1.7)_
-- [ ] 1.7 Comparar a Central numa cópia do banco de produção (`main` × branch):
+- [ ] 1.8 Comparar a Central numa cópia do banco de produção (`main` × branch):
   diferença vazia (design §9). _(R1.3, R6.1)_
-- [ ] 1.8 ADR 0027 "Vigência da jornada" + Atlas (`colaboradores`, `ponto`,
-  `central-jornada`, `escala-domingo`, `fiscais`, `operadores`, …) + regras de
-  negócio (`contratos-e-jornada`, `escala-e-rodizio-domingo`) + `docs:gen`. _(RT.5)_
+- [ ] 1.9 Atlas dos módulos tocados; regras de negócio (`contratos-e-jornada`,
+  `escala-e-rodizio-domingo`); `docs:gen`. _(RT.5)_
 
 ## Fase 2 — Tipo de contrato 5x2
 
@@ -85,7 +89,8 @@ Requisitos: [`requirements.md`](requirements.md) · Design: [`design.md`](design
 - [ ] 2.8 (Dono) Criar o(s) contrato(s) 5x2 44h. Valores informados: carga 8h48
   (528 min) por dia, feriado com carga própria, 100% em domingo e feriado, limite
   de extras 70 min, limite diário 600 min, intervalo máximo 170 min, 2 folgas por
-  semana. Pendentes: avisos, intervalo mínimo e previsto. _(R2)_
+  semana; avisos de TAC e intervalo mínimo conforme cada contrato (decisões 14
+  e 15). _(R2)_
 - [ ] 2.9 Atlas `tipos-contrato`, `ponto`; regras `ponto-jornada-e-tac` e
   `contratos-e-jornada`; `docs:gen`. _(RT.5)_
 
@@ -105,6 +110,9 @@ Requisitos: [`requirements.md`](requirements.md) · Design: [`design.md`](design
 
 ## Fase 4 — Ficha e perfil do colaborador
 
+- [ ] 4.0 Escrita das vigências: `GET/PUT/DELETE /colaboradores/:id/jornada` com
+  `exigirCicloAberto`, auditoria, validação e avisos (design §3.2); 409 ao mudar
+  campo legado de quem tem vigência. _(R1.3a, R1.4–R1.7)_
 - [ ] 4.1 `GestaoColaboradoresScreen`: turno; disponibilidade Seg…Dom com "copiar a
   primeira para todas"; grupo; folgas fixas só sem grupo; contrato; "Vale a partir
   de"; avisos. Tirar folga fixa e os três blocos. _(R4.1–R4.7)_
@@ -141,9 +149,9 @@ Requisitos: [`requirements.md`](requirements.md) · Design: [`design.md`](design
 ## Fase 7 — Limpeza
 
 - [ ] 7.1 Remover a pausa de transição. _(R0)_
-- [ ] 7.2 Remover dos cálculos e da API os campos legados da ficha
-  (`folgaDiaSemana`, blocos, `grupoDomingo`, `tipoContratoJornadaId`) e
-  `trabalhaDomingo` — os dados ficam nas vigências `LEGADO_6X1`. _(RT.4)_
+- [ ] 7.2 Tirar da API e das telas os campos legados da ficha (`folgaDiaSemana`,
+  blocos, `grupoDomingo`, `tipoContratoJornadaId`) e `trabalhaDomingo`. No banco
+  eles continuam: são a história do 6x1 (design §1). _(RT.4)_
 - [ ] 7.3 Reduzir `REGRAS_PADRAO`/6x1 em código a fallback de emergência marcado;
   converter `contrato-6x1-congelado.spec.ts` em teste da vigência LEGADO. _(RT.2)_
 - [ ] 7.4 Revisar `EscalaEntry` (etapa 3 da ADR 0026) agora que o regime SEMANAL

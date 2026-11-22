@@ -34,10 +34,11 @@
 - **Vigência:** "a partir desta data, esta pessoa tem este contrato, este grupo,
   esta disponibilidade e estas folgas". Cada dia é calculado com a vigência
   daquele dia.
-- **Regime LEGADO_6X1:** a vigência que guarda a ficha antiga (folga fixa + três
-  blocos + rodízio só de domingo). Vale para todos os dias anteriores ao corte.
-- **Regime SEMANAL:** a vigência nova (disponibilidade por dia + grupo ou folgas
-  fixas).
+- **Regime LEGADO_6X1:** os dias anteriores à primeira vigência da pessoa,
+  calculados com a ficha antiga que está no `Colaborador` (folga fixa + três
+  blocos + rodízio só de domingo), como hoje.
+- **Regime SEMANAL:** os dias cobertos por uma vigência (disponibilidade por
+  dia + grupo ou folgas fixas).
 
 ## Decisões do dono (22/11/2026)
 
@@ -77,6 +78,17 @@
 13. Não é preciso congelar permissões: os gerentes foram avisados para não mexer
     em fichas e contratos até o novo modelo estar publicado.
 
+Respostas de 22/11/2026 (segunda rodada):
+
+14. **Avisos preventivos de TAC: conforme o contrato.** Cada contrato define em
+    quantos minutos de extra saem o 1º e o 2º aviso; não há valor global.
+15. **Intervalo mínimo e máximo: conforme o contrato.**
+16. **Disponibilidade × carga com tolerância.** Hoje a equipe faz 2 h de
+    intervalo, mas isso pode passar a 1 h ou 1h30. A conferência não usa um
+    intervalo fixo: a disponibilidade "fecha" com a carga quando o intervalo que
+    ela deixa (saída − entrada − carga do dia) cabe entre o intervalo mínimo e o
+    máximo do contrato.
+
 ## Requisitos
 
 ### R0 — Proteger a operação durante a transição
@@ -101,15 +113,20 @@
 - **R1.2** Todo cálculo de um dia (carga, extras 50/100, horas devidas, TAC,
   folga, entrada/saída esperadas, atraso, falta automática, compensação, dias
   escalados) DEVE usar a vigência **daquele dia**, nunca a ficha atual.
-- **R1.3** A migração DEVE criar, para cada colaborador, uma vigência
-  `LEGADO_6X1` "desde sempre" com os dados atuais da ficha. **Nenhum número do
-  passado pode mudar** (validado por testes e por comparação com cópia do banco).
+- **R1.3** Os dias **anteriores à primeira vigência** de uma pessoa usam a ficha
+  legada que já está no `Colaborador` (folga fixa, blocos de horário, grupo de
+  domingo, tipo de contrato), exatamente como hoje. **Nenhum número do passado
+  pode mudar** (validado por testes e por comparação com cópia do banco).
+- **R1.3a** Depois que a pessoa tem uma vigência, os campos legados da ficha ficam
+  **congelados**: a API recusa alterá-los (409), porque eles passaram a ser a
+  história do 6x1.
 - **R1.4** Não se DEVE criar, alterar nem remover vigência que comece dentro de um
   ciclo de folha **fechado** (`CicloFechadoError`, 409).
 - **R1.5** A data de início pode ser retroativa dentro do ciclo aberto (ex.: lançar
   em 24/11 uma vigência de 23/11).
 - **R1.6** Cada vigência registra quem criou/alterou, quando e o motivo.
-- **R1.7** A vigência base (a primeira) não pode ser removida.
+- **R1.7** Remover a única vigência de uma pessoa a devolve ao regime legado em
+  todos os dias; só é permitido com o ciclo aberto (R1.4).
 
 ### R2 — Tipo de contrato 5x2
 
@@ -124,8 +141,9 @@
   valores fixos ("1h50", "1h", "3h", "Faltam 20 minutos").
 - **R2.6** O contrato DEVE definir quantas folgas por semana tem (5x2 = 2), as
   **folgas padrão** para quem não tem grupo e se **permite folga no sábado**.
-- **R2.7** O contrato DEVE ter o **intervalo previsto** usado para conferir a
-  disponibilidade contra a carga (R4.6).
+- **R2.7** A conferência da disponibilidade contra a carga usa o **intervalo
+  mínimo e máximo do contrato** como tolerância (decisão 16, R4.6). Não há campo
+  de "intervalo previsto".
 - **R2.8** Regras de cálculo de um contrato **em uso** (referenciado por alguma
   vigência) NÃO podem ser editadas; para mudar, **duplica-se** o contrato e
   aplica-se o novo com vigência. Nome, descrição e ativo continuam editáveis.
@@ -160,10 +178,11 @@
   seção **Folgas fixas** (até `folgasPorSemana` do contrato; sábado só se o
   contrato permitir; vazio = padrão do contrato).
 - **R4.5** Permanece o **tipo de contrato**.
-- **R4.6** Ao salvar, o sistema DEVE avisar (sem bloquear) quando, num dia, a
-  disponibilidade menos o intervalo previsto do contrato for diferente da carga
-  do dia; quando um dia que pode ser de trabalho estiver sem horário; e quando a
-  pessoa ficar sem folga.
+- **R4.6** Ao salvar, o sistema DEVE avisar (sem bloquear) quando, num dia, o
+  intervalo que a disponibilidade deixa (saída − entrada − carga do dia) ficar
+  fora do intervalo mínimo–máximo do contrato (jornada curta sem intervalo, quando
+  o contrato não exige intervalo, é aceita); quando um dia que pode ser de
+  trabalho estiver sem horário; e quando a pessoa ficar sem folga.
 - **R4.7** Mudanças de contrato, grupo, folgas ou disponibilidade DEVEM pedir a
   data "vale a partir de" e gravar uma vigência (R1).
 - **R4.8** O perfil do colaborador DEVE mostrar a disponibilidade por dia, o grupo,
@@ -204,7 +223,7 @@
 
 - **RT.1** Domínio puro e determinístico para vigência, rodízio e jornada prevista
   (ADR 0003), com testes de propriedade.
-- **RT.2** Teste de regressão: para o regime `LEGADO_6X1`, as novas funções devem
+- **RT.2** Teste de regressão: no regime `LEGADO_6X1` (sem vigência), as novas funções devem
   dar o mesmo resultado que as atuais em qualquer ficha e data.
 - **RT.3** Migrações aditivas e compatíveis com rolling deploy; backup (Render ▸
   Recovery ▸ Create export) antes de cada migração em produção.
@@ -224,15 +243,14 @@
 ## Decisões pendentes com o dono
 
 Registradas para não serem inventadas. Até a resposta, usar o valor proposto
-**apenas como padrão editável** no contrato.
+**apenas como padrão editável**.
 
-1. **Avisos preventivos de TAC no 5x2:** em quantos minutos de extra (proposta:
-   50 min e 1h00, para o limite de 1h10)?
-2. **Intervalo mínimo no 5x2:** continua 1 h (regra oficial A)?
-3. **Intervalo previsto** para conferir a disponibilidade: 1 h?
-4. **Quem escolhe o contrato na ficha:** hoje só o administrador vê a lista de
+1. **Quem escolhe o contrato na ficha:** hoje só o administrador vê a lista de
    contratos. Manter assim?
-5. **Alerta "folga sugerida por mais de 7 h de extras no mês"** (fiscais): manter
+2. **Alerta "folga sugerida por mais de 7 h de extras no mês"** (fiscais): manter
    (lendo o contrato) ou retirar?
-6. **Transição 22→23/11:** conforme a folga antiga, alguém pode passar de 6 dias
+3. **Transição 22→23/11:** conforme a folga antiga, alguém pode passar de 6 dias
    seguidos antes da primeira folga nova. O dono confirmou apenas os domingos.
+
+Resolvidas em 22/11/2026: avisos de TAC e intervalos conforme o contrato
+(decisões 14 e 15) e a tolerância da disponibilidade (decisão 16).

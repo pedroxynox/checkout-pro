@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `backend/src/tipos-contrato/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/tipos-contrato/`
 
 # Módulo: `tipos-contrato`
 
@@ -59,8 +59,10 @@ desativar o padrão; invalida o cache.
 
 #### `definirAtivo(id, ativo)` / `remover(id)`
 Alternam `ativo` (o padrão não pode ser desativado) ou removem o contrato (o
-padrão e os que estão **em uso** por colaboradores não podem ser removidos —
-com contagem de quantos usam).
+padrão e os que estão **em uso** não podem ser removidos — com contagem de quantos
+usam). "Em uso" conta as fichas (`Colaborador.tipoContratoJornadaId`) **e as
+vigências da jornada** ([`jornada-vigencia`](jornada-vigencia.md)): um contrato que
+só aparece no histórico ainda decide os dias daquele período.
 
 #### `regrasDoContrato(id?)`
 - **Devolve:** as `RegrasContrato` de um contrato (via `regrasContratoDeModelo`),
@@ -113,7 +115,8 @@ Garante: carga base com 7 valores; dias com 100% entre 0 e 6; intervalo mínimo
    cálculo é genérico sobre `RegrasContrato`.
 2. **Sempre há um contrato padrão** (semeado na migração), fallback do cálculo;
    ele não pode ser desativado nem removido.
-3. **Contrato em uso não é removido** (reatribua ou apenas desative).
+3. **Contrato em uso não é removido** (reatribua ou apenas desative). Uso inclui o
+   histórico: contrato referenciado por vigência da jornada só pode ser desativado.
 4. **Coerência dos limites** validada no servidor (crescentes; mínimo < máximo).
    A carga base **pode ser zero** num dia, e é o correto para um contrato que não
    trabalha aquele dia — num domingo REAL trabalhado, tudo conta como extra. O que
@@ -130,7 +133,7 @@ Garante: carga base com 7 valores; dias com 100% entre 0 e 6; intervalo mínimo
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `tipos-contrato.service.spec.ts` | CRUD, coerência, proteção do padrão/em uso e cache | 9 |
+| `tipos-contrato.service.spec.ts` | CRUD, coerência, proteção do padrão/em uso (fichas e vigências da jornada) e cache | 11 |
 | `tipos-contrato.adapter.spec.ts` | Conversão modelo (min) → `RegrasContrato` (ms) | 5 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).

@@ -12,49 +12,47 @@ Quatro peças, cada uma com uma responsabilidade:
 | **Tipo de contrato** | *Quais são as regras?* (carga por dia, feriado, 100%, intervalo, TAC, folgas por semana) | `TipoContratoJornada` (já existe; ganha campos) |
 | **Vigência da jornada** | *Desde quando esta pessoa tem este contrato, este grupo, estas folgas e esta disponibilidade?* | `JornadaVigencia` + `DisponibilidadeDia` (novas) |
 | **Rodízio de folgas** | *Em que dias cada grupo folga em cada semana?* | `RodizioFolgasVigencia` (nova) |
-| **Jornada prevista do dia** | *Neste dia, esta pessoa folga? A que horas entra e sai? Qual a carga? Paga 100%? Gera débito? Com que regras?* | domínio puro `jornada-vigencia.domain.ts` + `JornadaVigenciaService.consultor` |
+| **Jornada prevista do dia** | *Neste dia, esta pessoa folga? A que horas entra e sai? Qual a carga? Paga 100%? Gera débito? Com que regras?* | domínio puro `jornada-vigencia/jornada-vigencia.domain.ts` + `JornadaVigenciaService.consultor` |
 
-**Regra de ouro:** nenhum cálculo lê mais a ficha atual (`Colaborador.folgaDiaSemana`,
-`entradaSemana`…, `tipoContratoJornadaId`) para decidir um dia. Todo consumidor
-pergunta à **jornada prevista do dia**. É isso que protege o passado (R1.2).
+**Regra de ouro:** todo consumidor que decide um dia (folga, horário, carga,
+regras) pergunta à **jornada prevista do dia**. É isso que protege o passado
+(R1.2).
+
+**Os dias antes da primeira vigência são o regime legado (6x1).** O regime legado
+não ganha linhas novas: ele É a ficha que já está no `Colaborador`
+(`folgaDiaSemana`, `entradaSemana`…`saidaDom`, `grupoDomingo`,
+`tipoContratoJornadaId`), lida pelas funções de hoje. Depois que a pessoa ganha
+uma vigência, esses campos ficam congelados (R1.3a). Consequência: enquanto
+ninguém tiver vigência, a jornada prevista dá **exatamente** o resultado de hoje,
+por construção — o mesmo código, os mesmos dados.
+
+> Revisão de 22/11/2026 (antes de implementar): a primeira versão deste design
+> copiava a ficha para uma vigência `LEGADO_6X1` "desde 1970". A cópia exigia
+> espelhar toda edição da ficha na vigência e criava duas fontes do mesmo dado.
+> Congelar a ficha depois da primeira vigência dá a mesma garantia sem cópia.
 
 ## 2. Modelo de dados
 
 ### 2.1 Vigência da jornada (Fase 1)
 
 ```prisma
-enum RegimeJornada {
-  LEGADO_6X1 // ficha antiga: folga fixa única + blocos Seg–Qui/Sex–Sáb/Dom + rodízio só de domingo
-  SEMANAL    // 5x2: disponibilidade por dia + grupo (rodízio de folgas) ou folgas fixas
-}
-
 /// A partir de `vigenteDesde`, os dias do colaborador são calculados com ESTA
-/// linha, até a próxima vigência. A primeira (base) começa em 1970-01-01.
+/// linha, até a próxima vigência. Antes da primeira vigência vale a ficha
+/// legada (6x1) que está no próprio `Colaborador`.
 model JornadaVigencia {
-  id            String        @id @default(uuid())
+  id            String      @id @default(uuid())
   colaboradorId String
-  colaborador   Colaborador   @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
   /// Dia civil (00:00 UTC, mesmo rótulo das demais datas de negócio).
   vigenteDesde  DateTime
-  regime        RegimeJornada
 
   tipoContratoJornadaId String
   tipoContratoJornada   TipoContratoJornada @relation(fields: [tipoContratoJornadaId], references: [id])
 
-  /// 'G1' | 'G2' | 'G3' | null. Em LEGADO_6X1 é o grupo do rodízio de DOMINGO
-  /// (âncora em ConfigSistema); em SEMANAL é o grupo do rodízio de FOLGAS.
+  /// 'G1' | 'G2' | 'G3' | null — grupo do rodízio de FOLGAS (Fase 3).
   grupo         String?
-  /// SEMANAL sem grupo: até `folgasPorSemana` dias (0=domingo). Vazio = padrão do contrato.
-  folgasFixas   Int[]         @default([])
-
-  /// Cópia congelada da ficha antiga (só LEGADO_6X1).
-  legadoFolgaDiaSemana Int?
-  legadoEntradaSemana  String?
-  legadoSaidaSemana    String?
-  legadoEntradaFds     String?
-  legadoSaidaFds       String?
-  legadoEntradaDom     String?
-  legadoSaidaDom       String?
+  /// Sem grupo: até `folgasPorSemana` dias (0=domingo). Vazio = padrão do contrato.
+  folgasFixas   Int[]       @default([])
 
   disponibilidade DisponibilidadeDia[]
 
@@ -65,11 +63,11 @@ model JornadaVigencia {
   atualizadoEm  DateTime  @default(now()) @updatedAt
 
   @@unique([colaboradorId, vigenteDesde])
-  @@index([colaboradorId])
+  @@index([tipoContratoJornadaId])
   @@map("jornada_vigencias")
 }
 
-/// Disponibilidade de um dia da semana (só regime SEMANAL). Sem linha = sem horário.
+/// Disponibilidade de um dia da semana. Sem linha = sem horário nesse dia.
 model DisponibilidadeDia {
   id         String          @id @default(uuid())
   vigenciaId String
@@ -83,21 +81,13 @@ model DisponibilidadeDia {
 }
 ```
 
-- `TipoContratoJornada` ganha a relação inversa `vigencias JornadaVigencia[]`; o
-  **Restrict** continua impedindo remover contrato em uso.
+- `TipoContratoJornada` ganha a relação inversa `jornadaVigencias`; o
+  **Restrict** impede remover contrato usado por vigência, e o "contrato em uso"
+  passa a contar as vigências além das fichas.
 - `turno` **fica no `Colaborador`** (não entra no cálculo de horas; só agrupa a
   escala).
-- `Colaborador.tipoContratoJornadaId`, `folgaDiaSemana`, `grupoDomingo` e os seis
-  horários **ficam no banco** até a limpeza (Fase 7), mas deixam de ser lidos
-  pelos cálculos. Enquanto a pessoa só tiver a vigência base `LEGADO_6X1`, a
-  edição pelo app antigo **espelha** os campos na vigência base (o mesmo efeito
-  retroativo de hoje, nada pior). Com uma vigência SEMANAL, a API **recusa**
-  editar esses campos legados (409, "atualize o app").
-
-**Migração da Fase 1** (`9zzu_jornada_vigencia`, aditiva): cria as tabelas e, para
-cada colaborador, uma vigência `LEGADO_6X1` com `vigenteDesde = 1970-01-01`,
-`tipoContratoJornadaId`, `grupo = grupoDomingo` e os campos `legado*` copiados da
-ficha. Nenhum número muda.
+- **Migração da Fase 1** (`9zzu_jornada_vigencia`): só cria as duas tabelas. Não
+  há backfill — ninguém tem vigência até a Fase 4.
 
 ### 2.2 Tipo de contrato (Fase 2)
 
@@ -108,20 +98,21 @@ Campos novos em `TipoContratoJornada` (migração `9zzv_contrato_5x2`, aditiva):
 | `cargaFeriadoMin` | `Int` | 440 | 440 | carga do feriado (hoje `CARGA_FERIADO_MS` fixo) |
 | `feriadoAdicional100` | `Boolean` | true | true | chip "Feriado" em "Dias com adicional de 100%" |
 | `limiteTrabalhoDiaMin` | `Int?` | null | null | TAC se trabalhado > limite (null = sem verificação) |
-| `intervaloPrevistoMin` | `Int` | 60 | 120 | só para conferir disponibilidade × carga |
 | `folgasPorSemana` | `Int` | 1 | 1 | máximo de folgas fixas; 5x2 = 2 |
 | `folgasFixasPadrao` | `Int[]` | `{}` | `{}` | folgas de quem não tem grupo e deixou a ficha vazia |
 | `permiteFolgaSabado` | `Boolean` | false | false | sábado como folga fixa |
 
 - `riscoTac1h30Min` e `riscoTac1h40Min` **mantêm o nome** no banco e na API
   (o APK antigo os envia), mas passam a significar **1º e 2º aviso preventivo**
-  (minutos de extra). A tela mostra "1º aviso" e "2º aviso".
-- `trabalhaDomingo` fica só para o regime `LEGADO_6X1`; o regime SEMANAL o ignora.
-  Some da tela para contratos novos.
+  (minutos de extra), definidos em cada contrato (decisão 14). A tela mostra
+  "1º aviso" e "2º aviso".
+- `trabalhaDomingo` fica só para o regime legado; o regime das vigências o
+  ignora. Some da tela para contratos novos.
 - Criar contrato pela API usa padrão `folgasPorSemana = 2`.
-- **Contrato em uso** (alguma vigência o referencia) tem as **regras de cálculo
-  travadas** (R2.8). A resposta de `GET /tipos-contrato` ganha `emUso: boolean`.
-  Para mudar regras: `POST /tipos-contrato/:id/duplicar` e transferir (Fase 6).
+- **Contrato em uso** (alguma ficha legada ou vigência o referencia) tem as
+  **regras de cálculo travadas** (R2.8). A resposta de `GET /tipos-contrato` ganha
+  `emUso: boolean`. Para mudar regras: `POST /tipos-contrato/:id/duplicar` e
+  transferir (Fase 6).
 
 `RegrasContrato` (`ponto.domain.ts`) ganha `feriadoAdicional100`,
 `limiteTrabalhoDiaMs: number | null` e passa a receber `cargaFeriadoMs` do banco
@@ -149,126 +140,129 @@ model RodizioFolgasVigencia {
 
 A migração `9zzw_rodizio_folgas` semeia a vigência de **2026-11-23** com o padrão
 acima (decisão 5). O rodízio antigo de domingo (`ConfigSistema.domingoAncora*`)
-**não é apagado**: continua valendo para as vigências `LEGADO_6X1`.
+**não é apagado**: continua valendo para o regime legado.
 
 ## 3. Domínio puro (`backend/src/jornada-vigencia/jornada-vigencia.domain.ts`)
 
 Sem Prisma, sem relógio. Testes de propriedade (ADR 0003).
 
 ```ts
-type Grupo = 'G1' | 'G2' | 'G3';
-
 interface VigenciaJornada {
   id: string;
   vigenteDesde: Date;            // 00:00 UTC
-  regime: 'LEGADO_6X1' | 'SEMANAL';
   tipoContratoJornadaId: string;
-  grupo: Grupo | null;
-  folgasFixas: number[];
-  legado: FichaEscalaTurno | null;            // só LEGADO_6X1 (tipo de escala-domingo.domain)
-  disponibilidade: Map<number, { entrada: string; saida: string }>; // só SEMANAL
+  grupo: GrupoDomingo | null;
+  folgasFixas: readonly number[];
+  disponibilidade: ReadonlyMap<number, { entrada: string; saida: string }>;
 }
 
-interface RodizioFolgas {
-  vigenteDesde: Date;            // segunda-feira
-  semanasNoCiclo: number;
-  padrao: Record<Grupo, number[][]>;
+interface JornadaDaPessoa {
+  colaboradorId: string;
+  legado: FichaEscalaTurno & { tipoContratoJornadaId: string }; // campos do Colaborador
+  vigencias: readonly VigenciaJornada[];                          // ordenadas por vigenteDesde
 }
 
 interface JornadaPrevista {
-  vigenciaId: string;
   regime: 'LEGADO_6X1' | 'SEMANAL';
+  vigenciaId: string | null;     // null no regime legado
   tipoContratoJornadaId: string;
   regras: RegrasContrato;
-  grupo: Grupo | null;
-  folga: boolean;
-  entrada: string | null;        // null = sem turno afirmado (folga, sem horário, sem âncora/rodízio)
+  grupo: GrupoDomingo | null;
+  folga: boolean;                // regra única de folga do dia
+  entrada: string | null;        // ver nota abaixo
   saida: string | null;
   cargaMs: number;
   contaComo100: boolean;
   geraDebito: boolean;           // = !contaComo100
 }
 
-vigenciaNoDia(vigencias, dia): VigenciaJornada | null      // maior vigenteDesde <= dia
-segundaDaSemana(dia): Date                                  // dia − ((dow + 6) % 7)
-rodizioNoDia(rodizios, dia): RodizioFolgas | null
-semanaDoCiclo(rodizio, dia): number                         // floor(semanas desde o início) mod semanasNoCiclo
-folgasDoGrupoNaSemana(rodizio, grupo, dia): number[]
-gruposDeFolgaNoDia(rodizio, dia): Grupo[]
-folgasFixasEfetivas(vigencia, contrato): number[]           // ficha ou, vazia, folgasFixasPadrao
-validarRodizio(rodizio): { erros: string[]; avisos: string[] }         // R3.3 / R3.4
-avisosDaVigencia(vigencia, contrato, rodizio): AvisoJornada[]          // R4.6
-previstoNoDia(vigencia, dia, ctx): JornadaPrevista
+vigenciaNoDia(vigencias, dia)                // maior vigenteDesde <= dia, ou null
+previstoNoDia(pessoa, dia, ctx)              // §3.1
+folgasFixasEfetivas(vigencia, padraoContrato)
+avisosDaVigencia(vigencia, regras, opcoes)   // §3.2
+// Fase 3: segundaDaSemana, rodizioNoDia, semanaDoCiclo, folgasDoGrupoNaSemana,
+//         gruposDeFolgaNoDia, validarRodizio
 ```
 
 ### 3.1 Algoritmo de `previstoNoDia`
 
 ```
-ctx = { regras(contratoId), ehFeriado, ancoraDomingo, rodizioNoDia, folgaEscalaEntry? }
-contrato   = ctx.regras(v.tipoContratoJornadaId)
-dow        = dia.getUTCDay()
-cargaMs    = cargaBaseDoDia(dow, ehFeriado, contrato)        // feriado → contrato.cargaFeriadoMs
-contaCom100= diaPagaAdicional100(dow, ehFeriado, contrato)
+ctx = { regras(contratoId), ehFeriado, ancoraDomingo, folgaNaEscalaSemanal, rodizio? }
+v = vigenciaNoDia(pessoa.vigencias, dia)
 
-se v.regime == LEGADO_6X1:
-   // EXATAMENTE a regra de hoje (FolgaService + escala-domingo.domain):
-   folga   = ficha afirma folga (legadoFolgaDiaSemana != null) ? ehDiaDeFolga(legado, dia, ancora)
-           : ctx.folgaEscalaEntry(dia) ?? ehDiaDeFolga(legado, dia, ancora)
-   entrada = folga ? null : entradaEsperadaNoDia(legado, dia, ancora, ehFeriado)
-   saida   = folga ? null : saidaEsperadaNoDia(legado, dia, ancora, ehFeriado)
+se v == null:                                  // REGIME LEGADO = o código de hoje
+   ficha   = pessoa.legado
+   contrato= ctx.regras(ficha.tipoContratoJornadaId)
+   folga   = ficha.folgaDiaSemana != null ? ehDiaDeFolga(ficha, dia, ancora)     // FolgaService, passo 1
+           : ctx.folgaNaEscalaSemanal || ehDiaDeFolga(ficha, dia, ancora)        // passos 2 e 3
+   entrada = entradaEsperadaNoDia(ficha, dia, ancora, ehFeriado)                 // sem olhar a EscalaEntry, como hoje
+   saida   = saidaEsperadaNoDia(ficha, dia, ancora, ehFeriado)
 
-se v.regime == SEMANAL:
-   se v.grupo:
-       r = ctx.rodizioNoDia(dia)
-       se !r: folga = false; entrada = saida = null      // não afirma (igual a "sem âncora" hoje)
-       senão: folga = folgasDoGrupoNaSemana(r, v.grupo, dia).includes(dow)
-   senão:
-       folga = folgasFixasEfetivas(v, contrato).includes(dow)
-   d = v.disponibilidade.get(dow)                        // feriado usa a do próprio dia (decisão 9)
-   entrada = folga ? null : d?.entrada ?? null
-   saida   = folga ? null : d?.saida ?? null
+senão:                                         // REGIME SEMANAL
+   contrato = ctx.regras(v.tipoContratoJornadaId)
+   se v.grupo: folga = rodizio vigente ? folgasDoGrupoNaSemana(...).includes(dow) : false   // sem rodízio: não afirma
+   senão:      folga = folgasFixasEfetivas(v, contrato).includes(dow)
+   d = v.disponibilidade.get(dow)              // feriado usa a do próprio dia (decisão 9)
+   entrada = folga || (v.grupo && !rodizio) ? null : d?.entrada ?? null
+   saida   = idem com d?.saida
 
-geraDebito = !contaCom100
+cargaMs      = cargaBaseDoDia(dow, ehFeriado, contrato)
+contaComo100 = diaPagaAdicional100(dow, ehFeriado, contrato)
+geraDebito   = !contaComo100
 ```
+
+**Nota sobre `entrada` no regime legado.** Hoje `entradaEsperadaNoDia` ignora a
+folga que só a escala semanal (`EscalaEntry`) afirma, e quem precisa saber se a
+pessoa está escalada combina as duas coisas (`entrada != null && !folga`). A
+jornada prevista preserva isso de propósito: no regime legado, `entrada` e
+`folga` são exatamente os valores de hoje, e o consumidor continua combinando
+como já combina. No regime SEMANAL, `entrada` já vem nula em dia de folga.
 
 Comportamentos mantidos de propósito: feriado **não** dá folga; ponto em dia de
 folga é aceito e apontado (ADR 0019) e o dia é calculado com a carga do dia da
 semana, como hoje; sem turno afirmado não se cobra ponto (ADR 0026).
 
-### 3.2 Avisos da vigência (R4.6)
+### 3.2 Avisos da vigência (R4.6, decisão 16)
 
-Para cada dia da semana que **pode** ser de trabalho (com grupo: todos os dias em
-que o grupo não folga em pelo menos uma semana do ciclo, ou seja, todos; sem
-grupo: os que não são folga fixa):
+Para cada dia da semana que **pode** ser de trabalho (com grupo: todos, porque o
+rodízio gira e o sábado nunca é folga de grupo; sem grupo: os que não são folga
+fixa):
 
 - `DIA_SEM_HORARIO` — sem disponibilidade.
-- `DISPONIBILIDADE_DIFERENTE_DA_CARGA` — `(saida − entrada − intervaloPrevisto) ≠
-  carga do dia` (informa os dois valores).
+- `DISPONIBILIDADE_FORA_DA_CARGA` — o intervalo implícito
+  `(saida − entrada) − carga do dia` fica abaixo de `intervaloMinimo` ou acima de
+  `intervaloMaximo` do contrato. Exceção: intervalo implícito **zero** é aceito
+  quando o contrato não exige intervalo e a carga do dia cabe em
+  `maxTrabalhoSemIntervalo` (jornada curta). O aviso informa a carga e o
+  intervalo implícito.
 - `SEM_FOLGA` — sem grupo e sem folgas fixas (nem na ficha nem no contrato).
 
 Avisos não bloqueiam. Bloqueiam (400): horário fora de `HH:mm`, só entrada ou só
-saída, saída ≤ entrada, folgas fixas acima de `folgasPorSemana`, sábado sem
-`permiteFolgaSabado`, grupo inválido, grupo sem rodízio vigente na data.
+saída, saída ≤ entrada, dia repetido, folgas fixas repetidas ou acima de
+`folgasPorSemana`, sábado sem `permiteFolgaSabado`, grupo inválido, grupo sem
+rodízio vigente na data (Fase 3), folgas fixas junto com grupo.
 
 ## 4. Serviço (`backend/src/jornada-vigencia/`)
 
 `JornadaVigenciaService` (módulo `JornadaVigenciaModule`, exporta o serviço):
 
-- `consultor(inicio, fimExclusivo)` → carrega **de uma vez** (sem N+1) as
-  vigências e disponibilidades de todos os colaboradores, os rodízios, a âncora de
-  domingo, os feriados do período, as regras de cada contrato usado e (só para
-  LEGADO) as folgas de `EscalaEntry`. Devolve um objeto síncrono:
-  - `previsto(ids, dia): JornadaPrevista | null` — `ids` aceita as mesmas
-    identidades que `FolgaService.ehFolga` (Colaborador.id e Fiscal.id); resolve a
-    ficha pelo vínculo existente (`colaborador-vinculo.ts`).
+- `consultor(dias)` → carrega **de uma vez** (sem N+1): as fichas (campos legados)
+  de todos os colaboradores, as vigências e disponibilidades, a âncora de domingo
+  (se houver domingo), os feriados dos dias, as folgas de `EscalaEntry` (regime
+  legado) e as regras de cada contrato usado. Devolve um objeto síncrono:
+  - `previsto(ids, dia, ehFeriado?)`: `JornadaPrevista | null` — `ids` aceita as
+    mesmas identidades que `FolgaService.ehFolga` (Colaborador.id e Fiscal.id) e
+    usa a primeira que for uma ficha. `ehFeriado` omitido = o calendário
+    carregado; informado = o que o chamador já usa hoje (para não mudar quem hoje
+    ignora feriado).
   - `vigencia(ids, dia)`.
 - `regrasNoDia(colaboradorId, dia)` — substitui `TiposContratoService.regrasDoColaborador`.
-- CRUD: `listar(colaboradorId)`, `gravar(colaboradorId, dto, autor)` (upsert por
-  data), `remover(vigenciaId, autor)`; todos chamam
-  `CicloFolhaService.exigirCicloAberto(vigenteDesde)` (R1.4) e devolvem os avisos.
-- `FolgaService` passa a ser um adaptador fino sobre o consultor (mantém a
-  interface `consultor(dias)`/`ehFolga`/`semFolgaNaFicha` para reduzir a mudança
-  nos consumidores).
+- `listar(colaboradorId)` — histórico de vigências (Fase 4).
+- Escrita (`gravar`/`remover`) com `CicloFolhaService.exigirCicloAberto` e
+  avisos — **Fase 4**, junto com a tela.
+- `FolgaService` passa a perguntar ao consultor (mantém a interface
+  `consultor(dias)`/`ehFolga`/`semFolgaNaFicha` para reduzir a mudança nos
+  consumidores).
 
 ## 5. TAC e avisos (Fase 2)
 
@@ -293,9 +287,9 @@ saída, saída ≤ entrada, folgas fixas acima de `folgasPorSemana`, sábado sem
 
 | Método e rota | Permissão | Fase | O quê |
 |---|---|---|---|
-| `GET /colaboradores/:id/jornada` | `COLABORADORES_PERFIL` ou `OPERADORES_CRUD` | 1 | vigente, histórico de vigências, próximas folgas (14 dias) |
-| `PUT /colaboradores/:id/jornada` | `OPERADORES_CRUD` | 1 | grava a vigência de `aPartirDe` (upsert); devolve `{ vigencia, avisos }` |
-| `DELETE /colaboradores/:id/jornada/:vigenciaId` | `OPERADORES_CRUD` | 1 | remove (nunca a base; nunca em ciclo fechado) |
+| `GET /colaboradores/:id/jornada` | `COLABORADORES_PERFIL` ou `OPERADORES_CRUD` | 4 | vigente, histórico de vigências, próximas folgas (14 dias) |
+| `PUT /colaboradores/:id/jornada` | `OPERADORES_CRUD` | 4 | grava a vigência de `aPartirDe` (upsert); devolve `{ vigencia, avisos }` |
+| `DELETE /colaboradores/:id/jornada/:vigenciaId` | `OPERADORES_CRUD` | 4 | remove (nunca em ciclo fechado) |
 | `PATCH /tipos-contrato/:id/padrao` | `ADMIN_DADOS` | 2 | troca o contrato padrão |
 | `POST /tipos-contrato/:id/duplicar` | `ADMIN_DADOS` | 2 | cópia inativa e editável |
 | `GET/PUT /config/rodizio-folgas` | `ESCALA_DOMINGO_CONFIG` | 3 | vigências do rodízio, validação e prévia |
@@ -315,7 +309,9 @@ Corpo de `PUT /colaboradores/:id/jornada`:
 ```
 
 `POST /colaboradores` passa a aceitar o mesmo bloco `jornada` (Fase 4); sem ele,
-grava a vigência base a partir dos campos legados (compatibilidade com o APK).
+a pessoa fica no regime legado (compatibilidade com o APK). Com vigência, editar
+um campo legado com valor **diferente** do gravado devolve 409 (R1.3a); reenviar
+o mesmo valor (o app antigo manda a ficha inteira) é aceito.
 
 ## 7. App (mobile)
 
@@ -360,9 +356,10 @@ vigência, pode-se lançar retroativamente.
 ## 9. Validação e riscos
 
 - **Regressão do legado (Fase 1):** teste de propriedade — para fichas e datas
-  aleatórias em `LEGADO_6X1`, `previstoNoDia` == `ehDiaDeFolga` /
-  `entradaEsperadaNoDia` / `saidaEsperadaNoDia` / `cargaBaseDoDia` atuais. O
-  `contrato-6x1-congelado.spec.ts` continua passando.
+  aleatórias sem vigência, `previstoNoDia` == a regra de folga do `FolgaService`,
+  `entradaEsperadaNoDia`, `saidaEsperadaNoDia`, `cargaBaseDoDia` e
+  `diaPagaAdicional100` atuais. O `contrato-6x1-congelado.spec.ts` continua
+  passando.
 - **Comparação com cópia do banco (Fase 1, antes do deploy):** restaurar o export
   do Render num PostgreSQL local, rodar a Central (`resumoCiclo(0)`,
   `resumoCiclo(-1)`, `exportacao`, `inconsistencias`) em `main` e na branch, e
@@ -377,8 +374,8 @@ vigência, pode-se lançar retroativamente.
   Conferir que não há compensação aprovada para dias ≥ 23/11 antes de carregar as
   vigências.
 - **APK antigo:** respostas mantêm `folgaDiaSemana`, `entradaSemana`…,
-  `grupoFolgaDomingo` até a Fase 7; escrever campos legados em quem já tem vigência
-  SEMANAL devolve 409.
+  `grupoFolgaDomingo` até a Fase 7; mudar um campo legado de quem já tem vigência
+  devolve 409.
 - **Desempenho:** o consultor carrega tudo por período em poucas consultas; as
   tabelas são pequenas (uma linha por pessoa e mudança).
 

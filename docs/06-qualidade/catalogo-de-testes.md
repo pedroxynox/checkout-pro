@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 138 arquivos, 1339 casos. **Mobile:** 43 arquivos, 369 casos. **Total: 1708 casos.**
+> **Backend:** 140 arquivos, 1372 casos. **Mobile:** 43 arquivos, 369 casos. **Total: 1741 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -105,6 +105,8 @@
 | `src/insumos/insumos.resumo.spec.ts` | 2 | 1 |
 | `src/insumos/insumos.service.spec.ts` | 12 | 1 |
 | `src/insumos/sacolas.domain.spec.ts` | 51 | 14 |
+| `src/jornada-vigencia/jornada-vigencia.domain.spec.ts` | 22 | 6 |
+| `src/jornada-vigencia/jornada-vigencia.service.spec.ts` | 9 | 3 |
 | `src/metas/metas.domain.spec.ts` | 16 | 6 |
 | `src/metas/metas.service.spec.ts` | 16 | 5 |
 | `src/notificacoes/notificacoes.properties.spec.ts` | 2 | 1 |
@@ -150,7 +152,7 @@
 | `src/reset-operacional/reset-operacional.domain.spec.ts` | 8 | 3 |
 | `src/reset-operacional/reset-operacional.properties.spec.ts` | 3 | 1 |
 | `src/tipos-contrato/tipos-contrato.adapter.spec.ts` | 5 | 1 |
-| `src/tipos-contrato/tipos-contrato.service.spec.ts` | 9 | 1 |
+| `src/tipos-contrato/tipos-contrato.service.spec.ts` | 11 | 1 |
 
 ## Mobile (Jest + Testing Library)
 

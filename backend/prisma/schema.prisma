@@ -1166,7 +1166,11 @@ model TipoContratoJornada {
   trabalhaDomingo                Boolean @default(true)
 
   // Colaboradores que usam este contrato (para bloquear a remoção quando em uso).
-  colaboradores Colaborador[]
+  colaboradores    Colaborador[]
+  // Vigências da jornada que usam este contrato (spec jornada-5x2). Também
+  // contam como "em uso": um contrato referenciado só pelo histórico continua
+  // decidindo os dias daquele período.
+  jornadaVigencias JornadaVigencia[]
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @default(now()) @updatedAt
@@ -1238,12 +1242,70 @@ model Colaborador {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @default(now()) @updatedAt
 
-  identificadores ColaboradorIdentificador[]
-  ferias          FeriasColaborador[]
-  atestados       Atestado[]
+  identificadores  ColaboradorIdentificador[]
+  ferias           FeriasColaborador[]
+  atestados        Atestado[]
+  jornadaVigencias JornadaVigencia[]
 
   @@map("colaboradores")
 }
+
+/// VIGÊNCIA DA JORNADA (spec `jornada-5x2`, ADR 0027). A partir de
+/// `vigenteDesde`, os dias do colaborador são calculados com ESTA linha — tipo de
+/// contrato, grupo do rodízio de folgas, folgas fixas e disponibilidade por dia —
+/// até a próxima vigência. Os dias ANTERIORES à primeira vigência seguem a ficha
+/// legada (6x1) que está no próprio `Colaborador` (`folgaDiaSemana`, blocos de
+/// horário, `grupoDomingo`, `tipoContratoJornadaId`); depois da primeira
+/// vigência esses campos ficam congelados, porque passaram a ser a história.
+/// Assim corrigir hoje uma batida de um dia antigo usa as regras daquele dia.
+model JornadaVigencia {
+  id            String      @id @default(uuid())
+  colaboradorId String
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  // Dia civil de início (00:00 UTC, mesmo rótulo das demais datas de negócio).
+  vigenteDesde  DateTime
+
+  // Regras do período. Restrict: contrato com vigência não pode ser apagado.
+  tipoContratoJornadaId String
+  tipoContratoJornada   TipoContratoJornada @relation(fields: [tipoContratoJornadaId], references: [id])
+
+  // 'G1' | 'G2' | 'G3' | null — grupo do rodízio de FOLGAS. Sem grupo, as folgas
+  // são as fixas abaixo (ou as padrão do contrato quando a lista está vazia).
+  grupo       String?
+  // Dias de folga fixa (0=domingo … 6=sábado), só para quem não tem grupo.
+  folgasFixas Int[]   @default([])
+
+  disponibilidade DisponibilidadeDia[]
+
+  motivo        String?
+  criadoPor     String? // login de quem gravou
+  criadoEm      DateTime @default(now())
+  atualizadoPor String?
+  atualizadoEm  DateTime @default(now()) @updatedAt
+
+  @@unique([colaboradorId, vigenteDesde])
+  @@index([tipoContratoJornadaId])
+  @@map("jornada_vigencias")
+}
+
+/// Disponibilidade (horário de entrada e saída) de um dia da semana dentro de
+/// uma vigência da jornada. Sem linha para o dia = sem horário nesse dia (o
+/// sistema não cobra ponto). É o horário que a escala mostra e o ponto cobra.
+model DisponibilidadeDia {
+  id         String          @id @default(uuid())
+  vigenciaId String
+  vigencia   JornadaVigencia @relation(fields: [vigenciaId], references: [id], onDelete: Cascade)
+  // 0=domingo … 6=sábado (a tela mostra de segunda a domingo).
+  diaSemana  Int
+  // "HH:mm"; a saída é posterior à entrada (turnos que cruzam a meia-noite não
+  // são tratados).
+  entrada    String
+  saida      String
+
+  @@unique([vigenciaId, diaSemana])
+  @@map("disponibilidade_dias")
+}
+
 
 /// Período de FÉRIAS (ou afastamento programado) de um colaborador. É uma
 /// inativação NÃO rígida: enquanto o período está vigente, o colaborador some

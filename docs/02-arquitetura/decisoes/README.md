@@ -46,3 +46,5 @@ numerado (`NNNN-titulo-curto.md`).
 | 0025 | ["Cancelamentos Totais": indicador calculado, com teto próprio](0025-cancelamentos-totais-indicador-calculado.md) |
 
 | 0026 | [O horário é o da ficha; nada na escala o sobrepõe](0026-horario-e-o-da-ficha.md) |
+
+| 0027 | [Vigência da jornada: cada dia é calculado com o que valia naquele dia](0027-vigencia-da-jornada.md) |

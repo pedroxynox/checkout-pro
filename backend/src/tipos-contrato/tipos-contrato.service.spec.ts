@@ -76,6 +76,10 @@ function montar() {
       // Sobrescrito nos testes que precisam simular "em uso".
       count: jest.fn(() => Promise.resolve(0)),
     },
+    jornadaVigencia: {
+      // Idem, para o "em uso" pelo histórico da jornada (spec jornada-5x2).
+      count: jest.fn(() => Promise.resolve(0)),
+    },
   };
   const service = new TiposContratoService(prisma as unknown as PrismaService);
   return { service, store, prisma };
@@ -141,12 +145,27 @@ describe('TiposContratoService', () => {
   it('não remove um contrato EM USO por colaboradores', async () => {
     const { service, store, prisma } = montar();
     store.push({ id: 'c', nome: '5x2', ativo: true, padrao: false });
-    (
-      prisma.colaborador.count as jest.Mock
-    ).mockResolvedValueOnce(3);
+    (prisma.colaborador.count as jest.Mock).mockResolvedValueOnce(3);
     await expect(service.remover('c')).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  it('não remove um contrato que está no histórico de jornada (vigência)', async () => {
+    const { service, store, prisma } = montar();
+    store.push({ id: 'v', nome: '6x1 antigo', ativo: false, padrao: false });
+    (prisma.jornadaVigencia.count as jest.Mock).mockResolvedValueOnce(2);
+    await expect(service.remover('v')).rejects.toThrow(/histórico de jornada/);
+    expect(prisma.tipoContratoJornada.delete).not.toHaveBeenCalled();
+  });
+
+  it('remove um contrato sem fichas nem vigências', async () => {
+    const { service, store, prisma } = montar();
+    store.push({ id: 'livre', nome: 'Rascunho', ativo: true, padrao: false });
+    await service.remover('livre');
+    expect(prisma.tipoContratoJornada.delete).toHaveBeenCalledWith({
+      where: { id: 'livre' },
+    });
   });
 
   it('falha ao editar um contrato inexistente', async () => {
