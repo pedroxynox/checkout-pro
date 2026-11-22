@@ -43,6 +43,11 @@ import {
 } from '../ponto/sugestao-folga.domain';
 import { CicloFolhaService } from '../ciclo-folha/ciclo-folha.service';
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
+import {
+  ConsultorJornada,
+  JornadaVigenciaService,
+} from '../jornada-vigencia/jornada-vigencia.service';
+import { JornadaPrevista } from '../jornada-vigencia/jornada-vigencia.domain';
 import { FeriasService } from '../ferias/ferias.service';
 import { PeriodoFerias, estaDeFerias } from '../ferias/ferias.domain';
 import { mapearFiscalColaborador } from '../fiscais/colaborador-vinculo';
@@ -656,6 +661,12 @@ const FICHA_ESCALA_VAZIA: FichaEscala = {
 };
 
 /**
+ * A jornada prevista de cada dia de UMA pessoa (folga, turno, carga, 100%,
+ * débito e regras do contrato daquele dia — ADR 0027).
+ */
+type PrevistoDoDia = (dia: Date, ehFeriado: boolean) => JornadaPrevista;
+
+/**
  * Central de Jornada — o "portal" de controle da jornada de cada colaborador no
  * ciclo de folha (26→25). Reaproveita `calcularJornadaDia` (consciente de
  * feriado = domingo/100%) sobre as batidas do Relógio Ponto (`batidaPonto`, que
@@ -711,6 +722,11 @@ export class CentralJornadaService {
     // porque a ficha diz que a pessoa trabalharia. Opcional: sem ele, ninguém
     // é tratado como de férias (comportamento antigo).
     @Optional() private readonly ferias?: FeriasService,
+    // Vigência da jornada (ADR 0027): cada dia com o contrato, a folga e o turno
+    // que valiam nele. Opcional e no FIM da lista, como os demais: sem ele (os
+    // testes unitários antigos), a Central reproduz a regra de antes — ficha,
+    // rodízio de domingo, `FolgaService` e o contrato da ficha.
+    @Optional() private readonly jornada?: JornadaVigenciaService,
   ) {}
 
   /** Férias do intervalo por `colaboradorId` (vazio sem o serviço). */
@@ -746,6 +762,74 @@ export class CentralJornadaService {
     return cargaBaseDoDia(dia.getUTCDay(), ehFeriado, regras);
   }
 
+  /**
+   * A jornada prevista de cada dia de UMA pessoa.
+   *
+   * Com o serviço de vigência, é a fonte única: o contrato, a folga e o turno
+   * DAQUELE dia — por isso corrigir hoje um dia antigo usa as regras de então.
+   * Sem ele, reproduz exatamente a regra de antes: turno pela ficha e rodízio
+   * de domingo, folga pelo `FolgaService` (nenhuma, sem o serviço) e o contrato
+   * da ficha em todos os dias.
+   */
+  private async previstorDe(
+    dados: {
+      consultorJornada: ConsultorJornada | null;
+      ancora: AncoraDomingo | null;
+      consultorFolga: ConsultorFolga | null;
+    },
+    ficha: (FichaEscala & { tipoContratoJornadaId?: string | null }) | null,
+    ids: Set<string>,
+  ): Promise<PrevistoDoDia> {
+    const lista = [...ids];
+    const regrasDaFicha = await this.regrasDe(ficha?.tipoContratoJornadaId);
+    const legado = (dia: Date, ehFeriado: boolean): JornadaPrevista => {
+      const diaSemana = dia.getUTCDay();
+      const folga = dados.consultorFolga?.ehFolga(dia, lista) ?? false;
+      const entrada = entradaEsperadaNoDia(
+        ficha ?? FICHA_ESCALA_VAZIA,
+        dia,
+        dados.ancora,
+        ehFeriado,
+      );
+      const contaComo100 = diaPagaAdicional100(
+        diaSemana,
+        ehFeriado,
+        regrasDaFicha,
+      );
+      return {
+        regime: 'LEGADO_6X1',
+        vigenciaId: null,
+        tipoContratoJornadaId: ficha?.tipoContratoJornadaId ?? '',
+        regras: regrasDaFicha,
+        grupo: null,
+        folga,
+        entrada,
+        saida: null,
+        escalado: !folga && entrada != null,
+        cargaMs: this.baseDoDia(dia, ehFeriado, regrasDaFicha),
+        contaComo100,
+        geraDebito: !contaComo100,
+      };
+    };
+    const consultor = dados.consultorJornada;
+    if (!consultor) return legado;
+    return (dia, ehFeriado) =>
+      consultor.previsto(lista, dia, ehFeriado) ?? legado(dia, ehFeriado);
+  }
+
+  /**
+   * Regras do contrato da pessoa NUM dia (vigência daquele dia ou a ficha antes
+   * dela). Sem serviço de contratos, o padrão.
+   */
+  private async regrasNoDia(
+    colaboradorId: string | null | undefined,
+    dia: Date,
+  ): Promise<RegrasContrato> {
+    return this.tiposContrato
+      ? this.tiposContrato.regrasDoColaborador(colaboradorId ?? null, dia)
+      : REGRAS_PADRAO;
+  }
+
   /** Carrega os dados brutos do ciclo (pessoas, batidas, ausências, feriados). */
   private async carregarCiclo(deslocamento: number) {
     const periodo = periodoFolhaDeslocado(agoraNaBrasilia(), deslocamento);
@@ -764,6 +848,7 @@ export class CentralJornadaService {
       consultorFolga,
       compensacoes,
       feriasPorColaborador,
+      consultorJornada,
     ] = await Promise.all([
       this.prisma.colaborador.findMany({
         where: {
@@ -808,9 +893,12 @@ export class CentralJornadaService {
         select: { id: true, nome: true, usuarioId: true },
       }),
       this.prisma.usuario.findMany({ select: { id: true, login: true } }),
-      this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
-      // Regra única de folga do ciclo inteiro, numa consulta só.
-      this.folga
+      // Âncora e folga só para o caminho antigo: com a jornada prevista, as duas
+      // já vêm dela (e carregá-las de novo seria ler tudo duas vezes).
+      !this.jornada && this.escalaDomingo
+        ? this.escalaDomingo.obterAncora()
+        : null,
+      !this.jornada && this.folga
         ? this.folga.consultor(diasDoPeriodo(inicio, fimExclusivo))
         : null,
       // Compensações de horas aprovadas do ciclo (ADR 0021). Função livre, e não
@@ -819,6 +907,10 @@ export class CentralJornadaService {
       carregarCompensacoesAprovadas(this.prisma, inicio, fimExclusivo),
       // Férias do ciclo inteiro, numa consulta só.
       this.feriasNoIntervalo(inicio, fimExclusivo),
+      // Jornada prevista do ciclo inteiro (ADR 0027), numa carga só.
+      this.jornada
+        ? this.jornada.consultor(diasDoPeriodo(inicio, fimExclusivo))
+        : null,
     ]);
 
     // Um fiscal bate ponto pela sua identidade de Fiscal (batida.pessoaId =
@@ -852,6 +944,7 @@ export class CentralJornadaService {
       consultorFolga,
       compensacoes,
       feriasPorColaborador,
+      consultorJornada,
     };
   }
 
@@ -927,6 +1020,7 @@ export class CentralJornadaService {
         consultorFolga: null as ConsultorFolga | null,
         compensacoes: new Map<string, CompensacaoAplicada>(),
         feriasPorColaborador: new Map<string, PeriodoFerias[]>(),
+        consultorJornada: null as ConsultorJornada | null,
       };
     }
 
@@ -956,36 +1050,42 @@ export class CentralJornadaService {
       consultorFolga,
       compensacoes,
       feriasPorColaborador,
+      consultorJornada,
     ] = await Promise.all([
-        this.prisma.batidaPonto.findMany({
-          where: {
-            data: { gte: inicio, lt: fimExclusivo },
-            OR: [{ colaboradorId }, { pessoaId: { in: idList } }],
-          },
-          orderBy: { hora: 'asc' },
-          select: {
-            id: true,
-            hora: true,
-            data: true,
-            pessoaId: true,
-            colaboradorId: true,
-          },
-        }),
-        this.prisma.ausencia.findMany({
-          where: {
-            data: { gte: inicio, lt: fimExclusivo },
-            OR: [{ colaboradorId }, { pessoaId: { in: idList } }],
-          },
-        }),
-        this.feriados.mapaNoPeriodo(inicio, fimExclusivo),
-        this.escalaDomingo ? this.escalaDomingo.obterAncora() : null,
-        // Regra única de folga do ciclo inteiro, numa consulta só.
-        this.folga
-          ? this.folga.consultor(diasDoPeriodo(inicio, fimExclusivo))
-          : null,
-        carregarCompensacoesAprovadas(this.prisma, inicio, fimExclusivo),
-        this.feriasNoIntervalo(inicio, fimExclusivo),
-      ]);
+      this.prisma.batidaPonto.findMany({
+        where: {
+          data: { gte: inicio, lt: fimExclusivo },
+          OR: [{ colaboradorId }, { pessoaId: { in: idList } }],
+        },
+        orderBy: { hora: 'asc' },
+        select: {
+          id: true,
+          hora: true,
+          data: true,
+          pessoaId: true,
+          colaboradorId: true,
+        },
+      }),
+      this.prisma.ausencia.findMany({
+        where: {
+          data: { gte: inicio, lt: fimExclusivo },
+          OR: [{ colaboradorId }, { pessoaId: { in: idList } }],
+        },
+      }),
+      this.feriados.mapaNoPeriodo(inicio, fimExclusivo),
+      // Âncora e folga só para o caminho antigo (ver `carregarCiclo`).
+      !this.jornada && this.escalaDomingo
+        ? this.escalaDomingo.obterAncora()
+        : null,
+      !this.jornada && this.folga
+        ? this.folga.consultor(diasDoPeriodo(inicio, fimExclusivo))
+        : null,
+      carregarCompensacoesAprovadas(this.prisma, inicio, fimExclusivo),
+      this.feriasNoIntervalo(inicio, fimExclusivo),
+      this.jornada
+        ? this.jornada.consultor(diasDoPeriodo(inicio, fimExclusivo))
+        : null,
+    ]);
 
     return {
       periodo,
@@ -1001,6 +1101,7 @@ export class CentralJornadaService {
       consultorFolga,
       compensacoes,
       feriasPorColaborador,
+      consultorJornada,
     };
   }
 
@@ -1035,14 +1136,11 @@ export class CentralJornadaService {
     inicio: Date,
     fimExclusivo: Date,
     limite: Date,
-    ficha: FichaEscala,
-    ancora: AncoraDomingo | null,
     /**
-     * Regra única de folga do período, já carregada. `null` quando o serviço não
-     * está disponível — aí a folga vale só pela ficha.
+     * A jornada prevista de cada dia desta pessoa (`previstorDe`): folga, turno,
+     * carga, 100%/débito e as regras do contrato DAQUELE dia.
      */
-    consultorFolga: ConsultorFolga | null,
-    regras: RegrasContrato,
+    previsto: PrevistoDoDia,
     /**
      * Compensações de horas APROVADAS desta pessoa no ciclo (ADR 0021),
      * indexadas pelo ISO do dia. Vazio quando não há nenhuma — o caso normal.
@@ -1103,26 +1201,21 @@ export class CentralJornadaService {
      * A pessoa estava ESCALADA neste dia?
      *
      * Duas condições, e as duas importam:
-     *  - tem turno previsto (`entradaEsperadaNoDia`: ficha, rodízio de domingo,
-     *    feriado — a mesma regra da escala publicada);
-     *  - não está de folga pela **regra única** (`FolgaService`), que também lê a
-     *    folga marcada apenas na escala semanal.
+     *  - tem turno previsto (`entrada` da jornada prevista: a ficha ou a
+     *    vigência do dia, o rodízio, o feriado — a mesma regra da escala);
+     *  - não está de folga pela **regra única**, que também lê a folga marcada
+     *    apenas na escala semanal legada.
      *
      * Sem a segunda, um dia de descanso registrado só na escala semanal viraria
-     * uma falta apontada na card. Sem o serviço de folga (é `@Optional()`), vale
-     * só a ficha — o comportamento degrada, não quebra.
+     * uma falta apontada na card.
      */
-    /** O cadastro diz que este dia é FOLGA (descanso) desta pessoa? */
-    const ehFolgaNoDia = (dia: Date): boolean =>
-      consultorFolga?.ehFolga(dia, [...ids]) ?? false;
-
-    const escaladoNoDia = (dia: Date, ehFeriado: boolean): boolean => {
-      if (!entradaEsperadaNoDia(ficha, dia, ancora, ehFeriado)) return false;
+    const escaladoNoDia = (p: JornadaPrevista, dia: Date): boolean => {
+      if (!p.entrada) return false;
       // De férias, a pessoa sai da escala (a mesma regra da escala do dia e da
       // detecção automática de falta). Antes a Central só olhava a ficha e
       // apontava "faltou (não registrada)" em todos os dias das férias.
       if (estaDeFerias(ferias, dia)) return false;
-      return !ehFolgaNoDia(dia);
+      return !p.folga;
     };
 
     for (
@@ -1135,7 +1228,11 @@ export class CentralJornadaService {
       const diaSemana = dia.getUTCDay();
       const ehFeriado = feriadoMap.has(dia.getTime());
       const feriadoNome = feriadoMap.get(dia.getTime());
-      const baseMs = this.baseDoDia(dia, ehFeriado, regras);
+      // A jornada prevista DESTE dia: com vigência, o contrato, a folga e o turno
+      // daquele dia; antes dela, a ficha (ADR 0027).
+      const previstoDia = previsto(dia, ehFeriado);
+      const regras = previstoDia.regras;
+      const baseMs = previstoDia.cargaMs;
       const regs = batidasPorDia.get(k);
       const ausencia = ausenciaPorDia.get(k);
       const compensacao = compensacoes.get(k);
@@ -1143,7 +1240,7 @@ export class CentralJornadaService {
       // Domingo e feriado pagam a carga cumprida e NUNCA geram hora devida —
       // nem por déficit (trabalhou abaixo da base), nem por falta lançada como
       // débito. Vale para os dois casos tratados abaixo.
-      const diaGeraDebito = !diaPagaAdicional100(diaSemana, ehFeriado, regras);
+      const diaGeraDebito = previstoDia.geraDebito;
 
       if (regs && regs.length > 0) {
         const fimDia = inicioDoProximoDia(dia);
@@ -1203,9 +1300,7 @@ export class CentralJornadaService {
         // Numa compensação que libera o INÍCIO do turno, o horário combinado é o
         // da compensação, não o da ficha. Sem esta troca o sistema apontaria
         // atraso em quem seguiu exatamente a liberação que ele mesmo concedeu.
-        const entradaPrevista =
-          compensacao?.horaInicio ??
-          entradaEsperadaNoDia(ficha, dia, ancora, ehFeriado);
+        const entradaPrevista = compensacao?.horaInicio ?? previstoDia.entrada;
         const atrasoMinutos =
           minutosDeAtraso(entradaPrevista, entradaReal) ?? undefined;
         if (atrasoMinutos != null) atrasos += 1;
@@ -1215,7 +1310,7 @@ export class CentralJornadaService {
         // atualizar o sistema). O dia conta como qualquer dia de trabalho; o que
         // se faz é APONTAR, para o gestor corrigir a escala. Não é TAC, e não
         // entra em nenhum contador da pessoa — o problema é do cadastro.
-        const pontoEmFolga = ehFolgaNoDia(dia) || undefined;
+        const pontoEmFolga = previstoDia.folga || undefined;
         if (coletarDias)
           dias.push({
             data: k,
@@ -1346,7 +1441,7 @@ export class CentralJornadaService {
         // (turno da ficha, rodízio de domingo, feriado), e a regra única de folga
         // cobre a folga marcada só na escala semanal. Sem as duas, um dia de
         // descanso viraria uma falta apontada — o erro mais grave possível aqui.
-        const semRegistro = !escaladoNoDia(dia, ehFeriado);
+        const semRegistro = !escaladoNoDia(previstoDia, dia);
         dias.push({
           data: k,
           diaSemana,
@@ -1369,9 +1464,7 @@ export class CentralJornadaService {
           devidasMs: 0,
           tac: false,
           motivosTac: [],
-          entradaPrevista: semRegistro
-            ? null
-            : entradaEsperadaNoDia(ficha, dia, ancora, ehFeriado),
+          entradaPrevista: semRegistro ? null : previstoDia.entrada,
         });
       }
     }
@@ -1423,19 +1516,17 @@ export class CentralJornadaService {
 
     const pessoas: CentralPessoaResumo[] = await Promise.all(
       dados.pessoas.map(async (c) => {
-        const regras = await this.regrasDe(c.tipoContratoJornadaId);
+        const ids = this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador);
+        const previsto = await this.previstorDe(dados, c, ids);
         const { resumo } = this.calcularPessoa(
-          this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador),
+          ids,
           batidas,
           dados.ausencias,
           dados.feriadoMap,
           dados.inicio,
           dados.fimExclusivo,
           dados.limite,
-          c,
-          dados.ancora,
-          dados.consultorFolga,
-          regras,
+          previsto,
           this.compensacoesDe(dados.compensacoes, c.id),
           // Só totais: o resumo não precisa do detalhe diário de cada pessoa.
           false,
@@ -1512,7 +1603,7 @@ export class CentralJornadaService {
     // Carrega SÓ os dados desta pessoa (não o ciclo inteiro) — o detalhe abre
     // rápido mesmo com muitos colaboradores.
     const dados = await this.carregarCicloDaPessoa(deslocamento, colaboradorId);
-    const regras = await this.regrasDe(dados.pessoa?.tipoContratoJornadaId);
+    const previsto = await this.previstorDe(dados, dados.pessoa, dados.ids);
     const { resumo, dias } = this.calcularPessoa(
       dados.ids,
       dados.batidas,
@@ -1521,10 +1612,7 @@ export class CentralJornadaService {
       dados.inicio,
       dados.fimExclusivo,
       dados.limite,
-      dados.pessoa ?? FICHA_ESCALA_VAZIA,
-      dados.ancora,
-      dados.consultorFolga,
-      regras,
+      previsto,
       this.compensacoesDe(dados.compensacoes, colaboradorId),
       true,
       dados.feriasPorColaborador.get(colaboradorId) ?? [],
@@ -1570,7 +1658,7 @@ export class CentralJornadaService {
 
     for (const c of dados.pessoas) {
       const ids = this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador);
-      const regras = await this.regrasDe(c.tipoContratoJornadaId);
+      const previsto = await this.previstorDe(dados, c, ids);
       const { dias } = this.calcularPessoa(
         ids,
         batidas,
@@ -1579,10 +1667,7 @@ export class CentralJornadaService {
         dados.inicio,
         dados.fimExclusivo,
         dados.limite,
-        c,
-        dados.ancora,
-        dados.consultorFolga,
-        regras,
+        previsto,
         this.compensacoesDe(dados.compensacoes, c.id),
         true,
         dados.feriasPorColaborador.get(c.id) ?? [],
@@ -1737,19 +1822,17 @@ export class CentralJornadaService {
 
     const pessoas: RankingPessoa[] = await Promise.all(
       dados.pessoas.map(async (c) => {
-        const regras = await this.regrasDe(c.tipoContratoJornadaId);
+        const ids = this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador);
+        const previsto = await this.previstorDe(dados, c, ids);
         const { resumo, dias, atestados } = this.calcularPessoa(
-          this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador),
+          ids,
           batidas,
           dados.ausencias,
           dados.feriadoMap,
           dados.inicio,
           dados.fimExclusivo,
           dados.limite,
-          c,
-          dados.ancora,
-          dados.consultorFolga,
-          regras,
+          previsto,
           this.compensacoesDe(dados.compensacoes, c.id),
           true,
           dados.feriasPorColaborador.get(c.id) ?? [],
@@ -1862,7 +1945,7 @@ export class CentralJornadaService {
 
     for (const c of dados.pessoas) {
       const ids = this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador);
-      const regras = await this.regrasDe(c.tipoContratoJornadaId);
+      const previsto = await this.previstorDe(dados, c, ids);
       const { dias } = this.calcularPessoa(
         ids,
         batidas,
@@ -1871,10 +1954,7 @@ export class CentralJornadaService {
         dados.inicio,
         dados.fimExclusivo,
         dados.limite,
-        c,
-        dados.ancora,
-        dados.consultorFolga,
-        regras,
+        previsto,
         this.compensacoesDe(dados.compensacoes, c.id),
         true,
         dados.feriasPorColaborador.get(c.id) ?? [],
@@ -1916,7 +1996,8 @@ export class CentralJornadaService {
         const analise = analisarMarcacoesDoDia(
           horas,
           d.entradaPrevista ?? null,
-          regras,
+          // As regras do contrato DAQUELE dia (vigência da jornada).
+          previsto(new Date(d.data), d.ehFeriado).regras,
         );
         // Guarda: um dia INCOMPLETO tem sempre de 1 a 3 marcações, mas se a
         // análise não encontrar nada faltando, não há o que ajustar.
@@ -2014,7 +2095,7 @@ export class CentralJornadaService {
 
     for (const c of dados.pessoas) {
       const ids = this.idsDaPessoa(c.id, dados.fiscalIdsPorColaborador);
-      const regras = await this.regrasDe(c.tipoContratoJornadaId);
+      const previsto = await this.previstorDe(dados, c, ids);
       const { resumo, dias } = this.calcularPessoa(
         ids,
         batidas,
@@ -2023,10 +2104,7 @@ export class CentralJornadaService {
         dados.inicio,
         dados.fimExclusivo,
         dados.limite,
-        c,
-        dados.ancora,
-        dados.consultorFolga,
-        regras,
+        previsto,
         this.compensacoesDe(dados.compensacoes, c.id),
         true,
         dados.feriasPorColaborador.get(c.id) ?? [],
@@ -2165,13 +2243,11 @@ export class CentralJornadaService {
     }
     if (debito) {
       const ehFeriado = await this.feriados.ehFeriado(ausencia.data);
-      const colaborador = ausencia.colaboradorId
-        ? await this.prisma.colaborador.findUnique({
-            where: { id: ausencia.colaboradorId },
-            select: { tipoContratoJornadaId: true },
-          })
-        : null;
-      const regras = await this.regrasDe(colaborador?.tipoContratoJornadaId);
+      // O contrato DAQUELE dia: um domingo antigo segue a regra de então.
+      const regras = await this.regrasNoDia(
+        ausencia.colaboradorId,
+        ausencia.data,
+      );
       if (diaPagaAdicional100(ausencia.data.getUTCDay(), ehFeriado, regras)) {
         throw new BadRequestException(
           ehFeriado
@@ -2223,7 +2299,7 @@ export class CentralJornadaService {
       await this.cicloFolha.exigirCicloAberto(dia);
     }
     const ehFeriado = await this.feriados.ehFeriado(dia);
-    const regras = await this.regrasDe(colaborador.tipoContratoJornadaId);
+    const regras = await this.regrasNoDia(colaborador.id, dia);
     if (diaPagaAdicional100(dia.getUTCDay(), ehFeriado, regras)) {
       throw new BadRequestException(
         ehFeriado
