@@ -7,10 +7,9 @@ import {
   StatusFiscal,
   calcularJornada,
   inicioDoDia,
-  isDomingo,
-  jornadaEsperadaMs,
   primeiroNome,
 } from './fiscais.domain';
+import { cargaBaseDoDia, diaPagaAdicional100 } from '../ponto/ponto.domain';
 import {
   agoraNaBrasilia,
   diaEncerradoEmBrasilia,
@@ -221,8 +220,9 @@ export class FiscaisAlertasService {
    */
   @Cron('0 22 * * *', { timeZone: 'America/Sao_Paulo' })
   async verificarExtrasExcessivas(): Promise<void> {
-    // Pausa de transição (fim do 6x1): `jornadaEsperadaMs` é a carga do 6x1
-    // (7h/8h), então toda jornada de 5x2 contaria como extra.
+    // Pausa de transição (fim do 6x1): enquanto as vigências 5x2 não estão
+    // carregadas, a carga ainda é a da ficha 6x1 (7h/8h) e toda jornada de 5x2
+    // contaria como extra.
     if (pausaTransicaoJornadaAtiva()) return;
     const agoraReal = new Date();
     const agoraPonto = agoraNaBrasilia();
@@ -262,24 +262,31 @@ export class FiscaisAlertasService {
       mapa.get(diaKey)!.push({ status: r.status as StatusFiscal, em: r.em });
     }
 
+    // Carga e dias a 100% do contrato de cada dia (ADR 0027): no 6x1, 7h/8h
+    // e domingo/feriado fora — os números de antes.
+    const regrasDosFiscais = await this.fiscais.regrasDosFiscais();
+
     for (const fiscal of fiscais) {
       if (this.alertasFolgaAutomatica.has(fiscal.id)) continue;
 
       const mapaFiscal = porFiscalDia.get(fiscal.id);
       if (!mapaFiscal) continue;
 
+      const regrasDoDia = await regrasDosFiscais(fiscal.id);
       let totalExtrasMs = 0;
       for (const [diaKey, regs] of mapaFiscal.entries()) {
         const diaDate = new Date(diaKey);
         const diaSemana = diaDate.getUTCDay();
-        if (isDomingo(diaSemana) || feriadoSet.has(diaDate.getTime())) continue;
+        const ehFeriado = feriadoSet.has(diaDate.getTime());
+        const regras = regrasDoDia(diaDate);
+        if (diaPagaAdicional100(diaSemana, ehFeriado, regras)) continue;
 
         const diaEncerrado = diaEncerradoEmBrasilia(diaDate, agoraPonto);
         const limite = diaEncerrado
           ? fimDoDiaBrasiliaEmUtc(diaDate)
           : agoraReal;
         const jornada = calcularJornada(regs, limite, diaEncerrado);
-        const esperado = jornadaEsperadaMs(diaSemana);
+        const esperado = cargaBaseDoDia(diaSemana, ehFeriado, regras);
         const extra = jornada.cargaHorariaMs - esperado;
         if (extra > 0) totalExtrasMs += extra;
       }

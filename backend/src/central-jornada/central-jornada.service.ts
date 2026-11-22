@@ -1633,13 +1633,30 @@ export class CentralJornadaService {
     };
   }
 
-  /** true se há duas batidas no mesmo dia próximas demais (possível duplicidade). */
-  private temBatidasProximas(horasMs: number[]): boolean {
+  /**
+   * true se há duas batidas no mesmo dia próximas demais (possível
+   * duplicidade). "Próximas demais" é o intervalo mínimo entre batidas do
+   * contrato DAQUELE dia (2 min no 6x1).
+   */
+  private temBatidasProximas(
+    horasMs: number[],
+    intervaloMinimoMs: number = INTERVALO_MINIMO_ENTRE_BATIDAS_MS,
+  ): boolean {
     const ord = [...horasMs].sort((a, b) => a - b);
     for (let i = 1; i < ord.length; i++) {
-      if (ord[i] - ord[i - 1] < INTERVALO_MINIMO_ENTRE_BATIDAS_MS) return true;
+      if (ord[i] - ord[i - 1] < intervaloMinimoMs) return true;
     }
     return false;
+  }
+
+  /** Intervalo mínimo entre batidas do contrato de um dia (ISO) da pessoa. */
+  private intervaloEntreBatidasNoDia(
+    previsto: PrevistoDoDia,
+    diaIso: string,
+  ): number {
+    // As regras não dependem de o dia ser feriado; `false` só completa a chamada.
+    return previsto(new Date(diaIso), false).regras
+      .intervaloMinimoEntreBatidasMs;
   }
 
   /**
@@ -1759,7 +1776,13 @@ export class CentralJornadaService {
           });
         }
         const horas = horasPorDia.get(d.data);
-        if (horas && this.temBatidasProximas(horas)) {
+        if (
+          horas &&
+          this.temBatidasProximas(
+            horas,
+            this.intervaloEntreBatidasNoDia(previsto, d.data),
+          )
+        ) {
           itens.push({
             ...base(d),
             tipo: 'DUPLICADA',
@@ -2137,7 +2160,13 @@ export class CentralJornadaService {
         }
         if (d.tac) problemas.push('TAC');
         const horas = horasPorDia.get(d.data);
-        if (horas && this.temBatidasProximas(horas)) {
+        if (
+          horas &&
+          this.temBatidasProximas(
+            horas,
+            this.intervaloEntreBatidasNoDia(previsto, d.data),
+          )
+        ) {
           problemas.push('Duplicada');
         }
         inconsistencias += problemas.length;

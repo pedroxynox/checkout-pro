@@ -410,13 +410,30 @@ export class CompensacaoHorasService {
 
     // ------------------- Datas candidatas com movimento -------------------
     const datasComMovimento: DataCandidata[] = [];
+    // Dia pago a 100% PARA A PESSOA, pelo contrato daquele dia: domingo e
+    // feriado no 6x1 e no 5x2 definido pelo dono.
+    const pagaCemNoDia = (colaboradorId: string, dia: Date): boolean =>
+      diaPagaAdicional100(
+        dia.getUTCDay(),
+        feriadoMap.has(dia.getTime()),
+        regrasDoId(colaboradorId, dia),
+      );
     for (const dia of candidatas) {
       const diaSemana = dia.getUTCDay();
-      // Domingo e feriado ficam fora por ARITMÉTICA, não só por política: ali o
+      // Dia a 100% fica fora por ARITMÉTICA, não só por política: ali o
       // excedente é 100%, e 100% nunca é debitada — liberar não reduziria o
-      // saldo de 50% em nada. Seria uma compensação que não compensa.
-      if (diaSemana === 0) continue;
-      if (feriadoMap.has(dia.getTime())) continue;
+      // saldo de 50% em nada. Seria uma compensação que não compensa. A data
+      // sai quando é 100% para TODOS (antes: domingo e feriado fixos); quem tem
+      // outro contrato é filtrado por pessoa em `permitido`.
+      const todosACem =
+        fichas.length > 0
+          ? fichas.every((f) => pagaCemNoDia(f.id, dia))
+          : diaPagaAdicional100(
+              diaSemana,
+              feriadoMap.has(dia.getTime()),
+              REGRAS_PADRAO,
+            );
+      if (todosACem) continue;
       const previsto = movimento.previsaoDe(dia);
       if (previsto == null) continue;
       datasComMovimento.push({
@@ -517,6 +534,7 @@ export class CompensacaoHorasService {
     const ctx: ContextoAlocacao = {
       permitido: (colaboradorId, data) => {
         if (jaDecidido.has(`${colaboradorId}|${data.getTime()}`)) return false;
+        if (pagaCemNoDia(colaboradorId, data)) return false;
         if (ausenciaNoDia.has(`${colaboradorId}|${data.getTime()}`)) {
           return false;
         }

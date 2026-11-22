@@ -3,6 +3,7 @@ import {
   CentralJornadaService,
 } from './central-jornada.service';
 import { folgaDeTeste } from '../../test/helpers/jornada-de-teste';
+import { REGRAS_PADRAO } from '../ponto/ponto.domain';
 
 /**
  * Teste do resumo do ciclo (26→25) da Central de Jornada, cobrindo: dia normal,
@@ -1146,6 +1147,32 @@ describe('CentralJornadaService.inconsistenciasCiclo', () => {
 
     expect(r.totais.duplicadas).toBe(1);
     expect(r.itens.some((i) => i.tipo === 'DUPLICADA')).toBe(true);
+  });
+
+  it('"muito próximas" é o intervalo entre batidas do contrato do dia', async () => {
+    // 4 min entre as duas primeiras: no 6x1 (2 min) não é duplicada; num
+    // contrato de 5 min entre batidas, é.
+    const batidas = [
+      batida('d1', '2026-06-27', '07:00'),
+      batida('d2', '2026-06-27', '07:04'),
+      batida('d3', '2026-06-27', '12:00'),
+      batida('d4', '2026-06-27', '16:00'),
+    ];
+    const seisPorUm = await servicoInconsist(batidas, []).inconsistenciasCiclo(
+      0,
+    );
+    expect(seisPorUm.totais.duplicadas).toBe(0);
+
+    const comContrato = servicoInconsist(batidas, []);
+    const tipos = {
+      regrasDoContrato: jest.fn().mockResolvedValue({
+        ...REGRAS_PADRAO,
+        intervaloMinimoEntreBatidasMs: 5 * 60_000,
+      }),
+    };
+    Object.assign(comContrato, { tiposContrato: tipos });
+    const r = await comContrato.inconsistenciasCiclo(0);
+    expect(r.totais.duplicadas).toBe(1);
   });
 });
 
