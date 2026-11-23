@@ -6,6 +6,12 @@ import {
   GrupoDomingo,
   ehGrupoValido,
 } from '../escala-domingo/escala-domingo.domain';
+import {
+  RodizioFolgas,
+  folgasDoGrupoNaSemana,
+  rodizioDaLinha,
+  rodizioNoDia,
+} from '../escala-domingo/rodizio-folgas.domain';
 import { carregarMapaDeFeriados } from '../feriados/feriados.consulta';
 import { RegrasContrato } from '../ponto/ponto.domain';
 import { TiposContratoService } from '../tipos-contrato/tipos-contrato.service';
@@ -137,37 +143,51 @@ export class JornadaVigenciaService {
     const diasSemana = [...new Set(diasCivis.map((d) => d.getUTCDay()))];
     const temDomingo = diasSemana.includes(0);
 
-    const [fichas, linhasVigencia, entradasDeFolga, ancora, feriados] =
-      await Promise.all([
-        this.prisma.colaborador.findMany({ select: SELECT_FICHA_LEGADA }),
-        // Só as que já começaram até o último dia: as posteriores não decidem
-        // nenhum dia carregado.
-        this.prisma.jornadaVigencia.findMany({
-          where: { vigenteDesde: { lte: ultimo } },
-          include: {
-            disponibilidade: {
-              select: { diaSemana: true, entrada: true, saida: true },
-            },
+    const [
+      fichas,
+      linhasVigencia,
+      entradasDeFolga,
+      ancora,
+      feriados,
+      linhasRodizio,
+    ] = await Promise.all([
+      this.prisma.colaborador.findMany({ select: SELECT_FICHA_LEGADA }),
+      // Só as que já começaram até o último dia: as posteriores não decidem
+      // nenhum dia carregado.
+      this.prisma.jornadaVigencia.findMany({
+        where: { vigenteDesde: { lte: ultimo } },
+        include: {
+          disponibilidade: {
+            select: { diaSemana: true, entrada: true, saida: true },
           },
-        }),
-        this.prisma.escalaEntry.findMany({
-          where: { diaSemana: { in: diasSemana } },
-          select: {
-            funcionarioId: true,
-            colaboradorId: true,
-            diaSemana: true,
-            folga: true,
-          },
-        }),
-        temDomingo && this.escalaDomingo
-          ? this.escalaDomingo.obterAncora()
-          : Promise.resolve(null),
-        carregarMapaDeFeriados(
-          this.prisma,
-          primeiro,
-          inicioDoProximoDia(ultimo),
-        ),
-      ]);
+        },
+      }),
+      this.prisma.escalaEntry.findMany({
+        where: { diaSemana: { in: diasSemana } },
+        select: {
+          funcionarioId: true,
+          colaboradorId: true,
+          diaSemana: true,
+          folga: true,
+        },
+      }),
+      temDomingo && this.escalaDomingo
+        ? this.escalaDomingo.obterAncora()
+        : Promise.resolve(null),
+      carregarMapaDeFeriados(this.prisma, primeiro, inicioDoProximoDia(ultimo)),
+      // Rodízio de folgas (Fase 3): as vigências que já começaram até o
+      // último dia. Só decide quem tem grupo numa vigência da jornada.
+      this.prisma.rodizioFolgasVigencia.findMany({
+        where: { vigenteDesde: { lte: ultimo } },
+      }),
+    ]);
+    const rodizios = linhasRodizio
+      .map(rodizioDaLinha)
+      .filter((r): r is RodizioFolgas => r !== null);
+    const folgasDoGrupo = (grupo: GrupoDomingo, dia: Date) => {
+      const r = rodizioNoDia(rodizios, dia);
+      return r ? folgasDoGrupoNaSemana(r, grupo, dia) : null;
+    };
 
     // Regras de cada contrato envolvido (fichas e vigências), resolvidas uma vez.
     const idsContrato = new Set<string>();
@@ -261,7 +281,9 @@ export class JornadaVigenciaService {
         // muda nada e nem é carregada.
         ancoraDomingo: dow === 0 ? ancoraDomingo : null,
         folgaNaEscalaSemanal: naEscalaSemanal(conhecidos, dow),
-        // Fase 3 (rodízio de folgas) entra aqui; até lá, grupo não afirma.
+        // Regime semanal com grupo: os dias do grupo na semana do dia. Sem
+        // rodízio vigente no dia, o grupo não afirma folga nem turno.
+        folgasDoGrupo,
       });
     };
 

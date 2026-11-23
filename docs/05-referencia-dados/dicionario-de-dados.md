@@ -3,7 +3,7 @@
 
 # Dicionário de Dados
 
-> Detalhe campo a campo das **57 tabelas**. Fonte: `backend/prisma/schema.prisma`.
+> Detalhe campo a campo das **58 tabelas**. Fonte: `backend/prisma/schema.prisma`.
 
 ## `Usuario`
 
@@ -758,6 +758,21 @@ sistema não cobra ponto). É o horário que a escala mostra e o ponto cobra.
 | `diaSemana` | `Int` |  | 0=domingo … 6=sábado (a tela mostra de segunda a domingo). |
 | `entrada` | `String` |  | são tratados). |
 | `saida` | `String` |  |  |
+
+## `RodizioFolgasVigencia`
+
+(`ConfigSistema.domingoAncora*`) continua valendo para o regime 6x1.
+
+| Campo | Tipo | Chave | Descrição |
+|---|---|---|---|
+| `id` | `String` | PK |  |
+| `vigenteDesde` | `DateTime` | único | Segunda-feira de início (00:00 UTC), única: uma vigência por data. |
+| `semanasNoCiclo` | `Int` |  |  |
+| `padrao` | `Json` |  | do ciclo (0 = semana 1); dias 0=domingo … 6=sábado. |
+| `criadoPor` | `String?` |  |  |
+| `criadoEm` | `DateTime` |  |  |
+| `atualizadoPor` | `String?` |  |  |
+| `atualizadoEm` | `DateTime` |  |  |
 
 ## `Atestado`
 

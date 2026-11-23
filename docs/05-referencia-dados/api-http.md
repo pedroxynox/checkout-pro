@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **215 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **218 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -160,6 +160,9 @@
 |---|---|---|---|
 | GET | `/config/escala-domingo` | `obter` | `—` |
 | PUT | `/config/escala-domingo` | `definir` | `ESCALA_DOMINGO_CONFIG` |
+| GET | `/config/rodizio-folgas` | `obter` | `ESCALA_DOMINGO_CONFIG` |
+| PUT | `/config/rodizio-folgas` | `definir` | `ESCALA_DOMINGO_CONFIG` |
+| POST | `/config/rodizio-folgas/simular` | `simular` | `ESCALA_DOMINGO_CONFIG` |
 
 ## `escala-exportacao`
 

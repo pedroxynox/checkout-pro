@@ -11,11 +11,12 @@
 - Las "Reglas críticas" de abajo describen el **6x1** y siguen valiendo para los días hasta el 22/11. Para los contratos 5x2 valen las del spec.
 - Mientras dure la transición: pausa `PAUSA_TRANSICAO_JORNADA=true` en producción, no cerrar el ciclo 26/10–25/11 y no editar el contrato 6x1 ni las fichas.
 - Fase 2 (backend #442 + app): los números del TAC, los avisos y el feriado vienen del contrato del día; un contrato en uso tiene las reglas bloqueadas (se duplica para cambiar). Para el 6x1 todo da igual que antes. La pantalla Tipos de contrato ya tiene los campos nuevos, Duplicar y Tornar padrão; el Registro de Ponto cita los números del contrato. Falta que el dueño cree el contrato 5x2 44h (tarea 2.8).
+- Fase 3: rodízio de folgas G1/G2/G3 con vigencia (tabla `rodizio_folgas_vigencias`, sembrada el 23/11/2026, ADR 0028). Solo decide a quien tiene grupo en una vigencia de jornada (todavía nadie hasta la Fase 4).
 
 ## Estado verificable
 
 - Todo lo descrito como entregado está **mergeado en `main`**; el deploy de cada commit debe confirmarse por logs y `/health/ready`.
-- Última migration: `9zzv_contrato_5x2`. La siguiente debe ordenar después de `9zzv` (el spec jornada-5x2 reserva `9zzw` para el rodízio de folgas).
+- Última migration: `9zzw_rodizio_folgas`. La siguiente debe ordenar después de `9zzw`.
 - **El app no tiene IA.** La asistente Cluby (Google Gemini) fue retirada por completo en oct/2026: módulo backend, chat del app, tabla `mensagens_assistente`, imágenes de procedimientos y las variables `GEMINI_API_KEY`/`GEMINI_MODEL`.
 - En el sandbox de Kiro no hay acceso al registro npm: los tests se validan en el CI del PR. Para comandos de Node, vaciar `NODE_OPTIONS`.
 

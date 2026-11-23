@@ -113,17 +113,22 @@ Dois PRs: **2a — backend** (PR #442) e **2b — app** (PR #443).
 
 ## Fase 3 — Rodízio de folgas
 
-- [ ] 3.1 Prisma `RodizioFolgasVigencia`; migração `9zzw_rodizio_folgas` semeando
+Dois PRs: **3a — backend** (PR #445) e **3b — app**.
+
+- [x] 3.1 Prisma `RodizioFolgasVigencia`; migração `9zzw_rodizio_folgas` semeando
   2026-11-23 com o padrão da decisão 5. _(R3.1, R3.2)_
-- [ ] 3.2 Domínio: `segundaDaSemana`, `rodizioNoDia`, `semanaDoCiclo`,
+- [x] 3.2 Domínio: `segundaDaSemana`, `rodizioNoDia`, `semanaDoCiclo`,
   `folgasDoGrupoNaSemana`, `gruposDeFolgaNoDia`, `validarRodizio`; ligar ao
   `previstoNoDia` (ramo SEMANAL com grupo). Testes: a tabela da decisão 5 dia a
   dia de 23/11 a 03/01, cobertura (um grupo por dia útil e domingo, nenhum no
   sábado), no máximo 5 dias seguidos, continuidade dos domingos. _(R3.3, R3.4, RT.1)_
-- [ ] 3.3 `GET/PUT /config/rodizio-folgas` com prévia e avisos. _(R3.5)_
+- [x] 3.3 `GET/PUT /config/rodizio-folgas` com prévia e avisos. _(R3.5)_ — mais
+  `POST /config/rodizio-folgas/simular` (avisos e prévia sem gravar); ciclo de folha
+  fechado recusa vigência que comece nele.
 - [ ] 3.4 Tela "Rodízio de folgas" substitui a de domingo no Centro de Controle. _(R3)_
-- [ ] 3.5 ADR 0028 "Rodízio de folgas 5x2"; Atlas `escala-domingo` e
-  `centroControle`; regra `escala-e-rodizio-domingo`; `docs:gen`. _(RT.5)_
+- [~] 3.5 ADR 0028 "Rodízio de folgas 5x2"; Atlas `escala-domingo` e
+  `centroControle`; regra `escala-e-rodizio-domingo`; `docs:gen`. _(RT.5)_ — backend
+  na 3a (também `jornada-vigencia`); `centroControle` na 3b.
 
 ## Fase 4 — Ficha e perfil do colaborador
 

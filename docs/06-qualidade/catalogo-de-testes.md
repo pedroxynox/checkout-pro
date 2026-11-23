@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 145 arquivos, 1418 casos. **Mobile:** 44 arquivos, 373 casos. **Total: 1791 casos.**
+> **Backend:** 147 arquivos, 1449 casos. **Mobile:** 44 arquivos, 373 casos. **Total: 1822 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -68,6 +68,8 @@
 | `src/data-inicial/data-inicial.properties.spec.ts` | 2 | 1 |
 | `src/data-inicial/validacao-data.service.spec.ts` | 3 | 1 |
 | `src/escala-domingo/escala-domingo.domain.spec.ts` | 37 | 6 |
+| `src/escala-domingo/rodizio-folgas.domain.spec.ts` | 20 | 8 |
+| `src/escala-domingo/rodizio-folgas.service.spec.ts` | 7 | 3 |
 | `src/escala-exportacao/escala-exportacao.service.spec.ts` | 16 | 4 |
 | `src/escala-exportacao/escala-publicada.domain.spec.ts` | 13 | 5 |
 | `src/fechamento/fechamento.domain.spec.ts` | 5 | 1 |
@@ -109,7 +111,7 @@
 | `src/jornada-vigencia/consumidores-puros.spec.ts` | 7 | 3 |
 | `src/jornada-vigencia/folga.service.spec.ts` | 20 | 4 |
 | `src/jornada-vigencia/jornada-vigencia.domain.spec.ts` | 22 | 6 |
-| `src/jornada-vigencia/jornada-vigencia.service.spec.ts` | 10 | 3 |
+| `src/jornada-vigencia/jornada-vigencia.service.spec.ts` | 14 | 4 |
 | `src/metas/metas.domain.spec.ts` | 16 | 6 |
 | `src/metas/metas.service.spec.ts` | 16 | 5 |
 | `src/notificacoes/notificacoes.properties.spec.ts` | 2 | 1 |
