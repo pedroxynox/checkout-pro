@@ -1,5 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  ConferenciaJornada,
+  JornadaColaboradorService,
+} from '../jornada-vigencia/jornada-colaborador.service';
 import {
   ReporteIntegridadeEscala,
   detectarEscalasIncoerentes,
@@ -42,9 +46,22 @@ import {
  * buscam os ingredientes. É a mesma função que o comando de terminal usa, então os
  * dois **não podem divergir**.
  */
+/**
+ * A conferência inteira: a ficha × escala semanal do 6x1 (só de quem ainda não
+ * tem vigência) e, desde o 5x2, a jornada por vigência da equipe.
+ */
+export type ConferenciaEscala = ReporteIntegridadeEscala & {
+  /** null quando o serviço da jornada não está disponível (testes antigos). */
+  jornada: ConferenciaJornada | null;
+};
+
 @Injectable()
 export class ConferenciaEscalaService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Jornada por vigência (spec jornada-5x2, R5.3). Opcional como nos demais.
+    @Optional() private readonly jornada?: JornadaColaboradorService,
+  ) {}
 
   /**
    * Apura a coerência entre as fichas dos fiscais e a escala semanal gravada.
@@ -54,48 +71,59 @@ export class ConferenciaEscalaService {
    * (`especial: false`). Desde a ADR 0026 não existem outras: a coluna permanece
    * sempre `false`, e o filtro é o cinto de segurança contra um resquício.
    */
-  async conferir(): Promise<ReporteIntegridadeEscala> {
-    const [fichas, fiscais, usuarios, entradasGerais] = await Promise.all([
-      this.prisma.colaborador.findMany({
-        where: { funcao: 'FISCAL' },
-        select: {
-          id: true,
-          nome: true,
-          matricula: true,
-          usuarioId: true,
-          entradaSemana: true,
-          saidaSemana: true,
-          entradaFds: true,
-          saidaFds: true,
-          entradaDom: true,
-          saidaDom: true,
-          grupoDomingo: true,
-          folgaDiaSemana: true,
-          ativo: true,
-        },
-      }),
-      this.prisma.fiscal.findMany({
-        select: { id: true, nome: true, usuarioId: true },
-      }),
-      this.prisma.usuario.findMany({ select: { id: true, login: true } }),
-      this.prisma.escalaEntry.findMany({
-        where: { especial: false },
-        select: {
-          funcionarioId: true,
-          colaboradorId: true,
-          diaSemana: true,
-          entrada: true,
-          saida: true,
-          folga: true,
-        },
-      }),
-    ]);
+  async conferir(): Promise<ConferenciaEscala> {
+    const [fichasTodas, fiscais, usuarios, entradasGerais, comVigencia] =
+      await Promise.all([
+        this.prisma.colaborador.findMany({
+          where: { funcao: 'FISCAL' },
+          select: {
+            id: true,
+            nome: true,
+            matricula: true,
+            usuarioId: true,
+            entradaSemana: true,
+            saidaSemana: true,
+            entradaFds: true,
+            saidaFds: true,
+            entradaDom: true,
+            saidaDom: true,
+            grupoDomingo: true,
+            folgaDiaSemana: true,
+            ativo: true,
+          },
+        }),
+        this.prisma.fiscal.findMany({
+          select: { id: true, nome: true, usuarioId: true },
+        }),
+        this.prisma.usuario.findMany({ select: { id: true, login: true } }),
+        this.prisma.escalaEntry.findMany({
+          where: { especial: false },
+          select: {
+            funcionarioId: true,
+            colaboradorId: true,
+            diaSemana: true,
+            entrada: true,
+            saida: true,
+            folga: true,
+          },
+        }),
+        this.jornada
+          ? this.prisma.jornadaVigencia.findMany({
+              select: { colaboradorId: true },
+              distinct: ['colaboradorId'],
+            })
+          : Promise.resolve([] as { colaboradorId: string }[]),
+      ]);
 
-    return detectarEscalasIncoerentes(
-      fichas,
-      fiscais,
-      usuarios,
-      entradasGerais,
-    );
+    // Quem já tem vigência saiu da ficha antiga: a folga, os horários e o grupo
+    // dela vêm da jornada, e a cópia semanal do 6x1 não decide mais nada. As
+    // lacunas da ficha antiga dessa pessoa seriam alarme falso.
+    const naJornada = new Set(comVigencia.map((v) => v.colaboradorId));
+    const fichas = fichasTodas.filter((f) => !naJornada.has(f.id));
+
+    return {
+      ...detectarEscalasIncoerentes(fichas, fiscais, usuarios, entradasGerais),
+      jornada: this.jornada ? await this.jornada.conferirEquipe() : null,
+    };
   }
 }

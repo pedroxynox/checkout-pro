@@ -24,8 +24,10 @@ import {
   ResumoStatus,
 } from './fiscais.service';
 import { Jornada } from './fiscais.domain';
-import { ConferenciaEscalaService } from './conferencia-escala.service';
-import { ReporteIntegridadeEscala } from './integridade-escala';
+import {
+  ConferenciaEscala,
+  ConferenciaEscalaService,
+} from './conferencia-escala.service';
 
 /**
  * API do Modulo_Fiscais (controle de jornada).
@@ -51,7 +53,7 @@ export class FiscaisController {
    */
   @Get('conferencia-escala')
   @Funcionalidade('OPERADORES_CRUD')
-  conferenciaEscala(): Promise<ReporteIntegridadeEscala> {
+  conferenciaEscala(): Promise<ConferenciaEscala> {
     return this.conferencia.conferir();
   }
 
