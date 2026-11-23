@@ -11,7 +11,8 @@
 - Las "Reglas críticas" de abajo describen el **6x1** y siguen valiendo para los días hasta el 22/11. Para los contratos 5x2 valen las del spec.
 - Mientras dure la transición: pausa `PAUSA_TRANSICAO_JORNADA=true` en producción, no cerrar el ciclo 26/10–25/11 y no editar el contrato 6x1 ni las fichas.
 - Fase 2 (backend #442 + app): los números del TAC, los avisos y el feriado vienen del contrato del día; un contrato en uso tiene las reglas bloqueadas (se duplica para cambiar). Para el 6x1 todo da igual que antes. La pantalla Tipos de contrato ya tiene los campos nuevos, Duplicar y Tornar padrão; el Registro de Ponto cita los números del contrato. Falta que el dueño cree el contrato 5x2 44h (tarea 2.8).
-- Fase 3: rodízio de folgas G1/G2/G3 con vigencia (tabla `rodizio_folgas_vigencias`, sembrada el 23/11/2026, ADR 0028). Solo decide a quien tiene grupo en una vigencia de jornada (todavía nadie hasta la Fase 4). Pantalla "Rodízio de folgas" en el Centro de Controle (reemplaza la card del rodízio de domingo).
+- Fase 3: rodízio de folgas G1/G2/G3 con vigencia (tabla `rodizio_folgas_vigencias`, sembrada el 23/11/2026, ADR 0028). Solo decide a quien tiene grupo en una vigencia de jornada. Pantalla "Rodízio de folgas" en el Centro de Controle (reemplaza la card del rodízio de domingo).
+- Fase 4a (backend): `GET/PUT/DELETE /colaboradores/:id/jornada` graba las vigencias (ciclo abierto, validación, avisos, auditoría; cambiar el contrato exige `ADMIN_DADOS`); `POST /colaboradores` acepta el bloque `jornada`; con vigencia, los campos legados de la ficha dan 409 si cambian. Falta la pantalla (Fase 4b) y cargar las vigencias del 23/11 (tarea 4.6, dueño).
 
 ## Estado verificable
 

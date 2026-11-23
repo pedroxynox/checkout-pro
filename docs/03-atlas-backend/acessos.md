@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-08-26 · **Cobre:** `backend/src/acessos/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-23 · **Cobre:** `backend/src/acessos/`
 
 # Módulo: `acessos`
 
@@ -65,6 +65,12 @@ Importação ou no Fechamento). Lança `PermissaoInsuficienteError` se nenhuma.
 Igual ao anterior, mas considerando os ajustes por perfil e por login carregados
 em `request.usuario` (`decidirAutorizacaoComOverrides`). É a autorização que vale
 de verdade nos endpoints (usada pelo `PerfilGuard`).
+
+#### `usuarioTemAlguma(usuario, funcionalidades)`
+A mesma decisão, como booleano (sem lançar). Serve à regra que depende do **que**
+se altera dentro de um endpoint: na jornada da ficha, trocar o contrato exige
+`ADMIN_DADOS` além do `OPERADORES_CRUD` da rota
+([`jornada-vigencia`](jornada-vigencia.md)). Sem usuário, `false`.
 
 #### `loginDisponivel(login)`
 Verifica se o login ainda está livre (unicidade/exclusividade — Req 7.1.4/7.1.6),

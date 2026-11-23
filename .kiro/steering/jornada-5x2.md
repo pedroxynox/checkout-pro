@@ -25,6 +25,9 @@ até **22/11** continuam no **6x1** para sempre, por meio de **vigências**.
   baseados no horário antigo. O ponto continua funcionando. Só desligar depois
   das Fases 1–4 e das vigências de 23/11 carregadas.
 - **Não fechar o ciclo 26/10–25/11** antes das vigências de 23/11.
+- **Vigências só pela API** (`PUT /colaboradores/:id/jornada`, Fase 4a), nunca
+  direto no banco: é ela que confere ciclo, contrato e rodízio. Trocar o contrato
+  exige `ADMIN_DADOS`.
 - **Não editar o contrato 6x1**; contratos em uso não mudam regras — duplica-se e
   transfere-se com data.
 - Domingo e feriado: extras a 100% e sem débito, com a carga do contrato

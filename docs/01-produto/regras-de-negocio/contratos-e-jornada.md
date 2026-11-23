@@ -101,8 +101,22 @@ uma pessoa é gravada como uma **vigência** com data de início
 15. **Cada dia é calculado com o contrato daquele dia.** Corrigir hoje uma batida de
     20/11 usa o contrato de 20/11, não o de agora.
 16. **Os dias anteriores à primeira vigência seguem a ficha** (o 6x1), sem mudança.
-17. **Vigência em ciclo de folha fechado é recusada** (a escrita entra com a tela da
-    ficha).
+17. **Vigência em ciclo de folha fechado é recusada** — criar, alterar ou remover
+    (409). A data pode ser retroativa dentro do ciclo aberto (ex.: lançar em 24/11
+    uma vigência de 23/11).
+18. **Só o administrador escolhe ou troca o contrato** de uma pessoa (decisão do
+    dono; `ADMIN_DADOS`). Grupo, folgas fixas e disponibilidade ficam com quem
+    administra a equipe (`OPERADORES_CRUD`). Sem contrato informado, a vigência
+    nova mantém o contrato que já valia na data.
+19. **Depois da primeira vigência, a ficha antiga fica congelada:** a folga fixa, os
+    horários Seg–Qui/Sex–Sáb/Dom, o grupo de domingo e o contrato da ficha não mudam
+    mais (409) — são a história do 6x1. Reenviar o mesmo valor é aceito (o app
+    antigo manda a ficha inteira).
+20. **Remover a única vigência devolve a pessoa ao 6x1** em todos os dias; também
+    só com o ciclo aberto.
+21. **Cada vigência guarda quem criou, quem alterou, quando e o motivo.**
+22. **Cadastrar alguém já com a jornada** grava a primeira vigência (sem data, vale a
+    admissão). Sem a jornada, a pessoa entra no 6x1 da ficha.
 
 ## 4. Como os dois se conectam ao colaborador
 
