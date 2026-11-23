@@ -72,6 +72,17 @@ Corpo do `PUT` (o bloco `jornada` do `POST /colaboradores` é o mesmo, com
 - **Erros possíveis:** lança se o dia não estiver entre os carregados (âncora,
   escala semanal e feriados só foram lidos para eles).
 
+### `ConsultorJornada.gruposDeFolga(dia)` (Fase 5)
+Os grupos que folgam no dia pelo rodízio de folgas vigente (vazio no sábado), ou
+`null` quando nenhum rodízio vale no dia. A escala e o quadro usam para o selo
+"folga: Gx" em qualquer dia (`gruposFolgaDoDia`, em
+[`escala-exportacao`](escala-exportacao.md)).
+
+### `JornadaColaboradorService.conferirEquipe()` (Fase 5)
+Para a Conferência de escala ([`fiscais`](fiscais.md)): ativos escalados
+(operador, fiscal, supervisor) **sem vigência** e os avisos de R4.6 da vigência
+**mais recente** (inclusive futura) de cada um. Só lê.
+
 ### `ConsultorJornada.ehFolga(dia, ids)` e `semFolgaNaFicha(ids)`
 `ehFolga` é `previsto(...).folga`, com o caso herdado do `FolgaService`: quem não tem
 ficha entre os `ids` ainda folga se a escala semanal legada disser.
@@ -150,6 +161,8 @@ de domingo.
   horário fora de `HH:mm`, **só a entrada ou só a saída**, saída ≤ entrada, dia
   repetido. Entrada e saída vazias = dia sem horário (não é erro).
 - `disponibilidadePreenchida(linhas)` — as linhas com horário, prontas para gravar.
+- `motivoDaFolga(previsto)` → `'GRUPO' | 'FOLGA_FIXA' | null`: por que a pessoa
+  folga no dia no regime semanal; null no 6x1 e nos dias de trabalho.
 - `textoDuracao(min)` — "8h48", "2h", "50 min". Mora em
   [`common/duracao.ts`](common.md) e é reexportado aqui.
 - Folgas padrão: com ficha vazia e sem grupo, `previstoNoDia`, `avisosDaVigencia`
@@ -203,10 +216,10 @@ de domingo.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `jornada-vigencia.domain.spec.ts` | `vigenciaNoDia`; propriedade (500 casos) de que sem vigência o resultado é o de hoje, inclusive com vigências futuras; corte de 23/11; folgas fixas e padrão; grupo com e sem rodízio; feriado e domingo; avisos com a tolerância do contrato; validação (inclusive só entrada/só saída e dia vazio); `textoDuracao` | 40 |
+| `jornada-vigencia.domain.spec.ts` | `vigenciaNoDia`; propriedade (500 casos) de que sem vigência o resultado é o de hoje, inclusive com vigências futuras; corte de 23/11; folgas fixas e padrão; grupo com e sem rodízio; feriado e domingo; avisos com a tolerância do contrato; validação (inclusive só entrada/só saída e dia vazio); `textoDuracao` + `motivoDaFolga`; | 41 |
 | `jornada-colaborador.service.spec.ts` | Escrita pela ficha sobre banco em memória: criação com auditoria e avisos; upsert por data; cada 400 da design §3.2 (inclusive grupo sem rodízio); 409 em ciclo fechado; retroativa no ciclo aberto; 403 ao trocar contrato sem `ADMIN_DADOS` e herança do contrato do dia; contrato inativo/inexistente; remoção (volta ao 6x1, 409, 403, 404); leitura (vigente, histórico, "desde", próximas folgas do G1) | 27 |
 | `jornada-colaborador.controller.spec.ts` | `autorDaJornada`: só quem tem `ADMIN_DADOS` troca o contrato | 2 |
-| `jornada-vigencia.service.spec.ts` | Consultor igual à regra de folga **anterior** (congelada no próprio teste) e às funções de horário sobre os mesmos dados; `ehFolga` sem ficha; `semFolgaNaFicha` no legado e com vigência; carga em lote; pessoa desconhecida e dia não carregado; vigência a partir da data; feriado do calendário × informado | 10 |
+| `jornada-vigencia.service.spec.ts` | Consultor igual à regra de folga **anterior** (congelada no próprio teste) e às funções de horário sobre os mesmos dados; `ehFolga` sem ficha; `semFolgaNaFicha` no legado e com vigência; carga em lote; pessoa desconhecida e dia não carregado; vigência a partir da data; feriado do calendário × informado + `gruposDeFolga` por dia (e null sem rodízio); | 15 |
 | `folga.service.spec.ts` | A regra única de folga (veio de `escala-domingo`), agora pela fachada: os mesmos 20 casos, sem mudar nenhuma expectativa | 20 |
 | `consumidores-puros.spec.ts` | `montarLinhaEscala` com o turno já resolvido; dias escalados e "emenda" pela folga do dia no 5x2; `folgasNoPeriodo` só para quem tem vigência | 7 |
 

@@ -112,6 +112,12 @@ vai de **segunda a domingo**; a semana 1 começou na segunda **23/11/2026**:
     continuam com a folga fixa e o rodízio de domingo acima.
 20. A configuração fica no Centro de Controle, com a mesma permissão do rodízio de
     domingo (`ESCALA_DOMINGO_CONFIG`).
+21. **A escala mostra, em todo dia, o grupo que folga** (não só no domingo) e, no
+    5x2, se cada pessoa folga **pelo grupo** ou **por folga fixa**. O horário de
+    quem trabalha é o da disponibilidade daquele dia.
+22. **A Conferência de escala segue a jornada nova:** lista quem ainda está sem
+    vigência (no 6x1) e os avisos de cada jornada; quem já tem vigência sai do
+    diagnóstico da ficha antiga.
 
 ## 6. Observações
 

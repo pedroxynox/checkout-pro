@@ -115,6 +115,23 @@ export interface JornadaPrevista {
   geraDebito: boolean;
 }
 
+/**
+ * Por que a pessoa folga no dia, no regime semanal: pelo **grupo** do rodízio
+ * de folgas ou por **folga fixa** (da ficha ou a padrão do contrato). No regime
+ * legado (6x1) e nos dias de trabalho, null — a escala antiga não dizia o motivo.
+ */
+export type MotivoFolga = 'GRUPO' | 'FOLGA_FIXA';
+
+export function motivoDaFolga(
+  previsto:
+    Pick<JornadaPrevista, 'regime' | 'folga' | 'grupo'> | null | undefined,
+): MotivoFolga | null {
+  if (!previsto || previsto.regime !== 'SEMANAL' || !previsto.folga) {
+    return null;
+  }
+  return previsto.grupo ? 'GRUPO' : 'FOLGA_FIXA';
+}
+
 /** O que, além da pessoa, decide o dia. */
 export interface ContextoDoDia {
   /** Regras de um tipo de contrato (já resolvidas pelo serviço). */

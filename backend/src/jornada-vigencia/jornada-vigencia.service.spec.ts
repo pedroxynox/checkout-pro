@@ -470,6 +470,20 @@ describe('JornadaVigenciaService.consultor — rodízio de folgas (Fase 3)', () 
     }
   });
 
+  it('gruposDeFolga: os grupos que folgam em cada dia; null sem rodízio', async () => {
+    const consultor = await montar({ rodizios: [RODIZIO] }).service.consultor(
+      DIAS,
+    );
+    // Semana 1: G3 seg+dom, G2 ter+qua, G1 qui+sex; sábado ninguém.
+    expect(consultor.gruposDeFolga(dia('2026-11-23'))).toEqual(['G3']);
+    expect(consultor.gruposDeFolga(dia('2026-11-24'))).toEqual(['G2']);
+    expect(consultor.gruposDeFolga(dia('2026-11-26'))).toEqual(['G1']);
+    expect(consultor.gruposDeFolga(dia('2026-11-28'))).toEqual([]);
+    expect(consultor.gruposDeFolga(dia('2026-11-29'))).toEqual(['G3']);
+    const semRodizio = await montar().service.consultor(DIAS);
+    expect(semRodizio.gruposDeFolga(dia('2026-11-23'))).toBeNull();
+  });
+
   it('só lê rodízios que começam até o último dia carregado', async () => {
     const { service, prisma } = montar({ rodizios: [RODIZIO] });
     await service.consultor(DIAS);

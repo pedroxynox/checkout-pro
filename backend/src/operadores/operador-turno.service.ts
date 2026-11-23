@@ -16,12 +16,17 @@ import { FeriadosService } from '../feriados/feriados.service';
 import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.service';
 import {
+  MotivoFolga,
+  motivoDaFolga,
+} from '../jornada-vigencia/jornada-vigencia.domain';
+import {
   GrupoDomingo,
   grupoFolgaNoDomingo,
 } from '../escala-domingo/escala-domingo.domain';
 import {
   FichaColaboradorEscala,
   LinhaEscala,
+  gruposFolgaDoDia,
   montarLinhaEscala,
 } from '../escala-exportacao/escala-publicada.domain';
 
@@ -136,6 +141,13 @@ export interface ColaboradorDia {
    * um fiscal não pode desmarcá-la na escala.
    */
   aPrazo: boolean;
+  /**
+   * Por que folga (regime 5x2): pelo grupo do rodízio ou por folga fixa. null
+   * nos dias de trabalho e no regime antigo (6x1).
+   */
+  motivoFolga: MotivoFolga | null;
+  /** Grupo do rodízio de folgas da pessoa no dia (5x2); null sem grupo/no 6x1. */
+  grupoFolga: GrupoDomingo | null;
 }
 
 /** Roster de um dia: colaboradores ordenados por entrada (folga ao fim). */
@@ -153,6 +165,12 @@ export interface DiaOperadores {
    * null quando não é domingo ou o rodízio ainda não foi configurado.
    */
   grupoFolgaDomingo: GrupoDomingo | null;
+  /**
+   * Os grupos que FOLGAM no dia, em qualquer dia da semana (spec `jornada-5x2`,
+   * R5.1): pelo rodízio de folgas vigente ou, antes dele, o do rodízio antigo
+   * de domingo. Vazio no sábado e sem rodízio.
+   */
+  gruposFolga: GrupoDomingo[];
 }
 
 const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -351,8 +369,12 @@ export class OperadorTurnoService {
       ficha: FichaColaboradorEscala,
       dia: Date,
       ehAtestado?: boolean | null,
-    ) => LinhaEscala;
+    ) => LinhaEscala & {
+      motivoFolga: MotivoFolga | null;
+      grupoFolga: GrupoDomingo | null;
+    };
     grupoFolgaDomingo: (dia: Date) => GrupoDomingo | null;
+    gruposFolga: (dia: Date) => GrupoDomingo[];
   }> {
     const inicio = dias[0];
     const fimExclusivo = addDias(dias[dias.length - 1], 1);
@@ -386,7 +408,7 @@ export class OperadorTurnoService {
           dia,
           ehFeriado,
         );
-        return montarLinhaEscala({
+        const linha = montarLinhaEscala({
           ficha,
           dia,
           ancoraDomingo,
@@ -399,11 +421,24 @@ export class OperadorTurnoService {
             ? { entrada: previsto.entrada, saida: previsto.saida }
             : undefined,
         });
+        const semanal = previsto?.regime === 'SEMANAL';
+        return {
+          ...linha,
+          motivoFolga:
+            linha.status === 'FOLGA' ? motivoDaFolga(previsto) : null,
+          grupoFolga: semanal ? (previsto?.grupo ?? null) : null,
+        };
       },
       grupoFolgaDomingo: (dia) =>
         dia.getUTCDay() === 0 && ancoraDomingo
           ? grupoFolgaNoDomingo(dia, ancoraDomingo.data, ancoraDomingo.ordem)
           : null,
+      gruposFolga: (dia) =>
+        gruposFolgaDoDia(
+          consultorJornada?.gruposDeFolga(dia),
+          dia,
+          ancoraDomingo,
+        ),
     };
   }
 
@@ -650,6 +685,8 @@ export class OperadorTurnoService {
           ? (aus?.justificadaPorNome ?? null)
           : null,
         aPrazo: ausenteDeVerdade ? (aus?.aPrazo ?? false) : false,
+        motivoFolga: l.motivoFolga,
+        grupoFolga: l.grupoFolga,
       });
     }
 
@@ -673,6 +710,7 @@ export class OperadorTurnoService {
       atestados: colaboradores.filter((c) => c.status === 'ATESTADO').length,
       colaboradores,
       grupoFolgaDomingo: ctx.grupoFolgaDomingo(diaInicio),
+      gruposFolga: ctx.gruposFolga(diaInicio),
     };
   }
 

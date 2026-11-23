@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/escala-exportacao/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-23 · **Cobre:** `backend/src/escala-exportacao/`
 
 # Módulo: `escala-exportacao`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -66,7 +66,10 @@ amanhã justamente no horário em que ela é enviada à equipe.
 ### `escalaDoDia(dataISO)`
 - **Recebe:** `yyyy-mm-dd`.
 - **Devolve:** `EscalaDiaPublicada` — `dataISO`, `diaSemana`, `ehFeriado`,
-  `nomeFeriado`, `grupoFolgaDomingo`, `totais`, `secoes` (pessoas agrupadas por
+  `nomeFeriado`, `grupoFolgaDomingo` (só domingo, rodízio antigo; mantido para o
+  APK), **`gruposFolga`** (grupos que folgam no dia, em qualquer dia — Fase 5),
+  **`motivosFolga`** (`[{ colaboradorId, motivo: 'GRUPO'|'FOLGA_FIXA' }]` de quem
+  folga no 5x2), `totais`, `secoes` (pessoas agrupadas por
   função) e **`semFolgaNoCadastro`** — quem está sem dia de folga na ficha, com
   nome e função.
 - **Efeitos:** só leitura — `Colaborador`, `Feriado`, `EscalaEntry`, `Ausencia`,
@@ -108,6 +111,11 @@ Em `escala-publicada.domain.ts`:
 Em [`escala-domingo`](escala-domingo.md), usadas por este módulo:
 `entradaEsperadaNoDia` e **`saidaEsperadaNoDia`** (esta última criada para a
 escala publicada — antes só existia a entrada).
+
+- `gruposFolgaDoDia(rodizio, dia, ancoraDomingo)` — os grupos do rodízio de
+  folgas no dia; sem rodízio no dia, o do rodízio antigo de domingo (só domingo).
+  A semana (`DiaSemanaEscala.gruposFolga`) e cada célula (`motivoFolga`) seguem o
+  mesmo modelo (spec `jornada-5x2`, R5.1/R5.3).
 
 ## 7. Estados e enums
 - `FuncaoEscala`: `OPERADOR`, `FISCAL`, `SUPERVISOR`. A **gerência não é
@@ -191,7 +199,7 @@ que a equipe recebe.
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
-| `escala-publicada.domain.spec.ts` | Precedência (férias, folga, falta, atestado), a garantia de que **só a ficha** define o horário, feriado nas duas pontas, ordem por entrada, agrupamento por função, totais e a semana segunda→domingo | 13 |
+| `escala-publicada.domain.spec.ts` | Precedência (férias, folga, falta, atestado), a garantia de que **só a ficha** define o horário, feriado nas duas pontas, ordem por entrada, agrupamento por função, totais e a semana segunda→domingo + `gruposFolgaDoDia` (rodízio × domingo antigo); | 15 |
 | `../operadores/coerencia-quadro-escala.spec.ts` | **Coerência** com o Quadro de Operadores: para o mesmo dia e pessoa, as duas vistas dizem o mesmo — estado **e horário** (trabalho, folga da ficha, folga da escala semanal com a ficha omissa e como exceção, **ficha afirmando outro dia**, férias, falta, atestado, **feriado** e **horário de exceção**) | 10 |
 | `escala-exportacao.service.spec.ts` | Cobertura de todas as funções, feriado com nome, férias, exceção de horário, falta com turno preservado, grupo do domingo, inativos fora, a grade semanal (sete células, regra por dia, ordem por nome), as **duas identidades de um fiscal** (folga e exceção gravadas só sob o `Fiscal.id`, e a linha velha que não soma um segundo dia) e o **aviso de ficha sem folga** | 16 |
 

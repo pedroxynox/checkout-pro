@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/ponto/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-23 · **Cobre:** `backend/src/ponto/`
 
 # Módulo: `ponto`
 
@@ -359,6 +359,9 @@ Em `sugestao-folga.domain.ts`:
   errado sobre a folga de alguém é pior do que não palpitar — o gestor pode
   aplicá-lo sem verificar.
 - `textoSugestaoFolga(sugestao)` → a frase do aviso (vazia sem sugestão).
+- **No 5x2 não há sugestão** (spec `jornada-5x2`, R6.5): `sugerirNovaFolga` sai
+  vazia quando a pessoa tem vigência que já começou no dia — a folga vem do
+  grupo ou das folgas fixas da jornada, e a regra supõe uma folga por semana.
 
 - **`ehFolga` existe porque a falta em dia de folga não se curava nunca:** a
   auto-cura esperava uma batida, e num dia de descanso ela jamais chega. É este

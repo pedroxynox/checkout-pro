@@ -850,8 +850,20 @@ export class PontoService {
     try {
       const ficha = await this.prisma.colaborador.findUnique({
         where: { id: colaboradorId },
-        select: { folgaDiaSemana: true },
+        select: {
+          folgaDiaSemana: true,
+          // Vigência que já começou no dia = regime 5x2 (spec jornada-5x2).
+          jornadaVigencias: {
+            where: { vigenteDesde: { lte: inicioDoDia(dia) } },
+            select: { id: true },
+            take: 1,
+          },
+        },
       });
+      // No 5x2 a folga vem do rodízio do grupo ou das folgas fixas da jornada; a
+      // sugestão do "novo dia" (uma folga por semana, ADR 0019) não se aplica
+      // (R6.5).
+      if ((ficha?.jornadaVigencias?.length ?? 0) > 0) return '';
       if (ficha?.folgaDiaSemana == null) return '';
       const inicio = new Date(dia);
       inicio.setUTCDate(inicio.getUTCDate() - 28);

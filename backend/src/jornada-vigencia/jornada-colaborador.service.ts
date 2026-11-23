@@ -104,6 +104,32 @@ export interface ResultadoGravacaoJornada {
   avisos: AvisoJornada[];
 }
 
+/** Uma pessoa na conferência da jornada da equipe. */
+export interface PessoaDaConferencia {
+  colaboradorId: string;
+  nome: string;
+  funcao: string;
+}
+
+/**
+ * Conferência da jornada da equipe (spec `jornada-5x2`, R5.3): quem ainda está
+ * sem vigência e os avisos de R4.6 da vigência mais recente de cada um.
+ */
+export interface ConferenciaJornada {
+  /** Ativos escalados (operador, fiscal, supervisor) que já têm vigência. */
+  comVigencia: number;
+  /** Os que ainda não têm nenhuma (seguem no 6x1 da ficha). */
+  semVigencia: PessoaDaConferencia[];
+  /** Quem tem aviso na vigência mais recente (inclusive futura). */
+  avisos: (PessoaDaConferencia & {
+    aPartirDe: string;
+    avisos: AvisoJornada[];
+  })[];
+}
+
+/** Funções que entram na escala (a gerência não é escalada). */
+const FUNCOES_ESCALADAS = ['OPERADOR', 'FISCAL', 'SUPERVISOR'] as const;
+
 /** Uma vigência já validada, pronta para gravar. */
 export interface PlanoVigenciaJornada {
   vigenteDesde: Date;
@@ -343,6 +369,44 @@ export class JornadaColaboradorService {
     }
     await this.prisma.jornadaVigencia.delete({ where: { id: alvo.id } });
     return this.obter(colaboradorId);
+  }
+
+  /**
+   * Conferência da equipe: quem está sem vigência e os avisos da vigência mais
+   * recente de cada pessoa ativa escalada. Só lê.
+   */
+  async conferirEquipe(): Promise<ConferenciaJornada> {
+    const pessoas = await this.prisma.colaborador.findMany({
+      where: { ativo: true, funcao: { in: [...FUNCOES_ESCALADAS] } },
+      select: { id: true, nome: true, funcao: true },
+      orderBy: { nome: 'asc' },
+    });
+    const linhas: LinhaComContrato[] =
+      await this.prisma.jornadaVigencia.findMany({
+        where: { colaboradorId: { in: pessoas.map((p) => p.id) } },
+        include: INCLUDE_VIGENCIA,
+        orderBy: { vigenteDesde: 'desc' },
+      });
+    const maisRecente = new Map<string, LinhaComContrato>();
+    for (const l of linhas) {
+      if (!maisRecente.has(l.colaboradorId))
+        maisRecente.set(l.colaboradorId, l);
+    }
+    const semVigencia: PessoaDaConferencia[] = [];
+    const avisos: ConferenciaJornada['avisos'] = [];
+    for (const p of pessoas) {
+      const pessoa = { colaboradorId: p.id, nome: p.nome, funcao: p.funcao };
+      const linha = maisRecente.get(p.id);
+      if (!linha) {
+        semVigencia.push(pessoa);
+        continue;
+      }
+      const v = await this.view(linha);
+      if (v.avisos.length > 0) {
+        avisos.push({ ...pessoa, aPartirDe: v.aPartirDe, avisos: v.avisos });
+      }
+    }
+    return { comVigencia: maisRecente.size, semVigencia, avisos };
   }
 
   /** Valida os dados e resolve o contrato (400/403/409). */
