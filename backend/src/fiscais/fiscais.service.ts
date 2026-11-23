@@ -252,8 +252,8 @@ export class FiscaisService {
 
   /**
    * Regras por FISCAL e dia, para os relatórios que ainda leem o log
-   * `RegistroPontoFiscal` (previsão de extras, histórico semanal, alerta de
-   * excesso de extras). Liga o fiscal à ficha uma vez; o resolvedor de cada
+   * `RegistroPontoFiscal` (previsão de extras e histórico semanal). Liga o
+   * fiscal à ficha uma vez; o resolvedor de cada
    * fiscal é carregado sob demanda. Sem serviço de contratos, todo dia no
    * padrão do código.
    */
