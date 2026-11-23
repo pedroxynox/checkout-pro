@@ -45,6 +45,7 @@ import { CentroControleScreen } from '../screens/centroControle/CentroControleSc
 import { ProdutosPesadosScreen } from '../screens/produtosPesados/ProdutosPesadosScreen';
 import { ProdutosPesadosCargaScreen } from '../screens/produtosPesados/ProdutosPesadosCargaScreen';
 import { ConfigEscalaDomingoScreen } from '../screens/centroControle/ConfigEscalaDomingoScreen';
+import { RodizioFolgasScreen } from '../screens/centroControle/RodizioFolgasScreen';
 import { CentralVendasScreen } from '../screens/centroControle/CentralVendasScreen';
 import { RelatoriosScreen } from '../screens/relatorios/RelatoriosScreen';
 import { MetasScreen } from '../screens/metas/MetasScreen';
@@ -365,11 +366,20 @@ export function AppNavigator(): React.ReactElement {
         </>
       )}
       {podeAcessar('ESCALA_DOMINGO_CONFIG') && (
-        <Stack.Screen
-          name="ConfigEscalaDomingo"
-          component={ConfigEscalaDomingoScreen}
-          options={{ title: 'Rodízio de domingo' }}
-        />
+        <>
+          <Stack.Screen
+            name="RodizioFolgas"
+            component={RodizioFolgasScreen}
+            options={{ title: 'Rodízio de folgas' }}
+          />
+          {/* Rodízio de domingo do 6x1: sem atalho no Centro de Controle desde a
+              Fase 3 (o 5x2 usa o rodízio de folgas); sai na limpeza (Fase 7). */}
+          <Stack.Screen
+            name="ConfigEscalaDomingo"
+            component={ConfigEscalaDomingoScreen}
+            options={{ title: 'Rodízio de domingo' }}
+          />
+        </>
       )}
       {podeAcessar('USUARIOS_CRUD') && (
         <Stack.Screen

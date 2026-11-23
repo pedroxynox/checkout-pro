@@ -114,7 +114,10 @@ export type RootStackParamList = {
   Relatorios: undefined;
   GestaoColaboradores: { matriculaInicial?: string; nomeInicial?: string } | undefined;
   Metas: undefined;
+  /** Rodízio de domingo do 6x1: sem atalho desde o rodízio de folgas (Fase 3). */
   ConfigEscalaDomingo: undefined;
+  /** Rodízio de folgas G1/G2/G3 do 5x2 (spec jornada-5x2, Fase 3). */
+  RodizioFolgas: undefined;
   TiposContrato: undefined;
   CentralVendas: undefined;
   NaoReconhecidos: undefined;
