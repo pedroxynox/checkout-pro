@@ -24,8 +24,8 @@ spec [`jornada-5x2`](../../.kiro/specs/jornada-5x2/design.md)).
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas (aprox.) |
 |---|---|---|
-| `jornada-vigencia.domain.ts` | Domínio puro: `vigenciaNoDia`, `previstoNoDia`, `folgasFixasEfetivas`, `avisosDaVigencia`, `validarVigencia` (e reexporta `textoDuracao`) | 441 |
-| `jornada-vigencia.service.ts` | `consultor(dias)` em lote (`previsto`, `ehFolga`, `semFolgaNaFicha`) e `folgasNoPeriodo` | 332 |
+| `jornada-vigencia.domain.ts` | Domínio puro: `vigenciaNoDia`, `previstoNoDia`, `folgasFixasEfetivas`, `avisosDaVigencia`, `validarVigencia` (e reexporta `textoDuracao`) | 442 |
+| `jornada-vigencia.service.ts` | `consultor(dias)` em lote (`previsto`, `ehFolga`, `semFolgaNaFicha`, com o rodízio de folgas) e `folgasNoPeriodo` | 354 |
 | `folga.service.ts` | **Regra única de folga**: fachada do consultor (veio de `escala-domingo`) | 60 |
 | `jornada-vigencia.module.ts` | DI; importa `TiposContratoModule` e `EscalaDomingoModule`; exporta `JornadaVigenciaService` e `FolgaService` | 18 |
 
@@ -142,8 +142,11 @@ de domingo.
 - 🔧 Comparação feita na Fase 1b: 155 leituras (Central, escala, quadro, exportação,
   compensação, perfil, incidências, ponto) sobre um banco com 8 pessoas e um ciclo
   inteiro, com `main` e com a branch — resultado idêntico.
-- 🔧 O rodízio de folgas (Fase 3) entra pelo contexto de `previstoNoDia`
-  (`folgasDoGrupo`). As folgas padrão do contrato já vêm de `RegrasContrato`
-  (Fase 2).
+- ✅ O rodízio de folgas (Fase 3) entra pelo contexto de `previstoNoDia`
+  (`folgasDoGrupo`): o consultor lê `rodizio_folgas_vigencias` uma vez e responde,
+  para cada grupo e dia, as folgas da semana pelo rodízio vigente
+  ([ADR 0028](../02-arquitetura/decisoes/0028-rodizio-de-folgas-5x2.md)). Sem
+  rodízio vigente no dia, o grupo não afirma folga nem turno. As folgas padrão do
+  contrato vêm de `RegrasContrato` (Fase 2).
 - 🔧 O consultor carrega todas as fichas, como o `FolgaService`; as tabelas são
   pequenas (uma linha por pessoa e mudança).

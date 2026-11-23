@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/escala-domingo/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/escala-domingo/` (rodízio de domingo e rodízio de folgas)
 
 # Módulo: `escala-domingo`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -10,9 +10,14 @@
 
 
 ## 1. Propósito
-Define o **rodízio de domingo**: aos domingos a operação trabalha com 2 grupos e
-folga 1 (esquema **2x1** entre G1, G2 e G3). O módulo guarda o ponto de partida
-do ciclo e calcula, de forma determinística, qual grupo folga em cada domingo.
+Define os **rodízios por grupo** (G1, G2, G3):
+
+- o **rodízio de domingo** do 6x1: aos domingos a operação trabalha com 2 grupos e
+  folga 1 (esquema **2x1**). O módulo guarda o ponto de partida do ciclo e calcula,
+  de forma determinística, qual grupo folga em cada domingo;
+- o **rodízio de folgas** do 5x2 (desde 23/11/2026, spec `jornada-5x2`, Fase 3):
+  cada grupo folga 2 dias por semana, num ciclo de semanas de segunda a domingo,
+  guardado com vigência ([ADR 0028](../02-arquitetura/decisoes/0028-rodizio-de-folgas-5x2.md)).
 
 ## 2. Responsabilidades e limites
 - **Faz:** guarda a **âncora** do rodízio (domingo de referência + ordem do
@@ -31,8 +36,12 @@ do ciclo e calcula, de forma determinística, qual grupo folga em cada domingo.
 | `escala-domingo.controller.ts` | Rotas HTTP (ler e definir a âncora) | 39 |
 | `escala-domingo.service.ts` | Lê/grava a âncora no `ConfigSistema` e monta o preview | 143 |
 | `escala-domingo.domain.ts` | Regras puras: rodízio, folga, turno esperado e atraso | 249 |
-| `escala-domingo.module.ts` | Ligações (DI); exporta o `EscalaDomingoService` | 21 |
+| `escala-domingo.module.ts` | Ligações (DI); exporta `EscalaDomingoService` e `RodizioFolgasService` | 28 |
 | `dto/escala-domingo.dto.ts` | Validação de entrada do `PUT` | 28 |
+| `rodizio-folgas.controller.ts` | Rotas do rodízio de folgas (`config/rodizio-folgas`) | 47 |
+| `rodizio-folgas.service.ts` | Lê/grava as vigências do rodízio, avisos e prévia | 265 |
+| `rodizio-folgas.domain.ts` | Regras puras: semana do ciclo, folgas do grupo, validação, avisos e prévia | 476 |
+| `dto/rodizio-folgas.dto.ts` | Validação de entrada do `PUT` e do `simular` | 22 |
 
 ## 4. Endpoints (rotas HTTP)
 > A lista canônica está na [API HTTP → `escala-domingo`](../05-referencia-dados/api-http.md#escala-domingo).
@@ -41,6 +50,9 @@ do ciclo e calcula, de forma determinística, qual grupo folga em cada domingo.
 |---|---|---|
 | `GET /config/escala-domingo` | `—` (autenticado) | Devolve a âncora vigente + preview dos próximos 8 domingos. |
 | `PUT /config/escala-domingo` | `ESCALA_DOMINGO_CONFIG` | Define referência + ordem do ciclo (somente administrador). |
+| `GET /config/rodizio-folgas` | `ESCALA_DOMINGO_CONFIG` | Vigências do rodízio de folgas (com avisos), a vigente e a prévia de 6 semanas. |
+| `PUT /config/rodizio-folgas` | `ESCALA_DOMINGO_CONFIG` | Grava (cria ou substitui) a vigência que começa na segunda informada. |
+| `POST /config/rodizio-folgas/simular` | `ESCALA_DOMINGO_CONFIG` | Valida e devolve avisos e prévia, sem gravar. |
 
 ## 5. Serviços e funções
 
@@ -68,6 +80,34 @@ do ciclo e calcula, de forma determinística, qual grupo folga em cada domingo.
   compatibilidade) e `atualizadoPor`.
 - **Erros possíveis:** `BadRequestException` se a ordem não for uma permutação
   de G1/G2/G3, se a data for inválida ou se **não for um domingo**.
+
+### `RodizioFolgasService` — rodízio de folgas do 5x2
+
+Quem decide a folga de cada dia é a jornada prevista
+([`jornada-vigencia`](jornada-vigencia.md)), que lê a mesma tabela; este serviço é
+o da tela do Centro de Controle.
+
+#### `obter(hoje?)`
+- **Devolve:** `RodizioFolgasConfig` — `vigencias` (da mais antiga para a mais
+  nova, cada uma com `avisos`), `vigente` (a de hoje em Brasília, ou null) e
+  `previa` (6 semanas de segunda a domingo a partir da semana de hoje).
+- **Regras aplicadas:** na prévia, os dias antes da primeira vigência mostram só os
+  domingos, pelo rodízio antigo (`fonte: 'DOMINGO_ANTIGO'`), para conferir a
+  passagem. Uma linha com JSON que não é um padrão fica de fora.
+
+#### `simular(dados)`
+- Valida (400 com todos os erros juntos) e devolve a vigência como ficaria (`id:
+  null`, com avisos) e a prévia desde a semana anterior ao início, contando com as
+  vigências gravadas. Não grava.
+
+#### `definir(dados, por?)`
+- Valida, exige **ciclo de folha aberto** na data de início (`CicloFechadoError`,
+  409) e faz `upsert` por `vigenteDesde` (`criadoPor` na criação, `atualizadoPor`
+  na troca). Devolve `obter()`.
+
+#### Avisos dos domingos na passagem
+Para cada vigência, os domingos antes do início vêm da vigência anterior ou, antes
+da primeira, do rodízio antigo de domingo (`EscalaDomingoService.obterAncora`).
 
 ### `FolgaService` — a regra ÚNICA de folga
 
@@ -223,21 +263,42 @@ Deixar de cobrar é reversível; impedir alguém de registrar trabalho, não.
 - `minutosDeAtraso(entradaPrevista, entradaReal, tolerancia?)` → minutos de
   atraso apenas quando ultrapassam a tolerância (`TOLERANCIA_ATRASO_MIN = 15`).
 
+**Rodízio de folgas (`rodizio-folgas.domain.ts`):**
+- `segundaDaSemana(dia)` → a segunda-feira da semana (seg a dom).
+- `rodizioNoDia(vigencias, dia)` → a vigência de maior início que não passe do dia.
+- `semanaDoCiclo(rodizio, dia)` → 0 = semana 1, contada em semanas inteiras desde
+  `vigenteDesde` e repetindo a cada `semanasNoCiclo`.
+- `folgasDoGrupoNaSemana(rodizio, grupo, dia)` / `gruposDeFolgaNoDia(rodizio, dia)`.
+- `validarRodizio(entrada)` → erros que bloqueiam (lista vazia = válido).
+- `avisosDoRodizio(rodizio, folgaNoDomingoAnterior?)` → `DIA_SEM_GRUPO`,
+  `DIA_COM_VARIOS_GRUPOS`, `DIAS_SEGUIDOS` (> 6), `DOMINGOS_SEGUIDOS` (> 2, também
+  na passagem).
+- `previaDoRodizio(vigencias, desde, semanas, domingoAntigo?)`.
+- `padraoDe(json)` / `rodizioDaLinha(linha)` → leitura do JSON do banco.
+- `INICIO_RODIZIO_5X2` e `PADRAO_RODIZIO_5X2` → a vigência da decisão 5.
+
 ## 7. Estados e enums
 - `GrupoDomingo`: `G1` · `G2` · `G3` (`GRUPOS_DOMINGO`).
 - **Rotação:** a cada domingo avança um passo na `ordem`; ciclo de 3 domingos,
   em que cada grupo folga 1 e trabalha 2.
+- `TipoAvisoRodizio`: `DIA_SEM_GRUPO` · `DIA_COM_VARIOS_GRUPOS` · `DIAS_SEGUIDOS` ·
+  `DOMINGOS_SEGUIDOS`. `FontePrevia`: `RODIZIO` · `DOMINGO_ANTIGO`.
 
 ## 8. Dados que o módulo toca
 - **Lê/escreve:** `ConfigSistema` (singleton `id: 'sistema'`), campos
   `domingoAncoraData`, `domingoOrdemGrupos`, `domingoAncoraGrupo`, `atualizadoPor`.
+- **Lê/escreve:** `RodizioFolgasVigencia` (`rodizio_folgas_vigencias`, migração
+  `9zzw_rodizio_folgas`, que semeia 23/11/2026).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
 
 ## 9. Dependências
-- **Depende de:** `PrismaService` (global).
+- **Depende de:** `PrismaService` (global) e `CicloFolhaService`
+  ([`ciclo-folha`](ciclo-folha.md), para recusar rodízio em ciclo fechado).
 - **É usado por:** a tela de Escalas e o Relógio Ponto (resolvem quem
   trabalha/folga por domingo, o turno esperado e o atraso a partir das funções
-  puras); o módulo **exporta** `EscalaDomingoService`.
+  puras); a jornada prevista ([`jornada-vigencia`](jornada-vigencia.md)) usa o
+  domínio do rodízio de folgas; o módulo **exporta** `EscalaDomingoService` e
+  `RodizioFolgasService`.
 
 ## 10. Regras de negócio-chave
 1. **Rodízio 2x1:** a cada domingo um grupo folga e dois trabalham; num ciclo de
@@ -263,11 +324,17 @@ Deixar de cobrar é reversível; impedir alguém de registrar trabalho, não.
    rodízio), o feriado **mantém o horário normal do dia** em vez de deixar a
    pessoa sem turno — sem turno ela desapareceria da equipe do dia, o que seria
    pior e mais surpreendente do que seguir no horário habitual.
+8. **Rodízio de folgas do 5x2** ([ADR 0028](../02-arquitetura/decisoes/0028-rodizio-de-folgas-5x2.md)):
+   cada grupo folga 2 dias distintos por semana, nunca o sábado; semana de segunda
+   a domingo; vigência que começa numa segunda e repete o ciclo; vale só para quem
+   tem grupo numa vigência da jornada. O rodízio de domingo acima segue para o 6x1.
 
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `escala-domingo.domain.spec.ts` | Rodízio, folga, turno esperado, **turno de feriado (horário de domingo, folga inalterada)** e atraso (funções puras) | 37 |
+| `rodizio-folgas.domain.spec.ts` | A tabela da decisão 5 dia a dia de 23/11/2026 a 03/01/2027, continuidade dos domingos, no máximo 5 dias e 2 domingos seguidos, validação, avisos, prévia e propriedades (fast-check) | 20 |
+| `rodizio-folgas.service.spec.ts` | Leitura com avisos e prévia, simulação sem gravar, gravação (criar, substituir) e recusa em ciclo fechado | 7 |
 
 > Contagem sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
@@ -277,3 +344,6 @@ Deixar de cobrar é reversível; impedir alguém de registrar trabalho, não.
   fallback quando toda a base estiver regravada com `domingoOrdemGrupos`.
 - ⚠️ O rodízio assume **exatamente 3 grupos** (2x1). Uma operação com número
   diferente de grupos exigiria revisar o domínio.
+- ⚠️ O rodízio de folgas valida **exatamente 2 dias** por semana e grupo (5x2).
+- 🔧 Não há rota para **apagar** uma vigência do rodízio; um erro se corrige
+  gravando outra na mesma data.

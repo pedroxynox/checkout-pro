@@ -48,3 +48,5 @@ numerado (`NNNN-titulo-curto.md`).
 | 0026 | [O horário é o da ficha; nada na escala o sobrepõe](0026-horario-e-o-da-ficha.md) |
 
 | 0027 | [Vigência da jornada: cada dia é calculado com o que valia naquele dia](0027-vigencia-da-jornada.md) |
+
+| 0028 | [Rodízio de folgas do 5x2: uma tabela por grupo e semana, com vigência](0028-rodizio-de-folgas-5x2.md) |

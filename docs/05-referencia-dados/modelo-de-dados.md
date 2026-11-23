@@ -3,7 +3,7 @@
 
 # Modelo de Dados (Prisma)
 
-> Fonte: `backend/prisma/schema.prisma`. Total: **57 tabelas** e **30 tipos (enums)**.
+> Fonte: `backend/prisma/schema.prisma`. Total: **58 tabelas** e **30 tipos (enums)**.
 
 Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dicionario-de-dados.md).
 
@@ -59,6 +59,7 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `Colaborador` | 26 | — |
 | `JornadaVigencia` | 14 | Assim corrigir hoje uma batida de um dia antigo usa as regras daquele dia. |
 | `DisponibilidadeDia` | 6 | sistema não cobra ponto). É o horário que a escala mostra e o ponto cobra. |
+| `RodizioFolgasVigencia` | 8 | (`ConfigSistema.domingoAncora*`) continua valendo para o regime 6x1. |
 | `Atestado` | 13 | o futuro (anexo do documento; depende de storage de objetos/S3). |
 | `FeriasColaborador` | 9 | — |
 | `ColaboradorIdentificador` | 5 | — |

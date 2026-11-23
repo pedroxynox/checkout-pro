@@ -80,6 +80,39 @@ As mesmas regras puras do rodízio alimentam o Relógio de Ponto e a apuração:
     ao 5x2 é escalado pela disponibilidade e pelas folgas da vigência; antes do corte, e
     para quem não tem vigência, valem a ficha e o rodízio de domingo acima.
 
+## 5.1 Rodízio de folgas do 5x2 (desde 23/11/2026)
+
+No 5x2, quem tem grupo (G1/G2/G3) folga **2 dias por semana**, e os dias mudam a
+cada semana de um ciclo de 3 semanas
+([ADR 0028](../../02-arquitetura/decisoes/0028-rodizio-de-folgas-5x2.md)). A semana
+vai de **segunda a domingo**; a semana 1 começou na segunda **23/11/2026**:
+
+| Grupo | Semana 1 | Semana 2 | Semana 3 |
+|---|---|---|---|
+| G1 | qui + sex | ter + qua | seg + dom |
+| G2 | ter + qua | seg + dom | qui + sex |
+| G3 | seg + dom | qui + sex | ter + qua |
+
+**Regras-chave:**
+
+15. **Ninguém de grupo folga no sábado.** Cada dia útil e cada domingo têm um
+    grupo de folga; cada grupo trabalha 2 domingos e folga 1.
+16. **Continuidade dos domingos:** no 6x1, G3 folgou 08/11, G2 15/11 e G1 22/11;
+    no 5x2, G3 folga 29/11, G2 06/12 e G1 13/12. Ninguém passa de 2 domingos
+    seguidos nem de 5 dias seguidos de trabalho.
+17. **O rodízio tem vigência:** mudar a tabela é gravar uma nova, que começa numa
+    segunda-feira; os dias anteriores não mudam. Não se grava vigência que comece
+    num ciclo de folha fechado.
+18. **A configuração recusa** início fora da segunda, semana sem exatamente 2 dias
+    distintos e sábado; e **avisa, sem impedir**: dia sem grupo de folga ou com
+    mais de um, mais de 6 dias seguidos e mais de 2 domingos seguidos (também na
+    passagem do rodízio anterior).
+19. **Vale só para quem tem grupo numa vigência da jornada.** Quem não tem grupo
+    folga nas folgas fixas da ficha ou nas padrão do contrato. Os dias do 6x1
+    continuam com a folga fixa e o rodízio de domingo acima.
+20. A configuração fica no Centro de Controle, com a mesma permissão do rodízio de
+    domingo (`ESCALA_DOMINGO_CONFIG`).
+
 ## 6. Observações
 
 - O rodízio assume **exatamente 3 grupos** (2x1); uma operação com número
