@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   Colaborador,
   FuncaoColaborador,
@@ -9,14 +9,27 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AcessosService } from '../acessos/acessos.service';
-import { inicioDoDia } from '../common/datas';
+import { diaCivilBrasilia, inicioDoDia } from '../common/datas';
 import {
   gerarEscalaSemanalFiscal,
   temEscalaDefinida,
 } from '../fiscais/escala.domain';
 import { Perfil as PerfilSolicitante } from '../acessos/acessos.domain';
-import { normalizarLogin, normalizarMatricula } from './colaboradores.domain';
 import {
+  AutorJornada,
+  DadosVigenciaJornada,
+  JornadaColaboradorService,
+  PlanoVigenciaJornada,
+} from '../jornada-vigencia/jornada-colaborador.service';
+import { AvisoJornada } from '../jornada-vigencia/jornada-vigencia.domain';
+import {
+  CAMPOS_LEGADOS,
+  camposLegadosAlterados,
+  normalizarLogin,
+  normalizarMatricula,
+} from './colaboradores.domain';
+import {
+  CamposLegadosCongeladosError,
   ColaboradorNaoEncontradoError,
   ContaAcessoExistenteError,
   LoginAppDuplicadoError,
@@ -143,6 +156,19 @@ export interface ColaboradorInput {
   usuarioId?: string | null;
 }
 
+/**
+ * Bloco `jornada` do cadastro (spec `jornada-5x2`, R4.7): a primeira vigência.
+ * Sem `aPartirDe`, vale a data de admissão (ou hoje, sem admissão).
+ */
+export type JornadaDoCadastro = Omit<DadosVigenciaJornada, 'aPartirDe'> & {
+  aPartirDe?: string;
+};
+
+/** Colaborador recém-cadastrado; com jornada, os avisos dela (R4.6). */
+export type ColaboradorCadastrado = Colaborador & {
+  avisosJornada?: AvisoJornada[];
+};
+
 /** Um login (conta de acesso) disponível para vincular a um colaborador. */
 export interface LoginColaborador {
   id: string;
@@ -172,6 +198,9 @@ export class ColaboradoresService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly acessos: AcessosService,
+    // Escrita da vigência (bloco `jornada` do cadastro). Opcional como nos
+    // demais serviços: os testes antigos montam o serviço sem ela.
+    @Optional() private readonly jornada?: JornadaColaboradorService,
   ) {}
 
   /**
@@ -249,9 +278,10 @@ export class ColaboradoresService {
   }
 
   async cadastrar(
-    input: ColaboradorInput,
+    input: ColaboradorInput & { jornada?: JornadaDoCadastro },
     perfilSolicitante?: PerfilSolicitante,
-  ): Promise<Colaborador> {
+    autorJornada: AutorJornada = { login: null, podeTrocarContrato: false },
+  ): Promise<ColaboradorCadastrado> {
     const matricula = normalizarMatricula(input.matricula);
     const login = input.login ? normalizarLogin(input.login) : undefined;
     const funcao = input.funcao ?? 'OPERADOR';
@@ -279,6 +309,31 @@ export class ColaboradoresService {
       }
     }
 
+    // Vínculo obrigatório ao tipo de contrato: o informado ou o padrão (6x1).
+    const idPadrao = await this.idContratoPadrao();
+    const tipoContratoJornadaIdEfetivo =
+      input.tipoContratoJornadaId ?? idPadrao;
+
+    // Bloco `jornada` (R4.7): validado ANTES de criar a conta e a ficha, para
+    // o cadastro não ficar pela metade. Sem ele, a pessoa fica no 6x1 da ficha
+    // (compatibilidade com o APK antigo).
+    let planoJornada: PlanoVigenciaJornada | null = null;
+    if (input.jornada) {
+      if (!this.jornada) {
+        throw new Error('Escrita da jornada indisponível neste módulo.');
+      }
+      const admissao = normalizarAdmissao(input.dataAdmissao);
+      const aPartirDe =
+        input.jornada.aPartirDe ??
+        (admissao ?? diaCivilBrasilia()).toISOString().slice(0, 10);
+      planoJornada = await this.jornada.validarNoCadastro(
+        { ...input.jornada, aPartirDe },
+        tipoContratoJornadaIdEfetivo,
+        idPadrao,
+        autorJornada,
+      );
+    }
+
     // Resolve a conta de acesso: vincula uma existente (caminho secundário) ou
     // cria uma nova com login = matrícula (caminho normal para quem entra no app).
     let usuarioId: string | null = null;
@@ -299,10 +354,6 @@ export class ColaboradoresService {
       input.grupoDomingo ?? null,
       input.tipoContratoJornadaId,
     );
-
-    // Vínculo obrigatório ao tipo de contrato: o informado ou o padrão (6x1).
-    const tipoContratoJornadaIdEfetivo =
-      input.tipoContratoJornadaId ?? (await this.idContratoPadrao());
 
     const colaborador = await this.prisma.colaborador.create({
       data: {
@@ -341,6 +392,14 @@ export class ColaboradoresService {
     // Escala geral do fiscal a partir do cadastro (Opção A: fonte única).
     await this.sincronizarEscalaFiscal(colaborador);
 
+    if (planoJornada && this.jornada) {
+      const { avisos } = await this.jornada.gravarPlano(
+        colaborador.id,
+        planoJornada,
+        autorJornada.login,
+      );
+      return { ...colaborador, avisosJornada: avisos };
+    }
     return colaborador;
   }
 
@@ -498,6 +557,27 @@ export class ColaboradoresService {
       throw new ColaboradorNaoEncontradoError();
     }
 
+    // Campos legados congelados para quem já tem vigência (R1.3a). Só consulta
+    // as vigências quando a edição traz algum campo legado (o APK antigo manda a
+    // ficha inteira; o novo, não).
+    const tocaLegado = CAMPOS_LEGADOS.some((c) => input[c] !== undefined);
+    const temVigencia =
+      tocaLegado &&
+      (await this.prisma.jornadaVigencia.count({
+        where: { colaboradorId: id },
+      })) > 0;
+    if (temVigencia) {
+      const contratoPedido =
+        input.tipoContratoJornadaId === undefined
+          ? undefined
+          : input.tipoContratoJornadaId || (await this.idContratoPadrao());
+      const mudados = camposLegadosAlterados(atual, {
+        ...input,
+        tipoContratoJornadaId: contratoPedido,
+      });
+      if (mudados.length > 0) throw new CamposLegadosCongeladosError(mudados);
+    }
+
     // Impede escalada de privilégios: só o gerente desenvolvedor pode conceder
     // acesso de nível gerencial ao mudar a função/flag de um colaborador.
     if (
@@ -564,7 +644,8 @@ export class ColaboradoresService {
       };
     // Ao atribuir um contrato que NÃO trabalha domingo, o colaborador sai do
     // rodízio (grupoDomingo = null), mesmo que não tenha sido tocado no form.
-    if (input.tipoContratoJornadaId) {
+    // Com vigência, não: o grupo da ficha é história do 6x1 (R1.3a).
+    if (input.tipoContratoJornadaId && !temVigencia) {
       const contrato = await this.prisma.tipoContratoJornada.findUnique({
         where: { id: input.tipoContratoJornadaId },
         select: { trabalhaDomingo: true },

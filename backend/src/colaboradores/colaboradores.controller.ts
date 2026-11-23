@@ -15,12 +15,15 @@ import {
   FuncaoColaborador,
   TurnoColaborador,
 } from '@prisma/client';
+import { AcessosService } from '../acessos/acessos.service';
 import { Funcionalidade } from '../common/decorators/funcionalidade.decorator';
+import { autorDaJornada } from '../jornada-vigencia/jornada-colaborador.controller';
 import {
   UsuarioAtual,
   UsuarioAutenticado,
 } from '../common/decorators/usuario-atual.decorator';
 import {
+  ColaboradorCadastrado,
   ColaboradoresService,
   LoginColaborador,
 } from './colaboradores.service';
@@ -61,6 +64,7 @@ export class ColaboradoresController {
     private readonly service: ColaboradoresService,
     private readonly perfilService: PerfilColaboradorService,
     private readonly purga: PurgaInativosService,
+    private readonly acessos: AcessosService,
   ) {}
 
   /**
@@ -83,12 +87,16 @@ export class ColaboradoresController {
     return this.purga.purgarInativos();
   }
 
-  /** Cadastra um colaborador (operador por padrão). */
+  /**
+   * Cadastra um colaborador (operador por padrão). Com o bloco `jornada`, grava
+   * a primeira vigência e devolve os avisos em `avisosJornada`; escolher um
+   * contrato diferente do padrão nesse bloco exige `ADMIN_DADOS`.
+   */
   @Post()
   async cadastrar(
     @Body() dto: CadastrarColaboradorDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
-  ): Promise<Colaborador> {
+  ): Promise<ColaboradorCadastrado> {
     return this.service.cadastrar(
       {
         nome: dto.nome,
@@ -110,8 +118,10 @@ export class ColaboradoresController {
         saidaDom: dto.saidaDom,
         dataAdmissao: dto.dataAdmissao,
         tipoContratoJornadaId: dto.tipoContratoJornadaId,
+        jornada: dto.jornada,
       },
       usuario.perfil,
+      autorDaJornada(this.acessos, usuario),
     );
   }
 
