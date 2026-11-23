@@ -370,15 +370,41 @@ function cabeNoContrato(
 // Validação da vigência (bloqueia o salvamento — 400).
 // ---------------------------------------------------------------------------
 
+/**
+ * Um dia da disponibilidade como chega da API. Entrada e saída vazias = dia sem
+ * horário (a tela manda as sete linhas); só uma delas preenchida é erro.
+ */
+export interface LinhaDisponibilidade {
+  diaSemana: number;
+  entrada?: string | null;
+  saida?: string | null;
+}
+
 /** O que se grava numa vigência, como chega da API. */
 export interface EntradaVigencia {
   grupo: string | null;
   folgasFixas: readonly number[];
-  disponibilidade: readonly {
-    diaSemana: number;
-    entrada: string;
-    saida: string;
-  }[];
+  disponibilidade: readonly LinhaDisponibilidade[];
+}
+
+function vazio(texto: string | null | undefined): boolean {
+  return texto == null || texto.trim() === '';
+}
+
+/**
+ * Os dias que têm horário, prontos para gravar (sem as linhas vazias). Supõe a
+ * entrada já aprovada por `validarVigencia`.
+ */
+export function disponibilidadePreenchida(
+  linhas: readonly LinhaDisponibilidade[],
+): { diaSemana: number; entrada: string; saida: string }[] {
+  return linhas
+    .filter((l) => !vazio(l.entrada) && !vazio(l.saida))
+    .map((l) => ({
+      diaSemana: l.diaSemana,
+      entrada: (l.entrada ?? '').trim(),
+      saida: (l.saida ?? '').trim(),
+    }));
 }
 
 /** Limites que vêm do contrato (Fase 2). */
@@ -428,8 +454,17 @@ export function validarVigencia(
     const nome = NOMES_DIA[h.diaSemana];
     if (dias.has(h.diaSemana)) erros.push(`Horário repetido na ${nome}.`);
     dias.add(h.diaSemana);
-    const inicio = minutosDoDia(h.entrada);
-    const fim = minutosDoDia(h.saida);
+    const semEntrada = vazio(h.entrada);
+    const semSaida = vazio(h.saida);
+    if (semEntrada && semSaida) continue; // dia sem horário
+    if (semEntrada || semSaida) {
+      erros.push(
+        `Na ${nome}, informe entrada e saída (ou deixe as duas vazias).`,
+      );
+      continue;
+    }
+    const inicio = minutosDoDia((h.entrada ?? '').trim());
+    const fim = minutosDoDia((h.saida ?? '').trim());
     if (inicio == null || fim == null) {
       erros.push(`Na ${nome}, entrada e saída devem ser HH:mm.`);
       continue;

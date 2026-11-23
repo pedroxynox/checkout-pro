@@ -155,9 +155,25 @@ export class AcessosService {
     usuario: UsuarioAutenticado,
     funcionalidades: string[],
   ): void {
+    if (!this.usuarioTemAlguma(usuario, funcionalidades)) {
+      throw new PermissaoInsuficienteError();
+    }
+  }
+
+  /**
+   * O usuário tem acesso a alguma das funcionalidades (com os ajustes da
+   * Central de Permissões)? Para a regra que depende do QUE se altera dentro de
+   * um endpoint — ex.: trocar o contrato na jornada exige `ADMIN_DADOS`.
+   */
+  usuarioTemAlguma(
+    usuario: UsuarioAutenticado | undefined,
+    funcionalidades: string[],
+  ): boolean {
+    if (!usuario) return false;
     const perfilOverrides: OverridePermissao[] = usuario.perfilOverrides ?? [];
-    const userOverrides: OverridePermissao[] = usuario.permissoesOverrides ?? [];
-    const permitido = funcionalidades.some((f) =>
+    const userOverrides: OverridePermissao[] =
+      usuario.permissoesOverrides ?? [];
+    return funcionalidades.some((f) =>
       decidirAutorizacaoComOverrides(
         usuario.perfil,
         f,
@@ -165,9 +181,6 @@ export class AcessosService {
         userOverrides,
       ),
     );
-    if (!permitido) {
-      throw new PermissaoInsuficienteError();
-    }
   }
 
   /**
