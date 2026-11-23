@@ -92,7 +92,7 @@ observações.
 | `CENTRAL_JORNADA` — portal do ciclo de folha 26→25 | ✅ | ✅ | ✅ | — | — |
 | `ESCALA_VISUALIZAR` | ✅ | ✅ | ✅ | ✅ | — |
 | `ESCALA_EDITAR` | ✅ | ✅ | ✅ | — | — |
-| `ESCALA_DOMINGO_CONFIG` — rodízio de domingo 🔒 | ✅ | — | — | — | — |
+| `ESCALA_DOMINGO_CONFIG` — rodízio de folgas (5x2) e de domingo (6x1) 🔒 | ✅ | — | — | — | — |
 
 ### 2.4 Operação diária
 

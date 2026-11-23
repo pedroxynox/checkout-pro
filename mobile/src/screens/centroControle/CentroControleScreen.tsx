@@ -36,10 +36,12 @@ const ITENS: ItemControle[] = [
     descricao: 'Definir as metas de cada indicador por mês',
     icone: 'flag-outline',
   },
+  // Rodízio de folgas do 5x2 (spec jornada-5x2, Fase 3). Substitui o card do
+  // rodízio de domingo, que só decide os dias do 6x1.
   {
-    rota: 'ConfigEscalaDomingo',
-    titulo: 'Rodízio de domingo',
-    descricao: 'Ponto de partida do rodízio de grupos (G1/G2/G3) no domingo',
+    rota: 'RodizioFolgas',
+    titulo: 'Rodízio de folgas',
+    descricao: 'Dias de folga de G1, G2 e G3 em cada semana do ciclo (5x2)',
     icone: 'calendar-outline',
     funcionalidade: 'ESCALA_DOMINGO_CONFIG',
   },

@@ -4,7 +4,7 @@
 
 ## 1. Propósito
 **Centro de Controle** — o hub de gestão do app: uma tela-índice com atalhos
-para as ferramentas de administração (colaboradores, metas, rodízio de domingo,
+para as ferramentas de administração (colaboradores, metas, rodízio de folgas,
 painel de vendas, central de vendas, check-outs, relatórios, acesso,
 permissões, importações, produtos pesados, tipos de contrato, insumos e o
 reinício de dados operacionais).
@@ -39,9 +39,11 @@ reinício de dados operacionais).
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `CentroControleScreen.tsx` | Hub/índice de atalhos de gestão | 199 |
+| `CentroControleScreen.tsx` | Hub/índice de atalhos de gestão | 201 |
 | `CentralVendasScreen.tsx` | Estimativas de venda por dia do mês (a soma é a meta do mês) | 237 |
-| `ConfigEscalaDomingoScreen.tsx` | Configuração do rodízio de domingo (G1/G2/G3) | 268 |
+| `ConfigEscalaDomingoScreen.tsx` | Rodízio de domingo do 6x1 (G1/G2/G3); sem atalho desde a Fase 3 do spec `jornada-5x2` | 268 |
+| `RodizioFolgasScreen.tsx` | Rodízio de folgas do 5x2: tabela grupo × semana, conferência (avisos e prévia) e vigências | 495 |
+| `RodizioFolgasScreen.test.tsx` | Abre a vigência em vigor, limites de 2 dias/sábado, conferir sem salvar, salvar com confirmação | 143 |
 | `TiposContratoScreen.tsx` | CRUD dos tipos de contrato de jornada, trava de regras em uso, duplicar e tornar padrão | 822 |
 | `InsumosDadosScreen.tsx` | Zerar estoque de insumos e limpar requisições | 214 |
 | `ReiniciarDadosScreen.tsx` | Reinício operacional (apaga dados de movimento) | 196 |
@@ -60,8 +62,18 @@ reinício de dados operacionais).
    topo mostra a estimativa do mês (soma ao vivo das diárias). **Esse total é a
    meta do mês** — esta tela é o único lugar que a define (ver
    [ADR 0017](../02-arquitetura/decisoes/0017-meta-de-vendas-derivada-das-estimativas.md)).
-3. **Rodízio de domingo:** define o 1º domingo do ciclo e quem folga em cada um
-   dos 3 domingos (G1/G2/G3); vê a prévia dos próximos domingos.
+3. **Rodízio de folgas** (spec `jornada-5x2`, Fase 3,
+   [ADR 0028](../02-arquitetura/decisoes/0028-rodizio-de-folgas-5x2.md)): abre a
+   vigência em vigor (ou a última); edita a data de início (uma segunda-feira), as
+   semanas do ciclo (1 a 6) e, para G1, G2 e G3, os 2 dias de folga de cada semana
+   em chips de segunda a domingo (o sábado fica apagado). **Conferir** chama a
+   simulação do backend e mostra avisos e prévia sem gravar; **Salvar rodízio**
+   pede confirmação e grava a vigência. A lista "Vigências" abre as anteriores e
+   "Nova vigência" começa uma a partir da atual. A prévia mostra, dia a dia, o grupo
+   que folga; antes do primeiro rodízio, só os domingos do rodízio antigo.
+   O card substitui o do **rodízio de domingo**, que segue valendo só para os dias
+   do 6x1; a tela antiga continua registrada na navegação, sem atalho, até a
+   limpeza (Fase 7).
 4. **Tipos de contrato:** cria/edita/ativa/desativa/remove/duplica contratos de
    jornada, tudo em minutos (spec `jornada-5x2`, Fase 2):
    - carga por dia e **carga do feriado**; "Dias com adicional de 100%" com o
@@ -99,6 +111,9 @@ Cada tela de dados trata os estados **carregando / erro / vazio**.
 | Estimativas do mês | `vendasService.listarEstimativas(anoMes)` | `GET /vendas/estimativas` |
 | Salvar estimativas | `vendasService.definirEstimativas(anoMes, dias)` | `PUT /vendas/estimativas` |
 | Ler rodízio de domingo | `configSistemaService.obterEscalaDomingo()` | `GET /config/escala-domingo` |
+| Ler rodízio de folgas | `rodizioFolgasService.obter()` | `GET /config/rodizio-folgas` |
+| Conferir rodízio | `rodizioFolgasService.simular(input)` | `POST /config/rodizio-folgas/simular` |
+| Salvar rodízio | `rodizioFolgasService.definir(input)` | `PUT /config/rodizio-folgas` |
 | Salvar rodízio | `configSistemaService.definirEscalaDomingo(...)` | `PUT /config/escala-domingo` |
 | Listar contratos | `tiposContratoService.listar(true)` | `GET /tipos-contrato` |
 | Criar contrato | `tiposContratoService.criar(input)` | `POST /tipos-contrato` |
@@ -128,6 +143,9 @@ Módulos do backend relacionados:
   equivale à meta do mês (o backend calcula o mesmo total com a função pura
   `metaDeEstimativas`). Salvar aqui **altera a meta** do Painel de Vendas, o
   Resumo do Dia e o aviso de "meta em risco".
+- **Rodízio de folgas:** antes de conferir/salvar, exige data de início numa
+  segunda e exatamente 2 dias por semana em cada grupo (`pendenciasDoRodizio`); um
+  terceiro dia e o sábado não entram (`alternarFolga`). O backend valida de novo.
 - **Rodízio de domingo:** valida que a data de referência é um domingo e que os
   3 grupos (G1/G2/G3) foram escolhidos sem repetição antes de salvar.
 - **Tipos de contrato:** valida nome obrigatório, `intervalo mínimo < máximo`, a
@@ -141,7 +159,9 @@ Módulos do backend relacionados:
 ## 7. Lógica pura / utilidades
 - Central de Vendas: `mesAtual`, `deslocarMes`, `rotuloMes`, `diasDoMes`,
   `parseValor`.
-- Rodízio: `gruposQueTrabalham`, `diaMes`, `isoMaisDiasDiaMes`.
+- Rodízio de domingo: `gruposQueTrabalham`, `diaMes`, `isoMaisDiasDiaMes`.
+- Rodízio de folgas (`utils/rodizioFolgas.ts`): `PADRAO_5X2`, `comSemanas`,
+  `alternarFolga`, `pendenciasDoRodizio`, `textoFolgas`, `copiarPadrao`.
 - Tipos de contrato: `formVazio` (contrato novo com 2 folgas por semana e
   feriado de 7h20 a 100%), `formDe`, `inteiro`, `digitos`, `hhmm` (minutos →
   "7h").
@@ -158,6 +178,7 @@ Módulos do backend relacionados:
 |---|---|---|
 | `CentroControleScreen.test.tsx` | Card de reinício só com `ADMIN_DADOS` | 2 |
 | `ReiniciarDadosScreen.test.tsx` | Exige "ZERAR" e mostra o resumo | 2 |
+| `RodizioFolgasScreen.test.tsx` | Abre a vigência em vigor; não marca terceiro dia nem sábado; não confere incompleto; confere sem salvar (avisos e prévia); salva após confirmar | 4 |
 
 ## 10. Riscos, dívidas e pendências
 - 🔧 `TiposContratoScreen.tsx` é grande (822 linhas), com formulário extenso;

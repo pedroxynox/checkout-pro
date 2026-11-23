@@ -29,6 +29,7 @@ o acesso a dados, permissões, persistência e formatação em pt-BR.
 | `push/push.ts` | `registrarPush`, `removerPushRegistrado` | Registro de token de push (Expo). |
 | `theme/index.ts` | `cores`, `espacamento`, `tipografia`, `raio`, `sombra`, `coresParaStatus`, ... | Tema visual centralizado. |
 | `utils/formato.ts` | `formatarMoeda`, `formatarData`, `hojeISO`, `mascaraDataBR`, `contarDiasCorridos`, `deslocarDiasISO`, `isoParaDiaMes`, ... | Formatação e datas em pt-BR + aritmética de períodos. |
+| `utils/rodizioFolgas.ts` | `PADRAO_5X2`, `alternarFolga`, `comSemanas`, `pendenciasDoRodizio`, `textoFolgas`, `GRUPOS_RODIZIO`, `SEMANA_SEG_DOM` | Edição do rodízio de folgas na tela (2 dias por semana, nunca o sábado) — ver [`centroControle`](centroControle.md). |
 | `utils/regrasTac.ts` | `regrasDoDia`, `textoRegraTac`, `textoRiscoTac`, `textoDuracaoMin`, `REGRAS_RESUMO_6X1` | Textos de TAC do Registro de Ponto pelos limites do contrato do dia (`regrasResumo`); sem eles, os do 6x1. |
 | `utils/periodoMensal.ts` | `mesAtual`, `deslocarMes`, `rotuloMes`, `ultimoDiaDoMesISO`, `mesesAtras`, `MESES_HISTORICO_INDICADORES` | Período mensal ("AAAA-MM") no fuso de Brasília — fonte única usada por Metas e pelo histórico de Indicadores. |
 | `utils/rotulos.ts` | `ROTULO_TIPO_ARRECADACAO`, `ARRECADACAO`, `ROTULO_STATUS_FISCAL` | Rótulos legíveis de enums do domínio. |
@@ -223,6 +224,7 @@ credencial, o app segue normal (o aviso ainda chega in-app/WebSocket).
 ## 9. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
+| `utils/rodizioFolgas.test.ts` | A tabela da decisão 5 pronta para salvar; marcar/desmarcar sem terceiro dia e sem sábado; mudar o número de semanas; início numa segunda | 4 |
 | `utils/regrasTac.test.ts` | Textos de TAC iguais aos de antes no 6x1 (e sem `regrasResumo`) e com os números do 5x2, inclusive o teto diário | 4 |
 | `utils/formato.test.ts` | Formatação/máscaras/conversões pt-BR, "hoje" no fuso de Brasília e a aritmética de períodos (`contarDiasCorridos`, `deslocarDiasISO`, `isoParaDiaMes`) | 25 |
 | `utils/periodoMensal.test.ts` | Mês de Brasília, deslocamento, rótulo, último dia e distância em meses | 9 |
