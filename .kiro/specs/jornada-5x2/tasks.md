@@ -112,7 +112,7 @@ Dois PRs: **2a — backend** (PR #442) e **2b — app** (PR #443).
 
 ## Fase 3 — Rodízio de folgas
 
-Dois PRs: **3a — backend** (PR #445) e **3b — app** (branch `feat/rodizio-folgas-app`).
+Dois PRs: **3a — backend** (PR #445) e **3b — app** (PR #446).
 
 - [x] 3.1 Prisma `RodizioFolgasVigencia`; migração `9zzw_rodizio_folgas` semeando
   2026-11-23 com o padrão da decisão 5. _(R3.1, R3.2)_
