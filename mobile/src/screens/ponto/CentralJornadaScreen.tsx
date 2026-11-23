@@ -5,7 +5,8 @@
  * três atalhos de ação (inconsistências, revisar/fechar ciclo e feriados) com
  * contador/estado, o resumo do time em métricas com ícone, a lista por pessoa
  * (drill-down diário com a ação de marcar falta como débito) e o comparativo
- * dos últimos ciclos. Aplica-se ao contrato 6x1-2x1.
+ * dos últimos ciclos. Cada dia usa o contrato que valia nele (vigência da
+ * jornada, spec jornada-5x2): 6x1 até 22/11/2026, o da jornada depois.
  *
  * Cada card de pessoa mostra o **nome completo** (em até duas linhas), como na
  * Jornada de Equipe: com só o primeiro nome, dois homônimos ficavam
