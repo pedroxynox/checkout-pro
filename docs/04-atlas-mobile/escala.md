@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/screens/escala/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-23 · **Cobre:** `mobile/src/screens/escala/`
 
 # Área: `escala`
 
@@ -26,12 +26,13 @@ Publicar a escala: gerar a escala do **dia** ou da **semana**, com todo o time, 
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `EscalaScreen.tsx` | Tela: seletor de período/dia, **aviso de ficha sem folga**, prévia e os dois botões de exportação | 512 |
-| `ConferenciaEscalaScreen.tsx` | **Conferência de escala**: resumo das lacunas, ficha sem horário, ficha sem folga, domingo sem horário, horário pela metade e a cópia semanal desatualizada (informativo) | 400 |
+| `ConferenciaEscalaScreen.tsx` | **Conferência de escala**: resumo das lacunas, **jornada 5x2** (quem ainda está no 6x1 e os avisos da vigência), ficha sem horário, ficha sem folga, domingo sem horário, horário pela metade e a cópia semanal desatualizada (informativo) | 404 |
+| `ConferenciaJornadaCartao.tsx` | Cartão "Jornada 5x2" da conferência: com/sem vigência e avisos por pessoa | 92 |
 
 Utilidades que fazem o trabalho pesado (fora da área, porque são puras):
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `utils/escalaLayout.ts` | Desenho da escala (dia e semana) como **SVG**, no tamanho final | 1038 |
+| `utils/escalaLayout.ts` | Desenho da escala (dia e semana) como **SVG**, no tamanho final | 1061 |
 | `utils/imagemEscala.ts` | Converte o SVG em **PNG** e dispara o download | 121 |
 | `utils/logoEscala.ts` | Logo do rodapé como data URI (ponto único de troca) | 17 |
 
@@ -64,6 +65,14 @@ Módulo do backend relacionado:
 [`escala-exportacao`](../03-atlas-backend/escala-exportacao.md).
 
 ## 6. Estado local e regras de UI
+- **Selo de folga em todo dia (spec `jornada-5x2`, R5.1/R5.3).**
+  `rotuloSeloFolga` (em `utils/escalaLayout.ts`) monta o selo da tela e do
+  desenho: "Folga · G1" com `gruposFolga` (qualquer dia); com backend antigo, só
+  o domingo, "Domingo · folga G2", como antes. Sábado e dias sem grupo: sem selo.
+- **Conferência de escala no modelo novo.** Com `jornada` na resposta, o cartão
+  "Jornada 5x2" mostra quantos já têm a jornada nova, **quem ainda está no
+  6x1** (para acompanhar a carga das vigências de 23/11) e os avisos de cada
+  vigência. Quem já tem vigência não aparece mais nas lacunas da ficha antiga.
 - Estado: `periodo` (`DIA`/`SEMANA`), `data` (ISO) e `gerando` (`PDF`/`IMAGEM`,
   para o botão mostrar progresso e não aceitar dois toques).
 - **Um desenho, duas saídas.** O PDF embute o mesmo SVG que a imagem rasteriza.
@@ -161,8 +170,8 @@ perfil). Ver [Componentes compartilhados](componentes-compartilhados.md) e
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `EscalaScreen.test.tsx` | Prévia do dia (nome, horário, quem folga), PDF com o desenho, imagem com nome de arquivo previsível, aviso do WhatsApp, ausência do botão de imagem sem canvas, troca para a semana e o **aviso de ficha sem folga** (nomes, consequência, silêncio quando está tudo preenchido, e o mesmo aviso na grade semanal) | 10 |
-| `ConferenciaEscalaScreen.test.tsx` | Conferência: veredito quando não há pendência, quem seria **cobrado mais cedo** (com dia e minutos, e a conversão para horas), a **separação** entre risco e divergência sem efeito, ficha sem dia de folga, domingo sem horário (citando o feriado) e a ausência de qualquer botão que altere dados | 7 |
-| `utils/escalaLayout.test.ts` | Dimensões e orientação declarada, **preenchimento exato da folha 4K** (e o encurtar/alongar nos extremos), ausência do turno, dia da semana/data, seções, horários, folga, falta com turno preservado, exceção ao lado do nome, feriado, rodízio do domingo, assinatura do rodapé, logo (com e sem), escape de caracteres, grade dos sete dias e a folha de impressão | 25 |
+| `ConferenciaEscalaScreen.test.tsx` | Conferência: veredito quando não há pendência, quem seria **cobrado mais cedo** (com dia e minutos, e a conversão para horas), a **separação** entre risco e divergência sem efeito, ficha sem dia de folga, domingo sem horário (citando o feriado), a ausência de qualquer botão que altere dados e o cartão **Jornada 5x2** (com e sem a informação) | 9 |
+| `utils/escalaLayout.test.ts` | Dimensões e orientação declarada, **preenchimento exato da folha 4K** (e o encurtar/alongar nos extremos), ausência do turno, dia da semana/data, seções, horários, folga, falta com turno preservado, exceção ao lado do nome, feriado, rodízio do domingo, **grupos que folgam em qualquer dia** (`rotuloSeloFolga`), assinatura do rodapé, logo (com e sem), escape de caracteres, grade dos sete dias e a folha de impressão | 26 |
 
 ## 10. Riscos, dívidas e pendências
 - ⚠️ **A imagem não é gerada no APK** (não há `canvas`). O caminho para resolver é

@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/screens/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-23 · **Cobre:** `mobile/src/screens/operadores/`
 
 # Área: `operadores`
 
@@ -23,7 +23,7 @@ de **justificativas**, o registro/cancelamento de **ausências a prazo**
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `OperadoresScreen.tsx` | Quadro do dia, ao vivo, análise mensal e justificativas | 1941 |
+| `OperadoresScreen.tsx` | Quadro do dia, ao vivo, folga do dia e justificativas | 1316 |
 | `JustificativasScreen.tsx` | Lista/edição de justificativas (`JustificativasLista` + tela) | 470 |
 | `AusenciasAPrazo.tsx` | Card + modal para registrar **ou cancelar** ausência por período | 480 |
 | `AtestadosCard.tsx` | Card + modal para lançar atestado (CID com autocompletar / sem CID), ver os **em curso e programados** (com filtro para incluir os encerrados) **e excluir** um lançado por engano | 625 |
@@ -146,8 +146,7 @@ sem controle.
 |---|---|---|
 | Roster do dia | `operadoresService.dia(data)` | `GET /quadro-operadores/dia` |
 | Ao vivo | `operadoresService.aoVivo()` | `GET /quadro-operadores/ao-vivo` |
-| Faltas (mês) | `operadoresService.analiticaFaltas(ini, fim)` | `GET /quadro-operadores/faltas/analitica` |
-| Não-retornos (mês) | `operadoresService.analiticaNaoRetornos(ini, fim)` | `GET /quadro-operadores/nao-retornos/analitica` |
+| Faltas / não-retornos do mês | `operadoresService.analiticaFaltas` / `analiticaNaoRetornos` (o serviço continua; a aba Escalas **não** chama mais) | `GET /quadro-operadores/faltas/analitica`, `.../nao-retornos/analitica` |
 | Faltas do dia | `operadoresService.listarAusencias(ini, fim)` | `GET /operadores/ausencias` |
 | Justificar falta | `operadoresService.justificarAusencia(id, dados)` | `PATCH /operadores/ausencias/:id/justificativa` |
 | Excluir falta (rejeitar engano) | `operadoresService.removerAusencia(id)` | `DELETE /operadores/ausencias/:id` |
@@ -175,6 +174,16 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
 [`escala-domingo`](../03-atlas-backend/escala-domingo.md) (rodízio de domingo).
 
 ## 6. Estado local e regras de UI
+- **Folga do dia (spec `jornada-5x2`, R5.1/R5.2).** O selo do topo mostra, em
+  **todo** dia, "Folga hoje **G1** · Trabalham G2 e G3" a partir de
+  `gruposFolga` (backend antigo: só o domingo, por `grupoFolgaDomingo`). Num
+  domingo sem rodízio nenhum, o aviso "Rodízio de folgas ainda não configurado".
+  No card "Folga operadores", cada pessoa diz **"Folga · G1"** (grupo) ou
+  **"Folga fixa"** (`motivoFolga`); no 6x1, só "Folga". Os horários vêm da
+  disponibilidade do dia (backend).
+- **Saíram da aba Escalas** os cards **"Faltas do mês"** e **"Não-retornos do
+  mês"** (com o modal do mês inteiro e o detalhe por colaborador). O resto da
+  aba ficou igual.
 - **Faltas e não-retornos são detectados automaticamente** pelo ponto; a linha
   apenas exibe o estado (não há marcação manual no roster).
 - `turnoDe` usa o **turno do cadastro** (Abertura/Intermediário/Fechamento/
@@ -240,10 +249,11 @@ Módulos do backend relacionados: [`operadores`](../03-atlas-backend/operadores.
 ## 9. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
+| `utils/folgaDoDia.test.ts` | Grupos que folgam no dia (campo novo × domingo do backend antigo), quem trabalha e o rótulo "Folga · G1"/"Folga fixa"/"Folga" | 3 |
 | `JustificativasScreen.test.tsx` | Falta pendente, justificar com motivo, "atestado médico" fora da lista de motivos e excluir (gestão) | 5 |
 
 ## 10. Riscos, dívidas e pendências
-- 🔧 `OperadoresScreen.tsx` (>1800 linhas) reúne roster, ao vivo, análise
+- 🔧 `OperadoresScreen.tsx` (>1300 linhas, depois de sair a análise mensal) reúne roster, ao vivo, análise
   mensal, justificativas e sub-componentes; forte candidato a divisão.
 - ⚠️ O status ao vivo combina WebSocket + reconsulta de 60s porque transições
   por tempo não geram batida.

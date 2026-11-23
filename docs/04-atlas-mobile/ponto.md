@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `mobile/src/screens/ponto/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-23 · **Cobre:** `mobile/src/screens/ponto/`
 
 # Área: `ponto`
 
@@ -31,7 +31,7 @@ feriados).
 | `metricasResumo.ts` | Identidade das sete métricas do resumo (fonte única de card + ranking) | 153 |
 | `CartaoCompensacao.tsx` | Card-resumo "Compensação de horas" na Central: 50% em aberto, quanto **não cabe** no ciclo, quantas sugestões — e leva à tela | 178 |
 | `CompensacaoScreen.tsx` | Tela de compensação: carteira de 50%, dias mais fracos, liberações, coberturas de falta e o que já foi concedido | 808 |
-| `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo | 467 |
+| `DetalheJornadaScreen.tsx` | Detalhe dia a dia de um colaborador no ciclo (com o contrato de cada trecho) | 493 |
 | `InconsistenciasScreen.tsx` | Problemas do ciclo agrupados por dia | 330 |
 | `MarcacoesInvalidasScreen.tsx` | Marcações que faltam registrar: quantas e quais, por dia; cada item abre o ajuste | 644 |
 | `filaCorrecao.ts` | Fila de correção (lógica pura): filtros, ordem de trabalho e próxima pendência | 118 |
@@ -174,9 +174,15 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
   da base e sem débito abaixo dela (regra 4 da
   [`central-jornada`](../03-atlas-backend/central-jornada.md)).
 - Pela mesma regra, o botão **"Débito"** do detalhe da jornada (`aceitaDebito`)
-  **não aparece em domingo nem em feriado**: faltar nesses dias fica apenas como
-  ausência e o servidor recusaria a marcação. O botão segue disponível nos
-  demais dias para quem tem `OPERADORES_AUSENCIAS`.
+  **não aparece em dia que não gera hora devida**: faltar nesses dias fica apenas
+  como ausência e o servidor recusaria a marcação. Desde a Fase 5 do spec
+  `jornada-5x2` (R6.3) a resposta vem do backend (`dia.geraDebito`, pelo contrato
+  do dia); com backend antigo, a regra fixa "domingo e feriado não". O botão
+  segue disponível nos demais dias para quem tem `OPERADORES_AUSENCIAS`.
+- **Contrato no cabeçalho do detalhe.** Com `contratos` na resposta, o detalhe
+  mostra "Contrato: 5x2 44h" ou, quando o ciclo atravessa a troca, cada trecho:
+  "6x1 - 2x1 (26/10–22/11) · 5x2 44h (23/11–25/11)" (`textoContratos`). O texto
+  fixo "Aplica-se ao contrato 6x1-2x1" saiu da Central.
 - **A card "Compensação de horas" some inteira para quem não pode conceder** —
   e, junto com ela, a consulta ao servidor. A permissão é `OPERADORES_AUSENCIAS`,
   **a mesma do botão "Débito"**, porque conceder compensação e marcar débito são o
@@ -384,6 +390,7 @@ Módulos do backend relacionados: [`ponto`](../03-atlas-backend/ponto.md),
 |---|---|---|
 | `RegistroPontoScreen.test.tsx` | Busca, jornada, registro manual, limite de 4, erro de duplicidade, leitura do comprovante e o **modo correção** (abre na pessoa/dia pedidos, sugestão do turno sem registrar sozinho, próxima pendência, permanência no dia incompleto, fim da fila, voltar à lista e pessoa não localizada) | 13 |
 | `ExportarCicloScreen.test.tsx` | Revisão (totais) e fechamento do ciclo com confirmação | 2 |
+| `DetalheJornadaScreen.test.tsx` | `aceitaDebito` pelo `geraDebito` do backend (e a regra antiga sem ele) e `textoContratos` (um contrato × trechos) | 3 |
 | `InconsistenciasScreen.test.tsx` | Agrupamento por dia e filtro por pessoa | 3 |
 | `MarcacoesInvalidasScreen.test.tsx` | O que falta em cada dia (já expandido), horas registradas + turno, motivo da conferência, resumo, filtros por pessoa e por marcação, recolher dia, estado vazio, aviso dos não-retornos deixados fora, abertura do ajuste na pessoa/dia do item, filtros levados para a fila, item não tocável sem acesso ao ponto e guarda do primeiro foco | 13 |
 | `filaCorrecao.test.ts` | Identidade do item, filtros, ordem de trabalho e próxima pendência (mesmo dia ainda incompleto, item seguinte, volta ao topo, respeito aos filtros e fim da fila) | 10 |
