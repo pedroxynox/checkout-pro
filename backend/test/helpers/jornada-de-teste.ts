@@ -22,6 +22,7 @@ const PADROES: Record<string, Metodos> = {
   },
   escalaEntry: { findMany: () => Promise.resolve([]) },
   feriado: { findMany: () => Promise.resolve([]) },
+  rodizioFolgasVigencia: { findMany: () => Promise.resolve([]) },
 };
 
 /**

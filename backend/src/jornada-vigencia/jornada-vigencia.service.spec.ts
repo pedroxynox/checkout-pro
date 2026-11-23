@@ -4,6 +4,10 @@ import {
   entradaEsperadaNoDia,
   saidaEsperadaNoDia,
 } from '../escala-domingo/escala-domingo.domain';
+import {
+  INICIO_RODIZIO_5X2,
+  PADRAO_RODIZIO_5X2,
+} from '../escala-domingo/rodizio-folgas.domain';
 import { REGRAS_PADRAO, RegrasContrato } from '../ponto/ponto.domain';
 import { JornadaVigenciaService } from './jornada-vigencia.service';
 
@@ -129,9 +133,17 @@ function montar(
       disponibilidade: { diaSemana: number; entrada: string; saida: string }[];
     }[];
     feriadosManuais?: Date[];
+    /** Linhas de `rodizio_folgas_vigencias` (padrão: nenhuma). */
+    rodizios?: {
+      id: string;
+      vigenteDesde: Date;
+      semanasNoCiclo: number;
+      padrao: unknown;
+    }[];
   } = {},
 ) {
   const vigencias = opcoes.vigencias ?? [];
+  const rodizios = opcoes.rodizios ?? [];
   const prisma = {
     colaborador: {
       findMany: jest.fn(() => Promise.resolve(FICHAS)),
@@ -172,6 +184,14 @@ function montar(
             nome: 'Municipal',
           })),
         ),
+      ),
+    },
+    rodizioFolgasVigencia: {
+      findMany: jest.fn(
+        ({ where }: { where: { vigenteDesde: { lte: Date } } }) =>
+          Promise.resolve(
+            rodizios.filter((r) => r.vigenteDesde <= where.vigenteDesde.lte),
+          ),
       ),
     },
   };
@@ -237,6 +257,7 @@ describe('JornadaVigenciaService.consultor — sem vigência é o sistema de hoj
     expect(prisma.jornadaVigencia.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.escalaEntry.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.feriado.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.rodizioFolgasVigencia.findMany).toHaveBeenCalledTimes(1);
   });
 
   it('ehFolga sem ficha: vale a escala semanal pelas outras identidades', async () => {
@@ -367,5 +388,93 @@ describe('JornadaVigenciaService.consultor — semFolgaNaFicha com vigência', (
     expect(
       (await comGrupo.service.consultor(DIAS)).semFolgaNaFicha(['caio']),
     ).toBe(false);
+  });
+});
+
+describe('JornadaVigenciaService.consultor — rodízio de folgas (Fase 3)', () => {
+  /** A vigência semeada pela migração 9zzw (decisão 5). */
+  const RODIZIO = {
+    id: 'rodizio-folgas-2026-11-23',
+    vigenteDesde: INICIO_RODIZIO_5X2,
+    semanasNoCiclo: 3,
+    padrao: PADRAO_RODIZIO_5X2,
+  };
+  const comGrupo = (grupo: string) => ({
+    id: `vig-${grupo}`,
+    colaboradorId: 'eva',
+    vigenteDesde: dia('2026-11-23'),
+    tipoContratoJornadaId: CONTRATO_5X2,
+    grupo,
+    folgasFixas: [],
+    disponibilidade: [0, 1, 2, 3, 4, 5, 6].map((d) => ({
+      diaSemana: d,
+      entrada: '07:00',
+      saida: '16:48',
+    })),
+  });
+
+  it('quem tem grupo folga nos dias do rodízio, semana a semana', async () => {
+    const { service } = montar({
+      vigencias: [comGrupo('G1')],
+      rodizios: [RODIZIO],
+    });
+    const consultor = await service.consultor(DIAS);
+    const folgas = DIAS.filter(
+      (d) => consultor.previsto(['eva'], d)!.folga,
+    ).map((d) => d.toISOString().slice(0, 10));
+    // G1: semana 1 quinta e sexta; semana 2 terça e quarta.
+    expect(folgas).toEqual([
+      '2026-11-26',
+      '2026-11-27',
+      '2026-12-01',
+      '2026-12-02',
+    ]);
+    // Dia de trabalho: o horário da disponibilidade; folga: sem horário.
+    expect(consultor.previsto(['eva'], dia('2026-11-28'))).toMatchObject({
+      regime: 'SEMANAL',
+      grupo: 'G1',
+      folga: false,
+      entrada: '07:00',
+      escalado: true,
+    });
+    expect(consultor.previsto(['eva'], dia('2026-11-26'))).toMatchObject({
+      folga: true,
+      entrada: null,
+      escalado: false,
+    });
+  });
+
+  it('sem rodízio vigente, o grupo não afirma folga nem turno', async () => {
+    const { service } = montar({ vigencias: [comGrupo('G3')] });
+    const consultor = await service.consultor(DIAS);
+    for (const d of DIAS) {
+      expect(consultor.previsto(['eva'], d)).toMatchObject({
+        folga: false,
+        entrada: null,
+        escalado: false,
+      });
+    }
+  });
+
+  it('o rodízio não mexe em quem está no regime 6x1', async () => {
+    const semRodizio = await montar().service.consultor(DIAS);
+    const comRodizio = await montar({ rodizios: [RODIZIO] }).service.consultor(
+      DIAS,
+    );
+    for (const d of DIAS) {
+      for (const ids of [['ana'], ['bia'], ['fiscal-caio', 'caio'], ['davi']]) {
+        expect(comRodizio.previsto(ids, d)).toEqual(
+          semRodizio.previsto(ids, d),
+        );
+      }
+    }
+  });
+
+  it('só lê rodízios que começam até o último dia carregado', async () => {
+    const { service, prisma } = montar({ rodizios: [RODIZIO] });
+    await service.consultor(DIAS);
+    expect(prisma.rodizioFolgasVigencia.findMany).toHaveBeenCalledWith({
+      where: { vigenteDesde: { lte: dia('2026-12-06') } },
+    });
   });
 });

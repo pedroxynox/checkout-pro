@@ -125,8 +125,9 @@ export interface ContextoDoDia {
   /** Regime legado: a escala semanal (`EscalaEntry`) afirma folga nesse dia. */
   folgaNaEscalaSemanal: boolean;
   /**
-   * Regime semanal com grupo: os dias de folga do grupo na semana do dia, ou
-   * null quando não há rodízio de folgas vigente (Fase 3). Ausente = sem rodízio.
+   * Regime semanal com grupo: os dias de folga do grupo na semana do dia, pelo
+   * rodízio de folgas vigente (`rodizio-folgas.domain`), ou null quando nenhum
+   * rodízio vale no dia. Ausente = sem rodízio.
    */
   folgasDoGrupo?: (grupo: GrupoDomingo, dia: Date) => readonly number[] | null;
 }
