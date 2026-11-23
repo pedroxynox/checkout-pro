@@ -16,7 +16,6 @@ export function normalizarLogin(valor: string): string {
   return valor.trim().toLowerCase();
 }
 
-
 /**
  * A função dá acesso ao app? (ADR 0023)
  *
@@ -35,4 +34,45 @@ export function normalizarLogin(valor: string): string {
  */
 export function funcaoTemAcessoAoApp(funcao: string): boolean {
   return funcao === 'FISCAL' || funcao === 'SUPERVISOR' || funcao === 'GESTOR';
+}
+
+/**
+ * Campos legados da ficha (regime 6x1). Depois que a pessoa tem uma vigência da
+ * jornada eles ficam congelados (spec `jornada-5x2`, R1.3a).
+ */
+export const CAMPOS_LEGADOS = [
+  'folgaDiaSemana',
+  'entradaSemana',
+  'saidaSemana',
+  'entradaFds',
+  'saidaFds',
+  'entradaDom',
+  'saidaDom',
+  'grupoDomingo',
+  'tipoContratoJornadaId',
+] as const;
+
+export type CampoLegado = (typeof CAMPOS_LEGADOS)[number];
+
+type ValorLegado = string | number | null | undefined;
+
+/** Vazio e null são o mesmo "sem valor" (o app manda "" para limpar). */
+function semVazio(v: ValorLegado): string | number | null {
+  return v === undefined || v === null || v === '' ? null : v;
+}
+
+/**
+ * Os campos legados que a edição MUDA (ausente = não mexe; mesmo valor = não
+ * muda). O APK antigo reenvia a ficha inteira, então só a diferença conta.
+ * `tipoContratoJornadaId` deve chegar já resolvido (vazio → id do padrão).
+ */
+export function camposLegadosAlterados(
+  atual: Readonly<Record<CampoLegado, ValorLegado>>,
+  edicao: Readonly<Partial<Record<CampoLegado, ValorLegado>>>,
+): CampoLegado[] {
+  return CAMPOS_LEGADOS.filter(
+    (campo) =>
+      edicao[campo] !== undefined &&
+      semVazio(edicao[campo]) !== semVazio(atual[campo]),
+  );
 }

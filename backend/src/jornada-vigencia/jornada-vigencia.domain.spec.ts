@@ -20,6 +20,7 @@ import {
   avisosDaVigencia,
   previstoNoDia,
   textoDuracao,
+  disponibilidadePreenchida,
   validarVigencia,
   vigenciaNoDia,
 } from './jornada-vigencia.domain';
@@ -517,6 +518,14 @@ describe('validarVigencia', () => {
       },
       'Horário repetido na segunda.',
     ],
+    [
+      { disponibilidade: [{ diaSemana: 1, entrada: '06:00', saida: '' }] },
+      'Na segunda, informe entrada e saída (ou deixe as duas vazias).',
+    ],
+    [
+      { disponibilidade: [{ diaSemana: 3, entrada: null, saida: '15:00' }] },
+      'Na quarta, informe entrada e saída (ou deixe as duas vazias).',
+    ],
   ])('recusa %j', (mudanca, erro) => {
     expect(validarVigencia({ ...valida, ...mudanca }, limites)).toContain(erro);
   });
@@ -528,6 +537,20 @@ describe('validarVigencia', () => {
         { maxFolgasFixas: 2, permiteFolgaSabado: true },
       ),
     ).toEqual([]);
+  });
+
+  it('dia com entrada e saída vazias é "sem horário", não erro', () => {
+    const linhas = [
+      { diaSemana: 1, entrada: ' 06:00 ', saida: '15:48' },
+      { diaSemana: 2, entrada: '', saida: '' },
+      { diaSemana: 3, entrada: null, saida: undefined },
+    ];
+    expect(
+      validarVigencia({ ...valida, disponibilidade: linhas }, limites),
+    ).toEqual([]);
+    expect(disponibilidadePreenchida(linhas)).toEqual([
+      { diaSemana: 1, entrada: '06:00', saida: '15:48' },
+    ]);
   });
 });
 

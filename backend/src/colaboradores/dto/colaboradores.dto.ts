@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
@@ -9,7 +10,9 @@ import {
   Matches,
   Max,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { JornadaDoCadastroDto } from '../../jornada-vigencia/dto/jornada-colaborador.dto';
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const FUNCOES = ['OPERADOR', 'FISCAL', 'SUPERVISOR', 'GESTOR'];
@@ -99,6 +102,15 @@ export class CadastrarColaboradorDto {
   @IsOptional()
   @IsString()
   tipoContratoJornadaId?: string | null;
+
+  /**
+   * Primeira vigência da jornada (spec `jornada-5x2`, R4.7). Ausente = a
+   * pessoa fica no 6x1 da ficha (compatibilidade com o APK antigo).
+   */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => JornadaDoCadastroDto)
+  jornada?: JornadaDoCadastroDto;
 }
 
 /** Edição de colaborador — todos os campos opcionais. */

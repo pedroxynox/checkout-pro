@@ -109,3 +109,19 @@ export class PermissaoInsuficienteFuncaoError extends ColaboradoresError {
     );
   }
 }
+
+/**
+ * A pessoa já tem vigência da jornada (spec `jornada-5x2`, R1.3a): os campos
+ * legados da ficha (folga fixa, blocos de horário, grupo de domingo, contrato)
+ * são a história do 6x1 e não mudam mais. Reenviar o MESMO valor é aceito (o
+ * APK antigo manda a ficha inteira); mudar devolve 409.
+ */
+export class CamposLegadosCongeladosError extends ColaboradoresError {
+  readonly statusHttp = HttpStatus.CONFLICT;
+  constructor(readonly campos: readonly string[] = []) {
+    super(
+      'Esta pessoa já está na jornada por vigência: a folga, os horários, o grupo e o contrato mudam pela jornada ("Vale a partir de"), não pela ficha antiga.' +
+        (campos.length > 0 ? ` Campos recusados: ${campos.join(', ')}.` : ''),
+    );
+  }
+}

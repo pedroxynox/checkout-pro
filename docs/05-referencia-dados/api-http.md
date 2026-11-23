@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **218 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **221 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -266,6 +266,14 @@
 | POST | `/insumos/pedidos-recorrentes/confirmar` | `confirmar` | `INSUMOS_GERENCIAR` |
 | POST | `/insumos/pedidos-recorrentes/ignorar` | `ignorar` | `INSUMOS_GERENCIAR` |
 | POST | `/insumos/pedidos-recorrentes/configurar` | `configurar` | `INSUMOS_GERENCIAR` |
+
+## `jornada-vigencia`
+
+| Método | Rota | Handler | Permissão |
+|---|---|---|---|
+| GET | `/colaboradores/:id/jornada` | `obter` | `COLABORADORES_PERFIL ou OPERADORES_CRUD` |
+| PUT | `/colaboradores/:id/jornada` | `gravar` | `OPERADORES_CRUD` |
+| DELETE | `/colaboradores/:id/jornada/:vigenciaId` | `remover` | `OPERADORES_CRUD` |
 
 ## `metas`
 

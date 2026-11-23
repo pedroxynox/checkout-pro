@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/colaboradores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-23 · **Cobre:** `backend/src/colaboradores/`
 
 # Módulo: `colaboradores`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -29,39 +29,52 @@ base do **Perfil Inteligente** do colaborador (score, indicadores e insígnias).
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `colaboradores.controller.ts` | Rotas HTTP do cadastro e do perfil | 234 |
-| `colaboradores.service.ts` | Regras de aplicação: CRUD, conta de acesso, escala | 920 |
-| `colaboradores.domain.ts` | Regras puras: normalização e turno obrigatório | 38 |
-| `colaboradores.errors.ts` | Erros de domínio (mapeados para HTTP) | 111 |
+| `colaboradores.controller.ts` | Rotas HTTP do cadastro e do perfil | 244 |
+| `colaboradores.service.ts` | Regras de aplicação: CRUD, conta de acesso, escala, bloco `jornada` e campos legados congelados | 1001 |
+| `colaboradores.domain.ts` | Regras puras: normalização, turno obrigatório e `camposLegadosAlterados` | 78 |
+| `colaboradores.errors.ts` | Erros de domínio (mapeados para HTTP) | 127 |
 | `colaboradores.module.ts` | Ligações (DI) do módulo | 39 |
 | `perfil-colaborador.service.ts` | Monta o Perfil Inteligente (dados → indicadores) | 844 |
 | `perfil-colaborador.domain.ts` | Regras puras: score, ranking, resumo, insígnias | 661 |
 | `purga-inativos.service.ts` | Purga mensal de inativos (retenção) | 146 |
-| `dto/colaboradores.dto.ts` | Validação de entrada das rotas | 233 |
+| `dto/colaboradores.dto.ts` | Validação de entrada das rotas (o bloco `jornada` usa o DTO de `jornada-vigencia`) | 245 |
 
 ## 4. Endpoints (rotas HTTP)
 > Lista canônica em [API HTTP → `colaboradores`](../05-referencia-dados/api-http.md).
 
 | Método + Rota | Permissão | O que faz |
 |---|---|---|
-| `POST /colaboradores` | `OPERADORES_CRUD` | Cadastra um colaborador (operador por padrão). |
+| `POST /colaboradores` | `OPERADORES_CRUD` | Cadastra um colaborador (operador por padrão). Aceita o bloco `jornada` (primeira vigência, ver §5). |
 | `GET /colaboradores` | `OPERADORES_AUSENCIAS` | Lista com busca/filtros (função, turno, ativo). |
 | `GET /colaboradores/logins` | `OPERADORES_CRUD` | Contas de acesso e a quem já estão vinculadas. |
 | `GET /colaboradores/:id` | `OPERADORES_CRUD` | Detalhe cadastral (com identificadores) — usado só pela tela de gestão. |
 | `GET /colaboradores/:id/perfil` | `COLABORADORES_PERFIL` | Perfil Inteligente no período (score, indicadores, insígnias). **Dado confidencial** — permissão própria, ajustável na Central de Permissões. |
-| `PATCH /colaboradores/:id` | `OPERADORES_CRUD` | Edita; **cria o login na promoção** (ver §5). |
+| `PATCH /colaboradores/:id` | `OPERADORES_CRUD` | Edita; **cria o login na promoção** (ver §5). Com vigência da jornada, recusa (409) mudar os campos legados. |
 | `POST /colaboradores/:id/inativar` | `OPERADORES_CRUD` | Inativa preservando histórico. |
 | `POST /colaboradores/:id/reativar` | `OPERADORES_CRUD` | Reativa e recria a escala. |
 | `POST /colaboradores/:id/identificadores` | `OPERADORES_CRUD` | Associa um código "solto" (matrícula/login) do arquivo. |
 | `POST /colaboradores/purga-inativos` | `ADMIN_DADOS` | Purga imediata dos inativos (exige `confirmacao: "PURGAR"`). |
 
+A **jornada** da pessoa (`GET/PUT/DELETE /colaboradores/:id/jornada`) mora no
+módulo [`jornada-vigencia`](jornada-vigencia.md#4-endpoints-rotas-http).
+
 ## 5. Serviços e funções
 
 ### `ColaboradoresService`
 
-#### `cadastrar(input, perfilSolicitante?)`
-- **Recebe:** dados do colaborador (`ColaboradorInput`) e o perfil de quem pede.
-- **Devolve:** o `Colaborador` criado.
+#### `cadastrar(input, perfilSolicitante?, autorJornada?)`
+- **Recebe:** dados do colaborador (`ColaboradorInput`, com o bloco opcional
+  `jornada`), o perfil de quem pede e o autor da jornada (login e se tem
+  `ADMIN_DADOS`).
+- **Devolve:** o `Colaborador` criado; com o bloco `jornada`, também
+  `avisosJornada` (R4.6).
+- **Bloco `jornada` (spec `jornada-5x2`, R4.7):** validado pelo
+  `JornadaColaboradorService.validarNoCadastro` **antes** de criar a conta e a
+  ficha (400/403/409 não deixam cadastro pela metade) e gravado depois como a
+  primeira vigência. Sem `aPartirDe`, vale a data de admissão (ou hoje, sem
+  admissão). Contrato ausente = o da ficha; escolher um diferente do **padrão**
+  exige `ADMIN_DADOS`. **Sem o bloco, a pessoa fica no 6x1 da ficha**
+  (compatibilidade com o APK antigo).
 - **Efeitos:** valida permissão de função e turno obrigatório; garante matrícula
   e login únicos; se a função dá acesso ao app, **cria a conta** (via
   `criarContaDeAcesso`) e, para fiscal, o registro de `Fiscal`; grava o
@@ -81,6 +94,15 @@ base do **Perfil Inteligente** do colaborador (score, indicadores e insígnias).
   função não dá acesso nenhum, caso em que o perfil antigo nem chega a ser
   sobrescrito (`perfilDaFuncao('OPERADOR')` é nulo). O acesso em si passa a ser
   recusado no login, que agora consulta a ficha: ver [`acessos`](acessos.md).
+- **Campos legados congelados com vigência (R1.3a).** Se a pessoa tem alguma
+  vigência da jornada, mudar `folgaDiaSemana`, `entrada/saida` de Seg–Qui, Sex–Sáb
+  e Dom, `grupoDomingo` ou `tipoContratoJornadaId` devolve 409
+  (`CamposLegadosCongeladosError`, com os campos recusados). Reenviar o **mesmo**
+  valor passa — o APK antigo manda a ficha inteira; vazio e `null` contam como
+  iguais, e contrato vazio conta como o padrão. Com vigência, trocar para um
+  contrato sem domingo também **não** tira mais o `grupoDomingo` da ficha (é
+  história do 6x1). As vigências só são consultadas quando a edição traz algum
+  campo legado.
 - **Apagar a folga é possível.** `folgaDiaSemana: null` esvazia o campo; ausente
   significa "não mexer". Antes o formulário enviava `undefined` no lugar de `null`,
   e a folga podia ser trocada mas nunca esvaziada.
@@ -153,6 +175,8 @@ totais de arrecadação. Roda no cron mensal (dia 1º) e sob demanda.
 
 ## 6. Lógica de domínio (funções puras)
 - `normalizarMatricula(v)` = `trim`; `normalizarLogin(v)` = `trim` + minúsculas.
+- `camposLegadosAlterados(atual, edicao)` → os campos de `CAMPOS_LEGADOS` que a
+  edição **muda** (ausente não muda; vazio = `null`).
 - `funcaoExigeTurno(f)` → verdadeiro para `FISCAL`/`OPERADOR`.
 - `validarTurnoObrigatorio(f, turno)` → lança se faltar turno a fiscal/operador.
 - `perfilDaFuncao(f, gerenteDev?)` → `FISCAL→FISCAL`, `SUPERVISOR→SUPERVISOR`,
@@ -175,14 +199,17 @@ totais de arrecadação. Roda no cron mensal (dia 1º) e sob demanda.
 
 ## 8. Dados que o módulo toca
 - **Escreve:** `Colaborador`, `ColaboradorIdentificador`, `Usuario` (conta),
-  `Fiscal`, `EscalaEntry`.
+  `Fiscal`, `EscalaEntry` e, pelo bloco `jornada`, `JornadaVigencia`/
+  `DisponibilidadeDia` (via `JornadaColaboradorService`).
+- **Lê:** `JornadaVigencia` (só a contagem, para os campos legados congelados).
 - **Lê:** `TipoContratoJornada`, `Ausencia`, `RegistroArrecadacao`,
   `VendaDiaria` (para o Perfil Inteligente).
 - Detalhe em [Dicionário de dados](../05-referencia-dados/dicionario-de-dados.md).
 
 ## 9. Dependências
-- **Depende de:** `AcessosService` (hash/login), `PrismaService`, domínio de
-  `fiscais/escala`.
+- **Depende de:** `AcessosService` (hash/login e `usuarioTemAlguma`),
+  `PrismaService`, domínio de `fiscais/escala`, `JornadaColaboradorService`
+  (`@Optional()`; sem ele, o bloco `jornada` é recusado).
 - **É usado por:** o app (telas de Colaboradores e Perfil), e indiretamente por
   escala/jornada/indicadores (que consomem `Colaborador`/`Fiscal`).
 
@@ -201,6 +228,8 @@ totais de arrecadação. Roda no cron mensal (dia 1º) e sob demanda.
    permanece em `OPERADORES_AUSENCIAS` porque devolve só nome/matrícula/função/
    turno e alimenta os seletores de pessoa de ausências, atestados, férias,
    sanções e justificativas.
+9. **Com vigência, a ficha antiga não muda** (R1.3a): folga, horários, grupo e
+   contrato mudam pela jornada ("Vale a partir de"), não pelos campos legados.
 - **Vigência da jornada ([ADR 0027](../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)).** No perfil, os **dias escalados** (taxa de faltas e score) e a "emenda" usam a folga de cada dia de quem tem vigência (`folgasNoPeriodo`). Com vigência, vale a do dia; sem ela, a ficha, como antes. Quando o `JornadaVigenciaService` não é injetado (testes unitários antigos), o serviço reproduz a regra anterior.
 
 ## 11. Testes
@@ -209,6 +238,7 @@ totais de arrecadação. Roda no cron mensal (dia 1º) e sob demanda.
 | `colaboradores.turno-obrigatorio.spec.ts` | Turno obrigatório para fiscal/operador | 9 |
 | `colaboradores.adicionar-identificador.spec.ts` | Associação de código solto (idempotência/conflito) | 4 |
 | `colaboradores.promocao-acesso.spec.ts` | Promoção operador→fiscal cria o login | 6 |
+| `colaboradores.jornada.spec.ts` | Bloco `jornada` no cadastro (valida antes, grava depois, admissão como data, sem bloco = 6x1); 409 dos campos legados com vigência, mesmo valor aceito, grupo preservado; `camposLegadosAlterados` | 10 |
 | `perfil-colaborador.service.spec.ts` | Montagem do Perfil Inteligente | 8 |
 | `perfil-colaborador.properties.spec.ts` | Propriedades do score/ranking (property-based) | 17 |
 | `perfil-colaborador.medalhas.spec.ts` | Regras de insígnias/medalhas | 8 |

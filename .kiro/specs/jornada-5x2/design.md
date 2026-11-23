@@ -260,9 +260,12 @@ rodízio vigente na data (Fase 3), folgas fixas junto com grupo.
   analíticas (dias escalados, "emenda").
 - As regras do contrato de um dia vêm de `TiposContratoService.regrasDoColaborador(id,
   dia)` (o dia passou a ser obrigatório) e, para muitos dias, de `resolvedorDeRegras(id)`.
-- `listar(colaboradorId)` — histórico de vigências (Fase 4).
-- Escrita (`gravar`/`remover`) com `CicloFolhaService.exigirCicloAberto` e
-  avisos — **Fase 4**, junto com a tela.
+- A ficha (Fase 4) fica num serviço próprio do mesmo módulo,
+  `JornadaColaboradorService`, para o consultor não ganhar dependências de escrita:
+  `obter` (vigente, histórico, próximas folgas), `gravar` (com
+  `CicloFolhaService.exigirCicloAberto`, validação, rodízio vigente, troca de
+  contrato só com `ADMIN_DADOS` e avisos), `validarNoCadastro`/`gravarPlano`
+  (bloco `jornada` do `POST /colaboradores`) e `remover`.
 - `FolgaService` mudou-se para `jornada-vigencia` e pergunta ao consultor (mantém a
   interface `consultor(dias)`/`ehFolga`/`semFolgaNaFicha`).
 - Os consumidores injetam o `JornadaVigenciaService` como `@Optional()` e, sem ele
