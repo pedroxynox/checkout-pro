@@ -2179,6 +2179,26 @@ export interface JornadaPontoView {
   tac: boolean;
   motivosTac: string[];
   faltando: string[];
+  /**
+   * Limites do contrato DESTE dia, em minutos (spec `jornada-5x2`, R2.5).
+   * Opcional: uma resposta guardada antes da Fase 2 não o traz, e aí valem os
+   * números do 6x1.
+   */
+  regrasResumo?: RegrasResumoPonto;
+}
+
+/** Limites do contrato do dia (minutos), como o backend os resume. */
+export interface RegrasResumoPonto {
+  /** Acima disto de horas extras no dia é TAC. */
+  limiteExtrasMin: number;
+  /** 1º aviso preventivo (minutos de extra). */
+  primeiroAvisoMin: number;
+  /** 2º aviso preventivo (minutos de extra). */
+  segundoAvisoMin: number;
+  intervaloMinimoMin: number;
+  intervaloMaximoMin: number;
+  /** Teto de horas trabalhadas no dia; null = sem teto. */
+  limiteTrabalhoDiaMin: number | null;
 }
 
 /** Resposta do dia: pessoa, jornada e batidas. */
