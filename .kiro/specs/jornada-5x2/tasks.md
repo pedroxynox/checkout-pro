@@ -75,7 +75,7 @@ prevista é o código de hoje com os dados de hoje (design §1).
 
 ## Fase 2 — Tipo de contrato 5x2
 
-Dois PRs: **2a — backend** (PR #442) e **2b — app** (branch `feat/contrato-5x2-app`).
+Dois PRs: **2a — backend** (PR #442) e **2b — app** (PR #443).
 
 - [x] 2.1 Prisma: campos da design §2.2; migração `9zzv_contrato_5x2` com os
   valores do 6x1 (feriado 440, `feriadoAdicional100` true, limite diário null…).
