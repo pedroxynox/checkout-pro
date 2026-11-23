@@ -66,6 +66,18 @@ export { checkoutsService } from './checkouts';
 export type { FotoAvaria } from './checkouts';
 export { notificacoesService } from './notificacoes';
 export { configSistemaService } from './configSistema';
+export { rodizioFolgasService } from './rodizioFolgas';
+export type {
+  AvisoRodizio,
+  DiaPreviaRodizio,
+  GrupoRodizio,
+  PadraoRodizio,
+  RodizioFolgasConfig,
+  RodizioFolgasInput,
+  RodizioFolgasVigencia,
+  SemanaPreviaRodizio,
+  SimulacaoRodizioFolgas,
+} from './rodizioFolgas';
 export type {
   DataInicialResposta,
   DomingoPreview,
