@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-14 · **Cobre:** `mobile/src/screens/colaboradores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-23 · **Cobre:** `mobile/src/screens/colaboradores/`
 
 # Área: `colaboradores`
 
@@ -14,8 +14,11 @@ próprias (ajustáveis na Central de Permissões):
   pessoas do quadro). Padrão: administrador, gerente e supervisor.
 - **`COLABORADORES_PERFIL`**: abre a **ficha individual** (Perfil Inteligente),
   de qualquer ponto do app. Padrão: administrador, gerente e supervisor.
-- **`OPERADORES_CRUD`**: cadastra, edita, promove, define senha (Centro de
-  Controle ▸ Colaboradores).
+- **`OPERADORES_CRUD`**: cadastra, edita, promove, define senha e grava a
+  **jornada** (grupo, folgas fixas, disponibilidade) — Centro de Controle ▸
+  Colaboradores.
+- **`ADMIN_DADOS`**: só quem tem escolhe ou troca o **tipo de contrato** (decisão
+  do dono). Os demais veem o contrato, sem trocar.
 - O **fiscal** continua vendo a escala do dia (`OPERADORES_AUSENCIAS`), mas não a
   seção nem a ficha de ninguém.
 - Ver [Perfis e permissões](../01-produto/perfis-e-permissoes.md).
@@ -24,8 +27,10 @@ próprias (ajustáveis na Central de Permissões):
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `ColaboradoresScreen.tsx` | Lista/hub de colaboradores | 345 |
-| `GestaoColaboradoresScreen.tsx` | Formulário de cadastro/edição | 711 |
-| `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 945 |
+| `GestaoColaboradoresScreen.tsx` | Formulário de cadastro/edição (salva a ficha e a jornada) | 762 |
+| `JornadaFormulario.tsx` | Seção "Jornada" do formulário: contrato, disponibilidade seg–dom, grupo, folgas fixas, "Vale a partir de", avisos | 307 |
+| `PerfilColaboradorScreen.tsx` | Perfil Inteligente (score, indicadores, insígnias) | 913 |
+| `JornadaPerfilCartao.tsx` | Cartão "Jornada" do perfil: contrato desde quando, grupo/folgas, disponibilidade, próximas folgas e histórico | 207 |
 | `SancoesScreen.tsx` | Lista de sanções/advertências | 588 |
 | `RegistrarSancaoModal.tsx` | Modal para registrar sanção | 460 |
 | `FeedforwardSecao.tsx` | Seção de feedforward: orquestra (carrega, modais, remover, foto, impressão) | 263 |
@@ -42,8 +47,12 @@ próprias (ajustáveis na Central de Permissões):
    Sem `COLABORADORES_PERFIL` a lista continua navegável, mas os itens não abrem
    a ficha (a seta de avanço desaparece).
 2. **Cadastrar/editar:** abre `GestaoColaboradoresScreen`; preenche matrícula,
-   nome, função, turno, horários, contrato; para função com acesso, define a
-   **senha**. Salvar chama `cadastrar` ou `editar`.
+   nome, função e turno; para função com acesso, define a **senha**. Na seção
+   **Jornada** preenche a disponibilidade, o grupo (ou as folgas fixas) e, se for
+   administrador, o contrato. Se algo da jornada mudou, aparece **"Vale a partir
+   de"**; salvar pede confirmação, grava a vigência (`PUT /jornada`) e depois a
+   ficha (`PATCH`). No cadastro novo, a jornada vai no bloco `jornada` do `POST`.
+   Os avisos voltam num diálogo "Salvo com avisos".
 3. **Perfil:** abre `PerfilColaboradorScreen` no período (mês corrente por
    padrão), com score, ranking, gráficos e insígnias; permite exportar PDF.
 4. **Disciplina:** registra sanção (`RegistrarSancaoModal`) e acompanha em
@@ -57,6 +66,9 @@ Cada tela trata os estados **carregando / erro / vazio**.
 | Detalhe | `colaboradoresService.obter(id)` | `GET /colaboradores/:id` |
 | Cadastrar | `colaboradoresService.cadastrar(input)` | `POST /colaboradores` |
 | Editar/promover | `colaboradoresService.editar(id, input)` | `PATCH /colaboradores/:id` |
+| Jornada (vigente, histórico, próximas folgas) | `jornadaColaboradorService.obter(id)` | `GET /colaboradores/:id/jornada` |
+| Gravar a jornada | `jornadaColaboradorService.gravar(id, input)` | `PUT /colaboradores/:id/jornada` |
+| Remover uma vigência (ainda sem tela) | `jornadaColaboradorService.remover(id, vigenciaId)` | `DELETE /colaboradores/:id/jornada/:vigenciaId` |
 | Perfil (exige `COLABORADORES_PERFIL`) | `colaboradoresService.perfil(...)` | `GET /colaboradores/:id/perfil` |
 | Contas de acesso | `colaboradoresService.listarLogins()` | `GET /colaboradores/logins` |
 | Feedforward: histórico | `feedforwardService.doColaborador(id)` | `GET /feedforward/colaborador/:colaboradorId` |
@@ -70,31 +82,45 @@ Cada tela trata os estados **carregando / erro / vazio**.
 | Feedforward: prorrogar ponto | `feedforwardService.prorrogarPonto(id, prazo, motivo?)` | `PATCH /feedforward/ponto/:pontoId/prorrogar` |
 | Feedforward: remover ponto | `feedforwardService.removerPonto(id)` | `DELETE /feedforward/ponto/:pontoId` |
 
-Módulos do backend relacionados: [`colaboradores`](../03-atlas-backend/colaboradores.md)
-e [`feedforward`](../03-atlas-backend/feedforward.md).
+Módulos do backend relacionados: [`colaboradores`](../03-atlas-backend/colaboradores.md),
+[`jornada-vigencia`](../03-atlas-backend/jornada-vigencia.md) e
+[`feedforward`](../03-atlas-backend/feedforward.md). Os tipos da jornada
+(`VigenciaJornada`, `JornadaDoColaborador`, `JornadaInput`, `AvisoJornada`)
+espelham o backend em `api/services/jornadaColaborador.ts`; o cadastro com
+jornada usa `CadastroColaboradorInput`/`ColaboradorCadastrado`
+(`api/services/colaboradores.ts`).
 
 ## 6. Estado local e regras de UI
 - O formulário guarda os campos em memória e valida no cliente: horários no
   formato `HH:mm`, data de admissão `dd/mm/aaaa`.
+- **Jornada por vigência (spec `jornada-5x2`, Fase 4).** Saíram do formulário o
+  dia fixo de folga e os blocos Seg–Qui, Sex–Sáb e Domingo (são a história do
+  6x1; com vigência a API recusa mudá-los). O `PATCH` não envia mais esses
+  campos nem o contrato.
+  - **Disponibilidade:** uma linha por dia, de segunda a domingo, com entrada e
+    saída; "Copiar a primeira para todas" leva o horário de segunda aos sete
+    dias. Dia vazio = sem horário (o sistema não cobra ponto).
+  - **Grupo de folga:** G1/G2/G3 ou "Sem grupo". A seção **Folgas fixas** só
+    aparece sem grupo; o sábado só aparece se o contrato permitir, e o limite é o
+    `folgasPorSemana` do contrato (vazio = as padrão do contrato).
+  - **Contrato:** chips só para quem tem `ADMIN_DADOS` (o catálogo só é carregado
+    para ele); os demais veem o nome e "só o administrador troca", e o contrato
+    não é enviado (a vigência herda o que já vale na data).
+  - **"Vale a partir de"** aparece só quando a jornada mudou em relação à última
+    vigência (ou, sem vigência, quando foi preenchida). Sugestão: 23/11/2026 para
+    quem ainda está no 6x1 (data do corte) e hoje para os demais. No cadastro
+    novo pode ficar vazia (vale a admissão).
+  - A edição parte da **última** vigência (inclusive futura). Enquanto a jornada
+    carrega, o salvar espera; se ela não carregar, a jornada não é gravada.
+  - Os avisos da última vigência aparecem na seção; os da gravação, no diálogo
+    final.
 - `FUNCOES_COM_ACESSO = ['FISCAL','SUPERVISOR','GESTOR']`: só para essas funções
   o campo **senha** aparece e é enviado. Operador não tem acesso.
 - Gestor/administrador não mostram escala/contrato/gênero (só o essencial).
-- **Tipo de contrato:** um único seletor data-driven (o catálogo de tipos de
-  contrato de jornada). "Padrão" usa o 6x1 vigente; a lista só aparece para o
-  admin. O seletor legado (enum `TipoContrato`) foi removido na Fase 0 do spec
-  `solidez-contratos-jornada`.
-- Domingo: o grupo só aparece se o contrato trabalha domingo (o backend também
-  normaliza por segurança).
-- **O dia de folga pode ser APAGADO** (ADR 0023). Tocar no dia já marcado o
-  desmarca, e o formulário envia `folgaDiaSemana: null` — antes enviava
-  `undefined`, e o servidor só atribui quando o campo vem: a folga podia ser
-  **trocada**, nunca **esvaziada**, então quem marcasse um dia por engano não tinha
-  como desfazer.
-- **Deixar o dia de folga em branco não é neutro.** Sem folga na ficha a pessoa é
-  escalada os sete dias da semana e pode receber falta automática num dia em que
-  estava descansando. O formulário não bloqueia (há fichas antigas sem o dado, e o
-  padrão da casa é validar só o que mudou), mas a
-  [Escala](escala.md) avisa quem está nessa situação, com nome e função.
+- **Ficar sem folga não é neutro.** Sem grupo e sem folga fixa (nem a padrão do
+  contrato), a pessoa é escalada os sete dias; o backend devolve o aviso
+  `SEM_FOLGA` (não bloqueia) e a [Escala](escala.md) avisa quem está nessa
+  situação.
 - **Seção "Tempo de casa" (contrato de experiência):** mostra os marcos de 45 e
   90 dias, o próximo marco e, quando aplicável, "Efetivado por decurso". Na
   Fase 3 removeu-se o aviso legado de "decisão em atraso" — o ciclo é automático
@@ -137,6 +163,8 @@ e [`feedforward`](../03-atlas-backend/feedforward.md).
 
 ## 7. Lógica pura / utilidades
 - Conversões e validações de horário/data usadas pelo formulário.
+- `utils/jornadaColaborador.ts`: edição pura da jornada (ver
+  [Hooks e utilidades](hooks-e-utilidades.md)).
 - Rótulos de função/turno/contrato para exibição.
 
 ## 8. Componentes e hooks compartilhados usados
@@ -148,8 +176,8 @@ e [`feedforward`](../03-atlas-backend/feedforward.md).
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
 | `ColaboradoresScreen.test.tsx` | Lista, busca e navegação | 3 |
-| `GestaoColaboradoresScreen.test.tsx` | Formulário e envio de senha por função | 2 |
-| `PerfilColaboradorScreen.test.tsx` | Render do perfil (score/indicadores) | 3 |
+| `GestaoColaboradoresScreen.test.tsx` | Pré-preenchimento; sem os campos antigos; gravação da vigência com "copiar a primeira", grupo e data sugerida, `PATCH` sem campos legados e avisos; folgas fixas só sem grupo; horário pela metade não grava; contrato só para o administrador; cadastro novo com o bloco `jornada` | 9 |
+| `PerfilColaboradorScreen.test.tsx` | Render do perfil (incidências, marcos do contrato) e cartão "Jornada" com e sem vigência | 5 |
 | `FeedforwardSecao.test.tsx` | Feedforward: permissões, nova rodada (nota, textos, prazo em dias/semanas, foto com falha, erro, perguntas), revisão com observação, remoção com confirmação, foto em rodada salva, impressão, cargo, prorrogação (prazo padrão/seletor/erro), editar/remover ponto, editar rodada (campos, nota, novos pontos, falha), regras de data do modal e resumo de evolução | 42 |
 | `feedforwardApoio.test.ts` | Rascunho padrão e `calcularPrazoISO` (dias/semanas/meses, quantidade inválida, data exata, virada do ano) | 5 |
 
@@ -160,7 +188,13 @@ e [`feedforward`](../03-atlas-backend/feedforward.md).
   orquestra; exibição em `RodadaFeedforwardItem`/`ResumoFeedforward`, formulários
   em `ModalNovaRodada`/`ModalEditarRodada`/`ModalRevisarPonto` e apoio puro em
   `feedforwardApoio.ts`. Comportamento e textos mantidos (mesmos testes).
-- ✅ **O cartão "Escala" do perfil mostra o horário de DOMINGO e o grupo do
+- ✅ **O cartão "Escala" virou "Jornada"** (spec `jornada-5x2`, R4.8): com
+  vigência mostra contrato (desde quando), grupo ou folgas fixas, disponibilidade
+  por dia, próximas folgas (14 dias) e histórico; sem vigência, a escala antiga
+  da ficha. Se a jornada não carregar, fica só a escala antiga.
+- 🔧 Remover uma vigência ainda não tem botão (só a API). Corrigir uma vigência é
+  gravar de novo com a mesma data.
+- ✅ (histórico) **O cartão "Escala" do perfil mostra o horário de DOMINGO e o grupo do
   rodízio** (ADR 0026). Antes exibia só Seg–Qui e Sex–Sáb, embora o formulário de
   edição já tivesse o horário de domingo (abaixo do grupo) — e é esse horário que
   decide **domingo e feriado** na escala. Quem consultava a ficha via dois horários

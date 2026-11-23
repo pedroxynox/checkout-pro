@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 150 arquivos, 1482 casos. **Mobile:** 46 arquivos, 381 casos. **Total: 1863 casos.**
+> **Backend:** 150 arquivos, 1485 casos. **Mobile:** 47 arquivos, 401 casos. **Total: 1886 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -43,7 +43,7 @@
 | `src/checklist/checklist.service.spec.ts` | 8 | 2 |
 | `src/ciclo-folha/ciclo-folha.service.spec.ts` | 16 | 3 |
 | `src/colaboradores/colaboradores.adicionar-identificador.spec.ts` | 4 | 1 |
-| `src/colaboradores/colaboradores.jornada.spec.ts` | 10 | 3 |
+| `src/colaboradores/colaboradores.jornada.spec.ts` | 13 | 4 |
 | `src/colaboradores/colaboradores.promocao-acesso.spec.ts` | 6 | 2 |
 | `src/colaboradores/colaboradores.turno-obrigatorio.spec.ts` | 9 | 5 |
 | `src/colaboradores/perfil-colaborador.medalhas.spec.ts` | 8 | 5 |
@@ -180,8 +180,8 @@
 | `src/screens/centroControle/RodizioFolgasScreen.test.tsx` | 4 | 1 |
 | `src/screens/colaboradores/ColaboradoresScreen.test.tsx` | 3 | 1 |
 | `src/screens/colaboradores/FeedforwardSecao.test.tsx` | 42 | 12 |
-| `src/screens/colaboradores/GestaoColaboradoresScreen.test.tsx` | 2 | 1 |
-| `src/screens/colaboradores/PerfilColaboradorScreen.test.tsx` | 3 | 2 |
+| `src/screens/colaboradores/GestaoColaboradoresScreen.test.tsx` | 9 | 2 |
+| `src/screens/colaboradores/PerfilColaboradorScreen.test.tsx` | 5 | 3 |
 | `src/screens/colaboradores/feedforwardApoio.test.ts` | 5 | 2 |
 | `src/screens/contratos/ContratosScreen.test.tsx` | 8 | 2 |
 | `src/screens/escala/ConferenciaEscalaScreen.test.tsx` | 7 | 1 |
@@ -208,6 +208,7 @@
 | `src/screens/ponto/montarTextoOcr.test.ts` | 3 | 1 |
 | `src/utils/escalaLayout.test.ts` | 25 | 4 |
 | `src/utils/formato.test.ts` | 25 | 6 |
+| `src/utils/jornadaColaborador.test.ts` | 11 | 3 |
 | `src/utils/periodoMensal.test.ts` | 9 | 5 |
 | `src/utils/regrasTac.test.ts` | 4 | 2 |
 | `src/utils/relatorioFeedforward.test.ts` | 16 | 4 |
