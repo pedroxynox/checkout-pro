@@ -10,7 +10,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colaboradoresService } from '../../api/services';
+import {
+  colaboradoresService,
+  jornadaColaboradorService,
+} from '../../api/services';
+import type { JornadaDoColaborador } from '../../api/services';
 import {
   EstadoContrato,
   FuncaoColaborador,
@@ -36,6 +40,7 @@ import { cores, espacamento, raio, tipografia } from '../../theme';
 import { formatarData, formatarDuracao } from '../../utils/formato';
 import { ROTULO_STATUS_FISCAL } from '../../utils/rotulos';
 import { FeedforwardSecao } from './FeedforwardSecao';
+import { JornadaPerfilCartao } from './JornadaPerfilCartao';
 
 const FUNCOES: Record<FuncaoColaborador, string> = {
   OPERADOR: 'Operador',
@@ -43,7 +48,6 @@ const FUNCOES: Record<FuncaoColaborador, string> = {
   SUPERVISOR: 'Supervisor',
   GESTOR: 'Gestor',
 };
-const NOMES_DIA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 /** Rótulo do marco do contrato. */
 const ROTULO_MARCO_CONTRATO: Record<'MARCO_45' | 'MARCO_90', string> = {
@@ -365,13 +369,25 @@ export function PerfilColaboradorScreen({
     [colaboradorId],
   );
   const p = req.dados;
+  // Jornada por vigência (spec jornada-5x2, R4.8). Sem ela (falha ou permissão),
+  // o cartão mostra só a escala antiga da ficha.
+  const jornada = useRequisicao<JornadaDoColaborador | null>(
+    () => jornadaColaboradorService.obter(colaboradorId).catch(() => null),
+    [colaboradorId],
+  );
 
   // A ação de "Excluir do quadro" (baixa lógica) foi movida para o formulário de
   // edição do colaborador em Centro de Controle ▸ Colaboradores. O perfil é
   // somente leitura.
 
   return (
-    <Tela aoAtualizar={req.recarregar} atualizando={req.atualizando}>
+    <Tela
+      aoAtualizar={() => {
+        req.recarregar();
+        jornada.recarregar();
+      }}
+      atualizando={req.atualizando}
+    >
       {req.carregando ? (
         <Carregando />
       ) : req.erro || !p ? (
@@ -678,59 +694,11 @@ export function PerfilColaboradorScreen({
             }}
           />
 
-          {/* Escala / folga */}
-          <Cartao titulo="Escala">
-            <View style={styles.escalaLinha}>
-              <Text style={styles.escalaRotulo}>Seg–Qui</Text>
-              <Text style={styles.escalaValor}>
-                {p.colaborador.entradaSemana && p.colaborador.saidaSemana
-                  ? `${p.colaborador.entradaSemana} – ${p.colaborador.saidaSemana}`
-                  : '—'}
-              </Text>
-            </View>
-            <View style={styles.escalaLinha}>
-              <Text style={styles.escalaRotulo}>Sex–Sáb</Text>
-              <Text style={styles.escalaValor}>
-                {p.colaborador.entradaFds && p.colaborador.saidaFds
-                  ? `${p.colaborador.entradaFds} – ${p.colaborador.saidaFds}`
-                  : '—'}
-              </Text>
-            </View>
-            {/*
-              Domingo entra na ficha porque é ele que decide o horário de
-              DOMINGO e o de FERIADO na escala. Estava só no formulário de
-              edição (embaixo do grupo do rodízio), então quem consultava a
-              ficha via dois horários e a escala usava um terceiro — sem nada
-              que explicasse de onde vinha. Ver ADR 0026.
-            */}
-            <View style={styles.escalaLinha}>
-              <Text style={styles.escalaRotulo}>Domingo</Text>
-              <Text style={styles.escalaValor}>
-                {p.colaborador.entradaDom && p.colaborador.saidaDom
-                  ? `${p.colaborador.entradaDom} – ${p.colaborador.saidaDom}`
-                  : '—'}
-              </Text>
-            </View>
-            <View style={styles.escalaLinha}>
-              <Text style={styles.escalaRotulo}>Grupo de domingo</Text>
-              <Text style={styles.escalaValor}>
-                {p.colaborador.grupoDomingo ?? 'fora do rodízio'}
-              </Text>
-            </View>
-            <View style={styles.escalaLinha}>
-              <Text style={styles.escalaRotulo}>Folga</Text>
-              <Text style={styles.escalaValor}>
-                {p.colaborador.folgaDiaSemana != null &&
-                p.colaborador.folgaDiaSemana >= 0
-                  ? NOMES_DIA[p.colaborador.folgaDiaSemana]
-                  : '—'}
-              </Text>
-            </View>
-            <Text style={styles.escalaNota}>
-              Em feriado vale o horário de domingo. Sem horário de domingo
-              cadastrado, o feriado mantém o horário normal do dia.
-            </Text>
-          </Cartao>
+          {/* Jornada: vigência do dia ou, sem ela, a escala antiga (6x1). */}
+          <JornadaPerfilCartao
+            jornada={jornada.dados ?? null}
+            ficha={p.colaborador}
+          />
 
         </>
       )}

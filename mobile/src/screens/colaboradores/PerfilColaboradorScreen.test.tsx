@@ -12,6 +12,7 @@ import { PerfilColaboradorScreen } from './PerfilColaboradorScreen';
 
 jest.mock('../../api/services', () => ({
   colaboradoresService: { perfil: jest.fn() },
+  jornadaColaboradorService: { obter: jest.fn().mockResolvedValue(null) },
   escalaService: {
     listarIncidencias: jest.fn(),
     registrarIncidencia: jest.fn(),
@@ -40,8 +41,12 @@ jest.mock('../../utils/formato', () => {
   return { ...real, hojeISO: () => '2026-06-25' };
 });
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { colaboradoresService, escalaService } = require('../../api/services');
+const {
+  colaboradoresService,
+  escalaService,
+  jornadaColaboradorService,
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+} = require('../../api/services');
 
 const PERFIL = {
   colaborador: {
@@ -189,5 +194,82 @@ describe('PerfilColaboradorScreen — marcos do contrato', () => {
     await screen.findByText('Tempo de casa');
     // Sem decisão manual, ambos os marcos já cumpridos contam como aprovados.
     expect(screen.getAllByText(/Aprovado/).length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('PerfilColaboradorScreen — jornada (5x2)', () => {
+  const VIGENCIA = {
+    id: 'v1',
+    aPartirDe: '2026-11-23',
+    tipoContratoJornadaId: 'c5x2',
+    tipoContratoNome: '5x2 44h',
+    grupo: 'G1',
+    folgasFixas: [],
+    folgasFixasEfetivas: [],
+    disponibilidade: [{ diaSemana: 1, entrada: '06:50', saida: '16:38' }],
+    motivo: 'Fim do 6x1',
+    criadoPor: '232152',
+    criadoEm: '2026-11-23T10:00:00.000Z',
+    atualizadoPor: null,
+    atualizadoEm: '2026-11-23T10:00:00.000Z',
+    avisos: [],
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAuth.permitir = true;
+    escalaService.listarIncidencias.mockResolvedValue([]);
+    colaboradoresService.perfil.mockResolvedValue({
+      ...PERFIL,
+      colaborador: {
+        ...PERFIL.colaborador,
+        entradaSemana: '06:50',
+        saidaSemana: '15:50',
+        folgaDiaSemana: 3,
+      },
+    });
+  });
+
+  it('com vigência: contrato desde quando, grupo, disponibilidade, próximas folgas e histórico', async () => {
+    jornadaColaboradorService.obter.mockResolvedValue({
+      colaboradorId: 'c1',
+      regimeHoje: 'SEMANAL',
+      vigente: VIGENCIA,
+      contratoVigente: { id: 'c5x2', nome: '5x2 44h', desde: '2026-11-23' },
+      historico: [VIGENCIA],
+      proximasFolgas: [
+        { data: '2026-11-26', diaSemana: 4 },
+        { data: '2026-11-27', diaSemana: 5 },
+      ],
+    });
+    render_();
+
+    expect(await screen.findByText('5x2 44h · desde 23/11/2026')).toBeTruthy();
+    expect(screen.getByText('G1')).toBeTruthy();
+    expect(screen.getByText('06:50 – 16:38')).toBeTruthy();
+    expect(screen.getByText('Qui 26/11 · Sex 27/11')).toBeTruthy();
+    expect(
+      screen.getByText(/A partir de 23\/11\/2026 · 5x2 44h · G1/),
+    ).toBeTruthy();
+    // A escala antiga não aparece para quem já está na vigência.
+    expect(screen.queryByText('Seg–Qui')).toBeNull();
+  });
+
+  it('sem vigência: mostra a escala antiga da ficha (6x1)', async () => {
+    jornadaColaboradorService.obter.mockResolvedValue({
+      colaboradorId: 'c1',
+      regimeHoje: 'LEGADO_6X1',
+      vigente: null,
+      contratoVigente: { id: 'c6x1', nome: '6x1 - 2x1', desde: null },
+      historico: [],
+      proximasFolgas: [{ data: '2026-11-25', diaSemana: 3 }],
+    });
+    render_();
+
+    expect(await screen.findByText('6x1 - 2x1')).toBeTruthy();
+    expect(screen.getByText(/Escala antiga \(6x1\)/)).toBeTruthy();
+    expect(screen.getByText('06:50 – 15:50')).toBeTruthy();
+    expect(screen.getByText('Quarta')).toBeTruthy();
+    expect(screen.getByText(/Sem vigências/)).toBeTruthy();
   });
 });

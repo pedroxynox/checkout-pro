@@ -2,8 +2,14 @@
  * Centro de Controle ▸ Colaboradores (gestão) — cadastro unificado de pessoas.
  *
  * Lista todos os colaboradores (busca por nome/matrícula), permite cadastrar um
- * a um (matrícula, login, turno, horários, folga) e editar/inativar. Cada item
- * abre o formulário de edição.
+ * a um (matrícula, login, turno e jornada) e editar/inativar. Cada item abre o
+ * formulário de edição.
+ *
+ * Jornada (spec `jornada-5x2`, Fase 4): contrato, disponibilidade por dia, grupo
+ * do rodízio de folgas e folgas fixas são gravados como uma **vigência** com
+ * "Vale a partir de" (`PUT /colaboradores/:id/jornada`). Os campos antigos da
+ * ficha (folga fixa e os blocos Seg–Qui, Sex–Sáb e Domingo) não são mais
+ * editados aqui: são a história do 6x1.
  *
  * Apenas gestor (funcionalidade OPERADORES_CRUD). O cadastro só existe aqui — a
  * seção "Colaboradores" (geral) é somente leitura (perfil).
@@ -12,8 +18,17 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ApiError } from '../../api/client';
-import { colaboradoresService, tiposContratoService } from '../../api/services';
-import type { TipoContratoJornada } from '../../api/services';
+import {
+  colaboradoresService,
+  jornadaColaboradorService,
+  tiposContratoService,
+} from '../../api/services';
+import type {
+  AvisoJornada,
+  JornadaDoColaborador,
+  TipoContratoJornada,
+} from '../../api/services';
+import { useAuth } from '../../auth/AuthContext';
 import {
   Colaborador,
   FuncaoColaborador,
@@ -32,9 +47,25 @@ import { useRequisicao } from '../../hooks/useRequisicao';
 import { PropsTela } from '../../navigation/types';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
-import { dataBRParaISO, isoParaDataBR, mascaraDataBR } from '../../utils/formato';
-
-const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+import {
+  dataBRParaISO,
+  hojeISO,
+  isoParaDataBR,
+  mascaraDataBR,
+} from '../../utils/formato';
+import {
+  EdicaoJornada,
+  LimitesFolga,
+  dataInicialSugerida,
+  edicaoDaVigencia,
+  edicaoVazia,
+  jornadaPreenchida,
+  mesmaJornada,
+  paraGravar,
+  pendenciasDaJornada,
+  textoAvisos,
+} from '../../utils/jornadaColaborador';
+import { JornadaFormulario } from './JornadaFormulario';
 
 const FUNCOES: { v: FuncaoColaborador; r: string }[] = [
   { v: 'OPERADOR', r: 'Operador' },
@@ -53,8 +84,6 @@ const TURNOS: { v: TurnoColaborador; r: string }[] = [
   { v: 'APOIO', r: 'Apoio' },
 ];
 
-const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
-
 function rotuloFuncao(f: FuncaoColaborador): string {
   return FUNCOES.find((x) => x.v === f)?.r ?? f;
 }
@@ -66,12 +95,16 @@ export function GestaoColaboradoresScreen({
   route,
 }: PropsTela<'GestaoColaboradores'>): React.ReactElement {
   const lista = useRequisicao<Colaborador[]>(() => colaboradoresService.listar(), []);
-  // Contratos de jornada ativos (para o seletor). Só o admin tem acesso ao
-  // endpoint; para os demais a chamada falha e cai numa lista vazia (o seletor
-  // simplesmente não aparece).
+  // Só o administrador escolhe ou troca o contrato (decisão do dono; o backend
+  // devolve 403 aos demais). O catálogo só é carregado para ele.
+  const { podeAcessar } = useAuth();
+  const podeTrocarContrato = podeAcessar('ADMIN_DADOS');
   const contratos = useRequisicao<TipoContratoJornada[]>(
-    () => tiposContratoService.listar(false).catch(() => []),
-    [],
+    () =>
+      podeTrocarContrato
+        ? tiposContratoService.listar(false).catch(() => [])
+        : Promise.resolve([]),
+    [podeTrocarContrato],
   );
 
   const [busca, setBusca] = useState('');
@@ -85,23 +118,20 @@ export function GestaoColaboradoresScreen({
   const [matricula, setMatricula] = useState('');
   const [login, setLogin] = useState('');
   const [funcao, setFuncao] = useState<FuncaoColaborador>('OPERADOR');
-  // Tipo de contrato de jornada atribuído (null = usa o padrão 6x1).
-  const [contratoJornadaId, setContratoJornadaId] = useState<string | null>(
-    null,
-  );
   const [genero, setGenero] = useState<'M' | 'F'>('F');
   const [turno, setTurno] = useState<TurnoColaborador | null>(null);
-  const [entSem, setEntSem] = useState('');
-  const [saiSem, setSaiSem] = useState('');
-  const [entFds, setEntFds] = useState('');
-  const [saiFds, setSaiFds] = useState('');
-  const [folga, setFolga] = useState<number | null>(null);
-  // Escala de domingo: grupo do rodízio (G1/G2/G3 ou null = não trabalha) e
-  // horário próprio de domingo.
-  const [grupoDom, setGrupoDom] = useState<string | null>(null);
-  const [entDom, setEntDom] = useState('');
-  const [saiDom, setSaiDom] = useState('');
   const [admissao, setAdmissao] = useState('');
+  // Jornada: o que está na tela, o que veio do servidor (null = cadastro novo ou
+  // pessoa ainda sem vigência) e a data "Vale a partir de" (dd/mm/aaaa).
+  const [jornada, setJornada] = useState<EdicaoJornada>(edicaoVazia());
+  const [jornadaOriginal, setJornadaOriginal] = useState<EdicaoJornada | null>(
+    null,
+  );
+  const [jornadaServidor, setJornadaServidor] =
+    useState<JornadaDoColaborador | null>(null);
+  const [carregandoJornada, setCarregandoJornada] = useState(false);
+  const [erroJornada, setErroJornada] = useState<string | null>(null);
+  const [aPartirDe, setAPartirDe] = useState('');
   const [senha, setSenha] = useState('');
   const [gerenteDev, setGerenteDev] = useState(false);
 
@@ -110,12 +140,41 @@ export function GestaoColaboradoresScreen({
   // o formulário pede só o essencial (nome, matrícula, login, cargo e senha).
   const ehGestor = funcao === 'GESTOR';
 
-  // Rodízio de domingo só aparece se o contrato escolhido trabalha domingo.
-  // Sem contrato atribuído = padrão (trabalha domingo) → mostra.
-  const contratoSelecionado = (contratos.dados ?? []).find(
-    (c) => c.id === contratoJornadaId,
-  );
-  const mostrarDomingo = !contratoSelecionado || contratoSelecionado.trabalhaDomingo;
+  // Contrato da jornada na tela: o escolhido ou, sem escolha, o padrão.
+  const listaContratos = contratos.dados ?? [];
+  const contratoDaJornada =
+    listaContratos.find((c) => c.id === jornada.contratoId) ??
+    (jornada.contratoId == null
+      ? listaContratos.find((c) => c.padrao)
+      : undefined);
+  const limitesFolga: LimitesFolga | null = contratoDaJornada
+    ? {
+        folgasPorSemana: contratoDaJornada.folgasPorSemana,
+        permiteFolgaSabado: contratoDaJornada.permiteFolgaSabado,
+      }
+    : null;
+  // Algo da jornada mudou? Só então se grava uma vigência (e se pede a data).
+  const jornadaMudou = jornadaOriginal
+    ? !mesmaJornada(jornada, jornadaOriginal)
+    : jornadaPreenchida(jornada);
+  const ultimaVigencia = jornadaServidor?.historico[0] ?? null;
+  const nomeContrato =
+    ultimaVigencia?.tipoContratoNome ??
+    jornadaServidor?.contratoVigente.nome ??
+    null;
+  const situacaoJornada = !editId
+    ? 'Preencha para já cadastrar no 5x2; vazio = a pessoa fica no 6x1.'
+    : erroJornada
+      ? `Não foi possível carregar a jornada: ${erroJornada}`
+      : ultimaVigencia
+        ? `Última vigência: a partir de ${isoParaDataBR(ultimaVigencia.aPartirDe)}` +
+          (ultimaVigencia.tipoContratoNome
+            ? ` (${ultimaVigencia.tipoContratoNome})`
+            : '') +
+          '.'
+        : jornadaServidor
+          ? 'Ainda no 6x1 (ficha antiga). Preencha a jornada e a data para passar ao novo modelo.'
+          : null;
 
   const filtrados = useMemo(() => {
     const dados = lista.dados ?? [];
@@ -136,18 +195,41 @@ export function GestaoColaboradoresScreen({
     setFuncao('OPERADOR');
     setGenero('F');
     setTurno(null);
-    setEntSem('');
-    setSaiSem('');
-    setEntFds('');
-    setSaiFds('');
-    setFolga(null);
-    setGrupoDom(null);
-    setEntDom('');
-    setSaiDom('');
     setAdmissao('');
     setSenha('');
     setGerenteDev(false);
-    setContratoJornadaId(null);
+    setJornada(edicaoVazia());
+    setJornadaOriginal(null);
+    setJornadaServidor(null);
+    setCarregandoJornada(false);
+    setErroJornada(null);
+    setAPartirDe('');
+  };
+
+  /** Carrega a jornada da pessoa (a última vigência é o ponto de partida). */
+  const carregarJornada = (c: Colaborador) => {
+    setCarregandoJornada(true);
+    setErroJornada(null);
+    jornadaColaboradorService
+      .obter(c.id)
+      .then((j) => {
+        const base = j.historico[0];
+        const edicao = base
+          ? edicaoDaVigencia(base)
+          : edicaoVazia(c.tipoContratoJornadaId ?? null);
+        setJornadaServidor(j);
+        setJornada(edicao);
+        setJornadaOriginal(edicao);
+        setAPartirDe(
+          isoParaDataBR(dataInicialSugerida(j.historico.length > 0, hojeISO())),
+        );
+      })
+      .catch((e) => {
+        setErroJornada(
+          e instanceof ApiError ? e.message : 'falha ao carregar.',
+        );
+      })
+      .finally(() => setCarregandoJornada(false));
   };
 
   const abrirNovo = () => {
@@ -178,20 +260,16 @@ export function GestaoColaboradoresScreen({
     setFuncao(c.funcao);
     setGenero(c.genero === 'M' ? 'M' : 'F');
     setTurno(c.turno);
-    setEntSem(c.entradaSemana ?? '');
-    setSaiSem(c.saidaSemana ?? '');
-    setEntFds(c.entradaFds ?? '');
-    setSaiFds(c.saidaFds ?? '');
-    setFolga(c.folgaDiaSemana);
-    setGrupoDom(c.grupoDomingo ?? null);
-    setEntDom(c.entradaDom ?? '');
-    setSaiDom(c.saidaDom ?? '');
     setAdmissao(c.dataAdmissao ? isoParaDataBR(c.dataAdmissao) : '');
-    setContratoJornadaId(c.tipoContratoJornadaId ?? null);
     setEditAtivo(c.ativo);
     setSenha('');
     setGerenteDev(false);
+    setJornada(edicaoVazia(c.tipoContratoJornadaId ?? null));
+    setJornadaOriginal(null);
+    setJornadaServidor(null);
+    setAPartirDe('');
     setFormAberto(true);
+    if (c.funcao !== 'GESTOR') carregarJornada(c);
     // Precarrega o login atual (guardado como identificador, não vem na lista).
     void colaboradoresService
       .obter(c.id)
@@ -233,16 +311,34 @@ export function GestaoColaboradoresScreen({
       );
       return;
     }
-    for (const [rotulo, valor] of [
-      ['Entrada Seg–Qui', entSem],
-      ['Saída Seg–Qui', saiSem],
-      ['Entrada Sex–Sáb', entFds],
-      ['Saída Sex–Sáb', saiFds],
-      ['Entrada Domingo', entDom],
-      ['Saída Domingo', saiDom],
-    ] as const) {
-      if (valor.trim() && !HHMM.test(valor.trim())) {
-        notificar('Horário inválido', `${rotulo} deve ser HH:mm (ex.: 08:00).`);
+    // Na edição, a jornada precisa ter carregado: sem ela não se sabe o que mudou.
+    if (editId && !ehGestor && carregandoJornada) {
+      notificar('Aguarde', 'A jornada ainda está carregando.');
+      return;
+    }
+    const gravaJornada = !ehGestor && !erroJornada && jornadaMudou;
+    let aPartirDeISO: string | undefined;
+    if (gravaJornada) {
+      const pendencias = pendenciasDaJornada(jornada, limitesFolga);
+      if (pendencias.length > 0) {
+        notificar('Falta completar a jornada', pendencias.join('\n'));
+        return;
+      }
+      if (aPartirDe.trim()) {
+        const iso = dataBRParaISO(aPartirDe.trim());
+        if (!iso) {
+          notificar(
+            'Data inválida',
+            '"Vale a partir de" deve ser dd/mm/aaaa (ex.: 23/11/2026).',
+          );
+          return;
+        }
+        aPartirDeISO = iso;
+      } else if (editId) {
+        notificar(
+          'Informe a data',
+          'Diga a partir de quando vale a nova jornada ("Vale a partir de").',
+        );
         return;
       }
     }
@@ -268,40 +364,65 @@ export function GestaoColaboradoresScreen({
       senha: temAcesso && senha.trim() ? senha.trim() : undefined,
       gerenteDesenvolvedor: funcao === 'GESTOR' ? gerenteDev : undefined,
       // Gerente/Administrador não têm escala, contrato nem gênero — só o
-      // essencial acima. As demais funções enviam a escala/contrato normalmente.
+      // essencial acima. Os campos antigos da escala (folga fixa e blocos de
+      // horário) não são mais enviados: com vigência a API os recusa (409).
       ...(ehGestor
         ? {}
         : {
             genero,
             turno: turno ?? undefined,
-            entradaSemana: entSem.trim() || undefined,
-            saidaSemana: saiSem.trim() || undefined,
-            entradaFds: entFds.trim() || undefined,
-            saidaFds: saiFds.trim() || undefined,
-            // `null` explícito, e não `undefined`: é o que permite APAGAR a
-            // folga. Com `undefined` o servidor não mexia no campo, então um dia
-            // marcado por engano ficava para sempre (ADR 0023).
-            folgaDiaSemana: folga,
-            // Domingo: grupo (ou null). Se o contrato não trabalha domingo,
-            // nunca envia grupo (o backend também normaliza por segurança).
-            grupoDomingo: mostrarDomingo ? grupoDom : null,
-            entradaDom: entDom.trim() || undefined,
-            saidaDom: saiDom.trim() || undefined,
             dataAdmissao: admissaoISO,
-            // Tipo de contrato de jornada (null = usa o padrão 6x1).
-            tipoContratoJornadaId: contratoJornadaId,
           }),
     };
 
+    // Gravar uma jornada nova muda os cálculos a partir da data: confirma.
+    if (gravaJornada && editId) {
+      const ok = await confirmar(
+        'Gravar a jornada',
+        `A nova jornada de ${nome.trim()} vale a partir de ${aPartirDe.trim()}. Os dias anteriores não mudam.`,
+        'Gravar',
+      );
+      if (!ok) return;
+    }
+
     setSalvando(true);
     try {
+      let avisos: AvisoJornada[] = [];
       if (editId) {
+        // Primeiro a jornada (é onde a validação mais costuma recusar).
+        if (gravaJornada && aPartirDeISO) {
+          const r = await jornadaColaboradorService.gravar(
+            editId,
+            paraGravar(jornada, aPartirDeISO, podeTrocarContrato),
+          );
+          avisos = r.avisos;
+        }
         await colaboradoresService.editar(editId, input);
-        notificar('Salvo', 'Colaborador atualizado.');
       } else {
-        await colaboradoresService.cadastrar(input);
-        notificar('Cadastrado', 'Colaborador adicionado.');
+        const bloco = gravaJornada
+          ? paraGravar(jornada, aPartirDeISO ?? '', podeTrocarContrato)
+          : null;
+        const criado = await colaboradoresService.cadastrar({
+          ...input,
+          // Só o administrador escolhe o contrato da ficha (403 aos demais).
+          ...(podeTrocarContrato && !ehGestor && jornada.contratoId
+            ? { tipoContratoJornadaId: jornada.contratoId }
+            : {}),
+          ...(bloco
+            ? {
+                // Sem data, o backend usa a admissão.
+                jornada: { ...bloco, aPartirDe: aPartirDeISO },
+              }
+            : {}),
+        });
+        avisos = criado.avisosJornada ?? [];
       }
+      const titulo = editId ? 'Salvo' : 'Cadastrado';
+      const texto = editId ? 'Colaborador atualizado.' : 'Colaborador adicionado.';
+      notificar(
+        avisos.length > 0 ? `${titulo} com avisos` : titulo,
+        avisos.length > 0 ? `${texto}\n\n${textoAvisos(avisos)}` : texto,
+      );
       setFormAberto(false);
       limparForm();
       lista.recarregar();
@@ -395,39 +516,6 @@ export function GestaoColaboradoresScreen({
             ))}
           </View>
 
-          {/* Tipo de contrato (catálogo data-driven). "Padrão" usa o contrato
-              vigente (6x1); os demais aplicam suas próprias regras de jornada e
-              TAC (carga, intervalo, limites). O catálogo só é listado para o
-              admin; quem não escolhe recebe o contrato padrão no backend. */}
-          {!ehGestor && (contratos.dados?.length ?? 0) > 0 && (
-            <>
-              <Text style={styles.rotulo}>Tipo de contrato</Text>
-              <View style={styles.chips}>
-                <Text
-                  onPress={() => setContratoJornadaId(null)}
-                  style={[
-                    styles.chip,
-                    contratoJornadaId === null && styles.chipAtivo,
-                  ]}
-                >
-                  Padrão
-                </Text>
-                {(contratos.dados ?? []).map((ct) => (
-                  <Text
-                    key={ct.id}
-                    onPress={() => setContratoJornadaId(ct.id)}
-                    style={[
-                      styles.chip,
-                      contratoJornadaId === ct.id && styles.chipAtivo,
-                    ]}
-                  >
-                    {ct.nome}
-                  </Text>
-                ))}
-              </View>
-            </>
-          )}
-
           <Text style={styles.rotulo}>Conta de acesso (login do app)</Text>
           {temAcesso ? (
             <>
@@ -498,60 +586,23 @@ export function GestaoColaboradoresScreen({
                 ))}
               </View>
 
-              <View style={styles.linha}>
-                <CampoTexto rotulo="Entrada Seg–Qui" value={entSem} onChangeText={setEntSem} placeholder="08:00" containerStyle={styles.metade} />
-                <CampoTexto rotulo="Saída Seg–Qui" value={saiSem} onChangeText={setSaiSem} placeholder="17:00" containerStyle={styles.metade} />
-              </View>
-              <View style={styles.linha}>
-                <CampoTexto rotulo="Entrada Sex–Sáb" value={entFds} onChangeText={setEntFds} placeholder="09:00" containerStyle={styles.metade} />
-                <CampoTexto rotulo="Saída Sex–Sáb" value={saiFds} onChangeText={setSaiFds} placeholder="18:00" containerStyle={styles.metade} />
-              </View>
-
-              <Text style={styles.rotulo}>Dia de folga</Text>
-              <View style={styles.chips}>
-                {[1, 2, 3, 4, 5, 6, 0].map((d) => (
-                  <Text
-                    key={d}
-                    onPress={() => setFolga(folga === d ? null : d)}
-                    style={[styles.chip, folga === d && styles.chipAtivo]}
-                  >
-                    {NOMES_DIA[d]}
-                  </Text>
-                ))}
-              </View>
-
-              {/* Domingo: rodízio por grupos (G1/G2/G3). Só aparece quando o
-                  contrato do colaborador trabalha domingo; caso contrário, ele
-                  nunca entra no rodízio (grupo fica nulo). */}
-              {mostrarDomingo ? (
-                <>
-                  <Text style={styles.rotulo}>Grupo de domingo (rodízio)</Text>
-                  <View style={styles.chips}>
-                    {['G1', 'G2', 'G3'].map((g) => (
-                      <Text
-                        key={g}
-                        onPress={() => setGrupoDom(grupoDom === g ? null : g)}
-                        style={[styles.chip, grupoDom === g && styles.chipAtivo]}
-                      >
-                        {g}
-                      </Text>
-                    ))}
-                  </View>
-                  <Text style={styles.ajudaLogin}>
-                    Cada domingo folga um grupo e trabalham os outros dois (cada
-                    grupo trabalha 2 domingos e folga 1). Sem grupo = não trabalha
-                    aos domingos.
-                  </Text>
-                  <View style={styles.linha}>
-                    <CampoTexto rotulo="Entrada Domingo" value={entDom} onChangeText={setEntDom} placeholder="08:00" containerStyle={styles.metade} />
-                    <CampoTexto rotulo="Saída Domingo" value={saiDom} onChangeText={setSaiDom} placeholder="15:20" containerStyle={styles.metade} />
-                  </View>
-                </>
+              {carregandoJornada ? (
+                <Carregando />
               ) : (
-                <Text style={styles.ajudaLogin}>
-                  Este contrato não trabalha domingo — o colaborador fica fora do
-                  rodízio.
-                </Text>
+                <JornadaFormulario
+                  edicao={jornada}
+                  aoMudar={setJornada}
+                  contratos={listaContratos}
+                  podeTrocarContrato={podeTrocarContrato}
+                  nomeContrato={nomeContrato}
+                  limites={limitesFolga}
+                  situacao={situacaoJornada}
+                  mostrarData={jornadaMudou}
+                  aPartirDe={aPartirDe}
+                  aoMudarData={setAPartirDe}
+                  dataOpcional={!editId}
+                  avisos={ultimaVigencia?.avisos ?? []}
+                />
               )}
 
               <CampoTexto
