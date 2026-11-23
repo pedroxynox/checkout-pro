@@ -1321,6 +1321,27 @@ model DisponibilidadeDia {
   @@map("disponibilidade_dias")
 }
 
+/// Rodízio de FOLGAS por grupo (spec `jornada-5x2`, Fase 3). A semana vai de
+/// segunda a domingo; a semana 1 começa em `vigenteDesde` (uma segunda-feira) e
+/// o ciclo tem `semanasNoCiclo` semanas, repetindo depois. Vale para quem tem
+/// grupo numa vigência da jornada; o rodízio antigo de domingo
+/// (`ConfigSistema.domingoAncora*`) continua valendo para o regime 6x1.
+model RodizioFolgasVigencia {
+  id             String   @id @default(uuid())
+  // Segunda-feira de início (00:00 UTC), única: uma vigência por data.
+  vigenteDesde   DateTime @unique
+  semanasNoCiclo Int
+  // { "G1": [[4,5],[2,3],[1,0]], "G2": …, "G3": … } — índice externo = semana
+  // do ciclo (0 = semana 1); dias 0=domingo … 6=sábado.
+  padrao         Json
+  criadoPor      String?
+  criadoEm       DateTime @default(now())
+  atualizadoPor  String?
+  atualizadoEm   DateTime @default(now()) @updatedAt
+
+  @@map("rodizio_folgas_vigencias")
+}
+
 
 /// Período de FÉRIAS (ou afastamento programado) de um colaborador. É uma
 /// inativação NÃO rígida: enquanto o período está vigente, o colaborador some
