@@ -55,7 +55,7 @@ Para o detalhe campo a campo de cada tabela, veja o [Dicionário de Dados](./dic
 | `SugestaoPedido` | 10 | confirmar (vira entrada) ou ignorar. |
 | `MetaIndicador` | 6 | editar via app sem redeploy. Quando não existe registro, usa-se o default. |
 | `MetaMensal` | 6 | usa-se o valor padrão de CONFIG_METAS (e, para VENDAS, a config legada). |
-| `TipoContratoJornada` | 20 | valores de hoje, sem mudança de comportamento. |
+| `TipoContratoJornada` | 26 | valores de hoje, sem mudança de comportamento. |
 | `Colaborador` | 26 | — |
 | `JornadaVigencia` | 14 | Assim corrigir hoje uma batida de um dia antigo usa as regras daquele dia. |
 | `DisponibilidadeDia` | 6 | sistema não cobra ponto). É o horário que a escala mostra e o ponto cobra. |

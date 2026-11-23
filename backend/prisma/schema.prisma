@@ -1165,6 +1165,21 @@ model TipoContratoJornada {
   // o colaborador com este contrato não trabalha domingo (grupoDomingo = null).
   trabalhaDomingo                Boolean @default(true)
 
+  // --- Contrato 5x2 (spec jornada-5x2, Fase 2) — os padrões reproduzem o 6x1 ---
+  // Carga de um FERIADO (minutos), qualquer que seja o dia em que caia. Antes
+  // era 7h20 fixo no código para todos os contratos.
+  cargaFeriadoMin      Int     @default(440)
+  // O feriado paga 100% (e não gera débito)? Chip "Feriado" nos dias a 100%.
+  feriadoAdicional100  Boolean @default(true)
+  // Teto de horas TRABALHADAS no dia (minutos); acima é TAC. Null = sem teto.
+  limiteTrabalhoDiaMin Int?
+  // Folgas por semana (6x1 = 1; 5x2 = 2): máximo de folgas fixas na ficha.
+  folgasPorSemana      Int     @default(1)
+  // Folgas de quem não tem grupo e deixou a ficha vazia (0=domingo … 6=sábado).
+  folgasFixasPadrao    Int[]   @default([])
+  // O sábado pode ser folga fixa (só para quem não tem grupo).
+  permiteFolgaSabado   Boolean @default(false)
+
   // Colaboradores que usam este contrato (para bloquear a remoção quando em uso).
   colaboradores    Colaborador[]
   // Vigências da jornada que usam este contrato (spec jornada-5x2). Também

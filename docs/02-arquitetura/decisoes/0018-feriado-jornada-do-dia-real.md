@@ -131,6 +131,15 @@ A alternativa 1 abaixo ("dar ao contrato uma carga própria de feriado") havia s
 - `cargaFeriadoMs` é obrigatório em `RegrasContrato`: um contrato novo não pode
   esquecer de definir a jornada do feriado.
 
+## Atualização (Fase 2 do spec `jornada-5x2`, 22/11/2026)
+
+A jornada do feriado deixou de ser fixa no código e virou **coluna do contrato**
+(`TipoContratoJornada.cargaFeriadoMin`, migração `9zzv_contrato_5x2`). A decisão
+desta ADR continua: o valor é **próprio** e nunca sai da carga de domingo. O 6x1
+recebeu 440 (7h20), então nada mudou para ele. O 100% do feriado também passou a
+ser do contrato (`feriadoAdicional100`, o chip "Feriado"); todos os contratos de
+hoje o marcam, e sem 100% o feriado volta a poder gerar hora devida.
+
 ## Referências
 
 - [`ponto`](../../03-atlas-backend/ponto.md) — `cargaBaseDoDia`, `CARGA_FERIADO_MS`, `diaPagaAdicional100`

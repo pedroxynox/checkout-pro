@@ -2,6 +2,7 @@ import { inicioDoDia } from '../common/datas';
 import { PrismaService } from '../prisma/prisma.service';
 import { PontoAlertasService } from './ponto-alertas.service';
 import { JornadaDiaResposta, PontoService } from './ponto.service';
+import { REGRAS_PADRAO, resumoDasRegras } from './ponto.domain';
 
 function resposta(pessoaId: string, tipoPessoa: string): JornadaDiaResposta {
   return {
@@ -21,6 +22,7 @@ function resposta(pessoaId: string, tipoPessoa: string): JornadaDiaResposta {
       motivosTac: [],
       faltando: [],
       naoRetornoIntervalo: false,
+      regrasResumo: resumoDasRegras(REGRAS_PADRAO),
     },
     batidas: [],
   };

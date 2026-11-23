@@ -11,8 +11,6 @@ import {
   calcularJornada,
   inicioDoDia,
   inicioDoProximoDia,
-  isDomingo,
-  jornadaEsperadaMs,
   mensagemTransicao,
   primeiroNome,
   statusAtual,
@@ -30,7 +28,10 @@ import {
 } from './colaborador-vinculo';
 import {
   calcularJornadaDia,
+  cargaBaseDoDia,
   classificarBatidas,
+  diaPagaAdicional100,
+  REGRAS_PADRAO,
   RegrasContrato,
   StatusJornadaPonto,
   statusFiscalDeJornada,
@@ -247,6 +248,23 @@ export class FiscaisService {
   ): Promise<(dia: Date) => RegrasContrato | undefined> {
     if (!this.tiposContrato) return () => undefined;
     return this.tiposContrato.resolvedorDeRegras(colaboradorId ?? null);
+  }
+
+  /**
+   * Regras por FISCAL e dia, para os relatórios que ainda leem o log
+   * `RegistroPontoFiscal` (previsão de extras, histórico semanal, alerta de
+   * excesso de extras). Liga o fiscal à ficha uma vez; o resolvedor de cada
+   * fiscal é carregado sob demanda. Sem serviço de contratos, todo dia no
+   * padrão do código.
+   */
+  async regrasDosFiscais(): Promise<
+    (fiscalId: string) => Promise<(dia: Date) => RegrasContrato>
+  > {
+    const tipos = this.tiposContrato;
+    if (!tipos) return () => Promise.resolve(() => REGRAS_PADRAO);
+    const mapa = await this.mapaColaboradores();
+    return (fiscalId) =>
+      tipos.resolvedorDeRegras(mapa.get(fiscalId)?.colaboradorId ?? null);
   }
 
   /**
@@ -1375,10 +1393,11 @@ export class FiscaisService {
     if (registrosDoDia && registrosDoDia.length > 0) {
       const limite = diaEncerrado ? fimDoDiaBrasiliaEmUtc(diaDate) : agoraReal;
       const jornada = calcularJornada(registrosDoDia, limite, diaEncerrado);
-      const base = ehFeriado
-        ? jornadaEsperadaMs(0)
-        : jornadaEsperadaMs(diaSemana);
-      const contaComo100 = isDomingo(diaSemana) || ehFeriado;
+      // Carga e 100% do contrato do dia (no 6x1: 7h/8h, domingo e feriado
+      // 7h20 a 100% — os mesmos números de antes).
+      const r = regras ?? REGRAS_PADRAO;
+      const base = cargaBaseDoDia(diaSemana, ehFeriado, r);
+      const contaComo100 = diaPagaAdicional100(diaSemana, ehFeriado, r);
       const extra = Math.max(0, jornada.cargaHorariaMs - base);
       return {
         trabalhadoMs: jornada.cargaHorariaMs,
@@ -1498,6 +1517,8 @@ export class FiscaisService {
       trabalhadoMs: number;
       esperadoMs: number;
     }[] = [];
+    // Esperado do dia pelo contrato daquele dia (ADR 0027).
+    const regrasDoDia = await (await this.regrasDosFiscais())(fiscal.id);
 
     for (let i = 6; i >= 0; i--) {
       const dia = new Date(agoraPonto);
@@ -1525,8 +1546,14 @@ export class FiscaisService {
         data: dataInicio.toISOString().slice(0, 10),
         diaSemana,
         trabalhadoMs: jornada.cargaHorariaMs,
-        esperadoMs:
-          isDomingo(diaSemana) || ehFeriado ? 0 : jornadaEsperadaMs(diaSemana),
+        // Dia pago a 100% não tem esperado (domingo e feriado no 6x1).
+        esperadoMs: diaPagaAdicional100(
+          diaSemana,
+          ehFeriado,
+          regrasDoDia(dataInicio),
+        )
+          ? 0
+          : cargaBaseDoDia(diaSemana, ehFeriado, regrasDoDia(dataInicio)),
       });
     }
 
@@ -1645,18 +1672,28 @@ export class FiscaisService {
       Date.UTC(agoraPonto.getUTCFullYear(), agoraPonto.getUTCMonth() + 1, 1),
     );
 
-    // Feriado conta como domingo: fica fora da projeção de extras "de dia útil"
-    // — tanto do acúmulo (numerador) quanto da contagem de dias (denominador).
+    // Dia pago a 100% (domingo e feriado no 6x1) fica fora da projeção de
+    // extras "de dia útil" — tanto do acúmulo (numerador) quanto da contagem
+    // de dias (denominador). Qual dia é 100% vem do contrato daquele dia.
     const feriadoSet = await this.feriadosNoPeriodo(inicioMes, fimMes);
-    // Dias úteis transcorridos no mês (excluindo domingos e feriados).
-    const diasTranscorridos = this.diasUteisEntre(
-      inicioMes,
-      agoraPonto,
-      feriadoSet,
-    );
-    const diasTotaisMes = this.diasUteisEntre(inicioMes, fimMes, feriadoSet);
-
-    if (diasTranscorridos === 0) return [];
+    const dia100 =
+      (regrasDoDia: (dia: Date) => RegrasContrato) =>
+      (dia: Date): boolean =>
+        diaPagaAdicional100(
+          dia.getUTCDay(),
+          feriadoSet.has(dia.getTime()),
+          regrasDoDia(dia),
+        );
+    // Mês ainda sem dia útil (pelo contrato padrão): nada a projetar.
+    if (
+      this.diasUteisEntre(
+        inicioMes,
+        agoraPonto,
+        dia100(() => REGRAS_PADRAO),
+      ) === 0
+    ) {
+      return [];
+    }
 
     const fiscais = await this.prisma.fiscal.findMany({
       orderBy: { nome: 'asc' },
@@ -1679,57 +1716,69 @@ export class FiscaisService {
       m.get(diaKey)!.push({ status: r.status as StatusFiscal, em: r.em });
     }
 
-    return fiscais.map((f) => {
-      const mapaFiscal = porFiscalDia.get(f.id);
-      let extrasAtualMs = 0;
+    const regrasDosFiscais = await this.regrasDosFiscais();
+    return Promise.all(
+      fiscais.map(async (f) => {
+        const regrasDoDia = await regrasDosFiscais(f.id);
+        const ehDia100 = dia100(regrasDoDia);
+        // Dias úteis da PESSOA: os que não pagam 100% no contrato dela.
+        const diasTranscorridos = this.diasUteisEntre(
+          inicioMes,
+          agoraPonto,
+          ehDia100,
+        );
+        const diasTotaisMes = this.diasUteisEntre(inicioMes, fimMes, ehDia100);
+        const mapaFiscal = porFiscalDia.get(f.id);
+        let extrasAtualMs = 0;
 
-      if (mapaFiscal) {
-        for (const [diaKey, regs] of mapaFiscal.entries()) {
-          const diaDate = new Date(diaKey);
-          const diaSemana = diaDate.getUTCDay();
-          if (isDomingo(diaSemana) || feriadoSet.has(diaDate.getTime())) {
-            continue;
+        if (mapaFiscal) {
+          for (const [diaKey, regs] of mapaFiscal.entries()) {
+            const diaDate = new Date(diaKey);
+            if (ehDia100(diaDate)) continue;
+
+            const diaEncerrado = diaEncerradoEmBrasilia(diaDate, agoraPonto);
+            const limite = diaEncerrado
+              ? fimDoDiaBrasiliaEmUtc(diaDate)
+              : agoraReal;
+            const jornada = calcularJornada(regs, limite, diaEncerrado);
+            const esperado = cargaBaseDoDia(
+              diaDate.getUTCDay(),
+              feriadoSet.has(diaDate.getTime()),
+              regrasDoDia(diaDate),
+            );
+            const extra = jornada.cargaHorariaMs - esperado;
+            if (extra > 0) extrasAtualMs += extra;
           }
-
-          const diaEncerrado = diaEncerradoEmBrasilia(diaDate, agoraPonto);
-          const limite = diaEncerrado
-            ? fimDoDiaBrasiliaEmUtc(diaDate)
-            : agoraReal;
-          const jornada = calcularJornada(regs, limite, diaEncerrado);
-          const esperado = jornadaEsperadaMs(diaSemana);
-          const extra = jornada.cargaHorariaMs - esperado;
-          if (extra > 0) extrasAtualMs += extra;
         }
-      }
 
-      // Projeção linear: (extras atuais / dias transcorridos) * dias totais
-      const projecaoMs = Math.round(
-        (extrasAtualMs / diasTranscorridos) * diasTotaisMes,
-      );
-      const critico = projecaoMs > 7 * 60 * 60 * 1000; // >7h projetado
+        // Projeção linear: (extras atuais / dias transcorridos) * dias totais
+        const projecaoMs =
+          diasTranscorridos === 0
+            ? 0
+            : Math.round((extrasAtualMs / diasTranscorridos) * diasTotaisMes);
+        const critico = projecaoMs > 7 * 60 * 60 * 1000; // >7h projetado
 
-      return {
-        fiscalId: f.id,
-        primeiroNome: primeiroNome(f.nome),
-        extrasAtualMs,
-        projecaoMesMs: projecaoMs,
-        critico,
-      };
-    });
+        return {
+          fiscalId: f.id,
+          primeiroNome: primeiroNome(f.nome),
+          extrasAtualMs,
+          projecaoMesMs: projecaoMs,
+          critico,
+        };
+      }),
+    );
   }
 
-  /** Conta dias úteis (excluindo domingos e feriados) entre duas datas. */
+  /** Conta os dias úteis (os que não pagam 100%) em `[inicio, fim)`. */
   private diasUteisEntre(
     inicio: Date,
     fim: Date,
-    feriadoSet: Set<number> = new Set(),
+    ehDia100: (dia: Date) => boolean,
   ): number {
     let count = 0;
     const cursor = new Date(inicio);
     while (cursor < fim) {
-      if (cursor.getUTCDay() !== 0 && !feriadoSet.has(cursor.getTime())) {
-        count++;
-      }
+      if (!ehDia100(cursor)) count++;
       cursor.setUTCDate(cursor.getUTCDate() + 1);
     }
     return count;

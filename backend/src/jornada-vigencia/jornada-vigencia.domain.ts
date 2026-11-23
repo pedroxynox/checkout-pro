@@ -29,6 +29,10 @@ import {
   cargaBaseDoDia,
   diaPagaAdicional100,
 } from '../ponto/ponto.domain';
+import { textoDuracao } from '../common/duracao';
+
+// Reexportado: o formatador nasceu aqui e mudou-se para `common/duracao`.
+export { textoDuracao };
 
 /** Ordem em que a semana é mostrada e conferida: de segunda a domingo. */
 export const DIAS_SEGUNDA_A_DOMINGO: readonly number[] = [1, 2, 3, 4, 5, 6, 0];
@@ -125,8 +129,6 @@ export interface ContextoDoDia {
    * null quando não há rodízio de folgas vigente (Fase 3). Ausente = sem rodízio.
    */
   folgasDoGrupo?: (grupo: GrupoDomingo, dia: Date) => readonly number[] | null;
-  /** Folgas fixas padrão do contrato (Fase 2). Ausente = nenhuma. */
-  folgasFixasPadrao?: (tipoContratoJornadaId: string) => readonly number[];
 }
 
 function meiaNoiteUTC(d: Date): number {
@@ -216,8 +218,8 @@ export function previstoNoDia(
       folga = doGrupo.includes(dow);
     }
   } else {
-    const padrao = ctx.folgasFixasPadrao?.(v.tipoContratoJornadaId) ?? [];
-    folga = folgasFixasEfetivas(v, padrao).includes(dow);
+    // Ficha vazia = as folgas padrão do contrato (spec jornada-5x2, R2.6).
+    folga = folgasFixasEfetivas(v, regras.folgasFixasPadrao).includes(dow);
   }
   // Feriado usa a disponibilidade do próprio dia da semana (decisão 9).
   const horario = folga || !afirmaTurno ? null : v.disponibilidade.get(dow);
@@ -283,18 +285,6 @@ export function minutosDoDia(hhmm: string): number | null {
   return h * 60 + m;
 }
 
-/** Minutos em texto curto: "8h48", "2h", "50 min", "0 min". */
-export function textoDuracao(minutos: number): string {
-  const sinal = minutos < 0 ? '-' : '';
-  const total = Math.abs(Math.round(minutos));
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  if (h === 0) return `${sinal}${m} min`;
-  return m === 0
-    ? `${sinal}${h}h`
-    : `${sinal}${h}h${String(m).padStart(2, '0')}`;
-}
-
 /**
  * Avisos sobre uma vigência (sem bloquear o salvamento).
  *
@@ -313,12 +303,11 @@ export function textoDuracao(minutos: number): string {
 export function avisosDaVigencia(
   vigencia: Pick<VigenciaJornada, 'grupo' | 'folgasFixas' | 'disponibilidade'>,
   regras: RegrasContrato,
-  folgasFixasPadrao: readonly number[] = [],
 ): AvisoJornada[] {
   const avisos: AvisoJornada[] = [];
   const folgas = vigencia.grupo
     ? []
-    : folgasFixasEfetivas(vigencia, folgasFixasPadrao);
+    : folgasFixasEfetivas(vigencia, regras.folgasFixasPadrao);
 
   if (!vigencia.grupo && folgas.length === 0) {
     avisos.push({

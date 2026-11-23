@@ -32,6 +32,7 @@ justificativas), CORS e opções de upload.
 | `errors/erro-dominio.ts` | Base `ErroDominio` com `statusHttp` próprio | 15 |
 | `datas.ts` | Utilidades puras de período (UTC, folha 26→25, Brasília) + sequência, duração e vigência de dias | 273 |
 | `numeros.ts` | `arredondar` e `parseValor` (monetário) | 37 |
+| `duracao.ts` | `textoDuracao` ("8h48", "50 min"), `textoDuracaoExtenso` ("20 minutos") e `minutosDeMs`: as durações das mensagens que citam o contrato | 34 |
 | `justificativas.ts` | Peso e montagem dos campos de justificativa (ADR 0009) + regra do encerramento automático | 209 |
 | `encerrar-pendencias.ts` | Grava o encerramento automático (faltas + não-retornos PENDENTES de uma janela) | 77 |
 | `risco-ocorrencias.ts` | Pontuação de risco partilhada por faltas e não-retornos | 42 |

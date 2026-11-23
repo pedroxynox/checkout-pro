@@ -3,7 +3,7 @@
 
 # Referência da API HTTP
 
-> **213 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
+> **215 rotas** expostas pelo backend, agrupadas por módulo. Coluna "Permissão" = funcionalidade exigida (ver [Perfis e Permissões](../01-produto/perfis-e-permissoes.md)).
 
 ## `acessos`
 
@@ -358,6 +358,8 @@
 | POST | `/tipos-contrato` | `criar` | `ADMIN_DADOS` |
 | PATCH | `/tipos-contrato/:id` | `atualizar` | `ADMIN_DADOS` |
 | PATCH | `/tipos-contrato/:id/ativo` | `definirAtivo` | `ADMIN_DADOS` |
+| PATCH | `/tipos-contrato/:id/padrao` | `definirPadrao` | `ADMIN_DADOS` |
+| POST | `/tipos-contrato/:id/duplicar` | `duplicar` | `ADMIN_DADOS` |
 | DELETE | `/tipos-contrato/:id` | `remover` | `ADMIN_DADOS` |
 
 ## `usuarios`

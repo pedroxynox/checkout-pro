@@ -33,14 +33,14 @@ os alertas automáticos e a **escala de trabalho** (apenas a geral, derivada da 
 | Arquivo | Papel | Linhas |
 |---|---|---|
 | `fiscais.controller.ts` | Rotas de status/jornada/painel do fiscal | 146 |
-| `fiscais.service.ts` | Regras de aplicação: status, jornada, extras, painel | 1765 |
+| `fiscais.service.ts` | Regras de aplicação: status, jornada, extras, painel | 1844 |
 | `fiscais.domain.ts` | Regras puras: status atual, jornada, transições | 150 |
 | `fiscais.errors.ts` | Erros de domínio (mapeados para HTTP) | 47 |
 | `fiscais.eventos.ts` | Barramento de eventos de status (produtor↔gateway) | 44 |
 | `fiscais.module.ts` | Ligações (DI) do módulo | 53 |
 | `fiscais.gateway.ts` | Gateway WebSocket do painel em tempo real | 93 |
 | `fiscais-horario.service.ts` | Cron: lembretes de horário aos fiscais (turno e conta resolvidos pela ficha) | 194 |
-| `fiscais-alertas.service.ts` | Cron: alertas de intervalo longo e cobertura | 414 |
+| `fiscais-alertas.service.ts` | Cron: alertas de intervalo longo e cobertura | 439 |
 | `escala.controller.ts` | Rota da escala consolidada (só leitura) | 39 |
 | `conferencia-escala.service.ts` | **Conferência de escala**: monta o diagnóstico das fichas para a API (só leitura) | 101 |
 | `escala.service.ts` | Escala consolidada de um dia, resolvida na ficha | 159 |
@@ -182,7 +182,17 @@ acumulado de horas extras do mês (extra 50% em dias comuns e 100% aos domingos)
 
 #### `folgaHoje()` · `historicoSemanal(usuarioId)` · `rankingMes()` · `previsaoExtras()`
 Consultas de apoio: quem está de folga hoje; histórico de 7 dias do próprio
-fiscal; ranking de pontualidade; e previsão de extras.
+fiscal; ranking de pontualidade; e previsão de extras. O histórico e a previsão
+(e o fallback do log em `extrasDoDia`) usam a **carga e os dias a 100% do
+contrato de cada dia** (`cargaBaseDoDia`/`diaPagaAdicional100`), não mais
+`jornadaEsperadaMs`/`isDomingo` (spec `jornada-5x2`, R2.10). Na previsão, os
+"dias úteis" de cada fiscal são os que não pagam 100% no contrato dele. No 6x1 os
+números são os mesmos (provado em `contrato-6x1-congelado.spec`).
+
+#### `regrasDosFiscais()`
+Liga cada fiscal à ficha uma vez e devolve `fiscalId → (dia → regras)`, carregado
+sob demanda. Usado pelos relatórios do log e pelo alerta de excesso de extras de
+`FiscaisAlertasService`. Sem serviço de contratos, todo dia no padrão do código.
 
 #### `reescreverRegistrosDoDia(cliente, ..., colaboradorId?)` / `publicarStatusDoDia(...)`
 Ponte batidas → status: reescreve o log do dia dentro da transação das batidas
@@ -338,9 +348,10 @@ casos de ficha vazia, preencher os horários **primeiro**.
 - `calcularJornada(registros, agora, diaEncerrado?)` → tempo trabalhando/
   intervalo e carga horária; num dia encerrado, não estende o último segmento.
 - `jornadaEsperadaMs(diaSemana)` → carga do dia no 6x1 (dom 7h20 · seg-qui 7h ·
-  sex-sáb 8h); envolvida por `cargaBaseDoDia` em [`ponto`](ponto.md), que é quem
-  os cálculos usam. `isDomingo(diaSemana)` é legado: **não** decide o adicional
-  (quem decide é `diaPagaAdicional100`).
+  sex-sáb 8h); hoje só alimenta o `REGRAS_PADRAO` do código em [`ponto`](ponto.md).
+  Nenhum cálculo a chama direto: todos passam por `cargaBaseDoDia`.
+  `isDomingo(diaSemana)` é legado e não decide nada (quem decide é
+  `diaPagaAdicional100`); a remoção dos dois é da Fase 7.
 - Escala: `turnoDoDia`, `fiscaisComFicha`, `dataDeReferencia`, `linhasDaSemana`,
   `gerarEscalaSemanalFiscal`,
   `temEscalaDefinida` (o cadastro é a fonte única — Opção A).

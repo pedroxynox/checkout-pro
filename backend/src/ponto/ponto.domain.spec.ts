@@ -16,8 +16,11 @@ import {
   diaPagaAdicional100,
   classificarBatidas,
   etapaAlertaTac,
+  avisosDoResumo,
+  resumoDasRegras,
   statusFiscalDeJornada,
   statusFiscalDeTipoBatida,
+  textoAvisoPreventivoTac,
 } from './ponto.domain';
 
 /** Cria uma batida num horário HH:mm de um dia fixo (a data em si é irrelevante:
@@ -364,6 +367,160 @@ describe('etapaAlertaTac', () => {
   it('TAC prevalece para evitar três mensagens num salto direto', () => {
     expect(etapaAlertaTac(LIMITE_EXTRAS_MS + 1, true)).toBe('TAC');
     expect(etapaAlertaTac(0, true)).toBe('TAC');
+  });
+
+  it('com as regras de outro contrato, usa os avisos dele', () => {
+    const avisos = { riscoTac1h30Ms: 50 * 60_000, riscoTac1h40Ms: 60 * 60_000 };
+    expect(etapaAlertaTac(49 * 60_000, false, avisos)).toBeNull();
+    expect(etapaAlertaTac(50 * 60_000, false, avisos)).toBe('RISCO_1H30');
+    expect(etapaAlertaTac(60 * 60_000, false, avisos)).toBe('RISCO_1H40');
+  });
+});
+
+/**
+ * Contrato 5x2 (spec `jornada-5x2`, Fase 2): os números do TAC vêm do contrato
+ * — limite de extras, intervalo, teto diário — e o 6x1 continua igual.
+ */
+describe('regras do contrato 5x2', () => {
+  // Valores informados pelo dono para o 5x2 44h.
+  const CINCO_X_DOIS: RegrasContrato = {
+    ...REGRAS_PADRAO,
+    cargaBaseMs: (d) => (d === 6 ? 0 : 528 * 60_000),
+    cargaFeriadoMs: 528 * 60_000,
+    limiteExtrasMs: 70 * 60_000,
+    riscoTac1h30Ms: 50 * 60_000,
+    riscoTac1h40Ms: 60 * 60_000,
+    intervaloMaximoMs: 170 * 60_000,
+    limiteTrabalhoDiaMs: 600 * 60_000,
+    folgasPorSemana: 2,
+  };
+
+  it('no 6x1 os motivos de TAC têm o texto de sempre', () => {
+    const j = calcularJornadaDia(
+      [
+        batida('1', '06:00'),
+        batida('2', '09:00'),
+        batida('3', '09:30'),
+        batida('4', '17:00'),
+      ],
+      H('17:00'),
+      SEGUNDA,
+    );
+    expect(j.motivosTac).toEqual([
+      'Excedeu 1h50 de horas extras',
+      'Intervalo abaixo de 1h',
+    ]);
+    const longo = calcularJornadaDia(
+      [
+        batida('1', '06:00'),
+        batida('2', '10:00'),
+        batida('3', '13:30'),
+        batida('4', '16:00'),
+      ],
+      H('16:00'),
+      SEGUNDA,
+    );
+    expect(longo.motivosTac).toEqual(['Intervalo acima de 3h']);
+  });
+
+  it('os motivos citam os números do contrato', () => {
+    // 07:00→12:00, 13:00→19:00: 11 h trabalhadas, 1h de intervalo.
+    const j = calcularJornadaDia(
+      [
+        batida('1', '07:00'),
+        batida('2', '12:00'),
+        batida('3', '13:00'),
+        batida('4', '19:00'),
+      ],
+      H('19:00'),
+      SEGUNDA,
+      false,
+      false,
+      CINCO_X_DOIS,
+    );
+    expect(j.tac).toBe(true);
+    expect(j.motivosTac).toEqual([
+      'Excedeu 1h10 de horas extras',
+      'Trabalhou 11h, acima do limite de 10h no dia',
+    ]);
+  });
+
+  it('o teto diário só vale acima do limite, e o 6x1 não tem teto', () => {
+    // 10 h exatas: no limite, ainda não é TAC por teto diário.
+    const dez = [
+      batida('1', '07:00'),
+      batida('2', '12:00'),
+      batida('3', '13:00'),
+      batida('4', '18:00'),
+    ];
+    const no5x2 = calcularJornadaDia(
+      dez,
+      H('18:00'),
+      SEGUNDA,
+      false,
+      false,
+      CINCO_X_DOIS,
+    );
+    expect(no5x2.motivosTac.some((m) => m.startsWith('Trabalhou'))).toBe(false);
+    expect(REGRAS_PADRAO.limiteTrabalhoDiaMs).toBeNull();
+  });
+
+  it('intervalo acima do máximo do contrato (2h50) é TAC', () => {
+    const j = calcularJornadaDia(
+      [
+        batida('1', '07:00'),
+        batida('2', '11:00'),
+        batida('3', '14:00'),
+        batida('4', '18:48'),
+      ],
+      H('18:48'),
+      SEGUNDA,
+      false,
+      false,
+      CINCO_X_DOIS,
+    );
+    expect(j.motivosTac).toContain('Intervalo acima de 2h50');
+  });
+
+  it('feriado: carga própria do contrato e 100% só se o contrato marcar', () => {
+    expect(cargaBaseDoDia(1, true, CINCO_X_DOIS)).toBe(528 * 60_000);
+    expect(diaPagaAdicional100(1, true, CINCO_X_DOIS)).toBe(true);
+    const semFeriado100 = { ...CINCO_X_DOIS, feriadoAdicional100: false };
+    expect(diaPagaAdicional100(1, true, semFeriado100)).toBe(false);
+    // O domingo continua pelos dias marcados no contrato.
+    expect(diaPagaAdicional100(0, false, semFeriado100)).toBe(true);
+  });
+
+  it('resumo em minutos e frase do aviso com os números do contrato', () => {
+    expect(resumoDasRegras(REGRAS_PADRAO)).toEqual({
+      limiteExtrasMin: 110,
+      primeiroAvisoMin: 90,
+      segundoAvisoMin: 100,
+      intervaloMinimoMin: 60,
+      intervaloMaximoMin: 180,
+      limiteTrabalhoDiaMin: null,
+    });
+    const r = resumoDasRegras(CINCO_X_DOIS);
+    expect(r).toMatchObject({
+      limiteExtrasMin: 70,
+      primeiroAvisoMin: 50,
+      segundoAvisoMin: 60,
+      intervaloMaximoMin: 170,
+      limiteTrabalhoDiaMin: 600,
+    });
+    expect(avisosDoResumo(r)).toEqual({
+      riscoTac1h30Ms: 50 * 60_000,
+      riscoTac1h40Ms: 60 * 60_000,
+    });
+    expect(textoAvisoPreventivoTac('Ana', 90, 110)).toBe(
+      'Ana atingiu 1h30 de horas extras hoje. Faltam 20 minutos para o limite de TAC.',
+    );
+    expect(textoAvisoPreventivoTac('Ana', 60, 70)).toBe(
+      'Ana atingiu 1h de horas extras hoje. Faltam 10 minutos para o limite de TAC.',
+    );
+    expect(textoAvisoPreventivoTac('Ana', 70, 70)).toBe(
+      'Ana atingiu 1h10 de horas extras hoje. É o limite de TAC.',
+    );
   });
 });
 

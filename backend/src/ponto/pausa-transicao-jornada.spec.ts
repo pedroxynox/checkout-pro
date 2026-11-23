@@ -3,7 +3,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PontoAlertasService } from './ponto-alertas.service';
 import { PontoDeteccaoAutomaticaService } from './ponto-deteccao-automatica.service';
 import { JornadaDiaResposta, PontoService } from './ponto.service';
-import { RISCO_TAC_1H40_MS } from './ponto.domain';
+import {
+  REGRAS_PADRAO,
+  RISCO_TAC_1H40_MS,
+  resumoDasRegras,
+} from './ponto.domain';
 
 /**
  * Pausa de transição da jornada (fim do 6x1 → 5x2, spec `jornada-5x2` §8).
@@ -33,6 +37,7 @@ function resposta(horasExtrasMs: number, tac = false): JornadaDiaResposta {
       motivosTac: tac ? ['Excedeu 1h50 de horas extras'] : [],
       faltando: [],
       naoRetornoIntervalo: false,
+      regrasResumo: resumoDasRegras(REGRAS_PADRAO),
     },
     batidas: [],
   };

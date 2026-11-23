@@ -40,6 +40,11 @@ const REGRAS_5X2: RegrasContrato = {
   riscoTac1h40Ms: 60 * 60_000,
   intervaloMinimoEntreBatidasMs: 2 * 60_000,
   intervaloObrigatorio: true,
+  feriadoAdicional100: true,
+  limiteTrabalhoDiaMs: 600 * 60_000,
+  folgasPorSemana: 2,
+  folgasFixasPadrao: [],
+  permiteFolgaSabado: false,
 };
 
 const regras = (id: string): RegrasContrato =>
@@ -286,7 +291,8 @@ describe('previstoNoDia — regime semanal', () => {
 
   it('folgas fixas vazias usam o padrão do contrato', () => {
     const p = pessoa(vigencia5x2({ folgasFixas: [] }));
-    const c = ctx({ folgasFixasPadrao: () => [1, 2] });
+    const comPadrao = { ...REGRAS_5X2, folgasFixasPadrao: [1, 2] };
+    const c = ctx({ regras: () => comPadrao });
     expect(previstoNoDia(p, dia('2026-11-23'), c).folga).toBe(true); // segunda
     expect(previstoNoDia(p, dia('2026-11-25'), c).folga).toBe(false); // quarta
   });
@@ -430,7 +436,10 @@ describe('avisosDaVigencia (tolerância pelo intervalo do contrato)', () => {
   it('sem grupo e sem folga (nem padrão do contrato) avisa', () => {
     expect(tipos({ folgasFixas: [] })[0]).toEqual(['SEM_FOLGA', null]);
     expect(
-      avisosDaVigencia(vigencia5x2({ folgasFixas: [] }), REGRAS_5X2, [6, 0]),
+      avisosDaVigencia(vigencia5x2({ folgasFixas: [] }), {
+        ...REGRAS_5X2,
+        folgasFixasPadrao: [6, 0],
+      }),
     ).toEqual([]);
   });
 

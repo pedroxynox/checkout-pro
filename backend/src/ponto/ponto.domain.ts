@@ -12,6 +12,11 @@
  * comprovante (a hora da batida), nunca a de carregamento.
  */
 import { StatusFiscal, jornadaEsperadaMs } from '../fiscais/fiscais.domain';
+import {
+  minutosDeMs,
+  textoDuracao,
+  textoDuracaoExtenso,
+} from '../common/duracao';
 
 export const TIPOS_BATIDA = [
   'ENTRADA',
@@ -100,6 +105,25 @@ export interface RegrasContrato {
    * `intervaloMinimoMs`.
    */
   intervaloObrigatorio: boolean;
+  /**
+   * O FERIADO paga 100% (e por isso não gera débito)? `true` no 6x1 e no 5x2
+   * definido pelo dono; é o chip "Feriado" em "Dias com adicional de 100%".
+   */
+  feriadoAdicional100: boolean;
+  /**
+   * Teto de horas TRABALHADAS no dia (ms); acima dele é TAC (regra oficial F:
+   * 10 h). `null` = sem verificação, como no 6x1.
+   */
+  limiteTrabalhoDiaMs: number | null;
+  /** Quantas folgas por semana o contrato tem (6x1 = 1; 5x2 = 2). */
+  folgasPorSemana: number;
+  /**
+   * Folgas fixas de quem não tem grupo e deixou a ficha vazia (0=domingo).
+   * Vazio = nenhuma.
+   */
+  folgasFixasPadrao: readonly number[];
+  /** O sábado pode ser folga fixa (só para quem não tem grupo). */
+  permiteFolgaSabado: boolean;
 }
 
 /**
@@ -122,6 +146,12 @@ export const REGRAS_SEIS_X_UM_DOIS_X_UM: RegrasContrato = {
   // No 6x1 uma jornada curta pode encerrar sem intervalo sem virar TAC
   // (comportamento atual preservado).
   intervaloObrigatorio: false,
+  // Feriado a 100% e sem teto diário de horas: o comportamento de sempre.
+  feriadoAdicional100: true,
+  limiteTrabalhoDiaMs: null,
+  folgasPorSemana: 1,
+  folgasFixasPadrao: [],
+  permiteFolgaSabado: false,
 };
 
 /** Regras usadas por padrão (contrato vigente 6x1–2x1). */
@@ -150,7 +180,10 @@ export function diaPagaAdicional100(
   ehFeriado: boolean,
   regras: RegrasContrato = REGRAS_PADRAO,
 ): boolean {
-  return regras.temAdicional100(diaSemana) || ehFeriado;
+  return (
+    regras.temAdicional100(diaSemana) ||
+    (ehFeriado && regras.feriadoAdicional100)
+  );
 }
 
 /**
@@ -281,11 +314,80 @@ export type EtapaAlertaTac = 'RISCO_1H30' | 'RISCO_1H40' | 'TAC';
 export function etapaAlertaTac(
   horasExtrasMs: number,
   tac: boolean,
+  // Os minutos de aviso são os DO CONTRATO (decisão 14 do spec jornada-5x2):
+  // `riscoTac1h30Ms` é o 1º aviso e `riscoTac1h40Ms` o 2º — os nomes ficaram
+  // por compatibilidade. Sem regras, os do 6x1 (1h30 e 1h40).
+  regras: Pick<
+    RegrasContrato,
+    'riscoTac1h30Ms' | 'riscoTac1h40Ms'
+  > = REGRAS_PADRAO,
 ): EtapaAlertaTac | null {
   if (tac) return 'TAC';
-  if (horasExtrasMs >= RISCO_TAC_1H40_MS) return 'RISCO_1H40';
-  if (horasExtrasMs >= RISCO_TAC_1H30_MS) return 'RISCO_1H30';
+  if (horasExtrasMs >= regras.riscoTac1h40Ms) return 'RISCO_1H40';
+  if (horasExtrasMs >= regras.riscoTac1h30Ms) return 'RISCO_1H30';
   return null;
+}
+
+/**
+ * Os limites do contrato do dia, em MINUTOS, como o app os mostra (spec
+ * `jornada-5x2`, R2.5): o "Como é calculado?" e as faixas de risco deixam de
+ * escrever "1h50/1h/3h" fixos e passam a citar o contrato da pessoa.
+ */
+export interface RegrasResumo {
+  /** Acima disto de horas extras no dia é TAC. */
+  limiteExtrasMin: number;
+  /** 1º aviso preventivo (minutos de extra). */
+  primeiroAvisoMin: number;
+  /** 2º aviso preventivo (minutos de extra). */
+  segundoAvisoMin: number;
+  intervaloMinimoMin: number;
+  intervaloMaximoMin: number;
+  /** Teto de horas trabalhadas no dia; `null` = sem verificação. */
+  limiteTrabalhoDiaMin: number | null;
+}
+
+/** Resumo em minutos das regras que o app mostra ao lado da jornada. */
+export function resumoDasRegras(regras: RegrasContrato): RegrasResumo {
+  const min = (ms: number) => Math.round(minutosDeMs(ms));
+  return {
+    limiteExtrasMin: min(regras.limiteExtrasMs),
+    primeiroAvisoMin: min(regras.riscoTac1h30Ms),
+    segundoAvisoMin: min(regras.riscoTac1h40Ms),
+    intervaloMinimoMin: min(regras.intervaloMinimoMs),
+    intervaloMaximoMin: min(regras.intervaloMaximoMs),
+    limiteTrabalhoDiaMin:
+      regras.limiteTrabalhoDiaMs == null
+        ? null
+        : min(regras.limiteTrabalhoDiaMs),
+  };
+}
+
+/** As duas etapas de aviso do resumo, no formato que `etapaAlertaTac` usa. */
+export function avisosDoResumo(
+  resumo: RegrasResumo,
+): Pick<RegrasContrato, 'riscoTac1h30Ms' | 'riscoTac1h40Ms'> {
+  return {
+    riscoTac1h30Ms: resumo.primeiroAvisoMin * 60_000,
+    riscoTac1h40Ms: resumo.segundoAvisoMin * 60_000,
+  };
+}
+
+/**
+ * Frase do aviso preventivo de TAC com os números do contrato. No 6x1 sai
+ * igual à de sempre: "atingiu 1h30 de horas extras hoje. Faltam 20 minutos
+ * para o limite de TAC."
+ */
+export function textoAvisoPreventivoTac(
+  nome: string,
+  avisoMin: number,
+  limiteExtrasMin: number,
+): string {
+  const falta = limiteExtrasMin - avisoMin;
+  const resto =
+    falta > 0
+      ? `Faltam ${textoDuracaoExtenso(falta)} para o limite de TAC.`
+      : 'É o limite de TAC.';
+  return `${nome} atingiu ${textoDuracao(avisoMin)} de horas extras hoje. ${resto}`;
 }
 
 /** Uma batida como entra no cálculo (só precisamos de id e hora). */
@@ -541,17 +643,29 @@ export function calcularJornadaDia(
   const emAndamento = status === 'TRABALHANDO' || status === 'EM_INTERVALO';
   const alertaIminente = emAndamento && horasExtrasMs >= regras.riscoTac1h30Ms;
 
+  // Os motivos citam os números DO CONTRATO (spec jornada-5x2, R2.5). No 6x1
+  // o texto sai idêntico ao de sempre ("Excedeu 1h50 de horas extras").
+  const fmt = (ms: number) => textoDuracao(minutosDeMs(ms));
   const motivosTac: string[] = [];
   if (horasExtrasMs > regras.limiteExtrasMs) {
-    motivosTac.push('Excedeu 1h50 de horas extras');
+    motivosTac.push(`Excedeu ${fmt(regras.limiteExtrasMs)} de horas extras`);
   }
-  // Intervalo abaixo de 1h só é conclusivo quando o intervalo terminou.
+  // Intervalo abaixo do mínimo só é conclusivo quando o intervalo terminou.
   if (retorno && intervaloMs < regras.intervaloMinimoMs) {
-    motivosTac.push('Intervalo abaixo de 1h');
+    motivosTac.push(`Intervalo abaixo de ${fmt(regras.intervaloMinimoMs)}`);
   }
-  // Intervalo acima de 3h vale mesmo se ainda estiver em intervalo.
+  // Intervalo acima do máximo vale mesmo se ainda estiver em intervalo.
   if (saida && intervaloMs > regras.intervaloMaximoMs) {
-    motivosTac.push('Intervalo acima de 3h');
+    motivosTac.push(`Intervalo acima de ${fmt(regras.intervaloMaximoMs)}`);
+  }
+  // Teto de horas trabalhadas no dia (regra oficial F), quando o contrato tem.
+  if (
+    regras.limiteTrabalhoDiaMs != null &&
+    trabalhadoMs > regras.limiteTrabalhoDiaMs
+  ) {
+    motivosTac.push(
+      `Trabalhou ${fmt(trabalhadoMs)}, acima do limite de ${fmt(regras.limiteTrabalhoDiaMs)} no dia`,
+    );
   }
 
   // "Não retorno": saiu para o intervalo, ainda não voltou (sem retorno nem
