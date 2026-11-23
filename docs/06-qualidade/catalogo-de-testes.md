@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 147 arquivos, 1450 casos. **Mobile:** 44 arquivos, 373 casos. **Total: 1823 casos.**
+> **Backend:** 147 arquivos, 1450 casos. **Mobile:** 46 arquivos, 381 casos. **Total: 1831 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -174,6 +174,7 @@
 | `src/screens/HomeScreen.test.tsx` | 5 | 1 |
 | `src/screens/centroControle/CentroControleScreen.test.tsx` | 2 | 1 |
 | `src/screens/centroControle/ReiniciarDadosScreen.test.tsx` | 2 | 1 |
+| `src/screens/centroControle/RodizioFolgasScreen.test.tsx` | 4 | 1 |
 | `src/screens/colaboradores/ColaboradoresScreen.test.tsx` | 3 | 1 |
 | `src/screens/colaboradores/FeedforwardSecao.test.tsx` | 42 | 12 |
 | `src/screens/colaboradores/GestaoColaboradoresScreen.test.tsx` | 2 | 1 |
@@ -209,3 +210,4 @@
 | `src/utils/relatorioFeedforward.test.ts` | 16 | 4 |
 | `src/utils/relatorioPerfil.test.ts` | 12 | 9 |
 | `src/utils/resumoFeedforward.test.ts` | 11 | 2 |
+| `src/utils/rodizioFolgas.test.ts` | 4 | 1 |
