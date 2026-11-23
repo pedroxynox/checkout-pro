@@ -134,17 +134,20 @@ Dois PRs: **3a — backend** (PR #445) e **3b — app** (PR #446).
 
 ## Fase 4 — Ficha e perfil do colaborador
 
-- [ ] 4.0 Escrita das vigências: `GET/PUT/DELETE /colaboradores/:id/jornada` com
+- [x] 4.0 Escrita das vigências: `GET/PUT/DELETE /colaboradores/:id/jornada` com
   `exigirCicloAberto`, auditoria, validação e avisos (design §3.2); 409 ao mudar
-  campo legado de quem tem vigência. _(R1.3a, R1.4–R1.7)_
+  campo legado de quem tem vigência. _(R1.3a, R1.4–R1.7)_ — PR #447
+  (`JornadaColaboradorService`; trocar o contrato exige `ADMIN_DADOS`).
 - [ ] 4.1 `GestaoColaboradoresScreen`: turno; disponibilidade Seg…Dom com "copiar a
   primeira para todas"; grupo; folgas fixas só sem grupo; contrato; "Vale a partir
   de"; avisos. Tirar folga fixa e os três blocos. _(R4.1–R4.7)_
-- [ ] 4.2 `POST /colaboradores` aceita o bloco `jornada`. _(R4.7)_
+- [x] 4.2 `POST /colaboradores` aceita o bloco `jornada`. _(R4.7)_ — PR #447
+  (sem `aPartirDe`, vale a admissão).
 - [ ] 4.3 `PerfilColaboradorScreen` e `GET /colaboradores/:id/jornada`:
   disponibilidade, grupo, próximas folgas, contrato vigente, histórico. _(R4.8)_
 - [ ] 4.4 Testes de tela e espelhos de tipos. _(RT.4)_
-- [ ] 4.5 Atlas `colaboradores` (backend e mobile); `docs:gen`. _(RT.5)_
+- [~] 4.5 Atlas `colaboradores` (backend e mobile); `docs:gen`. _(RT.5)_ — backend
+  e `jornada-vigencia` no PR #447; mobile no 4b.
 - [ ] 4.6 (Dono) Carregar as vigências de 23/11 perfil por perfil; conferir avisos;
   depois **desligar a pausa** e fechar o ciclo 26/10–25/11. _(R0.4)_
 
