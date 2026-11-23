@@ -25,6 +25,28 @@ import type {
 import { LOGO_ESCALA_DATA_URI, LOGO_ESCALA_PROPORCAO } from './logoEscala';
 
 /**
+ * Rótulo do selo "quem folga hoje" da escala do dia (spec jornada-5x2, R5.1):
+ * com o campo novo, os grupos do rodízio de folgas em QUALQUER dia
+ * ("Folga · G1"); com backend antigo, só o domingo ("Domingo · folga G2").
+ * null = sem selo.
+ */
+export function rotuloSeloFolga(
+  escala: Pick<
+    EscalaDiaPublicada,
+    'diaSemana' | 'grupoFolgaDomingo' | 'gruposFolga'
+  >,
+): string | null {
+  if (escala.gruposFolga) {
+    return escala.gruposFolga.length > 0
+      ? `Folga · ${escala.gruposFolga.join(' e ')}`
+      : null;
+  }
+  return escala.diaSemana === 0 && escala.grupoFolgaDomingo
+    ? `Domingo · folga ${escala.grupoFolgaDomingo}`
+    : null;
+}
+
+/**
  * Largura da escala do DIA: retrato.
  *
  * 2160 px é o lado curto do 4K — em retrato é o que dá nitidez ao ampliar no
@@ -626,7 +648,7 @@ export function svgEscalaDia(
   );
   y += 40;
 
-  // Selos de contexto (feriado / rodízio do domingo).
+  // Selos de contexto (feriado / grupo que folga no dia).
   const selos: { rotulo: string; cor: string; fundo: string }[] = [];
   if (escala.ehFeriado) {
     selos.push({
@@ -637,9 +659,10 @@ export function svgEscalaDia(
       fundo: '#FDECEA',
     });
   }
-  if (escala.diaSemana === 0 && escala.grupoFolgaDomingo) {
+  const seloFolga = rotuloSeloFolga(escala);
+  if (seloFolga) {
     selos.push({
-      rotulo: `Domingo · folga ${escala.grupoFolgaDomingo}`,
+      rotulo: seloFolga,
       cor: COR.azul,
       fundo: '#E7F1F8',
     });

@@ -13,9 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -23,25 +21,20 @@ import {
 } from 'react-native';
 import { escalaService, fiscaisService, operadoresService } from '../../api/services';
 import {
-  AnaliticaFaltas,
   AoVivoOperadores,
   AusenciaDetalhada,
   ColaboradorDia,
   DiaOperadores,
-  FaltasPorOperador,
   IncidenciaEscala,
   ItemEscalaConsolidada,
-  MotivoJustificativa,
   StatusCelula,
   StatusFiscal,
-  StatusJustificativa,
 } from '../../api/types';
 import { ConexaoFiscais, conectarPainelFiscais } from '../../api/socket';
 import { ROTULO_STATUS_FISCAL } from '../../utils/rotulos';
 import { useAuth } from '../../auth/AuthContext';
 import {
   Aviso,
-  Botao,
   Carregando,
   Cartao,
   EstadoVazio,
@@ -57,8 +50,13 @@ import { AusenciasAPrazoCard } from './AusenciasAPrazo';
 import { AtestadosCard } from './AtestadosCard';
 import { FeriasCard } from './FeriasCard';
 import { JustificativasLista } from './JustificativasScreen';
-import { cores, espacamento, raio, sombra, tipografia } from '../../theme';
+import { cores, espacamento, raio, tipografia } from '../../theme';
 import { formatarData, hojeISO } from '../../utils/formato';
+import {
+  gruposFolgaDoDia,
+  gruposQueTrabalham,
+  rotuloFolga,
+} from '../../utils/folgaDoDia';
 
 const NOMES_DIA_LONGO = [
   'Domingo',
@@ -91,24 +89,13 @@ function rotuloStatus(status: ColaboradorDia['status']): string {
   return 'Folga';
 }
 
-/** Os dois grupos que trabalham quando `folga` está de folga no domingo. */
-function gruposQueTrabalhamDomingo(folga: string): string {
-  return ['G1', 'G2', 'G3'].filter((g) => g !== folga).join(' e ');
-}
+
 
 /** Cor do status AO VIVO do fiscal (derivado das batidas do ponto). */
 function corStatusFiscal(status: StatusFiscal): string {
   if (status === 'DISPONIVEL') return cores.verde;
   if (status === 'INTERVALO') return cores.amarelo;
   return cores.textoSecundario;
-}
-
-/** Primeiro e último dia do mês atual (ISO). */
-function mesAtualISO(): { inicio: string; fim: string } {
-  const d = new Date();
-  const ini = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
-  const fim = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
-  return { inicio: ini.toISOString().slice(0, 10), fim: fim.toISOString().slice(0, 10) };
 }
 
 /**
@@ -356,9 +343,12 @@ function FiscalSemFichaRow({
 function FolgaItem({
   nome,
   icone,
+  rotulo = 'Folga',
 }: {
   nome: string;
   icone: React.ComponentProps<typeof Ionicons>['name'];
+  /** "Folga · G1" / "Folga fixa" no 5x2; "Folga" no 6x1. */
+  rotulo?: string;
 }): React.ReactElement {
   return (
     <View style={styles.folgaItem}>
@@ -368,461 +358,8 @@ function FolgaItem({
       <Text style={styles.folgaNome} numberOfLines={1}>
         {nome}
       </Text>
-      <Text style={styles.folgaTag}>Folga</Text>
+      <Text style={styles.folgaTag}>{rotulo}</Text>
     </View>
-  );
-}
-
-/**
- * Linha inteligente de um operador no card "Faltas do mês" (risco + padrões).
- * Se `onPress` for informado (dentro do modal), a linha vira tocável e mostra
- * uma seta — ao tocar, abre o detalhe do colaborador no mês.
- */
-function FaltaOperadorRow({
-  o,
-  onPress,
-}: {
-  o: FaltasPorOperador;
-  onPress?: () => void;
-}): React.ReactElement {
-  const corRisco =
-    o.risco === 'ALTO'
-      ? cores.vermelho
-      : o.risco === 'MEDIO'
-        ? cores.amarelo
-        : cores.verde;
-  const tags: string[] = [];
-  if (o.diaRecorrente) tags.push(`${o.diaRecorrente.nome} recorrente`);
-  if (o.faltasEmenda >= 2) tags.push(`${o.faltasEmenda}× emenda`);
-  if (o.sequenciaMax >= 2) tags.push(`${o.sequenciaMax} dias seguidos`);
-  if (o.tendencia > 0) tags.push(`▲ ${o.tendencia} vs. anterior`);
-  const conteudo = (
-    <>
-      <View style={[styles.riscoDot, { backgroundColor: corRisco }]} />
-      <View style={styles.faltaItemInfo}>
-        <Text style={styles.faltaNomeFull} numberOfLines={1}>
-          {o.nome}
-        </Text>
-        {tags.length > 0 ? (
-          <Text style={styles.faltaTags} numberOfLines={1}>
-            {tags.join(' · ')}
-          </Text>
-        ) : null}
-      </View>
-      <View style={styles.faltaNums}>
-        <Text style={styles.faltaQtdFull}>{o.quantidade}</Text>
-        <Text style={styles.faltaTaxa}>{o.taxa}%</Text>
-      </View>
-      {onPress ? (
-        <Ionicons
-          name="chevron-forward"
-          size={16}
-          color={cores.textoSecundario}
-        />
-      ) : null}
-    </>
-  );
-  if (onPress) {
-    return (
-      <TouchableOpacity
-        style={styles.faltaItem}
-        activeOpacity={0.7}
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityHint="Ver as ocorrências detalhadas deste colaborador"
-      >
-        {conteudo}
-      </TouchableOpacity>
-    );
-  }
-  return <View style={styles.faltaItem}>{conteudo}</View>;
-}
-
-/** Rótulo/cor do selo de justificativa (usa "Não justificada", não "Injustificada"). */
-function seloJustificativa(s: StatusJustificativa): {
-  texto: string;
-  cor: string;
-  fundo: string;
-} {
-  if (s === 'JUSTIFICADA')
-    return { texto: 'Justificada', cor: cores.verde, fundo: cores.verdeFundo };
-  if (s === 'INJUSTIFICADA')
-    return {
-      texto: 'Não justificada',
-      cor: cores.vermelho,
-      fundo: cores.vermelhoFundo,
-    };
-  return { texto: 'Pendente', cor: cores.amarelo, fundo: cores.amareloFundo };
-}
-
-/** Rótulo amigável do motivo da justificativa. */
-const ROTULO_MOTIVO_DETALHE: Record<MotivoJustificativa, string> = {
-  ATESTADO_MEDICO: 'Atestado médico',
-  ABONADA: 'Abonada',
-  LICENCA: 'Licença',
-  ATRASO_JUSTIFICADO: 'Atraso justificado',
-  OUTRO: 'Outro',
-};
-
-/** Uma ocorrência detalhada (falta ou não-retorno) de um colaborador no mês. */
-interface OcorrenciaDetalhe {
-  id: string;
-  data: string;
-  status: StatusJustificativa;
-  motivo: MotivoJustificativa | null;
-  registradaPorNome: string | null;
-  justificadaPorNome: string | null;
-  /** Só para faltas não justificadas: se houve advertência por esta falta. */
-  advertido: boolean;
-}
-
-/**
- * Detalhe do colaborador dentro do painel mensal: lista, dia a dia, as suas
- * faltas (ou não-retornos) do mês com o estado da justificativa, o motivo,
- * quem registrou/justificou e — para as faltas NÃO justificadas — se o
- * colaborador foi advertido por aquela falta.
- */
-function DetalheColaboradorMes({
-  colaborador,
-  tipo,
-  inicio,
-  fim,
-}: {
-  colaborador: FaltasPorOperador;
-  tipo: 'FALTA' | 'NAO_RETORNO';
-  inicio: string;
-  fim: string;
-}): React.ReactElement {
-  const detalhe = useRequisicao<OcorrenciaDetalhe[]>(async () => {
-    if (tipo === 'FALTA') {
-      const [faltas, advertencias] = await Promise.all([
-        operadoresService.listarAusencias(inicio, fim).catch(() => []),
-        escalaService
-          .listarIncidencias({
-            colaboradorId: colaborador.id,
-            tipo: 'ADVERTENCIA',
-            inicio,
-            fim,
-          })
-          .catch(() => [] as IncidenciaEscala[]),
-      ]);
-      const advDatas = new Set(
-        advertencias
-          .filter(
-            (a) => (a.causaTipo ?? '').toUpperCase() === 'FALTA' && a.causaData,
-          )
-          .map((a) => (a.causaData as string).slice(0, 10)),
-      );
-      return faltas
-        .filter((f) => f.pessoaId === colaborador.id)
-        .map((f) => ({
-          id: f.id,
-          data: f.data,
-          status: f.statusJustificativa,
-          motivo: f.motivoJustificativa ?? null,
-          registradaPorNome: f.registradaPorNome,
-          justificadaPorNome: f.justificadaPorNome ?? null,
-          advertido: advDatas.has(f.data.slice(0, 10)),
-        }));
-    }
-    const incidencias = await escalaService
-      .listarIncidencias({
-        colaboradorId: colaborador.id,
-        tipo: 'NAO_RETORNO_INTERVALO',
-        inicio,
-        fim,
-      })
-      .catch(() => [] as IncidenciaEscala[]);
-    return incidencias.map((i) => ({
-      id: i.id,
-      data: i.data,
-      status: i.statusJustificativa ?? 'PENDENTE',
-      motivo: i.motivoJustificativa ?? null,
-      registradaPorNome: i.registradoPorNome ?? null,
-      justificadaPorNome: i.justificadaPorNome ?? null,
-      advertido: false,
-    }));
-  }, [colaborador.id, tipo, inicio, fim]);
-
-  if (detalhe.carregando) {
-    return <Carregando />;
-  }
-  const itens = detalhe.dados ?? [];
-  const substantivo = tipo === 'FALTA' ? 'falta' : 'não-retorno';
-
-  return (
-    <ScrollView
-      style={styles.modalLista}
-      contentContainerStyle={{ paddingVertical: espacamento.xs }}
-    >
-      {itens.length === 0 ? (
-        <EstadoVazio
-          titulo={`Sem ${substantivo}s no mês`}
-          descricao="Não há ocorrências detalhadas para mostrar."
-        />
-      ) : (
-        itens
-          .slice()
-          .sort((a, b) => b.data.localeCompare(a.data))
-          .map((it) => {
-            const selo = seloJustificativa(it.status);
-            const justificada = it.status === 'JUSTIFICADA';
-            return (
-              <View key={it.id} style={styles.detalheItem}>
-                <View style={styles.detalheLinhaTopo}>
-                  <Text style={styles.detalheData}>
-                    {formatarData(it.data)}
-                  </Text>
-                  <Selo texto={selo.texto} cor={selo.cor} fundo={selo.fundo} />
-                </View>
-                {justificada && it.motivo ? (
-                  <Text style={styles.detalheInfo}>
-                    Motivo: {ROTULO_MOTIVO_DETALHE[it.motivo]}
-                  </Text>
-                ) : null}
-                {it.registradaPorNome ? (
-                  <Text style={styles.detalheInfo}>
-                    Registrou: {it.registradaPorNome}
-                  </Text>
-                ) : null}
-                {justificada && it.justificadaPorNome ? (
-                  <Text style={styles.detalheInfo}>
-                    Justificou: {it.justificadaPorNome}
-                  </Text>
-                ) : null}
-                {tipo === 'FALTA' && !justificada ? (
-                  <View style={styles.detalheAdvertencia}>
-                    <Ionicons
-                      name={
-                        it.advertido ? 'warning' : 'shield-checkmark-outline'
-                      }
-                      size={14}
-                      color={it.advertido ? cores.vermelho : cores.verde}
-                    />
-                    <Text
-                      style={[
-                        styles.detalheAdvertenciaTexto,
-                        { color: it.advertido ? cores.vermelho : cores.verde },
-                      ]}
-                    >
-                      {it.advertido
-                        ? 'Advertido por esta falta'
-                        : 'Sem advertência'}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            );
-          })
-      )}
-    </ScrollView>
-  );
-}
-
-/** Tendência (▲ +x% / ▼ x%) vs. período anterior. Verde cai, vermelho sobe. */
-function TendenciaTexto({
-  pct,
-}: {
-  pct: number | null | undefined;
-}): React.ReactElement | null {
-  if (pct == null) return null;
-  const corT =
-    pct > 0 ? cores.vermelho : pct < 0 ? cores.verde : cores.textoSecundario;
-  const seta = pct > 0 ? '▲ +' : pct < 0 ? '▼ ' : '';
-  return (
-    <Text style={[styles.faltasTend, { color: corT }]}>
-      {seta}
-      {pct}% vs. período anterior
-    </Text>
-  );
-}
-
-/** Cabeçalho comum (total + taxa + tendência) do painel mensal. */
-function ResumoAnaliticaTopo({
-  dados,
-  unidade,
-  rotuloTaxa,
-  rotuloDiaPior,
-}: {
-  dados: AnaliticaFaltas;
-  unidade: string;
-  rotuloTaxa: string;
-  rotuloDiaPior: string;
-}): React.ReactElement {
-  const pior = [...dados.porDiaSemana].sort(
-    (a, b) => b.quantidade - a.quantidade,
-  )[0];
-  return (
-    <>
-      <View style={styles.faltasTopo}>
-        <View>
-          <Text style={styles.faltasTotal}>
-            {dados.total} {unidade}
-          </Text>
-          <Text style={styles.faltasLegenda}>
-            {rotuloTaxa}: {dados.taxaGlobal}%
-          </Text>
-        </View>
-        <TendenciaTexto pct={dados.tendenciaPct} />
-      </View>
-      {pior && pior.quantidade > 0 ? (
-        <Text style={styles.faltasDica}>
-          {rotuloDiaPior}: {pior.nome} ({pior.quantidade})
-        </Text>
-      ) : null}
-    </>
-  );
-}
-
-/**
- * Painel de análise mensal (faltas ou não-retornos). Mostra um resumo tocável
- * (prévia dos 6 que mais precisam de atenção). Ao tocar, abre um cartão
- * flutuante (modal) com o MÊS INTEIRO — todos os operadores, com rolagem —,
- * fechável pelo botão "Voltar", pelo X ou pelo toque no fundo.
- */
-function PainelAnaliticaMes({
-  titulo,
-  dados,
-  unidade,
-  rotuloTaxa,
-  rotuloDiaPior,
-  tipo,
-  inicio,
-  fim,
-}: {
-  titulo: string;
-  dados: AnaliticaFaltas;
-  unidade: string;
-  rotuloTaxa: string;
-  rotuloDiaPior: string;
-  tipo: 'FALTA' | 'NAO_RETORNO';
-  inicio: string;
-  fim: string;
-}): React.ReactElement {
-  const [aberto, setAberto] = useState(false);
-  const [selecionado, setSelecionado] = useState<FaltasPorOperador | null>(
-    null,
-  );
-  const fechar = (): void => {
-    setSelecionado(null);
-    setAberto(false);
-  };
-  // Botão "voltar": se há colaborador aberto, volta à lista; senão, fecha.
-  const voltar = (): void => {
-    if (selecionado) setSelecionado(null);
-    else fechar();
-  };
-
-  return (
-    <>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => setAberto(true)}
-        accessibilityRole="button"
-        accessibilityHint="Abre o mês inteiro"
-      >
-        <Cartao titulo={titulo}>
-          <ResumoAnaliticaTopo
-            dados={dados}
-            unidade={unidade}
-            rotuloTaxa={rotuloTaxa}
-            rotuloDiaPior={rotuloDiaPior}
-          />
-          <Text style={styles.faltasSubtitulo}>Quem precisa de atenção</Text>
-          {dados.porOperador.slice(0, 6).map((o) => (
-            <FaltaOperadorRow key={o.id} o={o} />
-          ))}
-          <View style={styles.painelAbrir}>
-            <Ionicons name="expand-outline" size={14} color={cores.primaria} />
-            <Text style={styles.painelAbrirTexto}>Toque para ver o mês todo</Text>
-          </View>
-        </Cartao>
-      </TouchableOpacity>
-
-      <Modal
-        visible={aberto}
-        transparent
-        animationType="fade"
-        onRequestClose={voltar}
-      >
-        <Pressable style={styles.modalFundo} onPress={fechar}>
-          {/* Cartão flutuante — o onPress vazio impede que o toque feche ao tocar dentro. */}
-          <Pressable style={styles.modalCartao} onPress={() => {}}>
-            <View style={styles.modalCabecalho}>
-              <TouchableOpacity
-                onPress={voltar}
-                hitSlop={10}
-                accessibilityLabel="Voltar"
-              >
-                <Ionicons name="arrow-back" size={22} color={cores.texto} />
-              </TouchableOpacity>
-              <Text style={styles.modalTitulo} numberOfLines={1}>
-                {selecionado ? selecionado.nome : titulo}
-              </Text>
-              <TouchableOpacity
-                onPress={fechar}
-                hitSlop={10}
-                accessibilityLabel="Fechar"
-              >
-                <Ionicons name="close" size={24} color={cores.texto} />
-              </TouchableOpacity>
-            </View>
-
-            {selecionado ? (
-              <>
-                <DetalheColaboradorMes
-                  colaborador={selecionado}
-                  tipo={tipo}
-                  inicio={inicio}
-                  fim={fim}
-                />
-                <Botao
-                  titulo="Voltar"
-                  variante="secundario"
-                  aoPressionar={() => setSelecionado(null)}
-                />
-              </>
-            ) : (
-              <>
-                <ResumoAnaliticaTopo
-                  dados={dados}
-                  unidade={unidade}
-                  rotuloTaxa={rotuloTaxa}
-                  rotuloDiaPior={rotuloDiaPior}
-                />
-
-                <Text style={styles.faltasSubtitulo}>
-                  Toque num colaborador para ver os detalhes
-                </Text>
-
-                <ScrollView
-                  style={styles.modalLista}
-                  contentContainerStyle={{ paddingVertical: espacamento.xs }}
-                >
-                  {dados.porOperador.map((o) => (
-                    <FaltaOperadorRow
-                      key={o.id}
-                      o={o}
-                      onPress={() => setSelecionado(o)}
-                    />
-                  ))}
-                </ScrollView>
-
-                <Text style={styles.faltasRodape}>
-                  🔴 alto · 🟡 médio · 🟢 baixo risco — por taxa, padrão e
-                  tendência.
-                </Text>
-                <Botao
-                  titulo="Voltar"
-                  variante="secundario"
-                  aoPressionar={fechar}
-                />
-              </>
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
-    </>
   );
 }
 
@@ -848,6 +385,7 @@ export function OperadoresScreen(): React.ReactElement {
     [diaSel],
   );
   const dados = dia.dados;
+  const gruposFolga = gruposFolgaDoDia(dados);
 
   // Escala de FISCAIS do mesmo dia (exibida ACIMA dos operadores). Defensivo:
   // só busca se o perfil pode ver a escala; em erro, a seção simplesmente some.
@@ -909,17 +447,8 @@ export function OperadoresScreen(): React.ReactElement {
 
   const aoVivo = useRequisicao<AoVivoOperadores>(() => operadoresService.aoVivo(), []);
 
-  const mes = mesAtualISO();
-  const analitica = useRequisicao<AnaliticaFaltas>(
-    () => operadoresService.analiticaFaltas(mes.inicio, mes.fim),
-    [],
-  );
-
-  // Não-retornos do MÊS — mesma inteligência/semáforo das faltas do mês.
-  const naoRetornosMes = useRequisicao<AnaliticaFaltas>(
-    () => operadoresService.analiticaNaoRetornos(mes.inicio, mes.fim),
-    [],
-  );
+  // Os cards "Faltas do mês" e "Não-retornos do mês" saíram da aba Escalas
+  // (spec jornada-5x2, R5.2); a análise continua na Central e nos relatórios.
 
   // Não-retornos do DIA selecionado (incidências com id, para marcar/desmarcar).
   const naoRetornosDia = useRequisicao<IncidenciaEscala[]>(
@@ -978,8 +507,6 @@ export function OperadoresScreen(): React.ReactElement {
   const recarregarTudo = () => {
     dia.recarregar();
     aoVivo.recarregar();
-    analitica.recarregar();
-    naoRetornosMes.recarregar();
     naoRetornosDia.recarregar();
     faltasDia.recarregar();
     escalaFiscais.recarregar();
@@ -1041,27 +568,25 @@ export function OperadoresScreen(): React.ReactElement {
         </Pressable>
       ) : null}
 
-      {/* Domingo: rodízio de grupos. Mostra quem folga e quem trabalha nesse
-          domingo (ou avisa que o rodízio ainda não foi configurado). */}
-      {dados?.diaSemana === 0 ? (
-        dados.grupoFolgaDomingo ? (
-          <View style={styles.domingoBanner}>
-            <Ionicons name="sync-outline" size={18} color={cores.primaria} />
-            <Text style={styles.domingoBannerTexto}>
-              Domingo · Folga{' '}
-              <Text style={styles.domingoForte}>{dados.grupoFolgaDomingo}</Text>
-              {'  ·  '}Trabalham {gruposQueTrabalhamDomingo(dados.grupoFolgaDomingo)}
-            </Text>
-          </View>
-        ) : (
-          <View style={[styles.domingoBanner, styles.domingoBannerAviso]}>
-            <Ionicons name="information-circle-outline" size={18} color={cores.amarelo} />
-            <Text style={styles.domingoBannerTexto}>
-              Rodízio de domingo ainda não configurado. Defina o ponto de partida
-              em Centro de Controle › Rodízio de domingo.
-            </Text>
-          </View>
-        )
+      {/* Rodízio de folgas (spec jornada-5x2, R5.1): em TODO dia, o grupo que
+          folga e os que trabalham. No domingo sem nenhum rodízio, o aviso. */}
+      {gruposFolga.length > 0 ? (
+        <View style={styles.domingoBanner}>
+          <Ionicons name="sync-outline" size={18} color={cores.primaria} />
+          <Text style={styles.domingoBannerTexto}>
+            Folga hoje{' '}
+            <Text style={styles.domingoForte}>{gruposFolga.join(' e ')}</Text>
+            {'  ·  '}Trabalham {gruposQueTrabalham(gruposFolga)}
+          </Text>
+        </View>
+      ) : dados?.diaSemana === 0 ? (
+        <View style={[styles.domingoBanner, styles.domingoBannerAviso]}>
+          <Ionicons name="information-circle-outline" size={18} color={cores.amarelo} />
+          <Text style={styles.domingoBannerTexto}>
+            Rodízio de folgas ainda não configurado. Defina-o em Centro de
+            Controle › Rodízio de folgas.
+          </Text>
+        </View>
       ) : null}
 
       {/* Tablero "ao vivo": quem deveria estar agora */}
@@ -1390,34 +915,6 @@ export function OperadoresScreen(): React.ReactElement {
             })()}
           </Cartao>
 
-          {/* Análise inteligente de faltas do mês (toque abre o mês inteiro) */}
-          {analitica.dados && analitica.dados.total > 0 ? (
-            <PainelAnaliticaMes
-              titulo="Faltas do mês"
-              dados={analitica.dados}
-              unidade="falta(s)"
-              rotuloTaxa="Absenteísmo"
-              rotuloDiaPior="Dia com mais faltas"
-              tipo="FALTA"
-              inicio={mes.inicio}
-              fim={mes.fim}
-            />
-          ) : null}
-
-          {/* Análise inteligente de não-retornos do mês (toque abre o mês inteiro) */}
-          {naoRetornosMes.dados && naoRetornosMes.dados.total > 0 ? (
-            <PainelAnaliticaMes
-              titulo="Não-retornos do mês"
-              dados={naoRetornosMes.dados}
-              unidade="não-retorno(s)"
-              rotuloTaxa="Taxa"
-              rotuloDiaPior="Dia com mais não-retornos"
-              tipo="NAO_RETORNO"
-              inicio={mes.inicio}
-              fim={mes.fim}
-            />
-          ) : null}
-
           {/* Justificativas (faltas + não-retornos) — abaixo do painel de faltas */}
           {podeGerirAusencias ? (
             <View style={styles.justificativasSecao}>
@@ -1442,6 +939,7 @@ export function OperadoresScreen(): React.ReactElement {
               key={c.id}
               nome={c.nome}
               icone={iconeGenero(c.genero, c.nome)}
+              rotulo={rotuloFolga(c)}
             />
           ))}
         </Cartao>
@@ -1753,39 +1251,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   // Faltas
-  faltasTopo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: espacamento.xs,
-  },
   faltasTotal: {
     ...tipografia.titulo,
     color: cores.texto,
-  },
-  faltasLegenda: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    marginTop: 1,
-  },
-  faltasTend: {
-    ...tipografia.legenda,
-    fontWeight: '700',
-    flexShrink: 1,
-    textAlign: 'right',
-    maxWidth: '50%',
-  },
-  faltasDica: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    marginTop: 2,
-    marginBottom: espacamento.sm,
-  },
-  faltasSubtitulo: {
-    ...tipografia.rotulo,
-    color: cores.textoSecundario,
-    marginTop: espacamento.sm,
-    marginBottom: espacamento.xs,
   },
   faltaItem: {
     flexDirection: 'row',
@@ -1794,11 +1262,6 @@ const styles = StyleSheet.create({
     paddingVertical: espacamento.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: cores.divisor,
-  },
-  riscoDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
   },
   faltaItemInfo: {
     flex: 1,
@@ -1813,96 +1276,8 @@ const styles = StyleSheet.create({
     color: cores.textoSecundario,
     marginTop: 1,
   },
-  faltaNums: {
-    alignItems: 'flex-end',
-    minWidth: 48,
-  },
-  faltaQtdFull: {
-    ...tipografia.rotulo,
-    fontWeight: '700',
-    color: cores.texto,
-  },
-  faltaTaxa: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-  },
-  faltasRodape: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-    fontStyle: 'italic',
-    marginTop: espacamento.sm,
-  },
   // Painel mensal (resumo tocável + modal flutuante)
-  painelAbrir: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: espacamento.xs,
-    marginTop: espacamento.sm,
-  },
-  painelAbrirTexto: {
-    ...tipografia.rotulo,
-    color: cores.primaria,
-  },
-  modalFundo: {
-    flex: 1,
-    backgroundColor: 'rgba(10,37,64,0.45)',
-    justifyContent: 'center',
-    padding: espacamento.lg,
-  },
-  modalCartao: {
-    backgroundColor: cores.superficie,
-    borderRadius: raio.lg,
-    padding: espacamento.lg,
-    maxHeight: '82%',
-    ...sombra.flutuante,
-  },
-  modalCabecalho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: espacamento.md,
-    marginBottom: espacamento.md,
-  },
-  modalTitulo: {
-    ...tipografia.subtitulo,
-    color: cores.texto,
-    flex: 1,
-  },
-  modalLista: {
-    marginTop: espacamento.sm,
-  },
   // Detalhe do colaborador no painel mensal (drill-down)
-  detalheItem: {
-    paddingVertical: espacamento.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: cores.divisor,
-    gap: 2,
-  },
-  detalheLinhaTopo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: espacamento.xs,
-  },
-  detalheData: {
-    ...tipografia.corpo,
-    fontWeight: '600',
-    color: cores.texto,
-  },
-  detalheInfo: {
-    ...tipografia.legenda,
-    color: cores.textoSecundario,
-  },
-  detalheAdvertencia: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: espacamento.xs,
-    marginTop: 2,
-  },
-  detalheAdvertenciaTexto: {
-    ...tipografia.legenda,
-    fontWeight: '600',
-  },
   // Gestão
   linhaHorarios: {
     flexDirection: 'row',

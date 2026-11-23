@@ -55,6 +55,7 @@ import {
   Tela,
 } from '../../components';
 import { useRequisicao } from '../../hooks/useRequisicao';
+import { ConferenciaJornadaCartao } from './ConferenciaJornadaCartao';
 import { cores, espacamento, raio, tipografia } from '../../theme';
 
 const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -199,6 +200,9 @@ export function ConferenciaEscalaScreen(): React.ReactElement {
               horário e salvar. Salvar regenera a escala a partir da ficha.
             </Text>
           </Cartao>
+
+          {/* ===== Jornada 5x2: quem já tem vigência e os avisos (R5.3) ===== */}
+          {d.jornada ? <ConferenciaJornadaCartao jornada={d.jornada} /> : null}
 
           {/* ===== 2. Ficha sem horário ===== */}
           {semHorario.length > 0 && (

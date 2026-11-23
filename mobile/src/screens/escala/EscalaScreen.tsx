@@ -40,6 +40,7 @@ import { notificar } from '../../utils/dialogos';
 import {
   htmlDeImpressao,
   nomeArquivoEscala,
+  rotuloSeloFolga,
   svgEscalaDia,
   svgEscalaSemana,
 } from '../../utils/escalaLayout';
@@ -325,9 +326,9 @@ function PreviaDia({
               fundo={cores.vermelhoFundo}
             />
           ) : null}
-          {escala.diaSemana === 0 && escala.grupoFolgaDomingo ? (
+          {rotuloSeloFolga(escala) ? (
             <Selo
-              texto={`Domingo · folga ${escala.grupoFolgaDomingo}`}
+              texto={rotuloSeloFolga(escala) ?? ''}
               cor={cores.azul}
               fundo={cores.azulFundo}
             />

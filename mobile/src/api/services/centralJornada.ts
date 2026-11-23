@@ -131,6 +131,23 @@ export interface CentralDiaDetalhe {
    * serve para o gestor corrigir a escala. **Não** é TAC.
    */
   pontoEmFolga?: boolean;
+  /**
+   * O dia pode gerar hora devida? Vem do contrato do dia (spec jornada-5x2,
+   * R6.3). Ausente = backend antigo (o app cai em "domingo e feriado não").
+   */
+  geraDebito?: boolean;
+  /** Extras do dia a 100% (domingo/feriado pelo contrato do dia). */
+  contaComo100?: boolean;
+  /** Contrato que decidiu o dia. */
+  tipoContratoJornadaId?: string | null;
+}
+
+/** Um trecho do ciclo com o mesmo contrato (AAAA-MM-DD). */
+export interface TrechoContrato {
+  tipoContratoJornadaId: string | null;
+  nome: string | null;
+  de: string;
+  ate: string;
 }
 
 export interface CentralComparativo {
@@ -436,11 +453,14 @@ export const centralJornadaService = {
     periodo: CentralPeriodo;
     resumo: CentralPessoaResumo | null;
     dias: CentralDiaDetalhe[];
+    /** Contrato(s) da pessoa no ciclo, por trecho (ausente = backend antigo). */
+    contratos?: TrechoContrato[];
   }> {
     return apiClient.get<{
       periodo: CentralPeriodo;
       resumo: CentralPessoaResumo | null;
       dias: CentralDiaDetalhe[];
+      contratos?: TrechoContrato[];
     }>(`/central-jornada/pessoa/${colaboradorId}`, { ciclo: String(ciclo) });
   },
 

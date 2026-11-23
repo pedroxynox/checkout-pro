@@ -697,6 +697,28 @@ export interface ConferenciaEscala {
   nomesComLacuna: string[];
   /** true quando não há nenhuma pendência. */
   ok: boolean;
+  /**
+   * Jornada por vigência (spec jornada-5x2, R5.3): quem ainda está no 6x1 e os
+   * avisos da vigência de cada um. Ausente/null = backend antigo.
+   */
+  jornada?: ConferenciaJornada | null;
+}
+
+/** Uma pessoa na conferência da jornada. */
+export interface PessoaConferenciaJornada {
+  colaboradorId: string;
+  nome: string;
+  funcao: string;
+}
+
+/** Conferência da jornada da equipe (5x2). */
+export interface ConferenciaJornada {
+  comVigencia: number;
+  semVigencia: PessoaConferenciaJornada[];
+  avisos: (PessoaConferenciaJornada & {
+    aPartirDe: string;
+    avisos: { tipo: string; diaSemana: number | null; mensagem: string }[];
+  })[];
 }
 
 // ----- Metas mensais (Centro de Controle ▸ Metas) -----
@@ -1815,7 +1837,17 @@ export interface ColaboradorDia {
    * um fiscal não pode desmarcá-la na escala.
    */
   aPrazo?: boolean;
+  /**
+   * Por que folga no 5x2 (spec jornada-5x2): pelo grupo do rodízio ou por folga
+   * fixa. null nos dias de trabalho e no regime antigo (6x1).
+   */
+  motivoFolga?: MotivoFolga | null;
+  /** Grupo do rodízio de folgas da pessoa no dia (5x2). */
+  grupoFolga?: string | null;
 }
+
+/** Por que a pessoa folga no 5x2: grupo do rodízio ou folga fixa. */
+export type MotivoFolga = 'GRUPO' | 'FOLGA_FIXA';
 
 /** Roster de um dia (ordenado por entrada, folga ao fim). */
 export interface DiaOperadores {
@@ -1829,6 +1861,11 @@ export interface DiaOperadores {
   colaboradores: ColaboradorDia[];
   /** Só no domingo: grupo que folga (G1/G2/G3) pelo rodízio, ou null. */
   grupoFolgaDomingo?: string | null;
+  /**
+   * Grupos que folgam no dia, em qualquer dia (rodízio de folgas; antes dele,
+   * o domingo antigo). Ausente = backend antigo.
+   */
+  gruposFolga?: string[];
 }
 
 // ----- Notificações (Req 7.3) -----
