@@ -347,7 +347,7 @@ lida a cada chamada (os testes ligam/desligam por `process.env`). Com ela ligada
 | `ponto/ponto-deteccao-automatica.service.ts` | falta automática e aviso de atraso de 1h (não-retorno, revalidação e autocura seguem) |
 | `ponto/ponto-alertas.service.ts` e `ponto.service.ts` (`avisarAlertaTacSeNecessario`) | avisos de TAC (cron e batida) |
 | `ponto.service.ts` (`avisarPontoEmFolga`) | aviso de ponto em dia de folga |
-| `fiscais/fiscais-alertas.service.ts` | folga sugerida por excesso de extras; análise semanal de padrões |
+| `fiscais/fiscais-alertas.service.ts` | análise semanal de padrões (a folga sugerida por excesso de extras foi retirada em 22/11/2026) |
 | `operadores/operador-turno.service.ts` | aviso de cobertura baixa (07:00) |
 | `fiscais/fiscais-horario.service.ts`, `alertas/saudacao-diaria.service.ts` | lembrete de 10 min e saudação de entrada dos fiscais |
 
