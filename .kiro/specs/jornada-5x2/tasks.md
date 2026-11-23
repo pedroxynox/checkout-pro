@@ -155,17 +155,20 @@ Dois PRs: **3a — backend** (PR #445) e **3b — app** (PR #446).
 
 ## Fase 5 — Escala, Central e restante
 
-- [ ] 5.1 Backend do dia da escala: grupos de folga em todo dia (`gruposFolga`),
-  mantendo `grupoFolgaDomingo` para o APK. _(R5.1, RT.4)_
-- [ ] 5.2 `OperadoresScreen` (aba Escalas): selo de folga por dia; horários da
-  disponibilidade; **remover** "Faltas do mês" e "Não-retornos do mês". _(R5.1, R5.2)_
-- [ ] 5.3 Publicar escala (`EscalaScreen`, `escalaLayout`, exportação) e
-  Conferência de escala no modelo novo. _(R5.3)_
-- [ ] 5.4 Central: `geraDebito` por dia na resposta; `DetalheJornadaScreen` usa o
-  campo; tirar o texto "6x1-2x1"; mostrar o contrato da pessoa no detalhe. _(R6.1–R6.3)_
-- [ ] 5.5 Sugestão de nova folga desligada no regime SEMANAL. _(R6.5)_
-- [ ] 5.6 Atlas `operadores`, `escala`, `ponto` (mobile), `central-jornada`,
-  `escala-exportacao`; `docs:gen`. _(RT.5)_
+- [x] 5.1 Backend do dia da escala: grupos de folga em todo dia (`gruposFolga`),
+  mantendo `grupoFolgaDomingo` para o APK. _(R5.1, RT.4)_ — PR #449 (e
+  `motivoFolga` por pessoa).
+- [x] 5.2 `OperadoresScreen` (aba Escalas): selo de folga por dia; horários da
+  disponibilidade; **remover** "Faltas do mês" e "Não-retornos do mês". _(R5.1, R5.2)_ —
+  PR #450.
+- [x] 5.3 Publicar escala (`EscalaScreen`, `escalaLayout`, exportação) e
+  Conferência de escala no modelo novo. _(R5.3)_ — backend #449, app #450.
+- [x] 5.4 Central: `geraDebito` por dia na resposta; `DetalheJornadaScreen` usa o
+  campo; tirar o texto "6x1-2x1"; mostrar o contrato da pessoa no detalhe. _(R6.1–R6.3)_ —
+  backend #449, app #450.
+- [x] 5.5 Sugestão de nova folga desligada no regime SEMANAL. _(R6.5)_ — PR #449.
+- [x] 5.6 Atlas `operadores`, `escala`, `ponto` (mobile), `central-jornada`,
+  `escala-exportacao`; `docs:gen`. _(RT.5)_ — #449 e #450.
 
 ## Fase 6 — 42 h a partir de 16/12/2026
 
