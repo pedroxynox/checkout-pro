@@ -1,6 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { camposLegadosAlterados } from './colaboradores.domain';
-import { CamposLegadosCongeladosError } from './colaboradores.errors';
+import {
+  CamposLegadosCongeladosError,
+  PermissaoTrocarContratoError,
+} from './colaboradores.errors';
 import { ColaboradoresService } from './colaboradores.service';
 
 /**
@@ -229,6 +232,55 @@ describe('campos legados congelados com vigência (R1.3a)', () => {
     expect(atualizacoes[0].folgaDiaSemana).toBe(4);
     // Comportamento antigo preservado: contrato sem domingo tira do rodízio.
     expect(atualizacoes[0].grupoDomingo).toBeNull();
+  });
+});
+
+describe('só o administrador escolhe ou troca o contrato da ficha', () => {
+  it('cadastro: contrato diferente do padrão sem ADMIN_DADOS é 403 e não cria', async () => {
+    const { service, criados } = montar();
+    await expect(
+      service.cadastrar(
+        {
+          nome: 'Bia',
+          matricula: '2002',
+          turno: 'ABERTURA',
+          tipoContratoJornadaId: C_5X2,
+        },
+        'SUPERVISOR',
+        { login: 'sup', podeTrocarContrato: false },
+      ),
+    ).rejects.toBeInstanceOf(PermissaoTrocarContratoError);
+    expect(criados).toHaveLength(0);
+  });
+
+  it('cadastro: o padrão (ou nenhum) não exige ADMIN_DADOS', async () => {
+    const { service, criados } = montar();
+    await service.cadastrar(
+      {
+        nome: 'Bia',
+        matricula: '2002',
+        turno: 'ABERTURA',
+        tipoContratoJornadaId: PADRAO,
+      },
+      'SUPERVISOR',
+    );
+    expect(criados).toHaveLength(1);
+  });
+
+  it('edição sem vigência: trocar é 403; reenviar o mesmo passa; admin troca', async () => {
+    const { service, atualizacoes } = montar({ vigencias: 0 });
+    await expect(
+      service.editar('c1', { tipoContratoJornadaId: C_5X2 }, 'SUPERVISOR'),
+    ).rejects.toBeInstanceOf(PermissaoTrocarContratoError);
+    expect(atualizacoes).toHaveLength(0);
+    await service.editar('c1', { tipoContratoJornadaId: PADRAO }, 'SUPERVISOR');
+    await service.editar(
+      'c1',
+      { tipoContratoJornadaId: C_5X2 },
+      'ADMINISTRADOR',
+      true,
+    );
+    expect(atualizacoes).toHaveLength(2);
   });
 });
 
