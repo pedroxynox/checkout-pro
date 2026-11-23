@@ -83,7 +83,14 @@ const BATIDAS = [
   ...batidas('2026-11-25', ['06:00', '10:00', '12:00', '16:48']),
 ];
 
-function montar(opcoes: { comVigencia: boolean; comJornada: boolean }) {
+function montar(opcoes: {
+  comVigencia: boolean;
+  comJornada: boolean;
+  folgasFixas?: number[];
+}) {
+  const vigencia = opcoes.folgasFixas
+    ? { ...VIGENCIA, folgasFixas: opcoes.folgasFixas }
+    : VIGENCIA;
   const prisma = {
     colaborador: {
       findMany: jest.fn().mockResolvedValue([FICHA]),
@@ -97,7 +104,13 @@ function montar(opcoes: { comVigencia: boolean; comJornada: boolean }) {
     jornadaVigencia: {
       findMany: jest
         .fn()
-        .mockResolvedValue(opcoes.comVigencia ? [VIGENCIA] : []),
+        .mockResolvedValue(opcoes.comVigencia ? [vigencia] : []),
+    },
+    tipoContratoJornada: {
+      findMany: jest.fn().mockResolvedValue([
+        { id: CONTRATO_6X1, nome: '6x1 - 2x1' },
+        { id: CONTRATO_5X2, nome: '5x2 44h' },
+      ]),
     },
   };
   const feriados = {
@@ -162,6 +175,40 @@ describe('Central de Jornada com vigência da jornada', () => {
     expect(quintaAntiga.entradaPrevista).toBe('07:00');
   });
 
+  it('cada dia diz se gera débito e qual contrato o decidiu (R6.3)', async () => {
+    const service = montar({ comVigencia: true, comJornada: true });
+    const sexta = await doDia(service, '2026-11-20');
+    expect(sexta).toMatchObject({
+      geraDebito: true,
+      contaComo100: false,
+      tipoContratoJornadaId: CONTRATO_6X1,
+    });
+    const quarta = await doDia(service, '2026-11-25');
+    expect(quarta.tipoContratoJornadaId).toBe(CONTRATO_5X2);
+    // Domingo: 100% e sem débito, pelo contrato do dia.
+    const domingo = await doDia(service, '2026-11-22');
+    expect(domingo).toMatchObject({ geraDebito: false, contaComo100: true });
+  });
+
+  it('o detalhe traz os trechos de contrato do ciclo (6x1 até 22/11, 5x2 desde 23/11)', async () => {
+    const service = montar({ comVigencia: true, comJornada: true });
+    const { contratos } = await service.detalhePessoa('adiarys');
+    expect(contratos).toEqual([
+      {
+        tipoContratoJornadaId: CONTRATO_6X1,
+        nome: '6x1 - 2x1',
+        de: '2026-10-26',
+        ate: '2026-11-22',
+      },
+      {
+        tipoContratoJornadaId: CONTRATO_5X2,
+        nome: '5x2 44h',
+        de: '2026-11-23',
+        ate: '2026-11-25',
+      },
+    ]);
+  });
+
   it('o resumo do ciclo soma cada dia com o seu contrato', async () => {
     const service = montar({ comVigencia: true, comJornada: true });
     const resumo = await service.resumoCiclo();
@@ -182,5 +229,27 @@ describe('Central de Jornada com vigência da jornada', () => {
     const quarta = await doDia(comServico, '2026-11-25');
     expect(quarta.pontoEmFolga).toBe(true);
     expect(quarta.baseMs).toBe(7 * 3_600_000);
+  });
+
+  it('ponto em folga: no 6x1 fala do cadastro; no 5x2, do grupo ou das folgas fixas (R6.5)', async () => {
+    const pontoEmFolga = async (service: CentralJornadaService) =>
+      (await service.inconsistenciasCiclo()).itens.find(
+        (i) => i.tipo === 'PONTO_EM_FOLGA',
+      );
+    // Sem vigência, a quarta 25/11 é a folga do 6x1.
+    const antigo = await pontoEmFolga(
+      montar({ comVigencia: false, comJornada: true }),
+    );
+    expect(antigo?.detalhe).toMatch(
+      /^Trabalhou num dia marcado como FOLGA no cadastro/,
+    );
+    // No 5x2 com folga fixa na quarta, a mesma batida é ponto em folga da jornada.
+    const novo = await pontoEmFolga(
+      montar({ comVigencia: true, comJornada: true, folgasFixas: [3, 0] }),
+    );
+    expect(novo?.data).toBe(dia('2026-11-25').toISOString());
+    expect(novo?.detalhe).toBe(
+      'Trabalhou num dia de FOLGA pela jornada. O ponto está correto — confira o grupo ou as folgas fixas.',
+    );
   });
 });

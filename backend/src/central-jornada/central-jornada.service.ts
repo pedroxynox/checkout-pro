@@ -232,6 +232,51 @@ export interface CentralDiaDetalhe {
    * nenhum contador da pessoa: o problema é do cadastro, não dela.
    */
   pontoEmFolga?: boolean;
+  /**
+   * O dia pode gerar hora devida (déficit ou falta lançada como débito)? Vem
+   * do contrato do dia (spec `jornada-5x2`, R6.3): domingo e feriado a 100% não
+   * geram. O app usava uma regra fixa ("domingo não gera").
+   */
+  geraDebito: boolean;
+  /** As extras do dia são a 100% (domingo/feriado conforme o contrato do dia). */
+  contaComo100: boolean;
+  /** Contrato que decidiu o dia (o da vigência ou, antes dela, o da ficha). */
+  tipoContratoJornadaId: string | null;
+}
+
+/** Um trecho do ciclo com o mesmo contrato (o detalhe mostra "de … até …"). */
+export interface TrechoContrato {
+  tipoContratoJornadaId: string | null;
+  nome: string | null;
+  /** Primeiro e último dia do trecho no ciclo (AAAA-MM-DD). */
+  de: string;
+  ate: string;
+}
+
+/** Os trechos de contrato dos dias, na ordem (dias consecutivos agrupados). */
+export function trechosDeContrato(
+  dias: readonly Pick<CentralDiaDetalhe, 'data' | 'tipoContratoJornadaId'>[],
+  nomes: ReadonlyMap<string, string>,
+): TrechoContrato[] {
+  const ordenados = [...dias].sort((a, b) => a.data.localeCompare(b.data));
+  const trechos: TrechoContrato[] = [];
+  for (const d of ordenados) {
+    const dia = d.data.slice(0, 10);
+    const ultimo = trechos[trechos.length - 1];
+    if (ultimo && ultimo.tipoContratoJornadaId === d.tipoContratoJornadaId) {
+      ultimo.ate = dia;
+      continue;
+    }
+    trechos.push({
+      tipoContratoJornadaId: d.tipoContratoJornadaId,
+      nome: d.tipoContratoJornadaId
+        ? (nomes.get(d.tipoContratoJornadaId) ?? null)
+        : null,
+      de: dia,
+      ate: dia,
+    });
+  }
+  return trechos;
 }
 
 export interface CentralPeriodo {
@@ -1241,6 +1286,12 @@ export class CentralJornadaService {
       // nem por déficit (trabalhou abaixo da base), nem por falta lançada como
       // débito. Vale para os dois casos tratados abaixo.
       const diaGeraDebito = previstoDia.geraDebito;
+      // O que o detalhe do dia expõe da jornada prevista (R6.3).
+      const doDia = {
+        geraDebito: diaGeraDebito,
+        contaComo100: previstoDia.contaComo100,
+        tipoContratoJornadaId: previstoDia.tipoContratoJornadaId || null,
+      };
 
       if (regs && regs.length > 0) {
         const fimDia = inicioDoProximoDia(dia);
@@ -1317,6 +1368,7 @@ export class CentralJornadaService {
             diaSemana,
             ehFeriado,
             feriadoNome,
+            ...doDia,
             // `INCOMPLETO` vence a compensação: marcação faltando é um problema
             // de dado que continua precisando de correção, compensado ou não.
             tipo:
@@ -1377,6 +1429,7 @@ export class CentralJornadaService {
             diaSemana,
             ehFeriado,
             feriadoNome,
+            ...doDia,
             tipo,
             status: 'SEM_REGISTRO',
             faltando: [],
@@ -1415,6 +1468,7 @@ export class CentralJornadaService {
             diaSemana,
             ehFeriado,
             feriadoNome,
+            ...doDia,
             tipo: 'COMPENSACAO',
             status: 'SEM_REGISTRO',
             faltando: [],
@@ -1447,6 +1501,7 @@ export class CentralJornadaService {
           diaSemana,
           ehFeriado,
           feriadoNome,
+          ...doDia,
           // Só aponta quando o dia JÁ TERMINOU: um dia em curso (ou futuro) sem
           // batidas não é falta — a pessoa ainda pode entrar.
           tipo:
@@ -1599,6 +1654,8 @@ export class CentralJornadaService {
     periodo: CentralPeriodo;
     resumo: CentralPessoaResumo | null;
     dias: CentralDiaDetalhe[];
+    /** Contrato(s) da pessoa no ciclo, por trecho (spec jornada-5x2). */
+    contratos: TrechoContrato[];
   }> {
     // Carrega SÓ os dados desta pessoa (não o ciclo inteiro) — o detalhe abre
     // rápido mesmo com muitos colaboradores.
@@ -1618,6 +1675,21 @@ export class CentralJornadaService {
       dados.feriasPorColaborador.get(colaboradorId) ?? [],
     );
     const pessoa = dados.pessoa;
+    const idsContrato = [
+      ...new Set(
+        dias
+          .map((d) => d.tipoContratoJornadaId)
+          .filter((id): id is string => !!id),
+      ),
+    ];
+    const nomes = new Map<string, string>();
+    if (idsContrato.length > 0) {
+      const linhas = await this.prisma.tipoContratoJornada.findMany({
+        where: { id: { in: idsContrato } },
+        select: { id: true, nome: true },
+      });
+      for (const l of linhas) nomes.set(l.id, l.nome);
+    }
     return {
       periodo: this.montarPeriodo(dados.periodo, deslocamento),
       resumo: pessoa
@@ -1630,6 +1702,7 @@ export class CentralJornadaService {
           }
         : null,
       dias,
+      contratos: trechosDeContrato(dias, nomes),
     };
   }
 
@@ -1766,13 +1839,21 @@ export class CentralJornadaService {
           // a pessoa trabalhou normalmente, o que está errado é o cadastro. Quando
           // as batidas das últimas semanas sustentam uma conclusão, a sugestão do
           // novo dia de folga vem junto — é o passo em que se esquece de novo.
+          //
+          // No 5x2 (regime SEMANAL) a folga vem do rodízio do grupo ou das
+          // folgas fixas da jornada, e a sugestão do "novo dia" (uma folga por
+          // semana, ADR 0019) não se aplica (spec jornada-5x2, R6.5).
+          const semanal =
+            previsto(new Date(d.data), d.ehFeriado).regime === 'SEMANAL';
           itens.push({
             ...base(d),
             tipo: 'PONTO_EM_FOLGA',
-            detalhe:
-              'Trabalhou num dia marcado como FOLGA no cadastro. ' +
-              'O ponto está correto — confira a escala.' +
-              (sugestaoDeFolga ? ` ${sugestaoDeFolga}` : ''),
+            detalhe: semanal
+              ? 'Trabalhou num dia de FOLGA pela jornada. ' +
+                'O ponto está correto — confira o grupo ou as folgas fixas.'
+              : 'Trabalhou num dia marcado como FOLGA no cadastro. ' +
+                'O ponto está correto — confira a escala.' +
+                (sugestaoDeFolga ? ` ${sugestaoDeFolga}` : ''),
           });
         }
         const horas = horasPorDia.get(d.data);
