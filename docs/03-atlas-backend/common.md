@@ -194,7 +194,7 @@ fornece:
 | `justificativas.spec.ts` | Peso/soma ponderada e montagem dos campos de justificativa (fast-check) | 9 |
 | `cors.spec.ts` | Resolução de `CORS_ORIGINS` | 5 |
 | `config/jwt-secret.spec.ts` | Segredo configurado/obrigatório/efêmero | 4 |
-| `transicao-jornada.spec.ts` | Quando a pausa de transição liga, e que os crons de fiscais, cobertura, lembrete e saudação saem sem consultar nada com ela ligada | 5 |
+| `transicao-jornada.spec.ts` | Quando a pausa de transição liga, e que os crons de fiscais, cobertura, lembrete e saudação saem sem consultar nada com ela ligada | 9 |
 | `correlation-id.middleware.spec.ts` | Geração/reaproveitamento do `x-request-id` | 3 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
