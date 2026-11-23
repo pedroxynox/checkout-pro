@@ -211,6 +211,7 @@ export class ColaboradoresController {
         ativo: dto.ativo,
       },
       usuario.perfil,
+      autorDaJornada(this.acessos, usuario).podeTrocarContrato,
     );
   }
 

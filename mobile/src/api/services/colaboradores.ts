@@ -9,6 +9,21 @@ import {
   PerfilColaborador,
   TurnoColaborador,
 } from '../types';
+import type { AvisoJornada, JornadaInput } from './jornadaColaborador';
+
+/**
+ * Cadastro com a primeira vigência da jornada (spec `jornada-5x2`, R4.7). Sem
+ * `aPartirDe` no bloco, vale a data de admissão; sem o bloco, a pessoa fica no
+ * 6x1 da ficha.
+ */
+export type CadastroColaboradorInput = ColaboradorInput & {
+  jornada?: Omit<JornadaInput, 'aPartirDe'> & { aPartirDe?: string };
+};
+
+/** Resposta do cadastro: com o bloco `jornada`, os avisos dela. */
+export type ColaboradorCadastrado = Colaborador & {
+  avisosJornada?: AvisoJornada[];
+};
 
 export interface FiltroColaboradores {
   busca?: string;
@@ -53,8 +68,8 @@ export const colaboradoresService = {
   },
 
   /** Cadastra um colaborador (operador por padrão). */
-  cadastrar(input: ColaboradorInput): Promise<Colaborador> {
-    return apiClient.post<Colaborador>('/colaboradores', input);
+  cadastrar(input: CadastroColaboradorInput): Promise<ColaboradorCadastrado> {
+    return apiClient.post<ColaboradorCadastrado>('/colaboradores', input);
   },
 
   /** Edita um colaborador. */

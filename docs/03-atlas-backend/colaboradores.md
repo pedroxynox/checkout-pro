@@ -29,10 +29,10 @@ base do **Perfil Inteligente** do colaborador (score, indicadores e insígnias).
 ## 3. Arquivos do módulo
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `colaboradores.controller.ts` | Rotas HTTP do cadastro e do perfil | 244 |
-| `colaboradores.service.ts` | Regras de aplicação: CRUD, conta de acesso, escala, bloco `jornada` e campos legados congelados | 1001 |
+| `colaboradores.controller.ts` | Rotas HTTP do cadastro e do perfil | 245 |
+| `colaboradores.service.ts` | Regras de aplicação: CRUD, conta de acesso, escala, bloco `jornada` e campos legados congelados | 1020 |
 | `colaboradores.domain.ts` | Regras puras: normalização, turno obrigatório e `camposLegadosAlterados` | 78 |
-| `colaboradores.errors.ts` | Erros de domínio (mapeados para HTTP) | 127 |
+| `colaboradores.errors.ts` | Erros de domínio (mapeados para HTTP) | 139 |
 | `colaboradores.module.ts` | Ligações (DI) do módulo | 39 |
 | `perfil-colaborador.service.ts` | Monta o Perfil Inteligente (dados → indicadores) | 844 |
 | `perfil-colaborador.domain.ts` | Regras puras: score, ranking, resumo, insígnias | 661 |
@@ -75,6 +75,9 @@ módulo [`jornada-vigencia`](jornada-vigencia.md#4-endpoints-rotas-http).
   admissão). Contrato ausente = o da ficha; escolher um diferente do **padrão**
   exige `ADMIN_DADOS`. **Sem o bloco, a pessoa fica no 6x1 da ficha**
   (compatibilidade com o APK antigo).
+- **Contrato da ficha só com `ADMIN_DADOS`** (decisão do dono): contrato
+  diferente do padrão no cadastro devolve 403 (`PermissaoTrocarContratoError`)
+  a quem não tem.
 - **Efeitos:** valida permissão de função e turno obrigatório; garante matrícula
   e login únicos; se a função dá acesso ao app, **cria a conta** (via
   `criarContaDeAcesso`) e, para fiscal, o registro de `Fiscal`; grava o
@@ -94,6 +97,9 @@ módulo [`jornada-vigencia`](jornada-vigencia.md#4-endpoints-rotas-http).
   função não dá acesso nenhum, caso em que o perfil antigo nem chega a ser
   sobrescrito (`perfilDaFuncao('OPERADOR')` é nulo). O acesso em si passa a ser
   recusado no login, que agora consulta a ficha: ver [`acessos`](acessos.md).
+- **Trocar o contrato da ficha exige `ADMIN_DADOS`** (403,
+  `PermissaoTrocarContratoError`; o controller passa `podeTrocarContrato`).
+  Reenviar o mesmo contrato não é troca; vazio = o padrão.
 - **Campos legados congelados com vigência (R1.3a).** Se a pessoa tem alguma
   vigência da jornada, mudar `folgaDiaSemana`, `entrada/saida` de Seg–Qui, Sex–Sáb
   e Dom, `grupoDomingo` ou `tipoContratoJornadaId` devolve 409
@@ -238,7 +244,7 @@ totais de arrecadação. Roda no cron mensal (dia 1º) e sob demanda.
 | `colaboradores.turno-obrigatorio.spec.ts` | Turno obrigatório para fiscal/operador | 9 |
 | `colaboradores.adicionar-identificador.spec.ts` | Associação de código solto (idempotência/conflito) | 4 |
 | `colaboradores.promocao-acesso.spec.ts` | Promoção operador→fiscal cria o login | 6 |
-| `colaboradores.jornada.spec.ts` | Bloco `jornada` no cadastro (valida antes, grava depois, admissão como data, sem bloco = 6x1); 409 dos campos legados com vigência, mesmo valor aceito, grupo preservado; `camposLegadosAlterados` | 10 |
+| `colaboradores.jornada.spec.ts` | Bloco `jornada` no cadastro (valida antes, grava depois, admissão como data, sem bloco = 6x1); 409 dos campos legados com vigência, mesmo valor aceito, grupo preservado; contrato da ficha só com `ADMIN_DADOS` (cadastro e edição); `camposLegadosAlterados` | 13 |
 | `perfil-colaborador.service.spec.ts` | Montagem do Perfil Inteligente | 8 |
 | `perfil-colaborador.properties.spec.ts` | Propriedades do score/ranking (property-based) | 17 |
 | `perfil-colaborador.medalhas.spec.ts` | Regras de insígnias/medalhas | 8 |

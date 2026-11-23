@@ -30,6 +30,7 @@ import {
 } from './colaboradores.domain';
 import {
   CamposLegadosCongeladosError,
+  PermissaoTrocarContratoError,
   ColaboradorNaoEncontradoError,
   ContaAcessoExistenteError,
   LoginAppDuplicadoError,
@@ -312,7 +313,14 @@ export class ColaboradoresService {
     // Vínculo obrigatório ao tipo de contrato: o informado ou o padrão (6x1).
     const idPadrao = await this.idContratoPadrao();
     const tipoContratoJornadaIdEfetivo =
-      input.tipoContratoJornadaId ?? idPadrao;
+      input.tipoContratoJornadaId || idPadrao;
+    // Só o administrador escolhe um contrato diferente do padrão.
+    if (
+      tipoContratoJornadaIdEfetivo !== idPadrao &&
+      !autorJornada.podeTrocarContrato
+    ) {
+      throw new PermissaoTrocarContratoError();
+    }
 
     // Bloco `jornada` (R4.7): validado ANTES de criar a conta e a ficha, para
     // o cadastro não ficar pela metade. Sem ele, a pessoa fica no 6x1 da ficha
@@ -551,6 +559,7 @@ export class ColaboradoresService {
     id: string,
     input: Partial<ColaboradorInput> & { ativo?: boolean },
     perfilSolicitante?: PerfilSolicitante,
+    podeTrocarContrato = false,
   ): Promise<Colaborador> {
     const atual = await this.prisma.colaborador.findUnique({ where: { id } });
     if (!atual) {
@@ -576,6 +585,16 @@ export class ColaboradoresService {
         tipoContratoJornadaId: contratoPedido,
       });
       if (mudados.length > 0) throw new CamposLegadosCongeladosError(mudados);
+    }
+
+    // Só o administrador troca o contrato da ficha. Reenviar o mesmo (o app
+    // antigo manda a ficha inteira) não é troca; vazio = o padrão.
+    if (input.tipoContratoJornadaId !== undefined && !podeTrocarContrato) {
+      const pedido =
+        input.tipoContratoJornadaId || (await this.idContratoPadrao());
+      if (pedido !== atual.tipoContratoJornadaId) {
+        throw new PermissaoTrocarContratoError();
+      }
     }
 
     // Impede escalada de privilégios: só o gerente desenvolvedor pode conceder

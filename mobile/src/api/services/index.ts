@@ -51,7 +51,23 @@ export type { ImagemSelecionada } from './checklist';
 export { operadoresService } from './operadores';
 export { feriasService } from './ferias';
 export { colaboradoresService } from './colaboradores';
-export type { FiltroColaboradores } from './colaboradores';
+export type {
+  CadastroColaboradorInput,
+  ColaboradorCadastrado,
+  FiltroColaboradores,
+} from './colaboradores';
+export { jornadaColaboradorService } from './jornadaColaborador';
+export type {
+  AvisoJornada,
+  DisponibilidadeDia,
+  DisponibilidadeInput,
+  JornadaDoColaborador,
+  JornadaInput,
+  RegimeJornada,
+  ResultadoGravacaoJornada,
+  TipoAvisoJornada,
+  VigenciaJornada,
+} from './jornadaColaborador';
 export { advertenciasService } from './advertencias';
 export { contratosService } from './contratos';
 export type { FiltroContratos } from './contratos';

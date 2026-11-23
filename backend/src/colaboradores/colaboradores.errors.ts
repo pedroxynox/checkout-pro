@@ -111,6 +111,18 @@ export class PermissaoInsuficienteFuncaoError extends ColaboradoresError {
 }
 
 /**
+ * Só o administrador escolhe ou troca o tipo de contrato (decisão do dono, spec
+ * `jornada-5x2`): na ficha, atribuir um contrato diferente do atual (ou, no
+ * cadastro, do padrão) exige `ADMIN_DADOS`.
+ */
+export class PermissaoTrocarContratoError extends ColaboradoresError {
+  readonly statusHttp = HttpStatus.FORBIDDEN;
+  constructor() {
+    super('Só o administrador escolhe ou troca o tipo de contrato.');
+  }
+}
+
+/**
  * A pessoa já tem vigência da jornada (spec `jornada-5x2`, R1.3a): os campos
  * legados da ficha (folga fixa, blocos de horário, grupo de domingo, contrato)
  * são a história do 6x1 e não mudam mais. Reenviar o MESMO valor é aceito (o
