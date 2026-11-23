@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/fiscais/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-23 · **Cobre:** `backend/src/fiscais/`
 
 # Módulo: `fiscais`
 > **ADR 0026 — a ficha é a única fonte do horário.** Em duas etapas:
@@ -42,7 +42,7 @@ os alertas automáticos e a **escala de trabalho** (apenas a geral, derivada da 
 | `fiscais-horario.service.ts` | Cron: lembretes de horário aos fiscais (turno e conta resolvidos pela ficha) | 194 |
 | `fiscais-alertas.service.ts` | Cron: alertas de intervalo longo, cobertura e análise semanal de padrões | 313 |
 | `escala.controller.ts` | Rota da escala consolidada (só leitura) | 39 |
-| `conferencia-escala.service.ts` | **Conferência de escala**: monta o diagnóstico das fichas para a API (só leitura) | 101 |
+| `conferencia-escala.service.ts` | **Conferência de escala**: monta o diagnóstico das fichas para a API e a jornada da equipe (só leitura) | 129 |
 | `escala.service.ts` | Escala consolidada de um dia, resolvida na ficha | 159 |
 | `escala.domain.ts` | Regras puras: formas da resposta + geração da cópia semanal a partir da ficha | 116 |
 | `colaborador-vinculo.ts` | Regra pura: mapeia fiscal → colaborador (ficha) | 84 |
@@ -237,6 +237,13 @@ Bastava um `select` esquecido para um deles resolver um turno pela metade.
   não há feriado nem rodízio a considerar.
 
 ### Coerência ficha ↔ escala semanal — **Conferência de escala**
+
+> **Fase 5 (spec `jornada-5x2`, R5.3).** Quem já tem vigência da jornada **sai**
+> do diagnóstico da ficha antiga (folga, blocos e cópia semanal do 6x1 não
+> decidem mais nada para ela). A resposta ganha `jornada`
+> (`JornadaColaboradorService.conferirEquipe`): `comVigencia`, `semVigencia`
+> (quem ainda está no 6x1 — útil para acompanhar a carga das vigências de 23/11)
+> e `avisos` (R4.6) da vigência mais recente de cada pessoa.
 
 > **Duas vias, uma apuração.** O diagnóstico é o mesmo (`detectarEscalasIncoerentes`,
 > puro) e responde por dois caminhos:
@@ -442,6 +449,7 @@ casos de ficha vazia, preencher os horários **primeiro**.
 | `escala-colaborador.spec.ts` | Geração da cópia semanal a partir da ficha (Seg–Qui, Sex–Sáb, folga, domingo) | 4 |
 | `integridade-vinculo.spec.ts` | Detecção de vínculos órfãos fiscal ↔ ficha (Fase 4) | 6 |
 | `vigencia-escala.spec.ts` | Equipe do dia e escala consolidada com vigência: antes do corte a ficha; depois, o horário e a folga da vigência; o legado segue igual; sem o serviço, tudo como antes | 5 |
+| `conferencia-escala.service.spec.ts` | Conferência no 5x2: quem tem vigência sai do diagnóstico da ficha antiga; `semVigencia` e avisos da vigência mais recente; sem o serviço da jornada, o diagnóstico antigo inteiro | 3 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

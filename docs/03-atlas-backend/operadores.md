@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/operadores/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-23 · **Cobre:** `backend/src/operadores/`
 
 # Módulo: `operadores`
 > **ADR 0026 (2026-09-17).** A **exceção de horário** da escala semanal
@@ -308,6 +308,12 @@ O gestor não precisa mais decidir falta por falta. A regra pura vive em
   o Perfil Inteligente do colaborador (que consome assiduidade/faltas).
 
 ## 10. Regras de negócio-chave
+- **Folga por dia no 5x2 (spec `jornada-5x2`, Fase 5).** `GET
+  /quadro-operadores/dia` traz `gruposFolga` (os grupos que folgam no dia pelo
+  rodízio de folgas; antes dele, o grupo do domingo antigo) e, por pessoa,
+  `motivoFolga` (`GRUPO`/`FOLGA_FIXA`, só no 5x2) e `grupoFolga` (o grupo da
+  vigência). `grupoFolgaDomingo` continua para o APK antigo. Horário e folga já
+  vinham da jornada prevista.
 1. **Uma ausência por pessoa/dia** (unicidade por dia civil).
 2. **Ausência futura só com gerente/supervisor** (programação).
 3. **Ausência a prazo é atômica** e conta todos os dias corridos (inclusive
@@ -362,7 +368,7 @@ O gestor não precisa mais decidir falta por falta. A regra pura vive em
 | `quadro-ferias-escala.spec.ts` | Quem está de férias sai do roster do dia (inclusive no domingo) e dos totais; as férias vencem uma falta gravada; fora do período segue normal; sem o serviço de férias nada é excluído; a grade marca **FERIAS** só no dia coberto (sem apagar a linha da semana) e não conta férias na cobertura; o tablero ao vivo não espera quem está de férias; e o **aviso de cobertura** não conta quem está de férias nem grita quando ninguém era esperado | 14 |
 | `encerramento-automatico.spec.ts` | Regra pura (D fecha em D+3, hora ignorada, autor = sistema, **sem débito**), a gravação (só PENDENTE, só não-retorno entre as incidências, fora dos ciclos fechados, janela do fechamento) e os crons (corte do dia, aviso único da véspera, sem aviso quando zero, nunca derruba o processo) | 11 |
 | `coerencia-quadro-escala.spec.ts` | **Coerência entre telas:** para o mesmo dia e pessoa, o Quadro e a [escala publicada](escala-exportacao.md) dizem o mesmo — e desde a extensão comparam também o **horário**, não só o estado (trabalho, folga da ficha, folga da escala semanal com a ficha omissa e como exceção, **ficha afirmando outro dia**, férias, falta, atestado, **feriado** e **horário de exceção**). É o teste que faltava: achou a divergência de folga e, quando passou a comparar horários, os desvios de feriado e de exceção | 10 |
-| `vigencia-quadro.spec.ts` | Quadro e escala publicada com vigência: a folga antiga vira dia de trabalho no horário novo e a folga nova aparece nas duas telas | 2 |
+| `vigencia-quadro.spec.ts` | Quadro e escala publicada com vigência: a folga antiga vira dia de trabalho no horário novo e a folga nova aparece nas duas telas + motivo da folga (fixa e de grupo) e `gruposFolga` no dia e na semana; | 4 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 

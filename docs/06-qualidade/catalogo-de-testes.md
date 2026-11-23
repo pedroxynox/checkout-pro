@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 150 arquivos, 1485 casos. **Mobile:** 47 arquivos, 401 casos. **Total: 1886 casos.**
+> **Backend:** 151 arquivos, 1497 casos. **Mobile:** 47 arquivos, 401 casos. **Total: 1898 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -37,7 +37,7 @@
 | `src/central-jornada/marcacoes-invalidas.service.spec.ts` | 12 | 1 |
 | `src/central-jornada/rankings.service.spec.ts` | 10 | 1 |
 | `src/central-jornada/saldo-time.spec.ts` | 4 | 1 |
-| `src/central-jornada/vigencia-jornada.spec.ts` | 5 | 1 |
+| `src/central-jornada/vigencia-jornada.spec.ts` | 8 | 1 |
 | `src/checklist/checklist.controller.spec.ts` | 5 | 1 |
 | `src/checklist/checklist.properties.spec.ts` | 5 | 1 |
 | `src/checklist/checklist.service.spec.ts` | 8 | 2 |
@@ -72,7 +72,7 @@
 | `src/escala-domingo/rodizio-folgas.domain.spec.ts` | 20 | 8 |
 | `src/escala-domingo/rodizio-folgas.service.spec.ts` | 7 | 3 |
 | `src/escala-exportacao/escala-exportacao.service.spec.ts` | 16 | 4 |
-| `src/escala-exportacao/escala-publicada.domain.spec.ts` | 13 | 5 |
+| `src/escala-exportacao/escala-publicada.domain.spec.ts` | 15 | 6 |
 | `src/fechamento/fechamento.domain.spec.ts` | 5 | 1 |
 | `src/feedforward/feedforward-alertas.service.spec.ts` | 12 | 2 |
 | `src/feedforward/feedforward.domain.spec.ts` | 26 | 7 |
@@ -81,6 +81,7 @@
 | `src/ferias/ferias.domain.spec.ts` | 13 | 7 |
 | `src/ferias/ferias.service.spec.ts` | 14 | 1 |
 | `src/fiscais/coerencia-escalados-escala.spec.ts` | 9 | 1 |
+| `src/fiscais/conferencia-escala.service.spec.ts` | 3 | 1 |
 | `src/fiscais/escala-colaborador.spec.ts` | 4 | 1 |
 | `src/fiscais/escala-inativo.spec.ts` | 1 | 1 |
 | `src/fiscais/escala.service.spec.ts` | 12 | 1 |
@@ -113,8 +114,8 @@
 | `src/jornada-vigencia/folga.service.spec.ts` | 20 | 4 |
 | `src/jornada-vigencia/jornada-colaborador.controller.spec.ts` | 2 | 1 |
 | `src/jornada-vigencia/jornada-colaborador.service.spec.ts` | 20 | 4 |
-| `src/jornada-vigencia/jornada-vigencia.domain.spec.ts` | 23 | 6 |
-| `src/jornada-vigencia/jornada-vigencia.service.spec.ts` | 14 | 4 |
+| `src/jornada-vigencia/jornada-vigencia.domain.spec.ts` | 24 | 7 |
+| `src/jornada-vigencia/jornada-vigencia.service.spec.ts` | 15 | 4 |
 | `src/metas/metas.domain.spec.ts` | 16 | 6 |
 | `src/metas/metas.service.spec.ts` | 16 | 5 |
 | `src/notificacoes/notificacoes.properties.spec.ts` | 2 | 1 |
@@ -134,7 +135,7 @@
 | `src/operadores/quadro-ferias-escala.spec.ts` | 14 | 5 |
 | `src/operadores/quadro-folga-escala.spec.ts` | 5 | 1 |
 | `src/operadores/remover-ausencia-periodo.spec.ts` | 4 | 1 |
-| `src/operadores/vigencia-quadro.spec.ts` | 2 | 1 |
+| `src/operadores/vigencia-quadro.spec.ts` | 4 | 1 |
 | `src/ponto/contrato-6x1-congelado.spec.ts` | 7 | 1 |
 | `src/ponto/contrato-do-dia.spec.ts` | 1 | 1 |
 | `src/ponto/deteccao-alerta-atraso.spec.ts` | 5 | 2 |

@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `backend/src/central-jornada/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-23 · **Cobre:** `backend/src/central-jornada/`
 
 # Módulo: `central-jornada`
 
@@ -62,6 +62,11 @@ faltas, dias de TAC, conflitos, atrasos e o saldo (banco de horas).
   detalhe diário, por desempenho); agrega o saldo do time por `contribuicaoSaldoTime`.
 
 #### `detalhePessoa(colaboradorId, deslocamento = 0)`
+> **Fase 5 (spec `jornada-5x2`).** Cada dia traz `geraDebito`, `contaComo100` e
+> `tipoContratoJornadaId` da jornada prevista (R6.3: o app parou de fixar
+> "domingo não gera"); a resposta traz `contratos` — os trechos do ciclo com o
+> mesmo contrato (`trechosDeContrato`: ex. 6x1 de 26/10 a 22/11, 5x2 de 23/11 em
+> diante), com o nome.
 Carrega **só** os dados daquela pessoa (não o ciclo inteiro) e devolve o detalhe
 diário — o drill-down abre rápido mesmo com muitos colaboradores.
 - **Devolve:** `{ periodo, resumo, dias }`. O `resumo` é o **mesmo
@@ -502,6 +507,11 @@ regra 16 e [`compensacao-horas`](compensacao-horas.md).
    [`compensacao-horas`](compensacao-horas.md).
 - **Vigência da jornada ([ADR 0027](../02-arquitetura/decisoes/0027-vigencia-da-jornada.md)).** Cada dia do ciclo é calculado com a **jornada prevista daquele dia** (carga, folga, turno, 100%/débito e regras do contrato — `previstorDe`): corrigir hoje um dia antigo usa as regras de então. O débito de falta e as marcações inválidas também usam o contrato do dia. Com vigência, vale a do dia; sem ela, a ficha, como antes. Quando o `JornadaVigenciaService` não é injetado (testes unitários antigos), o serviço reproduz a regra anterior.
 
+- **Ponto em folga no 5x2 (R6.5).** No regime semanal o item `PONTO_EM_FOLGA`
+  diz "Trabalhou num dia de FOLGA pela jornada … confira o grupo ou as folgas
+  fixas" e **não** traz a sugestão do novo dia de folga (ADR 0019 supõe uma folga
+  por semana). No 6x1 a frase e a sugestão seguem iguais.
+
 ## 11. Testes
 | Arquivo de teste | O que valida | Casos |
 |---|---|---|
@@ -512,7 +522,7 @@ regra 16 e [`compensacao-horas`](compensacao-horas.md).
 | `compensacao-jornada.spec.ts` | Compensação no cálculo da jornada: dia inteiro (consome as 50%, não é falta, sai como `COMPENSACAO`, nada em dia futuro nem em domingo), dia parcial (déficit **reclassificado** e não somado, excesso segue como dívida, sem atraso falso na entrada combinada) e as invariantes (o saldo 50% segue complementar aos chips, as 100% intactas) | 12 |
 | `saldo-time.spec.ts` | Regra do saldo do time (`contribuicaoSaldoTime`) | 4 |
 | `central-jornada.controller.spec.ts` | Permissão do débito de horas (inclusive em dia sem falta) e do relatório de marcações inválidas | 3 |
-| `vigencia-jornada.spec.ts` | O corte de 23/11: até 22/11 o 6x1 (carga 8h na sexta, 1h de extra), a partir de 23/11 o 5x2 (a folga antiga vira dia de 8h48), turno da disponibilidade no dia não cumprido, e igualdade exata com a Central antiga quando não há vigência | 5 |
+| `vigencia-jornada.spec.ts` | O corte de 23/11: até 22/11 o 6x1 (carga 8h na sexta, 1h de extra), a partir de 23/11 o 5x2 (a folga antiga vira dia de 8h48), turno da disponibilidade no dia não cumprido, e igualdade exata com a Central antiga quando não há vigência + `geraDebito`/`contaComo100`/contrato por dia, trechos de contrato e o ponto em folga no 5x2; | 8 |
 
 > Contagem geral sempre atualizada no [Catálogo de testes](../06-qualidade/catalogo-de-testes.md).
 
