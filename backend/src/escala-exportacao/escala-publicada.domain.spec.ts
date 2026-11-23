@@ -11,6 +11,7 @@ import {
   ordenarLinhas,
   semanaDe,
   totaisEscala,
+  gruposFolgaDoDia,
 } from './escala-publicada.domain';
 
 const ANCORA = {
@@ -203,5 +204,24 @@ describe('semanaDe', () => {
     // — justamente no dia em que a equipe confere a semana que está acabando.
     expect(semanaDe('2026-07-26')[0]).toBe('2026-07-20');
     expect(semanaDe('2026-07-26')[6]).toBe('2026-07-26');
+  });
+});
+
+describe('gruposFolgaDoDia (spec jornada-5x2, R5.1)', () => {
+  const ancora = {
+    data: new Date('2026-11-01T00:00:00.000Z'),
+    ordem: ['G1', 'G2', 'G3'] as const,
+  };
+  const dia = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+
+  it('com rodízio de folgas no dia, valem os grupos dele (qualquer dia)', () => {
+    expect(gruposFolgaDoDia(['G2'], dia('2026-11-24'), ancora)).toEqual(['G2']);
+    expect(gruposFolgaDoDia([], dia('2026-11-28'), ancora)).toEqual([]);
+  });
+
+  it('sem rodízio: só o domingo, pelo rodízio antigo; sem âncora, nada', () => {
+    expect(gruposFolgaDoDia(null, dia('2026-11-01'), ancora)).toEqual(['G1']);
+    expect(gruposFolgaDoDia(null, dia('2026-11-02'), ancora)).toEqual([]);
+    expect(gruposFolgaDoDia(undefined, dia('2026-11-01'), null)).toEqual([]);
   });
 });

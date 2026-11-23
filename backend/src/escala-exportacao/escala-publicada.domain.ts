@@ -24,8 +24,25 @@ import {
   FichaEscalaTurno,
   GrupoDomingo,
   entradaEsperadaNoDia,
+  grupoFolgaNoDomingo,
   saidaEsperadaNoDia,
 } from '../escala-domingo/escala-domingo.domain';
+
+/**
+ * Os grupos que folgam no dia (spec `jornada-5x2`, R5.1): os do rodízio de
+ * folgas vigente (`rodizio`, vazio no sábado) ou, sem rodízio no dia, o do
+ * rodízio ANTIGO de domingo (só no domingo e com âncora). Vale para qualquer
+ * dia da semana; o campo antigo `grupoFolgaDomingo` continua para o APK.
+ */
+export function gruposFolgaDoDia(
+  rodizio: readonly GrupoDomingo[] | null | undefined,
+  dia: Date,
+  ancoraDomingo: { data: Date; ordem: readonly GrupoDomingo[] } | null,
+): GrupoDomingo[] {
+  if (rodizio) return [...rodizio];
+  if (dia.getUTCDay() !== 0 || !ancoraDomingo) return [];
+  return [grupoFolgaNoDomingo(dia, ancoraDomingo.data, ancoraDomingo.ordem)];
+}
 
 /** Funções que entram na escala publicada (gerência não é escalada). */
 export type FuncaoEscala = 'OPERADOR' | 'FISCAL' | 'SUPERVISOR';

@@ -35,6 +35,10 @@ import {
   JornadaVigenciaService,
 } from '../jornada-vigencia/jornada-vigencia.service';
 import {
+  MotivoFolga,
+  motivoDaFolga,
+} from '../jornada-vigencia/jornada-vigencia.domain';
+import {
   carregarFiscalIdsPorColaborador,
   identidadesDaFicha,
 } from '../fiscais/identidades.consulta';
@@ -48,6 +52,7 @@ import {
   TotaisEscala,
   agruparPorFuncao,
   diaUTC,
+  gruposFolgaDoDia,
   isoDoDia,
   montarLinhaEscala,
   semanaDe,
@@ -80,6 +85,13 @@ export interface EscalaDiaPublicada {
   nomeFeriado: string | null;
   /** Só no domingo: grupo que folga pelo rodízio (ou null sem âncora). */
   grupoFolgaDomingo: GrupoDomingo | null;
+  /**
+   * Grupos que folgam no dia, em qualquer dia (spec `jornada-5x2`, R5.1): o
+   * rodízio de folgas vigente ou, antes dele, o rodízio antigo de domingo.
+   */
+  gruposFolga: GrupoDomingo[];
+  /** Por pessoa que folga no dia (5x2): grupo ou folga fixa. */
+  motivosFolga: { colaboradorId: string; motivo: MotivoFolga }[];
   totais: TotaisEscala;
   /** Pessoas agrupadas por função, na ordem fixa de leitura. */
   secoes: SecaoEscala[];
@@ -93,6 +105,8 @@ export interface DiaSemanaEscala {
   diaSemana: number;
   ehFeriado: boolean;
   nomeFeriado: string | null;
+  /** Grupos que folgam no dia (ver `EscalaDiaPublicada.gruposFolga`). */
+  gruposFolga: GrupoDomingo[];
 }
 
 /** Uma pessoa na grade semanal: uma célula por dia (segunda a domingo). */
@@ -105,6 +119,8 @@ export interface PessoaSemanaEscala {
     status: StatusEscala;
     entrada: string | null;
     saida: string | null;
+    /** Na folga do 5x2: grupo ou folga fixa; senão null. */
+    motivoFolga: MotivoFolga | null;
   }[];
 }
 
@@ -275,8 +291,9 @@ export class EscalaExportacaoService {
       (this.folga ? await this.folga.consultor([dia]) : null);
 
     const nomeFeriado = feriados.get(dia.getTime()) ?? null;
-    const linhas: LinhaEscala[] = fichas.map((ficha) =>
-      montarLinhaEscala({
+    const motivosFolga: EscalaDiaPublicada['motivosFolga'] = [];
+    const linhas: LinhaEscala[] = fichas.map((ficha) => {
+      const linha = montarLinhaEscala({
         ficha,
         dia,
         ancoraDomingo,
@@ -294,8 +311,21 @@ export class EscalaExportacaoService {
           dia,
           nomeFeriado != null,
         ),
-      }),
-    );
+      });
+      const motivo =
+        linha.status === 'FOLGA'
+          ? motivoDaFolga(
+              consultorJornada?.previsto(
+                identidadesDaFicha(ficha.colaboradorId, fiscalIds),
+                dia,
+                nomeFeriado != null,
+              ),
+            )
+          : null;
+      if (motivo)
+        motivosFolga.push({ colaboradorId: ficha.colaboradorId, motivo });
+      return linha;
+    });
 
     return {
       dataISO: iso,
@@ -306,6 +336,12 @@ export class EscalaExportacaoService {
         dia.getUTCDay() === 0 && ancoraDomingo
           ? grupoFolgaNoDomingo(dia, ancoraDomingo.data, ancoraDomingo.ordem)
           : null,
+      gruposFolga: gruposFolgaDoDia(
+        consultorJornada?.gruposDeFolga(dia),
+        dia,
+        ancoraDomingo,
+      ),
+      motivosFolga,
       totais: totaisEscala(linhas),
       secoes: agruparPorFuncao(linhas),
       semFolgaNoCadastro: this.semFolga(fichas, consultorFolga, fiscalIds),
@@ -385,6 +421,11 @@ export class EscalaExportacaoService {
         diaSemana: diaUTC(iso).getUTCDay(),
         ehFeriado: nome != null,
         nomeFeriado: nome,
+        gruposFolga: gruposFolgaDoDia(
+          consultorJornada?.gruposDeFolga(diaUTC(iso)),
+          diaUTC(iso),
+          ancoraDomingo,
+        ),
       };
     });
 
@@ -420,6 +461,16 @@ export class EscalaExportacaoService {
           status: linha.status,
           entrada: linha.entrada,
           saida: linha.saida,
+          motivoFolga:
+            linha.status === 'FOLGA'
+              ? motivoDaFolga(
+                  consultorJornada?.previsto(
+                    identidadesDaFicha(ficha.colaboradorId, fiscalIds),
+                    dia,
+                    d.ehFeriado,
+                  ),
+                )
+              : null,
         };
       }),
     }));

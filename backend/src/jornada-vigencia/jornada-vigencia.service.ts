@@ -9,6 +9,7 @@ import {
 import {
   RodizioFolgas,
   folgasDoGrupoNaSemana,
+  gruposDeFolgaNoDia,
   rodizioDaLinha,
   rodizioNoDia,
 } from '../escala-domingo/rodizio-folgas.domain';
@@ -61,6 +62,13 @@ export interface ConsultorJornada {
    * carregado): sem grupo e sem folgas fixas. Pessoa sem ficha → false.
    */
   semFolgaNaFicha(ids: readonly (string | null | undefined)[]): boolean;
+
+  /**
+   * Os grupos que folgam no dia pelo rodízio de folgas vigente (vazio no
+   * sábado), ou null quando nenhum rodízio vale no dia — aí o chamador cai no
+   * rodízio antigo de domingo. Não depende de quem tem vigência.
+   */
+  gruposDeFolga(dia: Date): GrupoDomingo[] | null;
 }
 
 /** Colunas da ficha que formam o regime legado (6x1). */
@@ -135,7 +143,12 @@ export class JornadaVigenciaService {
       const semDias = (): never => {
         throw new Error('Consultor da jornada sem dias carregados.');
       };
-      return { previsto: semDias, ehFolga: semDias, semFolgaNaFicha: semDias };
+      return {
+        previsto: semDias,
+        ehFolga: semDias,
+        semFolgaNaFicha: semDias,
+        gruposDeFolga: semDias,
+      };
     }
     const primeiro = diasCivis[0];
     const ultimo = diasCivis[diasCivis.length - 1];
@@ -306,6 +319,11 @@ export class JornadaVigenciaService {
             regras(vigente.tipoContratoJornadaId).folgasFixasPadrao,
           ).length === 0
         );
+      },
+      gruposDeFolga: (dia) => {
+        exigirCarregado(dia);
+        const r = rodizioNoDia(rodizios, dia);
+        return r ? [...gruposDeFolgaNoDia(r, dia)] : null;
       },
     };
   }

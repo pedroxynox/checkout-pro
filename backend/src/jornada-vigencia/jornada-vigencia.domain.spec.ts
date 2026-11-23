@@ -21,6 +21,7 @@ import {
   previstoNoDia,
   textoDuracao,
   disponibilidadePreenchida,
+  motivoDaFolga,
   validarVigencia,
   vigenciaNoDia,
 } from './jornada-vigencia.domain';
@@ -564,5 +565,23 @@ describe('textoDuracao', () => {
     [170, '2h50'],
   ])('%p min → %p', (min, texto) => {
     expect(textoDuracao(min)).toBe(texto);
+  });
+});
+
+describe('motivoDaFolga', () => {
+  it('só no regime semanal e só na folga: grupo ou folga fixa', () => {
+    expect(motivoDaFolga({ regime: 'SEMANAL', folga: true, grupo: 'G2' })).toBe(
+      'GRUPO',
+    );
+    expect(motivoDaFolga({ regime: 'SEMANAL', folga: true, grupo: null })).toBe(
+      'FOLGA_FIXA',
+    );
+    expect(
+      motivoDaFolga({ regime: 'SEMANAL', folga: false, grupo: 'G2' }),
+    ).toBeNull();
+    expect(
+      motivoDaFolga({ regime: 'LEGADO_6X1', folga: true, grupo: 'G1' }),
+    ).toBeNull();
+    expect(motivoDaFolga(null)).toBeNull();
   });
 });
