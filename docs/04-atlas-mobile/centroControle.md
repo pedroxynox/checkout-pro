@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/screens/centroControle/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `mobile/src/screens/centroControle/`
 
 # Área: `centroControle`
 
@@ -42,7 +42,7 @@ reinício de dados operacionais).
 | `CentroControleScreen.tsx` | Hub/índice de atalhos de gestão | 199 |
 | `CentralVendasScreen.tsx` | Estimativas de venda por dia do mês (a soma é a meta do mês) | 237 |
 | `ConfigEscalaDomingoScreen.tsx` | Configuração do rodízio de domingo (G1/G2/G3) | 268 |
-| `TiposContratoScreen.tsx` | CRUD dos tipos de contrato de jornada | 569 |
+| `TiposContratoScreen.tsx` | CRUD dos tipos de contrato de jornada, trava de regras em uso, duplicar e tornar padrão | 822 |
 | `InsumosDadosScreen.tsx` | Zerar estoque de insumos e limpar requisições | 214 |
 | `ReiniciarDadosScreen.tsx` | Reinício operacional (apaga dados de movimento) | 196 |
 | `CentroControleScreen.test.tsx` | Testes de visibilidade do card de reinício | 44 |
@@ -62,8 +62,24 @@ reinício de dados operacionais).
    [ADR 0017](../02-arquitetura/decisoes/0017-meta-de-vendas-derivada-das-estimativas.md)).
 3. **Rodízio de domingo:** define o 1º domingo do ciclo e quem folga em cada um
    dos 3 domingos (G1/G2/G3); vê a prévia dos próximos domingos.
-4. **Tipos de contrato:** cria/edita/ativa/desativa/remove contratos de jornada
-   (carga por dia, intervalos, limites e riscos de TAC, tudo em minutos).
+4. **Tipos de contrato:** cria/edita/ativa/desativa/remove/duplica contratos de
+   jornada, tudo em minutos (spec `jornada-5x2`, Fase 2):
+   - carga por dia e **carga do feriado**; "Dias com adicional de 100%" com o
+     chip **Feriado**;
+   - intervalos, limite de extras, **1º e 2º aviso** (os campos
+     `riscoTac1h30Min`/`riscoTac1h40Min` da API) e **limite de horas no dia**
+     (vazio = sem teto);
+   - **folgas por semana**, **folgas padrão** (para quem não tem grupo; dias de
+     segunda a domingo) e **permite folga no sábado** (sem ele, o chip do sábado
+     fica apagado);
+   - "Trabalha domingo (rodízio)" aparece só ao editar um contrato existente
+     (regime 6x1); um contrato novo não o mostra.
+
+   Um contrato **em uso** (selo "Em uso") abre com as regras **travadas** e um
+   aviso: só nome e descrição mudam, e salvar envia só esses dois campos. A ação
+   **Duplicar** cria a cópia inativa e já a abre para editar; **Tornar padrão**
+   pede confirmação (o backend recusa enquanto houver batida sem ficha). Remover
+   não aparece para contrato em uso.
 5. **Insumos (dados):** zera o estoque de um insumo, de todos, ou limpa o
    histórico de requisições — cada ação pede confirmação.
 6. **Conferência de escala:** abre o diagnóstico das fichas dos fiscais
@@ -89,6 +105,8 @@ Cada tela de dados trata os estados **carregando / erro / vazio**.
 | Editar contrato | `tiposContratoService.atualizar(id, input)` | `PATCH /tipos-contrato/:id` |
 | Ativar/desativar | `tiposContratoService.definirAtivo(id, ativo)` | `PATCH /tipos-contrato/:id/ativo` |
 | Remover contrato | `tiposContratoService.remover(id)` | `DELETE /tipos-contrato/:id` |
+| Duplicar contrato | `tiposContratoService.duplicar(id)` | `POST /tipos-contrato/:id/duplicar` |
+| Tornar padrão | `tiposContratoService.definirPadrao(id)` | `PATCH /tipos-contrato/:id/padrao` |
 | Insumos proativos | `insumosService.listarProativo()` | `GET /insumos/proativo` |
 | Zerar 1 insumo | `insumosService.zerarEstoqueInsumo(id)` | `DELETE /insumos/:id/movimentos` |
 | Zerar todos | `insumosService.zerarEstoque()` | `DELETE /insumos/movimentos` |
@@ -112,9 +130,11 @@ Módulos do backend relacionados:
   Resumo do Dia e o aviso de "meta em risco".
 - **Rodízio de domingo:** valida que a data de referência é um domingo e que os
   3 grupos (G1/G2/G3) foram escolhidos sem repetição antes de salvar.
-- **Tipos de contrato:** valida nome obrigatório, `intervalo mínimo < máximo` e
-  a ordem `risco 1h30 ≤ risco 1h40 ≤ limite de extras`; o contrato **padrão**
-  não pode ser desativado nem removido.
+- **Tipos de contrato:** valida nome obrigatório, `intervalo mínimo < máximo`, a
+  ordem `1º aviso ≤ 2º aviso ≤ limite de extras`, 1 a 3 folgas por semana, folgas
+  padrão no máximo as folgas por semana e limite de horas no dia vazio ou maior
+  que zero (o backend valida de novo); o contrato **padrão** não pode ser
+  desativado nem removido.
 - **Reiniciar dados:** o botão só habilita quando o texto digitado é `ZERAR`
   (validação também exigida pelo backend); depois exibe o resumo por entidade.
 
@@ -122,7 +142,9 @@ Módulos do backend relacionados:
 - Central de Vendas: `mesAtual`, `deslocarMes`, `rotuloMes`, `diasDoMes`,
   `parseValor`.
 - Rodízio: `gruposQueTrabalham`, `diaMes`, `isoMaisDiasDiaMes`.
-- Tipos de contrato: `formVazio`, `formDe`, `inteiro`, `hhmm` (minutos → "7h").
+- Tipos de contrato: `formVazio` (contrato novo com 2 folgas por semana e
+  feriado de 7h20 a 100%), `formDe`, `inteiro`, `digitos`, `hhmm` (minutos →
+  "7h").
 - Reinício: `rotuloEntidade` (rótulos pt-BR das tabelas do resumo).
 
 ## 8. Componentes e hooks compartilhados usados
@@ -138,8 +160,11 @@ Módulos do backend relacionados:
 | `ReiniciarDadosScreen.test.tsx` | Exige "ZERAR" e mostra o resumo | 2 |
 
 ## 10. Riscos, dívidas e pendências
-- 🔧 `TiposContratoScreen.tsx` é grande (569 linhas), com formulário extenso;
+- 🔧 `TiposContratoScreen.tsx` é grande (822 linhas), com formulário extenso;
   candidato a quebrar em componentes/seções menores.
+- ⚠ A trava de contrato em uso na tela é conforto: quem decide é o backend (409).
+  O APK antigo ainda mostra os campos antigos e reenvia todos; o backend aceita
+  quando os valores não mudam.
 - ⚠️ Várias ações são **irreversíveis** (zerar estoque, limpar requisições,
   reinício operacional). A confirmação por diálogo e a palavra `ZERAR` mitigam,
   mas a proteção real fica no backend.

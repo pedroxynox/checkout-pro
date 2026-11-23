@@ -1,4 +1,4 @@
-> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-10-10 · **Cobre:** `mobile/src/screens/ponto/`
+> **Estado:** ✅ Em dia · **Responsável:** Engenharia · **Última verificação:** 2026-11-22 · **Cobre:** `mobile/src/screens/ponto/`
 
 # Área: `ponto`
 
@@ -25,7 +25,7 @@ feriados).
 ## 3. Telas e arquivos
 | Arquivo | Papel | Linhas |
 |---|---|---|
-| `RegistroPontoScreen.tsx` | Tela principal: busca, jornada do dia, batidas, leitor e **modo correção** | 1704 |
+| `RegistroPontoScreen.tsx` | Tela principal: busca, jornada do dia, batidas, leitor e **modo correção** | 1705 |
 | `CentralJornadaScreen.tsx` | Portal do ciclo (hero, atalhos, resumo do time, **compensação de horas**, lista por pessoa, comparativo) | 715 |
 | `RankingTimeScreen.tsx` | Ranking do time numa métrica do resumo (uma tela para as sete) | 549 |
 | `metricasResumo.ts` | Identidade das sete métricas do resumo (fonte única de card + ranking) | 153 |
@@ -54,7 +54,10 @@ feriados).
    sessão; sem conexão, a batida vai para a **fila offline** (idempotente).
 4. **Painel da jornada:** mostra status (trabalhando/intervalo/encerrado/
    incompleto/sem registro), trabalhado, intervalo, extras (50%/100%), carga
-   base, alerta de TAC iminente e "Como é calculado?".
+   base, alerta de TAC iminente e "Como é calculado?". Os números de TAC
+   ("acima de 1h50 de extras…", "já atingiu 1h30…") vêm de
+   `jornada.regrasResumo`, o contrato do dia (spec `jornada-5x2`, R2.5), pelas
+   funções de `utils/regrasTac.ts`; sem ele (resposta antiga), os do 6x1.
 5. **Ciclo:** pela Central de Jornada abre inconsistências, **marcações
    inválidas**, revisão/fechamento e feriados; toca numa pessoa para o detalhe
    diário. Cada card de pessoa traz o **nome completo** (em até duas linhas),
