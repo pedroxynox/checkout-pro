@@ -75,7 +75,7 @@ prevista é o código de hoje com os dados de hoje (design §1).
 
 ## Fase 2 — Tipo de contrato 5x2
 
-Dois PRs: **2a — backend** (PR #442) e **2b — app**.
+Dois PRs: **2a — backend** (PR #442) e **2b — app** (PR #443).
 
 - [x] 2.1 Prisma: campos da design §2.2; migração `9zzv_contrato_5x2` com os
   valores do 6x1 (feriado 440, `feriadoAdicional100` true, limite diário null…).
@@ -94,19 +94,21 @@ Dois PRs: **2a — backend** (PR #442) e **2b — app**.
   padrão ≤ `folgasPorSemana`; sábado só com permissão). _(R2.8, R2.9)_ — a troca
   do padrão é recusada enquanto houver batida sem ficha (o padrão decide todos os
   dias delas).
-- [~] 2.6 `JornadaPontoView.regrasResumo` e textos do `RegistroPontoScreen`. _(R2.5)_
-  — `regrasResumo` no backend (2a); os textos do app ficam para a 2b.
-- [ ] 2.7 Tela `TiposContratoScreen`: campos novos, chip Feriado, "1º/2º aviso",
-  travas, Duplicar, Tornar padrão. _(R2.1–R2.9)_
+- [x] 2.6 `JornadaPontoView.regrasResumo` e textos do `RegistroPontoScreen`. _(R2.5)_
+  — `regrasResumo` no backend (2a); textos do app por `utils/regrasTac.ts` (2b).
+- [x] 2.7 Tela `TiposContratoScreen`: campos novos, chip Feriado, "1º/2º aviso",
+  travas, Duplicar, Tornar padrão. _(R2.1–R2.9)_ — "Trabalha domingo" só ao editar
+  um contrato existente.
 - [ ] 2.8 (Dono) Criar o(s) contrato(s) 5x2 44h. Valores informados: carga 8h48
   (528 min) por dia, feriado com carga própria, 100% em domingo e feriado, limite
   de extras 70 min, limite diário 600 min, intervalo máximo 170 min, 2 folgas por
   semana; avisos de TAC e intervalo mínimo conforme cada contrato (decisões 14
   e 15). _(R2)_
-- [~] 2.9 Atlas `tipos-contrato`, `ponto`; regras `ponto-jornada-e-tac` e
-  `contratos-e-jornada`; `docs:gen`. _(RT.5)_ — backend feito na 2a (também
+- [x] 2.9 Atlas `tipos-contrato`, `ponto`; regras `ponto-jornada-e-tac` e
+  `contratos-e-jornada`; `docs:gen`. _(RT.5)_ — backend na 2a (também
   `fiscais`, `compensacao-horas`, `central-jornada`, `common`,
-  `jornada-vigencia`); Atlas do app na 2b.
+  `jornada-vigencia`); app na 2b (`centroControle`, `ponto`,
+  `hooks-e-utilidades`).
 
 ## Fase 3 — Rodízio de folgas
 

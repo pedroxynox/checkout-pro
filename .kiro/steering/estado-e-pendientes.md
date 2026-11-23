@@ -10,7 +10,7 @@
 - Desde el **23/11/2026** la empresa opera en 5x2 (44 h); el **16/12/2026** pasa a 42 h. Los días hasta el 22/11 siguen en 6x1 mediante vigencias.
 - Las "Reglas críticas" de abajo describen el **6x1** y siguen valiendo para los días hasta el 22/11. Para los contratos 5x2 valen las del spec.
 - Mientras dure la transición: pausa `PAUSA_TRANSICAO_JORNADA=true` en producción, no cerrar el ciclo 26/10–25/11 y no editar el contrato 6x1 ni las fichas.
-- Fase 2 (backend): los números del TAC, los avisos y el feriado vienen del contrato del día; un contrato en uso tiene las reglas bloqueadas (se duplica para cambiar). Para el 6x1 todo da igual que antes.
+- Fase 2 (backend #442 + app): los números del TAC, los avisos y el feriado vienen del contrato del día; un contrato en uso tiene las reglas bloqueadas (se duplica para cambiar). Para el 6x1 todo da igual que antes. La pantalla Tipos de contrato ya tiene los campos nuevos, Duplicar y Tornar padrão; el Registro de Ponto cita los números del contrato. Falta que el dueño cree el contrato 5x2 44h (tarea 2.8).
 
 ## Estado verificable
 

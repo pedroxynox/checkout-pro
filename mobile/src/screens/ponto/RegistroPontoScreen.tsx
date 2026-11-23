@@ -42,6 +42,7 @@ import {
 import { cores, espacamento, raio, tipografia } from '../../theme';
 import { confirmar, notificar } from '../../utils/dialogos';
 import { formatarData, formatarDuracao, hojeISO } from '../../utils/formato';
+import { regrasDoDia, textoRegraTac, textoRiscoTac } from '../../utils/regrasTac';
 import { capturarComprovante } from './leitorComprovante';
 import { LeitorComprovanteAoVivo } from './leitorAoVivo';
 import { chaveFila, FiltrosFila, proximaPendencia } from './filaCorrecao';
@@ -1216,6 +1217,8 @@ function CartaoCorrecao({
 /** Painel com os números da jornada do dia. */
 function PainelJornada({ dados }: { dados: JornadaDiaPonto }): React.ReactElement {
   const j = dados.jornada;
+  // Limites do contrato deste dia (6x1 quando a resposta não os traz).
+  const regras = regrasDoDia(j.regrasResumo);
   const status = seloStatus(j.status);
   const [verComoCalcula, setVerComoCalcula] = useState(false);
   const extras =
@@ -1277,7 +1280,7 @@ function PainelJornada({ dados }: { dados: JornadaDiaPonto }): React.ReactElemen
             • Horas extras: o que passou da carga base do dia (
             {formatarDuracao(j.baseMs)}) —{' '}
             {j.horasExtras100Ms > 0
-              ? '100% (domingo/feriado)'
+              ? '100% (dia a 100% no contrato, como domingo e feriado)'
               : '50% (dia útil)'}
             .
           </Text>
@@ -1288,7 +1291,7 @@ function PainelJornada({ dados }: { dados: JornadaDiaPonto }): React.ReactElemen
           <Text style={styles.comoCalculaLinha}>
             {j.tac
               ? `• TAC neste dia: ${j.motivosTac.join('; ')}.`
-              : '• TAC: acima de 1h50 de extras, ou intervalo abaixo de 1h / acima de 3h.'}
+              : textoRegraTac(regras)}
           </Text>
         </View>
       ) : null}
@@ -1297,9 +1300,7 @@ function PainelJornada({ dados }: { dados: JornadaDiaPonto }): React.ReactElemen
         <View style={[styles.faixa, { backgroundColor: cores.amareloFundo }]}>
           <Ionicons name="time-outline" size={16} color={cores.amarelo} />
           <Text style={[styles.faixaTexto, { color: cores.amarelo }]}>
-            {j.horasExtrasMs >= 100 * 60_000
-              ? 'Risco alto de TAC: já atingiu 1h40 de horas extras.'
-              : 'Risco de TAC: já atingiu 1h30 de horas extras.'}
+            {textoRiscoTac(j.horasExtrasMs, regras)}
           </Text>
         </View>
       ) : null}
