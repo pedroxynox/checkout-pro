@@ -62,13 +62,6 @@ describe('Pausa de transição — crons suspensos', () => {
     return { service, prisma, notificacoes };
   }
 
-  it('folga sugerida por excesso de extras (22:00)', async () => {
-    const { service, prisma, notificacoes } = fiscaisAlertas();
-    await service.verificarExtrasExcessivas();
-    expect(prisma.fiscal.findMany).not.toHaveBeenCalled();
-    expect(notificacoes.enviar).not.toHaveBeenCalled();
-  });
-
   it('análise semanal de padrões dos fiscais (segunda 08:00)', async () => {
     const { service, prisma, notificacoes } = fiscaisAlertas();
     await service.analisarPadroes();

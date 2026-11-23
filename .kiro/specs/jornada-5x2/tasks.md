@@ -88,7 +88,8 @@ Dois PRs: **2a — backend** (PR #442) e **2b — app** (PR #443).
   adapter, `jornadaEsperadaMs`/`isDomingo` em `fiscais.service` e
   `fiscais-alertas`, domingo fixo em `compensacao-horas.service`,
   `INTERVALO_MINIMO_ENTRE_BATIDAS_MS` em `DUPLICADA`. _(R2.10)_ — o domingo fixo
-  do app fica para a 2b; o limiar de 7h da "folga sugerida" é decisão pendente 2.
+  do app fica para a 2b. A "folga sugerida por mais de 7 h de extras" foi
+  retirada (decisão 2 resolvida em 22/11/2026).
 - [x] 2.5 Trava de regras de contrato em uso (`emUso`), `POST /duplicar`,
   `PATCH /padrao`; validação de coerência ampliada (avisos ≤ limite; folgas fixas
   padrão ≤ `folgasPorSemana`; sábado só com permissão). _(R2.8, R2.9)_ — a troca

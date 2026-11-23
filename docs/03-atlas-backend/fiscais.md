@@ -40,7 +40,7 @@ os alertas automáticos e a **escala de trabalho** (apenas a geral, derivada da 
 | `fiscais.module.ts` | Ligações (DI) do módulo | 53 |
 | `fiscais.gateway.ts` | Gateway WebSocket do painel em tempo real | 93 |
 | `fiscais-horario.service.ts` | Cron: lembretes de horário aos fiscais (turno e conta resolvidos pela ficha) | 194 |
-| `fiscais-alertas.service.ts` | Cron: alertas de intervalo longo e cobertura | 439 |
+| `fiscais-alertas.service.ts` | Cron: alertas de intervalo longo, cobertura e análise semanal de padrões | 313 |
 | `escala.controller.ts` | Rota da escala consolidada (só leitura) | 39 |
 | `conferencia-escala.service.ts` | **Conferência de escala**: monta o diagnóstico das fichas para a API (só leitura) | 101 |
 | `escala.service.ts` | Escala consolidada de um dia, resolvida na ficha | 159 |
@@ -191,8 +191,8 @@ números são os mesmos (provado em `contrato-6x1-congelado.spec`).
 
 #### `regrasDosFiscais()`
 Liga cada fiscal à ficha uma vez e devolve `fiscalId → (dia → regras)`, carregado
-sob demanda. Usado pelos relatórios do log e pelo alerta de excesso de extras de
-`FiscaisAlertasService`. Sem serviço de contratos, todo dia no padrão do código.
+sob demanda. Usado pelos relatórios do log (previsão e histórico semanal). Sem
+serviço de contratos, todo dia no padrão do código.
 
 #### `reescreverRegistrosDoDia(cliente, ..., colaboradorId?)` / `publicarStatusDoDia(...)`
 Ponte batidas → status: reescreve o log do dia dentro da transação das batidas
@@ -336,9 +336,10 @@ casos de ficha vazia, preencher os horários **primeiro**.
 - `FiscaisHorarioService` / `FiscaisAlertasService` — crons (fuso de Brasília)
   de lembretes de horário, intervalo longo e cobertura. Com a pausa de transição
   ligada (`PAUSA_TRANSICAO_JORNADA=true`, ver [`common`](common.md)), o lembrete
-  de 10 min, a folga sugerida por excesso de extras (22:00) e a análise semanal
-  de padrões (segunda 08:00) não rodam: todos medem contra o horário ou a carga
-  do 6x1. Intervalo longo e cobertura de fiscais continuam.
+  de 10 min e a análise semanal de padrões (segunda 08:00) não rodam: medem
+  contra o horário do 6x1. Intervalo longo e cobertura de fiscais continuam.
+  A **folga sugerida por mais de 7 h de extras no mês** (22:00) foi **retirada**
+  a pedido do dono em 22/11/2026 (spec `jornada-5x2`, decisão pendente 2).
 
 ## 6. Lógica de domínio (funções puras)
 - `statusValido(v)` / `primeiroNome(nome)` — validação e exibição.
