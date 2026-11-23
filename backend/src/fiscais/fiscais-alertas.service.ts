@@ -2,19 +2,12 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
-import { FeriadosService } from '../feriados/feriados.service';
 import {
   StatusFiscal,
   calcularJornada,
   inicioDoDia,
   primeiroNome,
 } from './fiscais.domain';
-import { cargaBaseDoDia, diaPagaAdicional100 } from '../ponto/ponto.domain';
-import {
-  agoraNaBrasilia,
-  diaEncerradoEmBrasilia,
-  fimDoDiaBrasiliaEmUtc,
-} from '../common/datas';
 import { pausaTransicaoJornadaAtiva } from '../common/transicao-jornada';
 import { FiscaisService } from './fiscais.service';
 import { previsorDeEntradasDosFiscais } from './turno-fiscal.consulta';
@@ -27,7 +20,9 @@ import { JornadaVigenciaService } from '../jornada-vigencia/jornada-vigencia.ser
  * 1. Alerta de intervalo longo (>2h01min) → notifica o fiscal e os gestores.
  * 2. Alerta de cobertura mínima (<2 disponíveis) → notifica gestores.
  * 3. Detecção de patrões (semanalmente): intervalo longo recorrente, atrasos.
- * 4. Folga automática por excesso de extras (>7h no mês).
+ *
+ * A "folga sugerida por mais de 7 h de extras no mês" (22:00) foi retirada a
+ * pedido do dono em 22/11/2026 (spec `jornada-5x2`, decisão pendente 2).
  *
  * Fuso horário: America/Sao_Paulo.
  */
@@ -39,8 +34,6 @@ export class FiscaisAlertasService {
   private alertasIntervaloEnviados = new Set<string>();
   /** Evita spam de cobertura: só alerta uma vez a cada 30 minutos. */
   private ultimoAlertaCobertura = 0;
-  /** Evita alertar folga automática mais de uma vez por fiscal por mês. */
-  private alertasFolgaAutomatica = new Set<string>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -48,9 +41,6 @@ export class FiscaisAlertasService {
     // Fonte única do status real (mesma inteligência da Escala/Jornada). Usado
     // para não alertar "intervalo longo" de quem já está fora do expediente.
     private readonly fiscais: FiscaisService,
-    // Feriado conta como domingo: fica de fora do acúmulo de extras "de dia
-    // útil". Opcional para não quebrar instanciações sem o serviço.
-    @Optional() private readonly feriados?: FeriadosService,
     // Vigência da jornada (ADR 0027): a hora prevista de cada data. Opcional e
     // no fim: sem ele, o retrato por dia da semana da ficha.
     @Optional() private readonly jornada?: JornadaVigenciaService,
@@ -60,12 +50,6 @@ export class FiscaisAlertasService {
   @Cron('0 0 * * *', { timeZone: 'America/Sao_Paulo' })
   resetarDiario(): void {
     this.alertasIntervaloEnviados.clear();
-  }
-
-  /** Reseta caches mensais no primeiro dia do mês. */
-  @Cron('0 0 1 * *', { timeZone: 'America/Sao_Paulo' })
-  resetarMensal(): void {
-    this.alertasFolgaAutomatica.clear();
   }
 
   /**
@@ -210,116 +194,6 @@ export class FiscaisAlertasService {
       this.ultimoAlertaCobertura = agora.getTime();
       this.logger.warn(
         `Alerta de cobertura: ${disponiveis} fiscal(is) disponível(is).`,
-      );
-    }
-  }
-
-  /**
-   * ALERTA 3: Folga automática por excesso de horas extras (>7h no mês).
-   * Roda uma vez por dia às 22:00 (após encerramento dos turnos).
-   */
-  @Cron('0 22 * * *', { timeZone: 'America/Sao_Paulo' })
-  async verificarExtrasExcessivas(): Promise<void> {
-    // Pausa de transição (fim do 6x1): enquanto as vigências 5x2 não estão
-    // carregadas, a carga ainda é a da ficha 6x1 (7h/8h) e toda jornada de 5x2
-    // contaria como extra.
-    if (pausaTransicaoJornadaAtiva()) return;
-    const agoraReal = new Date();
-    const agoraPonto = agoraNaBrasilia();
-    const inicioMes = new Date(
-      Date.UTC(agoraPonto.getUTCFullYear(), agoraPonto.getUTCMonth(), 1),
-    );
-    const fimMes = new Date(
-      Date.UTC(agoraPonto.getUTCFullYear(), agoraPonto.getUTCMonth() + 1, 1),
-    );
-
-    const LIMITE_EXTRAS_MS = 7 * 60 * 60 * 1000; // 7 horas
-
-    // Feriados do mês (fonte única, igual à Central/Jornada da Equipe): feriado
-    // conta como domingo e fica fora deste acúmulo.
-    const feriadoSet = this.feriados
-      ? new Set((await this.feriados.mapaNoPeriodo(inicioMes, fimMes)).keys())
-      : new Set<number>();
-
-    const fiscais = await this.prisma.fiscal.findMany();
-    const registros = await this.prisma.registroPontoFiscal.findMany({
-      where: { data: { gte: inicioMes, lt: fimMes } },
-      orderBy: { em: 'asc' },
-    });
-
-    // Agrupar por fiscal e dia.
-    const porFiscalDia = new Map<
-      string,
-      Map<string, { status: StatusFiscal; em: Date }[]>
-    >();
-    for (const r of registros) {
-      const diaKey = r.data.toISOString();
-      if (!porFiscalDia.has(r.fiscalId)) {
-        porFiscalDia.set(r.fiscalId, new Map());
-      }
-      const mapa = porFiscalDia.get(r.fiscalId)!;
-      if (!mapa.has(diaKey)) mapa.set(diaKey, []);
-      mapa.get(diaKey)!.push({ status: r.status as StatusFiscal, em: r.em });
-    }
-
-    // Carga e dias a 100% do contrato de cada dia (ADR 0027): no 6x1, 7h/8h
-    // e domingo/feriado fora — os números de antes.
-    const regrasDosFiscais = await this.fiscais.regrasDosFiscais();
-
-    for (const fiscal of fiscais) {
-      if (this.alertasFolgaAutomatica.has(fiscal.id)) continue;
-
-      const mapaFiscal = porFiscalDia.get(fiscal.id);
-      if (!mapaFiscal) continue;
-
-      const regrasDoDia = await regrasDosFiscais(fiscal.id);
-      let totalExtrasMs = 0;
-      for (const [diaKey, regs] of mapaFiscal.entries()) {
-        const diaDate = new Date(diaKey);
-        const diaSemana = diaDate.getUTCDay();
-        const ehFeriado = feriadoSet.has(diaDate.getTime());
-        const regras = regrasDoDia(diaDate);
-        if (diaPagaAdicional100(diaSemana, ehFeriado, regras)) continue;
-
-        const diaEncerrado = diaEncerradoEmBrasilia(diaDate, agoraPonto);
-        const limite = diaEncerrado
-          ? fimDoDiaBrasiliaEmUtc(diaDate)
-          : agoraReal;
-        const jornada = calcularJornada(regs, limite, diaEncerrado);
-        const esperado = cargaBaseDoDia(diaSemana, ehFeriado, regras);
-        const extra = jornada.cargaHorariaMs - esperado;
-        if (extra > 0) totalExtrasMs += extra;
-      }
-
-      if (totalExtrasMs <= LIMITE_EXTRAS_MS) continue;
-
-      // Enviar notificação sugerindo folga.
-      const nome = primeiroNome(fiscal.nome);
-      const horasExtras = Math.floor(totalExtrasMs / 3600000);
-      const minExtras = Math.floor((totalExtrasMs % 3600000) / 60000);
-
-      if (fiscal.usuarioId) {
-        const usuario = await this.prisma.usuario.findUnique({
-          where: { id: fiscal.usuarioId },
-        });
-        if (usuario) {
-          await this.notificacoes.enviar([usuario], {
-            titulo: '🎉 Dia de folga sugerido!',
-            mensagem: `Você acumulou ${horasExtras}h${minExtras > 0 ? ` ${minExtras}min` : ''} extras neste mês. Converse com seu gestor para agendar um dia de descanso.`,
-          });
-        }
-      }
-
-      const gestores =
-        await this.notificacoes.destinatariosComPermissao('CENTRAL_JORNADA');
-      await this.notificacoes.enviar(gestores, {
-        titulo: '📋 Folga sugerida por excesso de extras',
-        mensagem: `${nome} acumulou ${horasExtras}h${minExtras > 0 ? `${minExtras}min` : ''} extras no mês. Considere conceder um dia livre para compensação.`,
-      });
-
-      this.alertasFolgaAutomatica.add(fiscal.id);
-      this.logger.log(
-        `Folga sugerida para ${fiscal.nome}: ${horasExtras}h${minExtras}min extras.`,
       );
     }
   }

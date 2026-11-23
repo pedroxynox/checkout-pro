@@ -242,15 +242,15 @@ Respostas de 22/11/2026 (segunda rodada):
 
 ## Decisões pendentes com o dono
 
-Registradas para não serem inventadas. Até a resposta, usar o valor proposto
-**apenas como padrão editável**.
+Nenhuma no momento. Novas dúvidas entram aqui, com o valor proposto usado
+**apenas como padrão editável** até a resposta.
 
-1. **Quem escolhe o contrato na ficha:** hoje só o administrador vê a lista de
-   contratos. Manter assim?
-2. **Alerta "folga sugerida por mais de 7 h de extras no mês"** (fiscais): manter
-   (lendo o contrato) ou retirar?
-3. **Transição 22→23/11:** conforme a folga antiga, alguém pode passar de 6 dias
-   seguidos antes da primeira folga nova. O dono confirmou apenas os domingos.
+Resolvidas em 22/11/2026:
 
-Resolvidas em 22/11/2026: avisos de TAC e intervalos conforme o contrato
-(decisões 14 e 15) e a tolerância da disponibilidade (decisão 16).
+- Avisos de TAC e intervalos conforme o contrato (decisões 14 e 15) e a
+  tolerância da disponibilidade (decisão 16).
+- **Quem escolhe o contrato na ficha:** só o administrador (como hoje).
+- **Alerta "folga sugerida por mais de 7 h de extras no mês"** (fiscais):
+  **retirado**.
+- **Transição 22→23/11:** as folgas já foram calculadas pela gestão; ninguém passa
+  de 6 dias seguidos. O sistema não precisa tratar o caso.
