@@ -67,6 +67,13 @@ export interface EscalaDiaPublicada {
   nomeFeriado: string | null;
   /** Só no domingo: grupo que folga pelo rodízio (ou null sem âncora). */
   grupoFolgaDomingo: 'G1' | 'G2' | 'G3' | null;
+  /**
+   * Grupos que folgam no dia, em qualquer dia (spec jornada-5x2, R5.1).
+   * Ausente = backend antigo.
+   */
+  gruposFolga?: string[];
+  /** Por pessoa que folga no 5x2: grupo do rodízio ou folga fixa. */
+  motivosFolga?: { colaboradorId: string; motivo: 'GRUPO' | 'FOLGA_FIXA' }[];
   totais: TotaisEscala;
   secoes: SecaoEscala[];
   /** Quem está sem dia de folga no cadastro — um aviso, não uma seção. */
@@ -79,6 +86,8 @@ export interface DiaSemanaEscala {
   diaSemana: number;
   ehFeriado: boolean;
   nomeFeriado: string | null;
+  /** Grupos que folgam no dia (ausente = backend antigo). */
+  gruposFolga?: string[];
 }
 
 /** Uma célula da grade semanal. */
@@ -86,6 +95,8 @@ export interface CelulaSemanaEscala {
   status: StatusEscala;
   entrada: string | null;
   saida: string | null;
+  /** Na folga do 5x2: grupo ou folga fixa. */
+  motivoFolga?: 'GRUPO' | 'FOLGA_FIXA' | null;
 }
 
 /** Uma pessoa na grade semanal: uma célula por dia (segunda a domingo). */
