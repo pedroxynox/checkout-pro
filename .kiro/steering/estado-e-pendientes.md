@@ -14,6 +14,7 @@
 - Fase 3: rodízio de folgas G1/G2/G3 con vigencia (tabla `rodizio_folgas_vigencias`, sembrada el 23/11/2026, ADR 0028). Solo decide a quien tiene grupo en una vigencia de jornada. Pantalla "Rodízio de folgas" en el Centro de Controle (reemplaza la card del rodízio de domingo).
 - Fase 4a (backend): `GET/PUT/DELETE /colaboradores/:id/jornada` graba las vigencias (ciclo abierto, validación, avisos, auditoría; cambiar el contrato exige `ADMIN_DADOS`); `POST /colaboradores` acepta el bloque `jornada`; con vigencia, los campos legados de la ficha dan 409 si cambian. Fase 4b (app): la ficha graba la jornada (disponibilidad Seg…Dom, grupo, folgas fijas, "Vale a partir de"; contrato solo para `ADMIN_DADOS`, también en la ficha vieja) y el perfil muestra la jornada. Falta cargar las vigencias del 23/11 (tarea 4.6, dueño).
 - Fase 5a (backend): el quadro y la escala publicada traen `gruposFolga` en todo día y el motivo de la folga (grupo/fija); la Central trae `geraDebito`/`contaComo100`/contrato por día y los tramos de contrato del ciclo; la Conferencia de escala lista quién sigue sin vigencia y los avisos; sin sugerencia de nueva folga en el 5x2.
+- Fase 5b (app): la aba Escalas muestra el grupo que folga en todo día y "Folga · Gx"/"Folga fixa" por persona, sin los cards "Faltas do mês" y "Não-retornos do mês"; la escala publicada usa el mismo sello; la Conferencia de escala muestra quién sigue en 6x1 y los avisos; el detalle de la Central toma el débito del backend y muestra el contrato por tramo.
 
 ## Estado verificable
 

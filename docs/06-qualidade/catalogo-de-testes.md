@@ -5,7 +5,7 @@
 
 > Todos os arquivos de teste automatizado e quantos casos cada um cobre.
 >
-> **Backend:** 151 arquivos, 1497 casos. **Mobile:** 47 arquivos, 401 casos. **Total: 1898 casos.**
+> **Backend:** 151 arquivos, 1497 casos. **Mobile:** 49 arquivos, 410 casos. **Total: 1907 casos.**
 >
 > _A contagem é por chamadas literais de `it()`/`test()` no código (determinística). Testes parametrizados (`it.each`/`test.each`) expandem em mais casos na execução do Jest, então o número reportado pelo Jest pode ser ligeiramente maior._
 
@@ -185,7 +185,7 @@
 | `src/screens/colaboradores/PerfilColaboradorScreen.test.tsx` | 5 | 3 |
 | `src/screens/colaboradores/feedforwardApoio.test.ts` | 5 | 2 |
 | `src/screens/contratos/ContratosScreen.test.tsx` | 8 | 2 |
-| `src/screens/escala/ConferenciaEscalaScreen.test.tsx` | 7 | 1 |
+| `src/screens/escala/ConferenciaEscalaScreen.test.tsx` | 9 | 1 |
 | `src/screens/escala/EscalaScreen.test.tsx` | 10 | 2 |
 | `src/screens/fechamento/FechamentoScreen.test.tsx` | 2 | 1 |
 | `src/screens/importacoes/ImportacoesScreen.test.tsx` | 2 | 1 |
@@ -199,6 +199,7 @@
 | `src/screens/operadores/JustificativasScreen.test.tsx` | 5 | 1 |
 | `src/screens/ponto/CartaoCompensacao.test.tsx` | 7 | 1 |
 | `src/screens/ponto/CompensacaoScreen.test.tsx` | 12 | 1 |
+| `src/screens/ponto/DetalheJornadaScreen.test.tsx` | 3 | 2 |
 | `src/screens/ponto/ExportarCicloScreen.test.tsx` | 2 | 1 |
 | `src/screens/ponto/InconsistenciasScreen.test.tsx` | 3 | 1 |
 | `src/screens/ponto/MarcacoesInvalidasScreen.test.tsx` | 13 | 1 |
@@ -207,7 +208,8 @@
 | `src/screens/ponto/filaCorrecao.test.ts` | 10 | 4 |
 | `src/screens/ponto/leituraComprovanteUtil.test.ts` | 4 | 2 |
 | `src/screens/ponto/montarTextoOcr.test.ts` | 3 | 1 |
-| `src/utils/escalaLayout.test.ts` | 25 | 4 |
+| `src/utils/escalaLayout.test.ts` | 26 | 4 |
+| `src/utils/folgaDoDia.test.ts` | 3 | 1 |
 | `src/utils/formato.test.ts` | 25 | 6 |
 | `src/utils/jornadaColaborador.test.ts` | 11 | 3 |
 | `src/utils/periodoMensal.test.ts` | 9 | 5 |

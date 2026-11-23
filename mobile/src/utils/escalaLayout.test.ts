@@ -14,6 +14,7 @@ import {
   LARGURA_SEMANA,
   htmlDeImpressao,
   nomeArquivoEscala,
+  rotuloSeloFolga,
   svgEscalaDia,
   svgEscalaSemana,
 } from './escalaLayout';
@@ -263,6 +264,21 @@ describe('svgEscalaDia', () => {
       { geradoEm: GERADO_EM },
     );
     expect(svg).toContain('Feriado · Padroeira');
+  });
+
+  it('em qualquer dia informa os grupos que folgam (rodízio de folgas)', () => {
+    const { svg } = svgEscalaDia(
+      { ...DIA, diaSemana: 2, grupoFolgaDomingo: null, gruposFolga: ['G2'] },
+      { geradoEm: GERADO_EM },
+    );
+    expect(svg).toContain('Folga · G2');
+    expect(
+      rotuloSeloFolga({ diaSemana: 6, grupoFolgaDomingo: null, gruposFolga: [] }),
+    ).toBeNull();
+    // Backend antigo: só o domingo, com o texto de antes.
+    expect(
+      rotuloSeloFolga({ diaSemana: 0, grupoFolgaDomingo: 'G1' }),
+    ).toBe('Domingo · folga G1');
   });
 
   it('no domingo informa o grupo que folga pelo rodízio', () => {

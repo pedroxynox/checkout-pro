@@ -14,6 +14,7 @@ import { centralJornadaService } from "../../api/services";
 import {
   CentralDiaDetalhe,
   CentralPessoaResumo,
+  TrechoContrato,
 } from "../../api/services/centralJornada";
 import { useAuth } from "../../auth/AuthContext";
 import {
@@ -79,12 +80,31 @@ function rotuloTipoDia(tipo: CentralDiaDetalhe["tipo"]): string {
 }
 
 /**
- * Domingo e feriado não geram hora devida, então a falta nesses dias não pode
- * ser lançada como débito (o servidor recusa). Escondemos o botão para não
- * oferecer uma ação impossível — faltar num domingo fica apenas como ausência.
+ * Dia que não gera hora devida (domingo e feriado a 100%, pelo contrato do dia)
+ * não aceita falta como débito (o servidor recusa). Escondemos o botão para não
+ * oferecer uma ação impossível. A resposta vem do backend (`geraDebito`, spec
+ * jornada-5x2, R6.3); com backend antigo, a regra fixa de antes.
  */
-function aceitaDebito(dia: CentralDiaDetalhe): boolean {
+export function aceitaDebito(dia: CentralDiaDetalhe): boolean {
+  if (dia.geraDebito !== undefined) return dia.geraDebito;
   return dia.diaSemana !== 0 && !dia.ehFeriado;
+}
+
+/** "dd/mm" de uma data AAAA-MM-DD. */
+function diaMes(iso: string): string {
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+}
+
+/**
+ * Contrato(s) da pessoa no ciclo: um só → o nome; vários (ex.: 6x1 até 22/11 e
+ * 5x2 depois) → cada nome com o seu trecho. null = sem informação.
+ */
+export function textoContratos(trechos: TrechoContrato[] | undefined): string | null {
+  if (!trechos || trechos.length === 0) return null;
+  if (trechos.length === 1) return trechos[0].nome ?? null;
+  return trechos
+    .map((t) => `${t.nome ?? "—"} (${diaMes(t.de)}–${diaMes(t.ate)})`)
+    .join(" · ");
 }
 
 export function DetalheJornadaScreen(): React.ReactElement {
@@ -96,6 +116,7 @@ export function DetalheJornadaScreen(): React.ReactElement {
   const detalhe = useRequisicao<{
     resumo: CentralPessoaResumo | null;
     dias: CentralDiaDetalhe[];
+    contratos?: TrechoContrato[];
   } | null>(
     () => centralJornadaService.pessoa(colaboradorId, ciclo),
     [colaboradorId, ciclo],
@@ -155,6 +176,11 @@ export function DetalheJornadaScreen(): React.ReactElement {
           <View style={{ flex: 1 }}>
             <Text style={styles.nome}>{pessoa.nome}</Text>
             <Text style={styles.funcao}>{rotuloFuncao(pessoa.funcao)}</Text>
+            {textoContratos(detalhe.dados?.contratos) ? (
+              <Text style={styles.funcao}>
+                Contrato: {textoContratos(detalhe.dados?.contratos)}
+              </Text>
+            ) : null}
           </View>
           {/* Mesmo indicador da card da Central: só as horas 50% (com sinal).
               As 100% seguem no chip `+100%` abaixo do nome. */}

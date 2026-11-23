@@ -223,4 +223,44 @@ describe("ConferenciaEscalaScreen", () => {
       screen.getByText(/abrir a ficha do colaborador, ajustar o/),
     ).toBeTruthy();
   });
+
+  it("jornada 5x2: quem ainda está no 6x1 e os avisos da vigência", async () => {
+    escalaService.conferenciaEscala.mockResolvedValue({
+      ...LIMPO,
+      jornada: {
+        comVigencia: 5,
+        semVigencia: [
+          { colaboradorId: "c9", nome: "Caio Lima", funcao: "OPERADOR" },
+        ],
+        avisos: [
+          {
+            colaboradorId: "c2",
+            nome: "Bia Rocha",
+            funcao: "FISCAL",
+            aPartirDe: "2026-11-23",
+            avisos: [
+              {
+                tipo: "DIA_SEM_HORARIO",
+                diaSemana: 6,
+                mensagem: "Sem horário na sábado: nesse dia o sistema não cobra ponto.",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    render(<ConferenciaEscalaScreen />);
+
+    expect(await screen.findByText("Jornada 5x2")).toBeTruthy();
+    expect(screen.getByText("5 com a jornada nova · 1 ainda no 6x1")).toBeTruthy();
+    expect(screen.getByText("Caio Lima")).toBeTruthy();
+    expect(screen.getByText(/Sem horário na sábado/)).toBeTruthy();
+  });
+
+  it("backend antigo (sem jornada): não mostra o cartão", async () => {
+    escalaService.conferenciaEscala.mockResolvedValue(LIMPO);
+    render(<ConferenciaEscalaScreen />);
+    await screen.findByText("Conferência de escala");
+    expect(screen.queryByText("Jornada 5x2")).toBeNull();
+  });
 });
